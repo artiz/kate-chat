@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: kate-chat-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=kate-chat
+    networks:
+      - kate-chat-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kate-chat-backend
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/kate-chat
+      - PORT=4000
+    depends_on:
+      - mongodb
+    networks:
+      - kate-chat-network
+    env_file:
+      - ./backend/.env
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kate-chat-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://localhost:4000
+      - REACT_APP_WS_URL=ws://localhost:4000
+    depends_on:
+      - backend
+    networks:
+      - kate-chat-network
+    env_file:
+      - ./frontend/.env
+
+networks:
+  kate-chat-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
