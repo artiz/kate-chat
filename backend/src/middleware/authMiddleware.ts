@@ -25,6 +25,17 @@ export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
   return verifyToken(token);
 };
 
+export const graphQlAuthChecker = (
+  { context }: { context: GraphQLContext },
+  roles: string[]
+): boolean => {
+    const user = context.user;
+    if (!user) return false;
+    if (roles.length === 0) return true;
+    
+    return false;
+};
+
 // Export the middleware
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   try {

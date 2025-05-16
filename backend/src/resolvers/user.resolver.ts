@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx } from "type-graphql";
 import { Repository } from "typeorm";
 import { User } from "../entities/User";
-import { getMongoRepository } from "../config/database";
+import { getRepository } from "../config/database";
 import { generateToken, TokenPayload } from "../utils/jwt";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
@@ -13,7 +13,7 @@ export class UserResolver {
   private userRepository: Repository<User>;
 
   constructor() {
-    this.userRepository = getMongoRepository(User);
+    this.userRepository = getRepository(User);
   }
 
   @Query(() => User, { nullable: true })

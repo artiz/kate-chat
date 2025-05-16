@@ -3,7 +3,7 @@ import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { ObjectId } from "mongodb";
-import { getMongoRepository } from "../config/database";
+import { getRepository } from "../config/database";
 import { GraphQLContext } from "../middleware/authMiddleware";
 
 @Resolver(Chat)
@@ -11,7 +11,7 @@ export class ChatResolver {
   private chatRepository: Repository<Chat>;
 
   constructor() {
-    this.chatRepository = getMongoRepository(Chat);
+    this.chatRepository = getRepository(Chat);
   }
 
   @Query(() => [Chat])

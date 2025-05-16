@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.810.0",
     "@aws-sdk/client-bedrock-runtime": "^3.810.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cors": "^2.8.18",
@@ -40,6 +41,7 @@
     "prettier": "^3.2.5",
     "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7",
     "ts-jest": "^29.3.3",
     "ts-node": "^10.9.2",
     "type-graphql": "^2.0.0-rc.2",

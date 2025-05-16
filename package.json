@@ -15,8 +15,5 @@
   "workspaces": [
     "backend",
     "frontend"
-  ],
-  "dependencies": {
-    "sqlite3": "^5.1.7"
-  }
+  ]
 }

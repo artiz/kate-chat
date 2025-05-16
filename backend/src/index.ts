@@ -9,8 +9,9 @@ import { initializeDatabase } from "./config/database";
 import { ChatResolver } from "./resolvers/chat.resolver";
 import { MessageResolver } from "./resolvers/message.resolver";
 import { UserResolver } from "./resolvers/user.resolver";
+import { ModelResolver } from "./resolvers/model.resolver";
 import path from "path";
-import { authMiddleware } from "./middleware/authMiddleware";
+import { authMiddleware, graphQlAuthChecker } from "./middleware/authMiddleware";
 import { execute, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
@@ -45,10 +46,11 @@ async function bootstrap() {
 
     // Build GraphQL schema
     const schema = await buildSchema({
-      resolvers: [ChatResolver, MessageResolver, UserResolver],
+      resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver],
       validate: false,
       emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
       pubSub: schemaPubSub,
+      authChecker: graphQlAuthChecker,
     });
 
     // Create Express application

@@ -58,7 +58,7 @@ export const AppDataSource = new DataSource({
 });
 
 // Helper function to get a repository from the data source
-export function getMongoRepository<T>(entityClass: any): any {
+export function getRepository<T>(entityClass: any): any {
   return AppDataSource.getRepository(entityClass);
 }
 

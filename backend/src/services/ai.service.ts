@@ -1,6 +1,8 @@
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { bedrockClient, BEDROCK_MODEL_IDS } from "../config/bedrock";
+import { ListFoundationModelsCommand } from "@aws-sdk/client-bedrock";
+import { bedrockClient, bedrockManagementClient, BEDROCK_MODEL_IDS } from "../config/bedrock";
 import { MessageRole } from "../entities/Message";
+import { ModelProvider } from "../entities/ModelProvider";
 
 interface MessageFormat {
   role: string;
@@ -442,5 +444,69 @@ export class AIService {
   // Helper method to get all supported models
   static getSupportedModels() {
     return BEDROCK_MODEL_IDS;
+  }
+
+  // Fetch model providers from AWS Bedrock
+  static async getModelProviders(): Promise<ModelProvider[]> {
+    const providers: Map<string, ModelProvider> = new Map();
+    
+    try {
+      // Get real foundation model data from AWS Bedrock
+      const command = new ListFoundationModelsCommand({});
+      const response = await bedrockManagementClient.send(command);
+      
+      // Process the model list and extract providers
+      if (response.modelSummaries && response.modelSummaries.length > 0) {
+        for (const model of response.modelSummaries) {
+          if (model.providerName) {
+            const providerName = model.providerName;
+            
+            if (!providers.has(providerName)) {
+              const provider = new ModelProvider();
+              provider.name = providerName;
+              provider.description = `${providerName} models on AWS Bedrock`;
+              provider.apiType = 'bedrock';
+              provider.isActive = true;
+              
+              providers.set(providerName, provider);
+            }
+          }
+        }
+      }
+      
+      // If no providers were found from the API (possibly due to permissions),
+      // extract unique providers from our predefined model list
+      if (providers.size === 0) {
+        for (const [modelId, modelInfo] of Object.entries(BEDROCK_MODEL_IDS)) {
+          if (!providers.has(modelInfo.provider)) {
+            const provider = new ModelProvider();
+            provider.name = modelInfo.provider;
+            provider.description = `${modelInfo.provider} models on AWS Bedrock`;
+            provider.apiType = 'bedrock';
+            provider.isActive = true;
+            
+            providers.set(modelInfo.provider, provider);
+          }
+        }
+      }
+      
+      return Array.from(providers.values());
+    } catch (error) {
+      console.error("Error fetching model providers from AWS Bedrock:", error);
+      
+      // Fallback to our predefined list of providers if API call fails
+      const uniqueProviders = new Set(
+        Object.values(BEDROCK_MODEL_IDS).map(model => model.provider)
+      );
+      
+      return Array.from(uniqueProviders).map(providerName => {
+        const provider = new ModelProvider();
+        provider.name = providerName;
+        provider.description = `${providerName} models on AWS Bedrock`;
+        provider.apiType = 'bedrock';
+        provider.isActive = true;
+        return provider;
+      });
+    }
   }
 }

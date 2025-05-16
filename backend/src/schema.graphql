@@ -64,6 +64,42 @@ type Message {
   user: User!
 }
 
+type Model {
+  contextWindow: Float!
+  createdAt: DateTimeISO!
+  description: String!
+  id: ID!
+  isActive: Boolean!
+  modelId: String!
+  name: String!
+  provider: ModelProvider!
+  providerId: String!
+  sortOrder: Float!
+  updatedAt: DateTimeISO!
+}
+
+type ModelProvider {
+  apiType: String!
+  createdAt: DateTimeISO!
+  description: String!
+  id: ID!
+  isActive: Boolean!
+  name: String!
+  updatedAt: DateTimeISO!
+}
+
+type ModelProvidersResponse {
+  error: String
+  providers: [ModelProvider!]
+  total: Float
+}
+
+type ModelsResponse {
+  error: String
+  models: [Model!]
+  total: Float
+}
+
 type Mutation {
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!
@@ -80,6 +116,8 @@ type Query {
   getChatMessages(input: GetMessagesInput!): [Message!]!
   getChats(input: GetChatsInput): [Chat!]!
   getMessageById(id: String!): Message
+  getModelProviders: ModelProvidersResponse!
+  getModels: ModelsResponse!
 }
 
 input RegisterInput {

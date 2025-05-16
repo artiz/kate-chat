@@ -5,7 +5,7 @@ import { Message, MessageRole } from "../entities/Message";
 import { Chat } from "../entities/Chat";
 import { CreateMessageInput, GetMessagesInput } from "../types/graphql/inputs";
 import { Model } from "../entities/Model";
-import { getMongoRepository } from "../config/database";
+import { getRepository } from "../config/database";
 import { AIService } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
 
@@ -21,9 +21,9 @@ export class MessageResolver {
   private aiService: AIService;
 
   constructor() {
-    this.messageRepository = getMongoRepository(Message);
-    this.chatRepository = getMongoRepository(Chat);
-    this.modelRepository = getMongoRepository(Model);
+    this.messageRepository = getRepository(Message);
+    this.chatRepository = getRepository(Chat);
+    this.modelRepository = getRepository(Model);
     this.aiService = new AIService();
   }
 
