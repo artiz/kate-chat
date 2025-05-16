@@ -1,8 +1,8 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { Field, ID, ObjectType } from 'type-graphql';
+import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Field, ID, ObjectType } from "type-graphql";
 
 @ObjectType()
-@Entity('users')
+@Entity("users")
 export class User {
   @Field(() => ID)
   @ObjectIdColumn()

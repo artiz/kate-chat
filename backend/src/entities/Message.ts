@@ -1,16 +1,16 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
-import { Field, ID, ObjectType } from 'type-graphql';
-import { Chat } from './Chat';
-import { User } from './User';
+import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from "typeorm";
+import { Field, ID, ObjectType } from "type-graphql";
+import { Chat } from "./Chat";
+import { User } from "./User";
 
 export enum MessageRole {
-  USER = 'user',
-  ASSISTANT = 'assistant',
-  SYSTEM = 'system'
+  USER = "user",
+  ASSISTANT = "assistant",
+  SYSTEM = "system",
 }
 
 @ObjectType()
-@Entity('messages')
+@Entity("messages")
 export class Message {
   @Field(() => ID)
   @ObjectIdColumn()
@@ -18,9 +18,9 @@ export class Message {
 
   @Field()
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: MessageRole,
-    default: MessageRole.USER
+    default: MessageRole.USER,
   })
   role: MessageRole;
 

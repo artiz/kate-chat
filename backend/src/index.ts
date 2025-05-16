@@ -1,9 +1,9 @@
-import express from 'express';
-import { createHandler } from 'graphql-http/lib/use/express';
-import { buildSchema } from 'graphql';
-import cors from 'cors';
-import { config } from 'dotenv';
-import path from 'path';
+import express from "express";
+import { createHandler } from "graphql-http/lib/use/express";
+import { buildSchema } from "graphql";
+import cors from "cors";
+import { config } from "dotenv";
+import path from "path";
 
 // Load environment variables
 config();
@@ -17,7 +17,7 @@ const schema = buildSchema(`
 
 // Define resolvers
 const rootValue = {
-  hello: () => 'Hello, world!'
+  hello: () => "Hello, world!",
 };
 
 // Create Express server
@@ -26,10 +26,13 @@ app.use(cors());
 app.use(express.json());
 
 // Set up GraphQL endpoint
-app.use('/graphql', createHandler({
-  schema,
-  rootValue
-}));
+app.use(
+  "/graphql",
+  createHandler({
+    schema,
+    rootValue,
+  })
+);
 
 // Start server
 const PORT = process.env.PORT || 4000;

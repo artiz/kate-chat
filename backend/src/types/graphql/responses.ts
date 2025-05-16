@@ -1,9 +1,9 @@
-import { ObjectType, Field } from 'type-graphql';
-import { User } from '../../entities/User';
-import { Chat } from '../../entities/Chat';
-import { Message } from '../../entities/Message';
-import { Model } from '../../entities/Model';
-import { ModelProvider } from '../../entities/ModelProvider';
+import { ObjectType, Field } from "type-graphql";
+import { User } from "../../entities/User";
+import { Chat } from "../../entities/Chat";
+import { Message } from "../../entities/Message";
+import { Model } from "../../entities/Model";
+import { ModelProvider } from "../../entities/ModelProvider";
 
 @ObjectType()
 export class UserResponse {

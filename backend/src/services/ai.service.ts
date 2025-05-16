@@ -1,6 +1,6 @@
-import { InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { bedrockClient, BEDROCK_MODEL_IDS } from '../config/bedrock';
-import { MessageRole } from '../entities/Message';
+import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { bedrockClient, BEDROCK_MODEL_IDS } from "../config/bedrock";
+import { MessageRole } from "../entities/Message";
 
 interface MessageFormat {
   role: string;
@@ -15,29 +15,28 @@ interface StreamCallbacks {
 }
 
 export class AIService {
-  
   // Main method to interact with models
   async generateResponse(
-    messages: MessageFormat[], 
+    messages: MessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<string> {
-    if (modelId.startsWith('anthropic.')) {
+    if (modelId.startsWith("anthropic.")) {
       return this.generateAnthropicResponse(messages, modelId, temperature, maxTokens);
-    } else if (modelId.startsWith('amazon.')) {
+    } else if (modelId.startsWith("amazon.")) {
       return this.generateAmazonResponse(messages, modelId, temperature, maxTokens);
-    } else if (modelId.startsWith('ai21.')) {
+    } else if (modelId.startsWith("ai21.")) {
       return this.generateAI21Response(messages, modelId, temperature, maxTokens);
-    } else if (modelId.startsWith('cohere.')) {
+    } else if (modelId.startsWith("cohere.")) {
       return this.generateCohereResponse(messages, modelId, temperature, maxTokens);
-    } else if (modelId.startsWith('meta.')) {
+    } else if (modelId.startsWith("meta.")) {
       return this.generateLlamaResponse(messages, modelId, temperature, maxTokens);
-    } else if (modelId.startsWith('mistral.')) {
+    } else if (modelId.startsWith("mistral.")) {
       return this.generateMistralResponse(messages, modelId, temperature, maxTokens);
     }
-    
-    throw new Error('Unsupported model provider');
+
+    throw new Error("Unsupported model provider");
   }
 
   // Stream response from models
@@ -50,25 +49,25 @@ export class AIService {
   ): Promise<void> {
     try {
       callbacks.onStart?.();
-      
-      if (modelId.startsWith('anthropic.')) {
+
+      if (modelId.startsWith("anthropic.")) {
         await this.streamAnthropicResponse(messages, modelId, callbacks, temperature, maxTokens);
-      } else if (modelId.startsWith('amazon.')) {
+      } else if (modelId.startsWith("amazon.")) {
         await this.streamAmazonResponse(messages, modelId, callbacks, temperature, maxTokens);
-      } else if (modelId.startsWith('mistral.')) {
+      } else if (modelId.startsWith("mistral.")) {
         await this.streamMistralResponse(messages, modelId, callbacks, temperature, maxTokens);
       } else {
         // For models that don't support streaming, use the regular generation and simulate streaming
         const fullResponse = await this.generateResponse(messages, modelId, temperature, maxTokens);
-        
+
         // Simulate streaming by sending chunks of the response
-        const chunks = fullResponse.split(' ');
+        const chunks = fullResponse.split(" ");
         for (const chunk of chunks) {
-          callbacks.onToken?.(chunk + ' ');
+          callbacks.onToken?.(chunk + " ");
           // Add a small delay to simulate streaming
           await new Promise(resolve => setTimeout(resolve, 10));
         }
-        
+
         callbacks.onComplete?.(fullResponse);
       }
     } catch (error) {
@@ -85,29 +84,29 @@ export class AIService {
   ): Promise<string> {
     // Convert messages to Anthropic format
     const anthropicMessages = messages.map(msg => ({
-      role: msg.role === MessageRole.ASSISTANT ? 'assistant' : 'user',
-      content: msg.content
+      role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+      content: msg.content,
     }));
-    
+
     const params = {
       modelId,
       body: JSON.stringify({
-        anthropic_version: 'bedrock-2023-05-31',
+        anthropic_version: "bedrock-2023-05-31",
         max_tokens: maxTokens,
         messages: anthropicMessages,
-        temperature
-      })
+        temperature,
+      }),
     };
-    
+
     try {
       const command = new InvokeModelCommand(params);
       const response = await bedrockClient.send(command);
-      
+
       // Parse the response body
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.content[0].text || '';
+      return responseBody.content[0].text || "";
     } catch (error) {
-      console.error('Error calling Anthropic model:', error);
+      console.error("Error calling Anthropic model:", error);
       throw error;
     }
   }
@@ -120,7 +119,7 @@ export class AIService {
     maxTokens: number
   ): Promise<string> {
     // Convert messages to a single prompt for Amazon models
-    let prompt = '';
+    let prompt = "";
     for (const msg of messages) {
       if (msg.role === MessageRole.USER) {
         prompt += `Human: ${msg.content}\n`;
@@ -131,10 +130,10 @@ export class AIService {
         prompt = `System: ${msg.content}\n` + prompt;
       }
     }
-    
+
     // Add the final assistant prompt
-    prompt += 'Assistant:';
-    
+    prompt += "Assistant:";
+
     const params = {
       modelId,
       body: JSON.stringify({
@@ -142,20 +141,20 @@ export class AIService {
         textGenerationConfig: {
           maxTokenCount: maxTokens,
           temperature,
-          stopSequences: ['Human:']
-        }
-      })
+          stopSequences: ["Human:"],
+        },
+      }),
     };
-    
+
     try {
       const command = new InvokeModelCommand(params);
       const response = await bedrockClient.send(command);
-      
+
       // Parse the response body
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.results?.[0]?.outputText || '';
+      return responseBody.results?.[0]?.outputText || "";
     } catch (error) {
-      console.error('Error calling Amazon model:', error);
+      console.error("Error calling Amazon model:", error);
       throw error;
     }
   }
@@ -168,7 +167,7 @@ export class AIService {
     maxTokens: number
   ): Promise<string> {
     // Convert messages to a single prompt
-    let prompt = '';
+    let prompt = "";
     for (const msg of messages) {
       if (msg.role === MessageRole.USER) {
         prompt += `Human: ${msg.content}\n`;
@@ -179,29 +178,29 @@ export class AIService {
         prompt = `System: ${msg.content}\n` + prompt;
       }
     }
-    
+
     // Add the final assistant prompt
-    prompt += 'Assistant:';
-    
+    prompt += "Assistant:";
+
     const params = {
       modelId,
       body: JSON.stringify({
         prompt,
         maxTokens,
         temperature,
-        stopSequences: ['Human:']
-      })
+        stopSequences: ["Human:"],
+      }),
     };
-    
+
     try {
       const command = new InvokeModelCommand(params);
       const response = await bedrockClient.send(command);
-      
+
       // Parse the response body
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.completions?.[0]?.data?.text || '';
+      return responseBody.completions?.[0]?.data?.text || "";
     } catch (error) {
-      console.error('Error calling AI21 model:', error);
+      console.error("Error calling AI21 model:", error);
       throw error;
     }
   }
@@ -214,7 +213,7 @@ export class AIService {
     maxTokens: number
   ): Promise<string> {
     // Convert messages to Cohere format
-    let prompt = '';
+    let prompt = "";
     for (const msg of messages) {
       if (msg.role === MessageRole.USER) {
         prompt += `User: ${msg.content}\n`;
@@ -225,29 +224,29 @@ export class AIService {
         prompt = `${msg.content}\n\n` + prompt;
       }
     }
-    
+
     // Add the final chatbot prompt
-    prompt += 'Chatbot:';
-    
+    prompt += "Chatbot:";
+
     const params = {
       modelId,
       body: JSON.stringify({
         prompt,
         max_tokens: maxTokens,
         temperature,
-        stop_sequences: ['User:']
-      })
+        stop_sequences: ["User:"],
+      }),
     };
-    
+
     try {
       const command = new InvokeModelCommand(params);
       const response = await bedrockClient.send(command);
-      
+
       // Parse the response body
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.generations?.[0]?.text || '';
+      return responseBody.generations?.[0]?.text || "";
     } catch (error) {
-      console.error('Error calling Cohere model:', error);
+      console.error("Error calling Cohere model:", error);
       throw error;
     }
   }
@@ -261,44 +260,44 @@ export class AIService {
   ): Promise<string> {
     // Convert messages to Llama chat format
     const llamaMessages = [];
-    
+
     for (const msg of messages) {
       if (msg.role === MessageRole.USER) {
         llamaMessages.push({
-          role: 'user',
-          content: msg.content
+          role: "user",
+          content: msg.content,
         });
       } else if (msg.role === MessageRole.ASSISTANT) {
         llamaMessages.push({
-          role: 'assistant',
-          content: msg.content
+          role: "assistant",
+          content: msg.content,
         });
       } else if (msg.role === MessageRole.SYSTEM) {
         llamaMessages.push({
-          role: 'system',
-          content: msg.content
+          role: "system",
+          content: msg.content,
         });
       }
     }
-    
+
     const params = {
       modelId,
       body: JSON.stringify({
         messages: llamaMessages,
         max_gen_len: maxTokens,
-        temperature
-      })
+        temperature,
+      }),
     };
-    
+
     try {
       const command = new InvokeModelCommand(params);
       const response = await bedrockClient.send(command);
-      
+
       // Parse the response body
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.generation || '';
+      return responseBody.generation || "";
     } catch (error) {
-      console.error('Error calling Llama model:', error);
+      console.error("Error calling Llama model:", error);
       throw error;
     }
   }
@@ -312,44 +311,44 @@ export class AIService {
   ): Promise<string> {
     // Convert messages to Mistral format
     const mistralMessages = [];
-    
+
     for (const msg of messages) {
       if (msg.role === MessageRole.USER) {
         mistralMessages.push({
-          role: 'user',
-          content: msg.content
+          role: "user",
+          content: msg.content,
         });
       } else if (msg.role === MessageRole.ASSISTANT) {
         mistralMessages.push({
-          role: 'assistant',
-          content: msg.content
+          role: "assistant",
+          content: msg.content,
         });
       } else if (msg.role === MessageRole.SYSTEM) {
         mistralMessages.push({
-          role: 'system',
-          content: msg.content
+          role: "system",
+          content: msg.content,
         });
       }
     }
-    
+
     const params = {
       modelId,
       body: JSON.stringify({
         messages: mistralMessages,
         max_tokens: maxTokens,
-        temperature
-      })
+        temperature,
+      }),
     };
-    
+
     try {
       const command = new InvokeModelCommand(params);
       const response = await bedrockClient.send(command);
-      
+
       // Parse the response body
       const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.outputs[0]?.text || '';
+      return responseBody.outputs[0]?.text || "";
     } catch (error) {
-      console.error('Error calling Mistral model:', error);
+      console.error("Error calling Mistral model:", error);
       throw error;
     }
   }
@@ -365,17 +364,17 @@ export class AIService {
     // In a real implementation, you would use the streaming API
     // For simplicity, we're simulating it with the regular API
     const response = await this.generateAnthropicResponse(messages, modelId, temperature, maxTokens);
-    const chunks = response.split(' ');
-    let fullResponse = '';
-    
+    const chunks = response.split(" ");
+    let fullResponse = "";
+
     for (const chunk of chunks) {
-      const token = chunk + ' ';
+      const token = chunk + " ";
       fullResponse += token;
       callbacks.onToken?.(token);
       // Add a small delay to simulate streaming
       await new Promise(resolve => setTimeout(resolve, 20));
     }
-    
+
     callbacks.onComplete?.(fullResponse);
   }
 
@@ -388,17 +387,17 @@ export class AIService {
   ): Promise<void> {
     // Simulate streaming for Amazon models
     const response = await this.generateAmazonResponse(messages, modelId, temperature, maxTokens);
-    const chunks = response.split(' ');
-    let fullResponse = '';
-    
+    const chunks = response.split(" ");
+    let fullResponse = "";
+
     for (const chunk of chunks) {
-      const token = chunk + ' ';
+      const token = chunk + " ";
       fullResponse += token;
       callbacks.onToken?.(token);
       // Add a small delay to simulate streaming
       await new Promise(resolve => setTimeout(resolve, 20));
     }
-    
+
     callbacks.onComplete?.(fullResponse);
   }
 
@@ -411,17 +410,17 @@ export class AIService {
   ): Promise<void> {
     // Simulate streaming for Mistral models
     const response = await this.generateMistralResponse(messages, modelId, temperature, maxTokens);
-    const chunks = response.split(' ');
-    let fullResponse = '';
-    
+    const chunks = response.split(" ");
+    let fullResponse = "";
+
     for (const chunk of chunks) {
-      const token = chunk + ' ';
+      const token = chunk + " ";
       fullResponse += token;
       callbacks.onToken?.(token);
       // Add a small delay to simulate streaming
       await new Promise(resolve => setTimeout(resolve, 20));
     }
-    
+
     callbacks.onComplete?.(fullResponse);
   }
 

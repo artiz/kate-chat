@@ -1,5 +1,5 @@
-import { InputType, Field } from 'type-graphql';
-import { MessageRole } from '../../entities/Message';
+import { InputType, Field } from "type-graphql";
+import { MessageRole } from "../../entities/Message";
 
 @InputType()
 export class CreateChatInput {

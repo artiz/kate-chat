@@ -1,9 +1,9 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
-import { Field, ID, ObjectType } from 'type-graphql';
-import { ModelProvider } from './ModelProvider';
+import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from "typeorm";
+import { Field, ID, ObjectType } from "type-graphql";
+import { ModelProvider } from "./ModelProvider";
 
 @ObjectType()
-@Entity('models')
+@Entity("models")
 export class Model {
   @Field(() => ID)
   @ObjectIdColumn()

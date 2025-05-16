@@ -1,9 +1,9 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
-import { Field, ID, ObjectType } from 'type-graphql';
-import { User } from './User';
+import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from "typeorm";
+import { Field, ID, ObjectType } from "type-graphql";
+import { User } from "./User";
 
 @ObjectType()
-@Entity('chats')
+@Entity("chats")
 export class Chat {
   @Field(() => ID)
   @ObjectIdColumn()
@@ -14,7 +14,7 @@ export class Chat {
   title: string;
 
   @Field()
-  @Column({ default: '' })
+  @Column({ default: "" })
   description: string;
 
   @Field(() => User)
