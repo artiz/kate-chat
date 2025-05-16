@@ -13,9 +13,7 @@ export const AppDataSource = new DataSource({
   synchronize: true,
   logging: process.env.NODE_ENV === 'development',
   entities: [User, Chat, Message, Model, ModelProvider],
-  subscribers: [],
-  useUnifiedTopology: true,
-  useNewUrlParser: true,
+  subscribers: []
 });
 
 export const initializeDatabase = async (): Promise<void> => {
