@@ -2,7 +2,6 @@ import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
 import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
-import { User } from "../entities/User";
 import { ObjectId } from "mongodb";
 import { getMongoRepository } from "../config/database";
 import { GraphQLContext } from "../middleware/authMiddleware";
@@ -26,7 +25,7 @@ export class ChatResolver {
     const { skip = 0, take = 20, searchTerm } = input;
     
     let query = { 
-      userId: user.userId,
+      user: user,
       isActive: true
     } as any;
 
@@ -60,8 +59,7 @@ export class ChatResolver {
 
     const chat = await this.chatRepository.findOne({
       where: {
-        id: new ObjectId(id),
-        userId: user.userId,
+        id,
         isActive: true,
       },
     });
@@ -80,7 +78,6 @@ export class ChatResolver {
 
     const chat = this.chatRepository.create({
       ...input,
-      userId: user.userId,
       user,
       isActive: true,
     });
@@ -99,8 +96,7 @@ export class ChatResolver {
 
     const chat = await this.chatRepository.findOne({
       where: {
-        id: new ObjectId(id),
-        userId: user.userId,
+        id,
         isActive: true,
       },
     });
@@ -121,8 +117,7 @@ export class ChatResolver {
 
     const chat = await this.chatRepository.findOne({
       where: {
-        id: new ObjectId(id),
-        userId: user.userId,
+        id,
         isActive: true,
       },
     });

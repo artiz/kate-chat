@@ -4,9 +4,7 @@ import { Repository } from "typeorm";
 import { Message, MessageRole } from "../entities/Message";
 import { Chat } from "../entities/Chat";
 import { CreateMessageInput, GetMessagesInput } from "../types/graphql/inputs";
-import { User } from "../entities/User";
 import { Model } from "../entities/Model";
-import { ObjectId } from "mongodb";
 import { getMongoRepository } from "../config/database";
 import { AIService } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
@@ -42,8 +40,7 @@ export class MessageResolver {
     // Verify the chat belongs to the user
     const chat = await this.chatRepository.findOne({
       where: {
-        id: new ObjectId(chatId),
-        userId: user.userId,
+        id: chatId,
         isActive: true,
       },
     });
@@ -71,8 +68,7 @@ export class MessageResolver {
 
     const message = await this.messageRepository.findOne({
       where: {
-        id: new ObjectId(id),
-        userId: user.userId,
+        id,
       },
       relations: ["chat"],
     });
@@ -98,8 +94,8 @@ export class MessageResolver {
     // Verify the chat belongs to the user
     const chat = await this.chatRepository.findOne({
       where: {
-        id: new ObjectId(chatId),
-        userId: user.userId,
+        id: chatId,
+        user: user,
         isActive: true,
       },
     });
@@ -109,7 +105,7 @@ export class MessageResolver {
     // Verify the model exists
     const model = await this.modelRepository.findOne({
       where: {
-        id: new ObjectId(modelId),
+        id: modelId,
       },
     });
 
@@ -121,7 +117,6 @@ export class MessageResolver {
       role,
       modelId,
       chatId,
-      userId: user.userId,
       user,
       chat,
     });
@@ -158,7 +153,6 @@ export class MessageResolver {
         role: MessageRole.ASSISTANT,
         modelId,
         chatId,
-        userId: user.userId,
         user,
         chat,
       });
@@ -203,8 +197,7 @@ export class MessageResolver {
 
     const message = await this.messageRepository.findOne({
       where: {
-        id: new ObjectId(id),
-        userId: user.userId,
+        id,
       },
     });
 

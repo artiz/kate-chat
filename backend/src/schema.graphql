@@ -16,7 +16,6 @@ type Chat {
   title: String!
   updatedAt: DateTimeISO!
   user: User!
-  userId: String!
 }
 
 input CreateChatInput {
@@ -63,7 +62,6 @@ type Message {
   role: String!
   updatedAt: DateTimeISO!
   user: User!
-  userId: String!
 }
 
 type Mutation {
@@ -102,11 +100,11 @@ input UpdateChatInput {
 }
 
 type User {
-  _id: ID!
   avatarUrl: String
   createdAt: DateTimeISO!
   displayName: String!
   email: String!
+  id: ID!
   msalId: String
   updatedAt: DateTimeISO!
 }

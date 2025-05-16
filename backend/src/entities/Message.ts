@@ -1,4 +1,4 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from "typeorm";
+import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
@@ -13,12 +13,12 @@ export enum MessageRole {
 @Entity("messages")
 export class Message {
   @Field(() => ID)
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn("uuid") 
+  id: string;
 
   @Field()
   @Column({
-    type: "enum",
+    type: "varchar",
     enum: MessageRole,
     default: MessageRole.USER,
   })
@@ -43,10 +43,6 @@ export class Message {
   @Field(() => User)
   @ManyToOne(() => User)
   user: User;
-
-  @Field()
-  @Column()
-  userId: string;
 
   @Field()
   @CreateDateColumn()

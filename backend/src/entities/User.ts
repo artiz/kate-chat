@@ -1,12 +1,12 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 
 @ObjectType()
 @Entity("users")
 export class User {
   @Field(() => ID)
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn("uuid") 
+  id: string;
 
   @Field()
   @Column({ unique: true })

@@ -1,4 +1,4 @@
-import { AbstractLogger, DataSource, LogLevel, LogMessage, QueryRunner } from "typeorm";
+import { AbstractLogger, DataSource, DataSourceOptions, LogLevel, LogMessage, QueryRunner } from "typeorm";
 import { Chat } from "../entities/Chat";
 import { Message } from "../entities/Message";
 import { Model } from "../entities/Model";
@@ -7,64 +7,52 @@ import { User } from "../entities/User";
 
 const logging = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "dev";
 
-export class CustomLogger extends AbstractLogger {
-    /**
-     * Write log to specific output.
-     */
-    protected writeLog(
-        level: LogLevel,
-        logMessage: LogMessage | LogMessage[],
-        queryRunner?: QueryRunner,
-    ) {
-        const messages = this.prepareLogMessages(logMessage, {
-            highlightSql: false,
-        })
+let dbOptions: DataSourceOptions = {
+    type: "sqlite",
+    database: process.env.DB_NAME || "katechat.sqlite",
+};
 
-        for (let message of messages) {
-            switch (message.type ?? level) {
-                case "log":
-                case "schema-build":
-                case "migration":
-                    console.log(message.message)
-                    break
+if (process.env.DB_TYPE === "mysql") {
+    dbOptions = {
+        type: "mysql",
+        url: process.env.DB_URL,
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+    };
+  
+} else if (process.env.DB_TYPE === "postgres") {
+    dbOptions = {
+        type: "postgres",
+        url: process.env.DB_URL,
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+    };
 
-                case "info":
-                case "query":
-                    if (message.prefix) {
-                        console.info(message.prefix, message.message)
-                    } else {
-                        console.info(message.message)
-                    }
-                    break
-
-                case "warn":
-                case "query-slow":
-                    if (message.prefix) {
-                        console.warn(message.prefix, message.message)
-                    } else {
-                        console.warn(message.message)
-                    }
-                    break
-
-                case "error":
-                case "query-error":
-                    if (message.prefix) {
-                        console.error(message.prefix, message.message)
-                    } else {
-                        console.error(message.message)
-                    }
-                    break
-            }
-        }
-    }
+} else if (process.env.DB_TYPE === "mssql") {
+    dbOptions = {
+        type: "mssql",
+        url: process.env.DB_URL,
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+    };
+} else if (process.env.DB_TYPE === "mongodb") {
+    dbOptions = {
+        type: "mongodb",
+        url: process.env.DB_URL,
+    };
+} else if (process.env.DB_TYPE !== "sqlite") {
+    throw new Error(`Unsupported DB_TYPE: ${process.env.DB_TYPE}`);
 }
-
 
 // Create TypeORM data source
 export const AppDataSource = new DataSource({
-  type: "mongodb",
-  url: process.env.MONGODB_URI || "mongodb://localhost:27017/katechat",
-  logger: new CustomLogger(),
+  ...dbOptions,
+  synchronize: true,
+  migrationsRun: true,
+  logger: "advanced-console",
   logging,
   entities: [User, Chat, Message, Model, ModelProvider],
 });

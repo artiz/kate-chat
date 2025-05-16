@@ -1,18 +1,6 @@
 name: kate-chat
 
 services:
-  mongodb:
-    image: mongo:latest
-    container_name: kate-chat-mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    environment:
-      - MONGO_INITDB_DATABASE=kate-chat
-    networks:
-      - kate-chat-network
-
   backend:
     build:
       context: ./backend
@@ -25,10 +13,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://mongodb:27017/kate-chat
       - PORT=4000
-    depends_on:
-      - mongodb
     networks:
       - kate-chat-network
     env_file:
@@ -60,4 +45,4 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb_data:
+  db_data:

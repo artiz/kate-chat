@@ -217,7 +217,6 @@ type Chat {
   title: String!
   description: String!
   isActive: Boolean!
-  userId: String!
   user: User!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
@@ -233,7 +232,6 @@ type Message {
   modelId: String!
   chatId: String!
   chat: Chat!
-  userId: String!
   user: User!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!

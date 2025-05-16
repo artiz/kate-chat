@@ -1,7 +1,11 @@
-**/.claude/settings.local.json
+# build
 node_modules/
 dist/
 
-
+# settings
 .env
+**/.claude/settings.local.json
+
+# data
+backend/katechat.sqlite
 

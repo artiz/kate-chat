@@ -1,4 +1,4 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from "typeorm";
+import { Entity, ObjectIdColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 
@@ -6,8 +6,8 @@ import { User } from "./User";
 @Entity("chats")
 export class Chat {
   @Field(() => ID)
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn("uuid") 
+  id: string;
 
   @Field()
   @Column()
@@ -20,10 +20,6 @@ export class Chat {
   @Field(() => User)
   @ManyToOne(() => User)
   user: User;
-
-  @Field()
-  @Column()
-  userId: string;
 
   @Field()
   @Column({ default: true })

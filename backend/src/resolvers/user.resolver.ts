@@ -22,7 +22,7 @@ export class UserResolver {
     if (!user?.userId) return null;
     
     const dbUser = await this.userRepository.findOne({
-      where: { id: new ObjectId(user.userId) }
+      where: { id: user.userId }
     });
 
     return dbUser;
@@ -54,7 +54,7 @@ export class UserResolver {
 
     // Generate JWT token
     const token = generateToken({
-      userId: savedUser.id.toString(),
+      userId: savedUser.id,
       email: savedUser.email
     });
 
@@ -82,7 +82,7 @@ export class UserResolver {
 
     // Generate JWT token
     const token = generateToken({
-      userId: user.id.toString(),
+      userId: user.id,
       email: user.email
     });
 

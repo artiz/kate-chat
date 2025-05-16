@@ -31,7 +31,6 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Express.js for REST API
 - GraphQL for data fetching
 - Socket.IO for real-time communication
-- TypeORM with MongoDB
 - AWS Bedrock for AI model integrations
 - Jest for testing
 

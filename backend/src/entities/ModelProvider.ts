@@ -1,12 +1,12 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 
 @ObjectType()
 @Entity("model_providers")
 export class ModelProvider {
   @Field(() => ID)
-  @ObjectIdColumn()
-  id: ObjectId;
+  @PrimaryGeneratedColumn("uuid") 
+  id: string;
 
   @Field()
   @Column()
