@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, TokenPayload } from "../utils/jwt";
+import { PubSubEngine } from "graphql-subscriptions";
 
 declare global {
   namespace Express {
@@ -9,22 +10,10 @@ declare global {
   }
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ error: "Unauthorized: Authentication token required" });
-  }
-
-  const user = verifyToken(token);
-  if (!user) {
-    return res.status(403).json({ error: "Forbidden: Invalid or expired token" });
-  }
-
-  req.user = user;
-  next();
-};
+export type GraphQLContext = {
+    user?: TokenPayload;
+    pubSub?: PubSubEngine;
+}
 
 // GraphQL context authentication
 export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
@@ -34,4 +23,28 @@ export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
   if (!token) return null;
 
   return verifyToken(token);
+};
+
+// Export the middleware
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader) {
+      const token = authHeader.split(" ")[1];
+      if (token) {
+        const user = verifyToken(token);
+        if (!user) {
+            res.status(403).json({ error: "Forbidden: Invalid or expired token" });
+        } else {
+            req.user = user;
+        }
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error("Auth middleware error:", error);
+    next();
+  }
 };

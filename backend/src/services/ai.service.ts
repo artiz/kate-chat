@@ -424,6 +424,21 @@ export class AIService {
     callbacks.onComplete?.(fullResponse);
   }
 
+  // Adapter method for message resolver
+  async getCompletion(
+    messages: any[],
+    model: any
+  ): Promise<string> {
+    // Convert DB message objects to MessageFormat structure
+    const formattedMessages = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    // Use the existing generate method
+    return this.generateResponse(formattedMessages, model.providerId || "anthropic.claude-3-haiku-20240307-v1:0", 0.7, 2048);
+  }
+
   // Helper method to get all supported models
   static getSupportedModels() {
     return BEDROCK_MODEL_IDS;

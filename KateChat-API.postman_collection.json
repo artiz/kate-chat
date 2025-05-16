@@ -1,0 +1,549 @@
+{
+  "info": {
+    "_postman_id": "7f9a2e82-4b5c-4c70-a9c3-5e33f608f9c9",
+    "name": "KateChat API",
+    "description": "A collection for testing the KateChat GraphQL API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation Login($input: LoginInput!) {\\n  login(input: $input) {\\n    token\\n    user {\\n      id\\n      email\\n      displayName\\n    }\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"email\": \"user@example.com\",\n      \"password\": \"password123\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Login to get authentication token"
+          },
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation Register($input: RegisterInput!) {\\n  register(input: $input) {\\n    token\\n    user {\\n      id\\n      email\\n      displayName\\n      avatarUrl\\n    }\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"displayName\": \"Test User\",\n      \"email\": \"user@example.com\",\n      \"password\": \"password123\",\n      \"avatarUrl\": null\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Register a new user account"
+          },
+          "response": []
+        },
+        {
+          "name": "Current User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query CurrentUser {\\n  currentUser {\\n    id\\n    email\\n    displayName\\n    avatarUrl\\n    createdAt\\n    updatedAt\\n  }\\n}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get the current authenticated user"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for user authentication"
+    },
+    {
+      "name": "Chats",
+      "item": [
+        {
+          "name": "Get Chats",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetChats($input: GetChatsInput) {\\n  getChats(input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"skip\": 0,\n      \"take\": 10,\n      \"searchTerm\": \"\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get all chats for the current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Chat by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetChatById($id: ID!) {\\n  getChatById(id: $id) {\\n    id\\n    title\\n    description\\n    isActive\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get a specific chat by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateChat($input: CreateChatInput!) {\\n  createChat(input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"title\": \"New Chat\",\n      \"description\": \"A test chat\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Create a new chat"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation UpdateChat($id: ID!, $input: UpdateChatInput!) {\\n  updateChat(id: $id, input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\",\n    \"input\": {\n      \"title\": \"Updated Chat Title\",\n      \"description\": \"Updated chat description\",\n      \"isActive\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Update an existing chat"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation DeleteChat($id: ID!) {\\n  deleteChat(id: $id)\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Delete (soft-delete) a chat"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for chat operations"
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Get Chat Messages",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetChatMessages($input: GetMessagesInput!) {\\n  getChatMessages(input: $input) {\\n    id\\n    role\\n    content\\n    modelId\\n    chatId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"chatId\": \"chatId\",\n      \"skip\": 0,\n      \"take\": 20\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get messages for a specific chat"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Message by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetMessageById($id: String!) {\\n  getMessageById(id: $id) {\\n    id\\n    role\\n    content\\n    modelId\\n    chatId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"messageId\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get a specific message by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation CreateMessage($input: CreateMessageInput!) {\\n  createMessage(input: $input) {\\n    id\\n    role\\n    content\\n    modelId\\n    chatId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"chatId\": \"chatId\",\n      \"content\": \"Hello, how are you?\",\n      \"modelId\": \"modelId\",\n      \"role\": \"user\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Create a new message in a chat"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation DeleteMessage($id: String!) {\\n  deleteMessage(id: $id)\\n}\",\n  \"variables\": {\n    \"id\": \"messageId\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Delete a message"
+          },
+          "response": []
+        },
+        {
+          "name": "Subscribe to New Messages",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"subscription NewMessage($chatId: String!) {\\n  newMessage(chatId: $chatId) {\\n    id\\n    role\\n    content\\n    modelId\\n    chatId\\n    createdAt\\n  }\\n}\",\n  \"variables\": {\n    \"chatId\": \"chatId\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Subscribe to new messages in a specific chat"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for message operations"
+    },
+    {
+      "name": "Models",
+      "item": [
+        {
+          "name": "Get Models",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetModels($input: GetModelsInput) {\\n  getModels(input: $input) {\\n    id\\n    name\\n    provider {\\n      id\\n      name\\n    }\\n    isActive\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"providerId\": null,\n      \"onlyActive\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get available AI models"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Model Providers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query GetModelProviders {\\n  getModelProviders {\\n    id\\n    name\\n    isActive\\n    createdAt\\n    updatedAt\\n  }\\n}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "Get available AI model providers"
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for model operations"
+    },
+    {
+      "name": "GraphQL Subscriptions",
+      "item": [
+        {
+          "name": "WebSocket Connection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://{{baseUrl}}/graphql/subscriptions",
+              "protocol": "ws",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql",
+                "subscriptions"
+              ]
+            },
+            "description": "Connect to WebSocket endpoint for GraphQL subscriptions"
+          },
+          "response": []
+        }
+      ],
+      "description": "WebSocket connection for real-time updates"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -12,17 +12,20 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column()
+  password: string;
+
   @Field()
   @Column()
   displayName: string;
 
-  @Field()
+  @Field({ nullable: true })
   @Column({ nullable: true })
   avatarUrl?: string;
 
-  @Field()
-  @Column()
-  msalId: string;
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  msalId?: string;
 
   @Field()
   @CreateDateColumn()

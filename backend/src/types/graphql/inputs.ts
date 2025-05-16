@@ -2,6 +2,30 @@ import { InputType, Field } from "type-graphql";
 import { MessageRole } from "../../entities/Message";
 
 @InputType()
+export class RegisterInput {
+  @Field()
+  email: string;
+
+  @Field()
+  password: string;
+
+  @Field()
+  displayName: string;
+
+  @Field({ nullable: true })
+  avatarUrl?: string;
+}
+
+@InputType()
+export class LoginInput {
+  @Field()
+  email: string;
+
+  @Field()
+  password: string;
+}
+
+@InputType()
 export class CreateChatInput {
   @Field()
   title: string;
