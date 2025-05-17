@@ -32,6 +32,10 @@ export class Message {
   @Column()
   modelId: string; // The ID of the model used for this message
 
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  modelName: string; // The name of the model used for this message
+
   @Field(() => Chat)
   @ManyToOne(() => Chat)
   chat: Chat;

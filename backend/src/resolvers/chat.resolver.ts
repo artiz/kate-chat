@@ -5,13 +5,16 @@ import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphq
 import { ObjectId } from "mongodb";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from "../middleware/authMiddleware";
+import { User } from "../entities/User";
 
 @Resolver(Chat)
 export class ChatResolver {
   private chatRepository: Repository<Chat>;
+  private userRepository: Repository<User>;
 
   constructor() {
     this.chatRepository = getRepository(Chat);
+    this.userRepository = getRepository(User);
   }
 
   @Query(() => [Chat])
@@ -25,7 +28,7 @@ export class ChatResolver {
     const { skip = 0, take = 20, searchTerm } = input;
     
     let query = { 
-      user: user,
+      user,
       isActive: true
     } as any;
 
@@ -75,10 +78,14 @@ export class ChatResolver {
   ): Promise<Chat> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
+    const dbUser = await this.userRepository.findOne({
+      where: { id: user.userId }
+    });
+    if (!dbUser) throw new Error("User not found");
 
     const chat = this.chatRepository.create({
       ...input,
-      user,
+      user: dbUser,
       isActive: true,
     });
 

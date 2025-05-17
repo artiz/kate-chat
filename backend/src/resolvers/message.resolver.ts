@@ -8,6 +8,8 @@ import { Model } from "../entities/Model";
 import { getRepository } from "../config/database";
 import { AIService } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
+import { User } from "../entities/User";
+import { getErrorMessage } from "../utils/errors";
 
 // Topics for PubSub
 const NEW_MESSAGE = "NEW_MESSAGE";
@@ -17,6 +19,7 @@ const MESSAGE_UPDATED = "MESSAGE_UPDATED";
 export class MessageResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
+  private userRepository: Repository<User>;
   private modelRepository: Repository<Model>;
   private aiService: AIService;
 
@@ -24,6 +27,7 @@ export class MessageResolver {
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
     this.modelRepository = getRepository(Model);
+    this.userRepository = getRepository(User);
     this.aiService = new AIService();
   }
 
@@ -88,6 +92,10 @@ export class MessageResolver {
   ): Promise<Message> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
+    const dbUser = await this.userRepository.findOne({
+      where: { id: user.userId }
+    });
+    if (!dbUser) throw new Error("User not found");
 
     const { chatId, content, modelId, role = MessageRole.USER } = input;
 
@@ -95,7 +103,6 @@ export class MessageResolver {
     const chat = await this.chatRepository.findOne({
       where: {
         id: chatId,
-        user: user,
         isActive: true,
       },
     });
@@ -112,16 +119,17 @@ export class MessageResolver {
     if (!model) throw new Error("Model not found");
 
     // Create and save user message
-    const userMessage = this.messageRepository.create({
+    let messageData = this.messageRepository.create({
       content,
       role,
-      modelId,
+      modelId: model.modelId, // real model used
+      modelName: model.name, 
       chatId,
-      user,
+      user: dbUser,
       chat,
     });
 
-    const savedUserMessage = await this.messageRepository.save(userMessage);
+    const message = await this.messageRepository.save(messageData);
     
     const { pubSub } = context;
     
@@ -129,7 +137,7 @@ export class MessageResolver {
     if (pubSub) {
       await pubSub.publish(NEW_MESSAGE, { 
         chatId,
-        message: savedUserMessage 
+        message,
       });
     }
 
@@ -151,9 +159,10 @@ export class MessageResolver {
       const aiMessage = this.messageRepository.create({
         content: aiResponse,
         role: MessageRole.ASSISTANT,
-        modelId,
+        modelId: model.modelId, // real model used
+        modelName: model.name, 
         chatId,
-        user,
+        user: dbUser,
         chat,
       });
 
@@ -167,10 +176,10 @@ export class MessageResolver {
         });
       }
 
-      return savedUserMessage;
-    } catch (error) {
-      console.error("Error generating AI response:", error);
-      throw new Error("Failed to generate AI response");
+      return message;
+    } catch (error: unknown) {
+      console.error("Error generating AI response", error);
+      throw new Error(`Failed to generate AI response: ${getErrorMessage(error)}`);
     }
   }
 

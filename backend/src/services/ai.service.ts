@@ -3,9 +3,10 @@ import { ListFoundationModelsCommand } from "@aws-sdk/client-bedrock";
 import { bedrockClient, bedrockManagementClient, BEDROCK_MODEL_IDS } from "../config/bedrock";
 import { MessageRole } from "../entities/Message";
 import { ModelProvider } from "../entities/ModelProvider";
+import { Model } from "../entities/Model";
 
 interface MessageFormat {
-  role: string;
+  role: MessageRole;
   content: string;
 }
 
@@ -16,6 +17,8 @@ interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
+export const DEFAULT_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0";
+
 export class AIService {
   // Main method to interact with models
   async generateResponse(
@@ -24,6 +27,19 @@ export class AIService {
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<string> {
+    // join user duplicate messages
+    messages = messages.reduce((acc: MessageFormat[], msg: MessageFormat) => {
+      const lastMessage = acc[acc.length - 1];
+      if (lastMessage && lastMessage.role === msg.role) {
+        if (lastMessage.content === msg.content) {
+          return acc;
+        } else {
+          lastMessage.content += "\n" + msg.content;
+        }
+      }
+      return [...acc, msg];
+    }, []);
+    
     if (modelId.startsWith("anthropic.")) {
       return this.generateAnthropicResponse(messages, modelId, temperature, maxTokens);
     } else if (modelId.startsWith("amazon.")) {
@@ -100,17 +116,12 @@ export class AIService {
       }),
     };
 
-    try {
-      const command = new InvokeModelCommand(params);
-      const response = await bedrockClient.send(command);
+    const command = new InvokeModelCommand(params);
+    const response = await bedrockClient.send(command);
 
-      // Parse the response body
-      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.content[0].text || "";
-    } catch (error) {
-      console.error("Error calling Anthropic model:", error);
-      throw error;
-    }
+    // Parse the response body
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    return responseBody.content[0].text || "";
   }
 
   // Amazon Titan models
@@ -148,17 +159,13 @@ export class AIService {
       }),
     };
 
-    try {
-      const command = new InvokeModelCommand(params);
-      const response = await bedrockClient.send(command);
+    const command = new InvokeModelCommand(params);
+    const response = await bedrockClient.send(command);
 
-      // Parse the response body
-      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return responseBody.results?.[0]?.outputText || "";
-    } catch (error) {
-      console.error("Error calling Amazon model:", error);
-      throw error;
-    }
+    // Parse the response body
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    return responseBody.results?.[0]?.outputText || "";
+
   }
 
   // AI21 Jurassic models
@@ -427,18 +434,20 @@ export class AIService {
   }
 
   // Adapter method for message resolver
-  async getCompletion(
-    messages: any[],
-    model: any
-  ): Promise<string> {
+  async getCompletion(messages: any[], model: Model): Promise<string> {
     // Convert DB message objects to MessageFormat structure
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
-      content: msg.content
+      content: msg.content,
     }));
 
     // Use the existing generate method
-    return this.generateResponse(formattedMessages, model.providerId || "anthropic.claude-3-haiku-20240307-v1:0", 0.7, 2048);
+    return this.generateResponse(
+      formattedMessages,
+      model.modelId || DEFAULT_MODEL_ID,
+      0.7,
+      2048
+    );
   }
 
   // Helper method to get all supported models
@@ -449,31 +458,31 @@ export class AIService {
   // Fetch model providers from AWS Bedrock
   static async getModelProviders(): Promise<ModelProvider[]> {
     const providers: Map<string, ModelProvider> = new Map();
-    
+
     try {
       // Get real foundation model data from AWS Bedrock
       const command = new ListFoundationModelsCommand({});
       const response = await bedrockManagementClient.send(command);
-      
+
       // Process the model list and extract providers
       if (response.modelSummaries && response.modelSummaries.length > 0) {
         for (const model of response.modelSummaries) {
           if (model.providerName) {
             const providerName = model.providerName;
-            
+
             if (!providers.has(providerName)) {
               const provider = new ModelProvider();
               provider.name = providerName;
               provider.description = `${providerName} models on AWS Bedrock`;
-              provider.apiType = 'bedrock';
+              provider.apiType = "bedrock";
               provider.isActive = true;
-              
+
               providers.set(providerName, provider);
             }
           }
         }
       }
-      
+
       // If no providers were found from the API (possibly due to permissions),
       // extract unique providers from our predefined model list
       if (providers.size === 0) {
@@ -482,28 +491,26 @@ export class AIService {
             const provider = new ModelProvider();
             provider.name = modelInfo.provider;
             provider.description = `${modelInfo.provider} models on AWS Bedrock`;
-            provider.apiType = 'bedrock';
+            provider.apiType = "bedrock";
             provider.isActive = true;
-            
+
             providers.set(modelInfo.provider, provider);
           }
         }
       }
-      
+
       return Array.from(providers.values());
     } catch (error) {
       console.error("Error fetching model providers from AWS Bedrock:", error);
-      
+
       // Fallback to our predefined list of providers if API call fails
-      const uniqueProviders = new Set(
-        Object.values(BEDROCK_MODEL_IDS).map(model => model.provider)
-      );
-      
+      const uniqueProviders = new Set(Object.values(BEDROCK_MODEL_IDS).map(model => model.provider));
+
       return Array.from(uniqueProviders).map(providerName => {
         const provider = new ModelProvider();
         provider.name = providerName;
         provider.description = `${providerName} models on AWS Bedrock`;
-        provider.apiType = 'bedrock';
+        provider.apiType = "bedrock";
         provider.isActive = true;
         return provider;
       });

@@ -59,6 +59,7 @@ type Message {
   createdAt: DateTimeISO!
   id: ID!
   modelId: String!
+  modelName: String
   role: String!
   updatedAt: DateTimeISO!
   user: User!

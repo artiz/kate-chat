@@ -11,12 +11,43 @@ export class ModelResolver {
   @Authorized()
   async getModels(): Promise<ModelsResponse> {
     try {
+      // Get models from the database
       const modelRepository = getRepository(Model);
-      const models = await modelRepository.find({ 
+      let models = await modelRepository.find({ 
         where: { isActive: true },
         order: { sortOrder: "ASC" },
         relations: ["provider"]
       });
+      
+      // If no models in database, fetch from Bedrock and save
+      if (!models || models.length === 0) {
+        const providerRepository = getRepository(ModelProvider);
+        const providers = await providerRepository.find({ where: { isActive: true } });
+        
+        // Save Bedrock models to database
+        models = [];
+        const bedrockModels = AIService.getSupportedModels();
+        
+        for (const [modelId, modelInfo] of Object.entries(bedrockModels)) {
+          // Find the provider for this model
+          const provider = providers.find((p: ModelProvider) => p.name === modelInfo.provider);
+          
+          if (provider) {
+            const model = new Model();
+            model.name = modelInfo.name;
+            model.modelId = modelId;
+            model.description = `${modelInfo.name} by ${modelInfo.provider}`;
+            model.provider = provider;
+            model.providerId = modelId;
+            model.contextWindow = modelInfo.contextWindow || 0;
+            model.isActive = true;
+            model.sortOrder = 0;
+            
+            const savedModel = await modelRepository.save(model);
+            models.push(savedModel);
+          }
+        }
+      }
       
       return { models, total: models.length };
     } catch (error) {
