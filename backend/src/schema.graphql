@@ -123,8 +123,9 @@ type Query {
 
 input RegisterInput {
   avatarUrl: String
-  displayName: String!
   email: String!
+  firstName: String!
+  lastName: String!
   password: String!
 }
 
@@ -141,9 +142,10 @@ input UpdateChatInput {
 type User {
   avatarUrl: String
   createdAt: DateTimeISO!
-  displayName: String!
   email: String!
+  firstName: String!
   id: ID!
+  lastName: String!
   msalId: String
   updatedAt: DateTimeISO!
 }

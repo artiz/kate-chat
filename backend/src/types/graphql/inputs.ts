@@ -10,7 +10,10 @@ export class RegisterInput {
   password: string;
 
   @Field()
-  displayName: string;
+  firstName: string;
+
+  @Field()
+  lastName: string;
 
   @Field({ nullable: true })
   avatarUrl?: string;

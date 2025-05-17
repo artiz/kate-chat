@@ -30,7 +30,7 @@ export class UserResolver {
 
   @Mutation(() => AuthResponse)
   async register(@Arg("input") input: RegisterInput): Promise<AuthResponse> {
-    const { email, password, displayName, avatarUrl } = input;
+    const { email, password, firstName, lastName, avatarUrl } = input;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({ where: { email } });
@@ -45,7 +45,8 @@ export class UserResolver {
     const user = this.userRepository.create({
       email,
       password: hashedPassword, // Note: Add this field to your User entity
-      displayName,
+      firstName, 
+      lastName,
       avatarUrl,
       msalId: "-", // Provide a default or make this nullable
     });

@@ -3,5 +3,8 @@
         "activityBar.background": "#203212",
         "titleBar.activeBackground": "#2D4619",
         "titleBar.activeForeground": "#F8FCF6"
+    },
+    "search.exclude": {
+        "**/.next": true
     }
 }
