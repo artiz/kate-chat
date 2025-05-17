@@ -1,6 +1,5 @@
 const esbuild = require('esbuild');
 const { clean } = require('esbuild-plugin-clean');
-const postcss = require('esbuild-plugin-postcss');
 const fs = require('fs');
 
 // Create directory if it doesn't exist
@@ -32,7 +31,6 @@ esbuild.build({
   },
   plugins: [
     clean({ patterns: ['./dist/*'] }),
-    postcss()
   ],
   define: {
     'process.env.NODE_ENV': '"production"',
