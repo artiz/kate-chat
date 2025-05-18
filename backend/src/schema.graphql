@@ -18,8 +18,16 @@ type Chat {
   user: User!
 }
 
+type ChatsResponse {
+  chats: [Chat!]
+  error: String
+  hasMore: Boolean!
+  total: Float
+}
+
 input CreateChatInput {
   description: String
+  modelId: String
   title: String!
 }
 
@@ -36,15 +44,15 @@ A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `dat
 scalar DateTimeISO
 
 input GetChatsInput {
+  limit: Float = 20
+  offset: Float = 0
   searchTerm: String
-  skip: Float = 0
-  take: Float = 20
 }
 
 input GetMessagesInput {
   chatId: String!
-  skip: Float = 0
-  take: Float = 20
+  limit: Float = 20
+  offset: Float = 0
 }
 
 input LoginInput {
@@ -65,20 +73,6 @@ type Message {
   user: User!
 }
 
-type Model {
-  contextWindow: Float!
-  createdAt: DateTimeISO!
-  description: String!
-  id: ID!
-  isActive: Boolean!
-  modelId: String!
-  name: String!
-  provider: ModelProvider!
-  providerId: String!
-  sortOrder: Float!
-  updatedAt: DateTimeISO!
-}
-
 type ModelProvider {
   apiType: String!
   createdAt: DateTimeISO!
@@ -89,15 +83,41 @@ type ModelProvider {
   updatedAt: DateTimeISO!
 }
 
+type ModelProviderResponse {
+  apiType: String!
+  createdAt: DateTimeISO!
+  description: String!
+  id: ID!
+  isActive: Boolean!
+  isDefault: Boolean!
+  name: String!
+  updatedAt: DateTimeISO!
+}
+
 type ModelProvidersResponse {
   error: String
-  providers: [ModelProvider!]
-  total: Float
+  providers: [ModelProviderResponse!]
+}
+
+type ModelResponse {
+  contextWindow: Float!
+  createdAt: DateTimeISO!
+  description: String!
+  id: ID!
+  isActive: Boolean!
+  isDefault: Boolean!
+  maxTokens: Float
+  modelId: String!
+  name: String!
+  provider: ModelProvider!
+  providerId: String!
+  sortOrder: Float!
+  updatedAt: DateTimeISO!
 }
 
 type ModelsResponse {
   error: String
-  models: [Model!]
+  models: [ModelResponse!]
   total: Float
 }
 
@@ -115,7 +135,7 @@ type Query {
   currentUser: User
   getChatById(id: ID!): Chat
   getChatMessages(input: GetMessagesInput!): [Message!]!
-  getChats(input: GetChatsInput): [Chat!]!
+  getChats(input: GetChatsInput): ChatsResponse!
   getMessageById(id: String!): Message
   getModelProviders: ModelProvidersResponse!
   getModels: ModelsResponse!

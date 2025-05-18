@@ -45,6 +45,10 @@ export class ChatsResponse {
 
   @Field({ nullable: true })
   total?: number;
+
+  @Field()
+  hasMore: boolean;
+
 }
 
 @ObjectType()
@@ -68,26 +72,38 @@ export class MessagesResponse {
   total?: number;
 }
 
+
+@ObjectType()
+export class ModelResponse extends Model {
+  @Field()
+  isDefault?: boolean;
+}
+
 @ObjectType()
 export class ModelsResponse {
   @Field({ nullable: true })
   error?: string;
 
-  @Field(() => [Model], { nullable: true })
-  models?: Model[];
+  @Field(() => [ModelResponse], { nullable: true })
+  models?: ModelResponse[];
 
   @Field({ nullable: true })
   total?: number;
 }
+
+
+@ObjectType()
+export class ModelProviderResponse extends ModelProvider {
+  @Field()
+  isDefault?: boolean;
+}
+
 
 @ObjectType()
 export class ModelProvidersResponse {
   @Field({ nullable: true })
   error?: string;
 
-  @Field(() => [ModelProvider], { nullable: true })
-  providers?: ModelProvider[];
-
-  @Field({ nullable: true })
-  total?: number;
+  @Field(() => [ModelProviderResponse], { nullable: true })
+  providers?: ModelProviderResponse[];
 }

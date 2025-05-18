@@ -65,7 +65,7 @@ const GET_CHAT_MESSAGES = gql`
         createdAt
         isLoading
       }
-      totalCount
+      total
       hasMore
     }
   }

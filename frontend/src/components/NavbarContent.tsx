@@ -14,9 +14,8 @@ const GET_CHATS_QUERY = gql`
         id
         title
         updatedAt
-        lastMessageText
       }
-      totalCount
+      total
       hasMore
     }
   }
@@ -33,7 +32,7 @@ const CREATE_CHAT_MUTATION = gql`
 `;
 
 export default function NavbarContent() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const router = useRouter();
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
@@ -102,13 +101,6 @@ export default function NavbarContent() {
                   key={chat.id}
                   active={chat.id === currentChatId}
                   label={chat.title || "Untitled Chat"}
-                  description={
-                    chat.lastMessageText
-                      ? chat.lastMessageText.length > 25
-                        ? `${chat.lastMessageText.substring(0, 25)}...`
-                        : chat.lastMessageText
-                      : "No messages yet"
-                  }
                   leftSection={<IconMessage size={16} />}
                   onClick={() => handleChatClick(chat.id)}
                 />

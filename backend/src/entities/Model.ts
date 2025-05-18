@@ -33,6 +33,10 @@ export class Model {
   @Column({ default: 0 })
   contextWindow: number;
 
+  @Field({ nullable: true })
+  @Column({ default: 0, nullable: true })
+  maxTokens: number;
+
   @Field()
   @Column({ default: true })
   isActive: boolean;

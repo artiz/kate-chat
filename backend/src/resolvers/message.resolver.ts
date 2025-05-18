@@ -39,7 +39,7 @@ export class MessageResolver {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
 
-    const { chatId, skip = 0, take = 20 } = input;
+    const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
     // Verify the chat belongs to the user
     const chat = await this.chatRepository.findOne({

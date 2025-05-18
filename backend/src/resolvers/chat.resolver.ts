@@ -2,33 +2,38 @@ import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
 import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
-import { ObjectId } from "mongodb";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
+import { ChatsResponse } from "../types/graphql/responses";
+import { AIService } from "../services/ai.service";
+
+
 
 @Resolver(Chat)
 export class ChatResolver {
   private chatRepository: Repository<Chat>;
   private userRepository: Repository<User>;
-
+  
   constructor() {
     this.chatRepository = getRepository(Chat);
     this.userRepository = getRepository(User);
+    
   }
 
-  @Query(() => [Chat])
+  @Query(() => ChatsResponse)
   async getChats(
     @Arg("input", { nullable: true }) input: GetChatsInput = {},
     @Ctx() context: GraphQLContext
-  ): Promise<Chat[]> {
+  ): Promise<ChatsResponse> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
-
-    const { skip = 0, take = 20, searchTerm } = input;
+    const { offset = 0, limit = 20, searchTerm } = input;
     
     let query = { 
-      user,
+      user: {
+        id: user.userId
+      },
       isActive: true
     } as any;
 
@@ -42,14 +47,21 @@ export class ChatResolver {
       };
     }
 
+
+    const total = await this.chatRepository.count({ where: query });
+
     const chats = await this.chatRepository.find({
       where: query,
-      skip,
-      take,
+      skip: offset,
+      take: limit,
       order: { createdAt: "DESC" },
     });
 
-    return chats;
+    return {
+        chats,
+        total,
+        hasMore: offset + chats.length < total,
+    };
   }
 
   @Query(() => Chat, { nullable: true })

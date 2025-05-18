@@ -10,9 +10,11 @@ import { notifications } from "@mantine/notifications";
 const GET_DEFAULT_MODEL = gql`
   query GetDefaultModel {
     getModels {
-      id
-      name
-      isDefault
+        models {
+            id
+            name
+            isDefault
+        }
     }
   }
 `;
@@ -51,9 +53,9 @@ export default function NewChatPage() {
 
   // Create a new chat with the default model when the page loads
   useEffect(() => {
-    if (!loading && !error && data?.getModels) {
+    if (!loading && !error && data?.getModels?.models) {
       // Find the default model
-      const defaultModel = data.getModels.find((model: any) => model.isDefault);
+      const defaultModel = data.getModels.models.find((model: any) => model.isDefault);
 
       // If no default model was found, use the first one
       const modelId = defaultModel ? defaultModel.id : data.getModels[0]?.id;

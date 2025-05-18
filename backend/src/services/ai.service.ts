@@ -237,6 +237,8 @@ export class AIService {
 
   // Helper method to get all supported models
   static getSupportedModels() {
+    // TODO: Fetch models from AWS Bedrock
+    // For now, return the predefined list
     return BEDROCK_MODEL_IDS;
   }
 

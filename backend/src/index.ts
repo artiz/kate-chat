@@ -113,6 +113,9 @@ async function bootstrap() {
             pubSub // Add pubSub to the WebSocket context
           };
         },
+        onError: (error) => {
+            console.error("GraphQL error:", error);
+        },
       },
       wsServer
     );

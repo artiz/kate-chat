@@ -35,6 +35,9 @@ export class CreateChatInput {
 
   @Field({ nullable: true })
   description?: string;
+
+  @Field({ nullable: true })
+  modelId?: string;
 }
 
 @InputType()
@@ -70,19 +73,19 @@ export class GetMessagesInput {
   chatId: string;
 
   @Field({ nullable: true, defaultValue: 0 })
-  skip?: number;
+  offset?: number;
 
   @Field({ nullable: true, defaultValue: 20 })
-  take?: number;
+  limit?: number;
 }
 
 @InputType()
 export class GetChatsInput {
   @Field({ nullable: true, defaultValue: 0 })
-  skip?: number;
+  offset?: number;
 
   @Field({ nullable: true, defaultValue: 20 })
-  take?: number;
+  limit?: number;
 
   @Field({ nullable: true })
   searchTerm?: string;
