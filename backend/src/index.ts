@@ -105,16 +105,31 @@ async function bootstrap() {
         execute,
         subscribe,
         context: (ctx) => {
-          // Extract user from the auth token
+          // Extract user from the authorization token
           const { connectionParams } = ctx;
-          const user = connectionParams?.user || null;
+          console.log("WebSocket connection received with params:", connectionParams);
+          
+          // Extract the authorization header
+          const authHeader = (connectionParams?.authorization as string) || '';
+          console.log("Auth header present:", !!authHeader);
+          
+          // Import the getUserFromToken helper
+          const { getUserFromToken } = require('./middleware/authMiddleware');
+          const user = getUserFromToken(authHeader);
+          
+          if (user) {
+            console.log(`Authenticated WebSocket connection for user ${user.email}`);
+          } else {
+            console.warn("WebSocket connection could not be authenticated");
+          }
+          
           return { 
             user,
             pubSub // Add pubSub to the WebSocket context
           };
         },
         onError: (error) => {
-            console.error("GraphQL error:", error);
+            console.error("GraphQL subscription error:", error);
         },
       },
       wsServer

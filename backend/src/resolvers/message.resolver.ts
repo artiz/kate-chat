@@ -144,10 +144,13 @@ export class MessageResolver {
     
     // Publish the new message event if pubSub is available
     if (pubSub) {
+      console.log(`Publishing user message event for chat ${chatId}`);
       await pubSub.publish(NEW_MESSAGE, { 
         chatId,
         message,
       });
+    } else {
+      console.warn(`No pubSub available to publish user message for chat ${chatId}`);
     }
 
     // Get previous messages for context (limited to 20 for performance)
@@ -179,10 +182,13 @@ export class MessageResolver {
       
       // Publish the new message event for the AI response if pubSub is available
       if (pubSub) {
+        console.log(`Publishing AI response event for chat ${chatId}`);
         await pubSub.publish(NEW_MESSAGE, { 
           chatId,
           message: savedAiMessage 
         });
+      } else {
+        console.warn(`No pubSub available to publish AI message for chat ${chatId}`);
       }
 
       return message;
@@ -195,13 +201,22 @@ export class MessageResolver {
   @Subscription(() => Message, {
     topics: NEW_MESSAGE,
     filter: ({ payload, args }) => {
+      console.log(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
+      // Only send messages to subscribers of the specific chat
       return payload.chatId === args.chatId;
     },
   })
   newMessage(
-    @Root() payload: { message: Message },
+    @Root() payload: { message: Message; chatId: string },
     @Arg("chatId") chatId: string
   ): Message {
+    console.log(`Publishing message to chat ${chatId} subscribers`, 
+      {
+        messageId: payload.message.id,
+        content: payload.message.content.substring(0, 30) + '...',
+        role: payload.message.role
+      }
+    );
     return payload.message;
   }
 

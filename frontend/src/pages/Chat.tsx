@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { gql, useQuery, useMutation } from '@apollo/client';
+import { gql, useQuery, useMutation, useSubscription } from '@apollo/client';
 import {
   Container,
   Paper,
@@ -19,7 +19,20 @@ import { IconSend, IconRobot, IconUser, IconX } from '@tabler/icons-react';
 import { useAppSelector, useAppDispatch } from '../store';
 import { setMessages, setCurrentChat, addMessage } from '../store/slices/chatSlice';
 
-// GraphQL queries
+// GraphQL queries and subscriptions
+const NEW_MESSAGE_SUBSCRIPTION = gql`
+  subscription OnNewMessage($chatId: String!) {
+    newMessage(chatId: $chatId) {
+      id
+      content
+      role
+      createdAt
+      modelId
+      modelName
+    }
+  }
+`;
+
 const GET_CHAT = gql`
   query GetChat($id: ID!) {
     getChatById(id: $id) {
@@ -65,9 +78,46 @@ const Chat: React.FC = () => {
   const dispatch = useAppDispatch();
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
   
   const selectedModel = useAppSelector((state) => state.models.selectedModel);
   const messages = useAppSelector((state) => state.chats.messages);
+  
+  // Subscribe to new messages in this chat
+  const { data: subData } = useSubscription(NEW_MESSAGE_SUBSCRIPTION, {
+    variables: { chatId: id },
+    skip: !id,
+    shouldResubscribe: true, // Resubscribe if variables change
+    fetchPolicy: 'no-cache', // Don't cache subscription data
+    onSubscriptionComplete: () => {
+      console.log("Subscription completed");
+      setWsConnected(false);
+    },
+    onSubscriptionData: ({ subscriptionData }) => {
+      console.log("Received subscription data:", subscriptionData);
+      setWsConnected(true);
+      if (subscriptionData?.data?.newMessage) {
+        const newMessage = subscriptionData.data.newMessage;
+        console.log(`New message received in chat ${id}:`, newMessage);
+        dispatch(addMessage(newMessage));
+        // If it's an assistant message after we sent something, clear loading state
+        if (newMessage.role === 'assistant' && sending) {
+          setSending(false);
+        }
+      }
+    },
+    onError: (error) => {
+      console.error(`Subscription error for chat ${id}:`, error);
+      setWsConnected(false);
+    }
+  });
+  
+  // Effect to update connection status
+  useEffect(() => {
+    if (id) {
+      console.log(`Setting up subscription for chat ${id}`);
+    }
+  }, [id]);
   
   // Get chat details
   const { data: chatData, loading: chatLoading, error: chatError } = useQuery(GET_CHAT, {
@@ -96,8 +146,9 @@ const Chat: React.FC = () => {
   // Send message mutation
   const [sendMessageMutation] = useMutation(SEND_MESSAGE, {
     onCompleted: (data) => {
+      // Only add the user message here, the AI message will come from the subscription
       dispatch(addMessage(data.createMessage));
-      setSending(false);
+      // We don't clear sending state here anymore, that will happen when we receive the AI message via subscription
     },
     onError: (error) => {
       console.error('Error sending message:', error);
@@ -144,16 +195,38 @@ const Chat: React.FC = () => {
   
   return (
     <Container size="md" py="md" h="calc(100vh - 120px)" style={{ display: 'flex', flexDirection: 'column' }}>
-      <Group justify="flex-start" mb="md">
-        <Title order={3}>
-          {isLoading ? 'Loading...' : chatData?.getChat?.title || 'Untitled Chat'}
-        </Title>
-        <Title size="xs" color="dimmed" ml="md">
-          {isLoading ? 'Loading...' : (selectedModel?.name || 'No Model Selected') }
-        </Title>
-        <ActionIcon onClick={() => navigate('/chat')}>
-          <IconX size={18} />
-        </ActionIcon>
+      <Group justify="space-between" mb="md">
+        <Group>
+          <Title order={3}>
+            {isLoading ? 'Loading...' : chatData?.getChat?.title || 'Untitled Chat'}
+          </Title>
+          <Title size="xs" color="dimmed" ml="md">
+            {isLoading ? 'Loading...' : (selectedModel?.name || 'No Model Selected') }
+          </Title>
+        </Group>
+        <Group>
+          <Box
+            style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              opacity: 0.7
+            }}
+          >
+            <Box
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: wsConnected ? 'green' : 'gray',
+              }}
+            />
+            <Text size="xs">{wsConnected ? 'Connected' : 'Connecting...'}</Text>
+          </Box>
+          <ActionIcon onClick={() => navigate('/chat')}>
+            <IconX size={18} />
+          </ActionIcon>
+        </Group>
       </Group>
       
       {/* Messages */}
@@ -215,9 +288,12 @@ const Chat: React.FC = () => {
                 <Avatar color="gray" radius="xl">
                   <IconRobot size={20} />
                 </Avatar>
-                <Box>
-                  <Text size="sm" fw={500}>AI</Text>
-                  <Loader size="sm" />
+                <Box style={{ maxWidth: 'calc(100% - 50px)' }}>
+                  <Text size="sm" fw={500}>{selectedModel?.name || "AI"}</Text>
+                  <Paper p="sm" bg="gray.0" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Text size="sm" c="dimmed">Generating response</Text>
+                    <Loader size="xs" />
+                  </Paper>
                 </Box>
               </Group>
             )}

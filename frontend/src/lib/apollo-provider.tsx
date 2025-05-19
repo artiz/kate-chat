@@ -16,7 +16,15 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => {
     // Get the API URL from environment variables
     const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:4000/graphql";
-    const wsUrl = apiUrl.replace(/^http/, "ws");
+    
+    // Extract the base URL from the API URL
+    const baseUrl = apiUrl.replace(/\/graphql$/, '');
+    
+    // Create WebSocket URL for subscriptions
+    const wsUrl = baseUrl.replace(/^http/, "ws") + "/graphql/subscriptions";
+    
+    console.log("API URL:", apiUrl);
+    console.log("WebSocket URL:", wsUrl);
 
     // Create HTTP link for queries and mutations
     const httpLink = new HttpLink({
@@ -30,10 +38,27 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
             createClient({
               url: wsUrl,
               connectionParams: () => {
-                return {
+                const params = {
                   authorization: token ? `Bearer ${token}` : "",
                 };
+                console.log("WS connection params:", params);
+                return params;
               },
+              retryAttempts: 5,
+              retryWait: (retries) => new Promise((resolve) => {
+                // Exponential backoff with jitter
+                const delay = Math.min(1000 * 2 ** retries, 30000);
+                const jitter = Math.random() * 1000;
+                console.log(`WS reconnecting in ${(delay + jitter) / 1000}s (attempt ${retries + 1})`);
+                setTimeout(resolve, delay + jitter);
+              }),
+              on: {
+                connected: () => console.log('WebSocket connected successfully'),
+                error: (e) => console.error('WebSocket connection error:', e),
+                closed: () => console.log('WebSocket connection closed'),
+                connecting: () => console.log('WebSocket connecting...'),
+                opened: (socket) => console.log('WebSocket connection opened'),
+              }
             })
           )
         : null;

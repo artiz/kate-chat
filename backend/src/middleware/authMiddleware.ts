@@ -19,10 +19,19 @@ export type GraphQLContext = {
 export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
   if (!authHeader) return null;
 
-  const token = authHeader.split(" ")[1];
+  // Handle both "Bearer token" format and direct token
+  const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.split(" ")[1] 
+    : authHeader;
+    
   if (!token) return null;
 
-  return verifyToken(token);
+  try {
+    return verifyToken(token);
+  } catch (error) {
+    console.error("Error verifying token:", error);
+    return null;
+  }
 };
 
 export const graphQlAuthChecker = (
