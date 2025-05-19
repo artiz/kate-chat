@@ -13,6 +13,7 @@ type Chat {
   description: String!
   id: ID!
   isActive: Boolean!
+  modelId: String
   title: String!
   updatedAt: DateTimeISO!
   user: User!
@@ -34,7 +35,7 @@ input CreateChatInput {
 input CreateMessageInput {
   chatId: String!
   content: String!
-  modelId: String!
+  modelId: String
   role: String! = "user"
 }
 
@@ -71,6 +72,13 @@ type Message {
   role: String!
   updatedAt: DateTimeISO!
   user: User!
+}
+
+type MessagesResponse {
+  error: String
+  hasMore: Boolean!
+  messages: [Message!]
+  total: Float
 }
 
 type ModelProvider {
@@ -134,7 +142,7 @@ type Mutation {
 type Query {
   currentUser: User
   getChatById(id: ID!): Chat
-  getChatMessages(input: GetMessagesInput!): [Message!]!
+  getChatMessages(input: GetMessagesInput!): MessagesResponse!
   getChats(input: GetChatsInput): ChatsResponse!
   getMessageById(id: String!): Message
   getModelProviders: ModelProvidersResponse!

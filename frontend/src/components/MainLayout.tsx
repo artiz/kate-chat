@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import React from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { 
   AppShell, 
   Burger, 
@@ -8,27 +8,31 @@ import {
   Text, 
   UnstyledButton, 
   Menu, 
-  Divider 
+  Divider,
+  ActionIcon,
+  Tooltip
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { 
   IconUser, 
   IconLogout, 
   IconSettings, 
-  IconChevronRight 
+  IconChevronRight,
+  IconSun,
+  IconMoon
 } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom";
 import { useAppSelector } from "../store";
 import { logout } from "../store/slices/authSlice";
 import { clearUser } from "../store/slices/userSlice";
 import NavbarContent from "./NavbarContent";
+import { useTheme } from "../hooks/useTheme";
 
 const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
-  const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { colorScheme, toggleColorScheme } = useTheme();
   
   // Get user data from Redux store
   const user = useAppSelector(state => state.user.currentUser);
@@ -65,45 +69,61 @@ const MainLayout: React.FC = () => {
               KateChat
             </Text>
           </Group>
-
-          <Menu shadow="md" width={200} position="bottom-end">
-            <Menu.Target>
-              <UnstyledButton>
-                <Group gap={8}>
-                  <Avatar color="blue" radius="xl">
-                    {userInitials}
-                  </Avatar>
-                  <div>
-                    <Text size="sm" fw={500}>
-                      {user.firstName} {user.lastName}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {user.email}
-                    </Text>
-                  </div>
-                  <IconChevronRight size={18} stroke={1.5} />
-                </Group>
-              </UnstyledButton>
-            </Menu.Target>
-
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconUser size={14} />}>Profile</Menu.Item>
-              <Menu.Item 
-                leftSection={<IconSettings size={14} />}
-                onClick={() => navigate("/settings")}
+          
+          <Group>
+            <Tooltip label={colorScheme === 'dark' ? "Switch to light mode" : "Switch to dark mode"}>
+              <ActionIcon 
+                variant="subtle" 
+                onClick={() => {
+                  toggleColorScheme();
+                  // Force UI update
+                  setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+                }} 
+                aria-label="Toggle theme"
               >
-                Settings
-              </Menu.Item>
-              <Divider />
-              <Menu.Item 
-                leftSection={<IconLogout size={14} />} 
-                onClick={handleLogout} 
-                color="red"
-              >
-                Logout
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+                {colorScheme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+              </ActionIcon>
+            </Tooltip>
+            
+            <Menu shadow="md" width={200} position="bottom-end">
+              <Menu.Target>
+                <UnstyledButton>
+                  <Group gap={8}>
+                    <Avatar color="blue" radius="xl">
+                      {userInitials}
+                    </Avatar>
+                    <div>
+                      <Text size="sm" fw={500}>
+                        {user.firstName} {user.lastName}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {user.email}
+                      </Text>
+                    </div>
+                    <IconChevronRight size={18} stroke={1.5} />
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                <Menu.Item leftSection={<IconUser size={14} />}>Profile</Menu.Item>
+                <Menu.Item 
+                  leftSection={<IconSettings size={14} />}
+                  onClick={() => navigate("/settings")}
+                >
+                  Settings
+                </Menu.Item>
+                <Divider />
+                <Menu.Item 
+                  leftSection={<IconLogout size={14} />} 
+                  onClick={handleLogout} 
+                  color="red"
+                >
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Group>
       </AppShell.Header>
 

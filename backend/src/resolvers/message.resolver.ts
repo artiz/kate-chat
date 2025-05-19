@@ -6,10 +6,11 @@ import { Chat } from "../entities/Chat";
 import { CreateMessageInput, GetMessagesInput } from "../types/graphql/inputs";
 import { Model } from "../entities/Model";
 import { getRepository } from "../config/database";
-import { AIService } from "../services/ai.service";
+import { AIService, DEFAULT_MODEL_ID } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
 import { getErrorMessage } from "../utils/errors";
+import { MessagesResponse } from "../types/graphql/responses";
 
 // Topics for PubSub
 const NEW_MESSAGE = "NEW_MESSAGE";
@@ -31,11 +32,11 @@ export class MessageResolver {
     this.aiService = new AIService();
   }
 
-  @Query(() => [Message])
+  @Query(() => MessagesResponse)
   async getChatMessages(
     @Arg("input") input: GetMessagesInput,
     @Ctx() context: GraphQLContext
-  ): Promise<Message[]> {
+  ): Promise<MessagesResponse> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
 
@@ -59,7 +60,15 @@ export class MessageResolver {
       order: { createdAt: "ASC" },
     });
 
-    return messages;
+    const total = await this.messageRepository.count({
+        where: { chatId },
+    });
+
+    return {
+        messages,
+        total,
+        hasMore: skip + messages.length < total,
+    };
   }
 
   @Query(() => Message, { nullable: true })
@@ -93,7 +102,8 @@ export class MessageResolver {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
     
-    const { chatId, content, modelId, role = MessageRole.USER } = input;
+    const { chatId, content, role = MessageRole.USER } = input;
+    let { modelId } = input;
 
     // Verify the chat belongs to the user
     const chat = await this.chatRepository.findOne({
@@ -104,6 +114,10 @@ export class MessageResolver {
     });
 
     if (!chat) throw new Error("Chat not found");
+
+    if (!modelId) {
+        modelId = chat.modelId || DEFAULT_MODEL_ID;
+    }
 
     // Verify the model exists
     const model = await this.modelRepository.findOne({

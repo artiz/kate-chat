@@ -22,7 +22,7 @@ import { setMessages, setCurrentChat, addMessage } from '../store/slices/chatSli
 // GraphQL queries
 const GET_CHAT = gql`
   query GetChat($id: ID!) {
-    getChat(id: $id) {
+    getChatById(id: $id) {
       id
       title
       createdAt
@@ -32,13 +32,15 @@ const GET_CHAT = gql`
 `;
 
 const GET_CHAT_MESSAGES = gql`
-  query GetChatMessages($chatId: ID!, $input: GetMessagesInput!) {
-    getChatMessages(chatId: $chatId, input: $input) {
+  query GetChatMessages($input: GetMessagesInput!) {
+    getChatMessages(input: $input) {
       messages {
         id
         content
         role
         createdAt
+        modelId
+        modelName
       }
       total
       hasMore
@@ -47,8 +49,8 @@ const GET_CHAT_MESSAGES = gql`
 `;
 
 const SEND_MESSAGE = gql`
-  mutation SendMessage($chatId: ID!, $input: CreateMessageInput!) {
-    createMessage(chatId: $chatId, input: $input) {
+  mutation SendMessage($input: CreateMessageInput!) {
+    createMessage(input: $input) {
       id
       content
       role
@@ -79,8 +81,8 @@ const Chat: React.FC = () => {
   // Get chat messages
   const { loading: messagesLoading, error: messagesError } = useQuery(GET_CHAT_MESSAGES, {
     variables: {
-      chatId: id,
       input: {
+        chatId: id,
         limit: 100,
         offset: 0,
       },
@@ -112,11 +114,11 @@ const Chat: React.FC = () => {
     
     await sendMessageMutation({
       variables: {
-        chatId: id,
         input: {
+          chatId: id,
           content: message,
           role: 'user',
-          modelId: selectedModel?.id || null,
+          modelId: selectedModel?.modelId,
         },
       },
     });
@@ -142,9 +144,12 @@ const Chat: React.FC = () => {
   
   return (
     <Container size="md" py="md" h="calc(100vh - 120px)" style={{ display: 'flex', flexDirection: 'column' }}>
-      <Group position="apart" mb="md">
+      <Group justify="flex-start" mb="md">
         <Title order={3}>
           {isLoading ? 'Loading...' : chatData?.getChat?.title || 'Untitled Chat'}
+        </Title>
+        <Title size="xs" color="dimmed" ml="md">
+          {isLoading ? 'Loading...' : (selectedModel?.name || 'No Model Selected') }
         </Title>
         <ActionIcon onClick={() => navigate('/chat')}>
           <IconX size={18} />
@@ -158,11 +163,11 @@ const Chat: React.FC = () => {
         style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '1rem' }}
       >
         {isLoading ? (
-          <Group position="center" py="xl">
+          <Group align="center" py="xl">
             <Loader />
           </Group>
         ) : messages.length === 0 ? (
-          <Stack align="center" justify="center" h="100%" spacing="md">
+          <Stack align="center" justify="center" h="100%" gap="md">
             <IconRobot size={48} opacity={0.5} />
             <Text size="lg" ta="center">No messages yet</Text>
             <Text c="dimmed" size="sm" ta="center">
@@ -190,7 +195,7 @@ const Chat: React.FC = () => {
                     fw={500} 
                     c={msg.role === 'user' ? 'blue' : 'dark'}
                   >
-                    {msg.role === 'user' ? 'You' : 'AI'}
+                    {msg.role === 'user' ? 'You' : msg.modelName || "AI"}
                   </Text>
                   <Paper 
                     p="sm" 
@@ -206,7 +211,7 @@ const Chat: React.FC = () => {
               </Group>
             ))}
             {sending && (
-              <Group align="flex-start" spacing="xs">
+              <Group align="flex-start" gap="xs">
                 <Avatar color="gray" radius="xl">
                   <IconRobot size={20} />
                 </Avatar>
@@ -221,7 +226,7 @@ const Chat: React.FC = () => {
       </Paper>
       
       {/* Message input */}
-      <Group position="apart" align="flex-start">
+      <Group justify="space-between" align="flex-start">
         <Textarea
           placeholder="Type your message..."
           value={message}
@@ -241,9 +246,8 @@ const Chat: React.FC = () => {
         <Button 
           onClick={handleSendMessage} 
           disabled={!message.trim() || sending || isLoading}
-          rightIcon={<IconSend size={16} />}
         >
-          Send
+          <IconSend size={16} /> Send
         </Button>
       </Group>
     </Container>

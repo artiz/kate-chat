@@ -13,9 +13,11 @@ import {
   Switch,
   Select,
   Text,
+  SegmentedControl,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useAppSelector } from '../store';
+import { useTheme } from '../hooks/useTheme';
 
 // GraphQL mutations
 const UPDATE_USER_MUTATION = gql`
@@ -51,7 +53,7 @@ const Settings: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   
   // UI preferences state
-  const [darkMode, setDarkMode] = useState(false);
+  const { colorScheme, setColorScheme } = useTheme();
   const [language, setLanguage] = useState('en');
   
   // Update user mutation
@@ -134,6 +136,7 @@ const Settings: React.FC = () => {
   
   // Handle UI preferences
   const handleUiPreferencesUpdate = () => {
+    // Theme preference is saved automatically via localStorage
     notifications.show({
       title: 'Preferences Saved',
       message: 'Your UI preferences have been updated',
@@ -228,13 +231,30 @@ const Settings: React.FC = () => {
         <Title order={3} mb="md">UI Preferences</Title>
         
         <Stack spacing="md">
-          <Group position="apart">
-            <Text>Dark Mode</Text>
-            <Switch
-              checked={darkMode}
-              onChange={(e) => setDarkMode(e.currentTarget.checked)}
+          <div>
+            <Text mb="xs">Theme</Text>
+            <SegmentedControl
+              value={colorScheme}
+              onChange={(value) => {
+                const newValue = value as 'light' | 'dark' | 'auto';
+                setColorScheme(newValue);
+                
+                // Also update the document element directly
+                if (newValue === 'auto') {
+                  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  document.documentElement.dataset.mantine = prefersDark ? 'dark' : 'light';
+                } else {
+                  document.documentElement.dataset.mantine = newValue;
+                }
+              }}
+              data={[
+                { label: 'Light', value: 'light' },
+                { label: 'Dark', value: 'dark' },
+                { label: 'Auto', value: 'auto' }
+              ]}
+              fullWidth
             />
-          </Group>
+          </div>
           
           <Select
             label="Language"

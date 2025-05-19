@@ -11,6 +11,8 @@ export interface Message {
   chatId: string;
   content: string;
   role: 'user' | 'assistant';
+  modelId?: string;
+  modelName?: string;
   createdAt: string;
 }
 

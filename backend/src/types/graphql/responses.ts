@@ -48,7 +48,6 @@ export class ChatsResponse {
 
   @Field()
   hasMore: boolean;
-
 }
 
 @ObjectType()
@@ -70,8 +69,10 @@ export class MessagesResponse {
 
   @Field({ nullable: true })
   total?: number;
-}
 
+  @Field()
+  hasMore?: boolean;
+}
 
 @ObjectType()
 export class ModelResponse extends Model {
@@ -91,13 +92,11 @@ export class ModelsResponse {
   total?: number;
 }
 
-
 @ObjectType()
 export class ModelProviderResponse extends ModelProvider {
   @Field()
   isDefault?: boolean;
 }
-
 
 @ObjectType()
 export class ModelProvidersResponse {

@@ -3,7 +3,12 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface Model {
   id: string;
   name: string;
-  provider: string;
+  modelId: string;
+  isDefault?: boolean;
+  provider: {
+    id: string;
+    name: string;
+  };
 }
 
 interface ModelState {

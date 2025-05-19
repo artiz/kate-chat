@@ -21,6 +21,10 @@ export class Chat {
   @ManyToOne(() => User)
   user: User;
 
+  @Field({nullable : true})
+  @Column({nullable : true})
+  modelId: string; // Initial model ID used for this chat
+
   @Field()
   @Column({ default: true })
   isActive: boolean;

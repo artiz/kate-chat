@@ -60,7 +60,7 @@ export class CreateMessageInput {
   @Field()
   content: string;
 
-  @Field()
+  @Field({ nullable: true })
   modelId: string;
 
   @Field(() => String, { defaultValue: MessageRole.USER })

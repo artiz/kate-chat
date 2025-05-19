@@ -34,7 +34,7 @@ const Models: React.FC = () => {
   if (loading) {
     return (
       <Container size="lg" py="xl">
-        <Stack align="center" spacing="md">
+        <Stack align="center" gap="md">
           <Loader size="xl" />
           <Text>Loading models...</Text>
         </Stack>
@@ -61,11 +61,11 @@ const Models: React.FC = () => {
             <Card withBorder padding="lg" radius="md">
               <Group position="apart" mb="md">
                 <Group>
-                  {getProviderIcon(model.provider)}
+                  {getProviderIcon(model.provider?.name)}
                   <div>
                     <Text fw={500}>{model.name}</Text>
                     <Text size="xs" c="dimmed">
-                      {model.provider}
+                      {model.provider?.name}
                     </Text>
                   </div>
                 </Group>

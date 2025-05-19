@@ -68,7 +68,11 @@ export const graphqlApi = api.injectEndpoints({
                 models {
                   id
                   name
-                  provider
+                  modelId
+                  provider {
+                    id
+                    name
+                  }
                 }
               }
             }
@@ -142,8 +146,9 @@ export const graphqlApi = api.injectEndpoints({
                 models {
                   id
                   name
-                  provider 
-                  {
+                  modelId
+                  isDefault
+                  provider {
                     id
                     name
                   }
@@ -167,7 +172,11 @@ export const graphqlApi = api.injectEndpoints({
         return {
             user: currentUser,
             models: getModels?.models || [],
-            chats: getChats?.chats || [],
+            chats: getChats || {
+                chats: [],
+                total: 0,
+                hasMore: false,
+            },
         };
       },
       providesTags: ['User', 'Model', { type: 'Chat', id: 'LIST' }],
