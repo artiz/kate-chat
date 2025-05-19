@@ -92,11 +92,7 @@ export class MessageResolver {
   ): Promise<Message> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
-    const dbUser = await this.userRepository.findOne({
-      where: { id: user.userId }
-    });
-    if (!dbUser) throw new Error("User not found");
-
+    
     const { chatId, content, modelId, role = MessageRole.USER } = input;
 
     // Verify the chat belongs to the user
@@ -112,10 +108,9 @@ export class MessageResolver {
     // Verify the model exists
     const model = await this.modelRepository.findOne({
       where: {
-        id: modelId,
+        modelId,
       },
     });
-
     if (!model) throw new Error("Model not found");
 
     // Create and save user message
@@ -125,7 +120,7 @@ export class MessageResolver {
       modelId: model.modelId, // real model used
       modelName: model.name, 
       chatId,
-      user: dbUser,
+      user: { id: user.userId },
       chat,
     });
 
@@ -162,7 +157,7 @@ export class MessageResolver {
         modelId: model.modelId, // real model used
         modelName: model.name, 
         chatId,
-        user: dbUser,
+        user: { id: user.userId },
         chat,
       });
 

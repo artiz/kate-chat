@@ -1,75 +1,41 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { gql, useQuery } from "@apollo/client";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Stack, Button, NavLink, Text, Group, Loader, Divider, ScrollArea } from "@mantine/core";
-import { IconPlus, IconSettings, IconMessage, IconRobot, IconBrandWechat } from "@tabler/icons-react";
+import { IconPlus, IconSettings, IconMessage, IconRobot } from "@tabler/icons-react";
+import { useAppSelector } from "../store";
 
-// Define the query to fetch user's chats
-const GET_CHATS_QUERY = gql`
-  query GetUserChats($input: GetChatsInput!) {
-    getChats(input: $input) {
-      chats {
-        id
-        title
-        updatedAt
-      }
-      total
-      hasMore
-    }
-  }
-`;
-
-// Define the mutation to create a new chat
-const CREATE_CHAT_MUTATION = gql`
-  mutation CreateNewChat($input: CreateChatInput!) {
-    createChat(input: $input) {
-      id
-      title
-    }
-  }
-`;
-
-export default function NavbarContent() {
-  const pathname = usePathname() || "";
-  const router = useRouter();
+const NavbarContent: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-
-  // Query for user's chats with pagination
-  const { data, loading, error, refetch } = useQuery(GET_CHATS_QUERY, {
-    variables: {
-      input: {
-        limit: 20,
-        offset: 0,
-      },
-    },
-    fetchPolicy: "cache-and-network",
-  });
+  
+  // Get chats from Redux store
+  const { chats, loading, error } = useAppSelector((state) => state.chats);
 
   // Update current chat ID from URL
   useEffect(() => {
-    if (pathname.startsWith("/chat/")) {
-      const id = pathname.split("/").pop();
-      if (id) {
+    const path = location.pathname;
+    if (path.startsWith("/chat/")) {
+      const id = path.split("/").pop();
+      if (id && id !== "new") {
         setCurrentChatId(id);
       }
     }
-  }, [pathname]);
+  }, [location]);
 
   // Handle navigation to create new chat
   const handleNewChat = () => {
-    router.push("/chat/new");
+    navigate("/chat/new");
   };
 
   // Handle navigation to chat
   const handleChatClick = (id: string) => {
-    router.push(`/chat/${id}`);
+    navigate(`/chat/${id}`);
   };
 
   // Handle navigation to models page
   const handleModelsClick = () => {
-    router.push("/models");
+    navigate("/models");
   };
 
   return (
@@ -91,12 +57,12 @@ export default function NavbarContent() {
               <Text c="dimmed" size="sm" ta="center">
                 Error loading chats
               </Text>
-            ) : data?.getChats?.chats?.length === 0 ? (
+            ) : chats?.length === 0 ? (
               <Text c="dimmed" size="sm" ta="center">
                 No chats yet
               </Text>
             ) : (
-              data?.getChats?.chats.map((chat: any) => (
+              chats.map((chat) => (
                 <NavLink
                   key={chat.id}
                   active={chat.id === currentChatId}
@@ -115,16 +81,18 @@ export default function NavbarContent() {
         <NavLink
           label="Models"
           leftSection={<IconRobot size={16} />}
-          active={pathname === "/models"}
+          active={location.pathname === "/models"}
           onClick={handleModelsClick}
         />
         <NavLink
           label="Settings"
           leftSection={<IconSettings size={16} />}
-          active={pathname === "/settings"}
-          onClick={() => router.push("/settings")}
+          active={location.pathname === "/settings"}
+          onClick={() => navigate("/settings")}
         />
       </Stack>
     </Stack>
   );
-}
+};
+
+export default NavbarContent;

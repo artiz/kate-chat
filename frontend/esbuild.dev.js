@@ -1,5 +1,6 @@
 const esbuild = require("esbuild");
 const { clean } = require("esbuild-plugin-clean");
+const { polyfillNode } = require("esbuild-plugin-polyfill-node");
 const path = require("path");
 const fs = require("fs");
 
@@ -16,8 +17,8 @@ esbuild
     bundle: true,
     sourcemap: true,
     minify: false,
-    format: "esm",
-    splitting: true,
+    format: "iife",
+    splitting: false,
     loader: {
       ".js": "jsx",
       ".svg": "dataurl",
@@ -29,10 +30,14 @@ esbuild
       ".ttf": "file",
       ".eot": "file",
     },
-    plugins: [clean({ patterns: ["./dist/*.js"] })],
     define: {
       "process.env.NODE_ENV": '"development"',
+      "process.env.REACT_APP_API_URL": '"http://localhost:4000/graphql"',
     },
+    plugins: [
+      clean({ patterns: ["./dist/*.js"] }),
+      polyfillNode(),
+    ],
     logLevel: "info",
   })
   .then(context => {
@@ -42,27 +47,47 @@ esbuild
         servedir: "./dist",
         port: 3000,
         host: "localhost",
+        fallback: "./dist/index.html",
       })
       .then(server => {
         console.log(`🚀 Development server running on http://localhost:${server.port}`);
 
         // Copy index.html to dist
         fs.copyFileSync("./src/index.html", "./dist/index.html");
+        
+        // Copy CSS to dist
+        if (fs.existsSync("./src/index.css")) {
+          fs.copyFileSync("./src/index.css", "./dist/index.css");
+        }
 
-        // Add auto-reload script to index.html
+        // Add HMR script to index.html
         const indexContent = fs.readFileSync("./dist/index.html", "utf-8");
         const updatedContent = indexContent.replace(
           "</body>",
           `<script>
-        // Simple live reload
+        // HMR with esbuild
         const es = new EventSource('/esbuild');
-        es.addEventListener('change', () => {
-          console.log('Page reload triggered by file change');
-          location.reload();
+        es.addEventListener('change', (e) => {
+          const { added, removed, updated } = JSON.parse(e.data);
+          
+          // Detect if CSS was updated, if so just refresh the stylesheet
+          if (updated.some(path => path.endsWith('.css'))) {
+            const links = document.querySelectorAll('link[rel="stylesheet"]');
+            links.forEach(link => {
+              const url = new URL(link.href);
+              link.href = url.pathname + '?' + Date.now();
+            });
+            console.log('🔄 CSS updated without page reload');
+          } else {
+            // For JS/component changes, reload the page
+            console.log('🔄 Page reload triggered by file change');
+            location.reload();
+          }
         });
+        
         es.onerror = () => {
           es.close();
-          console.log('EventSource disconnected, reconnecting in 3s...');
+          console.log('⚠️ EventSource disconnected, reconnecting in 3s...');
           setTimeout(() => location.reload(), 3000);
         };
       </script>

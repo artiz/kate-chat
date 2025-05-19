@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
@@ -8,12 +6,16 @@ import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
 import { createClient } from "graphql-ws";
 import { getMainDefinition } from "@apollo/client/utilities";
 import { notifications } from "@mantine/notifications";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
+  const token = useSelector((state: RootState) => state.auth.token);
+  
   const [client] = useState(() => {
     // Get the API URL from environment variables
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/graphql";
+    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:4000/graphql";
     const wsUrl = apiUrl.replace(/^http/, "ws");
 
     // Create HTTP link for queries and mutations
@@ -28,8 +30,6 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
             createClient({
               url: wsUrl,
               connectionParams: () => {
-                // Get authentication token
-                const token = localStorage.getItem("auth-token");
                 return {
                   authorization: token ? `Bearer ${token}` : "",
                 };
@@ -40,9 +40,6 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
 
     // Authentication link that adds the token to every request
     const authLink = setContext((_, { headers }) => {
-      // Get authentication token from local storage
-      const token = localStorage.getItem("auth-token");
-
       // Return the headers to the context
       return {
         headers: {
