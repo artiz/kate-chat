@@ -27,7 +27,8 @@ This document provides information on how to use the KateChat GraphQL API with P
 2. Modify the variables in the request body as needed:
    ```json
    {
-     "displayName": "Test User",
+     "firstName": "John",
+     "lastName": "Doe",
      "email": "user@example.com",
      "password": "password123",
      "avatarUrl": "https://example.com/avatar.jpg" // Optional
@@ -56,14 +57,15 @@ This document provides information on how to use the KateChat GraphQL API with P
 ### Create a Chat
 1. Make sure you're authenticated (token is set)
 2. Open the "Create Chat" request in the Chats folder
-3. Modify the title and description as needed
+3. Modify the title, description, and modelId (optional) as needed
 4. Send the request
 5. Save the returned chat ID for future requests
 
 ### Get All Chats
 1. Open the "Get Chats" request in the Chats folder
-2. Optionally modify pagination parameters (skip, take) and searchTerm
+2. Optionally modify pagination parameters (offset, limit) and searchTerm
 3. Send the request
+4. The response includes chats, total count, and hasMore flag for pagination
 
 ### Get Chat by ID
 1. Open the "Get Chat by ID" request in the Chats folder
@@ -89,7 +91,7 @@ This document provides information on how to use the KateChat GraphQL API with P
 3. Update the variables in the request body:
    - `chatId`: ID of the chat where you want to send the message
    - `content`: Your message text
-   - `modelId`: ID of the AI model to use for response generation
+   - `modelId`: ID of the AI model to use for response generation (optional)
    - `role`: Usually "user" for user messages
 4. Send the request
 5. The system will automatically generate an AI response
@@ -97,8 +99,9 @@ This document provides information on how to use the KateChat GraphQL API with P
 ### Get Messages from a Chat
 1. Open the "Get Chat Messages" request in the Messages folder
 2. Replace `chatId` with your actual chat ID
-3. Optionally modify pagination parameters (skip, take)
+3. Optionally modify pagination parameters (offset, limit)
 4. Send the request
+5. The response includes messages, total count, and hasMore flag for pagination
 
 ### Get Specific Message
 1. Open the "Get Message by ID" request in the Messages folder
@@ -114,8 +117,13 @@ This document provides information on how to use the KateChat GraphQL API with P
 
 ### Get Available Models
 1. Open the "Get Models" request in the Models folder
-2. Optionally filter by provider ID or active status
-3. Send the request
+2. Send the request
+3. The response includes available models with their properties
+
+### Get Model Providers
+1. Open the "Get Model Providers" request in the Models folder
+2. Send the request
+3. The response includes available model providers
 
 ## User Information
 
@@ -142,6 +150,8 @@ subscription NewMessage($chatId: String!) {
     id
     role
     content
+    modelId
+    modelName
     createdAt
   }
 }
@@ -202,9 +212,10 @@ All GraphQL requests (except WebSocket connections) are HTTP POST requests to th
 type User {
   id: ID!
   email: String!
-  displayName: String!
-  avatarUrl: String!
-  msalId: String!
+  firstName: String!
+  lastName: String!
+  avatarUrl: String
+  msalId: String
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
 }
@@ -217,6 +228,7 @@ type Chat {
   title: String!
   description: String!
   isActive: Boolean!
+  modelId: String
   user: User!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
@@ -230,6 +242,7 @@ type Message {
   role: String!
   content: String!
   modelId: String!
+  modelName: String
   chatId: String!
   chat: Chat!
   user: User!
@@ -238,11 +251,69 @@ type Message {
 }
 ```
 
-#### AuthResponse
+#### Model
+```graphql
+type ModelResponse {
+  id: ID!
+  name: String!
+  description: String!
+  modelId: String!
+  providerId: String!
+  provider: ModelProvider!
+  contextWindow: Float!
+  maxTokens: Float
+  isActive: Boolean!
+  isDefault: Boolean!
+  sortOrder: Float!
+  createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
+}
+```
+
+#### ModelProvider
+```graphql
+type ModelProviderResponse {
+  id: ID!
+  name: String!
+  description: String!
+  apiType: String!
+  isActive: Boolean!
+  isDefault: Boolean!
+  createdAt: DateTimeISO!
+  updatedAt: DateTimeISO!
+}
+```
+
+#### Response Types
 ```graphql
 type AuthResponse {
   token: String!
   user: User!
+}
+
+type ChatsResponse {
+  chats: [Chat!]
+  total: Float
+  hasMore: Boolean!
+  error: String
+}
+
+type MessagesResponse {
+  messages: [Message!]
+  total: Float
+  hasMore: Boolean!
+  error: String
+}
+
+type ModelsResponse {
+  models: [ModelResponse!]
+  total: Float
+  error: String
+}
+
+type ModelProvidersResponse {
+  providers: [ModelProviderResponse!]
+  error: String
 }
 ```
 
@@ -251,9 +322,11 @@ type AuthResponse {
 type Query {
   currentUser: User
   getChatById(id: ID!): Chat
-  getChats(input: GetChatsInput): [Chat!]!
-  getChatMessages(input: GetMessagesInput!): [Message!]!
+  getChats(input: GetChatsInput): ChatsResponse!
+  getChatMessages(input: GetMessagesInput!): MessagesResponse!
   getMessageById(id: String!): Message
+  getModels: ModelsResponse!
+  getModelProviders: ModelProvidersResponse!
 }
 ```
 
@@ -284,7 +357,8 @@ type Subscription {
 input RegisterInput {
   email: String!
   password: String!
-  displayName: String!
+  firstName: String!
+  lastName: String!
   avatarUrl: String
 }
 ```
@@ -302,6 +376,7 @@ input LoginInput {
 input CreateChatInput {
   title: String!
   description: String
+  modelId: String
 }
 ```
 
@@ -317,8 +392,8 @@ input UpdateChatInput {
 #### GetChatsInput
 ```graphql
 input GetChatsInput {
-  skip: Float = 0
-  take: Float = 20
+  offset: Float = 0
+  limit: Float = 20
   searchTerm: String
 }
 ```
@@ -328,7 +403,7 @@ input GetChatsInput {
 input CreateMessageInput {
   chatId: String!
   content: String!
-  modelId: String!
+  modelId: String
   role: String! = "user"
 }
 ```
@@ -337,7 +412,48 @@ input CreateMessageInput {
 ```graphql
 input GetMessagesInput {
   chatId: String!
-  skip: Float = 0
-  take: Float = 20
+  offset: Float = 0
+  limit: Float = 20
 }
 ```
+
+## Available AI Models and Providers
+
+KateChat integrates with AWS Bedrock to provide access to various AI models from different providers:
+
+### Model Providers
+- Anthropic (Claude models)
+- Amazon (Titan models)
+- AI21 (Jurassic models)
+- Cohere (Command models)
+- Meta (Llama models)
+- Mistral (Mistral and Mixtral models)
+
+### Default Models
+- Default Provider: Anthropic
+- Default Model: Claude 3 Haiku (anthropic.claude-3-haiku-20240307-v1:0)
+
+### Models List
+- Anthropic
+  - Claude 3 Opus
+  - Claude 3 Sonnet
+  - Claude 3 Haiku
+  - Claude 2
+  - Claude Instant
+- Amazon
+  - Titan Text Express
+  - Titan Text Lite
+- AI21
+  - Jurassic-2 Mid
+  - Jurassic-2 Ultra
+- Cohere
+  - Command Text
+  - Command Light Text
+- Meta
+  - Llama 2 13B Chat
+  - Llama 2 70B Chat
+  - Llama 3 8B Instruct
+  - Llama 3 70B Instruct
+- Mistral
+  - Mistral 7B Instruct
+  - Mixtral 8x7B Instruct
