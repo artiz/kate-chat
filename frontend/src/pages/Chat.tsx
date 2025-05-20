@@ -11,12 +11,16 @@ import {
     Title,
     Box,
     ActionIcon,
+    Select,
+    Tooltip,
 } from '@mantine/core';
-import { IconSend, IconX } from '@tabler/icons-react';
+import { IconSend, IconX, IconRobot } from '@tabler/icons-react';
 import { useAppSelector, useAppDispatch } from '../store';
 import { setMessages, setCurrentChat, addMessage, Message, MessageType } from '../store/slices/chatSlice';
+import { setSelectedModel } from '../store/slices/modelSlice';
 import ChatMessages from '../components/ChatMessages';
 import { notifications } from '@mantine/notifications';
+import { UPDATE_CHAT_MUTATION } from '../store/services/graphql';
 
 // GraphQL queries and subscriptions
 const NEW_MESSAGE_SUBSCRIPTION = gql`
@@ -40,6 +44,7 @@ const GET_CHAT = gql`
     getChatById(id: $id) {
       id
       title
+      modelId
       createdAt
       updatedAt
     }
@@ -83,6 +88,7 @@ const Chat: React.FC = () => {
     const [wsConnected, setWsConnected] = useState(false);
 
     const selectedModel = useAppSelector((state) => state.models.selectedModel);
+    const models = useAppSelector((state) => state.models.models);
     const messages = useAppSelector((state) => state.chats.messages);
 
     // Subscribe to new messages in this chat
@@ -131,7 +137,15 @@ const Chat: React.FC = () => {
         variables: { id },
         skip: !id,
         onCompleted: (data) => {
-            dispatch(setCurrentChat(data.getChat));
+            dispatch(setCurrentChat(data.getChatById));
+            
+            // If the chat has a model selected, use that model
+            if (data.getChatById?.modelId) {
+                const chatModel = models.find(model => model.modelId === data.getChatById.modelId);
+                if (chatModel) {
+                    dispatch(setSelectedModel(chatModel));
+                }
+            }
         },
     });
 
@@ -165,6 +179,26 @@ const Chat: React.FC = () => {
             setSending(false);
         },
     });
+    
+    // Update chat mutation (for changing the model)
+    const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
+        onCompleted: (data) => {
+            notifications.show({
+                title: 'Model Changed',
+                message: `Chat model has been updated`,
+                color: 'green',
+            });
+            dispatch(setCurrentChat(data.updateChat));
+        },
+        onError: (error) => {
+            console.error('Error updating chat:', error);
+            notifications.show({
+                title: 'Error',
+                message: error.message || 'Failed to update chat model',
+                color: 'red',
+            });
+        },
+    });
 
     // Handle send message
     const handleSendMessage = async () => {
@@ -182,6 +216,24 @@ const Chat: React.FC = () => {
                     modelId: selectedModel?.modelId,
                 },
             },
+        });
+    };
+    
+    // Handle model change
+    const handleModelChange = (modelId: string) => {
+        const model = models.find(m => m.id === modelId);
+        if (!model || !id) return;
+        
+        dispatch(setSelectedModel(model));
+        
+        // Update the chat in the database with the new model ID
+        updateChatMutation({
+            variables: {
+                id,
+                input: {
+                    modelId: model.modelId
+                }
+            }
         });
     };
 
@@ -208,10 +260,7 @@ const Chat: React.FC = () => {
             <Group justify="space-between" mb="md">
                 <Group>
                     <Title order={3}>
-                        {isLoading ? 'Loading...' : chatData?.getChat?.title || 'Untitled Chat'}
-                    </Title>
-                    <Title size="xs" color="dimmed" ml="md">
-                        {isLoading ? 'Loading...' : (selectedModel?.name || 'No Model Selected')}
+                        {isLoading ? 'Loading...' : chatData?.getChatById?.title || 'Untitled Chat'}
                     </Title>
                 </Group>
                 <Group>
@@ -237,6 +286,31 @@ const Chat: React.FC = () => {
                         <IconX size={18} />
                     </ActionIcon>
                 </Group>
+            </Group>
+            
+            <Group mb="md" align="center">
+                <IconRobot size={20} />
+                <Text fw={500} size="sm">Model:</Text>
+                <Select
+                    data={models.map(model => ({ 
+                        value: model.id, 
+                        label: model.name 
+                    }))}
+                    value={selectedModel?.id || ''}
+                    onChange={handleModelChange}
+                    placeholder="Select a model"
+                    style={{ minWidth: 180 }}
+                    clearable={false}
+                    disabled={sending || isLoading}
+                    withinPortal
+                />
+                {selectedModel && (
+                    <Tooltip label={`Provider: ${selectedModel.provider?.name || 'Unknown'}`}>
+                        <Text size="xs" c="dimmed" span>
+                            {selectedModel.provider?.name}
+                        </Text>
+                    </Tooltip>
+                )}
             </Group>
 
             {/* Messages */}

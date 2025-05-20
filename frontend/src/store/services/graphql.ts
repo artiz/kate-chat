@@ -33,6 +33,30 @@ export const LOGIN_MUTATION = gql`
   }
 `;
 
+export const UPDATE_CHAT_MUTATION = gql`
+  mutation UpdateChat($id: ID!, $input: UpdateChatInput!) {
+    updateChat(id: $id, input: $input) {
+      id
+      title
+      description
+      modelId
+      updatedAt
+    }
+  }
+`;
+
+export const CREATE_CHAT_MUTATION = gql`
+  mutation CreateChat($input: CreateChatInput!) {
+    createChat(input: $input) {
+      id
+      title
+      description
+      modelId
+      createdAt
+    }
+  }
+`;
+
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;

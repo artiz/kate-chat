@@ -50,6 +50,9 @@ export class UpdateChatInput {
 
   @Field({ nullable: true })
   isActive?: boolean;
+  
+  @Field({ nullable: true })
+  modelId?: string;
 }
 
 @InputType()
