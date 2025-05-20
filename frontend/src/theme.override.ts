@@ -22,16 +22,16 @@ export const themeOverride: MantineThemeOverride = {
   colors: {
     // Enhance brand colors for dark mode
     dark: [
-      "#D9D9D9",
-      "#BDBDBD",
-      "#A1A1A1",
+      "#d9d9d9",
+      "#bdbdbd",
+      "#a1a1a1",
       "#858585",
       "#696969",
-      "#4D4D4D",
+      "#4d4d4d",
       "#313131",
       "#252525",
       "#181818",
-      "#0E0E0E",
+      "#0e0e0e",
     ],
   },
   other: {

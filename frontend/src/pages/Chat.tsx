@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { gql, useQuery, useMutation, useSubscription } from '@apollo/client';
+import { gql, useQuery, useMutation, useSubscription, OnDataOptions } from '@apollo/client';
 import {
   Container,
   Paper,
   Text,
   Textarea,
   Button,
-  Stack,
   Group,
-  Avatar,
-  Loader,
   Title,
   Box,
   ActionIcon,
 } from '@mantine/core';
-import { IconSend, IconRobot, IconUser, IconX } from '@tabler/icons-react';
+import { IconSend, IconX } from '@tabler/icons-react';
 import { useAppSelector, useAppDispatch } from '../store';
-import { setMessages, setCurrentChat, addMessage } from '../store/slices/chatSlice';
+import { setMessages, setCurrentChat, addMessage, Message } from '../store/slices/chatSlice';
+import ChatMessages from '../components/ChatMessages';
 
 // GraphQL queries and subscriptions
 const NEW_MESSAGE_SUBSCRIPTION = gql`
@@ -89,15 +87,16 @@ const Chat: React.FC = () => {
     skip: !id,
     shouldResubscribe: true, // Resubscribe if variables change
     fetchPolicy: 'no-cache', // Don't cache subscription data
-    onSubscriptionComplete: () => {
+    onComplete: () => {
       console.log("Subscription completed");
-      setWsConnected(false);
-    },
-    onSubscriptionData: ({ subscriptionData }) => {
-      console.log("Received subscription data:", subscriptionData);
       setWsConnected(true);
-      if (subscriptionData?.data?.newMessage) {
-        const newMessage = subscriptionData.data.newMessage;
+    },
+    onData: (options: OnDataOptions<{newMessage?: Message}>) => {
+        const data = options.data?.data || {};
+      console.log("Received subscription data:", data);
+      setWsConnected(true);
+      if (data?.newMessage) {
+        const newMessage = data.newMessage;
         console.log(`New message received in chat ${id}:`, newMessage);
         dispatch(addMessage(newMessage));
         // If it's an assistant message after we sent something, clear loading state
@@ -230,76 +229,12 @@ const Chat: React.FC = () => {
       </Group>
       
       {/* Messages */}
-      <Paper 
-        withBorder 
-        p="md" 
-        style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '1rem' }}
-      >
-        {isLoading ? (
-          <Group align="center" py="xl">
-            <Loader />
-          </Group>
-        ) : messages.length === 0 ? (
-          <Stack align="center" justify="center" h="100%" gap="md">
-            <IconRobot size={48} opacity={0.5} />
-            <Text size="lg" ta="center">No messages yet</Text>
-            <Text c="dimmed" size="sm" ta="center">
-              Start the conversation by sending a message
-            </Text>
-          </Stack>
-        ) : (
-          <Stack spacing="lg">
-            {messages.map((msg) => (
-              <Group key={msg.id} align="flex-start" spacing="xs">
-                <Avatar 
-                  color={msg.role === 'user' ? 'blue' : 'gray'} 
-                  radius="xl"
-                >
-                  {msg.role === 'user' ? <IconUser size={20} /> : <IconRobot size={20} />}
-                </Avatar>
-                <Box 
-                  style={{ 
-                    maxWidth: 'calc(100% - 50px)', 
-                    wordWrap: 'break-word'
-                  }}
-                >
-                  <Text 
-                    size="sm" 
-                    fw={500} 
-                    c={msg.role === 'user' ? 'blue' : 'dark'}
-                  >
-                    {msg.role === 'user' ? 'You' : msg.modelName || "AI"}
-                  </Text>
-                  <Paper 
-                    p="sm" 
-                    bg={msg.role === 'user' ? 'blue.0' : 'gray.0'} 
-                    style={{ whiteSpace: 'pre-wrap' }}
-                  >
-                    {msg.content}
-                  </Paper>
-                  <Text size="xs" c="dimmed" mt={2}>
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </Text>
-                </Box>
-              </Group>
-            ))}
-            {sending && (
-              <Group align="flex-start" gap="xs">
-                <Avatar color="gray" radius="xl">
-                  <IconRobot size={20} />
-                </Avatar>
-                <Box style={{ maxWidth: 'calc(100% - 50px)' }}>
-                  <Text size="sm" fw={500}>{selectedModel?.name || "AI"}</Text>
-                  <Paper p="sm" bg="gray.0" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Text size="sm" c="dimmed">Generating response</Text>
-                    <Loader size="xs" />
-                  </Paper>
-                </Box>
-              </Group>
-            )}
-          </Stack>
-        )}
-      </Paper>
+      <ChatMessages
+        messages={messages}
+        isLoading={isLoading}
+        sending={sending}
+        selectedModelName={selectedModel?.name}
+      />
       
       {/* Message input */}
       <Group justify="space-between" align="flex-start">

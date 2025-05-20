@@ -41,7 +41,6 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
                 const params = {
                   authorization: token ? `Bearer ${token}` : "",
                 };
-                console.log("WS connection params:", params);
                 return params;
               },
               retryAttempts: 5,
