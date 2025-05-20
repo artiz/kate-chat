@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root } from "type-graphql";
 import { PubSubEngine } from "graphql-subscriptions";
 import { Repository } from "typeorm";
-import { Message, MessageRole } from "../entities/Message";
+import { Message, MessageRole, MessageType } from "../entities/Message";
 import { Chat } from "../entities/Chat";
 import { CreateMessageInput, GetMessagesInput } from "../types/graphql/inputs";
 import { Model } from "../entities/Model";
@@ -10,10 +10,10 @@ import { AIService, DEFAULT_MODEL_ID } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
 import { getErrorMessage } from "../utils/errors";
-import { MessagesResponse } from "../types/graphql/responses";
+import { MessageResponse, MessagesResponse } from "../types/graphql/responses";
 
 // Topics for PubSub
-const NEW_MESSAGE = "NEW_MESSAGE";
+export const NEW_MESSAGE = "NEW_MESSAGE";
 const MESSAGE_UPDATED = "MESSAGE_UPDATED";
 
 @Resolver(Message)
@@ -61,21 +61,18 @@ export class MessageResolver {
     });
 
     const total = await this.messageRepository.count({
-        where: { chatId },
+      where: { chatId },
     });
 
     return {
-        messages,
-        total,
-        hasMore: skip + messages.length < total,
+      messages,
+      total,
+      hasMore: skip + messages.length < total,
     };
   }
 
   @Query(() => Message, { nullable: true })
-  async getMessageById(
-    @Arg("id") id: string,
-    @Ctx() context: GraphQLContext
-  ): Promise<Message | null> {
+  async getMessageById(@Arg("id") id: string, @Ctx() context: GraphQLContext): Promise<Message | null> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
 
@@ -95,13 +92,10 @@ export class MessageResolver {
   }
 
   @Mutation(() => Message)
-  async createMessage(
-    @Arg("input") input: CreateMessageInput,
-    @Ctx() context: GraphQLContext
-  ): Promise<Message> {
+  async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
-    
+
     const { chatId, content, role = MessageRole.USER } = input;
     let { modelId } = input;
 
@@ -116,7 +110,7 @@ export class MessageResolver {
     if (!chat) throw new Error("Chat not found");
 
     if (!modelId) {
-        modelId = chat.modelId || DEFAULT_MODEL_ID;
+      modelId = chat.modelId || DEFAULT_MODEL_ID;
     }
 
     // Verify the model exists
@@ -132,22 +126,22 @@ export class MessageResolver {
       content,
       role,
       modelId: model.modelId, // real model used
-      modelName: model.name, 
+      modelName: model.name,
       chatId,
       user: { id: user.userId },
       chat,
     });
 
     const message = await this.messageRepository.save(messageData);
-    
+
     const { pubSub } = context;
-    
+
     // Publish the new message event if pubSub is available
     if (pubSub) {
       console.log(`Publishing user message event for chat ${chatId}`);
-      await pubSub.publish(NEW_MESSAGE, { 
+      await pubSub.publish(NEW_MESSAGE, {
         chatId,
-        message,
+        data: { message },
       });
     } else {
       console.warn(`No pubSub available to publish user message for chat ${chatId}`);
@@ -161,44 +155,50 @@ export class MessageResolver {
     });
 
     // Generate AI response
+    let aiResponse: string;
     try {
-      const aiResponse = await this.aiService.getCompletion(
-        previousMessages.reverse(),
-        model
-      );
-
-      // Create and save AI response message
-      const aiMessage = this.messageRepository.create({
-        content: aiResponse,
-        role: MessageRole.ASSISTANT,
-        modelId: model.modelId, // real model used
-        modelName: model.name, 
-        chatId,
-        user: { id: user.userId },
-        chat,
-      });
-
-      const savedAiMessage = await this.messageRepository.save(aiMessage);
-      
-      // Publish the new message event for the AI response if pubSub is available
-      if (pubSub) {
-        console.log(`Publishing AI response event for chat ${chatId}`);
-        await pubSub.publish(NEW_MESSAGE, { 
-          chatId,
-          message: savedAiMessage 
-        });
-      } else {
-        console.warn(`No pubSub available to publish AI message for chat ${chatId}`);
-      }
-
-      return message;
+      aiResponse = await this.aiService.getCompletion(previousMessages.reverse(), model);
     } catch (error: unknown) {
       console.error("Error generating AI response", error);
+      if (pubSub) {
+        console.log(`Publishing AI response event for chat ${chatId}`);
+        await pubSub.publish(NEW_MESSAGE, {
+          chatId,
+          data: { error: getErrorMessage(error) },
+        });
+      }
+
       throw new Error(`Failed to generate AI response: ${getErrorMessage(error)}`);
     }
+
+    // Create and save AI response message
+    const aiMessage = this.messageRepository.create({
+      content: aiResponse,
+      role: MessageRole.ASSISTANT,
+      modelId: model.modelId, // real model used
+      modelName: model.name,
+      chatId,
+      user: { id: user.userId },
+      chat,
+    });
+
+    const savedAiMessage = await this.messageRepository.save(aiMessage);
+
+    // Publish the new message event for the AI response if pubSub is available
+    if (pubSub) {
+      console.log(`Publishing AI response event for chat ${chatId}`);
+      await pubSub.publish(NEW_MESSAGE, {
+        chatId,
+        data: { message: savedAiMessage },
+      });
+    } else {
+      console.warn(`No pubSub available to publish AI message for chat ${chatId}`);
+    }
+
+    return message;
   }
 
-  @Subscription(() => Message, {
+  @Subscription(() => MessageResponse, {
     topics: NEW_MESSAGE,
     filter: ({ payload, args }) => {
       console.log(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
@@ -206,25 +206,25 @@ export class MessageResolver {
       return payload.chatId === args.chatId;
     },
   })
-  newMessage(
-    @Root() payload: { message: Message; chatId: string },
-    @Arg("chatId") chatId: string
-  ): Message {
-    console.log(`Publishing message to chat ${chatId} subscribers`, 
-      {
-        messageId: payload.message.id,
-        content: payload.message.content.substring(0, 30) + '...',
-        role: payload.message.role
-      }
-    );
-    return payload.message;
+  newMessage(@Root() payload: { data: MessageResponse; chatId: string }, @Arg("chatId") chatId: string): MessageResponse {
+    const { message, error, type = MessageType.MESSAGE, } = payload.data;
+
+    console.log(`Publishing message to chat ${chatId} subscribers`, {
+      type,
+      messageId: message?.id,
+      role: message?.role,
+      error,
+    });
+
+    return {
+        message,
+        error,
+        type,
+    };
   }
 
   @Mutation(() => Boolean)
-  async deleteMessage(
-    @Arg("id") id: string,
-    @Ctx() context: GraphQLContext
-  ): Promise<boolean> {
+  async deleteMessage(@Arg("id") id: string, @Ctx() context: GraphQLContext): Promise<boolean> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
 

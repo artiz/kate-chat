@@ -7,7 +7,7 @@ import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
 import { initializeDatabase } from "./config/database";
 import { ChatResolver } from "./resolvers/chat.resolver";
-import { MessageResolver } from "./resolvers/message.resolver";
+import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
 import { UserResolver } from "./resolvers/user.resolver";
 import { ModelResolver } from "./resolvers/model.resolver";
 import path from "path";
@@ -17,9 +17,12 @@ import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { PubSub } from "graphql-subscriptions";
+import { MessageType } from "./entities/Message";
 
 // Load environment variables
 config();
+
+const KEEP_ALIVE = "KEEP_ALIVE";
 
 async function bootstrap() {
 // Initialize database connection
@@ -107,7 +110,6 @@ async function bootstrap() {
         context: (ctx) => {
           // Extract user from the authorization token
           const { connectionParams } = ctx;
-          console.log("WebSocket connection received with params:", connectionParams);
           
           // Extract the authorization header
           const authHeader = (connectionParams?.authorization as string) || '';
@@ -122,14 +124,22 @@ async function bootstrap() {
           } else {
             console.warn("WebSocket connection could not be authenticated");
           }
-          
+
           return { 
             user,
             pubSub // Add pubSub to the WebSocket context
           };
         },
-        onError: (error) => {
-            console.error("GraphQL subscription error:", error);
+        onSubscribe: (ctx, msg) => {
+            const chatId = msg.payload?.variables?.chatId;
+            if(chatId) {
+                setTimeout(() => {
+                    pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } })
+                }, 500); 
+            }
+        },
+        onError: (ctx, error) => {
+            console.error("GraphQL subscription error:", ctx, error);
         },
       },
       wsServer

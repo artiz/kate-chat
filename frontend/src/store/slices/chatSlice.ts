@@ -6,6 +6,12 @@ export interface Chat {
   updatedAt: string;
 }
 
+
+export enum MessageType {
+  MESSAGE = "message",
+  SYSTEM = "system",
+}
+
 export interface Message {
   id: string;
   chatId: string;

@@ -42,24 +42,17 @@ export class AIService {
   ): Promise<string> {
     // Join user duplicate messages
     messages = this.preprocessMessages(messages);
-    
+
     // Get provider service and parameters
-    const { service, params } = await this.getProviderAndParams(
-      messages, modelId, temperature, maxTokens
-    );
+    const { service, params } = await this.getProviderAndParams(messages, modelId, temperature, maxTokens);
 
-    try {
-      // Send command using Bedrock client
-      const command = new InvokeModelCommand(params);
-      const response = await bedrockClient.send(command);
+    // Send command using Bedrock client
+    const command = new InvokeModelCommand(params);
+    const response = await bedrockClient.send(command);
 
-      // Parse the response body
-      const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-      return service.parseResponse(responseBody);
-    } catch (error) {
-      console.error(`Error calling model ${modelId}:`, error);
-      throw error;
-    }
+    // Parse the response body
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+    return service.parseResponse(responseBody);
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
@@ -77,30 +70,26 @@ export class AIService {
       messages = this.preprocessMessages(messages);
 
       // Check if modelId supports streaming (Anthropic, Amazon, Mistral)
-      const supportsStreaming = 
-        modelId.startsWith("anthropic.") || 
-        modelId.startsWith("amazon.") || 
-        modelId.startsWith("mistral.");
-      
+      const supportsStreaming =
+        modelId.startsWith("anthropic.") || modelId.startsWith("amazon.") || modelId.startsWith("mistral.");
+
       if (supportsStreaming) {
         // Get provider service and parameters
-        const { service, params } = await this.getProviderAndParams(
-          messages, modelId, temperature, maxTokens
-        );
+        const { service, params } = await this.getProviderAndParams(messages, modelId, temperature, maxTokens);
 
         // Create a streaming command
         const streamCommand = new InvokeModelWithResponseStreamCommand(params);
         const streamResponse = await bedrockClient.send(streamCommand);
-        
+
         let fullResponse = "";
-        
+
         // Process the stream
         if (streamResponse.body) {
           for await (const chunk of streamResponse.body) {
             if (chunk.chunk?.bytes) {
               const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
               const chunkData = JSON.parse(decodedChunk);
-              
+
               // Extract the token based on model provider
               let token = "";
               if (modelId.startsWith("anthropic.")) {
@@ -119,7 +108,7 @@ export class AIService {
                   token = chunkData.outputs[0].text;
                 }
               }
-              
+
               if (token) {
                 fullResponse += token;
                 callbacks.onToken?.(token);
@@ -127,7 +116,7 @@ export class AIService {
             }
           }
         }
-        
+
         callbacks.onComplete?.(fullResponse);
       } else {
         // For models that don't support streaming, use the regular generation and simulate streaming
@@ -147,7 +136,7 @@ export class AIService {
       callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   }
-  
+
   // Preprocess messages to join duplicates
   private preprocessMessages(messages: MessageFormat[]): MessageFormat[] {
     return messages.reduce((acc: MessageFormat[], msg: MessageFormat) => {
@@ -176,39 +165,27 @@ export class AIService {
     let params;
 
     if (modelId.startsWith("anthropic.")) {
-      const result = await this.anthropicService.generateResponse(
-        messages, modelId, temperature, maxTokens
-      );
+      const result = await this.anthropicService.generateResponse(messages, modelId, temperature, maxTokens);
       service = this.anthropicService;
       params = result.params;
     } else if (modelId.startsWith("amazon.")) {
-      const result = await this.amazonService.generateResponse(
-        messages, modelId, temperature, maxTokens
-      );
+      const result = await this.amazonService.generateResponse(messages, modelId, temperature, maxTokens);
       service = this.amazonService;
       params = result.params;
     } else if (modelId.startsWith("ai21.")) {
-      const result = await this.ai21Service.generateResponse(
-        messages, modelId, temperature, maxTokens
-      );
+      const result = await this.ai21Service.generateResponse(messages, modelId, temperature, maxTokens);
       service = this.ai21Service;
       params = result.params;
     } else if (modelId.startsWith("cohere.")) {
-      const result = await this.cohereService.generateResponse(
-        messages, modelId, temperature, maxTokens
-      );
+      const result = await this.cohereService.generateResponse(messages, modelId, temperature, maxTokens);
       service = this.cohereService;
       params = result.params;
     } else if (modelId.startsWith("meta.")) {
-      const result = await this.metaService.generateResponse(
-        messages, modelId, temperature, maxTokens
-      );
+      const result = await this.metaService.generateResponse(messages, modelId, temperature, maxTokens);
       service = this.metaService;
       params = result.params;
     } else if (modelId.startsWith("mistral.")) {
-      const result = await this.mistralService.generateResponse(
-        messages, modelId, temperature, maxTokens
-      );
+      const result = await this.mistralService.generateResponse(messages, modelId, temperature, maxTokens);
       service = this.mistralService;
       params = result.params;
     } else {
@@ -227,12 +204,7 @@ export class AIService {
     }));
 
     // Use the existing generate method
-    return this.generateResponse(
-      formattedMessages,
-      model.modelId || DEFAULT_MODEL_ID,
-      0.7,
-      2048
-    );
+    return this.generateResponse(formattedMessages, model.modelId || DEFAULT_MODEL_ID, 0.7, 2048);
   }
 
   // Helper method to get all supported models

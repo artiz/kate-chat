@@ -74,6 +74,12 @@ type Message {
   user: User!
 }
 
+type MessageResponse {
+  error: String
+  message: Message
+  type: String!
+}
+
 type MessagesResponse {
   error: String
   hasMore: Boolean!
@@ -158,7 +164,7 @@ input RegisterInput {
 }
 
 type Subscription {
-  newMessage(chatId: String!): Message!
+  newMessage(chatId: String!): MessageResponse!
 }
 
 input UpdateChatInput {

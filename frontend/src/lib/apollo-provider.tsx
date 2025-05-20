@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from } from "@apollo/client";
+import React, { useRef, useState } from "react";
+import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from, NormalizedCacheObject } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
@@ -12,8 +12,13 @@ import { RootState } from "../store";
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const token = useSelector((state: RootState) => state.auth.token);
+  const loaded = useRef<ApolloClient<NormalizedCacheObject>>(null);
   
   const [client] = useState(() => {
+    if (loaded.current) {
+        return loaded.current;
+    }
+
     // Get the API URL from environment variables
     const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:4000/graphql";
     
@@ -52,7 +57,9 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
                 setTimeout(resolve, delay + jitter);
               }),
               on: {
-                connected: () => console.log('WebSocket connected successfully'),
+                connected: (ws) => {
+                    console.log('WebSocket connected successfully', ws);
+                },
                 error: (e) => console.error('WebSocket connection error:', e),
                 closed: () => console.log('WebSocket connection closed'),
                 connecting: () => console.log('WebSocket connecting...'),
@@ -113,7 +120,7 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       : httpLink;
 
     // Create and return the Apollo Client instance
-    return new ApolloClient({
+    const clientInstance = new ApolloClient({
       link: from([errorLink, authLink, splitLink]),
       cache: new InMemoryCache(),
       defaultOptions: {
@@ -122,6 +129,11 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         },
       },
     });
+
+
+    loaded.current = clientInstance;
+    return clientInstance;
+
   });
 
   return <ApolloProvider client={client}>{children}</ApolloProvider>;

@@ -9,6 +9,11 @@ export enum MessageRole {
   SYSTEM = "system",
 }
 
+export enum MessageType {
+  MESSAGE = "message",
+  SYSTEM = "system",
+}
+
 @ObjectType()
 @Entity("messages")
 export class Message {

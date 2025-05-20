@@ -70,7 +70,7 @@ const AppContent: React.FC = () => {
   }, [colorScheme]);
   
   return (
-    <MantineProvider theme={theme} colorScheme={colorScheme} forceColorScheme={colorScheme === 'auto' ? undefined : colorScheme}>
+    <MantineProvider theme={theme} defaultColorScheme={colorScheme} forceColorScheme={colorScheme === 'auto' ? undefined : colorScheme}>
       <Notifications position="top-right" />
       <ApolloWrapper>
         {isAuthenticated && isLoading ? (

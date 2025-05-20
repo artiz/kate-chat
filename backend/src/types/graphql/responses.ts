@@ -1,7 +1,7 @@
 import { ObjectType, Field } from "type-graphql";
 import { User } from "../../entities/User";
 import { Chat } from "../../entities/Chat";
-import { Message } from "../../entities/Message";
+import { Message, MessageType } from "../../entities/Message";
 import { Model } from "../../entities/Model";
 import { ModelProvider } from "../../entities/ModelProvider";
 
@@ -52,6 +52,9 @@ export class ChatsResponse {
 
 @ObjectType()
 export class MessageResponse {
+  @Field()
+  type: MessageType;
+
   @Field({ nullable: true })
   error?: string;
 
@@ -106,3 +109,5 @@ export class ModelProvidersResponse {
   @Field(() => [ModelProviderResponse], { nullable: true })
   providers?: ModelProviderResponse[];
 }
+
+
