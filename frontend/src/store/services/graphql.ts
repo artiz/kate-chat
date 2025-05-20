@@ -4,6 +4,35 @@ import { User } from '../slices/userSlice';
 import { Model } from '../slices/modelSlice';
 import { Chat, Message } from '../slices/chatSlice';
 
+// Define GraphQL mutations for auth
+export const REGISTER_MUTATION = gql`
+  mutation Register($input: RegisterInput!) {
+    register(input: $input) {
+      token
+      user {
+        id
+        email
+        firstName
+        lastName
+      }
+    }
+  }
+`;
+
+export const LOGIN_MUTATION = gql`
+  mutation Login($input: LoginInput!) {
+    login(input: $input) {
+      token
+      user {
+        id
+        email
+        firstName
+        lastName
+      }
+    }
+  }
+`;
+
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;

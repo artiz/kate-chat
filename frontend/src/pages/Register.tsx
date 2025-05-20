@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { useMutation } from '@apollo/client';
 import { useForm } from '@mantine/form';
+import { REGISTER_MUTATION } from '../store/services/graphql';
 import { useNavigate } from 'react-router-dom';
-import { LOGIN_MUTATION } from '../store/services/graphql';
 import {
   TextInput,
   PasswordInput,
@@ -19,9 +19,9 @@ import { notifications } from '@mantine/notifications';
 import { useAppDispatch, useAppSelector } from '../store';
 import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice';
 
-// Login mutation is imported from graphql.ts
+// Registration mutation is imported from graphql.ts
 
-const Login: React.FC = () => {
+const Register: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -33,17 +33,17 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Define login mutation
-  const [login, { loading }] = useMutation(LOGIN_MUTATION, {
+  // Define register mutation
+  const [register, { loading }] = useMutation(REGISTER_MUTATION, {
     onCompleted: (data) => {
-      dispatch(loginSuccess(data.login.token));
+      dispatch(loginSuccess(data.register.token));
       navigate('/chat');
     },
     onError: (error) => {
       dispatch(loginFailure());
       notifications.show({
-        title: 'Login Failed',
-        message: error.message || 'Failed to login. Please try again.',
+        title: 'Registration Failed',
+        message: error.message || 'Failed to register. Please try again.',
         color: 'red',
       });
     },
@@ -54,21 +54,30 @@ const Login: React.FC = () => {
     initialValues: {
       email: '',
       password: '',
+      confirmPassword: '',
+      firstName: '',
+      lastName: '',
     },
     validate: {
       email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      password: (value) => (value.length > 0 ? null : 'Password is required'),
+      password: (value) => (value.length < 8 ? 'Password must be at least 8 characters' : null),
+      confirmPassword: (value, values) => 
+        value !== values.password ? 'Passwords do not match' : null,
+      firstName: (value) => (value.length === 0 ? 'First name is required' : null),
+      lastName: (value) => (value.length === 0 ? 'Last name is required' : null),
     },
   });
 
   // Handle form submission
   const handleSubmit = async (values: typeof form.values) => {
     dispatch(loginStart());
-    await login({
+    await register({
       variables: {
         input: {
           email: values.email,
           password: values.password,
+          firstName: values.firstName,
+          lastName: values.lastName,
         },
       },
     });
@@ -77,10 +86,10 @@ const Login: React.FC = () => {
   return (
     <Container size={420} my={40}>
       <Title ta="center" fw={900}>
-        Welcome to KateChat!
+        Create an Account
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
-        Sign in to access your AI chats
+        Register to start using KateChat
       </Text>
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
@@ -93,28 +102,44 @@ const Login: React.FC = () => {
               {...form.getInputProps('email')}
             />
 
+            <Group grow>
+              <TextInput
+                label="First Name"
+                placeholder="Your first name"
+                required
+                {...form.getInputProps('firstName')}
+              />
+              <TextInput
+                label="Last Name"
+                placeholder="Your last name"
+                required
+                {...form.getInputProps('lastName')}
+              />
+            </Group>
+
             <PasswordInput
               label="Password"
               placeholder="Your password"
               required
               {...form.getInputProps('password')}
             />
+
+            <PasswordInput
+              label="Confirm Password"
+              placeholder="Confirm your password"
+              required
+              {...form.getInputProps('confirmPassword')}
+            />
           </Stack>
 
-          <Group justify="space-between" mt="lg">
-            <Anchor component="button" type="button" c="dimmed" size="sm">
-              Forgot password?
-            </Anchor>
-          </Group>
-
           <Button type="submit" fullWidth mt="xl" loading={loading}>
-            Sign in
+            Register
           </Button>
           
           <Text ta="center" mt="md">
-            Don't have an account?{' '}
-            <Anchor component="button" type="button" onClick={() => navigate('/register')}>
-              Register
+            Already have an account?{' '}
+            <Anchor component="button" type="button" onClick={() => navigate('/login')}>
+              Sign in
             </Anchor>
           </Text>
         </form>
@@ -123,4 +148,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Register;

@@ -14,6 +14,7 @@ import { ThemeProvider, useTheme } from "../hooks/useTheme";
 
 // Pages
 import Login from "../pages/Login";
+import Register from "../pages/Register";
 import ChatList from "../pages/ChatList";
 import Chat from "../pages/Chat";
 import NewChat from "../pages/NewChat";
@@ -80,6 +81,7 @@ const AppContent: React.FC = () => {
         ) : (
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             
             {/* Protected routes */}
             <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>
