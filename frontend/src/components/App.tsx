@@ -53,13 +53,7 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, data, dispatch]);
 
-  // If not authenticated, navigate to login
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate]);
-
+  
   // Make sure the theme is applied to the document element
   React.useEffect(() => {
     if (colorScheme === 'auto') {

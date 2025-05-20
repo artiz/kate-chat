@@ -170,6 +170,7 @@ type Subscription {
 input UpdateChatInput {
   description: String
   isActive: Boolean
+  modelId: String
   title: String
 }
 

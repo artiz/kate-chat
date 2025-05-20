@@ -30,11 +30,36 @@ export class ModelResolver {
       // If no models in database, fetch from Bedrock and save
       if (!models || models.length === 0) {
         const providerRepository = getRepository(ModelProvider);
-        const providers = await providerRepository.find({ where: { isActive: true } });
+        const providers = await AIService.getModelProviders();
+
+        // Save to database
+        for (const provider of providers) {
+            const existingProvider = await providerRepository.findOne({ where: { name: provider.name } });
+            if (existingProvider) {
+                // Update existing provider
+                existingProvider.description = provider.description;
+                existingProvider.apiType = provider.apiType;
+                existingProvider.isActive = true;
+                await providerRepository.save(existingProvider);
+                provider.id = existingProvider.id; // Update the provider ID
+            } else {
+                // Save new provider
+                const newProvider = new ModelProvider();
+                newProvider.name = provider.name;
+                newProvider.description = provider.description;
+                newProvider.apiType = provider.apiType;
+                newProvider.isActive = true;
+
+                const savedProvider = await providerRepository.save(newProvider);
+                providers.push(savedProvider);
+                provider.id = savedProvider.id; // Update the provider ID
+            }
+        }
 
         // Save Bedrock models to database
         models = [];
         const bedrockModels = AIService.getSupportedModels();
+
 
         for (const [modelId, modelInfo] of Object.entries(bedrockModels)) {
           // Find the provider for this model
