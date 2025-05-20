@@ -31,7 +31,6 @@ const NewChat: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [title, setTitle] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   
   const { models, loading: modelsLoading } = useAppSelector((state) => state.models);
@@ -74,7 +73,6 @@ const NewChat: React.FC = () => {
       variables: {
         input: {
           title: title.trim() || 'New Chat',
-          initialMessage: initialMessage.trim(),
           modelId: selectedModelId,
         },
       },
@@ -92,7 +90,7 @@ const NewChat: React.FC = () => {
       
       <form onSubmit={handleSubmit}>
         <Paper withBorder p="xl">
-          <Stack spacing="md">
+          <Stack gap="md">
             <TextInput
               label="Chat Title"
               placeholder="My New Chat"
@@ -104,24 +102,14 @@ const NewChat: React.FC = () => {
               label="Select AI Model"
               placeholder="Choose a model"
               data={models.map((model) => ({
-                value: model.id,
-                label: `${model.name} (${model.provider})`,
+                value: model.modelId,
+                label: `${model.name} (${model.provider?.name || model.modelId})`,
               }))}
               value={selectedModelId}
               onChange={setSelectedModelId}
               searchable
               required
               disabled={modelsLoading}
-            />
-            
-            <Textarea
-              label="Initial Message"
-              placeholder="Type your first message to the AI..."
-              autosize
-              minRows={3}
-              maxRows={6}
-              value={initialMessage}
-              onChange={(e) => setInitialMessage(e.target.value)}
             />
             
             <Group position="right" mt="xl">
