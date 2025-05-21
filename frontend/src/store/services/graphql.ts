@@ -221,6 +221,23 @@ export const graphqlApi = api.injectEndpoints({
         }
       }),
       transformResponse: (response: any) => {
+        if (response.errors) {
+            if ("UNAUTHENTICATED" === response.errors[0].extensions?.code) {
+                throw new Error(response.errors[0]);
+            }
+            
+            return {
+                user: null,
+                models: [],
+                chats: {
+                    chats: [],
+                    total: 0,
+                    hasMore: false,
+                },
+            }
+
+        }
+
         const { currentUser, getModels, getChats } = response.data;
         return {
             user: currentUser,
