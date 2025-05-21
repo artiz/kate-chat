@@ -12,11 +12,17 @@ export enum MessageType {
   SYSTEM = "system",
 }
 
+export enum MessageRole {
+    USER = "user",
+    ASSISTANT = "assistant",
+  }
+
 export interface Message {
   id: string;
   chatId: string;
   content: string;
-  role: "user" | "assistant";
+  html?: string[];
+  role: MessageRole;
   modelId?: string;
   modelName?: string;
   createdAt: string;

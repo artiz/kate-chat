@@ -24,6 +24,9 @@ import MainLayout from "../components/MainLayout";
 import { ERROR_UNAUTHORIZED } from "@/store/api";
 import { STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 
+import "../assets/katex/katex.css";
+import "highlight.js/styles/panda-syntax-light.css";
+
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
