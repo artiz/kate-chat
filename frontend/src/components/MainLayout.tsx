@@ -1,26 +1,19 @@
 import React from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { 
-  AppShell, 
-  Burger, 
-  Group, 
-  Avatar, 
-  Text, 
-  UnstyledButton, 
-  Menu, 
+import {
+  AppShell,
+  Burger,
+  Group,
+  Avatar,
+  Text,
+  UnstyledButton,
+  Menu,
   Divider,
   ActionIcon,
-  Tooltip
+  Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { 
-  IconUser, 
-  IconLogout, 
-  IconSettings, 
-  IconChevronRight,
-  IconSun,
-  IconMoon
-} from "@tabler/icons-react";
+import { IconUser, IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "../store";
 import { logout } from "../store/slices/authSlice";
@@ -33,7 +26,7 @@ const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { colorScheme, toggleColorScheme } = useTheme();
-  
+
   // Get user data from Redux store
   const user = useAppSelector(state => state.user.currentUser);
 
@@ -69,22 +62,22 @@ const MainLayout: React.FC = () => {
               KateChat
             </Text>
           </Group>
-          
+
           <Group>
-            <Tooltip label={colorScheme === 'dark' ? "Switch to light mode" : "Switch to dark mode"}>
-              <ActionIcon 
-                variant="subtle" 
+            <Tooltip label={colorScheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+              <ActionIcon
+                variant="subtle"
                 onClick={() => {
                   toggleColorScheme();
                   // Force UI update
-                  setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-                }} 
+                  setTimeout(() => window.dispatchEvent(new Event("resize")), 100);
+                }}
                 aria-label="Toggle theme"
               >
-                {colorScheme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
+                {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
               </ActionIcon>
             </Tooltip>
-            
+
             <Menu shadow="md" width={200} position="bottom-end">
               <Menu.Target>
                 <UnstyledButton>
@@ -107,18 +100,11 @@ const MainLayout: React.FC = () => {
 
               <Menu.Dropdown>
                 <Menu.Item leftSection={<IconUser size={14} />}>Profile</Menu.Item>
-                <Menu.Item 
-                  leftSection={<IconSettings size={14} />}
-                  onClick={() => navigate("/settings")}
-                >
+                <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => navigate("/settings")}>
                   Settings
                 </Menu.Item>
                 <Divider />
-                <Menu.Item 
-                  leftSection={<IconLogout size={14} />} 
-                  onClick={handleLogout} 
-                  color="red"
-                >
+                <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout} color="red">
                   Logout
                 </Menu.Item>
               </Menu.Dropdown>

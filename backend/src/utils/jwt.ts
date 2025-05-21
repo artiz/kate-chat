@@ -1,7 +1,7 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '86400'; // 24 hours in seconds
+const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret";
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "86400"; // 24 hours in seconds
 
 export interface TokenPayload {
   userId: string;

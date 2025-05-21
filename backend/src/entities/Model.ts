@@ -1,4 +1,14 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Entity,
+  ObjectIdColumn,
+  ObjectId,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  PrimaryColumn,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { ModelProvider } from "./ModelProvider";
 
@@ -6,7 +16,7 @@ import { ModelProvider } from "./ModelProvider";
 @Entity("models")
 export class Model {
   @Field(() => ID)
-  @PrimaryGeneratedColumn("uuid") 
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Field()

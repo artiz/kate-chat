@@ -20,9 +20,9 @@ export class UserResolver {
   async currentUser(@Ctx() context: { user?: TokenPayload }): Promise<User | null> {
     const { user } = context;
     if (!user?.userId) return null;
-    
+
     const dbUser = await this.userRepository.findOne({
-      where: { id: user.userId }
+      where: { id: user.userId },
     });
 
     return dbUser;
@@ -45,7 +45,7 @@ export class UserResolver {
     const user = this.userRepository.create({
       email,
       password: hashedPassword, // Note: Add this field to your User entity
-      firstName, 
+      firstName,
       lastName,
       avatarUrl,
       msalId: "-", // Provide a default or make this nullable
@@ -56,12 +56,12 @@ export class UserResolver {
     // Generate JWT token
     const token = generateToken({
       userId: savedUser.id,
-      email: savedUser.email
+      email: savedUser.email,
     });
 
     return {
       token,
-      user: savedUser
+      user: savedUser,
     };
   }
 
@@ -84,12 +84,12 @@ export class UserResolver {
     // Generate JWT token
     const token = generateToken({
       userId: user.id,
-      email: user.email
+      email: user.email,
     });
 
     return {
       token,
-      user
+      user,
     };
   }
 }

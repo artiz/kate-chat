@@ -1,50 +1,39 @@
-import React, { useEffect } from 'react';
-import { useMutation } from '@apollo/client';
-import { useForm } from '@mantine/form';
-import { useNavigate } from 'react-router-dom';
-import { LOGIN_MUTATION } from '../store/services/graphql';
-import {
-  TextInput,
-  PasswordInput,
-  Button,
-  Group,
-  Stack,
-  Container,
-  Title,
-  Paper,
-  Text,
-  Anchor,
-} from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { useAppDispatch, useAppSelector } from '../store';
-import { loginStart, loginSuccess, loginFailure } from '../store/slices/authSlice';
+import React, { useEffect } from "react";
+import { useMutation } from "@apollo/client";
+import { useForm } from "@mantine/form";
+import { useNavigate } from "react-router-dom";
+import { LOGIN_MUTATION } from "../store/services/graphql";
+import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper, Text, Anchor } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useAppDispatch, useAppSelector } from "../store";
+import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 
 // Login mutation is imported from graphql.ts
 
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+
   // If already authenticated, redirect to chat
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/chat');
+      navigate("/chat");
     }
   }, [isAuthenticated, navigate]);
 
   // Define login mutation
   const [login, { loading }] = useMutation(LOGIN_MUTATION, {
-    onCompleted: (data) => {
+    onCompleted: data => {
       dispatch(loginSuccess(data.login.token));
-      navigate('/chat');
+      navigate("/chat");
     },
-    onError: (error) => {
+    onError: error => {
       dispatch(loginFailure());
       notifications.show({
-        title: 'Login Failed',
-        message: error.message || 'Failed to login. Please try again.',
-        color: 'red',
+        title: "Login Failed",
+        message: error.message || "Failed to login. Please try again.",
+        color: "red",
       });
     },
   });
@@ -52,12 +41,12 @@ const Login: React.FC = () => {
   // Form definition
   const form = useForm({
     initialValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
     validate: {
-      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
-      password: (value) => (value.length > 0 ? null : 'Password is required'),
+      email: value => (/^\S+@\S+$/.test(value) ? null : "Invalid email"),
+      password: value => (value.length > 0 ? null : "Password is required"),
     },
   });
 
@@ -86,19 +75,9 @@ const Login: React.FC = () => {
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
-            <TextInput
-              label="Email"
-              placeholder="you@example.com"
-              required
-              {...form.getInputProps('email')}
-            />
+            <TextInput label="Email" placeholder="you@example.com" required {...form.getInputProps("email")} />
 
-            <PasswordInput
-              label="Password"
-              placeholder="Your password"
-              required
-              {...form.getInputProps('password')}
-            />
+            <PasswordInput label="Password" placeholder="Your password" required {...form.getInputProps("password")} />
           </Stack>
 
           <Group justify="space-between" mt="lg">
@@ -110,10 +89,10 @@ const Login: React.FC = () => {
           <Button type="submit" fullWidth mt="xl" loading={loading}>
             Sign in
           </Button>
-          
+
           <Text ta="center" mt="md">
-            Don't have an account?{' '}
-            <Anchor component="button" type="button" onClick={() => navigate('/register')}>
+            Don't have an account?{" "}
+            <Anchor component="button" type="button" onClick={() => navigate("/register")}>
               Register
             </Anchor>
           </Text>

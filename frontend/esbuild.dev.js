@@ -34,10 +34,7 @@ esbuild
       "process.env.NODE_ENV": '"development"',
       "process.env.REACT_APP_API_URL": '"http://localhost:4000/graphql"',
     },
-    plugins: [
-      clean({ patterns: ["./dist/*.js"] }),
-      polyfillNode(),
-    ],
+    plugins: [clean({ patterns: ["./dist/*.js"] }), polyfillNode()],
     logLevel: "info",
   })
   .then(context => {
@@ -54,7 +51,7 @@ esbuild
 
         // Copy index.html to dist
         fs.copyFileSync("./src/index.html", "./dist/index.html");
-        
+
         // Copy CSS to dist
         if (fs.existsSync("./src/index.css")) {
           fs.copyFileSync("./src/index.css", "./dist/index.css");

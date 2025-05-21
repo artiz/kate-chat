@@ -24,18 +24,18 @@ import MainLayout from "../components/MainLayout";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  return isAuthenticated ? element : <Navigate to="/login" replace />;  
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  return isAuthenticated ? element : <Navigate to="/login" replace />;
 };
 
 const AppContent: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
-  
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+
   // Get theme from context
   const { colorScheme } = useTheme();
-  
+
   // Use RTK Query hook to fetch initial data
   const { data, isLoading, isError } = useGetInitialDataQuery(undefined, {
     skip: !isAuthenticated,
@@ -44,7 +44,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && data) {
-      const selectedModel = data.models.find((model) => model.isDefault) || data.models[0];
+      const selectedModel = data.models.find(model => model.isDefault) || data.models[0];
 
       dispatch(setUser(data.user));
       dispatch(setModels(data.models));
@@ -53,19 +53,22 @@ const AppContent: React.FC = () => {
     }
   }, [isAuthenticated, data, dispatch]);
 
-  
   // Make sure the theme is applied to the document element
   React.useEffect(() => {
-    if (colorScheme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.dataset.mantine = prefersDark ? 'dark' : 'light';
+    if (colorScheme === "auto") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.mantine = prefersDark ? "dark" : "light";
     } else {
       document.documentElement.dataset.mantine = colorScheme;
     }
   }, [colorScheme]);
-  
+
   return (
-    <MantineProvider theme={theme} defaultColorScheme={colorScheme} forceColorScheme={colorScheme === 'auto' ? undefined : colorScheme}>
+    <MantineProvider
+      theme={theme}
+      defaultColorScheme={colorScheme}
+      forceColorScheme={colorScheme === "auto" ? undefined : colorScheme}
+    >
       <Notifications position="top-right" />
       <ApolloWrapper>
         {isAuthenticated && isLoading ? (
@@ -76,7 +79,7 @@ const AppContent: React.FC = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
+
             {/* Protected routes */}
             <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>
               <Route index element={<Navigate to="/chat" replace />} />
@@ -86,7 +89,7 @@ const AppContent: React.FC = () => {
               <Route path="models" element={<Models />} />
               <Route path="settings" element={<Settings />} />
             </Route>
-            
+
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -98,21 +101,21 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   // Get the theme from localStorage directly for initial load
-  const savedTheme = localStorage.getItem('ui-theme') || 'light';
-  
+  const savedTheme = localStorage.getItem("ui-theme") || "light";
+
   // Set initial theme on document element
   React.useEffect(() => {
-    if (savedTheme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.dataset.mantine = prefersDark ? 'dark' : 'light';
+    if (savedTheme === "auto") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.mantine = prefersDark ? "dark" : "light";
     } else {
       document.documentElement.dataset.mantine = savedTheme;
     }
   }, [savedTheme]);
-  
+
   return (
     <ThemeProvider>
-      <ColorSchemeScript defaultColorScheme={savedTheme as 'light' | 'dark' | 'auto'} />
+      <ColorSchemeScript defaultColorScheme={savedTheme as "light" | "dark" | "auto"} />
       <AppContent />
     </ThemeProvider>
   );

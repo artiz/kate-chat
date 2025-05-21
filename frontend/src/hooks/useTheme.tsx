@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect } from 'react';
-import { useLocalStorage } from '@mantine/hooks';
-import { ColorScheme } from '@mantine/core';
+import React, { createContext, useContext, useEffect } from "react";
+import { useLocalStorage } from "@mantine/hooks";
+import { ColorScheme } from "@mantine/core";
 
 // Define the ThemeContext type
 interface ThemeContextType {
@@ -16,15 +16,15 @@ export const ThemeContext = createContext<ThemeContextType | undefined>(undefine
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Use localStorage to store theme preference
   const [colorScheme, setColorScheme] = useLocalStorage<ColorScheme>({
-    key: 'ui-theme',
-    defaultValue: 'light',
+    key: "ui-theme",
+    defaultValue: "light",
   });
 
   // Apply theme changes to document
   useEffect(() => {
-    if (colorScheme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.dataset.mantine = prefersDark ? 'dark' : 'light';
+    if (colorScheme === "auto") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.mantine = prefersDark ? "dark" : "light";
     } else {
       document.documentElement.dataset.mantine = colorScheme;
     }
@@ -32,28 +32,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Toggle between light and dark themes
   const toggleColorScheme = () => {
-    const newColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
+    const newColorScheme = colorScheme === "dark" ? "light" : "dark";
     setColorScheme(newColorScheme);
     document.documentElement.dataset.mantine = newColorScheme;
   };
-  
+
   // Listen for system color scheme changes if set to 'auto'
   useEffect(() => {
-    if (colorScheme === 'auto') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    if (colorScheme === "auto") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = (e: MediaQueryListEvent) => {
-        document.documentElement.dataset.mantine = e.matches ? 'dark' : 'light';
+        document.documentElement.dataset.mantine = e.matches ? "dark" : "light";
       };
-      
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
   }, [colorScheme]);
 
   return (
-    <ThemeContext.Provider value={{ colorScheme, setColorScheme, toggleColorScheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={{ colorScheme, setColorScheme, toggleColorScheme }}>{children}</ThemeContext.Provider>
   );
 };
 
@@ -61,7 +59,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 };

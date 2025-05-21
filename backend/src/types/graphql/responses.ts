@@ -109,5 +109,3 @@ export class ModelProvidersResponse {
   @Field(() => [ModelProviderResponse], { nullable: true })
   providers?: ModelProviderResponse[];
 }
-
-

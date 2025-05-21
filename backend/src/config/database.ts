@@ -8,43 +8,41 @@ import { User } from "../entities/User";
 const logging = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "dev";
 
 let dbOptions: DataSourceOptions = {
-    type: "sqlite",
-    database: process.env.DB_NAME || "katechat.sqlite",
+  type: "sqlite",
+  database: process.env.DB_NAME || "katechat.sqlite",
 };
 
 if (process.env.DB_TYPE === "mysql") {
-    dbOptions = {
-        type: "mysql",
-        url: process.env.DB_URL,
-        username: process.env.DB_USERNAME,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-    };
-  
+  dbOptions = {
+    type: "mysql",
+    url: process.env.DB_URL,
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+  };
 } else if (process.env.DB_TYPE === "postgres") {
-    dbOptions = {
-        type: "postgres",
-        url: process.env.DB_URL,
-        username: process.env.DB_USERNAME,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-    };
-
+  dbOptions = {
+    type: "postgres",
+    url: process.env.DB_URL,
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+  };
 } else if (process.env.DB_TYPE === "mssql") {
-    dbOptions = {
-        type: "mssql",
-        url: process.env.DB_URL,
-        username: process.env.DB_USERNAME,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
-    };
+  dbOptions = {
+    type: "mssql",
+    url: process.env.DB_URL,
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+  };
 } else if (process.env.DB_TYPE === "mongodb") {
-    dbOptions = {
-        type: "mongodb",
-        url: process.env.DB_URL,
-    };
+  dbOptions = {
+    type: "mongodb",
+    url: process.env.DB_URL,
+  };
 } else if (process.env.DB_TYPE !== "sqlite") {
-    throw new Error(`Unsupported DB_TYPE: ${process.env.DB_TYPE}`);
+  throw new Error(`Unsupported DB_TYPE: ${process.env.DB_TYPE}`);
 }
 
 // Create TypeORM data source

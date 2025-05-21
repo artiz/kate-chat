@@ -31,30 +31,24 @@ esbuild
       ".ttf": "file",
       ".eot": "file",
     },
-    plugins: [
-      clean({ patterns: ["./dist/*"] }),
-      polyfillNode(),
-    ],
+    plugins: [clean({ patterns: ["./dist/*"] }), polyfillNode()],
     define: {
       "process.env.NODE_ENV": '"production"',
       "process.env.REACT_APP_API_URL": '"http://localhost:4000/graphql"',
     },
     metafile: true,
   })
-  .then((result) => {
+  .then(result => {
     console.log("⚡ Build complete!");
-    
+
     // Output bundle size analysis
-    const outputSize = Object.entries(result.metafile.outputs).reduce(
-      (total, [name, data]) => {
-        return total + data.bytes;
-      },
-      0
-    );
-    
+    const outputSize = Object.entries(result.metafile.outputs).reduce((total, [name, data]) => {
+      return total + data.bytes;
+    }, 0);
+
     console.log(`📦 Total bundle size: ${(outputSize / 1024 / 1024).toFixed(2)}MB`);
   })
-  .catch((e) => {
+  .catch(e => {
     console.error("❌ Build failed:", e);
     process.exit(1);
   });

@@ -1,5 +1,13 @@
 import React, { useRef, useState } from "react";
-import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from, NormalizedCacheObject } from "@apollo/client";
+import {
+  ApolloClient,
+  ApolloProvider,
+  InMemoryCache,
+  HttpLink,
+  split,
+  from,
+  NormalizedCacheObject,
+} from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
@@ -13,21 +21,21 @@ import { RootState } from "../store";
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const token = useSelector((state: RootState) => state.auth.token);
   const loaded = useRef<ApolloClient<NormalizedCacheObject>>(null);
-  
+
   const [client] = useState(() => {
     if (loaded.current) {
-        return loaded.current;
+      return loaded.current;
     }
 
     // Get the API URL from environment variables
     const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:4000/graphql";
-    
+
     // Extract the base URL from the API URL
-    const baseUrl = apiUrl.replace(/\/graphql$/, '');
-    
+    const baseUrl = apiUrl.replace(/\/graphql$/, "");
+
     // Create WebSocket URL for subscriptions
     const wsUrl = baseUrl.replace(/^http/, "ws") + "/graphql/subscriptions";
-    
+
     console.log("API URL:", apiUrl);
     console.log("WebSocket URL:", wsUrl);
 
@@ -49,22 +57,23 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
                 return params;
               },
               retryAttempts: 5,
-              retryWait: (retries) => new Promise((resolve) => {
-                // Exponential backoff with jitter
-                const delay = Math.min(1000 * 2 ** retries, 30000);
-                const jitter = Math.random() * 1000;
-                console.log(`WS reconnecting in ${(delay + jitter) / 1000}s (attempt ${retries + 1})`);
-                setTimeout(resolve, delay + jitter);
-              }),
+              retryWait: retries =>
+                new Promise(resolve => {
+                  // Exponential backoff with jitter
+                  const delay = Math.min(1000 * 2 ** retries, 30000);
+                  const jitter = Math.random() * 1000;
+                  console.log(`WS reconnecting in ${(delay + jitter) / 1000}s (attempt ${retries + 1})`);
+                  setTimeout(resolve, delay + jitter);
+                }),
               on: {
-                connected: (ws) => {
-                    console.log('WebSocket connected successfully', ws);
+                connected: ws => {
+                  console.log("WebSocket connected successfully", ws);
                 },
-                error: (e) => console.error('WebSocket connection error:', e),
-                closed: () => console.log('WebSocket connection closed'),
-                connecting: () => console.log('WebSocket connecting...'),
-                opened: (socket) => console.log('WebSocket connection opened'),
-              }
+                error: e => console.error("WebSocket connection error:", e),
+                closed: () => console.log("WebSocket connection closed"),
+                connecting: () => console.log("WebSocket connecting..."),
+                opened: socket => console.log("WebSocket connection opened"),
+              },
             })
           )
         : null;
@@ -130,10 +139,8 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       },
     });
 
-
     loaded.current = clientInstance;
     return clientInstance;
-
   });
 
   return <ApolloProvider client={client}>{children}</ApolloProvider>;

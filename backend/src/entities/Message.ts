@@ -1,4 +1,14 @@
-import { Entity, ObjectIdColumn, ObjectId, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Entity,
+  ObjectIdColumn,
+  ObjectId,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  PrimaryColumn,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
@@ -18,7 +28,7 @@ export enum MessageType {
 @Entity("messages")
 export class Message {
   @Field(() => ID)
-  @PrimaryGeneratedColumn("uuid") 
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Field()

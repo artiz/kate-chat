@@ -1,8 +1,8 @@
-import { gql } from '@apollo/client';
-import { api } from '../api';
-import { User } from '../slices/userSlice';
-import { Model } from '../slices/modelSlice';
-import { Chat, Message } from '../slices/chatSlice';
+import { gql } from "@apollo/client";
+import { api } from "../api";
+import { User } from "../slices/userSlice";
+import { Model } from "../slices/modelSlice";
+import { Chat, Message } from "../slices/chatSlice";
 
 // Define GraphQL mutations for auth
 export const REGISTER_MUTATION = gql`
@@ -86,12 +86,12 @@ interface GetChatMessagesResponse {
 
 // Create the API endpoints
 export const graphqlApi = api.injectEndpoints({
-  endpoints: (builder) => ({
+  endpoints: builder => ({
     // User queries
     getCurrentUser: builder.query<User, void>({
       query: () => ({
-        url: '/graphql',
-        method: 'POST',
+        url: "/graphql",
+        method: "POST",
         body: {
           query: `
             query CurrentUser {
@@ -102,18 +102,18 @@ export const graphqlApi = api.injectEndpoints({
                 lastName
               }
             }
-          `
-        }
+          `,
+        },
       }),
       transformResponse: (response: CurrentUserResponse) => response.currentUser,
-      providesTags: ['User'],
+      providesTags: ["User"],
     }),
 
     // Models queries
     getModels: builder.query<Model[], void>({
       query: () => ({
-        url: '/graphql',
-        method: 'POST',
+        url: "/graphql",
+        method: "POST",
         body: {
           query: `
             query GetModels {
@@ -129,18 +129,18 @@ export const graphqlApi = api.injectEndpoints({
                 }
               }
             }
-          `
-        }
+          `,
+        },
       }),
       transformResponse: (response: GetModelsResponse) => response.getModels.models,
-      providesTags: ['Model'],
+      providesTags: ["Model"],
     }),
 
     // Chat queries
-    getChats: builder.query<{ chats: Chat[], total: number, hasMore: boolean }, { limit: number, offset: number }>({
+    getChats: builder.query<{ chats: Chat[]; total: number; hasMore: boolean }, { limit: number; offset: number }>({
       query: ({ limit, offset }) => ({
-        url: '/graphql',
-        method: 'POST',
+        url: "/graphql",
+        method: "POST",
         body: {
           query: `
             query GetUserChats($input: GetChatsInput!) {
@@ -157,17 +157,14 @@ export const graphqlApi = api.injectEndpoints({
           `,
           variables: {
             input: { limit, offset },
-          }
-        }
+          },
+        },
       }),
       transformResponse: (response: GetChatsResponse) => response.getChats,
-      providesTags: (result) =>
+      providesTags: result =>
         result
-          ? [
-              ...result.chats.map(({ id }) => ({ type: 'Chat' as const, id })),
-              { type: 'Chat', id: 'LIST' },
-            ]
-          : [{ type: 'Chat', id: 'LIST' }],
+          ? [...result.chats.map(({ id }) => ({ type: "Chat" as const, id })), { type: "Chat", id: "LIST" }]
+          : [{ type: "Chat", id: "LIST" }],
     }),
 
     // Initial data load - combines user, models, and chats
@@ -179,13 +176,13 @@ export const graphqlApi = api.injectEndpoints({
           chats: Chat[];
           total: number;
           hasMore: boolean;
-        }
+        };
       },
       void
     >({
       query: () => ({
-        url: '/graphql',
-        method: 'POST',
+        url: "/graphql",
+        method: "POST",
         body: {
           query: `
             query GetInitialData {
@@ -217,46 +214,40 @@ export const graphqlApi = api.injectEndpoints({
                 hasMore
               }
             }
-          `
-        }
+          `,
+        },
       }),
       transformResponse: (response: any) => {
         if (response.errors) {
-            if ("UNAUTHENTICATED" === response.errors[0].extensions?.code) {
-                throw new Error(response.errors[0]);
-            }
-            
-            return {
-                user: null,
-                models: [],
-                chats: {
-                    chats: [],
-                    total: 0,
-                    hasMore: false,
-                },
-            }
+          if ("UNAUTHENTICATED" === response.errors[0].extensions?.code) {
+            throw new Error(response.errors[0]);
+          }
 
+          return {
+            user: null,
+            models: [],
+            chats: {
+              chats: [],
+              total: 0,
+              hasMore: false,
+            },
+          };
         }
 
         const { currentUser, getModels, getChats } = response.data;
         return {
-            user: currentUser,
-            models: getModels?.models || [],
-            chats: getChats || {
-                chats: [],
-                total: 0,
-                hasMore: false,
-            },
+          user: currentUser,
+          models: getModels?.models || [],
+          chats: getChats || {
+            chats: [],
+            total: 0,
+            hasMore: false,
+          },
         };
       },
-      providesTags: ['User', 'Model', { type: 'Chat', id: 'LIST' }],
+      providesTags: ["User", "Model", { type: "Chat", id: "LIST" }],
     }),
   }),
 });
 
-export const {
-  useGetCurrentUserQuery,
-  useGetModelsQuery,
-  useGetChatsQuery,
-  useGetInitialDataQuery,
-} = graphqlApi;
+export const { useGetCurrentUserQuery, useGetModelsQuery, useGetChatsQuery, useGetInitialDataQuery } = graphqlApi;

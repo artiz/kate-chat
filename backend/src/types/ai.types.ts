@@ -20,7 +20,7 @@ export interface ModelProvider {
     temperature?: number,
     maxTokens?: number
   ): Promise<string>;
-  
+
   streamResponse(
     messages: MessageFormat[],
     modelId: string,

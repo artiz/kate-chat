@@ -206,8 +206,11 @@ export class MessageResolver {
       return payload.chatId === args.chatId;
     },
   })
-  newMessage(@Root() payload: { data: MessageResponse; chatId: string }, @Arg("chatId") chatId: string): MessageResponse {
-    const { message, error, type = MessageType.MESSAGE, } = payload.data;
+  newMessage(
+    @Root() payload: { data: MessageResponse; chatId: string },
+    @Arg("chatId") chatId: string
+  ): MessageResponse {
+    const { message, error, type = MessageType.MESSAGE } = payload.data;
 
     console.log(`Publishing message to chat ${chatId} subscribers`, {
       type,
@@ -217,9 +220,9 @@ export class MessageResolver {
     });
 
     return {
-        message,
-        error,
-        type,
+      message,
+      error,
+      type,
     };
   }
 

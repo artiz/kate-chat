@@ -1,11 +1,10 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export interface Chat {
   id: string;
   title: string;
   updatedAt: string;
 }
-
 
 export enum MessageType {
   MESSAGE = "message",
@@ -16,7 +15,7 @@ export interface Message {
   id: string;
   chatId: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   modelId?: string;
   modelName?: string;
   createdAt: string;
@@ -43,10 +42,10 @@ const initialState: ChatsState = {
 };
 
 const chatSlice = createSlice({
-  name: 'chats',
+  name: "chats",
   initialState,
   reducers: {
-    setChats(state, action: PayloadAction<{ chats: Chat[], total: number, hasMore: boolean }>) {
+    setChats(state, action: PayloadAction<{ chats: Chat[]; total: number; hasMore: boolean }>) {
       state.chats = action.payload.chats;
       state.total = action.payload.total;
       state.hasMore = action.payload.hasMore;
@@ -57,9 +56,7 @@ const chatSlice = createSlice({
       state.total += 1;
     },
     updateChat(state, action: PayloadAction<Chat>) {
-      state.chats = state.chats.map(chat => 
-        chat.id === action.payload.id ? action.payload : chat
-      );
+      state.chats = state.chats.map(chat => (chat.id === action.payload.id ? action.payload : chat));
     },
     setCurrentChat(state, action: PayloadAction<Chat | null>) {
       state.currentChat = action.payload;
@@ -80,14 +77,6 @@ const chatSlice = createSlice({
   },
 });
 
-export const { 
-  setChats, 
-  addChat, 
-  updateChat,
-  setCurrentChat, 
-  setMessages, 
-  addMessage,
-  setChatLoading, 
-  setChatError 
-} = chatSlice.actions;
+export const { setChats, addChat, updateChat, setCurrentChat, setMessages, addMessage, setChatLoading, setChatError } =
+  chatSlice.actions;
 export default chatSlice.reducer;

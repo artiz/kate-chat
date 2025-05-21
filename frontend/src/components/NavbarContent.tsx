@@ -8,9 +8,9 @@ const NavbarContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  
+
   // Get chats from Redux store
-  const { chats, loading, error } = useAppSelector((state) => state.chats);
+  const { chats, loading, error } = useAppSelector(state => state.chats);
 
   // Update current chat ID from URL
   useEffect(() => {
@@ -62,7 +62,7 @@ const NavbarContent: React.FC = () => {
                 No chats yet
               </Text>
             ) : (
-              chats.map((chat) => (
+              chats.map(chat => (
                 <NavLink
                   key={chat.id}
                   active={chat.id === currentChatId}
