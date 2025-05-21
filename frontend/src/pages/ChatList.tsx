@@ -8,7 +8,7 @@ const ChatList: React.FC = () => {
   const navigate = useNavigate();
   const { chats, loading, error } = useAppSelector(state => state.chats);
 
-  // Handle creating a new chat
+  // Handle creating a new chat or using existing pristine chat
   const handleNewChat = () => {
     navigate("/chat/new");
   };

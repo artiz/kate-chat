@@ -86,6 +86,7 @@ export class ChatResolver {
       ...input,
       user: dbUser,
       isActive: true,
+      isPristine: true,
     });
 
     return await this.chatRepository.save(chat);

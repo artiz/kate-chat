@@ -37,11 +37,10 @@ const MainLayout: React.FC = () => {
     navigate("/login");
   };
 
-   if (!user) {
+  if (!user) {
     return null;
   }
 
-  
   // User data for display
   const userInitials = `${user?.firstName?.[0]}${user?.lastName?.[0]}`.toUpperCase();
 
@@ -100,7 +99,6 @@ const MainLayout: React.FC = () => {
               </Menu.Target>
 
               <Menu.Dropdown>
-                <Menu.Item leftSection={<IconUser size={14} />}>Profile</Menu.Item>
                 <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => navigate("/settings")}>
                   Settings
                 </Menu.Item>

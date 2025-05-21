@@ -47,6 +47,22 @@ const NavbarContent: React.FC = () => {
 
         <Divider my="xs" />
 
+        <Stack gap="xs">
+          <NavLink
+            label="Models"
+            leftSection={<IconRobot size={16} />}
+            active={location.pathname === "/models"}
+            onClick={handleModelsClick}
+          />
+          <NavLink
+            label="Settings"
+            leftSection={<IconSettings size={16} />}
+            active={location.pathname === "/settings"}
+            onClick={() => navigate("/settings")}
+          />
+        </Stack>
+        <Divider my="xs" />
+
         <ScrollArea h="calc(100vh - 180px)" scrollbarSize={6}>
           <Stack gap="xs">
             {loading ? (
@@ -74,22 +90,6 @@ const NavbarContent: React.FC = () => {
             )}
           </Stack>
         </ScrollArea>
-      </Stack>
-
-      <Stack gap="xs">
-        <Divider my="xs" />
-        <NavLink
-          label="Models"
-          leftSection={<IconRobot size={16} />}
-          active={location.pathname === "/models"}
-          onClick={handleModelsClick}
-        />
-        <NavLink
-          label="Settings"
-          leftSection={<IconSettings size={16} />}
-          active={location.pathname === "/settings"}
-          onClick={() => navigate("/settings")}
-        />
       </Stack>
     </Stack>
   );

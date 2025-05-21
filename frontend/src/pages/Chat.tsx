@@ -45,6 +45,7 @@ const GET_CHAT = gql`
       id
       title
       modelId
+      isPristine
       createdAt
       updatedAt
     }
@@ -223,7 +224,7 @@ const Chat: React.FC = () => {
   };
 
   // Handle model change
-  const handleModelChange = (modelId: string) => {
+  const handleModelChange = (modelId: string | null) => {
     const model = models.find(m => m.id === modelId);
     if (!model || !id) return;
 
@@ -248,7 +249,7 @@ const Chat: React.FC = () => {
     return (
       <Container size="md" py="xl">
         <Paper p="xl" withBorder>
-          <Title order={2} color="red">
+          <Title order={2} c="red">
             Error Loading Chat
           </Title>
           <Text mt="md">{error.message}</Text>
@@ -307,7 +308,6 @@ const Chat: React.FC = () => {
           style={{ minWidth: 180 }}
           clearable={false}
           disabled={sending || isLoading}
-          withinPortal
         />
         {selectedModel && (
           <Tooltip label={`Provider: ${selectedModel.provider?.name || "Unknown"}`}>

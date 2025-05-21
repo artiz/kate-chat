@@ -4,6 +4,7 @@ export interface Chat {
   id: string;
   title: string;
   updatedAt: string;
+  isPristine?: boolean;
 }
 
 export enum MessageType {
@@ -25,6 +26,7 @@ interface ChatsState {
   chats: Chat[];
   currentChat: Chat | null;
   messages: Message[];
+  messagesMap: Record<string, number>;
   loading: boolean;
   error: string | null;
   hasMore: boolean;
@@ -35,10 +37,21 @@ const initialState: ChatsState = {
   chats: [],
   currentChat: null,
   messages: [],
+  messagesMap: {},
   loading: false,
   error: null,
   hasMore: false,
   total: 0,
+};
+
+const loadMessagesMap = (messages: Message[]) => {
+  return messages.reduce(
+    (map, message, index) => {
+      map[message.id] = index;
+      return map;
+    },
+    {} as Record<string, number>
+  );
 };
 
 const chatSlice = createSlice({
@@ -63,9 +76,17 @@ const chatSlice = createSlice({
     },
     setMessages(state, action: PayloadAction<Message[]>) {
       state.messages = action.payload;
+      state.messagesMap = loadMessagesMap(action.payload);
     },
     addMessage(state, action: PayloadAction<Message>) {
-      state.messages = [...state.messages, action.payload];
+      const message = action.payload;
+      const pos = state.messagesMap[message.id];
+      if (pos !== undefined) {
+        state.messages[pos] = message;
+      } else {
+        state.messagesMap[message.id] = state.messages.length;
+        state.messages.push(message);
+      }
     },
     setChatLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;

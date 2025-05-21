@@ -40,6 +40,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       title
       description
       modelId
+      isPristine
       updatedAt
     }
   }
@@ -52,6 +53,7 @@ export const CREATE_CHAT_MUTATION = gql`
       title
       description
       modelId
+      isPristine
       createdAt
     }
   }
@@ -148,6 +150,7 @@ export const graphqlApi = api.injectEndpoints({
                 chats {
                   id
                   title
+                  isPristine
                   updatedAt
                 }
                 total
@@ -208,6 +211,7 @@ export const graphqlApi = api.injectEndpoints({
                 chats {
                   id
                   title
+                  isPristine
                   updatedAt
                 }
                 total

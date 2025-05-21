@@ -40,6 +40,10 @@ export class Chat {
   isActive: boolean;
 
   @Field()
+  @Column({ default: false })
+  isPristine: boolean;
+
+  @Field()
   @CreateDateColumn()
   createdAt: Date;
 

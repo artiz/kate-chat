@@ -13,6 +13,7 @@ type Chat {
   description: String!
   id: ID!
   isActive: Boolean!
+  isPristine: Boolean!
   modelId: String
   title: String!
   updatedAt: DateTimeISO!

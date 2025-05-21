@@ -134,6 +134,12 @@ export class MessageResolver {
 
     const message = await this.messageRepository.save(messageData);
 
+    // Set chat isPristine to false when adding the first message
+    if (chat.isPristine) {
+      chat.isPristine = false;
+      await this.chatRepository.save(chat);
+    }
+
     const { pubSub } = context;
 
     // Publish the new message event if pubSub is available

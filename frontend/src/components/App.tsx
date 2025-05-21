@@ -17,7 +17,7 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ChatList from "../pages/ChatList";
 import Chat from "../pages/Chat";
-import NewChat from "../pages/NewChat";
+import CreateChat from "../pages/CreateChat";
 import Models from "../pages/Models";
 import Settings from "../pages/Settings";
 import MainLayout from "../components/MainLayout";
@@ -39,7 +39,12 @@ const AppContent: React.FC = () => {
   const { colorScheme } = useTheme();
 
   // Use RTK Query hook to fetch initial data
-  const { data: initData, isLoading, isError, error } = useGetInitialDataQuery(undefined, {
+  const {
+    data: initData,
+    isLoading,
+    isError,
+    error,
+  } = useGetInitialDataQuery(undefined, {
     skip: !isAuthenticated,
   });
 
@@ -63,7 +68,6 @@ const AppContent: React.FC = () => {
         navigate("/login");
       }
     }
-    
   }, [isError, error, navigate]);
 
   // Make sure the theme is applied to the document element
@@ -98,7 +102,7 @@ const AppContent: React.FC = () => {
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatList />} />
               <Route path="chat/:id" element={<Chat />} />
-              <Route path="chat/new" element={<NewChat />} />
+              <Route path="chat/new" element={<CreateChat />} />
               <Route path="models" element={<Models />} />
               <Route path="settings" element={<Settings />} />
             </Route>
