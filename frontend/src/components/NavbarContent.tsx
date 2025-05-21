@@ -7,7 +7,7 @@ import { useAppSelector } from "../store";
 const NavbarContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string>();
 
   // Get chats from Redux store
   const { chats, loading, error } = useAppSelector(state => state.chats);
@@ -20,6 +20,8 @@ const NavbarContent: React.FC = () => {
       if (id && id !== "new") {
         setCurrentChatId(id);
       }
+    } else {
+      setCurrentChatId(undefined);
     }
   }, [location]);
 

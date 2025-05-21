@@ -15,7 +15,28 @@ import { MetaService } from "./providers/meta.service";
 import { MistralService } from "./providers/mistral.service";
 
 const CURRENT_REGION = process.env.AWS_REGION || "us-west-2";
+interface ModelAvailabilityRecord {
+  provider: string;
+  modelId: string;
+  modelIdOverride?: string;
+  name: string;
+  disabled?: boolean;
+  regions: string[];
+}
 
+export interface BedrockModelInfo {
+  provider: string;
+  name: string;
+  modelArn?: string;
+  description: string;
+  supportsStreaming: boolean;
+  supportsTextIn: boolean;
+  supportsTextOut: boolean;
+  supportsImageIn: boolean;
+  supportsImageOut: boolean;
+  supportsEmbeddingsIn: boolean;
+  currentRegion: string;
+}
 export class AIService {
   private anthropicService: AnthropicService;
   private amazonService: AmazonService;
@@ -68,10 +89,10 @@ export class AIService {
 
       // Preprocess messages
       messages = this.preprocessMessages(messages);
+      const provider = this.getModelProvider(modelId);
 
       // Check if modelId supports streaming (Anthropic, Amazon, Mistral)
-      const supportsStreaming =
-        modelId.startsWith("anthropic.") || modelId.startsWith("amazon.") || modelId.startsWith("mistral.");
+      const supportsStreaming = provider === "anthropic" || provider === "amazon" || provider === "mistral";
 
       if (supportsStreaming) {
         // Get provider service and parameters
@@ -92,17 +113,17 @@ export class AIService {
 
               // Extract the token based on model provider
               let token = "";
-              if (modelId.startsWith("anthropic.")) {
+              if (provider === "anthropic") {
                 // For Anthropic models
                 if (chunkData.type === "content_block_delta" && chunkData.delta?.text) {
                   token = chunkData.delta.text;
                 }
-              } else if (modelId.startsWith("amazon.")) {
+              } else if (provider === "amazon") {
                 // For Amazon models
                 if (chunkData.outputText) {
                   token = chunkData.outputText;
                 }
-              } else if (modelId.startsWith("mistral.")) {
+              } else if (provider === "mistral") {
                 // For Mistral models
                 if (chunkData.outputs && chunkData.outputs[0]?.text) {
                   token = chunkData.outputs[0].text;
@@ -174,35 +195,45 @@ export class AIService {
     let service;
     let params;
 
-    if (modelId.startsWith("anthropic.")) {
+    let provider = this.getModelProvider(modelId);
+
+    if (provider == "anthropic") {
       const result = await this.anthropicService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.anthropicService;
       params = result.params;
-    } else if (modelId.startsWith("amazon.")) {
+    } else if (provider == "amazon") {
       const result = await this.amazonService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.amazonService;
       params = result.params;
-    } else if (modelId.startsWith("ai21.")) {
+    } else if (provider == "ai21") {
       const result = await this.ai21Service.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.ai21Service;
       params = result.params;
-    } else if (modelId.startsWith("cohere.")) {
+    } else if (provider == "cohere") {
       const result = await this.cohereService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.cohereService;
       params = result.params;
-    } else if (modelId.startsWith("meta.")) {
+    } else if (provider == "meta") {
       const result = await this.metaService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.metaService;
       params = result.params;
-    } else if (modelId.startsWith("mistral.")) {
+    } else if (provider == "mistral") {
       const result = await this.mistralService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.mistralService;
       params = result.params;
     } else {
-      throw new Error("Unsupported model provider");
+      throw new Error(`Unsupported model provider: ${provider}`);
     }
 
     return { service, params };
+  }
+
+  getModelProvider(modelId: string) {
+    if (modelId.startsWith("us.amazon")) {
+      return modelId.substring(3).split(".")[0];
+    }
+
+    return modelId.split(".")[0];
   }
 
   // Adapter method for message resolver
@@ -218,13 +249,62 @@ export class AIService {
     return this.generateResponse(formattedMessages, model.modelId, 0.7, 2048);
   }
 
+  async streamCompletion(
+    messages: Message[],
+    model: Model,
+    callback: (token: string, completed?: boolean, error?: Error) => void
+  ) {
+    const formattedMessages = messages.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.createdAt,
+    }));
+
+    // Use the existing generate method
+    this.streamResponse(
+      formattedMessages,
+      model.modelId,
+      {
+        onToken: (token: string) => {
+          callback(token);
+          console.log("Received token:", token);
+        },
+        onComplete: (response: string) => {
+          callback(response, true);
+          console.log("Streaming completed with response:", response);
+        },
+        onError: (error: Error) => {
+          // Handle error
+          callback("", true, error);
+          console.error("Error during streaming:", error);
+        },
+      },
+      0.7,
+      2048
+    );
+  }
+
   // Helper method to get all supported models with their metadata
-  static async getBedrockModels(): Promise<Record<string, any>> {
-    const modelsRegions = ModelAvailabilityRegions.reduce((acc: Record<string, string[]>, region) => {
-      const { modelId, regions } = region;
-      acc[modelId] = regions;
-      return acc;
-    }, {});
+  static async getBedrockModels(): Promise<Record<string, BedrockModelInfo>> {
+    const modelsRegions = (ModelAvailabilityRegions as ModelAvailabilityRecord[]).reduce(
+      (acc: Record<string, string[]>, region) => {
+        const { modelId, regions, disabled } = region;
+        acc[modelId] = disabled ? [] : regions;
+        return acc;
+      },
+      {}
+    );
+
+    const modelIdOverrides = (ModelAvailabilityRegions as ModelAvailabilityRecord[]).reduce(
+      (acc: Record<string, string>, region) => {
+        const { modelId, modelIdOverride } = region;
+        if (modelIdOverride) {
+          acc[modelId] = modelIdOverride;
+        }
+        return acc;
+      },
+      {}
+    );
 
     const command = new ListFoundationModelsCommand({});
     const response = await bedrockManagementClient.send(command);
@@ -242,7 +322,7 @@ export class AIService {
       }
 
       if (model.modelId && model.providerName) {
-        const modelId = model.modelId;
+        const modelId = modelIdOverrides[model.modelId] || model.modelId;
         const providerName = model.providerName;
 
         models[modelId] = {

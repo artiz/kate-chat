@@ -25,9 +25,9 @@ export class Model {
   @Column()
   modelId: string;
 
-  @Field()
-  @Column({})
-  modelArn: string;
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  modelArn?: string;
 
   @Field()
   @Column()

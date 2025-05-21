@@ -36,6 +36,8 @@ export class AmazonService implements ModelServiceProvider {
       }),
     };
 
+    console.log("AmazonService generateResponseParams", params);
+
     return { params };
   }
 

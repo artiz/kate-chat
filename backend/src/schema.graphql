@@ -95,7 +95,7 @@ type ModelResponse {
   id: ID!
   isActive: Boolean!
   isDefault: Boolean!
-  modelArn: String!
+  modelArn: String
   modelId: String!
   name: String!
   provider: String

@@ -162,9 +162,74 @@ export class MessageResolver {
     });
 
     // Generate AI response
-    let aiResponse: string;
+    const requestMessages = previousMessages.reverse();
+
+    // Create  AI response message
+    const aiMessage = this.messageRepository.create({
+      content: "",
+      role: MessageRole.ASSISTANT,
+      modelId: model.modelId, // real model used
+      modelName: model.name,
+      chatId,
+      user: { id: user.userId },
+      chat,
+    });
+
+    const completeRequest = async (content: string) => {
+      aiMessage.content = content;
+      const savedMessage = await this.messageRepository.save(aiMessage);
+
+      // Publish the new message event for the AI response if pubSub is available
+      if (pubSub) {
+        await pubSub.publish(NEW_MESSAGE, {
+          chatId,
+          data: { message: savedMessage },
+        });
+      }
+    };
+
+    if (model.supportsStreaming) {
+      const handleStreaming = async (content: string, completed?: boolean, error?: Error) => {
+        if (completed) {
+          if (error) {
+            if (pubSub) {
+              pubSub.publish(NEW_MESSAGE, {
+                chatId,
+                data: { error: getErrorMessage(error) },
+              });
+            }
+
+            return console.error("Error generating AI response", error);
+          }
+
+          completeRequest(content).catch(err => {
+            console.error("Error sending AI response", err);
+          });
+        } else {
+          if (!aiMessage.id) {
+            const saved = await this.messageRepository.save(aiMessage);
+            aiMessage.id = saved.id;
+          }
+          aiMessage.content += content;
+
+          if (pubSub) {
+            pubSub.publish(NEW_MESSAGE, {
+              chatId,
+              data: { message: aiMessage },
+            });
+          }
+        }
+      };
+
+      this.aiService.streamCompletion(requestMessages, model, handleStreaming);
+
+      return message;
+    }
+
+    // sync call
     try {
-      aiResponse = await this.aiService.getCompletion(previousMessages.reverse(), model);
+      const aiResponse = await this.aiService.getCompletion(requestMessages, model);
+      await completeRequest(aiResponse);
     } catch (error: unknown) {
       console.error("Error generating AI response", error);
       if (pubSub) {
@@ -176,30 +241,6 @@ export class MessageResolver {
       }
 
       throw new Error(`Failed to generate AI response: ${getErrorMessage(error)}`);
-    }
-
-    // Create and save AI response message
-    const aiMessage = this.messageRepository.create({
-      content: aiResponse,
-      role: MessageRole.ASSISTANT,
-      modelId: model.modelId, // real model used
-      modelName: model.name,
-      chatId,
-      user: { id: user.userId },
-      chat,
-    });
-
-    const savedAiMessage = await this.messageRepository.save(aiMessage);
-
-    // Publish the new message event for the AI response if pubSub is available
-    if (pubSub) {
-      console.log(`Publishing AI response event for chat ${chatId}`);
-      await pubSub.publish(NEW_MESSAGE, {
-        chatId,
-        data: { message: savedAiMessage },
-      });
-    } else {
-      console.warn(`No pubSub available to publish AI message for chat ${chatId}`);
     }
 
     return message;

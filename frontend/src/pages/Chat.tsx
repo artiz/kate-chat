@@ -35,6 +35,7 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
         modelId
         modelName
       }
+      error
     }
   }
 `;
@@ -104,15 +105,24 @@ const Chat: React.FC = () => {
     },
     onData: (options: OnDataOptions<{ newMessage?: { type: MessageType; message: Message; error: string } }>) => {
       const data = options.data?.data || {};
-      console.log("Received subscription data:", data);
+
       setWsConnected(true);
       if (data?.newMessage) {
         const response = data.newMessage;
-        if (response.type === MessageType.MESSAGE && response.message) {
-          console.log(`New message received in chat ${id}:`, response.message);
-          dispatch(addMessage(response.message));
+
+        if (response.type === MessageType.MESSAGE) {
+          if (response.message) {
+            dispatch(addMessage(response.message));
+          } else if (response.error) {
+            notifications.show({
+              title: "Model interaction error",
+              message: response.error,
+              color: "red",
+            });
+          }
+
           // If it's an assistant message after we sent something, clear loading state
-          if (response.message.role === "assistant" && sending) {
+          if ((response.error || response.message?.role === "assistant") && sending) {
             setSending(false);
           }
         }
