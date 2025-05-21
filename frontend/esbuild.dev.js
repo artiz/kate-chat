@@ -32,7 +32,7 @@ esbuild
     },
     define: {
       "process.env.NODE_ENV": '"development"',
-      "process.env.REACT_APP_API_URL": '"http://localhost:4000/graphql"',
+      "process.env.REACT_APP_API_URL": '"http://localhost:4000"',
     },
     plugins: [clean({ patterns: ["./dist/*.js"] }), polyfillNode()],
     logLevel: "info",

@@ -28,16 +28,13 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     }
 
     // Get the API URL from environment variables
-    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:4000/graphql";
+    const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
     // Extract the base URL from the API URL
-    const baseUrl = apiUrl.replace(/\/graphql$/, "");
+    const apiUrl = baseUrl + "/graphql";
 
     // Create WebSocket URL for subscriptions
     const wsUrl = baseUrl.replace(/^http/, "ws") + "/graphql/subscriptions";
-
-    console.log("API URL:", apiUrl);
-    console.log("WebSocket URL:", wsUrl);
 
     // Create HTTP link for queries and mutations
     const httpLink = new HttpLink({

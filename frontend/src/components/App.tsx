@@ -21,6 +21,8 @@ import NewChat from "../pages/NewChat";
 import Models from "../pages/Models";
 import Settings from "../pages/Settings";
 import MainLayout from "../components/MainLayout";
+import { ERROR_UNAUTHORIZED } from "@/store/api";
+import { STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -37,21 +39,32 @@ const AppContent: React.FC = () => {
   const { colorScheme } = useTheme();
 
   // Use RTK Query hook to fetch initial data
-  const { data, isLoading, isError } = useGetInitialDataQuery(undefined, {
+  const { data: initData, isLoading, isError, error } = useGetInitialDataQuery(undefined, {
     skip: !isAuthenticated,
   });
 
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
-    if (isAuthenticated && data) {
-      const selectedModel = data.models.find(model => model.isDefault) || data.models[0];
+    if (isAuthenticated && initData) {
+      const selectedModel = initData.models.find(model => model.isDefault) || initData.models[0];
 
-      dispatch(setUser(data.user));
-      dispatch(setModels(data.models));
+      dispatch(setUser(initData.user));
+      dispatch(setModels(initData.models));
       dispatch(setSelectedModel(selectedModel));
-      dispatch(setChats(data.chats));
+      dispatch(setChats(initData.chats));
     }
-  }, [isAuthenticated, data, dispatch]);
+  }, [isAuthenticated, initData, dispatch]);
+
+  useEffect(() => {
+    // Handle errors from the initial data query
+    if (isError) {
+      if ("status" in error && error.status === "PARSING_ERROR" && error.error === ERROR_UNAUTHORIZED) {
+        localStorage.removeItem(STORAGE_AUTH_TOKEN);
+        navigate("/login");
+      }
+    }
+    
+  }, [isError, error, navigate]);
 
   // Make sure the theme is applied to the document element
   React.useEffect(() => {

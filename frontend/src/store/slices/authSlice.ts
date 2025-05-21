@@ -1,14 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+export const STORAGE_AUTH_TOKEN = "auth-token";
+export const STORAGE_USER_DATA = "user-data";
 interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
 }
 
+const currentToken = localStorage.getItem(STORAGE_AUTH_TOKEN);	
 const initialState: AuthState = {
-  token: localStorage.getItem("auth-token"),
-  isAuthenticated: !!localStorage.getItem("auth-token"),
+  token: currentToken,
+  isAuthenticated: !!currentToken,
   loading: false,
 };
 
@@ -23,7 +26,7 @@ const authSlice = createSlice({
       state.token = action.payload;
       state.isAuthenticated = true;
       state.loading = false;
-      localStorage.setItem("auth-token", action.payload);
+      localStorage.setItem(STORAGE_AUTH_TOKEN, action.payload);
     },
     loginFailure(state) {
       state.loading = false;
@@ -31,8 +34,8 @@ const authSlice = createSlice({
     logout(state) {
       state.token = null;
       state.isAuthenticated = false;
-      localStorage.removeItem("auth-token");
-      localStorage.removeItem("user-data");
+      localStorage.removeItem(STORAGE_AUTH_TOKEN);
+      localStorage.removeItem(STORAGE_USER_DATA);
     },
   },
 });

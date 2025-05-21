@@ -37,12 +37,13 @@ const MainLayout: React.FC = () => {
     navigate("/login");
   };
 
-  if (!user) {
+   if (!user) {
     return null;
   }
 
+  
   // User data for display
-  const userInitials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  const userInitials = `${user?.firstName?.[0]}${user?.lastName?.[0]}`.toUpperCase();
 
   return (
     <AppShell
@@ -87,10 +88,10 @@ const MainLayout: React.FC = () => {
                     </Avatar>
                     <div>
                       <Text size="sm" fw={500}>
-                        {user.firstName} {user.lastName}
+                        {user?.firstName} {user?.lastName}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        {user.email}
+                        {user?.email}
                       </Text>
                     </div>
                     <IconChevronRight size={18} stroke={1.5} />
