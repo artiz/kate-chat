@@ -5,12 +5,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
   PrimaryColumn,
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
-import { ModelProvider } from "./ModelProvider";
 
 @ObjectType()
 @Entity("models")
@@ -31,29 +29,45 @@ export class Model {
   @Column()
   description: string;
 
-  @Field(() => ModelProvider)
-  @ManyToOne(() => ModelProvider)
-  provider: ModelProvider;
-
-  @Field()
-  @Column()
-  providerId: string;
-
-  @Field()
-  @Column({ default: 0 })
-  contextWindow: number;
-
   @Field({ nullable: true })
-  @Column({ default: 0, nullable: true })
-  maxTokens: number;
+  @Column({ nullable: true })
+  provider: string; // e.g., 'OpenAI', 'Anthropic', 'Amazon'
+
+  @Field()
+  @Column({ default: "bedrock" })
+  apiType: string; // e.g., 'bedrock', 'direct'
+
+  @Field()
+  @Column({ default: false })
+  supportsStreaming: boolean;
 
   @Field()
   @Column({ default: true })
-  isActive: boolean;
+  supportsTextIn: boolean;
+
+  @Field()
+  @Column({ default: true })
+  supportsTextOut: boolean;
+
+  @Field()
+  @Column({ default: false })
+  supportsEmbeddingsIn: boolean;
+
+  @Field()
+  @Column({ default: false })
+  supportsImageIn: boolean;
+
+  @Field()
+  @Column({ default: false })
+  supportsImageOut: boolean;
 
   @Field()
   @Column({ default: 0 })
   sortOrder: number;
+
+  @Field()
+  @Column({ default: true })
+  isActive: boolean;
 
   @Field()
   @CreateDateColumn()

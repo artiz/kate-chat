@@ -157,7 +157,7 @@ export class MessageResolver {
     const previousMessages = await this.messageRepository.find({
       where: { chatId },
       order: { createdAt: "DESC" },
-      take: 20,
+      take: 100,
     });
 
     // Generate AI response

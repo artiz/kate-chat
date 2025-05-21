@@ -4,6 +4,7 @@ import { Model } from "../entities/Model";
 export interface MessageFormat {
   role: MessageRole;
   content: string;
+  timestamp?: Date;
 }
 
 export interface StreamCallbacks {
@@ -13,22 +14,10 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
-export interface ModelProvider {
-  generateResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    temperature?: number,
-    maxTokens?: number
-  ): Promise<string>;
+export interface ModelServiceProvider {
+  generateResponse(messages: MessageFormat[], modelId: string, temperature?: number, maxTokens?: number): Promise<any>;
 
-  streamResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature?: number,
-    maxTokens?: number
-  ): Promise<void>;
+  parseResponse(responseBody: any): string;
 }
 
-export const DEFAULT_MODEL_PROVIDER = "Anthropic";
 export const DEFAULT_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0";

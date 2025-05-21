@@ -25,12 +25,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Login to get authentication token"
           },
@@ -52,12 +48,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Register a new user account"
           },
@@ -83,12 +75,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Get the current authenticated user"
           },
@@ -116,16 +104,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"query GetChats($input: GetChatsInput) {\\n  getChats(input: $input) {\\n    chats {\\n      id\\n      title\\n      description\\n      isActive\\n      modelId\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    hasMore\\n    error\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"offset\": 0,\n      \"limit\": 10,\n      \"searchTerm\": \"\"\n    }\n  }\n}"
+              "raw": "{\n  \"query\": \"query GetChats($input: GetChatsInput) {\\n  getChats(input: $input) {\\n    chats {\\n      id\\n      title\\n      description\\n      isActive\\n      isPristine\\n      modelId\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    hasMore\\n    error\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"offset\": 0,\n      \"limit\": 10,\n      \"searchTerm\": \"\"\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Get all chats for the current user"
           },
@@ -147,16 +131,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"query GetChatById($id: ID!) {\\n  getChatById(id: $id) {\\n    id\\n    title\\n    description\\n    isActive\\n    modelId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\"\n  }\n}"
+              "raw": "{\n  \"query\": \"query GetChatById($id: ID!) {\\n  getChatById(id: $id) {\\n    id\\n    title\\n    description\\n    isActive\\n    isPristine\\n    modelId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Get a specific chat by ID"
           },
@@ -178,16 +158,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"mutation CreateChat($input: CreateChatInput!) {\\n  createChat(input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    modelId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"title\": \"New Chat\",\n      \"description\": \"A test chat\",\n      \"modelId\": \"anthropic.claude-3-haiku-20240307-v1:0\"\n    }\n  }\n}"
+              "raw": "{\n  \"query\": \"mutation CreateChat($input: CreateChatInput!) {\\n  createChat(input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    isPristine\\n    modelId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"input\": {\n      \"title\": \"New Chat\",\n      \"description\": \"A test chat\",\n      \"modelId\": \"anthropic.claude-3-haiku-20240307-v1:0\"\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Create a new chat"
           },
@@ -209,16 +185,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"mutation UpdateChat($id: ID!, $input: UpdateChatInput!) {\\n  updateChat(id: $id, input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    modelId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\",\n    \"input\": {\n      \"title\": \"Updated Chat Title\",\n      \"description\": \"Updated chat description\",\n      \"isActive\": true\n    }\n  }\n}"
+              "raw": "{\n  \"query\": \"mutation UpdateChat($id: ID!, $input: UpdateChatInput!) {\\n  updateChat(id: $id, input: $input) {\\n    id\\n    title\\n    description\\n    isActive\\n    isPristine\\n    modelId\\n    createdAt\\n    updatedAt\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"chatId\",\n    \"input\": {\n      \"title\": \"Updated Chat Title\",\n      \"description\": \"Updated chat description\",\n      \"isActive\": true,\n      \"modelId\": \"anthropic.claude-3-haiku-20240307-v1:0\"\n    }\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Update an existing chat"
           },
@@ -244,12 +216,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Delete (soft-delete) a chat"
           },
@@ -281,12 +249,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Get messages for a specific chat"
           },
@@ -312,12 +276,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Get a specific message by ID"
           },
@@ -343,12 +303,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Create a new message in a chat"
           },
@@ -374,12 +330,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Delete a message"
           },
@@ -401,16 +353,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"subscription NewMessage($chatId: String!) {\\n  newMessage(chatId: $chatId) {\\n    id\\n    role\\n    content\\n    modelId\\n    modelName\\n    chatId\\n    createdAt\\n  }\\n}\",\n  \"variables\": {\n    \"chatId\": \"chatId\"\n  }\n}"
+              "raw": "{\n  \"query\": \"subscription NewMessage($chatId: String!) {\\n  newMessage(chatId: $chatId) {\\n    type\\n    message {\\n      id\\n      role\\n      content\\n      modelId\\n      modelName\\n      createdAt\\n    }\\n    error\\n  }\\n}\",\n  \"variables\": {\n    \"chatId\": \"chatId\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Subscribe to new messages in a specific chat"
           },
@@ -438,23 +386,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"query GetModels {\\n  getModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      providerId\\n      contextWindow\\n      maxTokens\\n      isActive\\n      isDefault\\n      sortOrder\\n      provider {\\n        id\\n        name\\n        apiType\\n      }\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
+              "raw": "{\n  \"query\": \"query GetModels {\\n  getModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      provider\\n      apiType\\n      supportsStreaming\\n      supportsTextIn\\n      supportsTextOut\\n      supportsEmbeddingsIn\\n      supportsImageIn\\n      supportsImageOut\\n      isActive\\n      isDefault\\n      sortOrder\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
             "description": "Get available AI models"
           },
           "response": []
         },
         {
-          "name": "Get Model Providers",
+          "name": "Reload Models",
           "request": {
             "method": "POST",
             "header": [
@@ -469,18 +413,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"query GetModelProviders {\\n  getModelProviders {\\n    providers {\\n      id\\n      name\\n      description\\n      apiType\\n      isActive\\n      isDefault\\n      createdAt\\n      updatedAt\\n    }\\n    error\\n  }\\n}\"\n}"
+              "raw": "{\n  \"query\": \"mutation ReloadModels {\\n  reloadModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      provider\\n      apiType\\n      supportsStreaming\\n      supportsTextIn\\n      supportsTextOut\\n      supportsEmbeddingsIn\\n      supportsImageIn\\n      supportsImageOut\\n      isActive\\n      isDefault\\n      sortOrder\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql"]
             },
-            "description": "Get available AI model providers"
+            "description": "Reload models from providers"
           },
           "response": []
         }
@@ -498,13 +438,8 @@
             "url": {
               "raw": "ws://{{baseUrl}}/graphql/subscriptions",
               "protocol": "ws",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "graphql",
-                "subscriptions"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["graphql", "subscriptions"]
             },
             "description": "Connect to WebSocket endpoint for GraphQL subscriptions"
           },
@@ -519,18 +454,14 @@
       "listen": "prerequest",
       "script": {
         "type": "text/javascript",
-        "exec": [
-          ""
-        ]
+        "exec": [""]
       }
     },
     {
       "listen": "test",
       "script": {
         "type": "text/javascript",
-        "exec": [
-          ""
-        ]
+        "exec": [""]
       }
     }
   ],

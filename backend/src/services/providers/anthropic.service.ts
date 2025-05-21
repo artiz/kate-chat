@@ -1,9 +1,7 @@
-import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { bedrockClient } from "../../config/bedrock";
-import { MessageFormat, ModelProvider, StreamCallbacks } from "../../types/ai.types";
+import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 
-export class AnthropicService implements ModelProvider {
+export class AnthropicService implements ModelServiceProvider {
   async generateResponse(
     messages: MessageFormat[],
     modelId: string,

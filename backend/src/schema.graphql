@@ -88,45 +88,23 @@ type MessagesResponse {
   total: Float
 }
 
-type ModelProvider {
-  apiType: String!
-  createdAt: DateTimeISO!
-  description: String!
-  id: ID!
-  isActive: Boolean!
-  name: String!
-  updatedAt: DateTimeISO!
-}
-
-type ModelProviderResponse {
-  apiType: String!
-  createdAt: DateTimeISO!
-  description: String!
-  id: ID!
-  isActive: Boolean!
-  isDefault: Boolean!
-  name: String!
-  updatedAt: DateTimeISO!
-}
-
-type ModelProvidersResponse {
-  error: String
-  providers: [ModelProviderResponse!]
-}
-
 type ModelResponse {
-  contextWindow: Float!
+  apiType: String!
   createdAt: DateTimeISO!
   description: String!
   id: ID!
   isActive: Boolean!
   isDefault: Boolean!
-  maxTokens: Float
   modelId: String!
   name: String!
-  provider: ModelProvider!
-  providerId: String!
+  provider: String
   sortOrder: Float!
+  supportsEmbeddingsIn: Boolean!
+  supportsImageIn: Boolean!
+  supportsImageOut: Boolean!
+  supportsStreaming: Boolean!
+  supportsTextIn: Boolean!
+  supportsTextOut: Boolean!
   updatedAt: DateTimeISO!
 }
 
@@ -143,6 +121,7 @@ type Mutation {
   deleteMessage(id: String!): Boolean!
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
+  reloadModels: ModelsResponse!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
 }
 
@@ -152,7 +131,6 @@ type Query {
   getChatMessages(input: GetMessagesInput!): MessagesResponse!
   getChats(input: GetChatsInput): ChatsResponse!
   getMessageById(id: String!): Message
-  getModelProviders: ModelProvidersResponse!
   getModels: ModelsResponse!
 }
 

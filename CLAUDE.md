@@ -36,7 +36,7 @@ The backend defines several key entities:
 - `Chat`: Chat session management
 - `Message`: Individual chat messages
 - `Model`: AI model configuration
-- `ModelProvider`: Providers of AI models (like AWS Bedrock)
+- `ModelServiceProvider`: Providers of AI models (like AWS Bedrock)
 
 ### AI Integration
 The `ai.service.ts` handles integration with AI providers, particularly AWS Bedrock.

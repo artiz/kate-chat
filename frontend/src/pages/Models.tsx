@@ -8,16 +8,17 @@ import {
   IconBrandAws,
   IconMessage,
   IconMessagePlus,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../store";
 import { useMutation } from "@apollo/client";
-import { setSelectedModel } from "../store/slices/modelSlice";
-import { CREATE_CHAT_MUTATION } from "../store/services/graphql";
+import { Model, setSelectedModel, setModels } from "../store/slices/modelSlice";
+import { CREATE_CHAT_MUTATION, RELOAD_MODELS_MUTATION } from "../store/services/graphql";
 import { notifications } from "@mantine/notifications";
 
 // Helper function to get provider icon
-const getProviderIcon = (provider: string) => {
-  switch (provider.toLowerCase()) {
+const getProviderIcon = (provider: string | null) => {
+  switch (provider?.toLowerCase()) {
     case "openai":
       return <IconBrandOpenai size={24} />;
     case "anthropic":
@@ -35,6 +36,27 @@ const Models: React.FC = () => {
   const dispatch = useAppDispatch();
   const { models, loading, error } = useAppSelector(state => state.models);
 
+  // Reload models mutation
+  const [reloadModels, { loading: reloading }] = useMutation(RELOAD_MODELS_MUTATION, {
+    onCompleted: data => {
+      if (data?.reloadModels?.models) {
+        dispatch(setModels(data.reloadModels.models));
+        notifications.show({
+          title: "Success",
+          message: "Models refreshed successfully",
+          color: "green",
+        });
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to refresh models",
+        color: "red",
+      });
+    },
+  });
+
   // Create chat mutation
   const [createChat, { loading: creatingChat }] = useMutation(CREATE_CHAT_MUTATION, {
     onCompleted: data => {
@@ -50,7 +72,7 @@ const Models: React.FC = () => {
   });
 
   // Handle creating a new chat with the selected model
-  const handleCreateChat = model => {
+  const handleCreateChat = (model: Model) => {
     dispatch(setSelectedModel(model));
 
     createChat({
@@ -63,12 +85,17 @@ const Models: React.FC = () => {
     });
   };
 
-  if (loading) {
+  // Handle reloading models
+  const handleReloadModels = () => {
+    reloadModels();
+  };
+
+  if (loading || reloading) {
     return (
       <Container size="lg" py="xl">
         <Stack align="center" gap="md">
           <Loader size="xl" />
-          <Text>Loading models...</Text>
+          <Text>{reloading ? "Reloading models..." : "Loading models..."}</Text>
         </Stack>
       </Container>
     );
@@ -77,7 +104,7 @@ const Models: React.FC = () => {
   if (error) {
     return (
       <Container size="lg" py="xl">
-        <Title order={2} color="red">
+        <Title order={2} c="red">
           Error Loading Models
         </Title>
         <Text mt="md">{error}</Text>
@@ -87,9 +114,12 @@ const Models: React.FC = () => {
 
   return (
     <Container size="lg" py="xl">
-      <Title order={2} mb="xl">
-        Available AI Models
-      </Title>
+      <Group justify="space-between" mb="xl">
+        <Title order={2}>Available AI Models</Title>
+        <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
+          Reload
+        </Button>
+      </Group>
 
       <Grid>
         {models.map(model => (
@@ -98,11 +128,11 @@ const Models: React.FC = () => {
               <Stack gap="md">
                 <Group justify="space-between">
                   <Group>
-                    {getProviderIcon(model.provider?.name)}
+                    {getProviderIcon(model.provider)}
                     <div>
                       <Text fw={500}>{model.name}</Text>
                       <Text size="xs" c="dimmed">
-                        {model.provider?.name}
+                        {model.provider}
                       </Text>
                     </div>
                   </Group>

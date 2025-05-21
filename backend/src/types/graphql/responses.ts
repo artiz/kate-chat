@@ -3,7 +3,6 @@ import { User } from "../../entities/User";
 import { Chat } from "../../entities/Chat";
 import { Message, MessageType } from "../../entities/Message";
 import { Model } from "../../entities/Model";
-import { ModelProvider } from "../../entities/ModelProvider";
 
 @ObjectType()
 export class UserResponse {
@@ -93,19 +92,4 @@ export class ModelsResponse {
 
   @Field({ nullable: true })
   total?: number;
-}
-
-@ObjectType()
-export class ModelProviderResponse extends ModelProvider {
-  @Field()
-  isDefault?: boolean;
-}
-
-@ObjectType()
-export class ModelProvidersResponse {
-  @Field({ nullable: true })
-  error?: string;
-
-  @Field(() => [ModelProviderResponse], { nullable: true })
-  providers?: ModelProviderResponse[];
 }

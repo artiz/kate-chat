@@ -5,10 +5,7 @@ export interface Model {
   name: string;
   modelId: string;
   isDefault?: boolean;
-  provider: {
-    id: string;
-    name: string;
-  };
+  provider: string;
 }
 
 interface ModelState {

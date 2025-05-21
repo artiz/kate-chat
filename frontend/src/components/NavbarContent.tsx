@@ -63,7 +63,7 @@ const NavbarContent: React.FC = () => {
         </Stack>
         <Divider my="xs" />
 
-        <ScrollArea h="calc(100vh - 180px)" scrollbarSize={6}>
+        <ScrollArea h="calc(100vh - 280px)" type="auto">
           <Stack gap="xs">
             {loading ? (
               <Group justify="center" p="md">

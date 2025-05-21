@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { MantineProvider, ColorSchemeScript, Center, Loader } from "@mantine/core";
-import { Notifications } from "@mantine/notifications";
+import { notifications, Notifications } from "@mantine/notifications";
 import { useDispatch } from "react-redux";
 import { ApolloWrapper } from "../lib/apollo-provider";
 import { theme } from "../theme";
@@ -66,6 +66,14 @@ const AppContent: React.FC = () => {
       if ("status" in error && error.status === "PARSING_ERROR" && error.error === ERROR_UNAUTHORIZED) {
         localStorage.removeItem(STORAGE_AUTH_TOKEN);
         navigate("/login");
+      } else if ("error" in error) {
+        console.error("Parsing error:", error.error);
+        // Show error notification
+        notifications.show({
+          title: "GraphQL Error",
+          message: error.error || "An unknown error occurred",
+          color: "red",
+        });
       }
     }
   }, [isError, error, navigate]);

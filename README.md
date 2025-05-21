@@ -116,7 +116,7 @@ Available at `/graphql` endpoint with the following main queries/mutations:
 - `getChats` - Get list of user's chats with pagination
 - `getChatById` - Get a specific chat
 - `getChatMessages` - Get messages for a specific chat
-- `getModelProviders` - Get list of available AI model providers
+- `getModelServiceProviders` - Get list of available AI model providers
 - `getModels` - Get list of available AI models
 
 #### Mutations

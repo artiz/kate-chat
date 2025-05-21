@@ -1,8 +1,7 @@
 import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { ListFoundationModelsCommand } from "@aws-sdk/client-bedrock";
-import { bedrockClient, bedrockManagementClient, BEDROCK_MODEL_IDS } from "../config/bedrock";
-import { MessageRole } from "../entities/Message";
-import { ModelProvider as ModelProviderEntity } from "../entities/ModelProvider";
+import { InferenceType, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
+import { bedrockClient, bedrockManagementClient } from "../config/bedrock";
+import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
 import { MessageFormat, StreamCallbacks, DEFAULT_MODEL_ID } from "../types/ai.types";
 
@@ -139,8 +138,19 @@ export class AIService {
 
   // Preprocess messages to join duplicates
   private preprocessMessages(messages: MessageFormat[]): MessageFormat[] {
+    messages.sort((a, b) => {
+      if (a.timestamp?.getTime() === b.timestamp?.getTime()) {
+        return a.role === b.role ? 0 : a.role === MessageRole.USER ? -1 : 1;
+      }
+
+      return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
+    });
+
+    console.log("Preprocess messages:", messages);
+
     return messages.reduce((acc: MessageFormat[], msg: MessageFormat) => {
-      const lastMessage = acc[acc.length - 1];
+      const lastMessage = acc.length ? acc[acc.length - 1] : null;
+      // Check if the last message is of the same role and content
       if (lastMessage && lastMessage.role === msg.role) {
         if (lastMessage.content === msg.content) {
           return acc;
@@ -148,8 +158,9 @@ export class AIService {
           lastMessage.content += "\n" + msg.content;
         }
       } else {
-        acc.push({ ...msg });
+        acc.push(msg);
       }
+
       return acc;
     }, []);
   }
@@ -196,83 +207,52 @@ export class AIService {
   }
 
   // Adapter method for message resolver
-  async getCompletion(messages: any[], model: Model): Promise<string> {
+  async getCompletion(messages: Message[], model: Model): Promise<string> {
     // Convert DB message objects to MessageFormat structure
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
       content: msg.content,
+      timestamp: msg.createdAt,
     }));
 
     // Use the existing generate method
     return this.generateResponse(formattedMessages, model.modelId || DEFAULT_MODEL_ID, 0.7, 2048);
   }
 
-  // Helper method to get all supported models
-  static getSupportedModels() {
-    // TODO: Fetch models from AWS Bedrock
-    // For now, return the predefined list
-    return BEDROCK_MODEL_IDS;
-  }
+  // Helper method to get all supported models with their metadata
+  static async getSupportedModels(): Promise<Record<string, any>> {
+    // Get foundation model data from AWS Bedrock
+    const command = new ListFoundationModelsCommand({});
+    const response = await bedrockManagementClient.send(command);
 
-  // Fetch model providers from AWS Bedrock
-  static async getModelProviders(): Promise<ModelProviderEntity[]> {
-    const providers: Map<string, ModelProviderEntity> = new Map();
+    const models: Record<string, any> = {};
 
-    try {
-      // Get real foundation model data from AWS Bedrock
-      const command = new ListFoundationModelsCommand({});
-      const response = await bedrockManagementClient.send(command);
+    if (response.modelSummaries && response.modelSummaries.length > 0) {
+      for (const model of response.modelSummaries) {
+        // skip image models for now
+        if (model.outputModalities?.includes(ModelModality.IMAGE)) {
+          continue;
+        }
 
-      // Process the model list and extract providers
-      if (response.modelSummaries && response.modelSummaries.length > 0) {
-        for (const model of response.modelSummaries) {
-          if (model.providerName) {
-            const providerName = model.providerName;
+        if (model.modelId && model.providerName) {
+          const modelId = model.modelId;
+          const providerName = model.providerName;
 
-            if (!providers.has(providerName)) {
-              const provider = new ModelProviderEntity();
-              provider.name = providerName;
-              provider.description = `${providerName} models on AWS Bedrock`;
-              provider.apiType = "bedrock";
-              provider.isActive = true;
-
-              providers.set(providerName, provider);
-            }
-          }
+          models[modelId] = {
+            provider: providerName,
+            name: model.modelName || modelId.split(".").pop() || modelId,
+            description: `${model.modelName || modelId} by ${providerName}`,
+            supportsStreaming: model.responseStreamingSupported || false,
+            supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
+            supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
+            supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
+            supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
+            supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
+          };
         }
       }
-
-      // If no providers were found from the API (possibly due to permissions),
-      // extract unique providers from our predefined model list
-      if (providers.size === 0) {
-        for (const [modelId, modelInfo] of Object.entries(BEDROCK_MODEL_IDS)) {
-          if (!providers.has(modelInfo.provider)) {
-            const provider = new ModelProviderEntity();
-            provider.name = modelInfo.provider;
-            provider.description = `${modelInfo.provider} models on AWS Bedrock`;
-            provider.apiType = "bedrock";
-            provider.isActive = true;
-
-            providers.set(modelInfo.provider, provider);
-          }
-        }
-      }
-
-      return Array.from(providers.values());
-    } catch (error) {
-      console.error("Error fetching model providers from AWS Bedrock:", error);
-
-      // Fallback to our predefined list of providers if API call fails
-      const uniqueProviders = new Set(Object.values(BEDROCK_MODEL_IDS).map(model => model.provider));
-
-      return Array.from(uniqueProviders).map(providerName => {
-        const provider = new ModelProviderEntity();
-        provider.name = providerName;
-        provider.description = `${providerName} models on AWS Bedrock`;
-        provider.apiType = "bedrock";
-        provider.isActive = true;
-        return provider;
-      });
     }
+
+    return models;
   }
 }

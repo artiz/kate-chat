@@ -2,10 +2,9 @@ import { AbstractLogger, DataSource, DataSourceOptions, LogLevel, LogMessage, Qu
 import { Chat } from "../entities/Chat";
 import { Message } from "../entities/Message";
 import { Model } from "../entities/Model";
-import { ModelProvider } from "../entities/ModelProvider";
 import { User } from "../entities/User";
 
-const logging = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "dev";
+const logging = !!process.env.DB_LOGGING;
 
 let dbOptions: DataSourceOptions = {
   type: "sqlite",
@@ -52,7 +51,7 @@ export const AppDataSource = new DataSource({
   migrationsRun: true,
   logger: "advanced-console",
   logging,
-  entities: [User, Chat, Message, Model, ModelProvider],
+  entities: [User, Chat, Message, Model],
 });
 
 // Helper function to get a repository from the data source

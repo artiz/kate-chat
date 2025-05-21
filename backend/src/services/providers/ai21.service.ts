@@ -1,7 +1,7 @@
-import { MessageFormat, ModelProvider, StreamCallbacks } from "../../types/ai.types";
+import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 
-export class AI21Service implements ModelProvider {
+export class AI21Service implements ModelServiceProvider {
   async generateResponse(
     messages: MessageFormat[],
     modelId: string,

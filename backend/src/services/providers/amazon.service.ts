@@ -1,7 +1,7 @@
-import { MessageFormat, ModelProvider, StreamCallbacks } from "../../types/ai.types";
+import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 
-export class AmazonService implements ModelProvider {
+export class AmazonService implements ModelServiceProvider {
   async generateResponse(
     messages: MessageFormat[],
     modelId: string,

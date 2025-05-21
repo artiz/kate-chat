@@ -59,6 +59,21 @@ export const CREATE_CHAT_MUTATION = gql`
   }
 `;
 
+export const RELOAD_MODELS_MUTATION = gql`
+  mutation ReloadModels {
+    reloadModels {
+      models {
+        id
+        name
+        modelId
+        isDefault
+        provider
+      }
+      error
+    }
+  }
+`;
+
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;
@@ -112,22 +127,20 @@ export const graphqlApi = api.injectEndpoints({
     }),
 
     // Models queries
-    getModels: builder.query<Model[], void>({
-      query: () => ({
+    getModels: builder.query<Model[], { reload?: boolean }>({
+      query: ({ reload = false }: { reload?: boolean }) => ({
         url: "/graphql",
         method: "POST",
         body: {
+          variables: { reload },
           query: `
-            query GetModels {
-              getModels {
+            query GetModels($reload: Boolean) {
+              getModels(reload: $reload) {
                 models {
                   id
                   name
                   modelId
-                  provider {
-                    id
-                    name
-                  }
+                  provider
                 }
               }
             }
@@ -201,10 +214,7 @@ export const graphqlApi = api.injectEndpoints({
                   name
                   modelId
                   isDefault
-                  provider {
-                    id
-                    name
-                  }
+                  provider
                 }
               }
               getChats(input: { limit: 20, offset: 0 }) {

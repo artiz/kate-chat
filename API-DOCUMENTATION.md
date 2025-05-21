@@ -75,7 +75,7 @@ This document provides information on how to use the KateChat GraphQL API with P
 ### Update Chat
 1. Open the "Update Chat" request in the Chats folder
 2. Replace `chatId` with your actual chat ID
-3. Modify title, description, and/or isActive as needed
+3. Modify title, description, modelId, and/or isActive as needed
 4. Send the request
 
 ### Delete Chat
@@ -120,10 +120,10 @@ This document provides information on how to use the KateChat GraphQL API with P
 2. Send the request
 3. The response includes available models with their properties
 
-### Get Model Providers
-1. Open the "Get Model Providers" request in the Models folder
-2. Send the request
-3. The response includes available model providers
+### Reload Models
+1. Open the "Reload Models" request in the Models folder
+2. Send the request to refresh the list of available models from providers
+3. The response includes the updated list of models
 
 ## User Information
 
@@ -147,12 +147,16 @@ Once connected via WebSocket, you can subscribe to new messages using the follow
 ```graphql
 subscription NewMessage($chatId: String!) {
   newMessage(chatId: $chatId) {
-    id
-    role
-    content
-    modelId
-    modelName
-    createdAt
+    type
+    message {
+      id
+      role
+      content
+      modelId
+      modelName
+      createdAt
+    }
+    error
   }
 }
 ```
@@ -228,6 +232,7 @@ type Chat {
   title: String!
   description: String!
   isActive: Boolean!
+  isPristine: Boolean!
   modelId: String
   user: User!
   createdAt: DateTimeISO!
@@ -258,27 +263,17 @@ type ModelResponse {
   name: String!
   description: String!
   modelId: String!
-  providerId: String!
-  provider: ModelProvider!
-  contextWindow: Float!
-  maxTokens: Float
+  provider: String
+  apiType: String!
+  supportsStreaming: Boolean!
+  supportsTextIn: Boolean!
+  supportsTextOut: Boolean!
+  supportsEmbeddingsIn: Boolean!
+  supportsImageIn: Boolean!
+  supportsImageOut: Boolean!
   isActive: Boolean!
   isDefault: Boolean!
   sortOrder: Float!
-  createdAt: DateTimeISO!
-  updatedAt: DateTimeISO!
-}
-```
-
-#### ModelProvider
-```graphql
-type ModelProviderResponse {
-  id: ID!
-  name: String!
-  description: String!
-  apiType: String!
-  isActive: Boolean!
-  isDefault: Boolean!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
 }
@@ -311,8 +306,9 @@ type ModelsResponse {
   error: String
 }
 
-type ModelProvidersResponse {
-  providers: [ModelProviderResponse!]
+type MessageResponse {
+  type: String!
+  message: Message
   error: String
 }
 ```
@@ -326,7 +322,6 @@ type Query {
   getChatMessages(input: GetMessagesInput!): MessagesResponse!
   getMessageById(id: String!): Message
   getModels: ModelsResponse!
-  getModelProviders: ModelProvidersResponse!
 }
 ```
 
@@ -340,13 +335,14 @@ type Mutation {
   deleteChat(id: ID!): Boolean!
   createMessage(input: CreateMessageInput!): Message!
   deleteMessage(id: String!): Boolean!
+  reloadModels: ModelsResponse!
 }
 ```
 
 ### Subscriptions
 ```graphql
 type Subscription {
-  newMessage(chatId: String!): Message!
+  newMessage(chatId: String!): MessageResponse!
 }
 ```
 
@@ -386,6 +382,7 @@ input UpdateChatInput {
   title: String
   description: String
   isActive: Boolean
+  modelId: String
 }
 ```
 
