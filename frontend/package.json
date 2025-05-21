@@ -7,7 +7,7 @@
     "dev": "node esbuild.dev.js",
     "build": "node esbuild.prod.js",
     "start": "node serve.js",
-    "lint": "eslint src/**/*.{ts,tsx}",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",
     "typecheck": "tsc --noEmit",
     "test": "jest"
   },
@@ -50,8 +50,6 @@
     "esbuild": "^0.19.12",
     "esbuild-plugin-clean": "^1.0.1",
     "esbuild-plugin-polyfill-node": "^0.3.0",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react": "^7.34.0",
     "express": "^4.19.2",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
