@@ -1,13 +1,13 @@
-import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { GenerateResponseParams, MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 
 export class AnthropicService implements ModelServiceProvider {
-  async generateResponse(
+  async generateResponseParams(
     messages: MessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
-  ): Promise<any> {
+  ): Promise<GenerateResponseParams> {
     // Convert messages to Anthropic format
     const anthropicMessages = messages.map(msg => ({
       role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",

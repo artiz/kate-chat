@@ -50,7 +50,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
                 <Text size="sm" fw={500} c={msg.role === "user" ? "blue" : "dark"}>
                   {msg.role === "user" ? "You" : msg.modelName || "AI"}
                 </Text>
-                <Paper p="sm" bg={msg.role === "user" ? "brand.0" : "brand.2"} style={{ whiteSpace: "pre-wrap" }}>
+                <Paper p="sm" bg={msg.role === "user" ? "orange.0" : "orange.2"} style={{ whiteSpace: "pre-wrap" }}>
                   <Text c="brand_contrast">{msg.content}</Text>
                 </Paper>
                 <Text size="xs" c="dimmed" mt={2}>

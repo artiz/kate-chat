@@ -66,6 +66,7 @@ export const RELOAD_MODELS_MUTATION = gql`
         id
         name
         modelId
+        apiType
         isDefault
         provider
       }
@@ -141,6 +142,7 @@ export const graphqlApi = api.injectEndpoints({
                   name
                   modelId
                   provider
+                  metadata
                 }
               }
             }
@@ -213,6 +215,8 @@ export const graphqlApi = api.injectEndpoints({
                   id
                   name
                   modelId
+                  modelArn
+                  apiType
                   isDefault
                   provider
                 }

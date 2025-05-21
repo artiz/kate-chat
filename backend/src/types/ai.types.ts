@@ -14,8 +14,20 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
+export type GenerateResponseParams = {
+  params: {
+    modelId: string;
+    body: string;
+  };
+};
+
 export interface ModelServiceProvider {
-  generateResponse(messages: MessageFormat[], modelId: string, temperature?: number, maxTokens?: number): Promise<any>;
+  generateResponseParams(
+    messages: MessageFormat[],
+    modelId: string,
+    temperature?: number,
+    maxTokens?: number
+  ): Promise<GenerateResponseParams>;
 
   parseResponse(responseBody: any): string;
 }

@@ -13,7 +13,7 @@ export class ModelResolver {
       const modelRepository = getRepository(Model);
 
       // Get the models from AWS Bedrock
-      const bedrockModels = await AIService.getSupportedModels();
+      const bedrockModels = await AIService.getBedrockModels();
 
       // Clear existing models
       await modelRepository.clear();
@@ -28,7 +28,8 @@ export class ModelResolver {
         // Update model properties
         model.name = modelInfo.name;
         model.modelId = modelId;
-        model.description = `${modelInfo.name} by ${modelInfo.provider}`;
+        model.modelArn = modelInfo.modelArn;
+        model.description = modelInfo.description || `${modelInfo.name} by ${modelInfo.provider}`;
         model.provider = modelInfo.provider;
         model.apiType = "bedrock";
         model.supportsStreaming = modelInfo.supportsStreaming || false;

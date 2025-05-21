@@ -125,16 +125,19 @@ const Models: React.FC = () => {
         {models.map(model => (
           <Grid.Col key={model.id} span={{ base: 12, sm: 6, lg: 4 }}>
             <Card withBorder padding="lg" radius="md">
-              <Stack gap="md">
+              <Stack gap="xs">
                 <Group justify="space-between">
                   <Group>
                     {getProviderIcon(model.provider)}
-                    <div>
-                      <Text fw={500}>{model.name}</Text>
-                      <Text size="xs" c="dimmed">
-                        {model.provider}
-                      </Text>
-                    </div>
+                    <Text fw={500}>{model.name}</Text>
+                  </Group>
+                  <Group w="100%" gap="sm">
+                    <Text size="xs" c="dimmed">
+                      {model.provider}
+                    </Text>
+                    <Text size="xs" c="brand.5">
+                      {model.apiType}
+                    </Text>
                   </Group>
 
                   {model.isDefault && (
@@ -143,6 +146,31 @@ const Models: React.FC = () => {
                     </Badge>
                   )}
                 </Group>
+                <Group>
+                  <Text>{model.modelId}</Text>
+                </Group>
+
+                {model.metadata && (
+                  <Group>
+                    {(() => {
+                      try {
+                        const metadata = JSON.parse(model.metadata);
+                        const currentRegion = metadata.currentRegion;
+
+                        if (metadata.regions && metadata.regions.length > 0) {
+                          return (
+                            <Badge color="blue" variant="outline">
+                              Region: {currentRegion}
+                            </Badge>
+                          );
+                        }
+                        return null;
+                      } catch (e) {
+                        return null;
+                      }
+                    })()}
+                  </Group>
+                )}
 
                 <Button
                   leftSection={<IconMessagePlus size={16} />}

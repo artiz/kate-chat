@@ -4,6 +4,7 @@ import { bedrockClient, bedrockManagementClient } from "../config/bedrock";
 import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
 import { MessageFormat, StreamCallbacks, DEFAULT_MODEL_ID } from "../types/ai.types";
+import ModelAvailabilityRegions from "../config/data/bedrock-models-regions.json";
 
 // Import provider-specific services
 import { AnthropicService } from "./providers/anthropic.service";
@@ -13,7 +14,7 @@ import { CohereService } from "./providers/cohere.service";
 import { MetaService } from "./providers/meta.service";
 import { MistralService } from "./providers/mistral.service";
 
-export { DEFAULT_MODEL_ID };
+const CURRENT_REGION = process.env.AWS_REGION || "us-west-2";
 
 export class AIService {
   private anthropicService: AnthropicService;
@@ -146,8 +147,6 @@ export class AIService {
       return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
     });
 
-    console.log("Preprocess messages:", messages);
-
     return messages.reduce((acc: MessageFormat[], msg: MessageFormat) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
       // Check if the last message is of the same role and content
@@ -176,27 +175,27 @@ export class AIService {
     let params;
 
     if (modelId.startsWith("anthropic.")) {
-      const result = await this.anthropicService.generateResponse(messages, modelId, temperature, maxTokens);
+      const result = await this.anthropicService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.anthropicService;
       params = result.params;
     } else if (modelId.startsWith("amazon.")) {
-      const result = await this.amazonService.generateResponse(messages, modelId, temperature, maxTokens);
+      const result = await this.amazonService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.amazonService;
       params = result.params;
     } else if (modelId.startsWith("ai21.")) {
-      const result = await this.ai21Service.generateResponse(messages, modelId, temperature, maxTokens);
+      const result = await this.ai21Service.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.ai21Service;
       params = result.params;
     } else if (modelId.startsWith("cohere.")) {
-      const result = await this.cohereService.generateResponse(messages, modelId, temperature, maxTokens);
+      const result = await this.cohereService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.cohereService;
       params = result.params;
     } else if (modelId.startsWith("meta.")) {
-      const result = await this.metaService.generateResponse(messages, modelId, temperature, maxTokens);
+      const result = await this.metaService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.metaService;
       params = result.params;
     } else if (modelId.startsWith("mistral.")) {
-      const result = await this.mistralService.generateResponse(messages, modelId, temperature, maxTokens);
+      const result = await this.mistralService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = this.mistralService;
       params = result.params;
     } else {
@@ -216,40 +215,49 @@ export class AIService {
     }));
 
     // Use the existing generate method
-    return this.generateResponse(formattedMessages, model.modelId || DEFAULT_MODEL_ID, 0.7, 2048);
+    return this.generateResponse(formattedMessages, model.modelId, 0.7, 2048);
   }
 
   // Helper method to get all supported models with their metadata
-  static async getSupportedModels(): Promise<Record<string, any>> {
-    // Get foundation model data from AWS Bedrock
+  static async getBedrockModels(): Promise<Record<string, any>> {
+    const modelsRegions = ModelAvailabilityRegions.reduce((acc: Record<string, string[]>, region) => {
+      const { modelId, regions } = region;
+      acc[modelId] = regions;
+      return acc;
+    }, {});
+
     const command = new ListFoundationModelsCommand({});
     const response = await bedrockManagementClient.send(command);
 
     const models: Record<string, any> = {};
 
-    if (response.modelSummaries && response.modelSummaries.length > 0) {
-      for (const model of response.modelSummaries) {
-        // skip image models for now
-        if (model.outputModalities?.includes(ModelModality.IMAGE)) {
-          continue;
-        }
+    if (!response.modelSummaries || !response.modelSummaries.length) {
+      return models;
+    }
 
-        if (model.modelId && model.providerName) {
-          const modelId = model.modelId;
-          const providerName = model.providerName;
+    for (const model of response.modelSummaries) {
+      const regions = modelsRegions[model.modelId || model.modelArn || ""];
+      if (!regions || !regions.includes(CURRENT_REGION)) {
+        continue;
+      }
 
-          models[modelId] = {
-            provider: providerName,
-            name: model.modelName || modelId.split(".").pop() || modelId,
-            description: `${model.modelName || modelId} by ${providerName}`,
-            supportsStreaming: model.responseStreamingSupported || false,
-            supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
-            supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
-            supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
-            supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
-            supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
-          };
-        }
+      if (model.modelId && model.providerName) {
+        const modelId = model.modelId;
+        const providerName = model.providerName;
+
+        models[modelId] = {
+          provider: providerName,
+          name: model.modelName || modelId.split(".").pop() || modelId,
+          modelArn: model.modelArn,
+          description: `${model.modelName || modelId} by ${providerName}`,
+          supportsStreaming: model.responseStreamingSupported || false,
+          supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
+          supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
+          supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
+          supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
+          supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
+          currentRegion: process.env.AWS_REGION || "us-west-2",
+        };
       }
     }
 

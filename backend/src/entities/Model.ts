@@ -23,7 +23,11 @@ export class Model {
 
   @Field()
   @Column()
-  modelId: string; // The actual model ID to use in API calls
+  modelId: string;
+
+  @Field()
+  @Column({})
+  modelArn: string;
 
   @Field()
   @Column()

@@ -2,7 +2,7 @@ import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../type
 import { MessageRole } from "../../entities/Message";
 
 export class MetaService implements ModelServiceProvider {
-  async generateResponse(
+  async generateResponseParams(
     messages: MessageFormat[],
     modelId: string,
     temperature: number = 0.7,
@@ -50,7 +50,7 @@ export class MetaService implements ModelServiceProvider {
     maxTokens: number = 2048
   ): Promise<void> {
     // Use the same parameters as non-streaming for now
-    const { params } = await this.generateResponse(messages, modelId, temperature, maxTokens);
+    const { params } = await this.generateResponseParams(messages, modelId, temperature, maxTokens);
     return { params } as any;
   }
 

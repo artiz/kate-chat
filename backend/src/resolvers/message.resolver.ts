@@ -6,11 +6,12 @@ import { Chat } from "../entities/Chat";
 import { CreateMessageInput, GetMessagesInput } from "../types/graphql/inputs";
 import { Model } from "../entities/Model";
 import { getRepository } from "../config/database";
-import { AIService, DEFAULT_MODEL_ID } from "../services/ai.service";
+import { AIService } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
 import { getErrorMessage } from "../utils/errors";
 import { MessageResponse, MessagesResponse } from "../types/graphql/responses";
+import { DEFAULT_MODEL_ID } from "../types/ai.types";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";

@@ -4,6 +4,8 @@ export interface Model {
   id: string;
   name: string;
   modelId: string;
+  modelArn: string;
+  apiType: string;
   isDefault?: boolean;
   provider: string;
 }
