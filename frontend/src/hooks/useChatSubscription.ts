@@ -4,6 +4,7 @@ import { addMessage, Message, MessageType, MessageRole } from "../store/slices/c
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch } from "@/store";
 import { parseMessageHtml } from "@/lib/services/MarkdownParser";
+import { throttle } from "lodash";
 
 // GraphQL queries and subscriptions
 const NEW_MESSAGE_SUBSCRIPTION = gql`
@@ -44,7 +45,7 @@ export const useChatSubscription: (id: string | undefined, resetSending: () => v
   }, [id]);
 
   const addChatMessage = useCallback(
-    (message: Message) => {
+    throttle((message: Message) => {
       if (!message) return;
 
       if (message.content) {
@@ -54,7 +55,7 @@ export const useChatSubscription: (id: string | undefined, resetSending: () => v
       } else {
         dispatch(addMessage(message));
       }
-    },
+    }, 200),
     [dispatch]
   );
 
