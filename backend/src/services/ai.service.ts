@@ -286,6 +286,11 @@ export class AIService {
 
   // Helper method to get all supported models with their metadata
   static async getBedrockModels(): Promise<Record<string, BedrockModelInfo>> {
+    // no AWS connection
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_PROFILE) {
+      return {};
+    }
+
     const modelsRegions = (ModelAvailabilityRegions as ModelAvailabilityRecord[]).reduce(
       (acc: Record<string, string[]>, region) => {
         const { modelId, regions, disabled } = region;
