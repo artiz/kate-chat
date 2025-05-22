@@ -3,6 +3,7 @@ import { Paper, Text, Stack, Group, Avatar, Loader, Box } from "@mantine/core";
 import { IconRobot, IconUser } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
+import classes from "./ChatMessages.module.scss";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -12,7 +13,7 @@ interface ChatMessagesProps {
 }
 
 const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sending, selectedModelName }) => {
-    return (
+  return (
     <>
       {isLoading ? (
         <Group align="center" py="xl">
@@ -32,40 +33,35 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
         <Stack gap="lg">
           {messages.map(msg => (
             <Group key={msg.id} align="flex-start" gap="xs">
-              <Avatar color={msg.role === MessageRole.USER ? "blue" : "gray"} radius="xl">
-                {msg.role === "user" ? <IconUser size={20} /> : <IconRobot size={20} />}
-              </Avatar>
-              <Box
-                style={{
-                  maxWidth: "calc(100% - 50px)",
-                  wordWrap: "break-word",
-                }}
-              >
-                <Text size="sm" fw={500} c={msg.role === MessageRole.USER ? "blue" : "dark"}>
-                  {msg.role === "user" ? "You" : msg.modelName || "AI"}
-                </Text>
-                
-                <Paper p="sm" bg={msg.role === MessageRole.USER ? "teal.0" : "teal.2"} >
-                {msg.html ?
-                    msg.html.map((part, index) => (
-                        <Text key={index} size="xs" c="brand_contrast" dangerouslySetInnerHTML={{ __html: part }} />
-                    )) : <Text size="xs"  c="brand_contrast">
-                    {msg.content}
-                  </Text>} 
-                </Paper>
-
-                <Text size="xs" c="dimmed" mt={2}>
-                  {new Date(msg.createdAt).toLocaleTimeString()}
-                </Text>
-              </Box>
+              <Group align="center">
+                <Avatar color={msg.role === MessageRole.USER ? "blue" : "gray"} radius="xl">
+                  {msg.role === "user" ? <IconUser size={20} /> : <IconRobot size={20} />}
+                </Avatar>
+                <Stack gap="xs">
+                  <Text size="sm" fw={500} c={msg.role === MessageRole.USER ? "blue" : "dark"}>
+                    {msg.role === "user" ? "You" : msg.modelName || "AI"}
+                  </Text>
+                  <Text size="xs" c="dimmed" mt={2}>
+                    {new Date(msg.createdAt).toLocaleTimeString()}
+                  </Text>
+                </Stack>
+              </Group>
+              <Paper className={classes.message} p="md">
+                {msg.html ? (
+                  msg.html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
+                ) : (
+                  <Text size="xs">{msg.content}</Text>
+                )}
+              </Paper>
             </Group>
           ))}
+
           {sending && (
             <Group align="flex-start" gap="xs">
               <Avatar color="gray" radius="xl">
                 <IconRobot size={20} />
               </Avatar>
-              <Box style={{ maxWidth: "calc(100% - 50px)" }}>
+              <Box>
                 <Text size="sm" fw={500}>
                   {selectedModelName || "AI"}
                 </Text>

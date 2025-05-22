@@ -4,7 +4,9 @@ import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store";
 import App from "./components/App";
-import "./index.css";
+
+import "./index.scss";
+import "./assets/katex/katex.css";
 
 // Ensure the container exists
 const container = document.getElementById("root");
@@ -13,14 +15,16 @@ if (!container) throw new Error("Root element not found");
 const root = createRoot(container);
 
 root.render(
-    <React.StrictMode>
-        <Provider store={store}>
-            <BrowserRouter future={{
-                v7_relativeSplatPath: true,
-                v7_startTransition: true,
-            }}>
-                <App />
-            </BrowserRouter>
-        </Provider>
-    </React.StrictMode>
+  <React.StrictMode>
+    <Provider store={store}>
+      <BrowserRouter
+        future={{
+          v7_relativeSplatPath: true,
+          v7_startTransition: true,
+        }}
+      >
+        <App />
+      </BrowserRouter>
+    </Provider>
+  </React.StrictMode>
 );

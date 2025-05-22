@@ -1,0 +1,49 @@
+@use "sass:meta";
+
+/* Import Mantine styles */
+@import "@mantine/core/styles.css";
+@import "@mantine/notifications/styles.css";
+
+[data-mantine-color-scheme="light"] {
+  @include meta.load-css("highlight.js/styles/panda-syntax-light");
+}
+[data-mantine-color-scheme="dark"] {
+  @include meta.load-css("highlight.js/styles/a11y-dark");
+}
+
+/* Global CSS */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* TODO: extract to modules */
+/* Chat navigation item styles */
+.chat-nav-item .mantine-ActionIcon-root {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chat-nav-item:hover .mantine-ActionIcon-root {
+  opacity: 1;
+}
+
+/* Edit title icon styles */
+.edit-title-icon {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mantine-Group-root:hover .edit-title-icon {
+  opacity: 0.7;
+}

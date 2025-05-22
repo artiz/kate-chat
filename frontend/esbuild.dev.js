@@ -1,6 +1,8 @@
 const esbuild = require("esbuild");
 const { clean } = require("esbuild-plugin-clean");
 const { polyfillNode } = require("esbuild-plugin-polyfill-node");
+const { sassPlugin, postcssModules } = require("esbuild-sass-plugin");
+
 const path = require("path");
 const fs = require("fs");
 
@@ -34,7 +36,17 @@ esbuild
       "process.env.NODE_ENV": '"development"',
       "process.env.REACT_APP_API_URL": '"http://localhost:4000"',
     },
-    plugins: [clean({ patterns: ["./dist/*.js"] }), polyfillNode()],
+    plugins: [
+      clean({ patterns: ["./dist/*.js"] }),
+      polyfillNode(),
+      sassPlugin({
+        filter: /\.module\.scss$/,
+        transform: postcssModules({}),
+      }),
+      sassPlugin({
+        filter: /\.scss$/,
+      }),
+    ],
     logLevel: "info",
   })
   .then(context => {

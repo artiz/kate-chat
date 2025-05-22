@@ -46,6 +46,12 @@ export const UPDATE_CHAT_MUTATION = gql`
   }
 `;
 
+export const DELETE_CHAT_MUTATION = gql`
+  mutation DeleteChat($id: ID!) {
+    deleteChat(id: $id)
+  }
+`;
+
 export const CREATE_CHAT_MUTATION = gql`
   mutation CreateChat($input: CreateChatInput!) {
     createChat(input: $input) {

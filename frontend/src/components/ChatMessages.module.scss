@@ -1,0 +1,15 @@
+.message {
+  width: 100%;
+  overflow-x: auto;
+
+  :global p {
+    margin-block-start: 0;
+    margin-block-end: 0;
+  }
+}
+
+[data-mantine-color-scheme="dark"] {
+  .message {
+    background-color: var(--mantine-color-dark-6) !important;
+  }
+}

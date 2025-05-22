@@ -13,9 +13,9 @@ export enum MessageType {
 }
 
 export enum MessageRole {
-    USER = "user",
-    ASSISTANT = "assistant",
-  }
+  USER = "user",
+  ASSISTANT = "assistant",
+}
 
 export interface Message {
   id: string;
@@ -77,6 +77,10 @@ const chatSlice = createSlice({
     updateChat(state, action: PayloadAction<Chat>) {
       state.chats = state.chats.map(chat => (chat.id === action.payload.id ? action.payload : chat));
     },
+    removeChat(state, action: PayloadAction<string>) {
+      state.chats = state.chats.filter(chat => chat.id !== action.payload);
+    },
+
     setCurrentChat(state, action: PayloadAction<Chat | null>) {
       state.currentChat = action.payload;
     },
@@ -104,6 +108,15 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setChats, addChat, updateChat, setCurrentChat, setMessages, addMessage, setChatLoading, setChatError } =
-  chatSlice.actions;
+export const {
+  setChats,
+  addChat,
+  updateChat,
+  removeChat,
+  setCurrentChat,
+  setMessages,
+  addMessage,
+  setChatLoading,
+  setChatError,
+} = chatSlice.actions;
 export default chatSlice.reducer;

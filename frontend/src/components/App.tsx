@@ -22,10 +22,7 @@ import Models from "../pages/Models";
 import Settings from "../pages/Settings";
 import MainLayout from "../components/MainLayout";
 import { ERROR_UNAUTHORIZED } from "@/store/api";
-import { STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
-
-import "../assets/katex/katex.css";
-import "highlight.js/styles/panda-syntax-light.css";
+import { logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -67,7 +64,7 @@ const AppContent: React.FC = () => {
     // Handle errors from the initial data query
     if (isError) {
       if ("status" in error && error.status === "PARSING_ERROR" && error.error === ERROR_UNAUTHORIZED) {
-        localStorage.removeItem(STORAGE_AUTH_TOKEN);
+        dispatch(logout());
         navigate("/login");
       } else if ("error" in error) {
         console.error("Parsing error:", error.error);
