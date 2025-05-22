@@ -75,9 +75,28 @@ export const RELOAD_MODELS_MUTATION = gql`
         apiType
         isDefault
         provider
+        isActive
       }
       error
     }
+  }
+`;
+
+export const UPDATE_MODEL_STATUS_MUTATION = gql`
+  mutation UpdateModelStatus($input: UpdateModelStatusInput!) {
+    updateModelStatus(input: $input) {
+      id
+      name
+      modelId
+      provider
+      isActive
+    }
+  }
+`;
+
+export const TEST_MODEL_MUTATION = gql`
+  mutation TestModel($input: TestModelInput!) {
+    testModel(input: $input)
   }
 `;
 
@@ -148,7 +167,9 @@ export const graphqlApi = api.injectEndpoints({
                   name
                   modelId
                   provider
-                  metadata
+                  isActive
+                  apiType
+                  isDefault
                 }
               }
             }
@@ -216,16 +237,15 @@ export const graphqlApi = api.injectEndpoints({
                 firstName
                 lastName
               }
-              getModels {
-                models {
-                  id
-                  name
-                  modelId
-                  modelArn
-                  apiType
-                  isDefault
-                  provider
-                }
+              getActiveModels {
+                id
+                name
+                modelId
+                modelArn
+                apiType
+                isDefault
+                provider
+                isActive
               }
               getChats(input: { limit: 20, offset: 0 }) {
                 chats {
@@ -243,10 +263,10 @@ export const graphqlApi = api.injectEndpoints({
       }),
 
       transformResponse: (response: any) => {
-        const { currentUser, getModels, getChats } = response.data || {};
+        const { currentUser, getActiveModels, getChats } = response.data || {};
         return {
           user: currentUser,
-          models: getModels?.models || [],
+          models: getActiveModels || [],
           chats: getChats || {
             chats: [],
             total: 0,

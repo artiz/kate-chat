@@ -1,10 +1,10 @@
 import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { InferenceType, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
+import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { bedrockClient, bedrockManagementClient } from "../config/bedrock";
 import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
 import { MessageFormat, StreamCallbacks, DEFAULT_MODEL_ID } from "../types/ai.types";
-import ModelAvailabilityRegions from "../config/data/bedrock-models-regions.json";
+import BedrockModelConfigs from "../config/data/bedrock-models-config.json";
 
 // Import provider-specific services
 import { AnthropicService } from "./providers/anthropic.service";
@@ -15,7 +15,7 @@ import { MetaService } from "./providers/meta.service";
 import { MistralService } from "./providers/mistral.service";
 
 const CURRENT_REGION = process.env.AWS_REGION || "us-west-2";
-interface ModelAvailabilityRecord {
+interface BedrockModelConfigRecord {
   provider: string;
   modelId: string;
   modelIdOverride?: string;
@@ -287,11 +287,11 @@ export class AIService {
   // Helper method to get all supported models with their metadata
   static async getBedrockModels(): Promise<Record<string, BedrockModelInfo>> {
     // no AWS connection
-    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_PROFILE) {
+    if (!process.env.AWS_ACCESS_KEY_ID && !process.env.AWS_PROFILE) {
       return {};
     }
 
-    const modelsRegions = (ModelAvailabilityRegions as ModelAvailabilityRecord[]).reduce(
+    const modelsRegions = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
       (acc: Record<string, string[]>, region) => {
         const { modelId, regions, disabled } = region;
         acc[modelId] = disabled ? [] : regions;
@@ -300,7 +300,7 @@ export class AIService {
       {}
     );
 
-    const modelIdOverrides = (ModelAvailabilityRegions as ModelAvailabilityRecord[]).reduce(
+    const modelIdOverrides = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
       (acc: Record<string, string>, region) => {
         const { modelId, modelIdOverride } = region;
         if (modelIdOverride) {

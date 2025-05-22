@@ -139,6 +139,7 @@
   {
     "provider": "amazon",
     "modelId": "amazon.nova-micro-v1:0",
+    "modelIdOverride": "us.amazon.nova-micro-v1:0",
     "name": "Nova Micro",
     "regions": [
       "us-east-1",

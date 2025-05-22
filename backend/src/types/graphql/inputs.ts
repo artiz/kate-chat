@@ -102,3 +102,21 @@ export class GetModelsInput {
   @Field({ nullable: true, defaultValue: true })
   onlyActive?: boolean;
 }
+
+@InputType()
+export class UpdateModelStatusInput {
+  @Field()
+  modelId: string;
+
+  @Field()
+  isActive: boolean;
+}
+
+@InputType()
+export class TestModelInput {
+  @Field()
+  modelId: string;
+
+  @Field({ defaultValue: "2+2=" })
+  text: string;
+}

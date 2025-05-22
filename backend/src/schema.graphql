@@ -123,11 +123,14 @@ type Mutation {
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
   reloadModels: ModelsResponse!
+  testModel(input: TestModelInput!): String!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
+  updateModelStatus(input: UpdateModelStatusInput!): ModelResponse!
 }
 
 type Query {
   currentUser: User
+  getActiveModels: [ModelResponse!]!
   getChatById(id: ID!): Chat
   getChatMessages(input: GetMessagesInput!): MessagesResponse!
   getChats(input: GetChatsInput): ChatsResponse!
@@ -147,11 +150,21 @@ type Subscription {
   newMessage(chatId: String!): MessageResponse!
 }
 
+input TestModelInput {
+  modelId: String!
+  text: String! = "2+2="
+}
+
 input UpdateChatInput {
   description: String
   isActive: Boolean
   modelId: String
   title: String
+}
+
+input UpdateModelStatusInput {
+  isActive: Boolean!
+  modelId: String!
 }
 
 type User {

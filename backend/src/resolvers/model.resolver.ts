@@ -1,9 +1,12 @@
 import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai.service";
 import { Model } from "../entities/Model";
+
 import { ModelsResponse, ModelResponse } from "../types/graphql/responses";
+import { TestModelInput, UpdateModelStatusInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { DEFAULT_MODEL_ID } from "../types/ai.types";
+import { DEFAULT_MODEL_ID, MessageFormat } from "../types/ai.types";
+import { MessageRole } from "../entities/Message";
 
 @Resolver()
 export class ModelResolver {
@@ -15,8 +18,19 @@ export class ModelResolver {
       // Get the models from AWS Bedrock
       const bedrockModels = await AIService.getBedrockModels();
 
+      const dbModels = await modelRepository.find({});
+      const enabledMap = dbModels.reduce(
+        (map: Record<string, boolean>, m: Model) => {
+          map[m.modelId] = m.isActive;
+          return map;
+        },
+        {} as Record<string, boolean>
+      );
+
       // Clear existing models
-      await modelRepository.clear();
+      if (Object.keys(bedrockModels).length) {
+        await modelRepository.clear();
+      }
 
       // Save Bedrock models to database
       const models: ModelResponse[] = [];
@@ -38,7 +52,7 @@ export class ModelResolver {
         model.supportsImageIn = modelInfo.supportsImageIn || false;
         model.supportsImageOut = modelInfo.supportsImageOut || false;
         model.supportsEmbeddingsIn = modelInfo.supportsEmbeddingsIn || false;
-        model.isActive = true;
+        model.isActive = modelId in enabledMap ? enabledMap[modelId] : true;
         model.sortOrder = sortOrder++;
 
         // Save the model
@@ -54,6 +68,7 @@ export class ModelResolver {
       return { error: "Failed to refresh models" };
     }
   }
+
   @Query(() => ModelsResponse)
   @Authorized()
   async getModels(): Promise<ModelsResponse> {
@@ -61,7 +76,6 @@ export class ModelResolver {
       // Get models from the database
       const modelRepository = getRepository(Model);
       const dbModels = await modelRepository.find({
-        where: { isActive: true },
         order: { sortOrder: "ASC" },
       });
 
@@ -82,9 +96,97 @@ export class ModelResolver {
     }
   }
 
+  @Query(() => [ModelResponse])
+  @Authorized()
+  async getActiveModels(): Promise<ModelResponse[]> {
+    // Get models from the database
+    const modelRepository = getRepository(Model);
+    const dbModels = await modelRepository.find({
+      where: { isActive: true },
+      order: { sortOrder: "ASC" },
+    });
+
+    return dbModels.map((model: ModelResponse) => {
+      model.isDefault = model.modelId === DEFAULT_MODEL_ID;
+      return model;
+    });
+  }
+
   @Mutation(() => ModelsResponse)
   @Authorized()
   async reloadModels(): Promise<ModelsResponse> {
     return this.refreshModels();
+  }
+
+  @Mutation(() => ModelResponse)
+  @Authorized()
+  async updateModelStatus(@Arg("input") input: UpdateModelStatusInput): Promise<ModelResponse> {
+    try {
+      const { modelId, isActive } = input;
+
+      // Get the repository
+      const modelRepository = getRepository(Model);
+
+      // Find the model by ID
+      const model = await modelRepository.findOne({ where: { id: modelId } });
+
+      if (!model) {
+        throw new Error("Model not found");
+      }
+
+      // Update the model's isActive status
+      model.isActive = isActive;
+
+      // Save the updated model
+      const updatedModel = await modelRepository.save(model);
+
+      // Add isDefault property for the response
+      (updatedModel as ModelResponse).isDefault = updatedModel.modelId === DEFAULT_MODEL_ID;
+
+      return updatedModel as ModelResponse;
+    } catch (error) {
+      console.error("Error updating model status:", error);
+      throw new Error("Failed to update model status");
+    }
+  }
+
+  @Mutation(() => String)
+  @Authorized()
+  async testModel(@Arg("input") input: TestModelInput): Promise<string> {
+    try {
+      const { modelId, text } = input;
+
+      // Get the repository
+      const modelRepository = getRepository(Model);
+
+      // Find the model by ID
+      const model = await modelRepository.findOne({ where: { id: modelId } });
+
+      if (!model) {
+        throw new Error("Model not found");
+      }
+
+      if (!model.isActive) {
+        throw new Error("Model is not active");
+      }
+
+      // Create service instance
+      const aiService = new AIService();
+
+      // Create a message format for the test
+      const message: MessageFormat = {
+        role: MessageRole.USER,
+        content: text,
+        timestamp: new Date(),
+      };
+
+      // Generate a response using the AI service
+      const response = await aiService.generateResponse([message], model.modelId);
+
+      return response;
+    } catch (error: unknown) {
+      console.error("Error testing model:", error);
+      throw new Error(`Failed to test model: ${error || "Unknown error"}`);
+    }
   }
 }

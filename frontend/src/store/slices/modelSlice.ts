@@ -8,6 +8,7 @@ export interface Model {
   apiType: string;
   isDefault?: boolean;
   provider: string;
+  isActive: boolean;
 }
 
 interface ModelState {
@@ -42,8 +43,17 @@ const modelSlice = createSlice({
       state.error = action.payload;
       state.loading = false;
     },
+    updateModel(state, action: PayloadAction<Model>) {
+      const index = state.models.findIndex(model => model.id === action.payload.id);
+      if (index !== -1) {
+        state.models[index] = {
+          ...state.models[index],
+          ...action.payload,
+        };
+      }
+    },
   },
 });
 
-export const { setModels, setSelectedModel, setModelLoading, setModelError } = modelSlice.actions;
+export const { setModels, setSelectedModel, setModelLoading, setModelError, updateModel } = modelSlice.actions;
 export default modelSlice.reducer;

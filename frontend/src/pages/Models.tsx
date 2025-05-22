@@ -1,6 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Title, Text, Grid, Card, Group, Badge, Stack, Loader, Button } from "@mantine/core";
+import {
+  Container,
+  Title,
+  Text,
+  Grid,
+  Card,
+  Group,
+  Badge,
+  Stack,
+  Loader,
+  Button,
+  Switch,
+  Modal,
+  TextInput,
+  Textarea,
+  Code,
+  Alert,
+} from "@mantine/core";
 import {
   IconBrandOpenai,
   IconRocket,
@@ -9,11 +26,18 @@ import {
   IconMessage,
   IconMessagePlus,
   IconRefresh,
+  IconTestPipe,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../store";
 import { useMutation } from "@apollo/client";
-import { Model, setSelectedModel, setModels } from "../store/slices/modelSlice";
-import { CREATE_CHAT_MUTATION, RELOAD_MODELS_MUTATION } from "../store/services/graphql";
+import { Model, setSelectedModel, setModels, updateModel } from "../store/slices/modelSlice";
+import {
+  CREATE_CHAT_MUTATION,
+  RELOAD_MODELS_MUTATION,
+  UPDATE_MODEL_STATUS_MUTATION,
+  TEST_MODEL_MUTATION,
+} from "../store/services/graphql";
 import { notifications } from "@mantine/notifications";
 
 // Helper function to get provider icon
@@ -35,6 +59,12 @@ const Models: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { models, loading, error } = useAppSelector(state => state.models);
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testText, setTestText] = useState("2+2=");
+  const [testResult, setTestResult] = useState("");
+  const [testError, setTestError] = useState("");
+  const [currentTestingModel, setCurrentTestingModel] = useState<Model | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
 
   // Reload models mutation
   const [reloadModels, { loading: reloading }] = useMutation(RELOAD_MODELS_MUTATION, {
@@ -71,6 +101,39 @@ const Models: React.FC = () => {
     },
   });
 
+  // Update model status mutation
+  const [updateModelStatus] = useMutation(UPDATE_MODEL_STATUS_MUTATION, {
+    onCompleted: data => {
+      if (data?.updateModelStatus) {
+        dispatch(updateModel(data.updateModelStatus));
+        notifications.show({
+          title: "Success",
+          message: `${data.updateModelStatus.name} is now ${data.updateModelStatus.isActive ? "active" : "inactive"}`,
+          color: "green",
+        });
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to update model status",
+        color: "red",
+      });
+    },
+  });
+
+  // Test model mutation
+  const [testModel] = useMutation(TEST_MODEL_MUTATION, {
+    onCompleted: data => {
+      setTestResult(data.testModel);
+      setTestLoading(false);
+    },
+    onError: error => {
+      setTestError(error.message);
+      setTestLoading(false);
+    },
+  });
+
   // Handle creating a new chat with the selected model
   const handleCreateChat = (model: Model) => {
     dispatch(setSelectedModel(model));
@@ -88,6 +151,69 @@ const Models: React.FC = () => {
   // Handle reloading models
   const handleReloadModels = () => {
     reloadModels();
+  };
+
+  // Handle toggle model active status
+  const handleToggleModelStatus = (model: Model, isActive: boolean) => {
+    updateModelStatus({
+      variables: {
+        input: {
+          modelId: model.id,
+          isActive,
+        },
+      },
+    });
+  };
+
+  // Handle opening test modal
+  const handleOpenTestModal = (model: Model) => {
+    setCurrentTestingModel(model);
+    setTestText("2+2=");
+    setTestResult("");
+    setTestError("");
+    setTestModalOpen(true);
+  };
+
+  // Handle closing test modal
+  const handleCloseTestModal = () => {
+    setCurrentTestingModel(null);
+    setTestModalOpen(false);
+    setTestResult("");
+    setTestError("");
+  };
+
+  // Handle test model
+  const handleTestModel = () => {
+    if (!currentTestingModel) return;
+
+    setTestLoading(true);
+    setTestResult("");
+    setTestError("");
+
+    testModel({
+      variables: {
+        input: {
+          modelId: currentTestingModel.id,
+          text: testText,
+        },
+      },
+    });
+  };
+
+  // Handle disabling model after test error
+  const handleDisableModel = () => {
+    if (!currentTestingModel) return;
+
+    updateModelStatus({
+      variables: {
+        input: {
+          modelId: currentTestingModel.id,
+          isActive: false,
+        },
+      },
+    });
+
+    handleCloseTestModal();
   };
 
   if (loading || reloading) {
@@ -131,7 +257,18 @@ const Models: React.FC = () => {
                     {getProviderIcon(model.provider)}
                     <Text fw={500}>{model.name}</Text>
                   </Group>
-                  <Group w="100%" gap="sm">
+                  <Group>
+                    <Switch
+                      checked={model.isActive}
+                      onChange={event => handleToggleModelStatus(model, event.currentTarget.checked)}
+                      label="Active"
+                      size="md"
+                    />
+                  </Group>
+                </Group>
+
+                <Group justify="space-between">
+                  <Group gap="sm">
                     <Text size="xs" c="dimmed">
                       {model.provider}
                     </Text>
@@ -146,40 +283,29 @@ const Models: React.FC = () => {
                     </Badge>
                   )}
                 </Group>
+
                 <Group>
-                  <Text>{model.modelId}</Text>
+                  <Text size="sm">{model.modelId}</Text>
                 </Group>
 
-                {model.metadata && (
-                  <Group>
-                    {(() => {
-                      try {
-                        const metadata = JSON.parse(model.metadata);
-                        const currentRegion = metadata.currentRegion;
-
-                        if (metadata.regions && metadata.regions.length > 0) {
-                          return (
-                            <Badge color="blue" variant="outline">
-                              Region: {currentRegion}
-                            </Badge>
-                          );
-                        }
-                        return null;
-                      } catch (e) {
-                        return null;
-                      }
-                    })()}
-                  </Group>
-                )}
-
-                <Button
-                  leftSection={<IconMessagePlus size={16} />}
-                  fullWidth
-                  onClick={() => handleCreateChat(model)}
-                  loading={creatingChat}
-                >
-                  Start Chat
-                </Button>
+                <Group grow>
+                  <Button
+                    leftSection={<IconMessagePlus size={16} />}
+                    onClick={() => handleCreateChat(model)}
+                    loading={creatingChat}
+                    disabled={!model.isActive}
+                  >
+                    Start Chat
+                  </Button>
+                  <Button
+                    leftSection={<IconTestPipe size={16} />}
+                    variant="light"
+                    onClick={() => handleOpenTestModal(model)}
+                    disabled={!model.isActive}
+                  >
+                    Test Request
+                  </Button>
+                </Group>
               </Stack>
             </Card>
           </Grid.Col>
@@ -193,6 +319,47 @@ const Models: React.FC = () => {
           </Grid.Col>
         )}
       </Grid>
+
+      {/* Test Request Modal */}
+      <Modal
+        opened={testModalOpen}
+        onClose={handleCloseTestModal}
+        title={`Test ${currentTestingModel?.name || "Model"}`}
+        size="lg"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Test prompt"
+            value={testText}
+            onChange={e => setTestText(e.target.value)}
+            placeholder="Enter text to test the model"
+          />
+
+          <Button onClick={handleTestModel} loading={testLoading} disabled={!testText.trim()} fullWidth>
+            Run Test
+          </Button>
+
+          {testResult && (
+            <Stack>
+              <Text fw={500}>Model Response:</Text>
+              <Card withBorder p="md" radius="md">
+                <Text>{testResult}</Text>
+              </Card>
+            </Stack>
+          )}
+
+          {testError && (
+            <Alert icon={<IconAlertCircle size={16} />} title="Error" color="red">
+              {testError}
+              <Group mt="md">
+                <Button color="red" onClick={handleDisableModel}>
+                  Disable Model
+                </Button>
+              </Group>
+            </Alert>
+          )}
+        </Stack>
+      </Modal>
     </Container>
   );
 };

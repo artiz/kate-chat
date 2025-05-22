@@ -12,6 +12,7 @@ import { User } from "../entities/User";
 import { getErrorMessage } from "../utils/errors";
 import { MessageResponse, MessagesResponse } from "../types/graphql/responses";
 import { DEFAULT_MODEL_ID } from "../types/ai.types";
+import { ok } from "assert";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -164,19 +165,8 @@ export class MessageResolver {
     // Generate AI response
     const requestMessages = previousMessages.reverse();
 
-    // Create  AI response message
-    const aiMessage = this.messageRepository.create({
-      content: "",
-      role: MessageRole.ASSISTANT,
-      modelId: model.modelId, // real model used
-      modelName: model.name,
-      chatId,
-      user: { id: user.userId },
-      chat,
-    });
-
-    const completeRequest = async (content: string) => {
-      aiMessage.content = content;
+    const completeRequest = async (aiMessage: Message) => {
+      ok(aiMessage);
       const savedMessage = await this.messageRepository.save(aiMessage);
 
       // Publish the new message event for the AI response if pubSub is available
@@ -189,31 +179,48 @@ export class MessageResolver {
     };
 
     if (model.supportsStreaming) {
-      const handleStreaming = async (content: string, completed?: boolean, error?: Error) => {
+      const aiMessage = await this.messageRepository.save(
+        this.messageRepository.create({
+          content: "",
+          role: MessageRole.ASSISTANT,
+          modelId: model.modelId, // real model used
+          modelName: model.name,
+          chatId,
+          user: { id: user.userId },
+          chat,
+        })
+      );
+
+      const handleStreaming = async (token: string, completed?: boolean, error?: Error) => {
         if (completed) {
           if (error) {
+            const errorMessage = getErrorMessage(error);
+
             if (pubSub) {
-              pubSub.publish(NEW_MESSAGE, {
+              await pubSub.publish(NEW_MESSAGE, {
                 chatId,
-                data: { error: getErrorMessage(error) },
+                data: { error: errorMessage },
               });
             }
+
+            aiMessage.content = "ERROR: " + errorMessage;
+            completeRequest(aiMessage).catch(err => {
+              console.error("Error sending AI response", err);
+            });
 
             return console.error("Error generating AI response", error);
           }
 
-          completeRequest(content).catch(err => {
+          aiMessage.content = token;
+          completeRequest(aiMessage).catch(err => {
             console.error("Error sending AI response", err);
           });
-        } else {
-          if (!aiMessage.id) {
-            const saved = await this.messageRepository.save(aiMessage);
-            aiMessage.id = saved.id;
-          }
-          aiMessage.content += content;
 
+          // stream token
+        } else {
+          aiMessage.content += content;
           if (pubSub) {
-            pubSub.publish(NEW_MESSAGE, {
+            await pubSub.publish(NEW_MESSAGE, {
               chatId,
               data: { message: aiMessage },
             });
@@ -229,7 +236,19 @@ export class MessageResolver {
     // sync call
     try {
       const aiResponse = await this.aiService.getCompletion(requestMessages, model);
-      await completeRequest(aiResponse);
+      const aiMessage = await this.messageRepository.save(
+        this.messageRepository.create({
+          content: aiResponse,
+          role: MessageRole.ASSISTANT,
+          modelId: model.modelId, // real model used
+          modelName: model.name,
+          chatId,
+          user: { id: user.userId },
+          chat,
+        })
+      );
+
+      await completeRequest(aiMessage);
     } catch (error: unknown) {
       console.error("Error generating AI response", error);
       if (pubSub) {
@@ -249,7 +268,8 @@ export class MessageResolver {
   @Subscription(() => MessageResponse, {
     topics: NEW_MESSAGE,
     filter: ({ payload, args }) => {
-      console.log(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
+      // TODO: setup log levels
+      // console.debug(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
       // Only send messages to subscribers of the specific chat
       return payload.chatId === args.chatId;
     },
@@ -260,12 +280,13 @@ export class MessageResolver {
   ): MessageResponse {
     const { message, error, type = MessageType.MESSAGE } = payload.data;
 
-    console.log(`Publishing message to chat ${chatId} subscribers`, {
-      type,
-      messageId: message?.id,
-      role: message?.role,
-      error,
-    });
+    // TODO: setup log levels
+    // console.debug(`Publishing message to chat ${chatId} subscribers`, {
+    //   type,
+    //   messageId: message?.id,
+    //   role: message?.role,
+    //   error,
+    // });
 
     return {
       message,

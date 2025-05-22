@@ -1,5 +1,6 @@
 import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
+import { ok } from "assert";
 
 export class MistralService implements ModelServiceProvider {
   async generateResponseParams(
@@ -8,36 +9,37 @@ export class MistralService implements ModelServiceProvider {
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<any> {
-    // Convert messages to Mistral format
-    const mistralMessages = [];
+    ok(messages.length);
 
-    for (const msg of messages) {
+    // Convert messages to Mistral format
+    const lastUserMessage = messages[messages.length - 1];
+    const hasHistory = messages.length > 2;
+    const mistralMessages: string[] = [];
+    let historyStarted = false;
+
+    for (const msg of messages.slice(0, -1)) {
       if (msg.role === MessageRole.USER) {
-        mistralMessages.push({
-          role: "user",
-          content: msg.content,
-        });
+        mistralMessages.push(`${hasHistory && !historyStarted ? "<s>" : ""}[INST]${msg.content}[/INST]`);
+        if (hasHistory) historyStarted = true;
       } else if (msg.role === MessageRole.ASSISTANT) {
-        mistralMessages.push({
-          role: "assistant",
-          content: msg.content,
-        });
-      } else if (msg.role === MessageRole.SYSTEM) {
-        mistralMessages.push({
-          role: "system",
-          content: msg.content,
-        });
+        mistralMessages.push(msg.content);
       }
     }
+    if (hasHistory) {
+      mistralMessages[mistralMessages.length - 1] += "</s>";
+    }
+    mistralMessages.push(`[INST]${lastUserMessage.content}[/INST]`);
 
     const params = {
       modelId,
       body: JSON.stringify({
-        messages: mistralMessages,
+        prompt: mistralMessages.join("\n"),
         max_tokens: maxTokens,
         temperature,
       }),
     };
+
+    console.debug("Call Mistral model", modelId, mistralMessages);
 
     return { params };
   }

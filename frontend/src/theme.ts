@@ -3,8 +3,8 @@ import { themeOverride } from "./theme.override";
 
 // Define brand colors
 const brandColors: Record<string, MantineColorsTuple> = {
-  brand: ["#e0f2ff", "#c0e1ff", "#9aceff", "#72bdfe", "#50acfe", "#3da0fe", "#2897fe", "#0083fa", "#0077e8", "#006ad0"],
-  brand_contrast: ["#222", "#222", "#222", "#222", "#222", "#222", "#222", "#eee", "#eee", "#eee", "#eee"],
+  brand: ["#fff4e1", "#ffe8cc", "#fed09b", "#fdb766", "#fca13a", "#fc931d", "#fc8a08", "#e17800", "#c86a00", "#af5a00"],
+  brand_contrast: ["#222", "#222", "#222", "#222", "#222", "#222", "#222", "#222", "#222", "#eee", "#eee"],
 };
 
 // Create a basic theme with brand colors
