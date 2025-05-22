@@ -23,7 +23,7 @@ import ChatMessages from "../components/ChatMessages";
 import { notifications } from "@mantine/notifications";
 import { UPDATE_CHAT_MUTATION } from "../store/services/graphql";
 import { useChatSubscription } from "@/hooks/useChatSubscription";
-import { parseMessages } from "@/lib/services/MarkdownParser";
+import { parseChatMessages } from "@/lib/services/MarkdownParser";
 
 // GraphQL queries and subscriptions
 
@@ -119,7 +119,7 @@ const Chat: React.FC = () => {
     },
     skip: !id,
     onCompleted: data => {
-      parseMessages(data.getChatMessages.messages || []).then(parsedMessages => {
+      parseChatMessages(data.getChatMessages.messages || []).then(parsedMessages => {
         dispatch(setMessages(parsedMessages));
       });
     },
