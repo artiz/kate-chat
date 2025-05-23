@@ -1,7 +1,26 @@
 import { MessageRole } from "../entities/Message";
-import { Model } from "../entities/Model";
 
-export interface MessageFormat {
+export enum ApiProvider {
+  AWS_BEDROCK = "bedrock",
+  OPEN_AI = "open_ai",
+}
+
+export interface AIModelInfo {
+  apiProvider: ApiProvider;
+  provider: string;
+  name: string;
+  modelArn?: string;
+  description: string;
+  supportsStreaming: boolean;
+  supportsTextIn: boolean;
+  supportsTextOut: boolean;
+  supportsImageIn: boolean;
+  supportsImageOut: boolean;
+  supportsEmbeddingsIn: boolean;
+  currentRegion: string;
+}
+
+export interface ModelMessageFormat {
   role: MessageRole;
   content: string;
   timestamp?: Date;
@@ -28,16 +47,11 @@ export type GenerateResponseParams = {
 
 export interface ModelServiceProvider {
   generateResponseParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature?: number,
     maxTokens?: number
   ): Promise<GenerateResponseParams>;
 
   parseResponse(responseBody: any): ModelResponse;
-}
-
-export enum ApiProvider {
-  AWS_BEDROCK = "bedrock",
-  OPEN_AI = "open_ai",
 }

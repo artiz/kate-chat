@@ -1,9 +1,12 @@
-import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
+import { createLogger } from "../../utils/logger";
+
+const logger = createLogger(__filename);
 
 export class AI21Service implements ModelServiceProvider {
   async generateResponseParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -34,19 +37,9 @@ export class AI21Service implements ModelServiceProvider {
       }),
     };
 
-    return { params };
-  }
+    logger.debug({ modelId, prompt }, "Call A21 model");
 
-  async streamResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<void> {
-    // Use the same parameters as non-streaming for now
-    const { params } = await this.generateResponseParams(messages, modelId, temperature, maxTokens);
-    return { params } as any;
+    return { params };
   }
 
   parseResponse(responseBody: any): ModelResponse {

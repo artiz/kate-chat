@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, TokenPayload } from "../utils/jwt";
 import { PubSubEngine } from "graphql-subscriptions";
+import { logger } from "../utils/logger";
 
 declare global {
   namespace Express {
@@ -27,7 +28,7 @@ export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
   try {
     return verifyToken(token);
   } catch (error) {
-    console.error("Error verifying token:", error);
+    logger.error({ error }, "Error verifying token");
     return null;
   }
 };
@@ -50,6 +51,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
       if (token) {
         const user = verifyToken(token);
         if (!user) {
+          logger.warn("Invalid or expired token");
           res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         } else {
           req.user = user;
@@ -59,7 +61,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
     next();
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    logger.error({ error, path: req.path }, "Auth middleware error");
     next();
   }
 };

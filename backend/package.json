@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "npx ts-node-dev --inspect=9222 -r dotenv/config src/index.ts",
+    "start": "node -r tsconfig-paths/register dist/index.js",
+    "dev": "npx ts-node-dev --require tsconfig-paths/register --inspect=9222 -r dotenv/config src/index.ts",
     "build": "tsc -p tsconfig.json",
     "test": "jest",
     "typecheck": "tsc --noEmit",
@@ -39,6 +39,8 @@
     "jest": "^29.7.0",
     "jsonwebtoken": "^9.0.0",
     "mongodb": "^6.16.0",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
     "prettier": "^3.2.5",
     "reflect-metadata": "^0.2.2",
     "socket.io": "^4.8.1",
@@ -52,6 +54,7 @@
     "ws": "^8.16.0"
   },
   "devDependencies": {
-    "ts-node-dev": "^2.0.0"
+    "ts-node-dev": "^2.0.0",
+    "tsconfig-paths": "^4.2.0"
   }
 }

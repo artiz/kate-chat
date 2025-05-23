@@ -5,9 +5,12 @@ import { Model } from "../entities/Model";
 import { GqlModelsList, GqlModel } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { ApiProvider, MessageFormat } from "../types/ai.types";
+import { ApiProvider, ModelMessageFormat } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
 import { DEFAULT_MODEL_ID } from "../config/ai";
+import { createLogger } from "@/utils/logger";
+
+const logger = createLogger(__filename);
 
 @Resolver()
 export class ModelResolver {
@@ -56,7 +59,7 @@ export class ModelResolver {
 
       return { models: outModels, total: outModels.length };
     } catch (error) {
-      console.error("Error refreshing models:", error);
+      logger.error(error, "Error refreshing models");
       return { error: "Failed to refresh models" };
     }
   }
@@ -83,7 +86,7 @@ export class ModelResolver {
       // If no models in database, refresh from API
       return this.refreshModels();
     } catch (error) {
-      console.error("Error fetching models:", error);
+      logger.error(error, "Error fetching models");
       return { error: "Failed to fetch models" };
     }
   }
@@ -137,7 +140,7 @@ export class ModelResolver {
 
       return updatedModel as GqlModel;
     } catch (error) {
-      console.error("Error updating model status:", error);
+      logger.error(error, "Error updating model status");
       throw new Error("Failed to update model status");
     }
   }
@@ -166,7 +169,7 @@ export class ModelResolver {
       const aiService = new AIService();
       const timestamp = new Date();
       // Create a message format for the test
-      const message: MessageFormat = {
+      const message: ModelMessageFormat = {
         role: MessageRole.USER,
         content: text,
         timestamp,
@@ -175,6 +178,7 @@ export class ModelResolver {
       // Generate a response using the AI service
       const response = await aiService.invokeModel([message], model.modelId, model.apiProvider);
 
+      logger.debug({ message, response }, "Test model inference");
       return {
         id: "",
         role: MessageRole.ASSISTANT,
@@ -185,7 +189,7 @@ export class ModelResolver {
         updatedAt: timestamp,
       };
     } catch (error: unknown) {
-      console.error("Error testing model:", error);
+      logger.error(error, "Error testing model");
       throw new Error(`Failed to test model: ${error || "Unknown error"}`);
     }
   }

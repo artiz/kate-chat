@@ -18,6 +18,7 @@ import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { PubSub } from "graphql-subscriptions";
 import { MessageType } from "./entities/Message";
+import { logger } from "./utils/logger";
 
 // Load environment variables
 config();
@@ -28,7 +29,6 @@ async function bootstrap() {
   // Initialize database connection
   const dbConnected = await initializeDatabase();
   if (!dbConnected) {
-    console.error("Failed to connect to the database. Exiting...");
     process.exit(1);
   }
 
@@ -66,34 +66,6 @@ async function bootstrap() {
   // Create HTTP server
   const httpServer = createServer(app);
 
-  // Set up Socket.IO
-  const io = new Server(httpServer, {
-    cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
-      methods: ["GET", "POST"],
-      credentials: true,
-    },
-  });
-
-  // Socket.IO connection handler
-  io.on("connection", socket => {
-    console.log("Client connected:", socket.id);
-
-    socket.on("join_chat", chatId => {
-      socket.join(`chat:${chatId}`);
-      console.log(`Client ${socket.id} joined chat ${chatId}`);
-    });
-
-    socket.on("leave_chat", chatId => {
-      socket.leave(`chat:${chatId}`);
-      console.log(`Client ${socket.id} left chat ${chatId}`);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-    });
-  });
-
   // Create and setup WebSocket server for GraphQL subscriptions
   const wsServer = new WebSocketServer({
     server: httpServer,
@@ -112,16 +84,16 @@ async function bootstrap() {
 
         // Extract the authorization header
         const authHeader = (connectionParams?.authorization as string) || "";
-        console.log("Auth header present:", !!authHeader);
+        logger.debug({ authHeaderPresent: !!authHeader }, "Auth header status");
 
         // Import the getUserFromToken helper
         const { getUserFromToken } = require("./middleware/authMiddleware");
         const user = getUserFromToken(authHeader);
 
         if (user) {
-          console.log(`Authenticated WebSocket connection for user ${user.email}`);
+          logger.trace({ email: user.email }, "Authenticated WebSocket connection");
         } else {
-          console.warn("WebSocket connection could not be authenticated");
+          logger.warn("WebSocket connection could not be authenticated");
         }
 
         return {
@@ -138,7 +110,7 @@ async function bootstrap() {
         }
       },
       onError: (ctx, error) => {
-        console.error("GraphQL subscription error:", ctx, error);
+        logger.error({ ctx, error }, "GraphQL subscription error");
       },
     },
     wsServer
@@ -162,16 +134,16 @@ async function bootstrap() {
   // Start the server
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`GraphQL endpoint: http://localhost:${PORT}/graphql`);
-    console.log(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
+    logger.info(`Server running on port ${PORT}`);
+    logger.info(`GraphQL endpoint: http://localhost:${PORT}/graphql`);
+    logger.info(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
   });
 
   httpServer.on("close", () => serverCleanup.dispose());
 }
 
 // Start the application
-bootstrap().catch(e => {
-  console.error("Error starting server:", e);
+bootstrap().catch(error => {
+  logger.error({ error }, "Error starting server");
   process.exit(1);
 });

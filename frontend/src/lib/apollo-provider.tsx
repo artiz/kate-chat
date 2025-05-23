@@ -20,13 +20,8 @@ import { RootState } from "../store";
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const token = useSelector((state: RootState) => state.auth.token);
-  const loaded = useRef<ApolloClient<NormalizedCacheObject>>(null);
 
   const [client] = useState(() => {
-    if (loaded.current) {
-      return loaded.current;
-    }
-
     // Get the API URL from environment variables
     const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
@@ -136,7 +131,6 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       },
     });
 
-    loaded.current = clientInstance;
     return clientInstance;
   });
 

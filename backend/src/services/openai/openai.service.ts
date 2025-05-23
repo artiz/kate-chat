@@ -1,7 +1,9 @@
-import { AIModelInfo } from "../ai.service";
-import { ApiProvider, MessageFormat, ModelResponse, StreamCallbacks } from "../../types/ai.types";
-import { MessageRole } from "../../entities/Message";
 import axios from "axios";
+import { AIModelInfo, ApiProvider, ModelMessageFormat, ModelResponse, StreamCallbacks } from "@/types/ai.types";
+import { MessageRole } from "@/entities/Message";
+import { createLogger } from "@/utils/logger";
+
+const logger = createLogger(__filename);
 
 export class OpenApiService {
   private openaiApiKey: string;
@@ -12,7 +14,7 @@ export class OpenApiService {
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
 
     if (!this.openaiApiKey) {
-      console.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+      logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
   }
 
@@ -25,7 +27,7 @@ export class OpenApiService {
 
   // Text generation with OpenAI models
   async invokeModel(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -64,7 +66,7 @@ export class OpenApiService {
         content,
       };
     } catch (error: unknown) {
-      console.error("Error calling OpenAI API:", error);
+      logger.error(error, "Error calling OpenAI API");
       if (axios.isAxiosError(error)) {
         throw new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`);
       }
@@ -74,7 +76,7 @@ export class OpenApiService {
 
   // Stream response from OpenAI models
   async invokeModelAsync(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
     temperature: number = 0.7,
@@ -128,13 +130,12 @@ export class OpenApiService {
         try {
           const json = JSON.parse(chunk.toString());
           token = json.choices[0]?.delta?.content || "";
+          if (token) {
+            fullResponse += token;
+            callbacks.onToken?.(token);
+          }
         } catch (ex: unknown) {
-          console.error("Failed to parse chunk data", ex);
-        }
-
-        if (token) {
-          fullResponse += token;
-          callbacks.onToken?.(token);
+          logger.error(ex, "Failed to parse chunk data");
         }
       });
 
@@ -146,7 +147,7 @@ export class OpenApiService {
         callbacks.onError?.(error);
       });
     } catch (error) {
-      console.error("Error streaming from OpenAI API:", error);
+      logger.error(error, "Error streaming from OpenAI API");
       if (axios.isAxiosError(error)) {
         callbacks.onError?.(new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`));
       } else {
@@ -170,7 +171,7 @@ export class OpenApiService {
   }
 
   // Image generation implementation for DALL-E models
-  private async generateImage(messages: MessageFormat[], modelId: string): Promise<ModelResponse> {
+  private async generateImage(messages: ModelMessageFormat[], modelId: string): Promise<ModelResponse> {
     if (!this.openaiApiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
@@ -195,7 +196,7 @@ export class OpenApiService {
         { headers: this.getHeaders() }
       );
 
-      console.debug("Image generation result", response.data);
+      logger.debug(response.data, "Image generation");
 
       const imageUrl = response.data.data[0]?.url || "";
 
@@ -208,7 +209,7 @@ export class OpenApiService {
         content: imageUrl,
       };
     } catch (error) {
-      console.error("Error generating image with OpenAI:", error);
+      logger.error(error, "Error generating image with OpenAI");
       if (axios.isAxiosError(error)) {
         throw new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`);
       }
@@ -219,7 +220,7 @@ export class OpenApiService {
   // Helper method to get all supported OpenAI models with their metadata
   async getOpenAIModels(): Promise<Record<string, AIModelInfo>> {
     if (!this.openaiApiKey) {
-      console.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+      logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
       return {};
     }
 
@@ -288,7 +289,7 @@ export class OpenApiService {
         };
       }
     } catch (error) {
-      console.error("Error fetching OpenAI models:", error);
+      logger.error(error, "Error fetching OpenAI models");
     }
 
     return models;

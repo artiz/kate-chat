@@ -1,10 +1,10 @@
-import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 import { DEFAULT_PROMPT } from "../../config/ai";
 
 export class MetaService implements ModelServiceProvider {
   async generateResponseParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -42,18 +42,6 @@ export class MetaService implements ModelServiceProvider {
     };
 
     return { params };
-  }
-
-  async streamResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<void> {
-    // Use the same parameters as non-streaming for now
-    const { params } = await this.generateResponseParams(messages, modelId, temperature, maxTokens);
-    return { params } as any;
   }
 
   parseResponse(responseBody: any): ModelResponse {

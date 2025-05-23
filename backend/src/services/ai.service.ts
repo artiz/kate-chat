@@ -1,33 +1,21 @@
 import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
-import { ApiProvider, MessageFormat, ModelResponse, StreamCallbacks } from "../types/ai.types";
+import { AIModelInfo, ApiProvider, ModelMessageFormat, ModelResponse, StreamCallbacks } from "../types/ai.types";
 import { BedrockService } from "./bedrock/bedrock.service";
 import { OpenApiService } from "./openai/openai.service";
-export interface AIModelInfo {
-  apiProvider: ApiProvider;
-  provider: string;
-  name: string;
-  modelArn?: string;
-  description: string;
-  supportsStreaming: boolean;
-  supportsTextIn: boolean;
-  supportsTextOut: boolean;
-  supportsImageIn: boolean;
-  supportsImageOut: boolean;
-  supportsEmbeddingsIn: boolean;
-  currentRegion: string;
-}
-
+import { logger } from "../utils/logger";
 export class AIService {
   private bedrockService: BedrockService;
+  private openApiService: OpenApiService;
 
   constructor() {
     this.bedrockService = new BedrockService();
+    this.openApiService = new OpenApiService();
   }
 
   // Main method to interact with models
   async invokeModel(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     apiProvider: ApiProvider,
     temperature: number = 0.7,
@@ -38,12 +26,9 @@ export class AIService {
 
     // Determine which API provider to use and invoke the appropriate service
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return this.bedrockService.invokeModel(messages, modelId, temperature, maxTokens);
+      return await this.bedrockService.invokeModel(messages, modelId, temperature, maxTokens);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
-      // Import OpenApiService dynamically to avoid circular dependencies
-      const { OpenApiService } = await import("./openai/openai.service");
-      const openApiService = new OpenApiService();
-      return openApiService.invokeModel(messages, modelId, temperature, maxTokens);
+      return await this.openApiService.invokeModel(messages, modelId, temperature, maxTokens);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }
@@ -51,7 +36,7 @@ export class AIService {
 
   // Stream response from models
   async invokeModelAsync(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
     apiProvider: ApiProvider = ApiProvider.AWS_BEDROCK,
@@ -63,19 +48,19 @@ export class AIService {
 
     // Determine which API provider to use and invoke the appropriate service
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return this.bedrockService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
+      return await this.bedrockService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
       // Import OpenApiService dynamically to avoid circular dependencies
       const { OpenApiService } = await import("./openai/openai.service");
       const openApiService = new OpenApiService();
-      return openApiService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
+      return await openApiService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
     } else {
       callbacks.onError?.(new Error(`Unsupported API provider: ${apiProvider}`));
     }
   }
 
   // Preprocess messages to join duplicates
-  private preprocessMessages(messages: MessageFormat[]): MessageFormat[] {
+  private preprocessMessages(messages: ModelMessageFormat[]): ModelMessageFormat[] {
     messages.sort((a, b) => {
       if (a.timestamp?.getTime() === b.timestamp?.getTime()) {
         return a.role === b.role ? 0 : a.role === MessageRole.USER ? -1 : 1;
@@ -84,7 +69,7 @@ export class AIService {
       return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
     });
 
-    return messages.reduce((acc: MessageFormat[], msg: MessageFormat) => {
+    return messages.reduce((acc: ModelMessageFormat[], msg: ModelMessageFormat) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
       // Check if the last message is of the same role and content
       if (lastMessage && lastMessage.role === msg.role) {
@@ -103,7 +88,7 @@ export class AIService {
 
   // Adapter method for message resolver
   async getCompletion(messages: Message[], model: Model): Promise<string> {
-    // Convert DB message objects to MessageFormat structure
+    // Convert DB message objects to ModelMessageFormat structure
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
       content: msg.content,
@@ -116,7 +101,7 @@ export class AIService {
     return response.content;
   }
 
-  async streamCompletion(
+  streamCompletion(
     messages: Message[],
     model: Model,
     callback: (token: string, completed?: boolean, error?: Error) => void
@@ -127,23 +112,21 @@ export class AIService {
       timestamp: msg.createdAt,
     }));
 
-    // Stream the completion
+    // Stream the completion in background
     this.invokeModelAsync(
       formattedMessages,
       model.modelId,
       {
         onToken: (token: string) => {
           callback(token);
-          console.log("Received token:", token);
+          logger.debug({ token: token.substring(0, 50) }, "Token received");
         },
         onComplete: (response: string) => {
           callback(response, true);
-          console.log("Streaming completed with response:", response);
         },
         onError: (error: Error) => {
-          // Handle error
           callback("", true, error);
-          console.error("Error during streaming:", error);
+          logger.error({ error }, "Error during streaming");
         },
       },
       model.apiProvider,

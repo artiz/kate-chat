@@ -1,9 +1,10 @@
-import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
+import { logger } from "../../utils/logger";
 
 export class AmazonService implements ModelServiceProvider {
   async generateResponseParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -36,21 +37,9 @@ export class AmazonService implements ModelServiceProvider {
       }),
     };
 
-    console.debug("Call Amazon model", modelId, params);
+    logger.debug({ modelId, params }, "Call Amazon model");
 
     return { params };
-  }
-
-  async streamResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<void> {
-    // Use the same parameters as the non-streaming version
-    const { params } = await this.generateResponseParams(messages, modelId, temperature, maxTokens);
-    return { params } as any;
   }
 
   parseResponse(responseBody: any): ModelResponse {

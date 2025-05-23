@@ -1,10 +1,13 @@
 import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
 import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { bedrockClient, bedrockManagementClient } from "../../config/bedrock";
-import { AIModelInfo } from "../ai.service";
-import { MessageFormat, ModelResponse, StreamCallbacks } from "../../types/ai.types";
+import { AIModelInfo, ModelMessageFormat, ModelResponse, StreamCallbacks } from "../../types/ai.types";
 import { ApiProvider } from "../../types/ai.types";
 import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
+import { createLogger } from "@/utils/logger";
+import { getErrorMessage } from "@/utils/errors";
+
+const logger = createLogger(__filename);
 
 interface BedrockModelConfigRecord {
   provider: string;
@@ -16,7 +19,7 @@ interface BedrockModelConfigRecord {
 
 export class BedrockService {
   async invokeModel(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -35,66 +38,21 @@ export class BedrockService {
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
   async invokeModelAsync(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<void> {
-    try {
-      callbacks.onStart?.();
+    callbacks.onStart?.();
 
-      const provider = this.getModelProvider(modelId);
+    const provider = this.getModelProvider(modelId);
 
-      // Check if modelId supports streaming (Anthropic, Amazon, Mistral)
-      const supportsStreaming = provider === "anthropic" || provider === "amazon" || provider === "mistral";
+    // Check if modelId supports streaming (Anthropic, Amazon, Mistral)
+    const supportsStreaming = provider === "anthropic" || provider === "amazon" || provider === "mistral";
 
-      if (supportsStreaming) {
-        // Get provider service and parameters
-        const { service, params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
-
-        // Create a streaming command
-        const streamCommand = new InvokeModelWithResponseStreamCommand(params);
-        const streamResponse = await bedrockClient.send(streamCommand);
-
-        let fullResponse = "";
-
-        // Process the stream
-        if (streamResponse.body) {
-          for await (const chunk of streamResponse.body) {
-            if (chunk.chunk?.bytes) {
-              const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
-              const chunkData = JSON.parse(decodedChunk);
-
-              // Extract the token based on model provider
-              let token = "";
-              if (provider === "anthropic") {
-                // For Anthropic models
-                if (chunkData.type === "content_block_delta" && chunkData.delta?.text) {
-                  token = chunkData.delta.text;
-                }
-              } else if (provider === "amazon") {
-                // For Amazon models
-                if (chunkData.outputText) {
-                  token = chunkData.outputText;
-                }
-              } else if (provider === "mistral") {
-                // For Mistral models
-                if (chunkData.outputs && chunkData.outputs[0]?.text) {
-                  token = chunkData.outputs[0].text;
-                }
-              }
-
-              if (token) {
-                fullResponse += token;
-                callbacks.onToken?.(token);
-              }
-            }
-          }
-        }
-
-        callbacks.onComplete?.(fullResponse);
-      } else {
+    if (!supportsStreaming) {
+      try {
         // For models that don't support streaming, use the regular generation and simulate streaming
         const response = await this.invokeModel(messages, modelId, temperature, maxTokens);
 
@@ -107,15 +65,68 @@ export class BedrockService {
         }
 
         callbacks.onComplete?.(response.content);
+      } catch (e: unknown) {
+        logger.error(e, "InvokeModel failed");
+        callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
       }
-    } catch (error) {
-      callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+
+      return;
+    }
+
+    try {
+      // Get provider service and parameters
+      const { params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
+
+      // Create a streaming command
+      const streamCommand = new InvokeModelWithResponseStreamCommand(params);
+      const streamResponse = await bedrockClient.send(streamCommand);
+
+      let fullResponse = "";
+
+      // Process the stream
+      if (streamResponse.body) {
+        for await (const chunk of streamResponse.body) {
+          if (chunk.chunk?.bytes) {
+            const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
+            const chunkData = JSON.parse(decodedChunk);
+
+            // Extract the token based on model provider
+            let token = "";
+            if (provider === "anthropic") {
+              // For Anthropic models
+              if (chunkData.type === "content_block_delta" && chunkData.delta?.text) {
+                token = chunkData.delta.text;
+              }
+            } else if (provider === "amazon") {
+              // For Amazon models
+              if (chunkData.outputText) {
+                token = chunkData.outputText;
+              }
+            } else if (provider === "mistral") {
+              // For Mistral models
+              if (chunkData.outputs && chunkData.outputs[0]?.text) {
+                token = chunkData.outputs[0].text;
+              }
+            }
+
+            if (token) {
+              fullResponse += token;
+              callbacks.onToken?.(token);
+            }
+          }
+        }
+      }
+
+      callbacks.onComplete?.(fullResponse);
+    } catch (e: unknown) {
+      logger.error(e, "InvokeModelWithResponseStreamCommand failed");
+      callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
     }
   }
 
   // Get the appropriate service and parameters based on the model ID
   private async formatProviderParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number,
     maxTokens: number

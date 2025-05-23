@@ -1,22 +1,25 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root } from "type-graphql";
 import { PubSubEngine } from "graphql-subscriptions";
 import { Repository } from "typeorm";
-import { Message, MessageRole, MessageType } from "../entities/Message";
-import { Chat } from "../entities/Chat";
-import { CreateMessageInput, GetMessagesInput } from "../types/graphql/inputs";
-import { Model } from "../entities/Model";
-import { getRepository } from "../config/database";
-import { AIService } from "../services/ai.service";
-import { GraphQLContext } from "../middleware/authMiddleware";
-import { User } from "../entities/User";
-import { getErrorMessage } from "../utils/errors";
-import { GqlMessage, GqlMessagesList } from "../types/graphql/responses";
+import { Message, MessageRole, MessageType } from "@/entities/Message";
+import { Chat } from "@/entities/Chat";
+import { CreateMessageInput, GetMessagesInput } from "@/types/graphql/inputs";
+import { Model } from "@/entities/Model";
+import { getRepository } from "@/config/database";
+import { AIService } from "@/services/ai.service";
+import { GraphQLContext } from "@/middleware/authMiddleware";
+import { User } from "@/entities/User";
+import { getErrorMessage } from "@/utils/errors";
+import { GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
 import { ok } from "assert";
-import { DEFAULT_MODEL_ID } from "../config/ai";
+import { DEFAULT_MODEL_ID } from "@/config/ai";
+import { createLogger } from "@/utils/logger";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
 const MESSAGE_UPDATED = "MESSAGE_UPDATED";
+
+const logger = createLogger(__filename);
 
 @Resolver(Message)
 export class MessageResolver {
@@ -147,13 +150,11 @@ export class MessageResolver {
 
     // Publish the new message event if pubSub is available
     if (pubSub) {
-      console.log(`Publishing user message event for chat ${chatId}`);
+      logger.debug(`Publishing user message event for chat ${chatId}`);
       await pubSub.publish(NEW_MESSAGE, {
         chatId,
         data: { message },
       });
-    } else {
-      console.warn(`No pubSub available to publish user message for chat ${chatId}`);
     }
 
     // Get previous messages for context (limited to 20 for performance)
@@ -207,15 +208,15 @@ export class MessageResolver {
             aiMessage.role = MessageRole.ERROR;
             aiMessage.content = errorMessage;
             completeRequest(aiMessage).catch(err => {
-              console.error("Error sending AI response", err);
+              logger.error(err, "Error sending AI response");
             });
 
-            return console.error("Error generating AI response", error);
+            return logger.error(error, "Error generating AI response");
           }
 
           aiMessage.content = token;
           completeRequest(aiMessage).catch(err => {
-            console.error("Error sending AI response", err);
+            logger.error(error, "Error sending AI response");
           });
 
           // stream token
@@ -252,9 +253,10 @@ export class MessageResolver {
 
       await completeRequest(aiMessage);
     } catch (error: unknown) {
-      console.error("Error generating AI response", error);
+      logger.error(error, "Error generating AI response");
+
       if (pubSub) {
-        console.log(`Publishing AI response event for chat ${chatId}`);
+        logger.debug(`Publishing AI response event for chat ${chatId}`);
         await pubSub.publish(NEW_MESSAGE, {
           chatId,
           data: { error: getErrorMessage(error) },
@@ -270,22 +272,22 @@ export class MessageResolver {
   @Subscription(() => GqlMessage, {
     topics: NEW_MESSAGE,
     filter: ({ payload, args }) => {
-      // TODO: setup log levels
-      // console.debug(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
-      // Only send messages to subscribers of the specific chat
+      logger.trace(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
       return payload.chatId === args.chatId;
     },
   })
   newMessage(@Root() payload: { data: GqlMessage; chatId: string }, @Arg("chatId") chatId: string): GqlMessage {
     const { message, error, type = MessageType.MESSAGE } = payload.data;
 
-    // TODO: setup log levels
-    // console.debug(`Publishing message to chat ${chatId} subscribers`, {
-    //   type,
-    //   messageId: message?.id,
-    //   role: message?.role,
-    //   error,
-    // });
+    logger.trace(
+      {
+        type,
+        messageId: message?.id,
+        role: message?.role,
+        error,
+      },
+      `Publishing message to chat ${chatId} subscribers`
+    );
 
     return {
       message,

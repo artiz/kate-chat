@@ -1,10 +1,13 @@
-import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 import { ok } from "assert";
+import { createLogger } from "../../utils/logger";
+
+const logger = createLogger(__filename);
 
 export class MistralService implements ModelServiceProvider {
   async generateResponseParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -39,21 +42,9 @@ export class MistralService implements ModelServiceProvider {
       }),
     };
 
-    console.debug("Call Mistral model", modelId, mistralMessages);
+    logger.debug({ modelId, messages: mistralMessages }, "Call Mistral model");
 
     return { params };
-  }
-
-  async streamResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<void> {
-    // Use the same parameters as non-streaming for now
-    const { params } = await this.generateResponseParams(messages, modelId, temperature, maxTokens);
-    return { params } as any;
   }
 
   parseResponse(responseBody: any): ModelResponse {

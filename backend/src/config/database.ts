@@ -3,6 +3,8 @@ import { Chat } from "../entities/Chat";
 import { Message } from "../entities/Message";
 import { Model } from "../entities/Model";
 import { User } from "../entities/User";
+import { logger } from "../utils/logger";
+import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
 
 const logging = !!process.env.DB_LOGGING;
 
@@ -49,7 +51,7 @@ export const AppDataSource = new DataSource({
   ...dbOptions,
   synchronize: true,
   migrationsRun: true,
-  logger: "advanced-console",
+  logger: logging ? new TypeORMPinoLogger() : undefined,
   logging,
   entities: [User, Chat, Message, Model],
 });
@@ -63,10 +65,10 @@ export function getRepository<T>(entityClass: any): any {
 export async function initializeDatabase() {
   try {
     await AppDataSource.initialize();
-    console.log(`Database connection established, logging: ${logging}`);
+    logger.info({ logging }, "Database connection established");
     return true;
   } catch (error) {
-    console.error("Error connecting to database:", error);
+    logger.error({ error }, "Error connecting to database");
     return false;
   }
 }

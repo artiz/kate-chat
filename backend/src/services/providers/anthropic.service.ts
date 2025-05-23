@@ -1,6 +1,6 @@
 import {
   GenerateResponseParams,
-  MessageFormat,
+  ModelMessageFormat,
   ModelResponse,
   ModelServiceProvider,
   StreamCallbacks,
@@ -13,7 +13,7 @@ import { DEFAULT_PROMPT } from "../../config/ai";
  */
 export class AnthropicService implements ModelServiceProvider {
   async generateResponseParams(
-    messages: MessageFormat[],
+    messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
@@ -37,33 +37,6 @@ export class AnthropicService implements ModelServiceProvider {
 
     // This part will be moved to the base service
     return { params };
-  }
-
-  async streamResponse(
-    messages: MessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<void> {
-    // Convert messages to Anthropic format
-    const anthropicMessages = messages.map(msg => ({
-      role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
-      content: msg.content,
-    }));
-
-    const params = {
-      modelId,
-      body: JSON.stringify({
-        anthropic_version: "bedrock-2023-05-31",
-        max_tokens: maxTokens,
-        messages: anthropicMessages,
-        temperature,
-      }),
-    };
-
-    // Return params for the base service to handle
-    return { params } as any;
   }
 
   parseResponse(responseBody: any): ModelResponse {
