@@ -3,7 +3,6 @@
     "provider": "anthropic",
     "modelId": "anthropic.claude-3-haiku-20240307-v1:0",
     "name": "Claude 3 Haiku",
-    "disabled": false,
     "regions": [
       "us-east-1",
       "us-east-2",
@@ -76,7 +75,6 @@
     "provider": "amazon",
     "modelId": "amazon.titan-text-express-v1",
     "name": "Titan Text G1 - Express",
-    "disabled": true,
     "regions": [
       "us-east-1",
       "us-west-2",
@@ -94,7 +92,6 @@
     "provider": "amazon",
     "modelId": "amazon.titan-text-lite-v1",
     "name": "Titan Text G1 - Lite",
-    "disabled": true,
     "regions": [
       "us-east-1",
       "us-west-2",
@@ -112,7 +109,6 @@
     "provider": "amazon",
     "modelId": "amazon.nova-canvas-v1:0",
     "name": "Nova Canvas",
-    "disabled": true,
     "regions": ["us-east-1", "ap-northeast-1", "eu-west-1"]
   },
   {
@@ -167,7 +163,6 @@
     "provider": "amazon",
     "modelId": "amazon.nova-pro-v1:0",
     "name": "Nova Pro",
-    "disabled": true,
     "regions": [
       "us-east-1",
       "us-east-2",
@@ -188,7 +183,6 @@
     "provider": "amazon",
     "modelId": "amazon.nova-reel-v1:0",
     "name": "Nova Reel",
-    "disabled": true,
     "regions": ["us-east-1", "ap-northeast-1", "eu-west-1"]
   },
   {
@@ -201,14 +195,12 @@
     "provider": "amazon",
     "modelId": "amazon.titan-image-generator-v1",
     "name": "Titan Image Generator G1",
-    "disabled": true,
     "regions": ["us-east-1", "us-west-2", "ap-south-1", "eu-west-1", "eu-west-2"]
   },
   {
     "provider": "amazon",
     "modelId": "amazon.titan-embed-text-v2:0",
     "name": "Titan Text Embeddings V2",
-    "disabled": true,
     "regions": ["us-east-1", "us-east-2", "us-east-3", "eu-west-1", "eu-west-2", "eu-west-3"]
   },
 

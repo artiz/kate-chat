@@ -78,7 +78,7 @@ const Chat: React.FC = () => {
   const [editedTitle, setEditedTitle] = useState("");
 
   const selectedModel = useAppSelector(state => state.models.selectedModel);
-  const models = useAppSelector(state => state.models.models);
+  const models = useAppSelector(state => state.models.models.filter(m => m.isActive));
   const messages = useAppSelector(state => state.chats.messages);
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);

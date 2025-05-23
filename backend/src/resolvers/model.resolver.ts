@@ -5,8 +5,9 @@ import { Model } from "../entities/Model";
 import { ModelsResponse, ModelResponse } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { DEFAULT_MODEL_ID, MessageFormat } from "../types/ai.types";
+import { MessageFormat } from "../types/ai.types";
 import { MessageRole } from "../entities/Message";
+import { DEFAULT_MODEL_ID } from "../config/ai";
 
 @Resolver()
 export class ModelResolver {
@@ -181,7 +182,7 @@ export class ModelResolver {
       };
 
       // Generate a response using the AI service
-      const response = await aiService.generateResponse([message], model.modelId);
+      const response = await aiService.invokeBedrockModel([message], model.modelId);
 
       return response;
     } catch (error: unknown) {

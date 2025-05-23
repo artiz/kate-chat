@@ -16,6 +16,7 @@ import { User } from "./User";
 export enum MessageRole {
   USER = "user",
   ASSISTANT = "assistant",
+  ERROR = "error",
   SYSTEM = "system",
 }
 

@@ -237,15 +237,17 @@ export const graphqlApi = api.injectEndpoints({
                 firstName
                 lastName
               }
-              getActiveModels {
-                id
-                name
-                modelId
-                modelArn
-                apiType
-                isDefault
-                provider
-                isActive
+              getModels {
+                models {
+                  id
+                  name
+                  modelId
+                  modelArn
+                  apiType
+                  isActive
+                  isDefault
+                  provider
+                }
               }
               getChats(input: { limit: 20, offset: 0 }) {
                 chats {
@@ -263,10 +265,10 @@ export const graphqlApi = api.injectEndpoints({
       }),
 
       transformResponse: (response: any) => {
-        const { currentUser, getActiveModels, getChats } = response.data || {};
+        const { currentUser, getModels, getChats } = response.data || {};
         return {
           user: currentUser,
-          models: getActiveModels || [],
+          models: getModels?.models || [],
           chats: getChats || {
             chats: [],
             total: 0,

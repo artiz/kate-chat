@@ -3,7 +3,7 @@ import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedr
 import { bedrockClient, bedrockManagementClient } from "../config/bedrock";
 import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
-import { MessageFormat, StreamCallbacks, DEFAULT_MODEL_ID } from "../types/ai.types";
+import { MessageFormat, StreamCallbacks } from "../types/ai.types";
 import BedrockModelConfigs from "../config/data/bedrock-models-config.json";
 
 // Import provider-specific services
@@ -14,13 +14,11 @@ import { CohereService } from "./providers/cohere.service";
 import { MetaService } from "./providers/meta.service";
 import { MistralService } from "./providers/mistral.service";
 
-const CURRENT_REGION = process.env.AWS_REGION || "us-west-2";
 interface BedrockModelConfigRecord {
   provider: string;
   modelId: string;
   modelIdOverride?: string;
   name: string;
-  disabled?: boolean;
   regions: string[];
 }
 
@@ -55,7 +53,7 @@ export class AIService {
   }
 
   // Main method to interact with models
-  async generateResponse(
+  async invokeBedrockModel(
     messages: MessageFormat[],
     modelId: string,
     temperature: number = 0.7,
@@ -65,7 +63,7 @@ export class AIService {
     messages = this.preprocessMessages(messages);
 
     // Get provider service and parameters
-    const { service, params } = await this.getProviderAndParams(messages, modelId, temperature, maxTokens);
+    const { service, params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
 
     // Send command using Bedrock client
     const command = new InvokeModelCommand(params);
@@ -77,7 +75,7 @@ export class AIService {
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
-  async streamResponse(
+  async invokeBedrockModelWithStreamResponse(
     messages: MessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
@@ -96,7 +94,7 @@ export class AIService {
 
       if (supportsStreaming) {
         // Get provider service and parameters
-        const { service, params } = await this.getProviderAndParams(messages, modelId, temperature, maxTokens);
+        const { service, params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
 
         // Create a streaming command
         const streamCommand = new InvokeModelWithResponseStreamCommand(params);
@@ -141,7 +139,7 @@ export class AIService {
         callbacks.onComplete?.(fullResponse);
       } else {
         // For models that don't support streaming, use the regular generation and simulate streaming
-        const fullResponse = await this.generateResponse(messages, modelId, temperature, maxTokens);
+        const fullResponse = await this.invokeBedrockModel(messages, modelId, temperature, maxTokens);
 
         // Simulate streaming by sending chunks of the response
         const chunks = fullResponse.split(" ");
@@ -186,7 +184,7 @@ export class AIService {
   }
 
   // Get the appropriate service and parameters based on the model ID
-  private async getProviderAndParams(
+  private async formatProviderParams(
     messages: MessageFormat[],
     modelId: string,
     temperature: number,
@@ -246,7 +244,7 @@ export class AIService {
     }));
 
     // Use the existing generate method
-    return this.generateResponse(formattedMessages, model.modelId, 0.7, 2048);
+    return this.invokeBedrockModel(formattedMessages, model.modelId, 0.7, 2048);
   }
 
   async streamCompletion(
@@ -261,7 +259,7 @@ export class AIService {
     }));
 
     // Use the existing generate method
-    this.streamResponse(
+    this.invokeBedrockModelWithStreamResponse(
       formattedMessages,
       model.modelId,
       {
@@ -293,8 +291,8 @@ export class AIService {
 
     const modelsRegions = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
       (acc: Record<string, string[]>, region) => {
-        const { modelId, regions, disabled } = region;
-        acc[modelId] = disabled ? [] : regions;
+        const { modelId, regions } = region;
+        acc[modelId] = regions;
         return acc;
       },
       {}
@@ -320,9 +318,10 @@ export class AIService {
       return models;
     }
 
+    const bedrockRegion = await bedrockClient.config.region();
     for (const model of response.modelSummaries) {
       const regions = modelsRegions[model.modelId || model.modelArn || ""];
-      if (!regions || !regions.includes(CURRENT_REGION)) {
+      if (!regions || !regions.includes(bedrockRegion)) {
         continue;
       }
 

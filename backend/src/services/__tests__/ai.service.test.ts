@@ -41,7 +41,7 @@ describe("AIService", () => {
     it("should generate a response using Anthropic provider", async () => {
       const aiService = new AIService();
       const messages: MessageFormat[] = [
-        { role: MessageRole.SYSTEM, content: "You are a helpful AI assistant." },
+        { role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
         { role: MessageRole.USER, content: "Hello, how are you?" },
       ];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
@@ -57,7 +57,7 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.generateResponse(messages, modelId);
+      const response = await aiService.invokeBedrockModel(messages, modelId);
 
       expect(response).toBe("I'm doing well, thanks for asking!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -67,7 +67,7 @@ describe("AIService", () => {
     it("should generate a response using Meta provider", async () => {
       const aiService = new AIService();
       const messages: MessageFormat[] = [
-        { role: MessageRole.SYSTEM, content: "You are a helpful AI assistant." },
+        { role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
         { role: MessageRole.USER, content: "Hello, how are you?" },
       ];
       const modelId = "meta.llama2-13b-chat-v1";
@@ -83,7 +83,7 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.generateResponse(messages, modelId);
+      const response = await aiService.invokeBedrockModel(messages, modelId);
 
       expect(response).toBe("I'm a language model, I don't have feelings, but I'm here to help!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -95,7 +95,7 @@ describe("AIService", () => {
       const messages: MessageFormat[] = [{ role: MessageRole.USER, content: "Hello" }];
       const modelId = "unknown.model-v1";
 
-      await expect(aiService.generateResponse(messages, modelId)).rejects.toThrow("Unsupported model provider");
+      await expect(aiService.invokeBedrockModel(messages, modelId)).rejects.toThrow("Unsupported model provider");
     });
   });
 
@@ -142,7 +142,7 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      await aiService.streamResponse(messages, modelId, callbacks);
+      await aiService.invokeBedrockModelWithStreamResponse(messages, modelId, callbacks);
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).toHaveBeenCalledTimes(2);
@@ -166,7 +166,7 @@ describe("AIService", () => {
       };
 
       // Mock the generateResponse to return immediately
-      jest.spyOn(aiService, "generateResponse").mockResolvedValueOnce("Hello there!");
+      jest.spyOn(aiService, "invokeBedrockModel").mockResolvedValueOnce("Hello there!");
 
       // Mock the setTimeout to execute immediately
       jest.spyOn(global, "setTimeout").mockImplementation(callback => {
@@ -174,7 +174,7 @@ describe("AIService", () => {
         return {} as any;
       });
 
-      await aiService.streamResponse(messages, modelId, callbacks);
+      await aiService.invokeBedrockModelWithStreamResponse(messages, modelId, callbacks);
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe("AIService", () => {
       const mockError = new Error("Stream processing error");
       (bedrockClient.send as jest.Mock).mockRejectedValueOnce(mockError);
 
-      await aiService.streamResponse(messages, modelId, callbacks);
+      await aiService.invokeBedrockModelWithStreamResponse(messages, modelId, callbacks);
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).not.toHaveBeenCalled();

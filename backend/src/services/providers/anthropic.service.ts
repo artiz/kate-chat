@@ -1,6 +1,11 @@
 import { GenerateResponseParams, MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
+import { DEFAULT_CIPHERS } from "tls";
+import { DEFAULT_PROMPT } from "../../config/ai";
 
+/**
+ * See format info at https://docs.anthropic.com/en/api/messages
+ */
 export class AnthropicService implements ModelServiceProvider {
   async generateResponseParams(
     messages: MessageFormat[],
@@ -20,6 +25,7 @@ export class AnthropicService implements ModelServiceProvider {
         anthropic_version: "bedrock-2023-05-31",
         max_tokens: maxTokens,
         messages: anthropicMessages,
+        system: DEFAULT_PROMPT,
         temperature,
       }),
     };

@@ -76,6 +76,12 @@ const Models: React.FC = () => {
           message: "Models refreshed successfully",
           color: "green",
         });
+      } else if (data?.reloadModels?.error) {
+        notifications.show({
+          title: "Error",
+          message: data?.reloadModels?.error,
+          color: "red",
+        });
       }
     },
     onError: error => {

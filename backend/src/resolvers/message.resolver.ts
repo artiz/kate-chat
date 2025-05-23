@@ -11,8 +11,8 @@ import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
 import { getErrorMessage } from "../utils/errors";
 import { MessageResponse, MessagesResponse } from "../types/graphql/responses";
-import { DEFAULT_MODEL_ID } from "../types/ai.types";
 import { ok } from "assert";
+import { DEFAULT_MODEL_ID } from "../config/ai";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -203,7 +203,8 @@ export class MessageResolver {
               });
             }
 
-            aiMessage.content = "ERROR: " + errorMessage;
+            aiMessage.role = MessageRole.ERROR;
+            aiMessage.content = errorMessage;
             completeRequest(aiMessage).catch(err => {
               console.error("Error sending AI response", err);
             });
@@ -218,7 +219,7 @@ export class MessageResolver {
 
           // stream token
         } else {
-          aiMessage.content += content;
+          aiMessage.content += token;
           if (pubSub) {
             await pubSub.publish(NEW_MESSAGE, {
               chatId,

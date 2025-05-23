@@ -1,5 +1,6 @@
 import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
+import { DEFAULT_PROMPT } from "../../config/ai";
 
 export class MetaService implements ModelServiceProvider {
   async generateResponseParams(
@@ -33,6 +34,7 @@ export class MetaService implements ModelServiceProvider {
     const params = {
       modelId,
       body: JSON.stringify({
+        prompt: DEFAULT_PROMPT,
         messages: llamaMessages,
         max_gen_len: maxTokens,
         temperature,
