@@ -82,6 +82,7 @@ type MessageResponse {
 }
 
 type MessagesResponse {
+  chat: Chat
   error: String
   hasMore: Boolean!
   messages: [Message!]

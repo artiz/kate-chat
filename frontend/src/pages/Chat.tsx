@@ -26,20 +26,6 @@ import { useChatSubscription } from "@/hooks/useChatSubscription";
 import { parseChatMessages } from "@/lib/services/MarkdownParser";
 
 // GraphQL queries and subscriptions
-
-const GET_CHAT = gql`
-  query GetChat($id: ID!) {
-    getChatById(id: $id) {
-      id
-      title
-      modelId
-      isPristine
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
 const GET_CHAT_MESSAGES = gql`
   query GetChatMessages($input: GetMessagesInput!) {
     getChatMessages(input: $input) {
@@ -53,6 +39,14 @@ const GET_CHAT_MESSAGES = gql`
       }
       total
       hasMore
+      chat {
+        id
+        title
+        modelId
+        isPristine
+        createdAt
+        updatedAt
+      }
     }
   }
 `;
@@ -86,29 +80,7 @@ const Chat: React.FC = () => {
 
   const { wsConnected, addChatMessage } = useChatSubscription(id, () => setSending(false));
 
-  // Get chat details
-  const {
-    data: chatData,
-    loading: chatLoading,
-    error: chatError,
-  } = useQuery(GET_CHAT, {
-    variables: { id },
-    skip: !id,
-    onCompleted: data => {
-      dispatch(setCurrentChat(data.getChatById));
-      setEditedTitle(data.getChatById?.title || "Untitled Chat");
-
-      // If the chat has a model selected, use that model
-      if (data.getChatById?.modelId) {
-        const chatModel = models.find(model => model.modelId === data.getChatById.modelId);
-        if (chatModel) {
-          dispatch(setSelectedModel(chatModel));
-        }
-      }
-    },
-  });
-
-  // Get chat messages
+  // Get chat messages and chat details
   const { loading: messagesLoading, error: messagesError } = useQuery(GET_CHAT_MESSAGES, {
     variables: {
       input: {
@@ -119,6 +91,21 @@ const Chat: React.FC = () => {
     },
     skip: !id,
     onCompleted: data => {
+      // Set chat details from the chat field in getChatMessages
+      if (data.getChatMessages.chat) {
+        dispatch(setCurrentChat(data.getChatMessages.chat));
+        setEditedTitle(data.getChatMessages.chat?.title || "Untitled Chat");
+
+        // If the chat has a model selected, use that model
+        if (data.getChatMessages.chat?.modelId) {
+          const chatModel = models.find(model => model.modelId === data.getChatMessages.chat.modelId);
+          if (chatModel) {
+            dispatch(setSelectedModel(chatModel));
+          }
+        }
+      }
+
+      // Parse and set messages
       parseChatMessages(data.getChatMessages.messages || []).then(parsedMessages => {
         dispatch(setMessages(parsedMessages));
       });
@@ -214,18 +201,14 @@ const Chat: React.FC = () => {
     autoScroll();
   }, [messages]);
 
-  // Loading state
-  const isLoading = chatLoading || messagesLoading;
-  const error = chatError || messagesError;
-
-  if (error) {
+  if (messagesError) {
     return (
       <Container size="md" py="xl">
         <Paper p="xl" withBorder>
           <Title order={2} c="red">
             Error Loading Chat
           </Title>
-          <Text mt="md">{error.message}</Text>
+          <Text mt="md">{messagesError.message}</Text>
           <Button mt="xl" onClick={() => navigate("/chat")}>
             Back to Chats
           </Button>
@@ -269,11 +252,11 @@ const Chat: React.FC = () => {
             </form>
           ) : (
             <Group gap="xs">
-              <Title order={3}>{isLoading ? "Loading..." : chatData?.getChatById?.title || "Untitled Chat"}</Title>
+              <Title order={3}>{messagesLoading ? "Loading..." : editedTitle || "Untitled Chat"}</Title>
               <ActionIcon
                 onClick={() => {
                   setIsEditingTitle(true);
-                  setEditedTitle(chatData?.getChatById?.title || "Untitled Chat");
+                  setEditedTitle(editedTitle || "Untitled Chat");
                 }}
                 size="sm"
                 variant="subtle"
@@ -324,7 +307,7 @@ const Chat: React.FC = () => {
           placeholder="Select a model"
           style={{ minWidth: 180 }}
           clearable={false}
-          disabled={sending || isLoading}
+          disabled={sending || messagesLoading}
         />
         {selectedModel && (
           <Tooltip label={`Provider: ${selectedModel.provider || "Unknown"}`}>
@@ -344,7 +327,7 @@ const Chat: React.FC = () => {
       >
         <ChatMessages
           messages={messages}
-          isLoading={isLoading}
+          isLoading={messagesLoading}
           sending={sending}
           selectedModelName={selectedModel?.name}
         />
@@ -366,9 +349,9 @@ const Chat: React.FC = () => {
               handleSendMessage();
             }
           }}
-          disabled={sending || isLoading}
+          disabled={sending || messagesLoading}
         />
-        <Button onClick={handleSendMessage} disabled={!message.trim() || sending || isLoading}>
+        <Button onClick={handleSendMessage} disabled={!message.trim() || sending || messagesLoading}>
           <IconSend size={16} /> Send
         </Button>
       </Group>

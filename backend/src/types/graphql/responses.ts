@@ -74,6 +74,9 @@ export class MessagesResponse {
 
   @Field()
   hasMore?: boolean;
+
+  @Field(() => Chat, { nullable: true })
+  chat?: Chat;
 }
 
 @ObjectType()

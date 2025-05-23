@@ -70,6 +70,7 @@ export class MessageResolver {
       messages,
       total,
       hasMore: skip + messages.length < total,
+      chat, // Include the chat details in the response
     };
   }
 
