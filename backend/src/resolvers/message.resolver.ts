@@ -10,7 +10,7 @@ import { AIService } from "../services/ai.service";
 import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
 import { getErrorMessage } from "../utils/errors";
-import { MessageResponse, MessagesResponse } from "../types/graphql/responses";
+import { GqlMessage, GqlMessagesList } from "../types/graphql/responses";
 import { ok } from "assert";
 import { DEFAULT_MODEL_ID } from "../config/ai";
 
@@ -34,11 +34,11 @@ export class MessageResolver {
     this.aiService = new AIService();
   }
 
-  @Query(() => MessagesResponse)
+  @Query(() => GqlMessagesList)
   async getChatMessages(
     @Arg("input") input: GetMessagesInput,
     @Ctx() context: GraphQLContext
-  ): Promise<MessagesResponse> {
+  ): Promise<GqlMessagesList> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
 
@@ -267,7 +267,7 @@ export class MessageResolver {
     return message;
   }
 
-  @Subscription(() => MessageResponse, {
+  @Subscription(() => GqlMessage, {
     topics: NEW_MESSAGE,
     filter: ({ payload, args }) => {
       // TODO: setup log levels
@@ -276,10 +276,7 @@ export class MessageResolver {
       return payload.chatId === args.chatId;
     },
   })
-  newMessage(
-    @Root() payload: { data: MessageResponse; chatId: string },
-    @Arg("chatId") chatId: string
-  ): MessageResponse {
+  newMessage(@Root() payload: { data: GqlMessage; chatId: string }, @Arg("chatId") chatId: string): GqlMessage {
     const { message, error, type = MessageType.MESSAGE } = payload.data;
 
     // TODO: setup log levels

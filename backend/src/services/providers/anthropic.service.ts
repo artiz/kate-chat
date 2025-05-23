@@ -1,6 +1,11 @@
-import { GenerateResponseParams, MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import {
+  GenerateResponseParams,
+  MessageFormat,
+  ModelResponse,
+  ModelServiceProvider,
+  StreamCallbacks,
+} from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
-import { DEFAULT_CIPHERS } from "tls";
 import { DEFAULT_PROMPT } from "../../config/ai";
 
 /**
@@ -61,7 +66,10 @@ export class AnthropicService implements ModelServiceProvider {
     return { params } as any;
   }
 
-  parseResponse(responseBody: any): string {
-    return responseBody.content[0].text || "";
+  parseResponse(responseBody: any): ModelResponse {
+    return {
+      type: "text",
+      content: responseBody.content[0].text || "",
+    };
   }
 }

@@ -54,15 +54,15 @@ export class Message {
 
   @Field(() => Chat)
   @ManyToOne(() => Chat)
-  chat: Chat;
+  chat?: Chat;
 
-  @Field()
-  @Column()
-  chatId: string;
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  chatId?: string;
 
   @Field(() => User)
   @ManyToOne(() => User)
-  user: User;
+  user?: User;
 
   @Field()
   @CreateDateColumn()

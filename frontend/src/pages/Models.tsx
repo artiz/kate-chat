@@ -39,6 +39,7 @@ import {
   TEST_MODEL_MUTATION,
 } from "../store/services/graphql";
 import { notifications } from "@mantine/notifications";
+import { Message } from "@/store/slices/chatSlice";
 
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
@@ -61,7 +62,7 @@ const Models: React.FC = () => {
   const { models, loading, error } = useAppSelector(state => state.models);
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testText, setTestText] = useState("2+2=");
-  const [testResult, setTestResult] = useState("");
+  const [testResult, setTestResult] = useState<Message>();
   const [testError, setTestError] = useState("");
   const [currentTestingModel, setCurrentTestingModel] = useState<Model | null>(null);
   const [testLoading, setTestLoading] = useState(false);
@@ -175,7 +176,7 @@ const Models: React.FC = () => {
   const handleOpenTestModal = (model: Model) => {
     setCurrentTestingModel(model);
     setTestText("2+2=");
-    setTestResult("");
+    setTestResult(undefined);
     setTestError("");
     setTestModalOpen(true);
   };
@@ -184,7 +185,7 @@ const Models: React.FC = () => {
   const handleCloseTestModal = () => {
     setCurrentTestingModel(null);
     setTestModalOpen(false);
-    setTestResult("");
+    setTestResult(undefined);
     setTestError("");
   };
 
@@ -193,7 +194,7 @@ const Models: React.FC = () => {
     if (!currentTestingModel) return;
 
     setTestLoading(true);
-    setTestResult("");
+    setTestResult(undefined);
     setTestError("");
 
     testModel({
@@ -279,7 +280,7 @@ const Models: React.FC = () => {
                       {model.provider}
                     </Text>
                     <Text size="xs" c="brand.5">
-                      {model.apiType}
+                      {model.apiProvider}
                     </Text>
                   </Group>
 
@@ -349,7 +350,7 @@ const Models: React.FC = () => {
             <Stack>
               <Text fw={500}>Model Response:</Text>
               <Card withBorder p="md" radius="md">
-                <Text>{testResult}</Text>
+                <Text>{testResult?.content}</Text>
               </Card>
             </Stack>
           )}

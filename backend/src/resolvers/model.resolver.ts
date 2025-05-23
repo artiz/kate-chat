@@ -2,22 +2,22 @@ import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai.service";
 import { Model } from "../entities/Model";
 
-import { ModelsResponse, ModelResponse } from "../types/graphql/responses";
+import { GqlModelsList, GqlModel } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { MessageFormat } from "../types/ai.types";
-import { MessageRole } from "../entities/Message";
+import { ApiProvider, MessageFormat } from "../types/ai.types";
+import { Message, MessageRole } from "../entities/Message";
 import { DEFAULT_MODEL_ID } from "../config/ai";
 
 @Resolver()
 export class ModelResolver {
-  private async refreshModels(): Promise<ModelsResponse> {
+  private async refreshModels(): Promise<GqlModelsList> {
     try {
       // Get the repository
       const modelRepository = getRepository(Model);
 
       // Get the models from AWS Bedrock
-      const bedrockModels = await AIService.getBedrockModels();
+      const models = await AIService.getModels();
 
       const dbModels = await modelRepository.find({});
       const enabledMap = dbModels.reduce(
@@ -29,50 +29,41 @@ export class ModelResolver {
       );
 
       // Clear existing models
-      if (Object.keys(bedrockModels).length) {
+      if (Object.keys(models).length) {
         await modelRepository.clear();
       }
 
-      // Save Bedrock models to database
-      const models: ModelResponse[] = [];
+      // Save models to database
+      const outModels: GqlModel[] = [];
       let sortOrder = 0;
-      for (const [modelId, modelInfo] of Object.entries(bedrockModels)) {
+      for (const [modelId, info] of Object.entries(models)) {
         // Create new model
-        const model = new Model();
-
-        // Update model properties
-        model.name = modelInfo.name;
-        model.modelId = modelId;
-        model.modelArn = modelInfo.modelArn;
-        model.description = modelInfo.description || `${modelInfo.name} by ${modelInfo.provider}`;
-        model.provider = modelInfo.provider;
-        model.apiType = "bedrock";
-        model.supportsStreaming = modelInfo.supportsStreaming || false;
-        model.supportsTextIn = modelInfo.supportsTextIn || true;
-        model.supportsTextOut = modelInfo.supportsTextOut || true;
-        model.supportsImageIn = modelInfo.supportsImageIn || false;
-        model.supportsImageOut = modelInfo.supportsImageOut || false;
-        model.supportsEmbeddingsIn = modelInfo.supportsEmbeddingsIn || false;
-        model.isActive = modelId in enabledMap ? enabledMap[modelId] : true;
-        model.sortOrder = sortOrder++;
+        const model = modelRepository.create({
+          ...info,
+          modelId: modelId,
+          description: info.description || `${info.name} by ${info.provider}`,
+          isActive: modelId in enabledMap ? enabledMap[modelId] : true,
+          sortOrder,
+        });
+        sortOrder++;
 
         // Save the model
-        const savedModel: ModelResponse = await modelRepository.save(model);
+        const savedModel: GqlModel = await modelRepository.save(model);
 
         savedModel.isDefault = model.modelId === DEFAULT_MODEL_ID;
-        models.push(savedModel);
+        outModels.push(savedModel);
       }
 
-      return { models, total: models.length };
+      return { models: outModels, total: outModels.length };
     } catch (error) {
       console.error("Error refreshing models:", error);
       return { error: "Failed to refresh models" };
     }
   }
 
-  @Query(() => ModelsResponse)
+  @Query(() => GqlModelsList)
   @Authorized()
-  async getModels(): Promise<ModelsResponse> {
+  async getModels(): Promise<GqlModelsList> {
     try {
       // Get models from the database
       const modelRepository = getRepository(Model);
@@ -80,7 +71,7 @@ export class ModelResolver {
         order: { sortOrder: "ASC" },
       });
 
-      let models: ModelResponse[] = dbModels.map((model: ModelResponse) => {
+      let models: GqlModel[] = dbModels.map((model: GqlModel) => {
         model.isDefault = model.modelId === DEFAULT_MODEL_ID;
         return model;
       });
@@ -97,9 +88,9 @@ export class ModelResolver {
     }
   }
 
-  @Query(() => [ModelResponse])
+  @Query(() => [GqlModel])
   @Authorized()
-  async getActiveModels(): Promise<ModelResponse[]> {
+  async getActiveModels(): Promise<GqlModel[]> {
     // Get models from the database
     const modelRepository = getRepository(Model);
     const dbModels = await modelRepository.find({
@@ -107,21 +98,21 @@ export class ModelResolver {
       order: { sortOrder: "ASC" },
     });
 
-    return dbModels.map((model: ModelResponse) => {
+    return dbModels.map((model: GqlModel) => {
       model.isDefault = model.modelId === DEFAULT_MODEL_ID;
       return model;
     });
   }
 
-  @Mutation(() => ModelsResponse)
+  @Mutation(() => GqlModelsList)
   @Authorized()
-  async reloadModels(): Promise<ModelsResponse> {
+  async reloadModels(): Promise<GqlModelsList> {
     return this.refreshModels();
   }
 
-  @Mutation(() => ModelResponse)
+  @Mutation(() => GqlModel)
   @Authorized()
-  async updateModelStatus(@Arg("input") input: UpdateModelStatusInput): Promise<ModelResponse> {
+  async updateModelStatus(@Arg("input") input: UpdateModelStatusInput): Promise<GqlModel> {
     try {
       const { modelId, isActive } = input;
 
@@ -142,18 +133,18 @@ export class ModelResolver {
       const updatedModel = await modelRepository.save(model);
 
       // Add isDefault property for the response
-      (updatedModel as ModelResponse).isDefault = updatedModel.modelId === DEFAULT_MODEL_ID;
+      (updatedModel as GqlModel).isDefault = updatedModel.modelId === DEFAULT_MODEL_ID;
 
-      return updatedModel as ModelResponse;
+      return updatedModel as GqlModel;
     } catch (error) {
       console.error("Error updating model status:", error);
       throw new Error("Failed to update model status");
     }
   }
 
-  @Mutation(() => String)
+  @Mutation(() => Message)
   @Authorized()
-  async testModel(@Arg("input") input: TestModelInput): Promise<string> {
+  async testModel(@Arg("input") input: TestModelInput): Promise<Message> {
     try {
       const { modelId, text } = input;
 
@@ -173,18 +164,26 @@ export class ModelResolver {
 
       // Create service instance
       const aiService = new AIService();
-
+      const timestamp = new Date();
       // Create a message format for the test
       const message: MessageFormat = {
         role: MessageRole.USER,
         content: text,
-        timestamp: new Date(),
+        timestamp,
       };
 
       // Generate a response using the AI service
-      const response = await aiService.invokeBedrockModel([message], model.modelId);
+      const response = await aiService.invokeModel([message], model.modelId, model.apiProvider);
 
-      return response;
+      return {
+        id: "",
+        role: MessageRole.ASSISTANT,
+        content: response.content,
+        modelId,
+        modelName: model.name,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
     } catch (error: unknown) {
       console.error("Error testing model:", error);
       throw new Error(`Failed to test model: ${error || "Unknown error"}`);

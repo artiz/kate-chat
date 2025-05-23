@@ -1,28 +1,10 @@
-import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
-import { bedrockClient, bedrockManagementClient } from "../config/bedrock";
 import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
-import { MessageFormat, StreamCallbacks } from "../types/ai.types";
-import BedrockModelConfigs from "../config/data/bedrock-models-config.json";
-
-// Import provider-specific services
-import { AnthropicService } from "./providers/anthropic.service";
-import { AmazonService } from "./providers/amazon.service";
-import { AI21Service } from "./providers/ai21.service";
-import { CohereService } from "./providers/cohere.service";
-import { MetaService } from "./providers/meta.service";
-import { MistralService } from "./providers/mistral.service";
-
-interface BedrockModelConfigRecord {
-  provider: string;
-  modelId: string;
-  modelIdOverride?: string;
-  name: string;
-  regions: string[];
-}
-
-export interface BedrockModelInfo {
+import { ApiProvider, MessageFormat, ModelResponse, StreamCallbacks } from "../types/ai.types";
+import { BedrockService } from "./bedrock/bedrock.service";
+import { OpenApiService } from "./openai/openai.service";
+export interface AIModelInfo {
+  apiProvider: ApiProvider;
   provider: string;
   name: string;
   modelArn?: string;
@@ -35,124 +17,60 @@ export interface BedrockModelInfo {
   supportsEmbeddingsIn: boolean;
   currentRegion: string;
 }
+
 export class AIService {
-  private anthropicService: AnthropicService;
-  private amazonService: AmazonService;
-  private ai21Service: AI21Service;
-  private cohereService: CohereService;
-  private metaService: MetaService;
-  private mistralService: MistralService;
+  private bedrockService: BedrockService;
 
   constructor() {
-    this.anthropicService = new AnthropicService();
-    this.amazonService = new AmazonService();
-    this.ai21Service = new AI21Service();
-    this.cohereService = new CohereService();
-    this.metaService = new MetaService();
-    this.mistralService = new MistralService();
+    this.bedrockService = new BedrockService();
   }
 
   // Main method to interact with models
-  async invokeBedrockModel(
+  async invokeModel(
     messages: MessageFormat[],
     modelId: string,
+    apiProvider: ApiProvider,
     temperature: number = 0.7,
     maxTokens: number = 2048
-  ): Promise<string> {
+  ): Promise<ModelResponse> {
     // Join user duplicate messages
     messages = this.preprocessMessages(messages);
 
-    // Get provider service and parameters
-    const { service, params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
-
-    // Send command using Bedrock client
-    const command = new InvokeModelCommand(params);
-    const response = await bedrockClient.send(command);
-
-    // Parse the response body
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    return service.parseResponse(responseBody);
+    // Determine which API provider to use and invoke the appropriate service
+    if (apiProvider === ApiProvider.AWS_BEDROCK) {
+      return this.bedrockService.invokeModel(messages, modelId, temperature, maxTokens);
+    } else if (apiProvider === ApiProvider.OPEN_AI) {
+      // Import OpenApiService dynamically to avoid circular dependencies
+      const { OpenApiService } = await import("./openai/openai.service");
+      const openApiService = new OpenApiService();
+      return openApiService.invokeModel(messages, modelId, temperature, maxTokens);
+    } else {
+      throw new Error(`Unsupported API provider: ${apiProvider}`);
+    }
   }
 
-  // Stream response from models using InvokeModelWithResponseStreamCommand
-  async invokeBedrockModelWithStreamResponse(
+  // Stream response from models
+  async invokeModelAsync(
     messages: MessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
+    apiProvider: ApiProvider = ApiProvider.AWS_BEDROCK,
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<void> {
-    try {
-      callbacks.onStart?.();
+    // Preprocess messages
+    messages = this.preprocessMessages(messages);
 
-      // Preprocess messages
-      messages = this.preprocessMessages(messages);
-      const provider = this.getModelProvider(modelId);
-
-      // Check if modelId supports streaming (Anthropic, Amazon, Mistral)
-      const supportsStreaming = provider === "anthropic" || provider === "amazon" || provider === "mistral";
-
-      if (supportsStreaming) {
-        // Get provider service and parameters
-        const { service, params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
-
-        // Create a streaming command
-        const streamCommand = new InvokeModelWithResponseStreamCommand(params);
-        const streamResponse = await bedrockClient.send(streamCommand);
-
-        let fullResponse = "";
-
-        // Process the stream
-        if (streamResponse.body) {
-          for await (const chunk of streamResponse.body) {
-            if (chunk.chunk?.bytes) {
-              const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
-              const chunkData = JSON.parse(decodedChunk);
-
-              // Extract the token based on model provider
-              let token = "";
-              if (provider === "anthropic") {
-                // For Anthropic models
-                if (chunkData.type === "content_block_delta" && chunkData.delta?.text) {
-                  token = chunkData.delta.text;
-                }
-              } else if (provider === "amazon") {
-                // For Amazon models
-                if (chunkData.outputText) {
-                  token = chunkData.outputText;
-                }
-              } else if (provider === "mistral") {
-                // For Mistral models
-                if (chunkData.outputs && chunkData.outputs[0]?.text) {
-                  token = chunkData.outputs[0].text;
-                }
-              }
-
-              if (token) {
-                fullResponse += token;
-                callbacks.onToken?.(token);
-              }
-            }
-          }
-        }
-
-        callbacks.onComplete?.(fullResponse);
-      } else {
-        // For models that don't support streaming, use the regular generation and simulate streaming
-        const fullResponse = await this.invokeBedrockModel(messages, modelId, temperature, maxTokens);
-
-        // Simulate streaming by sending chunks of the response
-        const chunks = fullResponse.split(" ");
-        for (const chunk of chunks) {
-          callbacks.onToken?.(chunk + " ");
-          // Add a small delay to simulate streaming
-          await new Promise(resolve => setTimeout(resolve, 10));
-        }
-
-        callbacks.onComplete?.(fullResponse);
-      }
-    } catch (error) {
-      callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+    // Determine which API provider to use and invoke the appropriate service
+    if (apiProvider === ApiProvider.AWS_BEDROCK) {
+      return this.bedrockService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
+    } else if (apiProvider === ApiProvider.OPEN_AI) {
+      // Import OpenApiService dynamically to avoid circular dependencies
+      const { OpenApiService } = await import("./openai/openai.service");
+      const openApiService = new OpenApiService();
+      return openApiService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
+    } else {
+      callbacks.onError?.(new Error(`Unsupported API provider: ${apiProvider}`));
     }
   }
 
@@ -183,57 +101,6 @@ export class AIService {
     }, []);
   }
 
-  // Get the appropriate service and parameters based on the model ID
-  private async formatProviderParams(
-    messages: MessageFormat[],
-    modelId: string,
-    temperature: number,
-    maxTokens: number
-  ) {
-    let service;
-    let params;
-
-    let provider = this.getModelProvider(modelId);
-
-    if (provider == "anthropic") {
-      const result = await this.anthropicService.generateResponseParams(messages, modelId, temperature, maxTokens);
-      service = this.anthropicService;
-      params = result.params;
-    } else if (provider == "amazon") {
-      const result = await this.amazonService.generateResponseParams(messages, modelId, temperature, maxTokens);
-      service = this.amazonService;
-      params = result.params;
-    } else if (provider == "ai21") {
-      const result = await this.ai21Service.generateResponseParams(messages, modelId, temperature, maxTokens);
-      service = this.ai21Service;
-      params = result.params;
-    } else if (provider == "cohere") {
-      const result = await this.cohereService.generateResponseParams(messages, modelId, temperature, maxTokens);
-      service = this.cohereService;
-      params = result.params;
-    } else if (provider == "meta") {
-      const result = await this.metaService.generateResponseParams(messages, modelId, temperature, maxTokens);
-      service = this.metaService;
-      params = result.params;
-    } else if (provider == "mistral") {
-      const result = await this.mistralService.generateResponseParams(messages, modelId, temperature, maxTokens);
-      service = this.mistralService;
-      params = result.params;
-    } else {
-      throw new Error(`Unsupported model provider: ${provider}`);
-    }
-
-    return { service, params };
-  }
-
-  getModelProvider(modelId: string) {
-    if (modelId.startsWith("us.amazon")) {
-      return modelId.substring(3).split(".")[0];
-    }
-
-    return modelId.split(".")[0];
-  }
-
   // Adapter method for message resolver
   async getCompletion(messages: Message[], model: Model): Promise<string> {
     // Convert DB message objects to MessageFormat structure
@@ -243,8 +110,10 @@ export class AIService {
       timestamp: msg.createdAt,
     }));
 
-    // Use the existing generate method
-    return this.invokeBedrockModel(formattedMessages, model.modelId, 0.7, 2048);
+    // Invoke the model
+    const response = await this.invokeModel(formattedMessages, model.modelId, model.apiProvider, 0.7, 2048);
+
+    return response.content;
   }
 
   async streamCompletion(
@@ -258,8 +127,8 @@ export class AIService {
       timestamp: msg.createdAt,
     }));
 
-    // Use the existing generate method
-    this.invokeBedrockModelWithStreamResponse(
+    // Stream the completion
+    this.invokeModelAsync(
       formattedMessages,
       model.modelId,
       {
@@ -277,73 +146,25 @@ export class AIService {
           console.error("Error during streaming:", error);
         },
       },
+      model.apiProvider,
       0.7,
       2048
     );
   }
 
-  // Helper method to get all supported models with their metadata
-  static async getBedrockModels(): Promise<Record<string, BedrockModelInfo>> {
-    // no AWS connection
-    if (!process.env.AWS_ACCESS_KEY_ID && !process.env.AWS_PROFILE) {
-      return {};
-    }
+  // Get all models from all providers
+  static async getModels(): Promise<Record<string, AIModelInfo>> {
+    const models: Record<string, AIModelInfo> = {};
 
-    const modelsRegions = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
-      (acc: Record<string, string[]>, region) => {
-        const { modelId, regions } = region;
-        acc[modelId] = regions;
-        return acc;
-      },
-      {}
-    );
+    // Get Bedrock models
+    const bedrockService = new BedrockService();
+    const bedrockModels = await bedrockService.getBedrockModels();
+    Object.assign(models, bedrockModels);
 
-    const modelIdOverrides = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
-      (acc: Record<string, string>, region) => {
-        const { modelId, modelIdOverride } = region;
-        if (modelIdOverride) {
-          acc[modelId] = modelIdOverride;
-        }
-        return acc;
-      },
-      {}
-    );
-
-    const command = new ListFoundationModelsCommand({});
-    const response = await bedrockManagementClient.send(command);
-
-    const models: Record<string, any> = {};
-
-    if (!response.modelSummaries || !response.modelSummaries.length) {
-      return models;
-    }
-
-    const bedrockRegion = await bedrockClient.config.region();
-    for (const model of response.modelSummaries) {
-      const regions = modelsRegions[model.modelId || model.modelArn || ""];
-      if (!regions || !regions.includes(bedrockRegion)) {
-        continue;
-      }
-
-      if (model.modelId && model.providerName) {
-        const modelId = modelIdOverrides[model.modelId] || model.modelId;
-        const providerName = model.providerName;
-
-        models[modelId] = {
-          provider: providerName,
-          name: model.modelName || modelId.split(".").pop() || modelId,
-          modelArn: model.modelArn,
-          description: `${model.modelName || modelId} by ${providerName}`,
-          supportsStreaming: model.responseStreamingSupported || false,
-          supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
-          supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
-          supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
-          supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
-          supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
-          currentRegion: process.env.AWS_REGION || "us-west-2",
-        };
-      }
-    }
+    // Get OpenAI models (to be implemented)
+    const openAiService = new OpenApiService();
+    const openAiModels = await openAiService.getOpenAIModels();
+    Object.assign(models, openAiModels);
 
     return models;
   }

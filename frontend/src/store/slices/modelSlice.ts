@@ -5,7 +5,7 @@ export interface Model {
   name: string;
   modelId: string;
   modelArn: string;
-  apiType: string;
+  apiProvider: string;
   isDefault?: boolean;
   provider: string;
   isActive: boolean;

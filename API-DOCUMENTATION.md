@@ -264,7 +264,7 @@ type ModelResponse {
   description: String!
   modelId: String!
   provider: String
-  apiType: String!
+  apiProvider: String!
   supportsStreaming: Boolean!
   supportsTextIn: Boolean!
   supportsTextOut: Boolean!

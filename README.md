@@ -95,6 +95,34 @@ The project consists of two main parts:
    - Check the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html) for model availability by region
    - Make sure to set the `AWS_REGION` to a region that supports your desired models
 
+### OpenAI API keys retrieval
+
+1. **Create an OpenAI Account**
+   - Visit [OpenAI's website](https://openai.com/)
+   - Click "Sign Up" and create an account
+   - Complete the verification process
+
+2. **Generate API Key**
+   - Log in to your OpenAI account
+   - Navigate to the [API keys page](https://platform.openai.com/api-keys)
+   - Click "Create new secret key"
+   - Name your API key (e.g., "KateChat")
+   - Copy the API key immediately - it won't be shown again
+
+3. **Configure Your Environment**
+   - Open the `.env` file in the backend directory
+   - Add your OpenAI API key:
+     ```
+     OPENAI_API_KEY=your_openai_api_key
+     OPENAI_API_URL=https://api.openai.com/v1  # Default OpenAI API URL
+     ```
+
+4. **Note on API Usage Costs**
+   - OpenAI charges for API usage based on the number of tokens processed
+   - Different models have different pricing tiers
+   - Monitor your usage through the [OpenAI dashboard](https://platform.openai.com/usage)
+   - Consider setting up usage limits to prevent unexpected charges
+
 
 ### Installation
 

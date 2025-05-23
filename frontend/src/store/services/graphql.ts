@@ -72,7 +72,7 @@ export const RELOAD_MODELS_MUTATION = gql`
         id
         name
         modelId
-        apiType
+        apiProvider
         isDefault
         provider
         isActive
@@ -96,7 +96,10 @@ export const UPDATE_MODEL_STATUS_MUTATION = gql`
 
 export const TEST_MODEL_MUTATION = gql`
   mutation TestModel($input: TestModelInput!) {
-    testModel(input: $input)
+    testModel(input: $input) {
+      content
+      modelId
+    }
   }
 `;
 
@@ -168,7 +171,7 @@ export const graphqlApi = api.injectEndpoints({
                   modelId
                   provider
                   isActive
-                  apiType
+                  apiProvider
                   isDefault
                 }
               }
@@ -243,7 +246,7 @@ export const graphqlApi = api.injectEndpoints({
                   name
                   modelId
                   modelArn
-                  apiType
+                  apiProvider
                   isActive
                   isDefault
                   provider

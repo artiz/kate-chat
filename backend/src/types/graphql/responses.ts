@@ -26,7 +26,7 @@ export class AuthResponse {
 }
 
 @ObjectType()
-export class ChatResponse {
+export class GqlChat {
   @Field({ nullable: true })
   error?: string;
 
@@ -35,7 +35,7 @@ export class ChatResponse {
 }
 
 @ObjectType()
-export class ChatsResponse {
+export class GqlChatsList {
   @Field({ nullable: true })
   error?: string;
 
@@ -50,7 +50,7 @@ export class ChatsResponse {
 }
 
 @ObjectType()
-export class MessageResponse {
+export class GqlMessage {
   @Field()
   type: MessageType;
 
@@ -62,7 +62,7 @@ export class MessageResponse {
 }
 
 @ObjectType()
-export class MessagesResponse {
+export class GqlMessagesList {
   @Field({ nullable: true })
   error?: string;
 
@@ -80,18 +80,18 @@ export class MessagesResponse {
 }
 
 @ObjectType()
-export class ModelResponse extends Model {
+export class GqlModel extends Model {
   @Field()
   isDefault?: boolean;
 }
 
 @ObjectType()
-export class ModelsResponse {
+export class GqlModelsList {
   @Field({ nullable: true })
   error?: string;
 
-  @Field(() => [ModelResponse], { nullable: true })
-  models?: ModelResponse[];
+  @Field(() => [GqlModel], { nullable: true })
+  models?: GqlModel[];
 
   @Field({ nullable: true })
   total?: number;

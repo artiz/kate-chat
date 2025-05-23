@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
+import { ApiProvider } from "../types/ai.types";
 
 @ObjectType()
 @Entity("models")
@@ -38,8 +39,8 @@ export class Model {
   provider: string; // e.g., 'OpenAI', 'Anthropic', 'Amazon'
 
   @Field()
-  @Column({ default: "bedrock" })
-  apiType: string; // e.g., 'bedrock', 'direct'
+  @Column({ default: ApiProvider.AWS_BEDROCK })
+  apiProvider: ApiProvider;
 
   @Field()
   @Column({ default: false })

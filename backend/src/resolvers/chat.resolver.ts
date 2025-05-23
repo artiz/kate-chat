@@ -5,7 +5,7 @@ import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphq
 import { getRepository } from "../config/database";
 import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
-import { ChatsResponse } from "../types/graphql/responses";
+import { GqlChatsList } from "../types/graphql/responses";
 import { AIService } from "../services/ai.service";
 
 @Resolver(Chat)
@@ -18,11 +18,11 @@ export class ChatResolver {
     this.userRepository = getRepository(User);
   }
 
-  @Query(() => ChatsResponse)
+  @Query(() => GqlChatsList)
   async getChats(
     @Arg("input", { nullable: true }) input: GetChatsInput = {},
     @Ctx() context: GraphQLContext
-  ): Promise<ChatsResponse> {
+  ): Promise<GqlChatsList> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
     const { offset = 0, limit = 20, searchTerm } = input;

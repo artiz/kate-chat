@@ -1,4 +1,4 @@
-import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 import { ok } from "assert";
 
@@ -56,7 +56,10 @@ export class MistralService implements ModelServiceProvider {
     return { params } as any;
   }
 
-  parseResponse(responseBody: any): string {
-    return responseBody.outputs[0]?.text || "";
+  parseResponse(responseBody: any): ModelResponse {
+    return {
+      type: "text",
+      content: responseBody.outputs[0]?.text || "",
+    };
   }
 }

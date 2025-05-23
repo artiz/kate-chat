@@ -1,4 +1,4 @@
-import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 
 export class AmazonService implements ModelServiceProvider {
@@ -53,7 +53,10 @@ export class AmazonService implements ModelServiceProvider {
     return { params } as any;
   }
 
-  parseResponse(responseBody: any): string {
-    return responseBody.results?.[0]?.outputText || "";
+  parseResponse(responseBody: any): ModelResponse {
+    return {
+      type: "text",
+      content: responseBody.results?.[0]?.outputText || "",
+    };
   }
 }

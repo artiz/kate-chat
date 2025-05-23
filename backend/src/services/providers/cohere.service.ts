@@ -1,4 +1,4 @@
-import { MessageFormat, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
+import { MessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
 import { MessageRole } from "../../entities/Message";
 
 export class CohereService implements ModelServiceProvider {
@@ -49,7 +49,10 @@ export class CohereService implements ModelServiceProvider {
     return { params } as any;
   }
 
-  parseResponse(responseBody: any): string {
-    return responseBody.generations?.[0]?.text || "";
+  parseResponse(responseBody: any): ModelResponse {
+    return {
+      type: "text",
+      content: responseBody.generations?.[0]?.text || "",
+    };
   }
 }

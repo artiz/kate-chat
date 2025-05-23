@@ -7,6 +7,11 @@ export interface MessageFormat {
   timestamp?: Date;
 }
 
+export interface ModelResponse {
+  type: "text" | "image";
+  content: string;
+}
+
 export interface StreamCallbacks {
   onStart?: () => void;
   onToken?: (token: string) => void;
@@ -29,5 +34,10 @@ export interface ModelServiceProvider {
     maxTokens?: number
   ): Promise<GenerateResponseParams>;
 
-  parseResponse(responseBody: any): string;
+  parseResponse(responseBody: any): ModelResponse;
+}
+
+export enum ApiProvider {
+  AWS_BEDROCK = "bedrock",
+  OPEN_AI = "open_ai",
 }

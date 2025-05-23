@@ -20,13 +20,6 @@ type Chat {
   user: User!
 }
 
-type ChatsResponse {
-  chats: [Chat!]
-  error: String
-  hasMore: Boolean!
-  total: Float
-}
-
 input CreateChatInput {
   description: String
   modelId: String
@@ -57,31 +50,20 @@ input GetMessagesInput {
   offset: Float = 0
 }
 
-input LoginInput {
-  email: String!
-  password: String!
+type GqlChatsList {
+  chats: [Chat!]
+  error: String
+  hasMore: Boolean!
+  total: Float
 }
 
-type Message {
-  chat: Chat!
-  chatId: String!
-  content: String!
-  createdAt: DateTimeISO!
-  id: ID!
-  modelId: String!
-  modelName: String
-  role: String!
-  updatedAt: DateTimeISO!
-  user: User!
-}
-
-type MessageResponse {
+type GqlMessage {
   error: String
   message: Message
   type: String!
 }
 
-type MessagesResponse {
+type GqlMessagesList {
   chat: Chat
   error: String
   hasMore: Boolean!
@@ -89,8 +71,8 @@ type MessagesResponse {
   total: Float
 }
 
-type ModelResponse {
-  apiType: String!
+type GqlModel {
+  apiProvider: String!
   createdAt: DateTimeISO!
   description: String!
   id: ID!
@@ -110,10 +92,28 @@ type ModelResponse {
   updatedAt: DateTimeISO!
 }
 
-type ModelsResponse {
+type GqlModelsList {
   error: String
-  models: [ModelResponse!]
+  models: [GqlModel!]
   total: Float
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type Message {
+  chat: Chat!
+  chatId: String
+  content: String!
+  createdAt: DateTimeISO!
+  id: ID!
+  modelId: String!
+  modelName: String
+  role: String!
+  updatedAt: DateTimeISO!
+  user: User!
 }
 
 type Mutation {
@@ -123,20 +123,20 @@ type Mutation {
   deleteMessage(id: String!): Boolean!
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
-  reloadModels: ModelsResponse!
-  testModel(input: TestModelInput!): String!
+  reloadModels: GqlModelsList!
+  testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
-  updateModelStatus(input: UpdateModelStatusInput!): ModelResponse!
+  updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
 }
 
 type Query {
   currentUser: User
-  getActiveModels: [ModelResponse!]!
+  getActiveModels: [GqlModel!]!
   getChatById(id: ID!): Chat
-  getChatMessages(input: GetMessagesInput!): MessagesResponse!
-  getChats(input: GetChatsInput): ChatsResponse!
+  getChatMessages(input: GetMessagesInput!): GqlMessagesList!
+  getChats(input: GetChatsInput): GqlChatsList!
   getMessageById(id: String!): Message
-  getModels: ModelsResponse!
+  getModels: GqlModelsList!
 }
 
 input RegisterInput {
@@ -148,7 +148,7 @@ input RegisterInput {
 }
 
 type Subscription {
-  newMessage(chatId: String!): MessageResponse!
+  newMessage(chatId: String!): GqlMessage!
 }
 
 input TestModelInput {
