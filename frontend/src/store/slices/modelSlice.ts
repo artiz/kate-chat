@@ -4,23 +4,22 @@ export interface Model {
   id: string;
   name: string;
   modelId: string;
-  modelArn: string;
   apiProvider: string;
   isDefault?: boolean;
   provider: string;
   isActive: boolean;
+  supportsImageOut?: boolean;
+  supportsTextOut?: boolean;
 }
 
 interface ModelState {
   models: Model[];
-  selectedModel: Model | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: ModelState = {
   models: [],
-  selectedModel: null,
   loading: false,
   error: null,
 };
@@ -32,9 +31,6 @@ const modelSlice = createSlice({
     setModels(state, action: PayloadAction<Model[]>) {
       state.models = action.payload;
       state.error = null;
-    },
-    setSelectedModel(state, action: PayloadAction<Model>) {
-      state.selectedModel = action.payload;
     },
     setModelLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
@@ -55,5 +51,5 @@ const modelSlice = createSlice({
   },
 });
 
-export const { setModels, setSelectedModel, setModelLoading, setModelError, updateModel } = modelSlice.actions;
+export const { setModels, setModelLoading, setModelError, updateModel } = modelSlice.actions;
 export default modelSlice.reducer;

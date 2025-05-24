@@ -9,7 +9,6 @@ export interface AIModelInfo {
   apiProvider: ApiProvider;
   provider: string;
   name: string;
-  modelArn?: string;
   description: string;
   supportsStreaming: boolean;
   supportsTextIn: boolean;
@@ -17,7 +16,6 @@ export interface AIModelInfo {
   supportsImageIn: boolean;
   supportsImageOut: boolean;
   supportsEmbeddingsIn: boolean;
-  currentRegion: string;
 }
 
 export interface ModelMessageFormat {

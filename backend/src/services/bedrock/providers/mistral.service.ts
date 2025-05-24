@@ -1,7 +1,7 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
-import { MessageRole } from "../../entities/Message";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import { MessageRole } from "@/entities/Message";
 import { ok } from "assert";
-import { createLogger } from "../../utils/logger";
+import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
 

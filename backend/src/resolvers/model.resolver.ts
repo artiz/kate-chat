@@ -33,7 +33,9 @@ export class ModelResolver {
 
       // Clear existing models
       if (Object.keys(models).length) {
-        await modelRepository.clear();
+        await modelRepository.delete({
+          isCustom: false,
+        });
       }
 
       // Save models to database
@@ -47,6 +49,7 @@ export class ModelResolver {
           description: info.description || `${info.name} by ${info.provider}`,
           isActive: modelId in enabledMap ? enabledMap[modelId] : true,
           sortOrder,
+          isCustom: false,
         });
         sortOrder++;
 

@@ -84,9 +84,6 @@ async function bootstrap() {
 
         // Extract the authorization header
         const authHeader = (connectionParams?.authorization as string) || "";
-        logger.debug({ authHeaderPresent: !!authHeader }, "Auth header status");
-
-        // Import the getUserFromToken helper
         const { getUserFromToken } = require("./middleware/authMiddleware");
         const user = getUserFromToken(authHeader);
 

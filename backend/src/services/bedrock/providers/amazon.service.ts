@@ -1,17 +1,15 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
-import { MessageRole } from "../../entities/Message";
-import { createLogger } from "../../utils/logger";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import { MessageRole } from "@/entities/Message";
+import { logger } from "@/utils/logger";
 
-const logger = createLogger(__filename);
-
-export class AI21Service implements ModelServiceProvider {
+export class AmazonService implements ModelServiceProvider {
   async generateResponseParams(
     messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<any> {
-    // Convert messages to a single prompt
+    // Convert messages to a single prompt for Amazon models
     let prompt = "";
     for (const msg of messages) {
       if (msg.role === MessageRole.USER) {
@@ -30,14 +28,16 @@ export class AI21Service implements ModelServiceProvider {
     const params = {
       modelId,
       body: JSON.stringify({
-        prompt,
-        maxTokens,
-        temperature,
-        stopSequences: ["Human:"],
+        inputText: prompt,
+        textGenerationConfig: {
+          maxTokenCount: maxTokens,
+          temperature,
+          stopSequences: ["Human:"],
+        },
       }),
     };
 
-    logger.debug({ modelId, prompt }, "Call A21 model");
+    logger.debug({ modelId, params }, "Call Amazon model");
 
     return { params };
   }
@@ -45,7 +45,7 @@ export class AI21Service implements ModelServiceProvider {
   parseResponse(responseBody: any): ModelResponse {
     return {
       type: "text",
-      content: responseBody.completions?.[0]?.data?.text || "",
+      content: responseBody.results?.[0]?.outputText || "",
     };
   }
 }

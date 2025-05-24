@@ -77,8 +77,8 @@ type GqlModel {
   description: String!
   id: ID!
   isActive: Boolean!
+  isCustom: Boolean!
   isDefault: Boolean!
-  modelArn: String
   modelId: String!
   name: String!
   provider: String

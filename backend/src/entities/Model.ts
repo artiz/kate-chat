@@ -26,10 +26,6 @@ export class Model {
   @Column()
   modelId: string;
 
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  modelArn?: string;
-
   @Field()
   @Column()
   description: string;
@@ -73,6 +69,10 @@ export class Model {
   @Field()
   @Column({ default: true })
   isActive: boolean;
+
+  @Field()
+  @Column({ default: false })
+  isCustom: boolean;
 
   @Field()
   @CreateDateColumn()

@@ -1,4 +1,4 @@
-import React, { use, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gql, useQuery, useMutation, useSubscription, OnDataOptions } from "@apollo/client";
 import {
@@ -15,10 +15,9 @@ import {
   Tooltip,
   TextInput,
 } from "@mantine/core";
-import { IconSend, IconX, IconRobot, IconEdit, IconCheck } from "@tabler/icons-react";
+import { IconSend, IconX, IconRobot, IconEdit, IconCheck, IconPhotoAi, IconTextScan2 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../store";
-import { setMessages, setCurrentChat, Message, MessageType } from "../store/slices/chatSlice";
-import { setSelectedModel } from "../store/slices/modelSlice";
+import { setCurrentChat, Chat, Message, MessageType, addChat } from "../store/slices/chatSlice";
 import ChatMessages from "../components/ChatMessages";
 import { notifications } from "@mantine/notifications";
 import { UPDATE_CHAT_MUTATION } from "../store/services/graphql";
@@ -62,7 +61,7 @@ const SEND_MESSAGE = gql`
   }
 `;
 
-const Chat: React.FC = () => {
+const ChatComponent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -70,15 +69,34 @@ const Chat: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
+  const [chat, setChat] = useState<Chat>();
 
-  const selectedModel = useAppSelector(state => state.models.selectedModel);
-  const models = useAppSelector(state => state.models.models.filter(m => m.isActive));
-  const messages = useAppSelector(state => state.chats.messages);
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const allModels = useAppSelector(state => state.models.models);
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const { wsConnected, addChatMessage } = useChatSubscription(id, () => setSending(false));
+  const addChatMessage = (message: Message) => {
+    if (!message) return;
+    setMessages(prev => {
+      const lastMessage = prev[prev.length - 1];
+      // If the last message is from the same user and has the same content, skip adding
+      if (lastMessage && lastMessage.role === message.role && lastMessage.id === message.id) {
+        prev[prev.length - 1] = message; // Update the last message instead
+        return [...prev];
+      } else {
+        return [...prev, message];
+      }
+    });
+  };
+
+  const { wsConnected } = useChatSubscription({
+    id,
+    resetSending: () => setSending(false),
+    addMessage: addChatMessage,
+  });
 
   // Get chat messages and chat details
   const { loading: messagesLoading, error: messagesError } = useQuery(GET_CHAT_MESSAGES, {
@@ -91,26 +109,28 @@ const Chat: React.FC = () => {
     },
     skip: !id,
     onCompleted: data => {
+      const { chat: ch, messages } = data.getChatMessages || {};
       // Set chat details from the chat field in getChatMessages
-      if (data.getChatMessages.chat) {
-        dispatch(setCurrentChat(data.getChatMessages.chat));
-        setEditedTitle(data.getChatMessages.chat?.title || "Untitled Chat");
-
-        // If the chat has a model selected, use that model
-        if (data.getChatMessages.chat?.modelId) {
-          const chatModel = models.find(model => model.modelId === data.getChatMessages.chat.modelId);
-          if (chatModel) {
-            dispatch(setSelectedModel(chatModel));
-          }
-        }
+      if (ch) {
+        dispatch(setCurrentChat(ch));
+        setChat(ch);
+        setEditedTitle(ch.title || "Untitled Chat");
       }
 
       // Parse and set messages
       parseChatMessages(data.getChatMessages.messages || []).then(parsedMessages => {
-        dispatch(setMessages(parsedMessages));
+        setMessages(parsedMessages);
       });
     },
   });
+
+  const models = useMemo(() => {
+    return allModels.filter(model => model.isActive);
+  }, [allModels]);
+
+  const selectedModel = useMemo(() => {
+    return models?.find(m => m.modelId === chat?.modelId) || null;
+  }, [models, chat]);
 
   // Send message mutation
   const [sendMessageMutation] = useMutation(SEND_MESSAGE, {
@@ -171,7 +191,16 @@ const Chat: React.FC = () => {
   const handleModelChange = (modelId: string | null) => {
     const model = models.find(m => m.id === modelId);
     if (!model || !id) return;
-    dispatch(setSelectedModel(model));
+
+    setChat(prev =>
+      prev
+        ? {
+            ...prev,
+            modelId: model.modelId,
+          }
+        : undefined
+    );
+
     // Update the chat in the database with the new model ID
     updateChatMutation({
       variables: {
@@ -253,6 +282,7 @@ const Chat: React.FC = () => {
           ) : (
             <Group gap="xs">
               <Title order={3}>{messagesLoading ? "Loading..." : editedTitle || "Untitled Chat"}</Title>
+
               <ActionIcon
                 onClick={() => {
                   setIsEditingTitle(true);
@@ -267,6 +297,7 @@ const Chat: React.FC = () => {
             </Group>
           )}
         </Group>
+
         <Group>
           <Box
             style={{
@@ -302,6 +333,7 @@ const Chat: React.FC = () => {
             value: model.id,
             label: model.name,
           }))}
+          searchable
           value={selectedModel?.id || ""}
           onChange={handleModelChange}
           placeholder="Select a model"
@@ -310,11 +342,15 @@ const Chat: React.FC = () => {
           disabled={sending || messagesLoading}
         />
         {selectedModel && (
-          <Tooltip label={`Provider: ${selectedModel.provider || "Unknown"}`}>
-            <Text size="xs" c="dimmed" span>
-              {selectedModel.provider}
-            </Text>
-          </Tooltip>
+          <Group>
+            <Tooltip label={`Provider: ${selectedModel.provider || "Unknown"}`}>
+              <Text size="xs" c="dimmed" span>
+                {selectedModel.provider}
+              </Text>
+            </Tooltip>
+            {selectedModel.supportsImageOut && <IconPhotoAi size={32} color="teal" />}
+            {selectedModel.supportsTextOut && <IconTextScan2 size={32} color="teal" />}
+          </Group>
         )}
       </Group>
 
@@ -359,4 +395,4 @@ const Chat: React.FC = () => {
   );
 };
 
-export default Chat;
+export default ChatComponent;

@@ -59,12 +59,12 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
                 }),
               on: {
                 connected: ws => {
-                  console.log("WebSocket connected successfully", ws);
+                  console.debug("WebSocket connected successfully", ws);
                 },
                 error: e => console.error("WebSocket connection error:", e),
-                closed: () => console.log("WebSocket connection closed"),
-                connecting: () => console.log("WebSocket connecting..."),
-                opened: socket => console.log("WebSocket connection opened"),
+                closed: () => console.debug("WebSocket connection closed"),
+                connecting: () => console.debug("WebSocket connecting..."),
+                opened: socket => console.debug("WebSocket connection opened"),
               },
             })
           )

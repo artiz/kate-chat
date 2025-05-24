@@ -1,6 +1,6 @@
-import React, { use, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
-import { addMessage, Message, MessageType, MessageRole } from "../store/slices/chatSlice";
+import { Message, MessageType, MessageRole } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch } from "@/store";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
@@ -26,13 +26,19 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
 
 type SubscriptionResult = {
   wsConnected: boolean;
-  addChatMessage: (message: Message) => void;
 };
 
-export const useChatSubscription: (id: string | undefined, resetSending: () => void) => SubscriptionResult = (
+interface UseChatSubscriptionProps {
+  id: string | undefined;
+  resetSending: () => void;
+  addMessage: (message: Message) => void;
+}
+
+export const useChatSubscription: (props: UseChatSubscriptionProps) => SubscriptionResult = ({
   id,
-  resetSending
-) => {
+  resetSending,
+  addMessage,
+}) => {
   const [wsConnected, setWsConnected] = useState(false);
 
   const dispatch = useAppDispatch();
@@ -50,13 +56,13 @@ export const useChatSubscription: (id: string | undefined, resetSending: () => v
 
       if (message.content) {
         parseMarkdown(message.content).then(html => {
-          dispatch(addMessage({ ...message, html }));
+          addMessage({ ...message, html });
         });
       } else {
-        dispatch(addMessage(message));
+        addMessage(message);
       }
     }, 200),
-    [dispatch]
+    [dispatch, addMessage]
   );
 
   // Subscribe to new messages in this chat
@@ -102,6 +108,5 @@ export const useChatSubscription: (id: string | undefined, resetSending: () => v
 
   return {
     wsConnected,
-    addChatMessage,
   };
 };

@@ -31,7 +31,7 @@ import {
 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../store";
 import { useMutation } from "@apollo/client";
-import { Model, setSelectedModel, setModels, updateModel } from "../store/slices/modelSlice";
+import { Model, setModels, updateModel } from "../store/slices/modelSlice";
 import {
   CREATE_CHAT_MUTATION,
   RELOAD_MODELS_MUTATION,
@@ -143,8 +143,6 @@ const Models: React.FC = () => {
 
   // Handle creating a new chat with the selected model
   const handleCreateChat = (model: Model) => {
-    dispatch(setSelectedModel(model));
-
     createChat({
       variables: {
         input: {

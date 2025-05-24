@@ -1,5 +1,5 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
-import { MessageRole } from "../../entities/Message";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import { MessageRole } from "@/entities/Message";
 
 export class CohereService implements ModelServiceProvider {
   async generateResponseParams(

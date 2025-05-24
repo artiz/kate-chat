@@ -1,6 +1,6 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "../../types/ai.types";
-import { MessageRole } from "../../entities/Message";
-import { DEFAULT_PROMPT } from "../../config/ai";
+import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import { MessageRole } from "@/entities/Message";
+import { DEFAULT_PROMPT } from "@/config/ai";
 
 export class MetaService implements ModelServiceProvider {
   async generateResponseParams(

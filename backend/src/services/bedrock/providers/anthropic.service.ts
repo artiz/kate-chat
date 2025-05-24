@@ -1,12 +1,6 @@
-import {
-  GenerateResponseParams,
-  ModelMessageFormat,
-  ModelResponse,
-  ModelServiceProvider,
-  StreamCallbacks,
-} from "../../types/ai.types";
-import { MessageRole } from "../../entities/Message";
-import { DEFAULT_PROMPT } from "../../config/ai";
+import { GenerateResponseParams, ModelMessageFormat, ModelResponse, ModelServiceProvider } from "@/types/ai.types";
+import { MessageRole } from "@/entities/Message";
+import { DEFAULT_PROMPT } from "@/config/ai";
 
 /**
  * See format info at https://docs.anthropic.com/en/api/messages

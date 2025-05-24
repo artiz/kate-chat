@@ -137,37 +137,37 @@ export class BedrockService {
     let provider = this.getModelProvider(modelId);
 
     if (provider == "anthropic") {
-      const { AnthropicService } = await import("../providers/anthropic.service");
+      const { AnthropicService } = await import("./providers/anthropic.service");
       const anthropicService = new AnthropicService();
       const result = await anthropicService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = anthropicService;
       params = result.params;
     } else if (provider == "amazon") {
-      const { AmazonService } = await import("../providers/amazon.service");
+      const { AmazonService } = await import("./providers/amazon.service");
       const amazonService = new AmazonService();
       const result = await amazonService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = amazonService;
       params = result.params;
     } else if (provider == "ai21") {
-      const { AI21Service } = await import("../providers/ai21.service");
+      const { AI21Service } = await import("./providers/ai21.service");
       const ai21Service = new AI21Service();
       const result = await ai21Service.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = ai21Service;
       params = result.params;
     } else if (provider == "cohere") {
-      const { CohereService } = await import("../providers/cohere.service");
+      const { CohereService } = await import("./providers/cohere.service");
       const cohereService = new CohereService();
       const result = await cohereService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = cohereService;
       params = result.params;
     } else if (provider == "meta") {
-      const { MetaService } = await import("../providers/meta.service");
+      const { MetaService } = await import("./providers/meta.service");
       const metaService = new MetaService();
       const result = await metaService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = metaService;
       params = result.params;
     } else if (provider == "mistral") {
-      const { MistralService } = await import("../providers/mistral.service");
+      const { MistralService } = await import("./providers/mistral.service");
       const mistralService = new MistralService();
       const result = await mistralService.generateResponseParams(messages, modelId, temperature, maxTokens);
       service = mistralService;
@@ -225,7 +225,7 @@ export class BedrockService {
 
     const bedrockRegion = await bedrockClient.config.region();
     for (const model of response.modelSummaries) {
-      const regions = modelsRegions[model.modelId || model.modelArn || ""];
+      const regions = modelsRegions[model.modelId || ""];
       if (!regions || !regions.includes(bedrockRegion)) {
         continue;
       }
@@ -238,7 +238,6 @@ export class BedrockService {
           apiProvider: ApiProvider.AWS_BEDROCK,
           provider: providerName,
           name: model.modelName || modelId.split(".").pop() || modelId,
-          modelArn: model.modelArn,
           description: `${model.modelName || modelId} by ${providerName}`,
           supportsStreaming: model.responseStreamingSupported || false,
           supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
@@ -246,7 +245,6 @@ export class BedrockService {
           supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
           supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
           supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
-          currentRegion: process.env.AWS_REGION || "us-west-2",
         };
       }
     }

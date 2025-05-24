@@ -5,9 +5,7 @@ import { markedHighlight } from "marked-highlight";
 import markedKatex from "marked-katex-extension";
 
 // Template to store original (unformatted) code to copy it
-const CodeDataTemplate = `
-    <i class="code-data" data-code="<CODE>" data-lang="<LANG>"></i>
-`;
+const CodeDataTemplate = `<span class="code-data" data-code="<CODE>" data-lang="<LANG>"></span>`;
 
 const marked = new Marked(
   // code highlighting

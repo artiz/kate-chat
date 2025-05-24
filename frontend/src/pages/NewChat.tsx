@@ -95,7 +95,7 @@ const NewChat: React.FC = () => {
               placeholder="Choose a model"
               data={models.map(model => ({
                 value: model.modelId,
-                label: `${model.name} (${model.provider?.name || model.modelId})`,
+                label: `${model.name} (${model.provider || model.modelId})`,
               }))}
               value={selectedModelId}
               onChange={setSelectedModelId}
@@ -104,7 +104,7 @@ const NewChat: React.FC = () => {
               disabled={modelsLoading}
             />
 
-            <Group position="right" mt="xl">
+            <Group p="right" mt="xl">
               <Button variant="default" onClick={handleCancel}>
                 Cancel
               </Button>

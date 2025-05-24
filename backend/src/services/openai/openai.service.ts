@@ -237,23 +237,20 @@ export class OpenApiService {
       // Filter and map models
       for (const model of openaiModels) {
         // Filter for GPT models and DALL-E
-        if (model.id.includes("gpt") || model.id.includes("dall-e")) {
-          const supportsImage = model.id.includes("dall-e");
+        const supportsImage = model.id.includes("dall-e");
 
-          models[model.id] = {
-            apiProvider: ApiProvider.OPEN_AI,
-            provider: "OpenAI",
-            name: model.id,
-            description: `${model.id} by OpenAI`,
-            supportsStreaming: !supportsImage,
-            supportsTextIn: true,
-            supportsTextOut: !supportsImage,
-            supportsImageIn: false,
-            supportsImageOut: supportsImage,
-            supportsEmbeddingsIn: false,
-            currentRegion: "global",
-          };
-        }
+        models[model.id] = {
+          apiProvider: ApiProvider.OPEN_AI,
+          provider: "OpenAI",
+          name: getModelName(model.id),
+          description: `${model.id} by OpenAI`,
+          supportsStreaming: !supportsImage,
+          supportsTextIn: true,
+          supportsTextOut: !supportsImage,
+          supportsImageIn: false,
+          supportsImageOut: supportsImage,
+          supportsEmbeddingsIn: false,
+        };
       }
 
       // Add DALL-E models manually if not returned by the API
@@ -269,7 +266,6 @@ export class OpenApiService {
           supportsImageIn: false,
           supportsImageOut: true,
           supportsEmbeddingsIn: false,
-          currentRegion: "global",
         };
       }
 
@@ -285,7 +281,6 @@ export class OpenApiService {
           supportsImageIn: false,
           supportsImageOut: true,
           supportsEmbeddingsIn: false,
-          currentRegion: "global",
         };
       }
     } catch (error) {
@@ -294,4 +289,14 @@ export class OpenApiService {
 
     return models;
   }
+}
+
+function getModelName(id: string): string {
+  // for names like gpt-4-turbo return GPT-4 Turbo
+  const name = id
+    .replace("gpt", "GPT")
+    .replace("dall-e", "DALL-E")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
+  return name;
 }

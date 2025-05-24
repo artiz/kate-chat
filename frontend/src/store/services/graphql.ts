@@ -73,9 +73,11 @@ export const RELOAD_MODELS_MUTATION = gql`
         name
         modelId
         apiProvider
-        isDefault
         provider
         isActive
+        isDefault
+        supportsImageOut
+        supportsTextOut
       }
       error
     }
@@ -245,11 +247,12 @@ export const graphqlApi = api.injectEndpoints({
                   id
                   name
                   modelId
-                  modelArn
+                  provider
                   apiProvider
                   isActive
                   isDefault
-                  provider
+                  supportsImageOut
+                  supportsTextOut
                 }
               }
               getChats(input: { limit: 20, offset: 0 }) {
