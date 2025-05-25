@@ -37,7 +37,7 @@ export class OpenApiService {
     }
 
     // Determine if this is an image generation request
-    if (modelId === "dall-e-3" || modelId === "dall-e-2") {
+    if (modelId.startsWith("dall-e")) {
       return this.generateImage(messages, modelId);
     }
 
@@ -184,29 +184,27 @@ export class OpenApiService {
 
     const prompt = userMessages[userMessages.length - 1].content;
 
+    const params = {
+      model: modelId,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json",
+    };
+
+    logger.debug({ params }, "Image generation");
     try {
-      const response = await axios.post(
-        `${this.baseUrl}/images/generations`,
-        {
-          model: modelId,
-          prompt,
-          n: 1,
-          size: "1024x1024",
-        },
-        { headers: this.getHeaders() }
-      );
+      const response = await axios.post(`${this.baseUrl}/images/generations`, params, { headers: this.getHeaders() });
 
-      logger.debug(response.data, "Image generation");
+      const imageData = response.data.data[0]?.b64_json || "";
 
-      const imageUrl = response.data.data[0]?.url || "";
-
-      if (!imageUrl) {
+      if (!imageData) {
         throw new Error("No image URL returned from OpenAI API");
       }
 
       return {
         type: "image",
-        content: imageUrl,
+        content: imageData,
       };
     } catch (error) {
       logger.error(error, "Error generating image with OpenAI");

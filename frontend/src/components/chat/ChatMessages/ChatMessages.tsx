@@ -52,7 +52,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
                 {msg.html ? (
                   msg.html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
                 ) : (
-                  <Text size="xs">{msg.content}</Text>
+                  <Text>{msg.content}</Text>
                 )}
               </Paper>
             </Group>

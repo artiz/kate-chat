@@ -23,7 +23,7 @@ import { logger } from "./utils/logger";
 // Load environment variables
 config();
 
-const KEEP_ALIVE = "KEEP_ALIVE";
+const OUTPUT_FOLDER = process.env.OUTPUT_FOLDER || path.join(__dirname, "../output");
 
 async function bootstrap() {
   // Initialize database connection
@@ -62,6 +62,9 @@ async function bootstrap() {
 
   // Set up auth middleware
   app.use(authMiddleware);
+  app.use("/output", express.static(OUTPUT_FOLDER));
+
+  logger.info({ output: OUTPUT_FOLDER }, "Express application initialized");
 
   // Create HTTP server
   const httpServer = createServer(app);

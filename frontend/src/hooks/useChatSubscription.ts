@@ -3,7 +3,6 @@ import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { Message, MessageType, MessageRole } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch } from "@/store";
-import { parseMarkdown } from "@/lib/services/MarkdownParser";
 import { throttle } from "lodash";
 
 // GraphQL queries and subscriptions
@@ -53,14 +52,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
   const addChatMessage = useCallback(
     throttle((message: Message) => {
       if (!message) return;
-
-      if (message.content) {
-        parseMarkdown(message.content).then(html => {
-          addMessage({ ...message, html });
-        });
-      } else {
-        addMessage(message);
-      }
+      addMessage(message);
     }, 200),
     [dispatch, addMessage]
   );

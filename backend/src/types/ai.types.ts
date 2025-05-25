@@ -26,6 +26,7 @@ export interface ModelMessageFormat {
 
 export interface ModelResponse {
   type: "text" | "image";
+  // TODO: Add support for > 1 image
   content: string;
 }
 

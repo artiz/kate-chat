@@ -12,6 +12,13 @@
     padding: 0.5em;
   }
 
+  :global img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+
   :global table {
     margin-top: var(--mb-margin, var(--mantine-spacing-md));
     margin-bottom: var(--mb-margin, var(--mantine-spacing-md));

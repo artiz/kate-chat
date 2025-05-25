@@ -22,7 +22,7 @@ import ChatMessages from "./ChatMessages/ChatMessages";
 import { notifications } from "@mantine/notifications";
 import { UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
 import { useChatSubscription } from "@/hooks/useChatSubscription";
-import { parseChatMessages } from "@/lib/services/MarkdownParser";
+import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
 
 import classes from "./Chat.module.scss";
 
@@ -74,7 +74,7 @@ interface IProps {
 export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const [message, setMessage] = useState("");
+  const [userMessage, setUserMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
@@ -87,18 +87,29 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const addChatMessage = (message: Message) => {
-    if (!message) return;
-    setMessages(prev => {
-      const lastMessage = prev[prev.length - 1];
-      // If the last message is from the same user and has the same content, skip adding
-      if (lastMessage && lastMessage.role === message.role && lastMessage.id === message.id) {
-        prev[prev.length - 1] = message; // Update the last message instead
-        return [...prev];
-      } else {
-        return [...prev, message];
-      }
-    });
+  const addChatMessage = (msg: Message) => {
+    if (!msg) return;
+
+    const addMessage = (message: Message) => {
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        // If the last message is from the same user and has the same content, skip adding
+        if (lastMessage && lastMessage.role === message.role && lastMessage.id === message.id) {
+          prev[prev.length - 1] = message; // Update the last message instead
+          return [...prev];
+        } else {
+          return [...prev, message];
+        }
+      });
+    };
+
+    if (msg.content) {
+      parseMarkdown(msg.content).then(html => {
+        addMessage({ ...msg, html });
+      });
+    } else {
+      addMessage(msg);
+    }
   };
 
   const { wsConnected } = useChatSubscription({
@@ -179,16 +190,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // Handle send message
   const handleSendMessage = async () => {
-    if (!message.trim() || !chatId) return;
+    if (!userMessage.trim() || !chatId) return;
 
     setSending(true);
-    setMessage("");
+    setUserMessage("");
 
     await sendMessageMutation({
       variables: {
         input: {
           chatId,
-          content: message,
+          content: userMessage,
           role: "user",
           modelId: selectedModel?.modelId,
         },
@@ -382,8 +393,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
       <Group justify="space-between" align="flex-start">
         <Textarea
           placeholder="Type your message..."
-          value={message}
-          onChange={e => setMessage(e.currentTarget.value)}
+          value={userMessage}
+          onChange={e => setUserMessage(e.currentTarget.value)}
           autosize
           minRows={1}
           maxRows={5}
@@ -396,7 +407,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           }}
           disabled={sending || messagesLoading}
         />
-        <Button onClick={handleSendMessage} disabled={!message.trim() || sending || messagesLoading}>
+        <Button onClick={handleSendMessage} disabled={!userMessage.trim() || sending || messagesLoading}>
           <IconSend size={16} /> Send
         </Button>
       </Group>

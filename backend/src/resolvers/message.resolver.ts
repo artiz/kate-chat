@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root } from "type-graphql";
 import { PubSubEngine } from "graphql-subscriptions";
 import { Repository } from "typeorm";
@@ -17,7 +20,7 @@ import { createLogger } from "@/utils/logger";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
-const MESSAGE_UPDATED = "MESSAGE_UPDATED";
+const OUTPUT_FOLDER = process.env.OUTPUT_FOLDER || path.join(__dirname, "../../output");
 
 const logger = createLogger(__filename);
 
@@ -240,9 +243,16 @@ export class MessageResolver {
     // sync call
     try {
       const aiResponse = await this.aiService.getCompletion(requestMessages, model);
+      let content = aiResponse.content;
+      if (aiResponse.type === "image") {
+        // Save base64 image to output folder
+        const fileName = await saveImageFromBase64(aiResponse.content, message.id);
+        content = `![Generated Image](/output/${fileName})`;
+      }
+
       const aiMessage = await this.messageRepository.save(
         this.messageRepository.create({
-          content: aiResponse,
+          content,
           role: MessageRole.ASSISTANT,
           modelId: model.modelId, // real model used
           modelName: model.name,
@@ -313,4 +323,21 @@ export class MessageResolver {
     await this.messageRepository.remove(message);
     return true;
   }
+}
+
+async function saveImageFromBase64(content: string, messageId: string, ndx = 0): Promise<string> {
+  if (!fs.existsSync(OUTPUT_FOLDER)) {
+    fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
+  }
+
+  // Generate filename with messageId prefix
+  const filename = `${messageId}-${ndx}.png`;
+  const filepath = path.join(OUTPUT_FOLDER, filename);
+
+  // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+  const base64Data = content.replace(/^data:image\/[a-z]+;base64,/, "");
+
+  // Save base64 image to file
+  await fs.promises.writeFile(filepath, base64Data, "base64");
+  return filename;
 }

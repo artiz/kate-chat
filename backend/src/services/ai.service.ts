@@ -87,7 +87,7 @@ export class AIService {
   }
 
   // Adapter method for message resolver
-  async getCompletion(messages: Message[], model: Model): Promise<string> {
+  async getCompletion(messages: Message[], model: Model): Promise<ModelResponse> {
     // Convert DB message objects to ModelMessageFormat structure
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
@@ -98,7 +98,7 @@ export class AIService {
     // Invoke the model
     const response = await this.invokeModel(formattedMessages, model.modelId, model.apiProvider, 0.7, 2048);
 
-    return response.content;
+    return response;
   }
 
   streamCompletion(
