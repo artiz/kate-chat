@@ -13,13 +13,13 @@ import { useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "../hooks/useTheme";
 
 // Pages
-import Login from "../pages/Login";
-import Register from "../pages/Register";
-import ChatList from "../pages/ChatList";
-import Chat from "../pages/Chat";
-import CreateChat from "../pages/CreateChat";
-import Models from "../pages/Models";
-import Settings from "../pages/Settings";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import { ChatList } from "@/pages/ChatList";
+import { Chat } from "@/pages/Chat";
+import CreateChat from "@/pages/CreateChat";
+import Models from "@/pages/Models";
+import Settings from "@/pages/Settings";
 import MainLayout from "../components/MainLayout";
 import { ERROR_UNAUTHORIZED } from "@/store/api";
 import { logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";

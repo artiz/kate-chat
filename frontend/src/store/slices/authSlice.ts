@@ -8,7 +8,7 @@ interface AuthState {
   loading: boolean;
 }
 
-const currentToken = localStorage.getItem(STORAGE_AUTH_TOKEN);	
+const currentToken = localStorage.getItem(STORAGE_AUTH_TOKEN);
 const initialState: AuthState = {
   token: currentToken,
   isAuthenticated: !!currentToken,

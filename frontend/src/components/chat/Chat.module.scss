@@ -1,0 +1,11 @@
+/* Edit title icon styles */
+.editTitleButton {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.title:hover {
+  .editTitleButton {
+    opacity: 0.7;
+  }
+}

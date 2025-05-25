@@ -18,7 +18,7 @@ import { useDispatch } from "react-redux";
 import { useAppSelector } from "../store";
 import { logout } from "../store/slices/authSlice";
 import { clearUser } from "../store/slices/userSlice";
-import NavbarContent from "./NavbarContent";
+import NavbarContent from "./nav/NavbarContent";
 import { useTheme } from "../hooks/useTheme";
 
 const MainLayout: React.FC = () => {

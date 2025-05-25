@@ -3,11 +3,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Stack, Button, NavLink, Text, Group, Loader, Divider, ScrollArea, Menu, ActionIcon } from "@mantine/core";
 import { IconPlus, IconSettings, IconMessage, IconRobot, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation, gql } from "@apollo/client";
-import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "../store/services/graphql";
+import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "../../store/services/graphql";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
-import { useAppSelector, useAppDispatch } from "../store";
-import { removeChat } from "@/store/slices/chatSlice";
+import { useAppSelector, useAppDispatch } from "../../store";
+import { removeChat, updateChat } from "@/store/slices/chatSlice";
+
+import classes from "./NavbarContent.module.scss";
 
 const NavbarContent: React.FC = () => {
   const location = useLocation();
@@ -21,7 +23,7 @@ const NavbarContent: React.FC = () => {
   const { chats, loading, error } = useAppSelector(state => state.chats);
 
   // Mutations
-  const [updateChat] = useMutation(UPDATE_CHAT_MUTATION, {
+  const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
     onCompleted: () => {
       setIsEditing(null);
       notifications.show({
@@ -40,14 +42,13 @@ const NavbarContent: React.FC = () => {
     update: (cache, { data }, { variables }) => {
       if (data?.updateChat) {
         // Update existing chats from the cache
-        // TODO: finish that
-        // const cacheId = cache.identify({ __typename: 'Chat', id: variables?.id });
-        // if (cacheId) {
-        //   // Remove the deleted chat from the cache
-        //   cache.evict({ id: cacheId });
-        //   cache.gc();
-        //   dispatch(updateChat())
-        // }
+        const cacheId = cache.identify({ __typename: "Chat", id: variables?.id });
+        if (cacheId) {
+          // Remove the updated chat from the cache
+          cache.evict({ id: cacheId });
+          cache.gc();
+          dispatch(updateChat(data.updateChat));
+        }
       }
     },
   });
@@ -85,34 +86,16 @@ const NavbarContent: React.FC = () => {
         color: "red",
       });
     },
-    // refetchQueries: [{
-    //   query: gql`
-    //     query GetUserChats($input: GetChatsInput!) {
-    //       getChats(input: $input) {
-    //         chats {
-    //           id
-    //           title
-    //           isPristine
-    //           updatedAt
-    //         }
-    //         total
-    //         hasMore
-    //       }
-    //     }
-    //   `,
-    //   variables: { input: { limit: 20, offset: 0 } },
-    // }],
-
     // Ensure we update the cache immediately to remove the deleted chat
     update: (cache, { data }, { variables }) => {
       if (data?.deleteChat && variables?.id) {
         // Read the existing chats from the cache
         const cacheId = cache.identify({ __typename: "Chat", id: variables.id });
         if (cacheId) {
-          // Remove the deleted chat from the cache
-          cache.evict({ id: cacheId });
-          cache.gc();
           dispatch(removeChat(variables.id));
+          // Remove the deleted chat from the cache
+          cache.removeOptimistic(cacheId);
+          cache.gc();
         }
       }
     },
@@ -157,7 +140,7 @@ const NavbarContent: React.FC = () => {
   const handleSaveTitle = (e: React.FormEvent, chatId: string) => {
     e.preventDefault();
     if (editedTitle.trim()) {
-      updateChat({
+      updateChatMutation({
         variables: {
           id: chatId,
           input: {
@@ -238,7 +221,7 @@ const NavbarContent: React.FC = () => {
                       />
                     </form>
                   ) : (
-                    <Group justify="space-between" wrap="nowrap" className="chat-nav-item">
+                    <Group justify="space-between" wrap="nowrap" className={classes.chatItem}>
                       <NavLink
                         style={{ flex: 1 }}
                         active={chat.id === currentChatId}

@@ -4,7 +4,7 @@ import { Container, Title, Text, Grid, Card, Button, Group, Stack } from "@manti
 import { IconPlus, IconMessage } from "@tabler/icons-react";
 import { useAppSelector } from "../store";
 
-const ChatList: React.FC = () => {
+export const ChatList: React.FC = () => {
   const navigate = useNavigate();
   const { chats, loading, error } = useAppSelector(state => state.chats);
 
@@ -68,5 +68,3 @@ const ChatList: React.FC = () => {
     </Container>
   );
 };
-
-export default ChatList;

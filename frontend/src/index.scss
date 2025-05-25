@@ -26,24 +26,3 @@ body,
 * {
   box-sizing: border-box;
 }
-
-/* TODO: extract to modules */
-/* Chat navigation item styles */
-.chat-nav-item .mantine-ActionIcon-root {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.chat-nav-item:hover .mantine-ActionIcon-root {
-  opacity: 1;
-}
-
-/* Edit title icon styles */
-.edit-title-icon {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.mantine-Group-root:hover .edit-title-icon {
-  opacity: 0.7;
-}

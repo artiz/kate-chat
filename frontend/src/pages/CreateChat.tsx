@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
-import { addChat } from "../store/slices/chatSlice";
+import { addChat, Chat } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { CREATE_CHAT_MUTATION } from "../store/services/graphql";
 
@@ -26,14 +26,14 @@ const CreateChat: React.FC = () => {
   const dispatch = useAppDispatch();
   const [isProcessing, setIsProcessing] = useState(true);
 
-  const { models, selectedModel } = useAppSelector(state => state.models);
-  const defaultModel = selectedModel || models.find(model => model.isDefault) || (models.length > 0 ? models[0] : null);
+  const { models } = useAppSelector(state => state.models);
+  const defaultModel = models.find(model => model.isDefault) || (models.length > 0 ? models[0] : null);
 
   // Find pristine chat query
   const { data: pristineData, loading: pristineLoading } = useQuery(FIND_PRISTINE_CHAT, {
     fetchPolicy: "network-only",
     onCompleted: data => {
-      const pristineChats = data?.getChats?.chats?.filter(chat => chat.isPristine) || [];
+      const pristineChats = data?.getChats?.chats?.filter((chat: Chat) => chat.isPristine) || [];
 
       if (pristineChats.length > 0) {
         // Found a pristine chat, navigate to it
