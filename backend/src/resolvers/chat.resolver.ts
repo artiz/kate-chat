@@ -43,13 +43,30 @@ export class ChatResolver {
 
     const total = await this.chatRepository.count({ where: query });
 
-    const chats = await this.chatRepository.find({
-      where: query,
-      skip: offset,
-      take: limit,
-      order: { createdAt: "DESC" },
-      relations: ["user"],
-    });
+    // TODO: finish last message population
+    const chats = await this.chatRepository
+      .createQueryBuilder("chat")
+      .leftJoinAndSelect("chat.user", "user")
+      //.leftJoinAndSelect("chat.messages", "message")
+      .where(query)
+      .skip(offset)
+      .take(limit)
+      //.orderBy({ 'chat.createdAt': "DESC", 'message.createdAt': "DESC" })
+      .getMany();
+
+    // .find({
+    //   where: query,
+    //   skip: offset,
+    //   take: limit,
+    //   order: { createdAt: "DESC" },
+    //   relations: ["user", "messages"],
+    // }).then((chats) =>
+    //   chats.map((chat) => {
+    //     // Populate lastMessage field
+    //     chat.lastMessage = chat.messages[chat.messages.length - 1] || undefined;
+    //     return chat;
+    //   })
+    // );
 
     return {
       chats,

@@ -8,9 +8,11 @@ import {
   PrimaryColumn,
   PrimaryGeneratedColumn,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
+import { Message } from "./Message";
 
 @ObjectType()
 @Entity("chats")
@@ -30,6 +32,13 @@ export class Chat {
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User)
   user: User;
+
+  @Field(() => [Message], { nullable: true })
+  @OneToMany(() => Message, m => m.chat, { cascade: true })
+  messages: Message[];
+
+  @Field({ nullable: true })
+  lastMessage?: Message;
 
   @Field({ nullable: true })
   @Column({ nullable: true })

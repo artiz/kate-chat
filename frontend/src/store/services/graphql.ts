@@ -299,6 +299,12 @@ export const graphqlApi = api.injectEndpoints({
                   title
                   isPristine
                   updatedAt
+                  lastMessage {
+                    id
+                    content
+                    role
+                    createdAt
+                  }
                 }
                 total
                 hasMore

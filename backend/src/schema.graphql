@@ -14,6 +14,8 @@ type Chat {
   id: ID!
   isActive: Boolean!
   isPristine: Boolean!
+  lastMessage: Message
+  messages: [Message!]
   modelId: String
   title: String!
   updatedAt: DateTimeISO!
