@@ -79,6 +79,14 @@ export const RELOAD_MODELS_MUTATION = gql`
         supportsImageOut
         supportsTextOut
       }
+      providers {
+        name
+        isConnected
+        details {
+          key
+          value
+        }
+      }
       error
     }
   }
@@ -110,9 +118,21 @@ interface CurrentUserResponse {
   currentUser: User;
 }
 
+interface ProviderDetail {
+  key: string;
+  value: string;
+}
+
+interface ProviderInfo {
+  name: string;
+  isConnected: boolean;
+  details: ProviderDetail[];
+}
+
 interface GetModelsResponse {
   getModels: {
     models: Model[];
+    providers?: ProviderInfo[];
   };
 }
 
@@ -176,6 +196,14 @@ export const graphqlApi = api.injectEndpoints({
                   apiProvider
                   isDefault
                 }
+                providers {
+                  name
+                  isConnected
+                  details {
+                    key
+                    value
+                  }
+                }
               }
             }
           `,
@@ -222,6 +250,7 @@ export const graphqlApi = api.injectEndpoints({
       {
         user: User;
         models: Model[];
+        providers: ProviderInfo[];
         chats: {
           chats: Chat[];
           total: number;
@@ -255,6 +284,14 @@ export const graphqlApi = api.injectEndpoints({
                   supportsImageOut
                   supportsTextOut
                 }
+                providers {
+                  name
+                  isConnected
+                  details {
+                    key
+                    value
+                  }
+                }
               }
               getChats(input: { limit: 20, offset: 0 }) {
                 chats {
@@ -276,6 +313,7 @@ export const graphqlApi = api.injectEndpoints({
         return {
           user: currentUser,
           models: getModels?.models || [],
+          providers: getModels?.providers || [],
           chats: getChats || {
             chats: [],
             total: 0,

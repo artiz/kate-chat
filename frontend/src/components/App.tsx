@@ -7,7 +7,7 @@ import { ApolloWrapper } from "../lib/apollo-provider";
 import { theme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setUser } from "../store/slices/userSlice";
-import { setModels } from "../store/slices/modelSlice";
+import { setModels, setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "../hooks/useTheme";
@@ -52,7 +52,7 @@ const AppContent: React.FC = () => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
       dispatch(setUser(initData.user));
-      dispatch(setModels(initData.models));
+      dispatch(setModelsAndProviders(initData));
       dispatch(setChats(initData.chats));
     }
   }, [isAuthenticated, initData, dispatch]);

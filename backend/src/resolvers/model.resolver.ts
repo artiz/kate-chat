@@ -2,10 +2,10 @@ import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai.service";
 import { Model } from "../entities/Model";
 
-import { GqlModelsList, GqlModel } from "../types/graphql/responses";
+import { GqlModelsList, GqlModel, GqlProviderInfo, ProviderDetail } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { ApiProvider, ModelMessageFormat } from "../types/ai.types";
+import { ApiProvider, ModelMessageFormat, ProviderInfo } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
 import { DEFAULT_MODEL_ID } from "../config/ai";
 import { createLogger } from "@/utils/logger";
@@ -14,6 +14,31 @@ const logger = createLogger(__filename);
 
 @Resolver()
 export class ModelResolver {
+  private async getProviderInfo(): Promise<GqlProviderInfo[]> {
+    try {
+      // Get provider info from AIService
+      const providersInfo = await AIService.getProviderInfo();
+
+      // Convert to GqlProviderInfo format
+      return providersInfo.map(provider => {
+        // Convert details object to array of key-value pairs
+        const detailsArray: ProviderDetail[] = Object.entries(provider.details).map(([key, value]) => ({
+          key,
+          value: String(value),
+        }));
+
+        return {
+          name: provider.name,
+          isConnected: provider.isConnected,
+          details: detailsArray,
+        };
+      });
+    } catch (error) {
+      logger.error(error, "Error getting provider info");
+      return [];
+    }
+  }
+
   private async refreshModels(): Promise<GqlModelsList> {
     try {
       // Get the repository
@@ -60,7 +85,10 @@ export class ModelResolver {
         outModels.push(savedModel);
       }
 
-      return { models: outModels, total: outModels.length };
+      // Get provider information
+      const providers = await this.getProviderInfo();
+
+      return { models: outModels, providers, total: outModels.length };
     } catch (error) {
       logger.error(error, "Error refreshing models");
       return { error: "Failed to refresh models" };
@@ -82,8 +110,11 @@ export class ModelResolver {
         return model;
       });
 
+      // Get provider information
+      const providers = await this.getProviderInfo();
+
       if (models.length) {
-        return { models, total: models.length };
+        return { models, providers, total: models.length };
       }
 
       // If no models in database, refresh from API

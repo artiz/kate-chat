@@ -5,6 +5,12 @@ export enum ApiProvider {
   OPEN_AI = "open_ai",
 }
 
+export interface ProviderInfo {
+  name: string;
+  isConnected: boolean;
+  details: Record<string, string | number | boolean | undefined>;
+}
+
 export interface AIModelInfo {
   apiProvider: ApiProvider;
   provider: string;

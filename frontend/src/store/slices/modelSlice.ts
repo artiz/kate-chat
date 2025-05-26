@@ -1,5 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+export interface ProviderDetail {
+  key: string;
+  value: string;
+}
+
+export interface ProviderInfo {
+  name: string;
+  isConnected: boolean;
+  details: ProviderDetail[];
+}
+
 export interface Model {
   id: string;
   name: string;
@@ -14,12 +25,14 @@ export interface Model {
 
 interface ModelState {
   models: Model[];
+  providers: ProviderInfo[];
   loading: boolean;
   error: string | null;
 }
 
 const initialState: ModelState = {
   models: [],
+  providers: [],
   loading: false,
   error: null,
 };
@@ -30,6 +43,16 @@ const modelSlice = createSlice({
   reducers: {
     setModels(state, action: PayloadAction<Model[]>) {
       state.models = action.payload;
+      state.error = null;
+    },
+
+    setProviders(state, action: PayloadAction<ProviderInfo[]>) {
+      state.providers = action.payload;
+    },
+
+    setModelsAndProviders(state, action: PayloadAction<{ models: Model[]; providers: ProviderInfo[] }>) {
+      state.models = action.payload.models;
+      state.providers = action.payload.providers;
       state.error = null;
     },
     setModelLoading(state, action: PayloadAction<boolean>) {
@@ -51,5 +74,6 @@ const modelSlice = createSlice({
   },
 });
 
-export const { setModels, setModelLoading, setModelError, updateModel } = modelSlice.actions;
+export const { setModels, setProviders, setModelsAndProviders, setModelLoading, setModelError, updateModel } =
+  modelSlice.actions;
 export default modelSlice.reducer;

@@ -1,7 +1,7 @@
 import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
 import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { bedrockClient, bedrockManagementClient } from "../../config/bedrock";
-import { AIModelInfo, ModelMessageFormat, ModelResponse, StreamCallbacks } from "../../types/ai.types";
+import { AIModelInfo, ModelMessageFormat, ModelResponse, StreamCallbacks, ProviderInfo } from "../../types/ai.types";
 import { ApiProvider } from "../../types/ai.types";
 import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
@@ -185,6 +185,42 @@ export class BedrockService {
     }
 
     return modelId.split(".")[0];
+  }
+
+  // Get Bedrock provider information
+  async getBedrockInfo(): Promise<ProviderInfo> {
+    const isConnected = !!process.env.AWS_ACCESS_KEY_ID || !!process.env.AWS_PROFILE;
+    const region = process.env.AWS_REGION;
+    const profile = process.env.AWS_PROFILE;
+    const accessKey = process.env.AWS_ACCESS_KEY_ID || "";
+
+    const details: Record<string, string | number | boolean | undefined> = {
+      configured: isConnected,
+    };
+
+    if (region) details.region = region;
+    if (profile) details.profile = profile;
+    if (accessKey) details.accessKey = `${accessKey.substring(0, 6)}...`;
+
+    if (isConnected) {
+      try {
+        // Test credentials by attempting to make a simple API call
+        const creds = await bedrockManagementClient.config.credentials();
+        details.credentialsValid = true;
+        if (creds.accountId) details.accountId = creds.accountId;
+        if (creds.expiration) details.expiration = creds.expiration?.toISOString();
+      } catch (error) {
+        logger.error(error, "Error validating AWS credentials");
+        details.credentialsValid = false;
+        details.errorMessage = getErrorMessage(error);
+      }
+    }
+
+    return {
+      name: "AWS Bedrock",
+      isConnected,
+      details,
+    };
   }
 
   // Helper method to get all supported models with their metadata

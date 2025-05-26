@@ -95,7 +95,14 @@ type GqlModel {
 type GqlModelsList {
   error: String
   models: [GqlModel!]
+  providers: [GqlProviderInfo!]
   total: Float
+}
+
+type GqlProviderInfo {
+  details: [ProviderDetail!]!
+  isConnected: Boolean!
+  name: String!
 }
 
 input LoginInput {
@@ -127,6 +134,11 @@ type Mutation {
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
+}
+
+type ProviderDetail {
+  key: String!
+  value: String!
 }
 
 type Query {

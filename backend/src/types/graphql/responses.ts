@@ -80,6 +80,27 @@ export class GqlMessagesList {
 }
 
 @ObjectType()
+export class ProviderDetail {
+  @Field()
+  key: string;
+
+  @Field()
+  value: string;
+}
+
+@ObjectType()
+export class GqlProviderInfo {
+  @Field()
+  name: string;
+
+  @Field()
+  isConnected: boolean;
+
+  @Field(() => [ProviderDetail])
+  details: ProviderDetail[];
+}
+
+@ObjectType()
 export class GqlModel extends Model {
   @Field()
   isDefault?: boolean;
@@ -92,6 +113,9 @@ export class GqlModelsList {
 
   @Field(() => [GqlModel], { nullable: true })
   models?: GqlModel[];
+
+  @Field(() => [GqlProviderInfo], { nullable: true })
+  providers?: GqlProviderInfo[];
 
   @Field({ nullable: true })
   total?: number;

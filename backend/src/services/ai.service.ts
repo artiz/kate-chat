@@ -1,6 +1,13 @@
 import { Message, MessageRole } from "../entities/Message";
 import { Model } from "../entities/Model";
-import { AIModelInfo, ApiProvider, ModelMessageFormat, ModelResponse, StreamCallbacks } from "../types/ai.types";
+import {
+  AIModelInfo,
+  ApiProvider,
+  ModelMessageFormat,
+  ModelResponse,
+  ProviderInfo,
+  StreamCallbacks,
+} from "../types/ai.types";
 import { BedrockService } from "./bedrock/bedrock.service";
 import { OpenApiService } from "./openai/openai.service";
 import { logger } from "../utils/logger";
@@ -144,11 +151,46 @@ export class AIService {
     const bedrockModels = await bedrockService.getBedrockModels();
     Object.assign(models, bedrockModels);
 
-    // Get OpenAI models (to be implemented)
+    // Get OpenAI models
     const openAiService = new OpenApiService();
     const openAiModels = await openAiService.getOpenAIModels();
     Object.assign(models, openAiModels);
 
     return models;
+  }
+
+  // Get provider information
+  static async getProviderInfo(): Promise<ProviderInfo[]> {
+    const providers: ProviderInfo[] = [];
+
+    // Get Bedrock provider info
+    try {
+      const bedrockService = new BedrockService();
+      const bedrockInfo = await bedrockService.getBedrockInfo();
+      providers.push(bedrockInfo);
+    } catch (error) {
+      logger.error(error, "Error getting Bedrock provider info");
+      providers.push({
+        name: "AWS Bedrock",
+        isConnected: false,
+        details: { error: "Failed to get provider info" },
+      });
+    }
+
+    // Get OpenAI provider info
+    try {
+      const openAiService = new OpenApiService();
+      const openAiInfo = await openAiService.getOpenAIInfo();
+      providers.push(openAiInfo);
+    } catch (error) {
+      logger.error(error, "Error getting OpenAI provider info");
+      providers.push({
+        name: "OpenAI",
+        isConnected: false,
+        details: { error: "Failed to get provider info" },
+      });
+    }
+
+    return providers;
   }
 }

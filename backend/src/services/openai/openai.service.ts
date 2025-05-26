@@ -1,16 +1,50 @@
 import axios from "axios";
-import { AIModelInfo, ApiProvider, ModelMessageFormat, ModelResponse, StreamCallbacks } from "@/types/ai.types";
+import {
+  AIModelInfo,
+  ApiProvider,
+  ModelMessageFormat,
+  ModelResponse,
+  ProviderInfo,
+  StreamCallbacks,
+} from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
 
+export interface OpenAICostResult {
+  object: string;
+  amount: {
+    value: number;
+    currency: string;
+  };
+  line_item: string | undefined;
+  project_id: string | undefined;
+  organization_id: string | undefined;
+}
+
+export interface OpenAICost {
+  object: string;
+  start_time: number;
+  end_time: number;
+  results: OpenAICostResult[];
+}
+
+export type OpenAIList<T> = {
+  object: string;
+  has_more: boolean;
+  next_page?: string;
+  data: T[];
+};
+
 export class OpenApiService {
   private openaiApiKey: string;
+  private openaiApiAdminKey: string;
   private baseUrl: string;
 
   constructor() {
     this.openaiApiKey = process.env.OPENAI_API_KEY || "";
+    this.openaiApiAdminKey = process.env.OPENAI_API_ADMIN_KEY || "";
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
 
     if (!this.openaiApiKey) {
@@ -18,10 +52,10 @@ export class OpenApiService {
     }
   }
 
-  private getHeaders() {
+  private getHeaders(isAdmin = false): Record<string, string> {
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this.openaiApiKey}`,
+      Authorization: `Bearer ${isAdmin ? this.openaiApiAdminKey : this.openaiApiKey}`,
     };
   }
 
@@ -216,6 +250,81 @@ export class OpenApiService {
   }
 
   // Helper method to get all supported OpenAI models with their metadata
+  // Get OpenAI provider information including account details
+  async getOpenAIInfo(): Promise<ProviderInfo> {
+    const isConnected = !!this.openaiApiKey;
+    const details: Record<string, string | number | boolean> = {
+      apiUrl: this.baseUrl,
+      configured: isConnected,
+    };
+
+    // TODO: extract to separate call
+    // if (isConnected && this.openaiApiAdminKey) {
+    //   try {
+
+    //     const usagePeriod = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60; // Last 30 days
+    //     const response = await axios.get<OpenAIList<OpenAICost>>(
+    //       `${this.baseUrl}/organization/costs?start_time=${usagePeriod}&group_by=project_id&limit=100`,
+    //       {
+    //         headers: this.getHeaders(true),
+    //       }
+    //     );
+
+    //     const costsData = response.data.data
+    //       .filter(item => item.results?.length)
+    //       .map(item => item.results)
+    //       .flat();
+    //     const costsPerProject = costsData.reduce(
+    //       (acc, item) => {
+    //         const projectId = item.project_id || "unknown";
+    //         const amount = item.amount?.value || 0;
+    //         const currency = item.amount?.currency;
+
+    //         if (currency) {
+    //           if (!acc[projectId]) {
+    //             acc[projectId] = { [currency]: amount };
+    //           }
+    //           acc[projectId][currency] = (acc[projectId][currency] || 0) + amount;
+    //         }
+
+    //         return acc;
+    //       },
+    //       {} as Record<string, Record<string, number>>
+    //     );
+
+    //     // Prepare costs details
+    //     details.credentialsValid = true;
+    //     Object.keys(costsPerProject).forEach(projectId => {
+    //       const projectCosts = costsPerProject[projectId];
+    //       details[`${projectId} costs`] = Object.entries(projectCosts)
+    //         .map(([currency, amount]) => `${amount.toFixed(6)} ${currency.toUpperCase()}`)
+    //         .join(", ");
+    //     });
+    //   } catch (error) {
+    //     logger.error(error, "Error fetching OpenAI usage information");
+    //     details.credentialsValid = false;
+    //     details.accountInfo = "Account information unavailable";
+    //   }
+    // } else {
+    try {
+      // Fetch models
+      await axios.get(`${this.baseUrl}/models`, {
+        headers: this.getHeaders(),
+      });
+
+      details.credentialsValid = true;
+    } catch (error) {
+      logger.error(error, "Error fetching OpenAI models information");
+      details.credentialsValid = false;
+    }
+
+    return {
+      name: "OpenAI",
+      isConnected,
+      details,
+    };
+  }
+
   async getOpenAIModels(): Promise<Record<string, AIModelInfo>> {
     if (!this.openaiApiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
