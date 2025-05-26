@@ -2,6 +2,11 @@
 
 KateChat is a universal chat bot platform similar to chat.openai.com that can be used as a base for customized chat bots. The platform supports multiple LLM models from various providers and allows switching between them on the fly within a chat session.
 
+![image](https://github.com/user-attachments/assets/6bd059dd-2102-4f49-bdde-3bd4b9a7fa82)
+![image](https://github.com/user-attachments/assets/abf403da-d63d-430f-81ad-e1ebbc7fce3d)
+
+
+
 ## Features
 
 - Multiple chat creation with pristine chat functionality
