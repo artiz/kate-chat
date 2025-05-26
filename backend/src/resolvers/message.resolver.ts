@@ -63,6 +63,7 @@ export class MessageResolver {
       skip,
       take,
       order: { createdAt: "ASC" },
+      relations: ["user"],
     });
 
     const total = await this.messageRepository.count({

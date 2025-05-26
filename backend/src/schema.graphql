@@ -17,7 +17,7 @@ type Chat {
   modelId: String
   title: String!
   updatedAt: DateTimeISO!
-  user: User!
+  user: User
 }
 
 input CreateChatInput {
@@ -113,7 +113,7 @@ type Message {
   modelName: String
   role: String!
   updatedAt: DateTimeISO!
-  user: User!
+  user: User
 }
 
 type Mutation {

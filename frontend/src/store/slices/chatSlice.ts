@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { User } from "./userSlice";
 
 export interface Chat {
   id: string;
@@ -26,6 +27,7 @@ export interface Message {
   role: MessageRole;
   modelId?: string;
   modelName?: string;
+  user?: User;
   createdAt: string;
 }
 

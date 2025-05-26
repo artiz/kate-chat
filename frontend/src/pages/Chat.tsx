@@ -35,6 +35,10 @@ const GET_CHAT_MESSAGES = gql`
         createdAt
         modelId
         modelName
+        user {
+            lastName
+            firstName
+        }
       }
       total
       hasMore
@@ -109,7 +113,7 @@ const ChatComponent: React.FC = () => {
     },
     skip: !id,
     onCompleted: data => {
-      const { chat: ch, messages } = data.getChatMessages || {};
+      const { chat: ch, messages }: {chat: Chat, messages: Message[]} = data.getChatMessages || {};
       // Set chat details from the chat field in getChatMessages
       if (ch) {
         dispatch(setCurrentChat(ch));
@@ -118,7 +122,7 @@ const ChatComponent: React.FC = () => {
       }
 
       // Parse and set messages
-      parseChatMessages(data.getChatMessages.messages || []).then(parsedMessages => {
+      parseChatMessages(messages || []).then(parsedMessages => {
         setMessages(parsedMessages);
       });
     },

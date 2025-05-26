@@ -27,7 +27,7 @@ export class Chat {
   @Column({ default: "" })
   description: string;
 
-  @Field(() => User)
+  @Field(() => User, { nullable: true })
   @ManyToOne(() => User)
   user: User;
 

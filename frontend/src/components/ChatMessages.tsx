@@ -39,7 +39,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
                 </Avatar>
                 <Stack gap="xs">
                   <Text size="sm" fw={500} c={msg.role === MessageRole.USER ? "blue" : "dark"}>
-                    {msg.role === "user" ? "You" : msg.modelName || "AI"}
+                    {msg.role === "user" 
+                        ? `${msg.user?.firstName || ""} ${msg.user?.lastName || ""}`.trim() || "You" 
+                        : msg.modelName || "AI"}
                   </Text>
                   <Text size="xs" c="dimmed" mt={2}>
                     {new Date(msg.createdAt).toLocaleTimeString()}

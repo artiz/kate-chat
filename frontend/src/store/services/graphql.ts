@@ -241,6 +241,7 @@ export const graphqlApi = api.injectEndpoints({
                 email
                 firstName
                 lastName
+                createdAt
               }
               getModels {
                 models {

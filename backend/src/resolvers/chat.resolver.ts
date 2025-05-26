@@ -48,6 +48,7 @@ export class ChatResolver {
       skip: offset,
       take: limit,
       order: { createdAt: "DESC" },
+      relations: ["user"],
     });
 
     return {
@@ -67,6 +68,7 @@ export class ChatResolver {
         id,
         isActive: true,
       },
+      relations: ["user"],
     });
 
     if (!chat) return null;

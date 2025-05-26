@@ -60,7 +60,7 @@ export class Message {
   @Column({ nullable: true })
   chatId?: string;
 
-  @Field(() => User)
+  @Field(() => User, { nullable: true })
   @ManyToOne(() => User)
   user?: User;
 
