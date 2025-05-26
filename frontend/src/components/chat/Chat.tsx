@@ -18,7 +18,7 @@ import {
 import { IconSend, IconX, IconRobot, IconEdit, IconCheck, IconPhotoAi, IconTextScan2 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { setCurrentChat, Chat, Message, MessageType, addChat } from "../../store/slices/chatSlice";
-import ChatMessages from "./ChatMessages/ChatMessages";
+import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { notifications } from "@mantine/notifications";
 import { UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
 import { useChatSubscription } from "@/hooks/useChatSubscription";
@@ -38,8 +38,8 @@ const GET_CHAT_MESSAGES = gql`
         modelId
         modelName
         user {
-            lastName
-            firstName
+          lastName
+          firstName
         }
       }
       total

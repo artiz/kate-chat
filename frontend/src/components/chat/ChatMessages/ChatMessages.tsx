@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Paper, Text, Stack, Group, Avatar, Loader, Box } from "@mantine/core";
 import { IconRobot, IconUser } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
@@ -12,7 +12,47 @@ interface ChatMessagesProps {
   selectedModelName?: string;
 }
 
-const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sending, selectedModelName }) => {
+interface ChatMessageProps {
+  message: Message;
+}
+
+const ChatMessage = (props: ChatMessageProps) => {
+  const { role, id, modelName, content, html, createdAt, user } = props.message;
+
+  const cmp = useMemo(() => {
+    const isUserMessage = role === MessageRole.USER;
+    const username = isUserMessage
+      ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
+      : modelName || "AI";
+
+    return (
+      <>
+        <Group align="center">
+          <Avatar radius="xl">{isUserMessage ? <IconUser size={20} /> : <IconRobot size={20} />}</Avatar>
+          <Stack gap="xs">
+            <Text size="sm" fw={500} c={isUserMessage ? "blue" : "dark"}>
+              {username}
+            </Text>
+            <Text size="xs" c="dimmed" mt={2}>
+              {new Date(createdAt).toLocaleTimeString()}
+            </Text>
+          </Stack>
+        </Group>
+        <Paper className={`${classes.message} ${classes[role]}`} p="md">
+          {html ? (
+            html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
+          ) : (
+            <Text>{content}</Text>
+          )}
+        </Paper>
+      </>
+    );
+  }, [role, id, user, modelName, content, html, createdAt]);
+
+  return cmp;
+};
+
+export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sending, selectedModelName }) => {
   return (
     <>
       {isLoading ? (
@@ -33,26 +73,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
         <Stack gap="lg">
           {messages.map(msg => (
             <Group key={msg.id} align="flex-start" gap="xs">
-              <Group align="center">
-                <Avatar radius="xl">{msg.role === "user" ? <IconUser size={20} /> : <IconRobot size={20} />}</Avatar>
-                <Stack gap="xs">
-                  <Text size="sm" fw={500} c={msg.role === MessageRole.USER ? "blue" : "dark"}>
-                    {msg.role === "user" 
-                        ? `${msg.user?.firstName || ""} ${msg.user?.lastName || ""}`.trim() || "You" 
-                        : msg.modelName || "AI"}
-                  </Text>
-                  <Text size="xs" c="dimmed" mt={2}>
-                    {new Date(msg.createdAt).toLocaleTimeString()}
-                  </Text>
-                </Stack>
-              </Group>
-              <Paper className={`${classes.message} ${classes[msg.role]}`} p="md">
-                {msg.html ? (
-                  msg.html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
-                ) : (
-                  <Text>{msg.content}</Text>
-                )}
-              </Paper>
+              <ChatMessage message={msg} />
             </Group>
           ))}
 
@@ -79,5 +100,3 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
     </>
   );
 };
-
-export default ChatMessages;
