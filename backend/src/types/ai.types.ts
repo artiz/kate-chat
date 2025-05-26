@@ -27,6 +27,8 @@ export interface AIModelInfo {
 export interface ModelMessageFormat {
   role: MessageRole;
   content: string;
+  // TODO: Add support for images
+  // contentType?: "text" | "image";
   timestamp?: Date;
 }
 

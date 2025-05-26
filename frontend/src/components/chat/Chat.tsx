@@ -92,10 +92,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
     const addMessage = (message: Message) => {
       setMessages(prev => {
-        const lastMessage = prev[prev.length - 1];
+        const existingNdx = prev.findLastIndex(m => m.id === message.id);
         // If the last message is from the same user and has the same content, skip adding
-        if (lastMessage && lastMessage.role === message.role && lastMessage.id === message.id) {
-          prev[prev.length - 1] = message; // Update the last message instead
+        if (existingNdx !== -1) {
+          prev[existingNdx] = message; // Update the last message instead
           return [...prev];
         } else {
           return [...prev, message];
@@ -368,8 +368,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
                 {selectedModel.provider}
               </Text>
             </Tooltip>
-            {selectedModel.supportsImageOut && <IconPhotoAi size={32} color="teal" />}
-            {selectedModel.supportsTextOut && <IconTextScan2 size={32} color="teal" />}
+            {selectedModel.supportsImageOut && (
+              <Tooltip label="Supports images generation">
+                <IconPhotoAi size={32} color="teal" />
+              </Tooltip>
+            )}
+            {selectedModel.supportsTextOut && (
+              <Tooltip label="Supports text generation">
+                <IconTextScan2 size={32} color="teal" />
+              </Tooltip>
+            )}
           </Group>
         )}
       </Group>

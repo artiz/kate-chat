@@ -13,9 +13,10 @@
   }
 
   :global img {
-    max-width: 100%;
+    max-width: 460px;
+    align-self: center;
     height: auto;
-    display: block;
+    display: flex;
     margin: 0 auto;
   }
 
@@ -69,7 +70,11 @@
 [data-mantine-color-scheme="dark"] {
   .message {
     :global pre {
-      background-color: var(--mantine-color-dark-4);
+      background-color: var(--mantine-color-dark-6);
+    }
+
+    &.user {
+      background-color: var(--mantine-color-blue-9);
     }
   }
 }
@@ -78,6 +83,10 @@
   .message {
     :global pre {
       background-color: var(--mantine-color-gray-1);
+    }
+
+    &.user {
+      background-color: var(--mantine-color-blue-0);
     }
   }
 }

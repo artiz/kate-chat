@@ -121,6 +121,8 @@ export class OpenApiService {
       return;
     }
 
+    callbacks.onStart?.();
+
     // If this is an image generation model, generate the image non-streaming
     if (modelId === "dall-e-3" || modelId === "dall-e-2") {
       try {
@@ -131,8 +133,6 @@ export class OpenApiService {
       }
       return;
     }
-
-    callbacks.onStart?.();
 
     // Format messages for OpenAI API
     const formattedMessages = messages.map(msg => ({

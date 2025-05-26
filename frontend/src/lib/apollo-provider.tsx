@@ -58,13 +58,13 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
                   setTimeout(resolve, delay + jitter);
                 }),
               on: {
-                connected: ws => {
-                  console.debug("WebSocket connected successfully", ws);
-                },
+                // connected: ws => {
+                //   console.debug("WebSocket connected successfully", ws);
+                // },
+                // closed: () => console.debug("WebSocket connection closed"),
+                // connecting: () => console.debug("WebSocket connecting..."),
+                // opened: socket => console.debug("WebSocket connection opened"),
                 error: e => console.error("WebSocket connection error:", e),
-                closed: () => console.debug("WebSocket connection closed"),
-                connecting: () => console.debug("WebSocket connecting..."),
-                opened: socket => console.debug("WebSocket connection opened"),
               },
             })
           )

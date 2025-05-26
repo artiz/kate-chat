@@ -34,9 +34,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
           {messages.map(msg => (
             <Group key={msg.id} align="flex-start" gap="xs">
               <Group align="center">
-                <Avatar color={msg.role === MessageRole.USER ? "blue" : "gray"} radius="xl">
-                  {msg.role === "user" ? <IconUser size={20} /> : <IconRobot size={20} />}
-                </Avatar>
+                <Avatar radius="xl">{msg.role === "user" ? <IconUser size={20} /> : <IconRobot size={20} />}</Avatar>
                 <Stack gap="xs">
                   <Text size="sm" fw={500} c={msg.role === MessageRole.USER ? "blue" : "dark"}>
                     {msg.role === "user" 
@@ -48,7 +46,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sendin
                   </Text>
                 </Stack>
               </Group>
-              <Paper className={classes.message} p="md">
+              <Paper className={`${classes.message} ${classes[msg.role]}`} p="md">
                 {msg.html ? (
                   msg.html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
                 ) : (
