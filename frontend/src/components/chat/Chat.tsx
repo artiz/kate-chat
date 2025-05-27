@@ -17,7 +17,15 @@ import {
 } from "@mantine/core";
 import { IconSend, IconX, IconRobot, IconEdit, IconCheck, IconPhotoAi, IconTextScan2 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { setCurrentChat, Chat, Message, MessageType, addChat } from "../../store/slices/chatSlice";
+import {
+  setCurrentChat,
+  Chat,
+  Message,
+  MessageType,
+  addChat,
+  MessageRole,
+  updateChat,
+} from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { notifications } from "@mantine/notifications";
 import { UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
@@ -101,6 +109,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
           return [...prev, message];
         }
       });
+
+      if (chat && message.role === MessageRole.ASSISTANT) {
+        dispatch(
+          updateChat({
+            ...chat,
+            lastBotMessage: message.content,
+            lastBotMessageHtml: message.html,
+          })
+        );
+      }
     };
 
     if (msg.content) {

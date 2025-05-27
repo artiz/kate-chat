@@ -1,8 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Title, Text, Grid, Card, Button, Group, Stack } from "@mantine/core";
+import { Container, Title, Text, Grid, Card, Button, Group, Stack, Divider, ScrollArea } from "@mantine/core";
 import { IconPlus, IconMessage } from "@tabler/icons-react";
 import { useAppSelector } from "../store";
+import { ChatMessagePreview } from "@/components/chat/ChatMessages/ChatMessagePreview";
 
 export const ChatList: React.FC = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ export const ChatList: React.FC = () => {
       {error ? (
         <Text c="red">Error loading chats. Please try again.</Text>
       ) : chats.length === 0 ? (
-        <Stack align="center" justify="center" h={300} spacing="md">
+        <Stack align="center" justify="center" h={300} gap="md">
           <IconMessage size={64} opacity={0.3} />
           <Text size="lg" fw={500} ta="center">
             No chats yet
@@ -48,18 +49,25 @@ export const ChatList: React.FC = () => {
             <Grid.Col key={chat.id} span={{ base: 12, sm: 6, md: 4 }}>
               <Card
                 withBorder
-                padding="lg"
+                padding="md"
                 radius="md"
-                className="mantine-hover-effect"
                 onClick={() => handleOpenChat(chat.id)}
                 style={{ cursor: "pointer" }}
               >
-                <Text fw={500} size="lg" mb="xs" truncate>
-                  {chat.title || "Untitled Chat"}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {new Date(chat.updatedAt).toLocaleDateString()}
-                </Text>
+                <Group m="0" align="center" justify="space-between">
+                  <Text fw={500} size="lg" mb="xs" truncate>
+                    {chat.title || "Untitled Chat"}
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    {new Date(chat.updatedAt).toLocaleDateString()}
+                  </Text>
+                  <Text size="sm">
+                    <b>{chat.messagesCount}</b> messages
+                  </Text>
+                </Group>
+                <Divider />
+
+                <ChatMessagePreview html={chat.lastBotMessageHtml} text={chat.lastBotMessage} />
               </Card>
             </Grid.Col>
           ))}

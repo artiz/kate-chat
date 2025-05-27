@@ -7,15 +7,19 @@ import { GraphQLContext } from "../middleware/authMiddleware";
 import { User } from "../entities/User";
 import { GqlChatsList } from "../types/graphql/responses";
 import { AIService } from "../services/ai.service";
+import { Message, MessageRole } from "@/entities/Message";
+import { MessageEvent } from "http";
 
 @Resolver(Chat)
 export class ChatResolver {
   private chatRepository: Repository<Chat>;
   private userRepository: Repository<User>;
+  private messageRepository: Repository<Message>;
 
   constructor() {
     this.chatRepository = getRepository(Chat);
     this.userRepository = getRepository(User);
+    this.messageRepository = getRepository(Message);
   }
 
   @Query(() => GqlChatsList)
@@ -42,31 +46,25 @@ export class ChatResolver {
     }
 
     const total = await this.chatRepository.count({ where: query });
-
-    // TODO: finish last message population
     const chats = await this.chatRepository
       .createQueryBuilder("chat")
+      .addSelect(sq => {
+        return sq.select("COUNT(*)").from(Message, "m").where("m.chatId = chat.id");
+      }, "chat_messagesCount")
+      .addSelect(sq => {
+        return sq
+          .select("m.content")
+          .from(Message, "m")
+          .where("m.chatId = chat.id and m.role = :role", { role: MessageRole.ASSISTANT })
+          .orderBy("createdAt", "DESC")
+          .limit(1);
+      }, "chat_lastBotMessage")
       .leftJoinAndSelect("chat.user", "user")
-      //.leftJoinAndSelect("chat.messages", "message")
       .where(query)
       .skip(offset)
       .take(limit)
-      //.orderBy({ 'chat.createdAt': "DESC", 'message.createdAt': "DESC" })
+      .orderBy("chat.createdAt", "DESC")
       .getMany();
-
-    // .find({
-    //   where: query,
-    //   skip: offset,
-    //   take: limit,
-    //   order: { createdAt: "DESC" },
-    //   relations: ["user", "messages"],
-    // }).then((chats) =>
-    //   chats.map((chat) => {
-    //     // Populate lastMessage field
-    //     chat.lastMessage = chat.messages[chat.messages.length - 1] || undefined;
-    //     return chat;
-    //   })
-    // );
 
     return {
       chats,

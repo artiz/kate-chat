@@ -61,8 +61,9 @@ export class MessageResolver {
     if (!chat) throw new Error("Chat not found");
 
     // Get messages for the chat
+    const where = { chatId };
     const messages = await this.messageRepository.find({
-      where: { chatId },
+      where,
       skip,
       take,
       order: { createdAt: "ASC" },
@@ -70,7 +71,7 @@ export class MessageResolver {
     });
 
     const total = await this.messageRepository.count({
-      where: { chatId },
+      where,
     });
 
     return {

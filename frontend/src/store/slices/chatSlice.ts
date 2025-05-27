@@ -1,14 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User } from "./userSlice";
 
-export interface Chat {
-  id: string;
-  title: string;
-  updatedAt: string;
-  modelId?: string;
-  isPristine?: boolean;
-}
-
 export enum MessageType {
   MESSAGE = "message",
   SYSTEM = "system",
@@ -29,6 +21,17 @@ export interface Message {
   modelName?: string;
   user?: User;
   createdAt: string;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  updatedAt: string;
+  modelId?: string;
+  isPristine?: boolean;
+  messagesCount: number;
+  lastBotMessage?: string;
+  lastBotMessageHtml?: string[];
 }
 
 interface ChatsState {

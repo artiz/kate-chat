@@ -38,7 +38,20 @@ export class Chat {
   messages: Message[];
 
   @Field({ nullable: true })
-  lastMessage?: Message;
+  @Column({
+    nullable: true,
+    select: false,
+    name: "lastBotMessage",
+  })
+  lastBotMessage?: string;
+
+  @Field({ defaultValue: 0 })
+  @Column({
+    nullable: true,
+    select: false,
+    name: "messagesCount",
+  })
+  messagesCount?: number;
 
   @Field({ nullable: true })
   @Column({ nullable: true })

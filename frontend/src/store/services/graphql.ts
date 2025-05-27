@@ -3,6 +3,7 @@ import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model } from "../slices/modelSlice";
 import { Chat, Message } from "../slices/chatSlice";
+import { parseMarkdown } from "@/lib/services/MarkdownParser";
 
 // Define GraphQL mutations for auth
 export const REGISTER_MUTATION = gql`
@@ -299,12 +300,8 @@ export const graphqlApi = api.injectEndpoints({
                   title
                   isPristine
                   updatedAt
-                  lastMessage {
-                    id
-                    content
-                    role
-                    createdAt
-                  }
+                  messagesCount
+                  lastBotMessage
                 }
                 total
                 hasMore
@@ -314,22 +311,45 @@ export const graphqlApi = api.injectEndpoints({
         },
       }),
 
-      transformResponse: (response: any) => {
+      transformResponse: async (response: GetInitialDataResponse) => {
         const { currentUser, getModels, getChats } = response.data || {};
+        const chats = getChats || {
+          chats: [],
+          total: 0,
+          hasMore: false,
+        };
+
+        for (const chat of chats.chats) {
+          if (chat.lastBotMessage) {
+            chat.lastBotMessageHtml = await parseMarkdown(chat.lastBotMessage);
+          }
+        }
+
         return {
           user: currentUser,
           models: getModels?.models || [],
           providers: getModels?.providers || [],
-          chats: getChats || {
-            chats: [],
-            total: 0,
-            hasMore: false,
-          },
+          chats,
         };
       },
       providesTags: ["User", "Model", { type: "Chat", id: "LIST" }],
     }),
   }),
 });
+
+interface GetInitialDataResponse {
+  data: {
+    currentUser: User;
+    getModels: {
+      models: Model[];
+      providers?: ProviderInfo[];
+    };
+    getChats: {
+      chats: Chat[];
+      total: number;
+      hasMore: boolean;
+    };
+  };
+}
 
 export const { useGetCurrentUserQuery, useGetModelsQuery, useGetChatsQuery, useGetInitialDataQuery } = graphqlApi;
