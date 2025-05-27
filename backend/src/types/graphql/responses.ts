@@ -3,6 +3,7 @@ import { User } from "../../entities/User";
 import { Chat } from "../../entities/Chat";
 import { Message, MessageType } from "../../entities/Message";
 import { Model } from "../../entities/Model";
+import { ServiceCostInfo } from "../../types/ai.types";
 
 @ObjectType()
 export class UserResponse {
@@ -91,10 +92,16 @@ export class ProviderDetail {
 @ObjectType()
 export class GqlProviderInfo {
   @Field()
+  id: string;
+
+  @Field()
   name: string;
 
   @Field()
   isConnected: boolean;
+
+  @Field()
+  costsInfoAvailable: boolean;
 
   @Field(() => [ProviderDetail])
   details: ProviderDetail[];
@@ -119,4 +126,40 @@ export class GqlModelsList {
 
   @Field({ nullable: true })
   total?: number;
+}
+
+@ObjectType()
+export class GqlAmount {
+  @Field()
+  amount: number;
+
+  @Field()
+  currency: string;
+}
+
+@ObjectType()
+export class GqlServiceCostInfo {
+  @Field()
+  name: string;
+
+  @Field()
+  type: string;
+
+  @Field(() => [GqlAmount])
+  amounts: GqlAmount[];
+}
+
+@ObjectType()
+export class GqlCostsInfo {
+  @Field()
+  start: Date;
+
+  @Field({ nullable: true })
+  end?: Date;
+
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => [GqlServiceCostInfo])
+  costs: GqlServiceCostInfo[];
 }

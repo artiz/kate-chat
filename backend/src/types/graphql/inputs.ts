@@ -120,3 +120,15 @@ export class TestModelInput {
   @Field({ defaultValue: "2+2=" })
   text: string;
 }
+
+@InputType()
+export class GetCostsInput {
+  @Field()
+  providerId: string;
+
+  @Field()
+  startTime: number;
+
+  @Field({ nullable: true })
+  endTime?: number;
+}

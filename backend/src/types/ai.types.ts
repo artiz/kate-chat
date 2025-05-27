@@ -6,9 +6,29 @@ export enum ApiProvider {
 }
 
 export interface ProviderInfo {
+  id: ApiProvider;
   name: string;
   isConnected: boolean;
+  costsInfoAvailable?: boolean;
   details: Record<string, string | number | boolean | undefined>;
+}
+
+export interface Amount {
+  amount: number;
+  currency: string;
+}
+
+export interface ServiceCostInfo {
+  name: string;
+  type: string; // e.g., "project", "service"
+  amounts: Amount[];
+}
+
+export interface UsageCostInfo {
+  start: Date;
+  end?: Date;
+  error?: string;
+  costs: ServiceCostInfo[];
 }
 
 export interface AIModelInfo {

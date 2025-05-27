@@ -47,10 +47,21 @@ input GetChatsInput {
   searchTerm: String
 }
 
+input GetCostsInput {
+  endTime: Float
+  providerId: String!
+  startTime: Float!
+}
+
 input GetMessagesInput {
   chatId: String!
   limit: Float = 20
   offset: Float = 0
+}
+
+type GqlAmount {
+  amount: Float!
+  currency: String!
 }
 
 type GqlChatsList {
@@ -58,6 +69,13 @@ type GqlChatsList {
   error: String
   hasMore: Boolean!
   total: Float
+}
+
+type GqlCostsInfo {
+  costs: [GqlServiceCostInfo!]!
+  end: DateTimeISO
+  error: String
+  start: DateTimeISO!
 }
 
 type GqlMessage {
@@ -103,9 +121,17 @@ type GqlModelsList {
 }
 
 type GqlProviderInfo {
+  costsInfoAvailable: Boolean!
   details: [ProviderDetail!]!
+  id: String!
   isConnected: Boolean!
   name: String!
+}
+
+type GqlServiceCostInfo {
+  amounts: [GqlAmount!]!
+  name: String!
+  type: String!
 }
 
 input LoginInput {
@@ -150,6 +176,7 @@ type Query {
   getChatById(id: ID!): Chat
   getChatMessages(input: GetMessagesInput!): GqlMessagesList!
   getChats(input: GetChatsInput): GqlChatsList!
+  getCosts(input: GetCostsInput!): GqlCostsInfo!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
 }

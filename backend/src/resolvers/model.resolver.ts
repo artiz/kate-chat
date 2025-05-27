@@ -2,13 +2,25 @@ import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai.service";
 import { Model } from "../entities/Model";
 
-import { GqlModelsList, GqlModel, GqlProviderInfo, ProviderDetail } from "../types/graphql/responses";
-import { TestModelInput, UpdateModelStatusInput } from "../types/graphql/inputs";
+import {
+  GqlModelsList,
+  GqlModel,
+  GqlProviderInfo,
+  ProviderDetail,
+  GqlCostsInfo,
+  GqlServiceCostInfo,
+  GqlAmount,
+} from "../types/graphql/responses";
+import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { ApiProvider, ModelMessageFormat, ProviderInfo } from "../types/ai.types";
+import { ApiProvider, ModelMessageFormat, ProviderInfo, ServiceCostInfo } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
 import { DEFAULT_MODEL_ID } from "../config/ai";
 import { createLogger } from "@/utils/logger";
+import { OpenApiService } from "@/services/openai/openai.service";
+import { Bedrock } from "@aws-sdk/client-bedrock";
+import { BedrockService } from "@/services/bedrock/bedrock.service";
+import { getErrorMessage } from "@/utils/errors";
 
 const logger = createLogger(__filename);
 
@@ -28,8 +40,10 @@ export class ModelResolver {
         }));
 
         return {
+          id: provider.id,
           name: provider.name,
           isConnected: provider.isConnected,
+          costsInfoAvailable: provider.costsInfoAvailable || false,
           details: detailsArray,
         };
       });
@@ -225,6 +239,51 @@ export class ModelResolver {
     } catch (error: unknown) {
       logger.error(error, "Error testing model");
       throw new Error(`Failed to test model: ${error || "Unknown error"}`);
+    }
+  }
+
+  @Query(() => GqlCostsInfo)
+  @Authorized()
+  async getCosts(@Arg("input") input: GetCostsInput): Promise<GqlCostsInfo> {
+    try {
+      const { providerId, startTime, endTime } = input;
+
+      // Get costs based on provider
+      let usageCosts;
+
+      if (providerId === ApiProvider.OPEN_AI) {
+        // TODO: implement base class for OpenAI and Bedrock and use it here
+        const openaiService = new OpenApiService();
+        usageCosts = await openaiService.getCosts(startTime, endTime);
+      } else if (providerId === ApiProvider.AWS_BEDROCK) {
+        const bedrockService = new BedrockService();
+        usageCosts = await bedrockService.getCosts(startTime, endTime);
+      } else {
+        throw new Error(`Unsupported provider: ${providerId}`);
+      }
+
+      // Map to GraphQL type
+      return {
+        start: usageCosts.start,
+        end: usageCosts.end,
+        error: usageCosts.error,
+        costs: usageCosts.costs.map(cost => ({
+          name: cost.name,
+          type: cost.type,
+          amounts: cost.amounts.map(amount => ({
+            amount: amount.amount,
+            currency: amount.currency,
+          })),
+        })),
+      };
+    } catch (error: unknown) {
+      logger.error(error, "Error fetching usage costs");
+      return {
+        start: new Date(input.startTime * 1000),
+        end: input.endTime ? new Date(input.endTime * 1000) : undefined,
+        error: `Failed to fetch costs: ${getErrorMessage(error)}`,
+        costs: [],
+      };
     }
   }
 }

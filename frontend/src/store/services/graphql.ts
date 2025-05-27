@@ -114,6 +114,24 @@ export const TEST_MODEL_MUTATION = gql`
   }
 `;
 
+export const GET_COSTS_QUERY = gql`
+  query GetCosts($input: GetCostsInput!) {
+    getCosts(input: $input) {
+      start
+      end
+      error
+      costs {
+        name
+        type
+        amounts {
+          amount
+          currency
+        }
+      }
+    }
+  }
+`;
+
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;
@@ -286,8 +304,10 @@ export const graphqlApi = api.injectEndpoints({
                   supportsTextOut
                 }
                 providers {
+                  id
                   name
                   isConnected
+                  costsInfoAvailable
                   details {
                     key
                     value

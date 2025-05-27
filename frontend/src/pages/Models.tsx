@@ -23,6 +23,7 @@ import {
   Paper,
   Divider,
 } from "@mantine/core";
+import { DatePicker } from "@mantine/dates";
 import {
   IconBrandOpenai,
   IconRocket,
@@ -35,9 +36,11 @@ import {
   IconAlertCircle,
   IconFilter,
   IconServer,
+  IconCoin,
+  IconReportMoney,
 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../store";
-import { useMutation } from "@apollo/client";
+import { useMutation, useLazyQuery } from "@apollo/client";
 import {
   Model,
   ProviderInfo,
@@ -51,6 +54,7 @@ import {
   RELOAD_MODELS_MUTATION,
   UPDATE_MODEL_STATUS_MUTATION,
   TEST_MODEL_MUTATION,
+  GET_COSTS_QUERY,
 } from "../store/services/graphql";
 import { notifications } from "@mantine/notifications";
 import { Message } from "@/store/slices/chatSlice";
@@ -80,6 +84,13 @@ const Models: React.FC = () => {
   const [testError, setTestError] = useState("");
   const [currentTestingModel, setCurrentTestingModel] = useState<Model | null>(null);
   const [testLoading, setTestLoading] = useState(false);
+
+  // Usage cost modal state
+  const now = Math.floor(Date.now() / 3600_000 / 24) * 3600_000 * 24; // Convert to Unix timestamp in seconds
+  const [costModalOpen, setCostModalOpen] = useState(false);
+  const [costStartDate, setCostStartDate] = useState<Date>(new Date(now - 30 * 24 * 60 * 60 * 1000)); // 60 days ago
+  const [costEndDate, setCostEndDate] = useState<Date>();
+  const [currentProvider, setCurrentProvider] = useState<string | null>(null);
 
   // Filtering state
   const [providerFilter, setProviderFilter] = useState<string | null>(null);
@@ -204,6 +215,20 @@ const Models: React.FC = () => {
     },
   });
 
+  // Get costs query
+  const [getCosts, { loading: costsLoading, data: costsData }] = useLazyQuery(GET_COSTS_QUERY, {
+    onCompleted: data => {
+      // Query completed successfully
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to fetch cost information",
+        color: "red",
+      });
+    },
+  });
+
   // Handle creating a new chat with the selected model
   const handleCreateChat = (model: Model) => {
     createChat({
@@ -263,6 +288,51 @@ const Models: React.FC = () => {
         input: {
           modelId: currentTestingModel.id,
           text: testText,
+        },
+      },
+    });
+  };
+
+  // Handle opening cost modal
+  const handleOpenCostModal = (providerId: string) => {
+    setCurrentProvider(providerId);
+    setCostModalOpen(true);
+
+    // Convert dates to Unix timestamps (seconds)
+    const startTime = Math.floor(costStartDate.getTime() / 1000);
+    const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
+
+    getCosts({
+      variables: {
+        input: {
+          providerId,
+          startTime,
+          endTime,
+        },
+      },
+    });
+  };
+
+  // Handle closing cost modal
+  const handleCloseCostModal = () => {
+    setCurrentProvider(null);
+    setCostModalOpen(false);
+  };
+
+  // Handle date change and refresh costs
+  const handleRefreshCosts = () => {
+    if (!currentProvider) return;
+
+    // Convert dates to Unix timestamps (seconds)
+    const startTime = Math.floor(costStartDate.getTime() / 1000);
+    const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
+
+    getCosts({
+      variables: {
+        input: {
+          providerId: currentProvider,
+          startTime,
+          endTime,
         },
       },
     });
@@ -336,9 +406,20 @@ const Models: React.FC = () => {
                       )}
                       <Text fw={500}>{provider.name}</Text>
                     </Group>
-                    <Badge color={provider.isConnected ? "green" : "red"}>
-                      {provider.isConnected ? "Connected" : "Disconnected"}
-                    </Badge>
+                    <Group>
+                      {provider.costsInfoAvailable && (
+                        <Button
+                          variant="subtle"
+                          leftSection={<IconReportMoney size={16} />}
+                          onClick={() => handleOpenCostModal(provider.id)}
+                        >
+                          Usage
+                        </Button>
+                      )}
+                      <Badge color={provider.isConnected ? "green" : "red"}>
+                        {provider.isConnected ? "Connected" : "Disconnected"}
+                      </Badge>
+                    </Group>
                   </Group>
 
                   <Divider />
@@ -547,6 +628,101 @@ const Models: React.FC = () => {
                 </Button>
               </Group>
             </Alert>
+          )}
+        </Stack>
+      </Modal>
+
+      {/* Usage Costs Modal */}
+      <Modal
+        opened={costModalOpen}
+        onClose={handleCloseCostModal}
+        title={`Usage Costs - ${currentProvider === "openai" ? "OpenAI" : "AWS Bedrock"}`}
+        size="lg"
+      >
+        <Stack gap="md">
+          <Group grow>
+            <DatePicker
+              title="Start Date"
+              date={costStartDate}
+              datatype="date"
+              highlightToday
+              onDateChange={date => date && setCostStartDate(date)}
+              maxDate={new Date()}
+            />
+            <DatePicker
+              title="End Date"
+              date={costEndDate}
+              highlightToday
+              onDateChange={date => date && setCostEndDate(date)}
+              minDate={costStartDate}
+              maxDate={new Date()}
+            />
+          </Group>
+
+          <Button onClick={handleRefreshCosts} loading={costsLoading} leftSection={<IconRefresh size={16} />}>
+            Refresh Data
+          </Button>
+
+          {costsLoading ? (
+            <Stack align="center" py="xl">
+              <Loader size="md" />
+              <Text c="dimmed">Loading cost information...</Text>
+            </Stack>
+          ) : costsData?.getCosts ? (
+            <Stack>
+              {costsData.getCosts.error && (
+                <Alert icon={<IconAlertCircle size={16} />} title="Warning" color="yellow">
+                  {costsData.getCosts.error}
+                </Alert>
+              )}
+
+              <Card withBorder padding="md">
+                <Stack gap="xs">
+                  <Group justify="space-between">
+                    <Text fw={500}>Service Costs</Text>
+                    <Text size="sm" c="dimmed">
+                      {new Date(costsData.getCosts.start).toLocaleDateString()} -
+                      {costsData.getCosts.end ? new Date(costsData.getCosts.end).toLocaleDateString() : "Present"}
+                    </Text>
+                  </Group>
+
+                  <Table>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Service</Table.Th>
+                        <Table.Th>Type</Table.Th>
+                        <Table.Th style={{ textAlign: "right" }}>Amount</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {costsData.getCosts.costs.map((cost, index) => (
+                        <Table.Tr key={index}>
+                          <Table.Td>{cost.name}</Table.Td>
+                          <Table.Td>{cost.type}</Table.Td>
+                          <Table.Td style={{ textAlign: "right" }}>
+                            {cost.amounts.map((amount, i) => (
+                              <Text key={i}>
+                                {amount.amount.toFixed(2)} {amount.currency}
+                              </Text>
+                            ))}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+
+                  {costsData.getCosts.costs.length === 0 && (
+                    <Text ta="center" c="dimmed" py="md">
+                      No cost information available for the selected period.
+                    </Text>
+                  )}
+                </Stack>
+              </Card>
+            </Stack>
+          ) : (
+            <Text ta="center" c="dimmed">
+              Select a date range and click Refresh to view cost information.
+            </Text>
           )}
         </Stack>
       </Modal>

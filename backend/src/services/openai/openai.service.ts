@@ -6,9 +6,12 @@ import {
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
+  UsageCostInfo,
+  ServiceCostInfo,
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
+import { getErrorMessage } from "@/utils/errors";
 
 const logger = createLogger(__filename);
 
@@ -258,54 +261,6 @@ export class OpenApiService {
       configured: isConnected,
     };
 
-    // TODO: extract to separate call
-    // if (isConnected && this.openaiApiAdminKey) {
-    //   try {
-
-    //     const usagePeriod = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60; // Last 30 days
-    //     const response = await axios.get<OpenAIList<OpenAICost>>(
-    //       `${this.baseUrl}/organization/costs?start_time=${usagePeriod}&group_by=project_id&limit=100`,
-    //       {
-    //         headers: this.getHeaders(true),
-    //       }
-    //     );
-
-    //     const costsData = response.data.data
-    //       .filter(item => item.results?.length)
-    //       .map(item => item.results)
-    //       .flat();
-    //     const costsPerProject = costsData.reduce(
-    //       (acc, item) => {
-    //         const projectId = item.project_id || "unknown";
-    //         const amount = item.amount?.value || 0;
-    //         const currency = item.amount?.currency;
-
-    //         if (currency) {
-    //           if (!acc[projectId]) {
-    //             acc[projectId] = { [currency]: amount };
-    //           }
-    //           acc[projectId][currency] = (acc[projectId][currency] || 0) + amount;
-    //         }
-
-    //         return acc;
-    //       },
-    //       {} as Record<string, Record<string, number>>
-    //     );
-
-    //     // Prepare costs details
-    //     details.credentialsValid = true;
-    //     Object.keys(costsPerProject).forEach(projectId => {
-    //       const projectCosts = costsPerProject[projectId];
-    //       details[`${projectId} costs`] = Object.entries(projectCosts)
-    //         .map(([currency, amount]) => `${amount.toFixed(6)} ${currency.toUpperCase()}`)
-    //         .join(", ");
-    //     });
-    //   } catch (error) {
-    //     logger.error(error, "Error fetching OpenAI usage information");
-    //     details.credentialsValid = false;
-    //     details.accountInfo = "Account information unavailable";
-    //   }
-    // } else {
     try {
       // Fetch models
       await axios.get(`${this.baseUrl}/models`, {
@@ -319,10 +274,79 @@ export class OpenApiService {
     }
 
     return {
+      id: ApiProvider.OPEN_AI,
       name: "OpenAI",
+      costsInfoAvailable: !!this.openaiApiAdminKey,
       isConnected,
       details,
     };
+  }
+
+  async getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo> {
+    const result: UsageCostInfo = {
+      start: new Date(startTime * 1000),
+      end: endTime ? new Date(endTime * 1000) : undefined,
+      costs: [],
+    };
+    if (!this.openaiApiAdminKey) {
+      result.error = "OpenAI API admin key is not set. Set OPENAI_API_ADMIN_KEY in environment variables.";
+      return result;
+    }
+
+    logger.debug({ startTime, endTime }, "Fetching OpenAI usage costs");
+
+    try {
+      const response = await axios.get<OpenAIList<OpenAICost>>(
+        `${this.baseUrl}/organization/costs?start_time=${startTime || ""}${endTime ? "&end_time=" + endTime : ""}&group_by=project_id&limit=100`,
+        {
+          headers: this.getHeaders(true),
+        }
+      );
+      // TODO: Handle pagination if needed
+
+      const costsData = response.data.data
+        .filter(item => item.results?.length)
+        .map(item => item.results)
+        .flat();
+
+      const costsPerProject = costsData.reduce(
+        (acc, item) => {
+          const projectId = item.project_id || "unknown";
+          const amount = item.amount?.value || 0;
+          const currency = item.amount?.currency;
+
+          if (currency) {
+            if (!acc[projectId]) {
+              acc[projectId] = { [currency]: amount };
+            }
+            acc[projectId][currency] = (acc[projectId][currency] || 0) + amount;
+          }
+
+          return acc;
+        },
+        {} as Record<string, Record<string, number>>
+      );
+
+      // Prepare costs details
+      result.costs = Object.entries(costsPerProject).map(([projectId, amounts]) => {
+        const serviceCostInfo: ServiceCostInfo = {
+          name: projectId,
+          type: "project",
+          amounts: Object.entries(amounts).map(([currency, amount]) => ({
+            amount,
+            currency,
+          })),
+        };
+
+        return serviceCostInfo;
+      });
+
+      return result;
+    } catch (error) {
+      logger.error(error, "Error fetching OpenAI usage information");
+      result.error = getErrorMessage(error);
+      return result;
+    }
   }
 
   async getOpenAIModels(): Promise<Record<string, AIModelInfo>> {

@@ -7,8 +7,28 @@ export interface ProviderDetail {
 
 export interface ProviderInfo {
   name: string;
+  id: string;
   isConnected: boolean;
   details: ProviderDetail[];
+  costsInfoAvailable?: boolean;
+}
+
+export interface CostAmount {
+  amount: number;
+  currency: string;
+}
+
+export interface ServiceCostInfo {
+  name: string;
+  type: string;
+  amounts: CostAmount[];
+}
+
+export interface UsageCostsInfo {
+  start: Date;
+  end?: Date;
+  error?: string;
+  costs: ServiceCostInfo[];
 }
 
 export interface Model {
@@ -28,6 +48,8 @@ interface ModelState {
   providers: ProviderInfo[];
   loading: boolean;
   error: string | null;
+  costsInfo?: UsageCostsInfo;
+  costsLoading: boolean;
 }
 
 const initialState: ModelState = {
@@ -35,6 +57,7 @@ const initialState: ModelState = {
   providers: [],
   loading: false,
   error: null,
+  costsLoading: false,
 };
 
 const modelSlice = createSlice({

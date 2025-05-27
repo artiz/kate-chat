@@ -171,6 +171,7 @@ export class AIService {
     } catch (error) {
       logger.error(error, "Error getting Bedrock provider info");
       providers.push({
+        id: ApiProvider.AWS_BEDROCK,
         name: "AWS Bedrock",
         isConnected: false,
         details: { error: "Failed to get provider info" },
@@ -185,6 +186,7 @@ export class AIService {
     } catch (error) {
       logger.error(error, "Error getting OpenAI provider info");
       providers.push({
+        id: ApiProvider.OPEN_AI,
         name: "OpenAI",
         isConnected: false,
         details: { error: "Failed to get provider info" },
