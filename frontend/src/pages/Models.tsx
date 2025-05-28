@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -82,20 +82,37 @@ const Models: React.FC = () => {
   const [testText, setTestText] = useState("2+2=");
   const [testResult, setTestResult] = useState<Message>();
   const [testError, setTestError] = useState("");
-  const [currentTestingModel, setCurrentTestingModel] = useState<Model | null>(null);
+  const [currentTestingModel, setCurrentTestingModel] = useState<Model>();
   const [testLoading, setTestLoading] = useState(false);
 
-  // Usage cost modal state
-  const now = Math.floor(Date.now() / 3600_000 / 24) * 3600_000 * 24; // Convert to Unix timestamp in seconds
   const [costModalOpen, setCostModalOpen] = useState(false);
-  const [costStartDate, setCostStartDate] = useState<Date>(new Date(now - 30 * 24 * 60 * 60 * 1000)); // 60 days ago
+  const [costStartDate, setCostStartDate] = useState<Date>();
   const [costEndDate, setCostEndDate] = useState<Date>();
-  const [currentProvider, setCurrentProvider] = useState<string | null>(null);
+  const [currentProvider, setCurrentProvider] = useState<string>();
 
   // Filtering state
-  const [providerFilter, setProviderFilter] = useState<string | null>(null);
-  const [apiProviderFilter, setApiProviderFilter] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [providerFilter, setProviderFilter] = useState<string>();
+  const [apiProviderFilter, setApiProviderFilter] = useState<string>();
+  const [activeFilter, setActiveFilter] = useState<string>();
+
+  // Usage cost modal state
+  const todayTs = Math.floor(Date.now() / 3600_000 / 24) * 3600_000 * 24; // Convert to Unix timestamp in seconds
+  const today = new Date(todayTs);
+
+  useEffect(() => {
+    // Reset filters when models change
+    setProviderFilter(undefined);
+    setApiProviderFilter(undefined);
+    setActiveFilter(undefined);
+  }, [models]);
+
+  useEffect(() => {
+    // Reset cost dates to last 30 days
+    if (!costStartDate) {
+      setCostStartDate(new Date(todayTs - 60 * 24 * 60 * 60 * 1000)); // 60 days ago
+      setCostEndDate(undefined);
+    }
+  }, [costStartDate, currentProvider]);
 
   // Get unique providers and API providers for filters
   const uniqueProviders = useMemo(() => {
@@ -269,7 +286,7 @@ const Models: React.FC = () => {
 
   // Handle closing test modal
   const handleCloseTestModal = () => {
-    setCurrentTestingModel(null);
+    setCurrentTestingModel(undefined);
     setTestModalOpen(false);
     setTestResult(undefined);
     setTestError("");
@@ -299,38 +316,25 @@ const Models: React.FC = () => {
     setCostModalOpen(true);
 
     // Convert dates to Unix timestamps (seconds)
-    const startTime = Math.floor(costStartDate.getTime() / 1000);
+    handleRefreshCosts(providerId);
+  };
+
+  // Handle closing cost modal
+  const handleCloseCostModal = () => {
+    setCurrentProvider(undefined);
+    setCostModalOpen(false);
+  };
+
+  // Handle date change and refresh costs
+  const handleRefreshCosts = (providerId: string | undefined) => {
+    // Convert dates to Unix timestamps (seconds)
+    const startTime = costStartDate ? Math.floor(costStartDate.getTime() / 1000) : undefined;
     const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
 
     getCosts({
       variables: {
         input: {
           providerId,
-          startTime,
-          endTime,
-        },
-      },
-    });
-  };
-
-  // Handle closing cost modal
-  const handleCloseCostModal = () => {
-    setCurrentProvider(null);
-    setCostModalOpen(false);
-  };
-
-  // Handle date change and refresh costs
-  const handleRefreshCosts = () => {
-    if (!currentProvider) return;
-
-    // Convert dates to Unix timestamps (seconds)
-    const startTime = Math.floor(costStartDate.getTime() / 1000);
-    const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
-
-    getCosts({
-      variables: {
-        input: {
-          providerId: currentProvider,
           startTime,
           endTime,
         },
@@ -478,25 +482,22 @@ const Models: React.FC = () => {
             </Text>
             <Group>
               <Select
-                icon={<IconFilter size={16} />}
                 placeholder="API Provider"
                 clearable
                 data={uniqueApiProviders}
                 value={apiProviderFilter}
-                onChange={setApiProviderFilter}
+                onChange={v => setApiProviderFilter(v || undefined)}
                 size="sm"
               />
               <Select
-                icon={<IconFilter size={16} />}
                 placeholder="Provider"
                 clearable
                 data={uniqueProviders}
                 value={providerFilter}
-                onChange={setProviderFilter}
+                onChange={v => setProviderFilter(v || undefined)}
                 size="sm"
               />
               <Select
-                icon={<IconFilter size={16} />}
                 placeholder="Status"
                 clearable
                 data={[
@@ -504,7 +505,7 @@ const Models: React.FC = () => {
                   { value: "inactive", label: "Inactive" },
                 ]}
                 value={activeFilter}
-                onChange={setActiveFilter}
+                onChange={v => setActiveFilter(v || undefined)}
                 size="sm"
               />
             </Group>
@@ -633,39 +634,30 @@ const Models: React.FC = () => {
       </Modal>
 
       {/* Usage Costs Modal */}
-      <Modal
-        opened={costModalOpen}
-        onClose={handleCloseCostModal}
-        title={`Usage Costs - ${currentProvider === "openai" ? "OpenAI" : "AWS Bedrock"}`}
-        size="lg"
-      >
+      <Modal opened={costModalOpen} onClose={handleCloseCostModal} title={`Usage Costs - ${currentProvider}`} size="lg">
         <Stack gap="md">
-          <Group grow>
+          <Group grow align="flex-begin">
             <DatePicker
-              title="Start Date"
+              value={costStartDate}
               date={costStartDate}
-              datatype="date"
               highlightToday
-              onDateChange={date => date && setCostStartDate(date)}
-              maxDate={new Date()}
+              onChange={d => d && setCostStartDate(d)}
+              onDateChange={d => d && setCostStartDate(d)}
+              maxDate={today}
             />
-            <DatePicker
-              title="End Date"
-              date={costEndDate}
-              highlightToday
-              onDateChange={date => date && setCostEndDate(date)}
-              minDate={costStartDate}
-              maxDate={new Date()}
-            />
+            <DatePicker value={costEndDate} highlightToday onChange={d => d && setCostEndDate(d)} maxDate={today} />
           </Group>
 
-          <Button onClick={handleRefreshCosts} loading={costsLoading} leftSection={<IconRefresh size={16} />}>
+          <Button
+            onClick={() => handleRefreshCosts(currentProvider)}
+            loading={costsLoading}
+            leftSection={<IconRefresh size={16} />}
+          >
             Refresh Data
           </Button>
 
           {costsLoading ? (
             <Stack align="center" py="xl">
-              <Loader size="md" />
               <Text c="dimmed">Loading cost information...</Text>
             </Stack>
           ) : costsData?.getCosts ? (

@@ -1,5 +1,6 @@
 import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
 import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
+import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
 import { bedrockClient, bedrockManagementClient } from "../../config/bedrock";
 import {
   AIModelInfo,
@@ -312,50 +313,173 @@ export class BedrockService {
     }
 
     try {
-      // In a real implementation, we would use AWS SDK
-      // to fetch costs from AWS Cost Explorer API
-      // const CostExplorer = require('@aws-sdk/client-cost-explorer');
-      // const costExplorerClient = new CostExplorer.CostExplorerClient();
+      // Create Cost Explorer client using the same region/credentials as Bedrock
+      const costExplorerClient = new CostExplorerClient({
+        region: process.env.AWS_REGION || "us-east-1",
+        credentials: await bedrockClient.config.credentials(),
+      });
 
-      // This is just a sample implementation.
-      // In a real implementation, you would use AWS Cost Explorer API to fetch actual costs
-      const currentDate = new Date();
-      const monthAgo = new Date();
-      monthAgo.setMonth(currentDate.getMonth() - 1);
-
-      // Format timestamp ranges for query
+      // Format start and end dates in YYYY-MM-DD format required by Cost Explorer
       const startDate = new Date(startTime * 1000);
-      const endDate = endTime ? new Date(endTime * 1000) : currentDate;
+      const endDate = endTime ? new Date(endTime * 1000) : new Date();
 
-      // Example models to show usage for
-      const modelFamilies = [
-        { name: "Anthropic Claude Models", amount: 12.35 },
-        { name: "Amazon Titan Models", amount: 5.67 },
-        { name: "AI21 Jurassic Models", amount: 3.98 },
-        { name: "Cohere Command Models", amount: 2.45 },
-        { name: "Meta Llama Models", amount: 1.76 },
-      ];
+      const formattedStartDate = startDate.toISOString().split("T")[0];
+      const formattedEndDate = endDate.toISOString().split("T")[0];
 
-      // Create service cost breakdown
-      const serviceCosts: ServiceCostInfo[] = [
-        {
+      // Create command to get cost and usage data
+      const command = new GetCostAndUsageCommand({
+        TimePeriod: {
+          Start: formattedStartDate,
+          End: formattedEndDate,
+        },
+        Granularity: "DAILY",
+        Metrics: ["BlendedCost", "UsageQuantity"],
+        GroupBy: [
+          {
+            Type: "DIMENSION",
+            Key: "SERVICE",
+          },
+        ],
+      });
+
+      logger.debug({ command }, "Fetching AWS Bedrock costs");
+
+      // Get cost and usage data from AWS Cost Explorer
+      const costData = await costExplorerClient.send(command);
+
+      // Process the results into our required format
+      const serviceCosts: ServiceCostInfo[] = [];
+
+      // Overall AWS Bedrock cost
+      let totalCost = 0;
+
+      // Parse the results
+      if (costData.ResultsByTime && costData.ResultsByTime.length > 0) {
+        // If we have results, create service cost entries for each group
+        for (const result of costData.ResultsByTime) {
+          if (result.Groups && result.Groups.length > 0) {
+            for (const group of result.Groups) {
+              if (group.Metrics && group.Metrics.BlendedCost) {
+                const cost = parseFloat(group.Metrics.BlendedCost.Amount || "0");
+                totalCost += cost;
+
+                // Extract service name
+                const serviceName = group.Keys && group.Keys.length > 0 ? group.Keys[0] : "Amazon Bedrock";
+
+                // Find or create the service cost entry
+                let serviceCost = serviceCosts.find(sc => sc.name === serviceName);
+                if (!serviceCost) {
+                  serviceCost = {
+                    name: serviceName,
+                    type: "service",
+                    amounts: [],
+                  };
+                  serviceCosts.push(serviceCost);
+                }
+
+                // Update or add the amount
+                const currency = group.Metrics.BlendedCost.Unit || "USD";
+                const existingAmount = serviceCost.amounts.find(a => a.currency === currency);
+                if (existingAmount) {
+                  existingAmount.amount += cost;
+                } else {
+                  serviceCost.amounts.push({ amount: cost, currency });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Get model specific costs using a more detailed query
+      // This is a separate command to get costs grouped by model
+      const modelCommand = new GetCostAndUsageCommand({
+        TimePeriod: {
+          Start: formattedStartDate,
+          End: formattedEndDate,
+        },
+        Granularity: "DAILY",
+        Metrics: ["BlendedCost", "UsageQuantity"],
+        GroupBy: [
+          {
+            Type: "DIMENSION",
+            Key: "USAGE_TYPE",
+          },
+        ],
+        Filter: {
+          Dimensions: {
+            Key: "SERVICE",
+            Values: ["Amazon Bedrock"],
+          },
+        },
+      });
+
+      const modelCostData = await costExplorerClient.send(modelCommand);
+
+      // Process model-specific costs
+      if (modelCostData.ResultsByTime && modelCostData.ResultsByTime.length > 0) {
+        for (const result of modelCostData.ResultsByTime) {
+          if (result.Groups && result.Groups.length > 0) {
+            for (const group of result.Groups) {
+              if (group.Metrics && group.Metrics.BlendedCost && group.Keys && group.Keys.length > 0) {
+                // Parse usage type to determine model family
+                const usageType = group.Keys[0];
+                const cost = parseFloat(group.Metrics.BlendedCost.Amount || "0");
+                const currency = group.Metrics.BlendedCost.Unit || "USD";
+
+                // Extract model family from usage type
+                let modelFamily = "Other Models";
+
+                // Map usage types to model families
+                if (usageType.includes("Claude")) {
+                  modelFamily = "Anthropic Claude Models";
+                } else if (usageType.includes("Titan")) {
+                  modelFamily = "Amazon Titan Models";
+                } else if (usageType.includes("Jurassic")) {
+                  modelFamily = "AI21 Jurassic Models";
+                } else if (usageType.includes("Command")) {
+                  modelFamily = "Cohere Command Models";
+                } else if (usageType.includes("Llama")) {
+                  modelFamily = "Meta Llama Models";
+                } else if (usageType.includes("Mistral")) {
+                  modelFamily = "Mistral AI Models";
+                }
+
+                // Find or create the model family cost entry
+                let modelCost = serviceCosts.find(sc => sc.name === modelFamily && sc.type === "model_family");
+                if (!modelCost) {
+                  modelCost = {
+                    name: modelFamily,
+                    type: "model_family",
+                    amounts: [],
+                  };
+                  serviceCosts.push(modelCost);
+                }
+
+                // Update or add the amount
+                const existingAmount = modelCost.amounts.find(a => a.currency === currency);
+                if (existingAmount) {
+                  existingAmount.amount += cost;
+                } else {
+                  modelCost.amounts.push({ amount: cost, currency });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // If no detailed model costs were found, but we have total costs,
+      // add a generic Amazon Bedrock service entry
+      if (serviceCosts.length === 0 && totalCost > 0) {
+        serviceCosts.push({
           name: "Amazon Bedrock",
           type: "service",
-          amounts: [{ amount: 26.21, currency: "USD" }],
-        },
-      ];
-
-      // Add model family costs
-      for (const modelFamily of modelFamilies) {
-        serviceCosts.push({
-          name: modelFamily.name,
-          type: "model_family",
-          amounts: [{ amount: modelFamily.amount, currency: "USD" }],
+          amounts: [{ amount: totalCost, currency: "USD" }],
         });
       }
 
       result.costs = serviceCosts;
-
       return result;
     } catch (error) {
       logger.error(error, "Error fetching AWS Bedrock usage information");
