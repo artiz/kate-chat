@@ -12,6 +12,7 @@ import {
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
+import { error } from "console";
 
 const logger = createLogger(__filename);
 
@@ -162,17 +163,40 @@ export class OpenApiService {
       let fullResponse = "";
 
       response.data.on("data", (chunk: Buffer) => {
-        let token: string = "";
+        const data = chunk.toString("utf8")?.trim();
 
         try {
-          const json = JSON.parse(chunk.toString());
-          token = json.choices[0]?.delta?.content || "";
+          const result = JSON.parse(data);
+          const token = result.choices[0]?.delta?.content || "";
           if (token) {
             fullResponse += token;
             callbacks.onToken?.(token);
           }
-        } catch (ex: unknown) {
-          logger.error(ex, "Failed to parse chunk data");
+        } catch (error: unknown) {
+          if (error instanceof SyntaxError) {
+            // extract valid JSON in case of rare formatting issues
+            // https://community.openai.com/t/invalid-json-response-when-using-structured-output/1121650/4
+            const jsons = data
+              .split("\n")
+              .map(line => line.trim())
+              .filter(l => l && l.includes("{"))
+              .map(line => line.replace(/^[^\{]*\{/m, "{").replace(/\}[^\}]*/m, "}"));
+
+            for (const json of jsons) {
+              try {
+                const result = JSON.parse(json);
+                const token = result.choices[0]?.delta?.content || "";
+                if (token) {
+                  fullResponse += token;
+                  callbacks.onToken?.(token);
+                }
+              } catch (jsonError) {
+                logger.error(jsonError, "Failed to parse JSON chunk: " + json);
+              }
+            }
+          } else {
+            logger.error(error, "Failed to parse chunk data: " + data);
+          }
         }
       });
 
@@ -295,58 +319,70 @@ export class OpenApiService {
 
     logger.debug({ startTime, endTime }, "Fetching OpenAI usage costs");
 
+    const costsResults: OpenAICostResult[] = [];
+    let pagesLimit = 10; // Limit to 10 pages to avoid excessive API calls
     try {
-      const response = await axios.get<OpenAIList<OpenAICost>>(
-        `${this.baseUrl}/organization/costs?start_time=${startTime || ""}${endTime ? "&end_time=" + endTime : ""}&group_by=project_id&limit=100`,
-        {
+      let page: string | undefined = undefined;
+      do {
+        const response = await axios.get<OpenAIList<OpenAICost>>(`${this.baseUrl}/organization/costs`, {
+          params: {
+            start_time: startTime || undefined,
+            end_time: endTime || undefined,
+            group_by: "project_id",
+            limit: 100,
+            page,
+          },
           headers: this.getHeaders(true),
-        }
-      );
-      // TODO: Handle pagination if needed
+        });
 
-      const costsData = response.data.data
-        .filter(item => item.results?.length)
-        .map(item => item.results)
-        .flat();
+        const res: OpenAIList<OpenAICost> = response.data;
+        const costsData = res.data
+          .filter(item => item.results?.length)
+          .map(item => item.results)
+          .flat();
 
-      const costsPerProject = costsData.reduce(
-        (acc, item) => {
-          const projectId = item.project_id || "unknown";
-          const amount = item.amount?.value || 0;
-          const currency = item.amount?.currency;
-
-          if (currency) {
-            if (!acc[projectId]) {
-              acc[projectId] = { [currency]: amount };
-            }
-            acc[projectId][currency] = (acc[projectId][currency] || 0) + amount;
-          }
-
-          return acc;
-        },
-        {} as Record<string, Record<string, number>>
-      );
-
-      // Prepare costs details
-      result.costs = Object.entries(costsPerProject).map(([projectId, amounts]) => {
-        const serviceCostInfo: ServiceCostInfo = {
-          name: projectId,
-          type: "project",
-          amounts: Object.entries(amounts).map(([currency, amount]) => ({
-            amount,
-            currency,
-          })),
-        };
-
-        return serviceCostInfo;
-      });
-
-      return result;
+        costsResults.push(...costsData);
+        page = res.next_page;
+      } while (page && pagesLimit-- > 0);
     } catch (error) {
       logger.error(error, "Error fetching OpenAI usage information");
       result.error = getErrorMessage(error);
       return result;
     }
+
+    const costsPerProject = costsResults.reduce(
+      (acc, item) => {
+        const projectId = item.project_id || "unknown";
+        const amount = item.amount?.value || 0;
+        const currency = item.amount?.currency;
+
+        if (currency) {
+          if (!acc[projectId]) {
+            acc[projectId] = { [currency]: amount };
+          }
+          acc[projectId][currency] = (acc[projectId][currency] || 0) + amount;
+        }
+
+        return acc;
+      },
+      {} as Record<string, Record<string, number>>
+    );
+
+    // Prepare costs details
+    result.costs = Object.entries(costsPerProject).map(([projectId, amounts]) => {
+      const serviceCostInfo: ServiceCostInfo = {
+        name: projectId,
+        type: "project",
+        amounts: Object.entries(amounts).map(([currency, amount]) => ({
+          amount,
+          currency,
+        })),
+      };
+
+      return serviceCostInfo;
+    });
+
+    return result;
   }
 
   async getOpenAIModels(): Promise<Record<string, AIModelInfo>> {

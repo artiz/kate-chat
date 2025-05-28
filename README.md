@@ -2,10 +2,6 @@
 
 KateChat is a universal chat bot platform similar to chat.openai.com that can be used as a base for customized chat bots. The platform supports multiple LLM models from various providers and allows switching between them on the fly within a chat session.
 
-![image](https://github.com/user-attachments/assets/6bd059dd-2102-4f49-bdde-3bd4b9a7fa82)
-![image](https://github.com/user-attachments/assets/abf403da-d63d-430f-81ad-e1ebbc7fce3d)
-
-
 
 ## Features
 
@@ -25,6 +21,24 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Real-time communication with GraphQL subscriptions
 - Responsive UI with Mantine
 
+## TODO
+* Add "no any" TS rule and setup strict type checking
+* Finish user profile management (change password, etc.)
+* Add user registration with Google, GitHub, and MS account
+* Add Demo mode when no LLM providers configured on Backend and AWS_REGION/AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or OPENAI_API_KEY are stored in local storage and sent to the backend as "X-Aws-Region", "X-Aws-Access-Key-Id", "X-Aws-Secret-Access-Key", "X-Openai-Api-Key" headers
+* Add more UI stuff like:
+  * Chat settings (temperature, etc.)
+  * Image resolution/count
+  * Copy code section
+  * Chat message editing
+  * Chat message deletion
+* Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
+* Open AI code interpreter support  
+* Finish custom models support (enter ARN for Bedrock models)
+* Add support for more Google LLM provider
+* Add support for more Azure LLM provider
+
+
 ## Tech Stack
 
 ### Frontend
@@ -32,7 +46,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Mantine UI library
 - Apollo Client for GraphQL
 - GraphQL code generation
-- Real-time updates with GraphQL subscriptions
+- Real-time updates with GraphQL subscriptions (WebSockets)
 
 ### Backend
 - Node.js with TypeScript
@@ -40,6 +54,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Express.js for API server
 - GraphQL with Apollo Server
 - AWS [Bedrock](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_bedrock-runtime_code_examples.html) for AI model integrations
+- OpenAI API for AI model integrations
 - Jest for testing
 
 ## Project Structure
@@ -52,9 +67,9 @@ The project consists of two main parts:
 
 ### Prerequisites
 - Node.js (v18+)
-- Docker and Docker Compose
 - AWS Account with Bedrock access (instructions below)
 - OpenAI API Account (instructions below)
+- Docker and Docker Compose (optional, for development environment)
 
 ### AWS Bedrock API keys retrieval
 
@@ -198,7 +213,8 @@ Authentication is handled via JWT tokens. When a user logs in or registers, they
 
 ## Screenshots
 
-[Put some screenshots here when they're available]
+![image](https://github.com/user-attachments/assets/6bd059dd-2102-4f49-bdde-3bd4b9a7fa82)
+![image](https://github.com/user-attachments/assets/abf403da-d63d-430f-81ad-e1ebbc7fce3d)
 
 ## Contributing
 
