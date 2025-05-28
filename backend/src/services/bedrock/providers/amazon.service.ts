@@ -1,14 +1,17 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import {
+  ModelMessageFormat,
+  ModelResponse,
+  BedrockModelServiceProvider,
+  StreamCallbacks,
+  InvokeModelParamsRequest,
+  InvokeModelParamsResponse,
+} from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { logger } from "@/utils/logger";
 
-export class AmazonService implements ModelServiceProvider {
-  async generateResponseParams(
-    messages: ModelMessageFormat[],
-    modelId: string,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<any> {
+export class AmazonService implements BedrockModelServiceProvider {
+  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     // Convert messages to a single prompt for Amazon models
     let prompt = "";
     for (const msg of messages) {

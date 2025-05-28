@@ -15,12 +15,12 @@ import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/
 import { getRepository } from "../config/database";
 import { ApiProvider, ModelMessageFormat, ProviderInfo, ServiceCostInfo } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
-import { DEFAULT_MODEL_ID } from "../config/ai";
 import { createLogger } from "@/utils/logger";
 import { OpenApiService } from "@/services/openai/openai.service";
-import { Bedrock } from "@aws-sdk/client-bedrock";
 import { BedrockService } from "@/services/bedrock/bedrock.service";
 import { getErrorMessage } from "@/utils/errors";
+import { getSystemErrorMap } from "util";
+import { DEFAULT_PROMPT } from "@/config/ai";
 
 const logger = createLogger(__filename);
 
@@ -94,8 +94,6 @@ export class ModelResolver {
 
         // Save the model
         const savedModel: GqlModel = await modelRepository.save(model);
-
-        savedModel.isDefault = model.modelId === DEFAULT_MODEL_ID;
         outModels.push(savedModel);
       }
 
@@ -115,13 +113,8 @@ export class ModelResolver {
     try {
       // Get models from the database
       const modelRepository = getRepository(Model);
-      const dbModels = await modelRepository.find({
+      const models = await modelRepository.find({
         order: { sortOrder: "ASC" },
-      });
-
-      let models: GqlModel[] = dbModels.map((model: GqlModel) => {
-        model.isDefault = model.modelId === DEFAULT_MODEL_ID;
-        return model;
       });
 
       // Get provider information
@@ -149,10 +142,7 @@ export class ModelResolver {
       order: { sortOrder: "ASC" },
     });
 
-    return dbModels.map((model: GqlModel) => {
-      model.isDefault = model.modelId === DEFAULT_MODEL_ID;
-      return model;
-    });
+    return dbModels;
   }
 
   @Mutation(() => GqlModelsList)
@@ -181,12 +171,7 @@ export class ModelResolver {
       model.isActive = isActive;
 
       // Save the updated model
-      const updatedModel = await modelRepository.save(model);
-
-      // Add isDefault property for the response
-      (updatedModel as GqlModel).isDefault = updatedModel.modelId === DEFAULT_MODEL_ID;
-
-      return updatedModel as GqlModel;
+      return await modelRepository.save(model);
     } catch (error) {
       logger.error(error, "Error updating model status");
       throw new Error("Failed to update model status");
@@ -224,7 +209,7 @@ export class ModelResolver {
       };
 
       // Generate a response using the AI service
-      const response = await aiService.invokeModel([message], model.modelId, model.apiProvider);
+      const response = await aiService.invokeModel(undefined, [message], model.modelId, model.apiProvider);
 
       logger.debug({ message, response }, "Test model inference");
       return {

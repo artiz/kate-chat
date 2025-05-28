@@ -33,6 +33,14 @@ export class User {
 
   @Field({ nullable: true })
   @Column({ nullable: true })
+  defaultModelId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  defaultSystemPrompt?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   avatarUrl?: string;
 
   @Field({ nullable: true })

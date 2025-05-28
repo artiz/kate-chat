@@ -5,8 +5,9 @@ import { getRepository } from "../config/database";
 import { generateToken, TokenPayload } from "../utils/jwt";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
-import { RegisterInput, LoginInput } from "../types/graphql/inputs";
+import { RegisterInput, LoginInput, UpdateUserInput } from "../types/graphql/inputs";
 import { AuthResponse } from "../types/graphql/responses";
+import { DEFAULT_PROMPT } from "@/config/ai";
 
 @Resolver(User)
 export class UserResolver {
@@ -48,6 +49,7 @@ export class UserResolver {
       firstName,
       lastName,
       avatarUrl,
+      defaultSystemPrompt: DEFAULT_PROMPT,
       msalId: "-", // Provide a default or make this nullable
     });
 
@@ -63,6 +65,36 @@ export class UserResolver {
       token,
       user: savedUser,
     };
+  }
+
+  @Mutation(() => User)
+  async updateUser(@Arg("input") input: UpdateUserInput, @Ctx() context: { user?: TokenPayload }): Promise<User> {
+    const { user } = context;
+    if (!user?.userId) throw new Error("Not authenticated");
+
+    const dbUser = await this.userRepository.findOne({
+      where: { id: user.userId },
+    });
+
+    if (!dbUser) throw new Error("User not found");
+
+    // Check if email is being updated and if it's already in use
+    if (input.email && input.email !== dbUser.email) {
+      const existingUser = await this.userRepository.findOne({ where: { email: input.email } });
+      if (existingUser) {
+        throw new Error("Email is already in use");
+      }
+      dbUser.email = input.email;
+    }
+
+    // Update user properties
+    if (input.firstName) dbUser.firstName = input.firstName;
+    if (input.lastName) dbUser.lastName = input.lastName;
+    if (input.avatarUrl) dbUser.avatarUrl = input.avatarUrl;
+    if (input.defaultModelId) dbUser.defaultModelId = input.defaultModelId;
+    if (input.defaultSystemPrompt) dbUser.defaultSystemPrompt = input.defaultSystemPrompt;
+
+    return await this.userRepository.save(dbUser);
   }
 
   @Mutation(() => AuthResponse)

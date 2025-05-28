@@ -7,7 +7,7 @@ import { ApolloWrapper } from "../lib/apollo-provider";
 import { theme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setUser } from "../store/slices/userSlice";
-import { setModels, setModelsAndProviders } from "../store/slices/modelSlice";
+import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "../hooks/useTheme";
@@ -17,12 +17,12 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import { ChatList } from "@/pages/ChatList";
 import { Chat } from "@/pages/Chat";
-import CreateChat from "@/pages/CreateChat";
-import Models from "@/pages/Models";
-import Settings from "@/pages/Settings";
-import MainLayout from "../components/MainLayout";
+import { CreateChat } from "@/pages/CreateChat";
+import { Models } from "@/pages/Models";
+import { Settings } from "@/pages/Settings";
+import { MainLayout } from "../components/MainLayout";
 import { ERROR_UNAUTHORIZED } from "@/store/api";
-import { logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
+import { logout } from "@/store/slices/authSlice";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {

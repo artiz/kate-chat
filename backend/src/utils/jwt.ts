@@ -1,7 +1,11 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret";
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "86400"; // 24 hours in seconds
+const JWT_SECRET = process.env.JWT_SECRET || "";
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "7200"; // 2 hour in seconds
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not set");
+}
 
 export interface TokenPayload {
   userId: string;

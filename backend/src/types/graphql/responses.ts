@@ -108,10 +108,7 @@ export class GqlProviderInfo {
 }
 
 @ObjectType()
-export class GqlModel extends Model {
-  @Field()
-  isDefault?: boolean;
-}
+export class GqlModel extends Model {}
 
 @ObjectType()
 export class GqlModelsList {

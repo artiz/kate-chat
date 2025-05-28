@@ -1,14 +1,16 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import {
+  ModelMessageFormat,
+  ModelResponse,
+  BedrockModelServiceProvider,
+  StreamCallbacks,
+  InvokeModelParamsRequest,
+  InvokeModelParamsResponse,
+} from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
-import { DEFAULT_PROMPT } from "@/config/ai";
 
-export class MetaService implements ModelServiceProvider {
-  async generateResponseParams(
-    messages: ModelMessageFormat[],
-    modelId: string,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<any> {
+export class MetaService implements BedrockModelServiceProvider {
+  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     // Convert messages to Llama chat format
     const llamaMessages = [];
 
@@ -34,7 +36,7 @@ export class MetaService implements ModelServiceProvider {
     const params = {
       modelId,
       body: JSON.stringify({
-        prompt: DEFAULT_PROMPT,
+        prompt: systemPrompt,
         messages: llamaMessages,
         max_gen_len: maxTokens,
         temperature,

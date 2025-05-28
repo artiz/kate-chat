@@ -2,6 +2,27 @@ import { InputType, Field } from "type-graphql";
 import { MessageRole } from "../../entities/Message";
 
 @InputType()
+export class UpdateUserInput {
+  @Field({ nullable: true })
+  firstName?: string;
+
+  @Field({ nullable: true })
+  lastName?: string;
+
+  @Field({ nullable: true })
+  email?: string;
+
+  @Field({ nullable: true })
+  avatarUrl?: string;
+
+  @Field({ nullable: true })
+  defaultModelId?: string;
+
+  @Field({ nullable: true })
+  defaultSystemPrompt?: string;
+}
+
+@InputType()
 export class RegisterInput {
   @Field()
   email: string;

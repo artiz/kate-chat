@@ -99,7 +99,6 @@ type GqlModel {
   id: ID!
   isActive: Boolean!
   isCustom: Boolean!
-  isDefault: Boolean!
   modelId: String!
   name: String!
   provider: String
@@ -163,6 +162,7 @@ type Mutation {
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
+  updateUser(input: UpdateUserInput!): User!
 }
 
 type ProviderDetail {
@@ -210,9 +210,20 @@ input UpdateModelStatusInput {
   modelId: String!
 }
 
+input UpdateUserInput {
+  avatarUrl: String
+  defaultModelId: String
+  defaultSystemPrompt: String
+  email: String
+  firstName: String
+  lastName: String
+}
+
 type User {
   avatarUrl: String
   createdAt: DateTimeISO!
+  defaultModelId: String
+  defaultSystemPrompt: String
   email: String!
   firstName: String!
   id: ID!

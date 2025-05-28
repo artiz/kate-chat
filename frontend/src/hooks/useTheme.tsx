@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect } from "react";
 import { useLocalStorage } from "@mantine/hooks";
-import { ColorScheme } from "@mantine/core";
+
+type ColorScheme = "light" | "dark" | "auto";
 
 // Define the ThemeContext type
 interface ThemeContextType {

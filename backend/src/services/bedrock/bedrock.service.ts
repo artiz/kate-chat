@@ -28,13 +28,20 @@ interface BedrockModelConfigRecord {
 
 export class BedrockService {
   async invokeModel(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
     maxTokens: number = 2048
   ): Promise<ModelResponse> {
     // Get provider service and parameters
-    const { service, params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
+    const { service, params } = await this.formatProviderParams(
+      systemPrompt,
+      messages,
+      modelId,
+      temperature,
+      maxTokens
+    );
 
     // Send command using Bedrock client
     const command = new InvokeModelCommand(params);
@@ -47,6 +54,7 @@ export class BedrockService {
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
   async invokeModelAsync(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
@@ -63,7 +71,7 @@ export class BedrockService {
     if (!supportsStreaming) {
       try {
         // For models that don't support streaming, use the regular generation and simulate streaming
-        const response = await this.invokeModel(messages, modelId, temperature, maxTokens);
+        const response = await this.invokeModel(systemPrompt, messages, modelId, temperature, maxTokens);
 
         // Simulate streaming by sending chunks of the response
         const chunks = response.content.split(" ");
@@ -84,7 +92,7 @@ export class BedrockService {
 
     try {
       // Get provider service and parameters
-      const { params } = await this.formatProviderParams(messages, modelId, temperature, maxTokens);
+      const { params } = await this.formatProviderParams(systemPrompt, messages, modelId, temperature, maxTokens);
 
       // Create a streaming command
       const streamCommand = new InvokeModelWithResponseStreamCommand(params);
@@ -135,10 +143,11 @@ export class BedrockService {
 
   // Get the appropriate service and parameters based on the model ID
   private async formatProviderParams(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
-    temperature: number,
-    maxTokens: number
+    temperature: number = 0.7,
+    maxTokens: number = 2048
   ) {
     let service;
     let params;
@@ -148,37 +157,73 @@ export class BedrockService {
     if (provider == "anthropic") {
       const { AnthropicService } = await import("./providers/anthropic.service");
       const anthropicService = new AnthropicService();
-      const result = await anthropicService.generateResponseParams(messages, modelId, temperature, maxTokens);
+      const result = await anthropicService.getInvokeModelParams({
+        systemPrompt,
+        messages,
+        modelId,
+        temperature,
+        maxTokens,
+      });
       service = anthropicService;
       params = result.params;
     } else if (provider == "amazon") {
       const { AmazonService } = await import("./providers/amazon.service");
       const amazonService = new AmazonService();
-      const result = await amazonService.generateResponseParams(messages, modelId, temperature, maxTokens);
+      const result = await amazonService.getInvokeModelParams({
+        systemPrompt,
+        messages,
+        modelId,
+        temperature,
+        maxTokens,
+      });
       service = amazonService;
       params = result.params;
     } else if (provider == "ai21") {
       const { AI21Service } = await import("./providers/ai21.service");
       const ai21Service = new AI21Service();
-      const result = await ai21Service.generateResponseParams(messages, modelId, temperature, maxTokens);
+      const result = await ai21Service.getInvokeModelParams({
+        systemPrompt,
+        messages,
+        modelId,
+        temperature,
+        maxTokens,
+      });
       service = ai21Service;
       params = result.params;
     } else if (provider == "cohere") {
       const { CohereService } = await import("./providers/cohere.service");
       const cohereService = new CohereService();
-      const result = await cohereService.generateResponseParams(messages, modelId, temperature, maxTokens);
+      const result = await cohereService.getInvokeModelParams({
+        systemPrompt,
+        messages,
+        modelId,
+        temperature,
+        maxTokens,
+      });
       service = cohereService;
       params = result.params;
     } else if (provider == "meta") {
       const { MetaService } = await import("./providers/meta.service");
       const metaService = new MetaService();
-      const result = await metaService.generateResponseParams(messages, modelId, temperature, maxTokens);
+      const result = await metaService.getInvokeModelParams({
+        systemPrompt,
+        messages,
+        modelId,
+        temperature,
+        maxTokens,
+      });
       service = metaService;
       params = result.params;
     } else if (provider == "mistral") {
       const { MistralService } = await import("./providers/mistral.service");
       const mistralService = new MistralService();
-      const result = await mistralService.generateResponseParams(messages, modelId, temperature, maxTokens);
+      const result = await mistralService.getInvokeModelParams({
+        systemPrompt,
+        messages,
+        modelId,
+        temperature,
+        maxTokens,
+      });
       service = mistralService;
       params = result.params;
     } else {

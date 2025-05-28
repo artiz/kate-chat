@@ -28,7 +28,7 @@ import {
 } from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { notifications } from "@mantine/notifications";
-import { UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
+import { GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
 import { useChatSubscription } from "@/hooks/useChatSubscription";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
 
@@ -91,6 +91,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
+  const currentUser = useAppSelector(state => state.user.currentUser);
+
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -137,7 +139,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   });
 
   // Get chat messages and chat details
-  const { loading: messagesLoading, error: messagesError } = useQuery(GET_CHAT_MESSAGES, {
+  const { loading: messagesLoading, error: messagesError } = useQuery<GetChatMessagesResponse>(GET_CHAT_MESSAGES, {
     variables: {
       input: {
         chatId,
@@ -147,7 +149,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
     skip: !chatId,
     onCompleted: data => {
-      const { chat: ch, messages } = data.getChatMessages || {};
+      const { chat: ch, messages = [] } = data.getChatMessages || {};
       // Set chat details from the chat field in getChatMessages
       if (ch) {
         dispatch(setCurrentChat(ch));
@@ -156,7 +158,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       }
 
       // Parse and set messages
-      parseChatMessages(data.getChatMessages.messages || []).then(parsedMessages => {
+      parseChatMessages(messages).then(parsedMessages => {
         setMessages(parsedMessages);
       });
     },
@@ -227,7 +229,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // Handle model change
   const handleModelChange = (modelId: string | null) => {
-    const model = models.find(m => m.id === modelId);
+    const model = models.find(m => m.modelId === modelId);
     if (!model || !chatId) return;
 
     setChat(prev =>
@@ -249,6 +251,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
       },
     });
   };
+
+  useEffect(() => {
+    if (currentUser && currentUser.defaultModelId && chat?.isPristine && currentUser.defaultModelId !== chat.modelId) {
+      handleModelChange(currentUser.defaultModelId);
+    }
+  }, [currentUser, chat, handleModelChange]);
 
   const scrollToBottom = useCallback(() => {
     autoScrollTimer.current = setTimeout(
@@ -368,11 +376,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Text>
         <Select
           data={models.map(model => ({
-            value: model.id,
+            value: model.modelId,
             label: model.name,
           }))}
           searchable
-          value={selectedModel?.id || ""}
+          value={selectedModel?.modelId || ""}
           onChange={handleModelChange}
           placeholder="Select a model"
           style={{ minWidth: 180 }}

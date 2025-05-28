@@ -21,7 +21,7 @@ import { clearUser } from "../store/slices/userSlice";
 import NavbarContent from "./nav/NavbarContent";
 import { useTheme } from "../hooks/useTheme";
 
-const MainLayout: React.FC = () => {
+export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -122,5 +122,3 @@ const MainLayout: React.FC = () => {
     </AppShell>
   );
 };
-
-export default MainLayout;

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   ApolloClient,
   ApolloProvider,
@@ -21,7 +21,7 @@ import { RootState } from "../store";
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const token = useSelector((state: RootState) => state.auth.token);
 
-  const [client] = useState(() => {
+  const client = useMemo(() => {
     // Get the API URL from environment variables
     const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:4000";
 
@@ -132,7 +132,7 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     });
 
     return clientInstance;
-  });
+  }, [token]);
 
   return <ApolloProvider client={client}>{children}</ApolloProvider>;
 }

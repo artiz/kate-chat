@@ -65,20 +65,23 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
-export type GenerateResponseParams = {
+export type InvokeModelParamsResponse = {
   params: {
     modelId: string;
     body: string;
   };
 };
 
-export interface ModelServiceProvider {
-  generateResponseParams(
-    messages: ModelMessageFormat[],
-    modelId: string,
-    temperature?: number,
-    maxTokens?: number
-  ): Promise<GenerateResponseParams>;
+export type InvokeModelParamsRequest = {
+  systemPrompt?: string;
+  messages: ModelMessageFormat[];
+  modelId: string;
+  temperature?: number;
+  maxTokens?: number;
+};
+
+export interface BedrockModelServiceProvider {
+  getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse>;
 
   parseResponse(responseBody: any): ModelResponse;
 }

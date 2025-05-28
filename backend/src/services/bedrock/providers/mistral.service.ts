@@ -1,17 +1,20 @@
-import { ModelMessageFormat, ModelResponse, ModelServiceProvider, StreamCallbacks } from "@/types/ai.types";
+import {
+  ModelMessageFormat,
+  ModelResponse,
+  BedrockModelServiceProvider,
+  StreamCallbacks,
+  InvokeModelParamsRequest,
+  InvokeModelParamsResponse,
+} from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { ok } from "assert";
 import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
 
-export class MistralService implements ModelServiceProvider {
-  async generateResponseParams(
-    messages: ModelMessageFormat[],
-    modelId: string,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<any> {
+export class MistralService implements BedrockModelServiceProvider {
+  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     ok(messages.length);
 
     // Convert messages to Mistral format

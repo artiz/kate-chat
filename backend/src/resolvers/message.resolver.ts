@@ -15,8 +15,8 @@ import { User } from "@/entities/User";
 import { getErrorMessage } from "@/utils/errors";
 import { GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
 import { ok } from "assert";
-import { DEFAULT_MODEL_ID } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
+import { DEFAULT_PROMPT } from "@/config/ai";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -104,8 +104,11 @@ export class MessageResolver {
 
   @Mutation(() => Message)
   async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
+    if (!context.user) throw new Error("Authentication required");
+    const user = await this.userRepository.findOne({
+      where: { id: context.user.userId },
+    });
+    if (!user) throw new Error("User not found");
 
     const { chatId, content, role = MessageRole.USER } = input;
     let { modelId } = input;
@@ -121,7 +124,7 @@ export class MessageResolver {
     if (!chat) throw new Error("Chat not found");
 
     if (!modelId) {
-      modelId = chat.modelId || DEFAULT_MODEL_ID;
+      throw new Error("ModelId is required");
     }
 
     // Verify the model exists
@@ -139,7 +142,7 @@ export class MessageResolver {
       modelId: model.modelId, // real model used
       modelName: model.name,
       chatId,
-      user: { id: user.userId },
+      user,
       chat,
     });
 
@@ -171,6 +174,7 @@ export class MessageResolver {
 
     // Generate AI response
     const requestMessages = previousMessages.reverse();
+    const systemPrompt = user.defaultSystemPrompt || DEFAULT_PROMPT;
 
     const completeRequest = async (aiMessage: Message) => {
       ok(aiMessage);
@@ -193,7 +197,7 @@ export class MessageResolver {
           modelId: model.modelId, // real model used
           modelName: model.name,
           chatId,
-          user: { id: user.userId },
+          user,
           chat,
         })
       );
@@ -236,14 +240,14 @@ export class MessageResolver {
         }
       };
 
-      this.aiService.streamCompletion(requestMessages, model, handleStreaming);
+      this.aiService.streamCompletion(systemPrompt, requestMessages, model, handleStreaming);
 
       return message;
     }
 
     // sync call
     try {
-      const aiResponse = await this.aiService.getCompletion(requestMessages, model);
+      const aiResponse = await this.aiService.getCompletion(systemPrompt, requestMessages, model);
       let content = aiResponse.content;
       if (aiResponse.type === "image") {
         // Save base64 image to output folder
@@ -258,7 +262,7 @@ export class MessageResolver {
           modelId: model.modelId, // real model used
           modelName: model.name,
           chatId,
-          user: { id: user.userId },
+          user,
           chat,
         })
       );

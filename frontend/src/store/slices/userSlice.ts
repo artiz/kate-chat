@@ -5,6 +5,8 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  defaultModelId?: string;
+  defaultSystemPrompt?: string;
 }
 
 interface UserState {

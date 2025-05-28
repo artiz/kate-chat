@@ -65,6 +65,7 @@ export class OpenApiService {
 
   // Text generation with OpenAI models
   async invokeModel(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
     temperature: number = 0.7,
@@ -84,6 +85,15 @@ export class OpenApiService {
       role: this.mapMessageRole(msg.role),
       content: msg.content,
     }));
+
+    if (systemPrompt) {
+      formattedMessages.unshift({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+
+    logger.debug({ formattedMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model");
 
     try {
       const response = await axios.post(
@@ -114,6 +124,7 @@ export class OpenApiService {
 
   // Stream response from OpenAI models
   async invokeModelAsync(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
@@ -143,6 +154,15 @@ export class OpenApiService {
       role: this.mapMessageRole(msg.role),
       content: msg.content,
     }));
+
+    if (systemPrompt) {
+      formattedMessages.unshift({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+
+    logger.debug({ formattedMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model streaming");
 
     try {
       const response = await axios.post(

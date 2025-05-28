@@ -386,7 +386,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"query GetModels {\\n  getModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      provider\\n      apiProvider\\n      supportsStreaming\\n      supportsTextIn\\n      supportsTextOut\\n      supportsEmbeddingsIn\\n      supportsImageIn\\n      supportsImageOut\\n      isActive\\n      isDefault\\n      sortOrder\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
+              "raw": "{\n  \"query\": \"query GetModels {\\n  getModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      provider\\n      apiProvider\\n      supportsStreaming\\n      supportsTextIn\\n      supportsTextOut\\n      supportsEmbeddingsIn\\n      supportsImageIn\\n      supportsImageOut\\n      isActive\\n      sortOrder\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",
@@ -413,7 +413,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"query\": \"mutation ReloadModels {\\n  reloadModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      provider\\n      apiProvider\\n      supportsStreaming\\n      supportsTextIn\\n      supportsTextOut\\n      supportsEmbeddingsIn\\n      supportsImageIn\\n      supportsImageOut\\n      isActive\\n      isDefault\\n      sortOrder\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
+              "raw": "{\n  \"query\": \"mutation ReloadModels {\\n  reloadModels {\\n    models {\\n      id\\n      name\\n      description\\n      modelId\\n      provider\\n      apiProvider\\n      supportsStreaming\\n      supportsTextIn\\n      supportsTextOut\\n      supportsEmbeddingsIn\\n      supportsImageIn\\n      supportsImageOut\\n      isActive\\n      sortOrder\\n      createdAt\\n      updatedAt\\n    }\\n    total\\n    error\\n  }\\n}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/graphql",

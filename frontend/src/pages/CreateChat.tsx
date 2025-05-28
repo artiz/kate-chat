@@ -1,36 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
 import { addChat, Chat } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { CREATE_CHAT_MUTATION } from "../store/services/graphql";
+import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION } from "../store/services/graphql";
 
-// Query to find a pristine chat
-const FIND_PRISTINE_CHAT = gql`
-  query FindPristineChat {
-    getChats(input: { limit: 10, offset: 0 }) {
-      chats {
-        id
-        title
-        isPristine
-        modelId
-      }
-    }
-  }
-`;
-
-const CreateChat: React.FC = () => {
+export const CreateChat: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const [isProcessing, setIsProcessing] = useState(true);
 
   const { models } = useAppSelector(state => state.models);
-  const defaultModel = models.find(model => model.isDefault) || (models.length > 0 ? models[0] : null);
+  const user = useAppSelector(state => state.user.currentUser);
+
+  // Find model to use - priority:
+  // 1. User's default model
+  // 2. First active model
+  const userDefaultModel = user?.defaultModelId ? models.find(model => model.modelId === user.defaultModelId) : null;
+  const firstActiveModel = models.find(model => model.isActive);
+  const modelToUse = userDefaultModel || firstActiveModel || (models.length > 0 ? models[0] : null);
 
   // Find pristine chat query
-  const { data: pristineData, loading: pristineLoading } = useQuery(FIND_PRISTINE_CHAT, {
+  const { loading: pristineLoading } = useQuery(FIND_PRISTINE_CHAT, {
     fetchPolicy: "network-only",
     onCompleted: data => {
       const pristineChats = data?.getChats?.chats?.filter((chat: Chat) => chat.isPristine) || [];
@@ -38,7 +30,6 @@ const CreateChat: React.FC = () => {
       if (pristineChats.length > 0) {
         // Found a pristine chat, navigate to it
         navigate(`/chat/${pristineChats[0].id}`);
-        setIsProcessing(false);
       } else {
         // No pristine chat found, create a new one
         createNewChat();
@@ -51,7 +42,6 @@ const CreateChat: React.FC = () => {
         color: "red",
       });
       navigate("/chat");
-      setIsProcessing(false);
     },
   });
 
@@ -60,7 +50,6 @@ const CreateChat: React.FC = () => {
     onCompleted: data => {
       dispatch(addChat(data.createChat));
       navigate(`/chat/${data.createChat.id}`);
-      setIsProcessing(false);
     },
     onError: error => {
       notifications.show({
@@ -69,29 +58,34 @@ const CreateChat: React.FC = () => {
         color: "red",
       });
       navigate("/chat");
-      setIsProcessing(false);
     },
   });
 
   // Create new chat function
   const createNewChat = () => {
-    if (!defaultModel) {
+    if (!modelToUse) {
       notifications.show({
         title: "No Models Available",
         message: "Please configure AI models before creating a chat",
         color: "yellow",
       });
       navigate("/chat");
-      setIsProcessing(false);
       return;
+    }
+
+    const chatInput: any = {
+      title: "New Chat",
+      modelId: modelToUse.modelId,
+    };
+
+    // Add system prompt if available
+    if (user?.defaultSystemPrompt) {
+      chatInput.systemPrompt = user.defaultSystemPrompt;
     }
 
     createChat({
       variables: {
-        input: {
-          title: "New Chat",
-          modelId: defaultModel.modelId,
-        },
+        input: chatInput,
       },
     });
   };
@@ -103,5 +97,3 @@ const CreateChat: React.FC = () => {
     </Center>
   );
 };
-
-export default CreateChat;

@@ -1,17 +1,18 @@
-import { GenerateResponseParams, ModelMessageFormat, ModelResponse, ModelServiceProvider } from "@/types/ai.types";
+import {
+  InvokeModelParamsResponse,
+  ModelMessageFormat,
+  ModelResponse,
+  BedrockModelServiceProvider,
+  InvokeModelParamsRequest,
+} from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
-import { DEFAULT_PROMPT } from "@/config/ai";
 
 /**
  * See format info at https://docs.anthropic.com/en/api/messages
  */
-export class AnthropicService implements ModelServiceProvider {
-  async generateResponseParams(
-    messages: ModelMessageFormat[],
-    modelId: string,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<GenerateResponseParams> {
+export class AnthropicService implements BedrockModelServiceProvider {
+  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     // Convert messages to Anthropic format
     const anthropicMessages = messages.map(msg => ({
       role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
@@ -24,7 +25,7 @@ export class AnthropicService implements ModelServiceProvider {
         anthropic_version: "bedrock-2023-05-31",
         max_tokens: maxTokens,
         messages: anthropicMessages,
-        system: DEFAULT_PROMPT,
+        system: systemPrompt,
         temperature,
       }),
     };

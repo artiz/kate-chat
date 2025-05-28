@@ -22,6 +22,7 @@ export class AIService {
 
   // Main method to interact with models
   async invokeModel(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
     apiProvider: ApiProvider,
@@ -33,9 +34,9 @@ export class AIService {
 
     // Determine which API provider to use and invoke the appropriate service
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return await this.bedrockService.invokeModel(messages, modelId, temperature, maxTokens);
+      return await this.bedrockService.invokeModel(systemPrompt, messages, modelId, temperature, maxTokens);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return await this.openApiService.invokeModel(messages, modelId, temperature, maxTokens);
+      return await this.openApiService.invokeModel(systemPrompt, messages, modelId, temperature, maxTokens);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }
@@ -43,6 +44,7 @@ export class AIService {
 
   // Stream response from models
   async invokeModelAsync(
+    systemPrompt: string | undefined,
     messages: ModelMessageFormat[],
     modelId: string,
     callbacks: StreamCallbacks,
@@ -55,12 +57,19 @@ export class AIService {
 
     // Determine which API provider to use and invoke the appropriate service
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return await this.bedrockService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
+      return await this.bedrockService.invokeModelAsync(
+        systemPrompt,
+        messages,
+        modelId,
+        callbacks,
+        temperature,
+        maxTokens
+      );
     } else if (apiProvider === ApiProvider.OPEN_AI) {
       // Import OpenApiService dynamically to avoid circular dependencies
       const { OpenApiService } = await import("./openai/openai.service");
       const openApiService = new OpenApiService();
-      return await openApiService.invokeModelAsync(messages, modelId, callbacks, temperature, maxTokens);
+      return await openApiService.invokeModelAsync(systemPrompt, messages, modelId, callbacks, temperature, maxTokens);
     } else {
       callbacks.onError?.(new Error(`Unsupported API provider: ${apiProvider}`));
     }
@@ -94,7 +103,7 @@ export class AIService {
   }
 
   // Adapter method for message resolver
-  async getCompletion(messages: Message[], model: Model): Promise<ModelResponse> {
+  async getCompletion(systemPrompt: string | undefined, messages: Message[], model: Model): Promise<ModelResponse> {
     // Convert DB message objects to ModelMessageFormat structure
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
@@ -103,12 +112,20 @@ export class AIService {
     }));
 
     // Invoke the model
-    const response = await this.invokeModel(formattedMessages, model.modelId, model.apiProvider, 0.7, 2048);
+    const response = await this.invokeModel(
+      systemPrompt,
+      formattedMessages,
+      model.modelId,
+      model.apiProvider,
+      0.7,
+      2048
+    );
 
     return response;
   }
 
   streamCompletion(
+    systemPrompt: string | undefined,
     messages: Message[],
     model: Model,
     callback: (token: string, completed?: boolean, error?: Error) => void
@@ -121,12 +138,12 @@ export class AIService {
 
     // Stream the completion in background
     this.invokeModelAsync(
+      systemPrompt,
       formattedMessages,
       model.modelId,
       {
         onToken: (token: string) => {
           callback(token);
-          logger.debug({ token: token.substring(0, 50) }, "Token received");
         },
         onComplete: (response: string) => {
           callback(response, true);

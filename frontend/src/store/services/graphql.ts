@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
-import { Model } from "../slices/modelSlice";
+import { Model, ProviderInfo } from "../slices/modelSlice";
 import { Chat, Message } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
 
@@ -15,6 +15,8 @@ export const REGISTER_MUTATION = gql`
         email
         firstName
         lastName
+        defaultModelId
+        defaultSystemPrompt
       }
     }
   }
@@ -29,6 +31,8 @@ export const LOGIN_MUTATION = gql`
         email
         firstName
         lastName
+        defaultModelId
+        defaultSystemPrompt
       }
     }
   }
@@ -76,7 +80,6 @@ export const RELOAD_MODELS_MUTATION = gql`
         apiProvider
         provider
         isActive
-        isDefault
         supportsImageOut
         supportsTextOut
       }
@@ -114,6 +117,20 @@ export const TEST_MODEL_MUTATION = gql`
   }
 `;
 
+// Query to find a pristine chat
+export const FIND_PRISTINE_CHAT = gql`
+  query FindPristineChat {
+    getChats(input: { limit: 10, offset: 0 }) {
+      chats {
+        id
+        title
+        isPristine
+        modelId
+      }
+    }
+  }
+`;
+
 export const GET_COSTS_QUERY = gql`
   query GetCosts($input: GetCostsInput!) {
     getCosts(input: $input) {
@@ -136,18 +153,6 @@ export const GET_COSTS_QUERY = gql`
 interface CurrentUserResponse {
   currentUser: User;
 }
-
-interface ProviderDetail {
-  key: string;
-  value: string;
-}
-
-interface ProviderInfo {
-  name: string;
-  isConnected: boolean;
-  details: ProviderDetail[];
-}
-
 interface GetModelsResponse {
   getModels: {
     models: Model[];
@@ -163,8 +168,9 @@ interface GetChatsResponse {
   };
 }
 
-interface GetChatMessagesResponse {
+export interface GetChatMessagesResponse {
   getChatMessages: {
+    chat: Chat;
     messages: Message[];
     total: number;
     hasMore: boolean;
@@ -187,6 +193,8 @@ export const graphqlApi = api.injectEndpoints({
                 email
                 firstName
                 lastName
+                defaultModelId
+                defaultSystemPrompt
               }
             }
           `,
@@ -213,7 +221,6 @@ export const graphqlApi = api.injectEndpoints({
                   provider
                   isActive
                   apiProvider
-                  isDefault
                 }
                 providers {
                   name
@@ -290,6 +297,8 @@ export const graphqlApi = api.injectEndpoints({
                 firstName
                 lastName
                 createdAt
+                defaultModelId
+                defaultSystemPrompt
               }
               getModels {
                 models {
@@ -299,7 +308,6 @@ export const graphqlApi = api.injectEndpoints({
                   provider
                   apiProvider
                   isActive
-                  isDefault
                   supportsImageOut
                   supportsTextOut
                 }
