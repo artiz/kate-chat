@@ -14,33 +14,41 @@ const logger = createLogger(__filename);
 
 export class MistralService implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
+    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
     ok(messages.length);
 
     // Convert messages to Mistral format
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-mistral-text-completion.html
     const lastUserMessage = messages[messages.length - 1];
     const hasHistory = messages.length > 2;
     const mistralMessages: string[] = [];
     let historyStarted = false;
 
     for (const msg of messages.slice(0, -1)) {
+      const content = parseMessageContent(msg);
+
       if (msg.role === MessageRole.USER) {
-        mistralMessages.push(`${hasHistory && !historyStarted ? "<s>" : ""}[INST]${msg.content}[/INST]`);
+        mistralMessages.push(
+          `${hasHistory && !historyStarted ? `<s>${systemPrompt ? systemPrompt + "\n" : ""}` : ""}[INST]${content}[/INST]`
+        );
         if (hasHistory) historyStarted = true;
       } else if (msg.role === MessageRole.ASSISTANT) {
-        mistralMessages.push(msg.content);
+        mistralMessages.push(content);
       }
     }
+
     if (hasHistory) {
       mistralMessages[mistralMessages.length - 1] += "</s>";
     }
-    mistralMessages.push(`[INST]${lastUserMessage.content}[/INST]`);
+
+    mistralMessages.push(`[INST]${parseMessageContent(lastUserMessage)}[/INST]`);
 
     const params = {
       modelId,
       body: JSON.stringify({
         prompt: mistralMessages.join("\n"),
         max_tokens: maxTokens,
+        top_p: topP,
         temperature,
       }),
     };
@@ -50,10 +58,19 @@ export class MistralService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any): ModelResponse {
+  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.outputs[0]?.text || "",
     };
   }
+}
+
+function parseMessageContent(msg: ModelMessageFormat) {
+  return typeof msg.body === "string"
+    ? msg.body
+    : msg.body
+        .filter(m => m.contentType === "text")
+        .map(m => m.content)
+        .join("\n");
 }

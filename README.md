@@ -22,16 +22,18 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Responsive UI with Mantine
 
 ## TODO
-* Add "no any" TS rule and setup strict type checking
-* Add parralel call for 2-3 models, link parallel messages with linkedToMessageId
-* Add user registration with Google, GitHub, and MS account
-* Add Demo mode when no LLM providers configured on Backend and AWS_REGION/AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or OPENAI_API_KEY are stored in local storage and sent to the backend as "X-Aws-Region", "X-Aws-Access-Key-Id", "X-Aws-Secret-Access-Key", "X-Openai-Api-Key" headers
+* Add images input support (drag & drop, copy-paste, etc.)
+* Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Chat settings (temperature, etc.)
   * Image resolution/count
   * Copy code section
   * Chat message editing
   * Chat message deletion
+* Add "no any" TS rule and setup strict type checking
+* Finish user profile management (change password, etc.) ✅
+* Add user registration with Google, GitHub, and MS account
+* Add Demo mode when no LLM providers configured on Backend and AWS_REGION/AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or OPENAI_API_KEY are stored in local storage and sent to the backend as "X-Aws-Region", "X-Aws-Access-Key-Id", "X-Aws-Secret-Access-Key", "X-Openai-Api-Key" headers
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Open AI code interpreter support  
 * Finish custom models support (enter ARN for Bedrock models)

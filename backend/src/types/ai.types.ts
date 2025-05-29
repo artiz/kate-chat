@@ -1,3 +1,4 @@
+import { Mode } from "fs";
 import { MessageRole } from "../entities/Message";
 
 export enum ApiProvider {
@@ -5,6 +6,7 @@ export enum ApiProvider {
   OPEN_AI = "open_ai",
 }
 
+export type ContentType = "text" | "image" | "video" | "audio";
 export interface ProviderInfo {
   id: ApiProvider;
   name: string;
@@ -44,16 +46,20 @@ export interface AIModelInfo {
   supportsEmbeddingsIn: boolean;
 }
 
+export interface ModelMessageContent {
+  content: string;
+  contentType?: ContentType;
+  timestamp?: Date;
+}
+
 export interface ModelMessageFormat {
   role: MessageRole;
-  content: string;
-  // TODO: Add support for images
-  // contentType?: "text" | "image";
+  body: string | ModelMessageContent[];
   timestamp?: Date;
 }
 
 export interface ModelResponse {
-  type: "text" | "image";
+  type: ContentType;
   // TODO: Add support for > 1 image
   content: string;
 }
@@ -78,10 +84,12 @@ export type InvokeModelParamsRequest = {
   modelId: string;
   temperature?: number;
   maxTokens?: number;
+  topP?: number;
 };
 
-export interface BedrockModelServiceProvider {
+export interface BedrockModelServiceProvider<T = any> {
   getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse>;
 
-  parseResponse(responseBody: any): ModelResponse;
+  // TODO: setup typed response
+  parseResponse(responseBody: T, request?: InvokeModelParamsRequest): ModelResponse;
 }

@@ -138,6 +138,7 @@ export class MessageResolver {
     // Create and save user message
     let messageData = this.messageRepository.create({
       content,
+      // jsonContent, // TODO: use to save images
       role,
       modelId: model.modelId, // real model used
       modelName: model.name,

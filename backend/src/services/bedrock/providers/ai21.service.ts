@@ -1,8 +1,6 @@
 import {
-  ModelMessageFormat,
   ModelResponse,
   BedrockModelServiceProvider,
-  StreamCallbacks,
   InvokeModelParamsRequest,
   InvokeModelParamsResponse,
 } from "@/types/ai.types";
@@ -13,16 +11,27 @@ const logger = createLogger(__filename);
 
 export class AI21Service implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
-    let prompt = "";
+    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
+    let prompt = systemPrompt ? `System: ${systemPrompt}\n` : "";
+
+    // Convert messages to AI21 format
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-jurassic2.html
     for (const msg of messages) {
+      const content =
+        typeof msg.body === "string"
+          ? msg.body
+          : msg.body
+              .filter(m => m.contentType === "text")
+              .map(m => m.content)
+              .join(" ");
+
       if (msg.role === MessageRole.USER) {
-        prompt += `Human: ${msg.content}\n`;
+        prompt += `Human: ${content}\n`;
       } else if (msg.role === MessageRole.ASSISTANT) {
-        prompt += `Assistant: ${msg.content}\n`;
+        prompt += `Assistant: ${content}\n`;
       } else if (msg.role === MessageRole.SYSTEM) {
         // Prepend system message
-        prompt = `System: ${msg.content}\n` + prompt;
+        prompt = `System: ${content}\n` + prompt;
       }
     }
 
@@ -35,6 +44,7 @@ export class AI21Service implements BedrockModelServiceProvider {
         prompt,
         maxTokens,
         temperature,
+        topP,
         stopSequences: ["Human:"],
       }),
     };
@@ -44,7 +54,7 @@ export class AI21Service implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any): ModelResponse {
+  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.completions?.[0]?.data?.text || "",

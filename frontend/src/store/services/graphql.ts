@@ -86,6 +86,7 @@ export const RELOAD_MODELS_MUTATION = gql`
       providers {
         name
         isConnected
+        costsInfoAvailable
         details {
           key
           value
@@ -225,6 +226,7 @@ export const graphqlApi = api.injectEndpoints({
                 providers {
                   name
                   isConnected
+                  costsInfoAvailable
                   details {
                     key
                     value

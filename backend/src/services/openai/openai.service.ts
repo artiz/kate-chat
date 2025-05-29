@@ -8,6 +8,7 @@ import {
   StreamCallbacks,
   UsageCostInfo,
   ServiceCostInfo,
+  InvokeModelParamsRequest,
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
@@ -41,17 +42,29 @@ export type OpenAIList<T> = {
   data: T[];
 };
 
-export class OpenApiService {
-  private openaiApiKey: string;
-  private openaiApiAdminKey: string;
+type OpenAiMessageRole = "system" | "user" | "assistant";
+
+type OpenAiRequestMessagePart =
+  | string
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export type OpenAiRequestMessage = {
+  role: OpenAiMessageRole;
+  content: OpenAiRequestMessagePart[] | string;
+};
+
+export class OpenAIService {
+  private openAiApiKey: string;
+  private openAiApiAdminKey: string;
   private baseUrl: string;
 
   constructor() {
-    this.openaiApiKey = process.env.OPENAI_API_KEY || "";
-    this.openaiApiAdminKey = process.env.OPENAI_API_ADMIN_KEY || "";
+    this.openAiApiKey = process.env.OPENAI_API_KEY || "";
+    this.openAiApiAdminKey = process.env.OPENAI_API_ADMIN_KEY || "";
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
 
-    if (!this.openaiApiKey) {
+    if (!this.openAiApiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
   }
@@ -59,48 +72,66 @@ export class OpenApiService {
   private getHeaders(isAdmin = false): Record<string, string> {
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${isAdmin ? this.openaiApiAdminKey : this.openaiApiKey}`,
+      Authorization: `Bearer ${isAdmin ? this.openAiApiAdminKey : this.openAiApiKey}`,
     };
   }
 
   // Text generation with OpenAI models
-  async invokeModel(
-    systemPrompt: string | undefined,
-    messages: ModelMessageFormat[],
-    modelId: string,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<ModelResponse> {
-    if (!this.openaiApiKey) {
+  formatMessages(messages: ModelMessageFormat[], systemPrompt: string | undefined): OpenAiRequestMessage[] {
+    // Format messages for OpenAI API
+    const result: OpenAiRequestMessage[] = messages.map(msg => ({
+      role: this.mapMessageRole(msg.role),
+      content:
+        typeof msg.body === "string"
+          ? msg.body
+          : msg.body.map(part => {
+              if (part.contentType === "text") {
+                return part.content; //{ "type": "text", "text": "what's in this image?" };
+              } else if (part.contentType === "image") {
+                return {
+                  type: "image_url",
+                  image_url: {
+                    url: part.content,
+                  },
+                };
+              } else {
+                logger.warn({ ...part }, `Unsupported message content type`);
+                return ""; // Ignore unsupported types
+              }
+            }),
+    }));
+
+    if (systemPrompt) {
+      result.unshift({
+        role: "system",
+        content: systemPrompt,
+      });
+    }
+
+    return result;
+  }
+
+  async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
+    if (!this.openAiApiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
+
+    const { systemPrompt, messages, modelId, temperature, maxTokens } = inputRequest;
 
     // Determine if this is an image generation request
     if (modelId.startsWith("dall-e")) {
       return this.generateImage(messages, modelId);
     }
 
-    // Format messages for OpenAI API
-    const formattedMessages = messages.map(msg => ({
-      role: this.mapMessageRole(msg.role),
-      content: msg.content,
-    }));
-
-    if (systemPrompt) {
-      formattedMessages.unshift({
-        role: "system",
-        content: systemPrompt,
-      });
-    }
-
-    logger.debug({ formattedMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model");
+    const requestMessages = this.formatMessages(messages, systemPrompt);
+    logger.debug({ requestMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model");
 
     try {
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
           model: modelId,
-          messages: formattedMessages,
+          messages: requestMessages,
           temperature,
           max_tokens: maxTokens,
         },
@@ -123,18 +154,13 @@ export class OpenApiService {
   }
 
   // Stream response from OpenAI models
-  async invokeModelAsync(
-    systemPrompt: string | undefined,
-    messages: ModelMessageFormat[],
-    modelId: string,
-    callbacks: StreamCallbacks,
-    temperature: number = 0.7,
-    maxTokens: number = 2048
-  ): Promise<void> {
-    if (!this.openaiApiKey) {
+  async invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
+    if (!this.openAiApiKey) {
       callbacks.onError?.(new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables."));
       return;
     }
+
+    const { systemPrompt, messages, modelId, temperature, maxTokens } = inputRequest;
 
     callbacks.onStart?.();
 
@@ -149,27 +175,15 @@ export class OpenApiService {
       return;
     }
 
-    // Format messages for OpenAI API
-    const formattedMessages = messages.map(msg => ({
-      role: this.mapMessageRole(msg.role),
-      content: msg.content,
-    }));
-
-    if (systemPrompt) {
-      formattedMessages.unshift({
-        role: "system",
-        content: systemPrompt,
-      });
-    }
-
-    logger.debug({ formattedMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model streaming");
+    const requestMessages = this.formatMessages(messages, systemPrompt);
+    logger.debug({ requestMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model streaming");
 
     try {
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
           model: modelId,
-          messages: formattedMessages,
+          messages: requestMessages,
           temperature,
           max_tokens: maxTokens,
           stream: true,
@@ -238,7 +252,7 @@ export class OpenApiService {
   }
 
   // Helper method to map our message roles to OpenAI roles
-  private mapMessageRole(role: MessageRole): string {
+  private mapMessageRole(role: MessageRole): OpenAiMessageRole {
     switch (role) {
       case MessageRole.USER:
         return "user";
@@ -253,7 +267,7 @@ export class OpenApiService {
 
   // Image generation implementation for DALL-E models
   private async generateImage(messages: ModelMessageFormat[], modelId: string): Promise<ModelResponse> {
-    if (!this.openaiApiKey) {
+    if (!this.openAiApiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
 
@@ -262,8 +276,17 @@ export class OpenApiService {
     if (!userMessages.length) {
       throw new Error("No user prompt provided for image generation");
     }
+    const lastUserMessage = userMessages[userMessages.length - 1].body;
+    const prompt = Array.isArray(lastUserMessage)
+      ? lastUserMessage
+          .map(part => part.content)
+          .join(" ")
+          .trim()
+      : lastUserMessage;
 
-    const prompt = userMessages[userMessages.length - 1].content;
+    if (!prompt) {
+      throw new Error("Empty prompt provided for image generation");
+    }
 
     const params = {
       model: modelId,
@@ -299,7 +322,7 @@ export class OpenApiService {
   // Helper method to get all supported OpenAI models with their metadata
   // Get OpenAI provider information including account details
   async getOpenAIInfo(): Promise<ProviderInfo> {
-    const isConnected = !!this.openaiApiKey;
+    const isConnected = !!this.openAiApiKey;
     const details: Record<string, string | number | boolean> = {
       apiUrl: this.baseUrl,
       configured: isConnected,
@@ -320,7 +343,7 @@ export class OpenApiService {
     return {
       id: ApiProvider.OPEN_AI,
       name: "OpenAI",
-      costsInfoAvailable: !!this.openaiApiAdminKey,
+      costsInfoAvailable: !!this.openAiApiAdminKey,
       isConnected,
       details,
     };
@@ -332,7 +355,7 @@ export class OpenApiService {
       end: endTime ? new Date(endTime * 1000) : undefined,
       costs: [],
     };
-    if (!this.openaiApiAdminKey) {
+    if (!this.openAiApiAdminKey) {
       result.error = "OpenAI API admin key is not set. Set OPENAI_API_ADMIN_KEY in environment variables.";
       return result;
     }
@@ -406,7 +429,7 @@ export class OpenApiService {
   }
 
   async getOpenAIModels(): Promise<Record<string, AIModelInfo>> {
-    if (!this.openaiApiKey) {
+    if (!this.openAiApiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
       return {};
     }

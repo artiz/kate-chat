@@ -12,6 +12,7 @@ import {
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
+import { ModelMessageContent } from "@/types/ai.types";
 
 export enum MessageRole {
   USER = "user",
@@ -23,6 +24,13 @@ export enum MessageRole {
 export enum MessageType {
   MESSAGE = "message",
   SYSTEM = "system",
+}
+
+function JSONTransformer<T>() {
+  return {
+    to: (value: T) => JSON.stringify(value),
+    from: (value: string) => JSON.parse(value) as T,
+  };
 }
 
 @ObjectType()
@@ -43,6 +51,9 @@ export class Message {
   @Field()
   @Column()
   content: string;
+
+  @Column({ type: "json", nullable: true, transformer: JSONTransformer<ModelMessageContent[]>() })
+  jsonContent?: ModelMessageContent[];
 
   @Field()
   @Column()

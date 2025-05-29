@@ -16,7 +16,7 @@ import { getRepository } from "../config/database";
 import { ApiProvider, ModelMessageFormat, ProviderInfo, ServiceCostInfo } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
-import { OpenApiService } from "@/services/openai/openai.service";
+import { OpenAIService } from "@/services/openai/openai.service";
 import { BedrockService } from "@/services/bedrock/bedrock.service";
 import { getErrorMessage } from "@/utils/errors";
 import { getSystemErrorMap } from "util";
@@ -26,10 +26,16 @@ const logger = createLogger(__filename);
 
 @Resolver()
 export class ModelResolver {
+  private aiService: AIService;
+
+  constructor() {
+    this.aiService = new AIService();
+  }
+
   private async getProviderInfo(): Promise<GqlProviderInfo[]> {
     try {
       // Get provider info from AIService
-      const providersInfo = await AIService.getProviderInfo();
+      const providersInfo = await this.aiService.getProviderInfo();
 
       // Convert to GqlProviderInfo format
       return providersInfo.map(provider => {
@@ -59,7 +65,7 @@ export class ModelResolver {
       const modelRepository = getRepository(Model);
 
       // Get the models from AWS Bedrock
-      const models = await AIService.getModels();
+      const models = await this.aiService.getModels();
 
       const dbModels = await modelRepository.find({});
       const enabledMap = dbModels.reduce(
@@ -201,15 +207,19 @@ export class ModelResolver {
       // Create service instance
       const aiService = new AIService();
       const timestamp = new Date();
+
       // Create a message format for the test
       const message: ModelMessageFormat = {
         role: MessageRole.USER,
-        content: text,
+        body: text,
         timestamp,
       };
 
       // Generate a response using the AI service
-      const response = await aiService.invokeModel(undefined, [message], model.modelId, model.apiProvider);
+      const response = await aiService.invokeModel(model.apiProvider, {
+        modelId: model.modelId,
+        messages: [message],
+      });
 
       logger.debug({ message, response }, "Test model inference");
       return {
@@ -234,19 +244,7 @@ export class ModelResolver {
       const { providerId, startTime, endTime } = input;
 
       // Get costs based on provider
-      let usageCosts;
-
-      if (providerId === ApiProvider.OPEN_AI) {
-        // TODO: implement base class for OpenAI and Bedrock and use it here
-        const openaiService = new OpenApiService();
-        usageCosts = await openaiService.getCosts(startTime, endTime);
-      } else if (providerId === ApiProvider.AWS_BEDROCK) {
-        const bedrockService = new BedrockService();
-        usageCosts = await bedrockService.getCosts(startTime, endTime);
-      } else {
-        throw new Error(`Unsupported provider: ${providerId}`);
-      }
-
+      const usageCosts = await this.aiService.getCosts(providerId, startTime, endTime);
       // Map to GraphQL type
       return {
         start: usageCosts.start,

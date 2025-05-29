@@ -8,36 +8,175 @@ import {
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { logger } from "@/utils/logger";
+import { text } from "stream/consumers";
+import { notEmpty } from "@/utils/assert";
+
+type AmazonMessageRole = "user" | "assistant";
+type AmazonImageFormat = "jpeg" | "png" | "gif" | "webp";
+type AmazonVideoFormat = "mkv" | "mov" | "mp4" | "webm" | "three_gp" | "flv" | "mpeg" | "mpg" | "wmv";
+
+// https://docs.aws.amazon.com/nova/latest/userguide/complete-request-schema.html
+type AmazonRequestMessagePart =
+  | { text: string }
+  | {
+      image: {
+        format: AmazonImageFormat;
+        source: {
+          bytes: string; // Binary array (Converse API) or Base64-encoded string (Invoke API)
+        };
+      };
+    }
+  | {
+      video: {
+        format: AmazonVideoFormat;
+        source: {
+          // Option 1: Sending a S3 location
+          s3Location?: {
+            uri: string; // example: s3://my-bucket/object-key
+            bucketOwner: string; // (Optional) example: "123456789012"
+          };
+          // Option 2: Sending file bytes
+          bytes?: string; // Binary array (Converse API) or Base64-encoded string (Invoke API)
+        };
+      };
+    };
+
+export type AmazonRequestMessage = {
+  role: AmazonMessageRole;
+  content: AmazonRequestMessagePart[];
+};
 
 export class AmazonService implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
-    // Convert messages to a single prompt for Amazon models
-    let prompt = "";
-    for (const msg of messages) {
-      if (msg.role === MessageRole.USER) {
-        prompt += `Human: ${msg.content}\n`;
-      } else if (msg.role === MessageRole.ASSISTANT) {
-        prompt += `Assistant: ${msg.content}\n`;
-      } else if (msg.role === MessageRole.SYSTEM) {
-        // Prepend system message
-        prompt = `System: ${msg.content}\n` + prompt;
-      }
-    }
+    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
 
-    // Add the final assistant prompt
-    prompt += "Assistant:";
+    // #region Titan models
+    // Format request for Amazon Titan models
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-text.html
+    if (modelId.startsWith("amazon.titan")) {
+      let prompt = "";
+
+      for (const msg of messages) {
+        const content =
+          typeof msg.body === "string"
+            ? msg.body
+            : msg.body
+                .filter(m => m.contentType === "text")
+                .map(m => m.content)
+                .join(" ");
+
+        if (msg.role === MessageRole.USER) {
+          prompt += `Human: ${content}\n`;
+        } else if (msg.role === MessageRole.ASSISTANT) {
+          prompt += `Assistant: ${content}\n`;
+        } else if (msg.role === MessageRole.SYSTEM) {
+          // Prepend system message
+          prompt = `System: ${content}\n` + prompt;
+        }
+      }
+
+      // Add the final assistant prompt
+      prompt += "Assistant:";
+
+      const params = {
+        modelId,
+        body: JSON.stringify({
+          inputText: prompt,
+          textGenerationConfig: {
+            maxTokenCount: maxTokens,
+            temperature,
+            topP,
+            stopSequences: [],
+          },
+        }),
+      };
+
+      logger.debug({ modelId, params }, "Call Amazon Titan model");
+
+      return { params };
+    }
+    // #endregion
+
+    // Nova models
+    // https://docs.aws.amazon.com/nova/latest/userguide/complete-request-schema.html
+
+    const requestMessages: AmazonRequestMessage[] = messages.map(msg => {
+      if (typeof msg.body === "string") {
+        return {
+          role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+          content: [{ text: msg.body }],
+        };
+      }
+
+      const content: AmazonRequestMessagePart[] = msg.body
+        .map(m => {
+          if (m.contentType === "image" || m.contentType === "video") {
+            // input format "data:image/jpeg;base64,{base64_image}"
+            const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)$/);
+            if (!parts || parts.length !== 3) {
+              throw new Error("Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,'");
+            }
+
+            // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data
+            const base64Data = parts[3]; // e.g., "iVBORw0KGgoAAAANSUhEUgAA..."
+            const mediaType = parts[2]; // e.g., "jpeg", "png"
+            const format = parts[1]; // e.g., "image", "video"
+
+            if (format === "image") {
+              const image: AmazonRequestMessagePart = {
+                image: {
+                  format: mediaType as AmazonImageFormat,
+                  source: {
+                    bytes: base64Data,
+                  },
+                },
+              };
+              return image;
+            } else {
+              const video: AmazonRequestMessagePart = {
+                video: {
+                  format: mediaType as AmazonVideoFormat,
+                  source: {
+                    bytes: base64Data, // Assuming we are sending bytes directly
+                  },
+                },
+              };
+              return video;
+            }
+          } else if (m.contentType === "text") {
+            return {
+              text: m.content,
+            };
+          } else {
+            return undefined; // Ignore unsupported content types
+          }
+        })
+        .filter(notEmpty); // Filter out any null values
+
+      return {
+        role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+        content,
+      };
+    });
+
+    const body: Record<string, any> = {
+      inputText: prompt,
+      messages: requestMessages,
+      inferenceConfig: {
+        maxTokenCount: maxTokens,
+        temperature,
+        topP,
+        stopSequences: [],
+      },
+    };
+
+    if (systemPrompt) {
+      body.system = [{ text: systemPrompt }];
+    }
 
     const params = {
       modelId,
-      body: JSON.stringify({
-        inputText: prompt,
-        textGenerationConfig: {
-          maxTokenCount: maxTokens,
-          temperature,
-          stopSequences: ["Human:"],
-        },
-      }),
+      body: JSON.stringify(body),
     };
 
     logger.debug({ modelId, params }, "Call Amazon model");
@@ -45,7 +184,7 @@ export class AmazonService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any): ModelResponse {
+  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.results?.[0]?.outputText || "",
