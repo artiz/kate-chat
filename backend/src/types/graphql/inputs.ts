@@ -74,6 +74,15 @@ export class UpdateChatInput {
 
   @Field({ nullable: true })
   modelId?: string;
+
+  @Field({ nullable: true })
+  temperature?: number;
+
+  @Field({ nullable: true })
+  maxTokens?: number;
+
+  @Field({ nullable: true })
+  topP?: number;
 }
 
 @InputType()
@@ -89,6 +98,15 @@ export class CreateMessageInput {
 
   @Field(() => String, { defaultValue: MessageRole.USER })
   role: MessageRole;
+
+  @Field({ nullable: true })
+  temperature?: number;
+
+  @Field({ nullable: true })
+  maxTokens?: number;
+
+  @Field({ nullable: true })
+  topP?: number;
 }
 
 @InputType()

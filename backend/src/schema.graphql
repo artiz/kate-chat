@@ -15,10 +15,13 @@ type Chat {
   isActive: Boolean!
   isPristine: Boolean!
   lastBotMessage: String
+  maxTokens: Float
   messages: [Message!]
   messagesCount: Float!
   modelId: String
+  temperature: Float
   title: String!
+  topP: Float
   updatedAt: DateTimeISO!
   user: User
 }
@@ -32,8 +35,11 @@ input CreateChatInput {
 input CreateMessageInput {
   chatId: String!
   content: String!
+  maxTokens: Float
   modelId: String
   role: String! = "user"
+  temperature: Float
+  topP: Float
 }
 
 """
@@ -201,8 +207,11 @@ input TestModelInput {
 input UpdateChatInput {
   description: String
   isActive: Boolean
+  maxTokens: Float
   modelId: String
+  temperature: Float
   title: String
+  topP: Float
 }
 
 input UpdateModelStatusInput {

@@ -14,8 +14,18 @@ import {
   Select,
   Tooltip,
   TextInput,
+  Grid,
 } from "@mantine/core";
-import { IconSend, IconX, IconRobot, IconEdit, IconCheck, IconPhotoAi, IconTextScan2 } from "@tabler/icons-react";
+import {
+  IconSend,
+  IconX,
+  IconRobot,
+  IconEdit,
+  IconCheck,
+  IconPhotoAi,
+  IconTextScan2,
+  IconSettings,
+} from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../../store";
 import {
   setCurrentChat,
@@ -27,12 +37,14 @@ import {
   updateChat,
 } from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
+import { ChatSettings } from "./ChatSettings";
 import { notifications } from "@mantine/notifications";
 import { GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
 import { useChatSubscription } from "@/hooks/useChatSubscription";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
 
 import classes from "./Chat.module.scss";
+import { debounce } from "lodash";
 
 // GraphQL queries and subscriptions
 const GET_CHAT_MESSAGES = gql`
@@ -59,6 +71,9 @@ const GET_CHAT_MESSAGES = gql`
         isPristine
         createdAt
         updatedAt
+        temperature
+        maxTokens
+        topP
       }
     }
   }
@@ -87,6 +102,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [chat, setChat] = useState<Chat>();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chatSettings, setChatSettings] = useState({
+    temperature: 0.7,
+    maxTokens: 2000,
+    topP: 0.9,
+  });
 
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -155,6 +176,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
         dispatch(setCurrentChat(ch));
         setChat(ch);
         setEditedTitle(ch.title || "Untitled Chat");
+
+        // Set chat settings from chat entity
+        setChatSettings({
+          temperature: ch.temperature ?? 0.7,
+          maxTokens: ch.maxTokens ?? 2000,
+          topP: ch.topP ?? 0.9,
+        });
       }
 
       // Parse and set messages
@@ -189,9 +217,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
   });
 
   // Update chat mutation (for changing the model)
-  const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
+  const [updateChatMutationInit] = useMutation(UPDATE_CHAT_MUTATION, {
     onCompleted: data => {
-      notifications.show({
+      notifications.update({
         title: "Model Changed",
         message: `Chat model has been updated`,
         color: "green",
@@ -208,6 +236,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
+  const updateChatMutation = debounce(updateChatMutationInit, 300);
+
   // Handle send message
   const handleSendMessage = async () => {
     if (!userMessage.trim() || !chatId) return;
@@ -222,6 +252,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
           content: userMessage,
           role: "user",
           modelId: selectedModel?.modelId,
+          temperature: chatSettings.temperature,
+          maxTokens: chatSettings.maxTokens,
+          topP: chatSettings.topP,
         },
       },
     });
@@ -250,6 +283,52 @@ export const ChatComponent = ({ chatId }: IProps) => {
         },
       },
     });
+  };
+
+  // Handle settings change
+  const handleSettingsChange = (settings: {
+    temperature?: number | null;
+    maxTokens?: number | null;
+    topP?: number | null;
+  }) => {
+    setChatSettings(prev => ({
+      temperature: settings.temperature ?? prev.temperature,
+      maxTokens: settings.maxTokens ?? prev.maxTokens,
+      topP: settings.topP ?? prev.topP,
+    }));
+
+    if (chatId) {
+      updateChatMutation({
+        variables: {
+          id: chatId,
+          input: {
+            temperature: settings.temperature,
+            maxTokens: settings.maxTokens,
+            topP: settings.topP,
+          },
+        },
+      });
+    }
+  };
+
+  // Reset settings to defaults
+  const resetSettingsToDefaults = () => {
+    const defaultSettings = {
+      temperature: 0.7,
+      maxTokens: 2000,
+      topP: 0.9,
+    };
+
+    setChatSettings(defaultSettings);
+
+    if (chatId) {
+      updateChatMutation({
+        variables: {
+          id: chatId,
+          input: defaultSettings,
+        },
+      });
+    }
   };
 
   useEffect(() => {
@@ -293,8 +372,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }
 
   return (
-    <Container size="md" py="md" h="calc(100vh - 120px)" style={{ display: "flex", flexDirection: "column" }}>
-      <Group justify="space-between" mb="md">
+    <Container size="md" py="md" className={classes.container}>
+      <Group justify="space-between" mb="md" className={classes.titleRow}>
         <Group>
           {isEditingTitle ? (
             <form
@@ -353,23 +432,21 @@ export const ChatComponent = ({ chatId }: IProps) => {
               opacity: 0.7,
             }}
           >
-            <Box
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                background: wsConnected ? "green" : "gray",
-              }}
-            />
+            <Box className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
             <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
           </Box>
+          <Tooltip label="Chat Settings">
+            <ActionIcon onClick={() => setSettingsOpen(!settingsOpen)}>
+              <IconSettings size={18} />
+            </ActionIcon>
+          </Tooltip>
           <ActionIcon onClick={() => navigate("/chat")}>
             <IconX size={18} />
           </ActionIcon>
         </Group>
       </Group>
 
-      <Group mb="md" align="center">
+      <Group mb="md" align="center" gap="xs" className={classes.modelRow}>
         <IconRobot size={20} />
         <Text fw={500} size="sm">
           Model:
@@ -406,15 +483,19 @@ export const ChatComponent = ({ chatId }: IProps) => {
             )}
           </Group>
         )}
+
+        <ChatSettings
+          className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
+          temperature={chatSettings.temperature}
+          maxTokens={chatSettings.maxTokens}
+          topP={chatSettings.topP}
+          onSettingsChange={handleSettingsChange}
+          resetToDefaults={resetSettingsToDefaults}
+        />
       </Group>
 
       {/* Messages */}
-      <Paper
-        withBorder
-        p="md"
-        ref={messagesContainerRef}
-        style={{ flexGrow: 1, overflowY: "auto", marginBottom: "1rem" }}
-      >
+      <Paper withBorder p="md" ref={messagesContainerRef} className={classes.messagesContainer}>
         <ChatMessages
           messages={messages}
           isLoading={messagesLoading}

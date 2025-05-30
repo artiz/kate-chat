@@ -61,7 +61,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 
     next();
   } catch (error) {
-    logger.error({ error, path: req.path }, "Auth middleware error");
+    logger.error(error, "Auth middleware error, path: %s", req.path);
     next();
   }
 };

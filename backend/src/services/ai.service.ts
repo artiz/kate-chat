@@ -83,35 +83,35 @@ export class AIService {
   }
 
   // Adapter method for message resolver
-  async getCompletion(systemPrompt: string | undefined, messages: Message[], model: Model): Promise<ModelResponse> {
+  async getCompletion(
+    apiProvider: ApiProvider,
+    request: InvokeModelParamsRequest,
+    messages: Message[]
+  ): Promise<ModelResponse> {
     // Convert DB message objects to ModelMessageFormat structure
     const formattedMessages = this.formatMessages(messages);
 
     // Invoke the model
-    const response = await this.invokeModel(model.apiProvider, {
-      systemPrompt,
+    const response = await this.invokeModel(apiProvider, {
+      ...request,
       messages: formattedMessages,
-      modelId: model.modelId,
     });
 
     return response;
   }
 
   streamCompletion(
-    systemPrompt: string | undefined,
+    apiProvider: ApiProvider,
+    request: InvokeModelParamsRequest,
     messages: Message[],
-    model: Model,
     callback: (token: string, completed?: boolean, error?: Error) => void
   ) {
-    const formattedMessages = this.formatMessages(messages);
-
     // Stream the completion in background
     this.invokeModelAsync(
-      model.apiProvider,
+      apiProvider,
       {
-        systemPrompt,
-        messages: formattedMessages,
-        modelId: model.modelId,
+        ...request,
+        messages: this.formatMessages(messages),
       },
       {
         onToken: (token: string) => {

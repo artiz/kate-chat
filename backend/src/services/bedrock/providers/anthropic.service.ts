@@ -6,6 +6,8 @@ import {
   InvokeModelParamsRequest,
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
+import { log } from "console";
+import { logger } from "@/utils/logger";
 
 type AnthropicMessageRole = "user" | "assistant";
 
@@ -88,6 +90,8 @@ export class AnthropicService implements BedrockModelServiceProvider {
         temperature,
       }),
     };
+
+    logger.debug({ params }, "Call Anthropic model");
 
     // This part will be moved to the base service
     return { params };

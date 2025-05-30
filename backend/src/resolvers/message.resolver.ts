@@ -190,6 +190,15 @@ export class MessageResolver {
       }
     };
 
+    const request = {
+      messages: [],
+      modelId: model.modelId,
+      systemPrompt,
+      temperature: input.temperature,
+      maxTokens: input.maxTokens,
+      topP: input.topP,
+    };
+
     if (model.supportsStreaming) {
       const aiMessage = await this.messageRepository.save(
         this.messageRepository.create({
@@ -241,14 +250,14 @@ export class MessageResolver {
         }
       };
 
-      this.aiService.streamCompletion(systemPrompt, requestMessages, model, handleStreaming);
+      this.aiService.streamCompletion(model.apiProvider, request, requestMessages, handleStreaming);
 
       return message;
     }
 
     // sync call
     try {
-      const aiResponse = await this.aiService.getCompletion(systemPrompt, requestMessages, model);
+      const aiResponse = await this.aiService.getCompletion(model.apiProvider, request, requestMessages);
       let content = aiResponse.content;
       if (aiResponse.type === "image") {
         // Save base64 image to output folder

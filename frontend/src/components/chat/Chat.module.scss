@@ -1,3 +1,9 @@
+.container {
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+
 /* Edit title icon styles */
 .editTitleButton {
   opacity: 0;
@@ -8,4 +14,39 @@
   .editTitleButton {
     opacity: 0.7;
   }
+}
+
+.titleRow {
+  .wsStatusIndicator {
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+
+    background: gray;
+    &.connected {
+      background: green;
+    }
+  }
+}
+.modelRow {
+  position: relative;
+}
+
+.messagesContainer {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.chatSettings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 300px;
+  display: flex !important;
+  z-index: 5;
+}
+
+.chatSettingsHidden {
+  display: none !important; /* Hidden by default */
 }

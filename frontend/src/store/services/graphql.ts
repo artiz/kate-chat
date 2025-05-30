@@ -46,6 +46,9 @@ export const UPDATE_CHAT_MUTATION = gql`
       description
       modelId
       isPristine
+      temperature
+      maxTokens
+      topP
       updatedAt
     }
   }

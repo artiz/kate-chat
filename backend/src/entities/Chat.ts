@@ -57,6 +57,18 @@ export class Chat {
   @Column({ nullable: true })
   modelId: string; // Initial model ID used for this chat
 
+  @Field({ nullable: true })
+  @Column({ nullable: true, type: "float" })
+  temperature?: number;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, type: "int" })
+  maxTokens?: number;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, type: "float" })
+  topP?: number;
+
   @Field()
   @Column({ default: true })
   isActive: boolean;

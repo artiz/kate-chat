@@ -1,0 +1,11 @@
+.settingsPanel {
+  padding: var(--mantine-spacing-md);
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+  height: fit-content;
+  max-width: 300px;
+}
+
+.settingItem {
+  margin-bottom: var(--mantine-spacing-sm);
+}
