@@ -153,6 +153,38 @@ export const GET_COSTS_QUERY = gql`
   }
 `;
 
+export const GET_CHAT_MESSAGES = gql`
+  query GetChatMessages($input: GetMessagesInput!) {
+    getChatMessages(input: $input) {
+      messages {
+        id
+        content
+        role
+        createdAt
+        modelId
+        modelName
+        user {
+          lastName
+          firstName
+        }
+      }
+      total
+      hasMore
+      chat {
+        id
+        title
+        modelId
+        isPristine
+        createdAt
+        updatedAt
+        temperature
+        maxTokens
+        topP
+      }
+    }
+  }
+`;
+
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;

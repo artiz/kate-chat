@@ -5,14 +5,10 @@ import classes from "./ChatSettings.module.scss";
 
 interface ChatSettingsProps {
   className?: string;
-  temperature?: number | null;
-  maxTokens?: number | null;
-  topP?: number | null;
-  onSettingsChange: (settings: {
-    temperature?: number | null;
-    maxTokens?: number | null;
-    topP?: number | null;
-  }) => void;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  onSettingsChange: (settings: { temperature?: number; maxTokens?: number; topP?: number }) => void;
   resetToDefaults: () => void;
 }
 
@@ -24,9 +20,9 @@ export function ChatSettings({
   onSettingsChange,
   resetToDefaults,
 }: ChatSettingsProps) {
-  const [tempValue, setTempValue] = useState<number | null>(temperature);
-  const [tokensValue, setTokensValue] = useState<number | null>(maxTokens);
-  const [topPValue, setTopPValue] = useState<number | null>(topP);
+  const [tempValue, setTempValue] = useState<number>(temperature);
+  const [tokensValue, setTokensValue] = useState<number>(maxTokens);
+  const [topPValue, setTopPValue] = useState<number>(topP);
 
   // Update local state when props change (e.g. when chat is switched)
   useEffect(() => {

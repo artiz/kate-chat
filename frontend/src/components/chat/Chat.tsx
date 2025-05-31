@@ -43,7 +43,6 @@ import { setCurrentChat } from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
 import { notifications } from "@mantine/notifications";
-import { UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
 import classes from "./Chat.module.scss";
@@ -90,6 +89,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     addMessage: addChatMessage,
   });
 
+  // #region Scrolling
   useEffect(() => {
     setShowAnchorButton(false);
   }, [chatId]);
@@ -114,148 +114,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   useLayoutEffect(() => {
     autoScroll();
   }, [messages]);
-
-  // Send message mutation
-  const [sendMessageMutation] = useMutation(SEND_MESSAGE, {
-    onCompleted: data => {
-      // Only add the user message here, the AI message will come from the subscription
-      if (data.createMessage) {
-        addChatMessage(data.createMessage);
-      }
-
-      // We don't clear sending state here anymore, that will happen when we receive the AI message via subscription
-    },
-    onError: error => {
-      console.error("Error sending message:", error);
-      setSending(false);
-    },
-  });
-
-  // Handle send message
-  const handleSendMessage = async () => {
-    if (!userMessage?.trim() || !chatId) return;
-
-    setSending(true);
-    setUserMessage("");
-
-    await sendMessageMutation({
-      variables: {
-        input: {
-          chatId,
-          content: userMessage,
-          role: "user",
-          modelId: selectedModel?.modelId,
-          temperature: chat?.temperature,
-          maxTokens: chat?.maxTokens,
-          topP: chat?.topP,
-        },
-      },
-    });
-  };
-
-  const models = useMemo(() => {
-    return allModels.filter(model => model.isActive);
-  }, [allModels]);
-
-  const selectedModel = useMemo(() => {
-    return models?.find(m => m.modelId === chat?.modelId) || null;
-  }, [models, chat]);
-
-  // Update chat mutation (for changing the model)
-  const [updateChatMutationInit] = useMutation(UPDATE_CHAT_MUTATION, {
-    onCompleted: data => {
-      notifications.update({
-        title: "Model Changed",
-        message: `Chat model has been updated`,
-        color: "green",
-      });
-      dispatch(setCurrentChat(data.updateChat));
-    },
-    onError: error => {
-      console.error("Error updating chat:", error);
-      notifications.show({
-        title: "Error",
-        message: error.message || "Failed to update chat model",
-        color: "red",
-      });
-    },
-  });
-
-  const updateChatMutation = debounce(updateChatMutationInit, 300);
-
-  // Handle model change
-  const handleModelChange = (modelId: string | null) => {
-    const model = models.find(m => m.modelId === modelId);
-    if (!model || !chatId) return;
-
-    updateChat(prev =>
-      prev
-        ? {
-            ...prev,
-            modelId: model.modelId,
-          }
-        : undefined
-    );
-
-    // Update the chat in the database with the new model ID
-    updateChatMutation({
-      variables: {
-        id: chatId,
-        input: {
-          modelId: model.modelId,
-        },
-      },
-    });
-  };
-
-  // Handle settings change
-  const handleSettingsChange = (settings: {
-    temperature?: number | null;
-    maxTokens?: number | null;
-    topP?: number | null;
-  }) => {
-    updateChat(prev =>
-      prev
-        ? {
-            ...prev,
-            temperature: settings.temperature ?? prev.temperature,
-            maxTokens: settings.maxTokens ?? prev.maxTokens,
-            topP: settings.topP ?? prev.topP,
-          }
-        : undefined
-    );
-
-    if (chatId) {
-      updateChatMutation({
-        variables: {
-          id: chatId,
-          input: {
-            temperature: settings.temperature,
-            maxTokens: settings.maxTokens,
-            topP: settings.topP,
-          },
-        },
-      });
-    }
-  };
-
-  // Reset settings to defaults
-  const resetSettingsToDefaults = () => {
-    const defaultSettings = {
-      temperature: 0.7,
-      maxTokens: 2000,
-      topP: 0.9,
-    };
-
-    handleSettingsChange(defaultSettings);
-  };
-
-  useEffect(() => {
-    if (currentUser && currentUser.defaultModelId && chat?.isPristine && currentUser.defaultModelId !== chat.modelId) {
-      handleModelChange(currentUser.defaultModelId);
-    }
-  }, [currentUser, chat, handleModelChange]);
-
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
@@ -280,27 +138,118 @@ export const ChatComponent = ({ chatId }: IProps) => {
     loadMoreMessages();
   }, [loadMoreMessages]);
 
+  // #endregion
+
+  // #region Send message
+  const [sendMessage] = useMutation(SEND_MESSAGE, {
+    onCompleted: data => {
+      if (data.createMessage) {
+        addChatMessage(data.createMessage);
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to send message",
+        color: "red",
+      });
+      setSending(false);
+    },
+  });
+
+  const handleSendMessage = async () => {
+    if (!userMessage?.trim() || !chatId) return;
+    setSending(true);
+    setUserMessage("");
+
+    await sendMessage({
+      variables: {
+        input: {
+          chatId,
+          content: userMessage,
+          role: "user",
+          modelId: selectedModel?.modelId,
+          temperature: chat?.temperature,
+          maxTokens: chat?.maxTokens,
+          topP: chat?.topP,
+        },
+      },
+    });
+  };
+  // #endregion
+
+  const models = useMemo(() => {
+    return allModels.filter(model => model.isActive);
+  }, [allModels]);
+
+  const selectedModel = useMemo(() => {
+    return models?.find(m => m.modelId === chat?.modelId) || null;
+  }, [models, chat]);
+
+  const handleModelChange = (modelId: string | null) => {
+    const model = models.find(m => m.modelId === modelId);
+    if (!model || !chatId) return;
+    updateChat(chatId, { modelId: model.modelId });
+  };
+
+  const handleSettingsChange = (settings: { temperature?: number; maxTokens?: number; topP?: number }) => {
+    updateChat(chatId, {
+      temperature: settings.temperature,
+      maxTokens: settings.maxTokens,
+      topP: settings.topP,
+    });
+  };
+
+  const resetSettingsToDefaults = () => {
+    handleSettingsChange({
+      temperature: 0.7,
+      maxTokens: 2000,
+      topP: 0.9,
+    });
+  };
+
+  useEffect(() => {
+    if (currentUser && currentUser.defaultModelId && chat?.isPristine && currentUser.defaultModelId !== chat.modelId) {
+      handleModelChange(currentUser.defaultModelId);
+    }
+  }, [currentUser, chat, handleModelChange]);
+
+  const handleInputKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        handleSendMessage();
+      }
+    },
+    [handleSendMessage]
+  );
+
+  const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setUserMessage(event.currentTarget.value);
+  }, []);
+
+  const toggleChatSettings = useCallback(() => {
+    setSettingsOpen(!settingsOpen);
+  }, [settingsOpen]);
+
+  const handleTitleUpdate = useCallback(
+    (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const title = editedTitle?.trim() || "";
+      if (title && chatId) {
+        updateChat(chatId, { title });
+        setIsEditingTitle(false);
+      }
+    },
+    [editedTitle, chatId, updateChat]
+  );
+
   return (
     <Container size="md" py="md" className={classes.container}>
       <Group justify="space-between" mb="md" className={classes.titleRow}>
         <Group>
           {isEditingTitle ? (
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                if (editedTitle.trim() && chatId) {
-                  updateChatMutation({
-                    variables: {
-                      id: chatId,
-                      input: {
-                        title: editedTitle.trim(),
-                      },
-                    },
-                  });
-                  setIsEditingTitle(false);
-                }
-              }}
-            >
+            <form onSubmit={handleTitleUpdate}>
               <TextInput
                 value={editedTitle}
                 onChange={e => setEditedTitle(e.currentTarget.value)}
@@ -345,7 +294,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
           </Box>
           <Tooltip label="Chat Settings">
-            <ActionIcon onClick={() => setSettingsOpen(!settingsOpen)}>
+            <ActionIcon onClick={toggleChatSettings}>
               <IconSettings size={18} />
             </ActionIcon>
           </Tooltip>
@@ -450,20 +399,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
         <Textarea
           placeholder="Type your message..."
           value={userMessage}
-          onChange={e => setUserMessage(e.currentTarget.value)}
           autosize
           minRows={1}
           maxRows={5}
           style={{ flexGrow: 1 }}
-          onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
-            }
-          }}
+          onChange={handleInputChange}
+          onKeyDown={handleInputKeyDown}
           disabled={sending || messagesLoading}
         />
-        <Button onClick={handleSendMessage} disabled={!userMessage.trim() || sending || messagesLoading}>
+        <Button onClick={handleSendMessage} disabled={!userMessage?.trim() || sending || messagesLoading}>
           <IconSend size={16} /> Send
         </Button>
       </Group>

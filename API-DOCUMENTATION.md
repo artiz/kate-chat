@@ -382,6 +382,9 @@ input UpdateChatInput {
   description: String
   isActive: Boolean
   modelId: String
+  temperature
+  maxTokens
+  topP
 }
 ```
 
