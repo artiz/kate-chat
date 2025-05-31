@@ -7,7 +7,6 @@ import classes from "./ChatMessages.module.scss";
 
 interface ChatMessagesProps {
   messages: Message[];
-  isLoading: boolean;
   sending: boolean;
   selectedModelName?: string;
 }
@@ -25,18 +24,22 @@ const ChatMessage = (props: ChatMessageProps) => {
       ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
       : modelName || "AI";
 
+    const timestamp = new Date(createdAt).toLocaleString();
+
     return (
       <>
         <Group align="center">
-          <Avatar radius="xl">{isUserMessage ? <IconUser size={20} /> : <IconRobot size={20} />}</Avatar>
-          <Stack gap="xs">
+          <Avatar radius="xl" size="md">
+            {isUserMessage ? <IconUser /> : <IconRobot />}
+          </Avatar>
+          <Group gap="xs">
             <Text size="sm" fw={500} c={isUserMessage ? "blue" : "dark"}>
               {username}
             </Text>
-            <Text size="xs" c="dimmed" mt={2}>
-              {new Date(createdAt).toLocaleTimeString()}
+            <Text size="xs" c="dimmed">
+              {timestamp}
             </Text>
-          </Stack>
+          </Group>
         </Group>
         <Paper className={`${classes.message} ${classes[role]}`} p="md">
           {html ? (
@@ -52,51 +55,33 @@ const ChatMessage = (props: ChatMessageProps) => {
   return cmp;
 };
 
-export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, sending, selectedModelName }) => {
+export const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, sending, selectedModelName }) => {
   return (
-    <>
-      {isLoading ? (
-        <Group align="center" py="xl">
-          <Loader />
+    <Stack gap="md">
+      {messages.map(msg => (
+        <Group key={msg.id} align="flex-start" gap="xs">
+          <ChatMessage message={msg} />
         </Group>
-      ) : messages.length === 0 ? (
-        <Stack align="center" justify="center" h="100%" gap="md">
-          <IconRobot size={48} opacity={0.5} />
-          <Text size="lg" ta="center">
-            No messages yet
-          </Text>
-          <Text c="dimmed" size="sm" ta="center">
-            Start the conversation by sending a message
-          </Text>
-        </Stack>
-      ) : (
-        <Stack gap="lg">
-          {messages.map(msg => (
-            <Group key={msg.id} align="flex-start" gap="xs">
-              <ChatMessage message={msg} />
-            </Group>
-          ))}
+      ))}
 
-          {sending && (
-            <Group align="flex-start" gap="xs">
-              <Avatar color="gray" radius="xl">
-                <IconRobot size={20} />
-              </Avatar>
-              <Box>
-                <Text size="sm" fw={500}>
-                  {selectedModelName || "AI"}
-                </Text>
-                <Paper p="sm" bg="gray.0" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Text size="sm" c="dimmed">
-                    Generating response
-                  </Text>
-                  <Loader size="xs" />
-                </Paper>
-              </Box>
-            </Group>
-          )}
-        </Stack>
+      {sending && (
+        <Group align="flex-start" gap="xs">
+          <Avatar color="gray" radius="xl">
+            <IconRobot size={20} />
+          </Avatar>
+          <Box>
+            <Text size="sm" fw={500}>
+              {selectedModelName || "AI"}
+            </Text>
+            <Paper p="sm" bg="gray.0" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Text size="sm" c="dimmed">
+                Generating response
+              </Text>
+              <Loader size="xs" />
+            </Paper>
+          </Box>
+        </Group>
       )}
-    </>
+    </Stack>
   );
 };

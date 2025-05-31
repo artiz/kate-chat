@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root } from "type-graphql";
-import { PubSubEngine } from "graphql-subscriptions";
 import { Repository } from "typeorm";
 import { Message, MessageRole, MessageType } from "@/entities/Message";
 import { Chat } from "@/entities/Chat";
@@ -62,13 +61,15 @@ export class MessageResolver {
 
     // Get messages for the chat
     const where = { chatId };
-    const messages = await this.messageRepository.find({
-      where,
-      skip,
-      take,
-      order: { createdAt: "ASC" },
-      relations: ["user"],
-    });
+    const messages = await this.messageRepository
+      .find({
+        where,
+        skip,
+        take,
+        order: { createdAt: "DESC", role: "ASC" },
+        relations: ["user"],
+      })
+      .then(messages => messages.reverse());
 
     const total = await this.messageRepository.count({
       where,

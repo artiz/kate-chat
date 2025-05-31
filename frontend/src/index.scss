@@ -1,5 +1,7 @@
 @use "sass:meta";
 
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+
 /* Import Mantine styles */
 @import "@mantine/core/styles.css";
 @import "@mantine/notifications/styles.css";
@@ -15,7 +17,7 @@
 /* Global CSS */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: Roboto, Helvetica, Arial, sans-serif;
 }
 
 html,

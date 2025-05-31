@@ -32,6 +32,9 @@ export interface Chat {
   messagesCount: number;
   lastBotMessage?: string;
   lastBotMessageHtml?: string[];
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
 }
 
 interface ChatsState {

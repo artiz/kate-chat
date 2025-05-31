@@ -122,7 +122,9 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
 
     // Create and return the Apollo Client instance
     const clientInstance = new ApolloClient({
+      connectToDevTools: true,
       link: from([errorLink, authLink, splitLink]),
+      name: "react-web-client",
       cache: new InMemoryCache(),
       defaultOptions: {
         watchQuery: {

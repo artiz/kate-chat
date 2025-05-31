@@ -1,6 +1,14 @@
 import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { gql, useQuery, useMutation, useSubscription, OnDataOptions } from "@apollo/client";
+import {
+  gql,
+  useQuery,
+  useMutation,
+  useSubscription,
+  OnDataOptions,
+  useLazyQuery,
+  useApolloClient,
+} from "@apollo/client";
 import {
   Container,
   Paper,
@@ -15,6 +23,8 @@ import {
   Tooltip,
   TextInput,
   Grid,
+  Loader,
+  Stack,
 } from "@mantine/core";
 import {
   IconSend,
@@ -25,17 +35,10 @@ import {
   IconPhotoAi,
   IconTextScan2,
   IconSettings,
+  IconCircleChevronDown,
 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "../../store";
-import {
-  setCurrentChat,
-  Chat,
-  Message,
-  MessageType,
-  addChat,
-  MessageRole,
-  updateChat,
-} from "../../store/slices/chatSlice";
+import { setCurrentChat, Chat, Message, MessageRole, updateChat } from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
 import { notifications } from "@mantine/notifications";
@@ -45,6 +48,9 @@ import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser"
 
 import classes from "./Chat.module.scss";
 import { debounce } from "lodash";
+import useIntersectionObserver from "@/hooks/useIntersectionObserver";
+
+const MESSAGES_PER_PAGE = 50;
 
 // GraphQL queries and subscriptions
 const GET_CHAT_MESSAGES = gql`
@@ -103,13 +109,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [editedTitle, setEditedTitle] = useState("");
   const [chat, setChat] = useState<Chat>();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [chatSettings, setChatSettings] = useState({
-    temperature: 0.7,
-    maxTokens: 2000,
-    topP: 0.9,
-  });
+  const [messages, setMessages] = useState<Message[] | undefined>();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
+  const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
 
   const allModels = useAppSelector(state => state.models.models);
   const currentUser = useAppSelector(state => state.user.currentUser);
@@ -118,11 +122,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  const client = useApolloClient();
+
   const addChatMessage = (msg: Message) => {
     if (!msg) return;
 
     const addMessage = (message: Message) => {
       setMessages(prev => {
+        if (!prev) return [message]; // If no messages yet, start with this one
+
         const existingNdx = prev.findLastIndex(m => m.id === message.id);
         // If the last message is from the same user and has the same content, skip adding
         if (existingNdx !== -1) {
@@ -159,38 +167,96 @@ export const ChatComponent = ({ chatId }: IProps) => {
     addMessage: addChatMessage,
   });
 
+  const scrollToBottom = useCallback(() => {
+    autoScrollTimer.current = setTimeout(
+      () => messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0),
+      20
+    );
+  }, [messagesContainerRef]);
+
+  const autoScroll = useCallback(() => {
+    if (!showAnchorButton) {
+      scrollToBottom();
+    }
+  }, [scrollToBottom, showAnchorButton]);
+
+  useLayoutEffect(() => {
+    // auto-scroll to bottom when messages change
+    autoScroll();
+  }, [messages]);
+
   // Get chat messages and chat details
-  const { loading: messagesLoading, error: messagesError } = useQuery<GetChatMessagesResponse>(GET_CHAT_MESSAGES, {
-    variables: {
-      input: {
-        chatId,
-        limit: 100,
-        offset: 0,
-      },
-    },
-    skip: !chatId,
-    onCompleted: data => {
-      const { chat: ch, messages = [] } = data.getChatMessages || {};
-      // Set chat details from the chat field in getChatMessages
-      if (ch) {
-        dispatch(setCurrentChat(ch));
-        setChat(ch);
-        setEditedTitle(ch.title || "Untitled Chat");
+  const loadMessages = useCallback(
+    (offset = 0) => {
+      if (!chatId) return;
+      setMessagesLoading(true);
+      client
+        .query<GetChatMessagesResponse>({
+          query: GET_CHAT_MESSAGES,
+          variables: {
+            input: {
+              chatId,
+              limit: MESSAGES_PER_PAGE,
+              offset,
+            },
+          },
+        })
+        .then(response => {
+          const { chat: ch, messages = [], hasMore } = response.data.getChatMessages || {};
+          // Set chat details from the chat field in getChatMessages
+          if (ch) {
+            if (ch.id !== chatId) {
+              return; // If the chat ID doesn't match, do nothing
+            }
 
-        // Set chat settings from chat entity
-        setChatSettings({
-          temperature: ch.temperature ?? 0.7,
-          maxTokens: ch.maxTokens ?? 2000,
-          topP: ch.topP ?? 0.9,
+            dispatch(setCurrentChat(ch));
+            setChat(ch);
+            setEditedTitle(ch.title || "Untitled Chat");
+            setHasMoreMessages(hasMore);
+
+            // Parse and set messages
+            parseChatMessages(messages).then(parsedMessages => {
+              setMessages(prev => (prev ? [...parsedMessages, ...prev] : parsedMessages));
+              autoScroll();
+            });
+
+            setTimeout(() => setLoadCompleted(true), 300);
+          }
+        })
+        .catch(error => {
+          notifications.show({
+            title: "Error",
+            message: error.message || "Failed to load messages",
+            color: "red",
+          });
+        })
+        .finally(() => {
+          setMessagesLoading(false);
         });
-      }
-
-      // Parse and set messages
-      parseChatMessages(messages).then(parsedMessages => {
-        setMessages(parsedMessages);
-      });
     },
-  });
+    [chatId, autoScroll]
+  );
+
+  const loadMoreMessages = () => {
+    if (!chatId || messagesLoading) return;
+    if (!hasMoreMessages) return; // No more messages to load
+    loadMessages(messages?.length);
+  };
+
+  useEffect(() => {
+    if (!chatId) return;
+    setMessages(undefined);
+    setHasMoreMessages(false);
+    setShowAnchorButton(false);
+    setLoadCompleted(false);
+    const timeout = setTimeout(() => {
+      loadMessages();
+    }, 200);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [chatId]);
 
   const models = useMemo(() => {
     return allModels.filter(model => model.isActive);
@@ -240,7 +306,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // Handle send message
   const handleSendMessage = async () => {
-    if (!userMessage.trim() || !chatId) return;
+    if (!userMessage?.trim() || !chatId) return;
 
     setSending(true);
     setUserMessage("");
@@ -252,9 +318,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
           content: userMessage,
           role: "user",
           modelId: selectedModel?.modelId,
-          temperature: chatSettings.temperature,
-          maxTokens: chatSettings.maxTokens,
-          topP: chatSettings.topP,
+          temperature: chat?.temperature,
+          maxTokens: chat?.maxTokens,
+          topP: chat?.topP,
         },
       },
     });
@@ -291,11 +357,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
     maxTokens?: number | null;
     topP?: number | null;
   }) => {
-    setChatSettings(prev => ({
-      temperature: settings.temperature ?? prev.temperature,
-      maxTokens: settings.maxTokens ?? prev.maxTokens,
-      topP: settings.topP ?? prev.topP,
-    }));
+    setChat(prev =>
+      prev
+        ? {
+            ...prev,
+            temperature: settings.temperature ?? prev.temperature,
+            maxTokens: settings.maxTokens ?? prev.maxTokens,
+            topP: settings.topP ?? prev.topP,
+          }
+        : undefined
+    );
 
     if (chatId) {
       updateChatMutation({
@@ -319,16 +390,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       topP: 0.9,
     };
 
-    setChatSettings(defaultSettings);
-
-    if (chatId) {
-      updateChatMutation({
-        variables: {
-          id: chatId,
-          input: defaultSettings,
-        },
-      });
-    }
+    handleSettingsChange(defaultSettings);
   };
 
   useEffect(() => {
@@ -337,39 +399,30 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
   }, [currentUser, chat, handleModelChange]);
 
-  const scrollToBottom = useCallback(() => {
-    autoScrollTimer.current = setTimeout(
-      () => messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0),
-      20
-    );
-  }, [messagesContainerRef]);
+  const handleScroll = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
+      if (scrollHeight - scrollTop - clientHeight < 2) {
+        setShowAnchorButton(false);
+        if (autoScrollTimer.current) {
+          clearTimeout(autoScrollTimer.current);
+        }
+      } else if (messages?.length) {
+        setShowAnchorButton(true);
+      }
+    },
+    [messages?.length]
+  );
+  const anchorHandleClick = useCallback(() => {
+    setShowAnchorButton(false);
+    scrollToBottom();
+  }, [scrollToBottom]);
 
-  const autoScroll = useCallback(() => {
-    if (!showAnchorButton) {
-      scrollToBottom();
+  const firstMessageRef = useIntersectionObserver<HTMLDivElement>(() => {
+    if (hasMoreMessages) {
+      loadMoreMessages();
     }
-  }, [scrollToBottom, showAnchorButton]);
-
-  useLayoutEffect(() => {
-    // auto-scroll to bottom when messages change
-    autoScroll();
-  }, [messages]);
-
-  if (messagesError) {
-    return (
-      <Container size="md" py="xl">
-        <Paper p="xl" withBorder>
-          <Title order={2} c="red">
-            Error Loading Chat
-          </Title>
-          <Text mt="md">{messagesError.message}</Text>
-          <Button mt="xl" onClick={() => navigate("/chat")}>
-            Back to Chats
-          </Button>
-        </Paper>
-      </Container>
-    );
-  }
+  }, [chatId, hasMoreMessages]);
 
   return (
     <Container size="md" py="md" className={classes.container}>
@@ -486,26 +539,58 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
         <ChatSettings
           className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
-          temperature={chatSettings.temperature}
-          maxTokens={chatSettings.maxTokens}
-          topP={chatSettings.topP}
+          temperature={chat?.temperature}
+          maxTokens={chat?.maxTokens}
+          topP={chat?.topP}
           onSettingsChange={handleSettingsChange}
           resetToDefaults={resetSettingsToDefaults}
         />
       </Group>
 
       {/* Messages */}
-      <Paper withBorder p="md" ref={messagesContainerRef} className={classes.messagesContainer}>
-        <ChatMessages
-          messages={messages}
-          isLoading={messagesLoading}
-          sending={sending}
-          selectedModelName={selectedModel?.name}
-        />
+      <Paper
+        withBorder
+        p="md"
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className={[classes.messagesContainer, loadCompleted ? classes.loadCompleted : ""].join(" ")}
+      >
+        <div ref={firstMessageRef}>
+          {messagesLoading && (
+            <Group justify="center" py="xl">
+              <Loader />
+            </Group>
+          )}
+        </div>
+
+        {messages && messages.length === 0 ? (
+          <Stack align="center" justify="center" h="100%" gap="md">
+            <IconRobot size={48} opacity={0.5} />
+            <Text size="lg" ta="center">
+              No messages yet
+            </Text>
+            <Text c="dimmed" size="sm" ta="center">
+              Start the conversation by sending a message
+            </Text>
+          </Stack>
+        ) : null}
+
+        <div className={classes.messagesList}>
+          {messages && <ChatMessages messages={messages} sending={sending} selectedModelName={selectedModel?.name} />}
+        </div>
       </Paper>
+      <Box style={{ position: "relative" }}>
+        {showAnchorButton && (
+          <div className={classes.anchorContainer}>
+            <div className={classes.anchor}>
+              <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
+            </div>
+          </div>
+        )}
+      </Box>
 
       {/* Message input */}
-      <Group justify="space-between" align="flex-start">
+      <Group className={classes.chatInputContainer}>
         <Textarea
           placeholder="Type your message..."
           value={userMessage}

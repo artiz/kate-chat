@@ -34,8 +34,48 @@
 
 .messagesContainer {
   flex-grow: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   margin-bottom: 1rem;
+  position: relative;
+
+  .messagesList {
+    opacity: 0;
+  }
+
+  &.loadCompleted {
+    scroll-behavior: smooth;
+    .messagesList {
+      opacity: 1;
+    }
+  }
+}
+
+.chatInputContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  justify-items: space-between;
+  align-items: flex-start;
+}
+
+.anchorContainer {
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  top: -3.5em;
+  height: 40px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
+
+  .anchor {
+    background-color: var(--mantine-color-body);
+    border-radius: 50%;
+    height: 32px;
+    width: 32px;
+  }
 }
 
 .chatSettings {
