@@ -1,5 +1,5 @@
 import {
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   BedrockModelServiceProvider,
   StreamCallbacks,
@@ -111,10 +111,14 @@ export class AmazonService implements BedrockModelServiceProvider {
       const content: AmazonRequestMessagePart[] = msg.body
         .map(m => {
           if (m.contentType === "image" || m.contentType === "video") {
-            // input format "data:image/jpeg;base64,{base64_image}"
-            const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)$/);
+            // input format "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABv..."
+            //
+            const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)/);
             if (!parts || parts.length !== 3) {
-              throw new Error("Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,'");
+              logger.error({ content: m.content.substring(0, 256) }, "Invalid image format");
+              throw new Error(
+                "Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,...',"
+              );
             }
 
             // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data

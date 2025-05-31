@@ -4,7 +4,7 @@ import {
   AIModelInfo,
   ApiProvider,
   InvokeModelParamsRequest,
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
@@ -74,7 +74,7 @@ export class AIService {
   }
 
   // Format messages for model invocation
-  formatMessages(messages: Message[]): ModelMessageFormat[] {
+  formatMessages(messages: Message[]): ModelMessage[] {
     return messages.map(msg => ({
       role: msg.role,
       body: msg.jsonContent || msg.content,
@@ -88,7 +88,7 @@ export class AIService {
     request: InvokeModelParamsRequest,
     messages: Message[]
   ): Promise<ModelResponse> {
-    // Convert DB message objects to ModelMessageFormat structure
+    // Convert DB message objects to ModelMessage structure
     const formattedMessages = this.formatMessages(messages);
 
     // Invoke the model
@@ -122,7 +122,7 @@ export class AIService {
         },
         onError: (error: Error) => {
           callback("", true, error);
-          logger.error({ error }, "Error during streaming");
+          logger.error(error, "Error during streaming");
         },
       }
     );
@@ -187,7 +187,7 @@ export class AIService {
   }
 
   // Preprocess messages to join duplicates
-  private preprocessMessages(messages: ModelMessageFormat[]): ModelMessageFormat[] {
+  private preprocessMessages(messages: ModelMessage[]): ModelMessage[] {
     messages.sort((a, b) => {
       if (a.timestamp?.getTime() === b.timestamp?.getTime()) {
         return a.role === b.role ? 0 : a.role === MessageRole.USER ? -1 : 1;
@@ -196,7 +196,7 @@ export class AIService {
       return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
     });
 
-    return messages.reduce((acc: ModelMessageFormat[], msg: ModelMessageFormat) => {
+    return messages.reduce((acc: ModelMessage[], msg: ModelMessage) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
       // Check if the last message is of the same role and content
       if (lastMessage && lastMessage.role === msg.role) {

@@ -35,6 +35,7 @@ input CreateChatInput {
 input CreateMessageInput {
   chatId: String!
   content: String!
+  images: [ImageInput!]
   maxTokens: Float
   modelId: String
   role: String! = "user"
@@ -137,6 +138,12 @@ type GqlServiceCostInfo {
   amounts: [GqlAmount!]!
   name: String!
   type: String!
+}
+
+input ImageInput {
+  bytesBase64: String!
+  fileName: String!
+  mimeType: String!
 }
 
 input LoginInput {

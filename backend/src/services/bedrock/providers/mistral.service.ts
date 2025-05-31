@@ -1,5 +1,5 @@
 import {
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   BedrockModelServiceProvider,
   StreamCallbacks,
@@ -66,7 +66,7 @@ export class MistralService implements BedrockModelServiceProvider {
   }
 }
 
-function parseMessageContent(msg: ModelMessageFormat) {
+function parseMessageContent(msg: ModelMessage) {
   return typeof msg.body === "string"
     ? msg.body
     : msg.body

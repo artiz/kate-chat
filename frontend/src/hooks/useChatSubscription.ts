@@ -75,7 +75,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 
         if (response.type === MessageType.MESSAGE) {
           if (response.message) {
-            setImmediate(() => addChatMessage(response.message));
+            setTimeout(() => addChatMessage(response.message), 0);
           } else if (response.error) {
             notifications.show({
               title: "Model interaction error",

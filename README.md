@@ -22,7 +22,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Responsive UI with Mantine
 
 ## TODO
-* Add images input support (drag & drop, copy-paste, etc.)
+* Add images input support (drag & drop, copy-paste, etc.) ✅
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Chat settings (temperature, max tokens, etc.) ✅

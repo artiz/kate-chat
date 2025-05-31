@@ -49,10 +49,11 @@ export interface AIModelInfo {
 export interface ModelMessageContent {
   content: string;
   contentType?: ContentType;
-  timestamp?: Date;
+  fileName?: string;
+  mimeType?: string;
 }
 
-export interface ModelMessageFormat {
+export interface ModelMessage {
   role: MessageRole;
   body: string | ModelMessageContent[];
   timestamp?: Date;
@@ -80,11 +81,12 @@ export type InvokeModelParamsResponse = {
 
 export type InvokeModelParamsRequest = {
   systemPrompt?: string;
-  messages: ModelMessageFormat[];
+  messages: ModelMessage[];
   modelId: string;
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  imageBase64?: string;
 };
 
 export interface BedrockModelServiceProvider<T = any> {

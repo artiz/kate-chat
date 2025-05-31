@@ -2,7 +2,7 @@ import { AIService } from "../ai.service";
 import { bedrockClient } from "../../config/bedrock";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { MessageRole } from "../../entities/Message";
-import { ApiProvider, ModelMessageFormat } from "../../types/ai.types";
+import { ApiProvider, ModelMessage } from "../../types/ai.types";
 
 process.env.OPENAI_API_KEY = "OPENAI_API_KEY";
 
@@ -41,7 +41,7 @@ describe("AIService", () => {
   describe("generateResponse", () => {
     it("should generate a response using Anthropic provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessageFormat[] = [
+      const messages: ModelMessage[] = [
         { role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
         { role: MessageRole.USER, content: "Hello, how are you?" },
       ];
@@ -67,7 +67,7 @@ describe("AIService", () => {
 
     it("should generate a response using Meta provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessageFormat[] = [
+      const messages: ModelMessage[] = [
         { role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
         { role: MessageRole.USER, content: "Hello, how are you?" },
       ];
@@ -93,7 +93,7 @@ describe("AIService", () => {
 
     it("should throw an error for unsupported model provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessageFormat[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
       const modelId = "unknown.model-v1";
 
       await expect(aiService.invokeModel(messages, modelId, ApiProvider.AWS_BEDROCK)).rejects.toThrow(
@@ -105,7 +105,7 @@ describe("AIService", () => {
   describe("streamResponse", () => {
     it("should stream a response using Anthropic provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessageFormat[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
       const callbacks = {
@@ -158,7 +158,7 @@ describe("AIService", () => {
     it("should simulate streaming for non-streaming models", async () => {
       // Mock the AIService.generateResponse method directly to avoid timeout issues
       const aiService = new AIService();
-      const messages: ModelMessageFormat[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
       const modelId = "ai21.j2-ultra-v1"; // Non-streaming model
 
       const callbacks = {
@@ -200,7 +200,7 @@ describe("AIService", () => {
 
     it("should handle errors during streaming", async () => {
       const aiService = new AIService();
-      const messages: ModelMessageFormat[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
       const callbacks = {

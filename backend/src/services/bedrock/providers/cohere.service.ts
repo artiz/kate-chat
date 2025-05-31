@@ -1,5 +1,5 @@
 import {
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   BedrockModelServiceProvider,
   StreamCallbacks,

@@ -86,12 +86,27 @@ export class UpdateChatInput {
 }
 
 @InputType()
+export class ImageInput {
+  @Field()
+  fileName: string;
+
+  @Field()
+  mimeType: string;
+
+  @Field()
+  bytesBase64: string;
+}
+
+@InputType()
 export class CreateMessageInput {
   @Field()
   chatId: string;
 
   @Field()
   content: string;
+
+  @Field(() => [ImageInput], { nullable: true })
+  images?: ImageInput[];
 
   @Field({ nullable: true })
   modelId: string;

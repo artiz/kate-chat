@@ -220,6 +220,12 @@ export interface GetChatMessagesResponse {
   };
 }
 
+export interface ImageInput {
+  fileName: string;
+  mimeType: string;
+  bytesBase64: string;
+}
+
 // Create the API endpoints
 export const graphqlApi = api.injectEndpoints({
   endpoints: builder => ({

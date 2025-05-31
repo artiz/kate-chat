@@ -73,7 +73,7 @@ export async function parseChatMessages(messages: Message[] = []): Promise<Messa
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
     const html =
-      message.role === MessageRole.ASSISTANT
+      message.role === MessageRole.ASSISTANT || message.role === MessageRole.USER
         ? await parseMarkdown(message.content)
         : [escapeHtml(message.content) || ""];
     parsedMessages[i] = {

@@ -2,7 +2,7 @@ import axios from "axios";
 import {
   AIModelInfo,
   ApiProvider,
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
@@ -77,7 +77,7 @@ export class OpenAIService {
   }
 
   // Text generation with OpenAI models
-  formatMessages(messages: ModelMessageFormat[], systemPrompt: string | undefined): OpenAiRequestMessage[] {
+  formatMessages(messages: ModelMessage[], systemPrompt: string | undefined): OpenAiRequestMessage[] {
     // Format messages for OpenAI API
     const result: OpenAiRequestMessage[] = messages.map(msg => ({
       role: this.mapMessageRole(msg.role),
@@ -266,7 +266,7 @@ export class OpenAIService {
   }
 
   // Image generation implementation for DALL-E models
-  private async generateImage(messages: ModelMessageFormat[], modelId: string): Promise<ModelResponse> {
+  private async generateImage(messages: ModelMessage[], modelId: string): Promise<ModelResponse> {
     if (!this.openAiApiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }

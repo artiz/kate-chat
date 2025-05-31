@@ -4,7 +4,7 @@ import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost
 import { bedrockClient, bedrockManagementClient } from "../../config/bedrock";
 import {
   AIModelInfo,
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   StreamCallbacks,
   ProviderInfo,

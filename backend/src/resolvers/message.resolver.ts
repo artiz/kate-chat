@@ -16,6 +16,8 @@ import { GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
 import { ok } from "assert";
 import { createLogger } from "@/utils/logger";
 import { DEFAULT_PROMPT } from "@/config/ai";
+import { ModelMessageContent } from "@/types/ai.types";
+import { randomUUID } from "crypto";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -111,35 +113,61 @@ export class MessageResolver {
     });
     if (!user) throw new Error("User not found");
 
-    const { chatId, content, role = MessageRole.USER } = input;
-    let { modelId } = input;
+    const { chatId, modelId, images, role = MessageRole.USER } = input;
+    let { content = "" } = input;
 
-    // Verify the chat belongs to the user
+    if (!chatId) throw new Error("Chat ID is required");
+    if (!modelId) throw new Error("Model ID is required");
+
     const chat = await this.chatRepository.findOne({
       where: {
         id: chatId,
         isActive: true,
       },
     });
-
     if (!chat) throw new Error("Chat not found");
-
-    if (!modelId) {
-      throw new Error("ModelId is required");
-    }
 
     // Verify the model exists
     const model = await this.modelRepository.findOne({
-      where: {
-        modelId,
-      },
+      where: { modelId },
     });
     if (!model) throw new Error("Model not found");
 
     // Create and save user message
+    let jsonContent: ModelMessageContent[] | undefined = undefined;
+
+    // If there's an image, handle it
+    if (images) {
+      jsonContent = [];
+
+      if (content) {
+        jsonContent.push({
+          content,
+          contentType: "text",
+        });
+      }
+
+      const date = new Date().toISOString().substring(0, 10);
+      for (const image of images) {
+        const imageId = randomUUID().toString();
+        const ext = path.extname(image.fileName) || ".png"; // Default to .png if no extension
+        const imageFile = await saveImageFromBase64(image.bytesBase64, `${date}-${imageId}${ext}`);
+
+        jsonContent.push({
+          content: image.bytesBase64,
+          contentType: "image",
+          fileName: imageFile,
+          mimeType: image.mimeType,
+        });
+
+        // For display purposes, append image markdown to the content
+        content += `${content ? "\n\n" : ""}![Uploaded Image](/output/${imageFile})`;
+      }
+    }
+
     let messageData = this.messageRepository.create({
       content,
-      // jsonContent, // TODO: use to save images
+      jsonContent,
       role,
       modelId: model.modelId, // real model used
       modelName: model.name,
@@ -262,7 +290,7 @@ export class MessageResolver {
       let content = aiResponse.content;
       if (aiResponse.type === "image") {
         // Save base64 image to output folder
-        const fileName = await saveImageFromBase64(aiResponse.content, message.id);
+        const fileName = await saveImageFromBase64(aiResponse.content, `${message.id}-res.png`);
         content = `![Generated Image](/output/${fileName})`;
       }
 
@@ -341,13 +369,12 @@ export class MessageResolver {
   }
 }
 
-async function saveImageFromBase64(content: string, messageId: string, ndx = 0): Promise<string> {
+async function saveImageFromBase64(content: string, filename: string): Promise<string> {
   if (!fs.existsSync(OUTPUT_FOLDER)) {
     fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
   }
 
   // Generate filename with messageId prefix
-  const filename = `${messageId}-${ndx}.png`;
   const filepath = path.join(OUTPUT_FOLDER, filename);
 
   // Remove data URL prefix if present (e.g., "data:image/png;base64,")

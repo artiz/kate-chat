@@ -13,7 +13,7 @@ import {
 } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { ApiProvider, ModelMessageFormat, ProviderInfo, ServiceCostInfo } from "../types/ai.types";
+import { ApiProvider, ModelMessage, ProviderInfo, ServiceCostInfo } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
 import { OpenAIService } from "@/services/openai/openai.service";
@@ -206,7 +206,7 @@ export class ModelResolver {
       const timestamp = new Date();
 
       // Create a message format for the test
-      const message: ModelMessageFormat = {
+      const message: ModelMessage = {
         role: MessageRole.USER,
         body: text,
         timestamp,

@@ -1,6 +1,6 @@
 import {
   InvokeModelParamsResponse,
-  ModelMessageFormat,
+  ModelMessage,
   ModelResponse,
   BedrockModelServiceProvider,
   InvokeModelParamsRequest,
@@ -48,12 +48,14 @@ export class AnthropicService implements BedrockModelServiceProvider {
       const content: AnthropicRequestMessagePart[] = msg.body.map(m => {
         if (m.contentType === "image") {
           // input format "data:image/jpeg;base64,{base64_image}"
-          const parts = m.content.match(/^data:image\/([^;]+);base64,(.*)$/);
-          if (!parts || parts.length !== 3) {
-            throw new Error("Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,'");
+          const parts = m.content.match(/^data:(image\/[^;]+);base64,(.*)$/);
+          if (!parts) {
+            logger.error({ content: m.content.substring(0, 256) }, "Invalid image format");
+            throw new Error(
+              "Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,...',"
+            );
           }
 
-          // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data
           const base64Data = parts[2]; // e.g., "iVBORw0KGgoAAAANSUhEUgAA..."
           const mediaType = parts[1]; // e.g., "jpeg", "png"
 
@@ -61,7 +63,7 @@ export class AnthropicService implements BedrockModelServiceProvider {
             type: "image",
             source: {
               type: "base64",
-              media_type: "image/" + mediaType,
+              media_type: mediaType,
               data: base64Data,
             },
           };

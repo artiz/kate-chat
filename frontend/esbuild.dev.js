@@ -85,6 +85,7 @@ es.addEventListener('change', (e) => {
       link.href = url.pathname + '?' + Date.now();
     });
     console.log('🔄 CSS updated without page reload');
+    location.reload();
   } else {
     // For JS/component changes, reload the page
     console.log('🔄 Page reload triggered by file change');

@@ -19,6 +19,7 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { PubSub } from "graphql-subscriptions";
 import { MessageType } from "./entities/Message";
 import { logger } from "./utils/logger";
+import { MAX_INPUT_JSON } from "./config/application";
 
 // Load environment variables
 config();
@@ -58,7 +59,7 @@ async function bootstrap() {
   // Create Express application
   const app = express();
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: MAX_INPUT_JSON }));
 
   // Set up auth middleware
   app.use(authMiddleware);

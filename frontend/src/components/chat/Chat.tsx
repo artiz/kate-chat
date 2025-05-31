@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import {
@@ -33,10 +33,13 @@ import {
 import { useAppSelector, useAppDispatch } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
+import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
 import classes from "./Chat.module.scss";
+import { ImageInput } from "@/store/services/graphql";
+import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
 
 const SEND_MESSAGE = gql`
   mutation SendMessage($input: CreateMessageInput!) {
@@ -60,6 +63,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
   const currentUser = useAppSelector(state => state.user.currentUser);
@@ -147,24 +152,68 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
-  const handleSendMessage = async () => {
-    if (!userMessage?.trim() || !chatId) return;
-    setSending(true);
-    setUserMessage("");
-
-    await sendMessage({
-      variables: {
-        input: {
-          chatId,
-          content: userMessage,
-          role: "user",
-          modelId: selectedModel?.modelId,
-          temperature: chat?.temperature,
-          maxTokens: chat?.maxTokens,
-          topP: chat?.topP,
-        },
-      },
+  useEffect(() => {
+    Promise.all(
+      selectedFiles
+        .filter(f => f.type?.startsWith("image/"))
+        .map(file => {
+          return new Promise<ImageInput>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => {
+              if (e.target?.result) {
+                const bytesBase64 = e.target.result as string;
+                resolve({
+                  fileName: file.name,
+                  mimeType: file.type,
+                  bytesBase64,
+                });
+              } else {
+                reject(new Error(`Failed to read file: ${file.name}`));
+              }
+            };
+            reader.onerror = err => {
+              reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
+            };
+            reader.readAsDataURL(file);
+          });
+        })
+    ).then(images => {
+      setSelectedImages(images);
     });
+  }, [selectedFiles]);
+
+  const handleSendMessage = async () => {
+    if ((!userMessage?.trim() && !selectedImages.length) || !chatId) return;
+    setSending(true);
+
+    try {
+      // Convert images to base64
+
+      await sendMessage({
+        variables: {
+          input: {
+            chatId,
+            content: userMessage,
+            images: selectedImages,
+            role: "user",
+            modelId: selectedModel?.modelId,
+            temperature: chat?.temperature,
+            maxTokens: chat?.maxTokens,
+            topP: chat?.topP,
+          },
+        },
+      });
+      setUserMessage("");
+      setSelectedFiles([]);
+      setSelectedImages([]);
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to send message",
+        color: "red",
+      });
+      setSending(false);
+    }
   };
   // #endregion
 
@@ -226,6 +275,31 @@ export const ChatComponent = ({ chatId }: IProps) => {
       }
     },
     [editedTitle, chatId, updateChat]
+  );
+
+  const handleAddFiles = useCallback(
+    (files: File[]) => {
+      const filesToAdd = files.filter(f => f.size < MAX_IMAGE_SIZE);
+      if (filesToAdd.length < files.length) {
+        notifications.show({
+          title: "Warning",
+          message: `Some images were too large and were not added (max size: ${MAX_IMAGE_SIZE / 1024 / 1024} MB)`,
+          color: "yellow",
+        });
+      }
+
+      const allFiles = [...selectedFiles, ...filesToAdd];
+      if (allFiles.length > MAX_IMAGES) {
+        notifications.show({
+          title: "Warning",
+          message: `You can only add up to ${MAX_IMAGES} images at a time`,
+          color: "yellow",
+        });
+      }
+      // Limit to MAX_IMAGES
+      setSelectedFiles(allFiles.slice(0, MAX_IMAGES));
+    },
+    [selectedFiles]
   );
 
   return (
@@ -397,22 +471,52 @@ export const ChatComponent = ({ chatId }: IProps) => {
       </Box>
 
       {/* Message input */}
-      <Group className={classes.chatInputContainer}>
-        <Textarea
-          placeholder="Type your message..."
-          value={userMessage}
-          autosize
-          minRows={1}
-          maxRows={5}
-          style={{ flexGrow: 1 }}
-          onChange={handleInputChange}
-          onKeyDown={handleInputKeyDown}
-          disabled={sending || messagesLoading}
-        />
-        <Button onClick={handleSendMessage} disabled={!userMessage?.trim() || sending || messagesLoading}>
-          <IconSend size={16} /> Send
-        </Button>
-      </Group>
+      <div className={[classes.chatInputContainer, selectedFiles.length ? classes.columned : ""].join(" ")}>
+        {selectedModel?.supportsImageIn && (
+          <Group align="flex-start">
+            <ChatImageDropzone onFilesAdd={handleAddFiles} />
+            {selectedImages.map(file => (
+              <Paper key={file.fileName} className={classes.filesList}>
+                <div className={classes.previewImage}>
+                  <img src={file.bytesBase64} alt={file.fileName} />
+                  <ActionIcon
+                    className={classes.removeButton}
+                    color="red"
+                    size="xs"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setSelectedFiles(prev => prev.filter(f => f.name !== file.fileName));
+                    }}
+                  >
+                    <IconX size={16} />
+                  </ActionIcon>
+                </div>
+              </Paper>
+            ))}
+          </Group>
+        )}
+
+        <Group align="flex-start" className={classes.chatInputGroup}>
+          <Textarea
+            className={classes.chatInput}
+            placeholder="Type your message..."
+            value={userMessage}
+            autosize
+            minRows={1}
+            maxRows={5}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+            disabled={sending || messagesLoading}
+          />
+
+          <Button
+            onClick={handleSendMessage}
+            disabled={(!userMessage?.trim() && !selectedImages.length) || sending || messagesLoading}
+          >
+            <IconSend size={16} /> Send
+          </Button>
+        </Group>
+      </div>
     </Container>
   );
 };
