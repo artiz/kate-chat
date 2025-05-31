@@ -85,7 +85,6 @@ export class ModelResolver {
 
       // Save models to database
       const outModels: GqlModel[] = [];
-      let sortOrder = 0;
       for (const [modelId, info] of Object.entries(models)) {
         // Create new model
         const model = modelRepository.create({
@@ -93,10 +92,8 @@ export class ModelResolver {
           modelId: modelId,
           description: info.description || `${info.name} by ${info.provider}`,
           isActive: modelId in enabledMap ? enabledMap[modelId] : true,
-          sortOrder,
           isCustom: false,
         });
-        sortOrder++;
 
         // Save the model
         const savedModel: GqlModel = await modelRepository.save(model);
@@ -120,7 +117,7 @@ export class ModelResolver {
       // Get models from the database
       const modelRepository = getRepository(Model);
       const models = await modelRepository.find({
-        order: { sortOrder: "ASC" },
+        order: { apiProvider: "ASK", provider: "ASK", name: "ASC" },
       });
 
       // Get provider information
@@ -145,7 +142,7 @@ export class ModelResolver {
     const modelRepository = getRepository(Model);
     const dbModels = await modelRepository.find({
       where: { isActive: true },
-      order: { sortOrder: "ASC" },
+      order: { apiProvider: "ASK", provider: "ASK", name: "ASC" },
     });
 
     return dbModels;

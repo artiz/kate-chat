@@ -6,6 +6,7 @@ import { useAppSelector, useAppDispatch } from "../store";
 import { addChat, Chat } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION } from "../store/services/graphql";
+import { useChatMessages } from "@/hooks";
 
 export const CreateChat: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export const CreateChat: React.FC = () => {
 
   const { models } = useAppSelector(state => state.models);
   const user = useAppSelector(state => state.user.currentUser);
+  const { updateChat } = useChatMessages();
 
   // Find model to use - priority:
   // 1. User's default model
@@ -28,8 +30,17 @@ export const CreateChat: React.FC = () => {
       const pristineChats = data?.getChats?.chats?.filter((chat: Chat) => chat.isPristine) || [];
 
       if (pristineChats.length > 0) {
+        const chat = pristineChats[0];
         // Found a pristine chat, navigate to it
-        navigate(`/chat/${pristineChats[0].id}`);
+        updateChat(
+          chat.id,
+          {
+            modelId: modelToUse?.modelId,
+          },
+          () => {
+            navigate(`/chat/${chat.id}`);
+          }
+        );
       } else {
         // No pristine chat found, create a new one
         createNewChat();

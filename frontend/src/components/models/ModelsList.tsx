@@ -48,13 +48,6 @@ export const ModelsList: React.FC<ModelsListProps> = ({
   const [apiProviderFilter, setApiProviderFilter] = useState<string>();
   const [activeFilter, setActiveFilter] = useState<string>();
 
-  useEffect(() => {
-    // Reset filters when models change
-    setProviderFilter(undefined);
-    setApiProviderFilter(undefined);
-    setActiveFilter(undefined);
-  }, [models]);
-
   // Get unique providers and API providers for filters
   const uniqueProviders = useMemo(() => {
     const providers = [...new Set(models.map(model => model.provider))].filter(Boolean);
@@ -108,7 +101,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                 placeholder="API Provider"
                 clearable
                 data={uniqueApiProviders}
-                value={apiProviderFilter}
+                value={apiProviderFilter || null}
                 onChange={v => setApiProviderFilter(v || undefined)}
                 size="sm"
               />
@@ -116,7 +109,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                 placeholder="Provider"
                 clearable
                 data={uniqueProviders}
-                value={providerFilter}
+                value={providerFilter || null}
                 onChange={v => setProviderFilter(v || undefined)}
                 size="sm"
               />
@@ -127,7 +120,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                   { value: "active", label: "Active" },
                   { value: "inactive", label: "Inactive" },
                 ]}
-                value={activeFilter}
+                value={activeFilter || null}
                 onChange={v => setActiveFilter(v || undefined)}
                 size="sm"
               />

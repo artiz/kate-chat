@@ -1,14 +1,6 @@
-import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import {
-  gql,
-  useQuery,
-  useMutation,
-  useSubscription,
-  OnDataOptions,
-  useLazyQuery,
-  useApolloClient,
-} from "@apollo/client";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { gql, useMutation } from "@apollo/client";
 import {
   Container,
   Paper,
@@ -22,7 +14,6 @@ import {
   Select,
   Tooltip,
   TextInput,
-  Grid,
   Loader,
   Stack,
 } from "@mantine/core";
@@ -36,10 +27,10 @@ import {
   IconTextScan2,
   IconSettings,
   IconCircleChevronDown,
+  IconArrowBigRightLinesFilled,
+  IconMatrix,
 } from "@tabler/icons-react";
-import { debounce } from "lodash";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { setCurrentChat } from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
 import { notifications } from "@mantine/notifications";
@@ -64,7 +55,6 @@ interface IProps {
 
 export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const [userMessage, setUserMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -208,12 +198,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     });
   };
 
-  useEffect(() => {
-    if (currentUser && currentUser.defaultModelId && chat?.isPristine && currentUser.defaultModelId !== chat.modelId) {
-      handleModelChange(currentUser.defaultModelId);
-    }
-  }, [currentUser, chat, handleModelChange]);
-
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
@@ -312,7 +296,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         <Select
           data={models.map(model => ({
             value: model.modelId,
-            label: model.name,
+            label: `${model.provider}: ${model.name}`,
           }))}
           searchable
           value={selectedModel?.modelId || ""}
@@ -324,19 +308,37 @@ export const ChatComponent = ({ chatId }: IProps) => {
         />
         {selectedModel && (
           <Group>
-            <Tooltip label={`Provider: ${selectedModel.provider || "Unknown"}`}>
-              <Text size="xs" c="dimmed" span>
-                {selectedModel.provider}
-              </Text>
-            </Tooltip>
-            {selectedModel.supportsImageOut && (
-              <Tooltip label="Supports images generation">
-                <IconPhotoAi size={32} color="teal" />
+            {selectedModel.supportsTextIn && (
+              <Tooltip label="Text input">
+                <IconTextScan2 size={24} color="gray" />
               </Tooltip>
             )}
+
+            {selectedModel.supportsEmbeddingsIn && (
+              <Tooltip label="Embeddings input">
+                <IconMatrix size={24} color="gray" />
+              </Tooltip>
+            )}
+            {selectedModel.supportsImageIn && (
+              <Tooltip label="Images input">
+                <IconPhotoAi size={24} color="gray" />
+              </Tooltip>
+            )}
+
+            <IconArrowBigRightLinesFilled size={24} color="gray" />
             {selectedModel.supportsTextOut && (
-              <Tooltip label="Supports text generation">
-                <IconTextScan2 size={32} color="teal" />
+              <Tooltip label="Text generation">
+                <IconTextScan2 size={24} color="teal" />
+              </Tooltip>
+            )}
+            {selectedModel.supportsEmbeddingsOut && (
+              <Tooltip label="Embeddings generation">
+                <IconMatrix size={24} color="teal" />
+              </Tooltip>
+            )}
+            {selectedModel.supportsImageOut && (
+              <Tooltip label="Images generation">
+                <IconPhotoAi size={24} color="teal" />
               </Tooltip>
             )}
           </Group>

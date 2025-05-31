@@ -279,6 +279,7 @@ export class BedrockService {
           supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
           supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
           supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
+          supportsEmbeddingsOut: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
           supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
         };
       }

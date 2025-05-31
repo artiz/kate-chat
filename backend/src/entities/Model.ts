@@ -63,8 +63,8 @@ export class Model {
   supportsImageOut: boolean;
 
   @Field()
-  @Column({ default: 0 })
-  sortOrder: number;
+  @Column({ default: false })
+  supportsEmbeddingsOut: boolean;
 
   @Field()
   @Column({ default: true })

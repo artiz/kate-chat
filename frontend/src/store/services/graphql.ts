@@ -5,7 +5,21 @@ import { Model, ProviderInfo } from "../slices/modelSlice";
 import { Chat, Message } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
 
-// Define GraphQL mutations for auth
+const MODEL_FRAGMENT = `
+    id
+    name
+    modelId
+    provider
+    apiProvider
+    isActive
+    supportsImageIn
+    supportsTextIn
+    supportsEmbeddingsIn
+    supportsImageOut
+    supportsTextOut
+    supportsEmbeddingsOut 
+`;
+
 export const REGISTER_MUTATION = gql`
   mutation Register($input: RegisterInput!) {
     register(input: $input) {
@@ -77,14 +91,7 @@ export const RELOAD_MODELS_MUTATION = gql`
   mutation ReloadModels {
     reloadModels {
       models {
-        id
-        name
-        modelId
-        apiProvider
-        provider
-        isActive
-        supportsImageOut
-        supportsTextOut
+        ${MODEL_FRAGMENT}   
       }
       providers {
         name
@@ -339,14 +346,7 @@ export const graphqlApi = api.injectEndpoints({
               }
               getModels {
                 models {
-                  id
-                  name
-                  modelId
-                  provider
-                  apiProvider
-                  isActive
-                  supportsImageOut
-                  supportsTextOut
+                    ${MODEL_FRAGMENT}
                 }
                 providers {
                   id

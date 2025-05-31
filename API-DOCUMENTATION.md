@@ -272,7 +272,6 @@ type ModelResponse {
   supportsImageIn: Boolean!
   supportsImageOut: Boolean!
   isActive: Boolean!
-  sortOrder: Float!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
 }

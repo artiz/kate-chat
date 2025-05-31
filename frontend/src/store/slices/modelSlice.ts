@@ -38,8 +38,12 @@ export interface Model {
   apiProvider: string;
   provider: string;
   isActive: boolean;
+  supportsImageIn?: boolean;
+  supportsTextIn?: boolean;
+  supportsEmbeddingsIn?: boolean;
   supportsImageOut?: boolean;
   supportsTextOut?: boolean;
+  supportsEmbeddingsOut?: boolean;
 }
 
 interface ModelState {

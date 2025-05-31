@@ -108,8 +108,8 @@ type GqlModel {
   modelId: String!
   name: String!
   provider: String
-  sortOrder: Float!
   supportsEmbeddingsIn: Boolean!
+  supportsEmbeddingsOut: Boolean!
   supportsImageIn: Boolean!
   supportsImageOut: Boolean!
   supportsStreaming: Boolean!

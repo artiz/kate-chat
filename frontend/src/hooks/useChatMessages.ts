@@ -21,11 +21,11 @@ type HookResult = {
   loadCompleted: boolean;
   addChatMessage: (msg: Message) => void;
   loadMoreMessages: () => void;
-  updateChat: (chatId: string | undefined, input: UpdateChatInput) => void;
+  updateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
 };
 
 interface HookProps {
-  chatId: string | undefined;
+  chatId?: string;
 }
 
 export interface UpdateChatInput {
@@ -43,7 +43,7 @@ export interface UpdateChatInput {
 
 const MESSAGES_PER_PAGE = 50;
 
-export const useChatMessages: (props: HookProps) => HookResult = ({ chatId }) => {
+export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = {}) => {
   const [chat, setChat] = useState<Chat | undefined>();
 
   const [messages, setMessages] = useState<Message[] | undefined>();
@@ -144,18 +144,14 @@ export const useChatMessages: (props: HookProps) => HookResult = ({ chatId }) =>
     },
   });
 
-  const mutateChat = debounce(updateChatMutation, 300);
+  const mutateChat = debounce(updateChatMutation, 250);
 
-  const updateChat = (chatId: string | undefined, input: UpdateChatInput) => {
+  const updateChat = (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => {
     setChat(prev =>
       prev
         ? {
             ...prev,
-            title: input.title ?? prev.title,
-            description: input.description ?? prev.description,
-            temperature: input.temperature ?? prev.temperature,
-            maxTokens: input.maxTokens ?? prev.maxTokens,
-            topP: input.topP ?? prev.topP,
+            ...input,
           }
         : undefined
     );
@@ -176,6 +172,8 @@ export const useChatMessages: (props: HookProps) => HookResult = ({ chatId }) =>
           input: pick(input, ["title", "description", "isActive", "modelId", "temperature", "maxTokens", "topP"]),
         },
       });
+
+      afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
     }
   };
 

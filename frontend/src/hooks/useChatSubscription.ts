@@ -64,7 +64,6 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     shouldResubscribe: true, // Resubscribe if variables change
     fetchPolicy: "no-cache", // Don't cache subscription data
     onComplete: () => {
-      console.log("Subscription completed");
       setWsConnected(false);
     },
     onData: (options: OnDataOptions<{ newMessage?: { type: MessageType; message: Message; error: string } }>) => {
@@ -76,7 +75,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 
         if (response.type === MessageType.MESSAGE) {
           if (response.message) {
-            addChatMessage(response.message);
+            setImmediate(() => addChatMessage(response.message));
           } else if (response.error) {
             notifications.show({
               title: "Model interaction error",
