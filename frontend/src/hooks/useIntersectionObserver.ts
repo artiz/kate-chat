@@ -1,6 +1,6 @@
 import { DependencyList, useEffect, useRef } from "react";
 
-export default function useIntersectionObserver<T extends HTMLElement>(callback: () => void, deps: DependencyList) {
+export function useIntersectionObserver<T extends HTMLElement>(callback: () => void, deps: DependencyList) {
   const observer = useRef<IntersectionObserver | null>(null);
   const ref = useRef<T>(null);
 

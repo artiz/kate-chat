@@ -37,53 +37,16 @@ import {
   IconSettings,
   IconCircleChevronDown,
 } from "@tabler/icons-react";
+import { debounce } from "lodash";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { setCurrentChat, Chat, Message, MessageRole, updateChat } from "../../store/slices/chatSlice";
+import { setCurrentChat } from "../../store/slices/chatSlice";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
 import { notifications } from "@mantine/notifications";
-import { GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
-import { useChatSubscription } from "@/hooks/useChatSubscription";
-import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
+import { UPDATE_CHAT_MUTATION } from "../../store/services/graphql";
+import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
 import classes from "./Chat.module.scss";
-import { debounce } from "lodash";
-import useIntersectionObserver from "@/hooks/useIntersectionObserver";
-
-const MESSAGES_PER_PAGE = 50;
-
-// GraphQL queries and subscriptions
-const GET_CHAT_MESSAGES = gql`
-  query GetChatMessages($input: GetMessagesInput!) {
-    getChatMessages(input: $input) {
-      messages {
-        id
-        content
-        role
-        createdAt
-        modelId
-        modelName
-        user {
-          lastName
-          firstName
-        }
-      }
-      total
-      hasMore
-      chat {
-        id
-        title
-        modelId
-        isPristine
-        createdAt
-        updatedAt
-        temperature
-        maxTokens
-        topP
-      }
-    }
-  }
-`;
 
 const SEND_MESSAGE = gql`
   mutation SendMessage($input: CreateMessageInput!) {
@@ -107,13 +70,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
-  const [chat, setChat] = useState<Chat>();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[] | undefined>();
-
-  const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
-  const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
 
   const allModels = useAppSelector(state => state.models.models);
   const currentUser = useAppSelector(state => state.user.currentUser);
@@ -122,50 +79,24 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const client = useApolloClient();
-
-  const addChatMessage = (msg: Message) => {
-    if (!msg) return;
-
-    const addMessage = (message: Message) => {
-      setMessages(prev => {
-        if (!prev) return [message]; // If no messages yet, start with this one
-
-        const existingNdx = prev.findLastIndex(m => m.id === message.id);
-        // If the last message is from the same user and has the same content, skip adding
-        if (existingNdx !== -1) {
-          prev[existingNdx] = message; // Update the last message instead
-          return [...prev];
-        } else {
-          return [...prev, message];
-        }
-      });
-
-      if (chat && message.role === MessageRole.ASSISTANT) {
-        dispatch(
-          updateChat({
-            ...chat,
-            lastBotMessage: message.content,
-            lastBotMessageHtml: message.html,
-          })
-        );
-      }
-    };
-
-    if (msg.content) {
-      parseMarkdown(msg.content).then(html => {
-        addMessage({ ...msg, html });
-      });
-    } else {
-      addMessage(msg);
-    }
-  };
+  const { chat, messages, messagesLoading, loadCompleted, addChatMessage, loadMoreMessages, updateChat } =
+    useChatMessages({
+      chatId,
+    });
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
     resetSending: () => setSending(false),
     addMessage: addChatMessage,
   });
+
+  useEffect(() => {
+    setShowAnchorButton(false);
+  }, [chatId]);
+
+  useEffect(() => {
+    setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
+  }, [chat]);
 
   const scrollToBottom = useCallback(() => {
     autoScrollTimer.current = setTimeout(
@@ -181,90 +112,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, [scrollToBottom, showAnchorButton]);
 
   useLayoutEffect(() => {
-    // auto-scroll to bottom when messages change
     autoScroll();
   }, [messages]);
-
-  // Get chat messages and chat details
-  const loadMessages = useCallback(
-    (offset = 0) => {
-      if (!chatId) return;
-      setMessagesLoading(true);
-      client
-        .query<GetChatMessagesResponse>({
-          query: GET_CHAT_MESSAGES,
-          variables: {
-            input: {
-              chatId,
-              limit: MESSAGES_PER_PAGE,
-              offset,
-            },
-          },
-        })
-        .then(response => {
-          const { chat: ch, messages = [], hasMore } = response.data.getChatMessages || {};
-          // Set chat details from the chat field in getChatMessages
-          if (ch) {
-            if (ch.id !== chatId) {
-              return; // If the chat ID doesn't match, do nothing
-            }
-
-            dispatch(setCurrentChat(ch));
-            setChat(ch);
-            setEditedTitle(ch.title || "Untitled Chat");
-            setHasMoreMessages(hasMore);
-
-            // Parse and set messages
-            parseChatMessages(messages).then(parsedMessages => {
-              setMessages(prev => (prev ? [...parsedMessages, ...prev] : parsedMessages));
-              autoScroll();
-            });
-
-            setTimeout(() => setLoadCompleted(true), 300);
-          }
-        })
-        .catch(error => {
-          notifications.show({
-            title: "Error",
-            message: error.message || "Failed to load messages",
-            color: "red",
-          });
-        })
-        .finally(() => {
-          setMessagesLoading(false);
-        });
-    },
-    [chatId, autoScroll]
-  );
-
-  const loadMoreMessages = () => {
-    if (!chatId || messagesLoading) return;
-    if (!hasMoreMessages) return; // No more messages to load
-    loadMessages(messages?.length);
-  };
-
-  useEffect(() => {
-    if (!chatId) return;
-    setMessages(undefined);
-    setHasMoreMessages(false);
-    setShowAnchorButton(false);
-    setLoadCompleted(false);
-    const timeout = setTimeout(() => {
-      loadMessages();
-    }, 200);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [chatId]);
-
-  const models = useMemo(() => {
-    return allModels.filter(model => model.isActive);
-  }, [allModels]);
-
-  const selectedModel = useMemo(() => {
-    return models?.find(m => m.modelId === chat?.modelId) || null;
-  }, [models, chat]);
 
   // Send message mutation
   const [sendMessageMutation] = useMutation(SEND_MESSAGE, {
@@ -281,28 +130,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
       setSending(false);
     },
   });
-
-  // Update chat mutation (for changing the model)
-  const [updateChatMutationInit] = useMutation(UPDATE_CHAT_MUTATION, {
-    onCompleted: data => {
-      notifications.update({
-        title: "Model Changed",
-        message: `Chat model has been updated`,
-        color: "green",
-      });
-      dispatch(setCurrentChat(data.updateChat));
-    },
-    onError: error => {
-      console.error("Error updating chat:", error);
-      notifications.show({
-        title: "Error",
-        message: error.message || "Failed to update chat model",
-        color: "red",
-      });
-    },
-  });
-
-  const updateChatMutation = debounce(updateChatMutationInit, 300);
 
   // Handle send message
   const handleSendMessage = async () => {
@@ -326,12 +153,42 @@ export const ChatComponent = ({ chatId }: IProps) => {
     });
   };
 
+  const models = useMemo(() => {
+    return allModels.filter(model => model.isActive);
+  }, [allModels]);
+
+  const selectedModel = useMemo(() => {
+    return models?.find(m => m.modelId === chat?.modelId) || null;
+  }, [models, chat]);
+
+  // Update chat mutation (for changing the model)
+  const [updateChatMutationInit] = useMutation(UPDATE_CHAT_MUTATION, {
+    onCompleted: data => {
+      notifications.update({
+        title: "Model Changed",
+        message: `Chat model has been updated`,
+        color: "green",
+      });
+      dispatch(setCurrentChat(data.updateChat));
+    },
+    onError: error => {
+      console.error("Error updating chat:", error);
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to update chat model",
+        color: "red",
+      });
+    },
+  });
+
+  const updateChatMutation = debounce(updateChatMutationInit, 300);
+
   // Handle model change
   const handleModelChange = (modelId: string | null) => {
     const model = models.find(m => m.modelId === modelId);
     if (!model || !chatId) return;
 
-    setChat(prev =>
+    updateChat(prev =>
       prev
         ? {
             ...prev,
@@ -357,7 +214,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     maxTokens?: number | null;
     topP?: number | null;
   }) => {
-    setChat(prev =>
+    updateChat(prev =>
       prev
         ? {
             ...prev,
@@ -413,16 +270,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
     [messages?.length]
   );
+
   const anchorHandleClick = useCallback(() => {
     setShowAnchorButton(false);
     scrollToBottom();
   }, [scrollToBottom]);
 
   const firstMessageRef = useIntersectionObserver<HTMLDivElement>(() => {
-    if (hasMoreMessages) {
-      loadMoreMessages();
-    }
-  }, [chatId, hasMoreMessages]);
+    loadMoreMessages();
+  }, [loadMoreMessages]);
 
   return (
     <Container size="md" py="md" className={classes.container}>
