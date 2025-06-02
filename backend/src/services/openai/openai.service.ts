@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Agent, Dispatcher } from "undici";
 import {
   AIModelInfo,
   ApiProvider,
@@ -13,9 +14,16 @@ import {
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
-import { error } from "console";
 
 const logger = createLogger(__filename);
+
+const agent = new Agent({
+  keepAliveTimeout: 30_000,
+  connections: 100, // pool
+});
+const fetchOptions: Record<string, any> = {
+  dispatcher: agent,
+};
 
 export interface OpenAICostResult {
   object: string;
@@ -42,7 +50,7 @@ export type OpenAIList<T> = {
   data: T[];
 };
 
-type OpenAiMessageRole = "system" | "user" | "assistant";
+type OpenAiMessageRole = "developer" | "user" | "assistant";
 
 type OpenAiRequestMessagePart =
   | string
@@ -77,6 +85,7 @@ export class OpenAIService {
   }
 
   // Text generation with OpenAI models
+  // https://platform.openai.com/docs/guides/text?api-mode=chat
   formatMessages(messages: ModelMessage[], systemPrompt: string | undefined): OpenAiRequestMessage[] {
     // Format messages for OpenAI API
     const result: OpenAiRequestMessage[] = messages.map(msg => ({
@@ -86,7 +95,7 @@ export class OpenAIService {
           ? msg.body
           : msg.body.map(part => {
               if (part.contentType === "text") {
-                return part.content; //{ "type": "text", "text": "what's in this image?" };
+                return { type: "text", text: part.content };
               } else if (part.contentType === "image") {
                 return {
                   type: "image_url",
@@ -103,7 +112,7 @@ export class OpenAIService {
 
     if (systemPrompt) {
       result.unshift({
-        role: "system",
+        role: "developer",
         content: systemPrompt,
       });
     }
@@ -123,20 +132,20 @@ export class OpenAIService {
       return this.generateImage(messages, modelId);
     }
 
-    const requestMessages = this.formatMessages(messages, systemPrompt);
-    logger.debug({ requestMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model");
+    const params: Record<string, any> = {
+      model: modelId,
+      messages: this.formatMessages(messages, systemPrompt),
+      temperature,
+      max_tokens: maxTokens,
+    };
+
+    logger.debug(params, "Invoking OpenAI model");
 
     try {
-      const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: modelId,
-          messages: requestMessages,
-          temperature,
-          max_tokens: maxTokens,
-        },
-        { headers: this.getHeaders() }
-      );
+      const response = await axios.post(`${this.baseUrl}/chat/completions`, params, {
+        headers: this.getHeaders(),
+        fetchOptions,
+      });
 
       const content = response.data.choices[0]?.message?.content || "";
 
@@ -176,23 +185,21 @@ export class OpenAIService {
     }
 
     const requestMessages = this.formatMessages(messages, systemPrompt);
-    logger.debug({ requestMessages, modelId, temperature, maxTokens }, "Invoking OpenAI model streaming");
+    const params = {
+      model: modelId,
+      messages: requestMessages,
+      temperature,
+      max_tokens: maxTokens,
+      stream: true,
+    };
+    logger.debug(params, "Invoking OpenAI model streaming");
 
     try {
-      const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: modelId,
-          messages: requestMessages,
-          temperature,
-          max_tokens: maxTokens,
-          stream: true,
-        },
-        {
-          headers: this.getHeaders(),
-          responseType: "stream",
-        }
-      );
+      const response = await axios.post(`${this.baseUrl}/chat/completions`, params, {
+        headers: this.getHeaders(),
+        responseType: "stream",
+        fetchOptions,
+      });
 
       let fullResponse = "";
 
@@ -257,9 +264,10 @@ export class OpenAIService {
       case MessageRole.USER:
         return "user";
       case MessageRole.ASSISTANT:
+      case MessageRole.ERROR:
         return "assistant";
       case MessageRole.SYSTEM:
-        return "system";
+        return "developer";
       default:
         return "user";
     }
@@ -298,7 +306,10 @@ export class OpenAIService {
 
     logger.debug({ params }, "Image generation");
     try {
-      const response = await axios.post(`${this.baseUrl}/images/generations`, params, { headers: this.getHeaders() });
+      const response = await axios.post(`${this.baseUrl}/images/generations`, params, {
+        headers: this.getHeaders(),
+        fetchOptions,
+      });
 
       const imageData = response.data.data[0]?.b64_json || "";
 
@@ -332,6 +343,7 @@ export class OpenAIService {
       // Fetch models
       await axios.get(`${this.baseUrl}/models`, {
         headers: this.getHeaders(),
+        fetchOptions,
       });
 
       details.credentialsValid = true;
@@ -376,6 +388,7 @@ export class OpenAIService {
             page,
           },
           headers: this.getHeaders(true),
+          fetchOptions,
         });
 
         const res: OpenAIList<OpenAICost> = response.data;
@@ -440,6 +453,7 @@ export class OpenAIService {
       // Fetch models from OpenAI API
       const response = await axios.get(`${this.baseUrl}/models`, {
         headers: this.getHeaders(),
+        fetchOptions,
       });
 
       const openaiModels = response.data.data;
@@ -447,18 +461,19 @@ export class OpenAIService {
       // Filter and map models
       for (const model of openaiModels) {
         // Filter for GPT models and DALL-E
-        const supportsImage = model.id.includes("dall-e");
+        const supportsImageOut = model.id.startsWith("dall-e");
+        const supportsImageIn = model.id.startsWith("gpt-4.1") || model.id.startsWith("gpt-4o");
 
         models[model.id] = {
           apiProvider: ApiProvider.OPEN_AI,
           provider: "OpenAI",
           name: getModelName(model.id),
           description: `${model.id} by OpenAI`,
-          supportsStreaming: !supportsImage,
+          supportsStreaming: !supportsImageOut,
           supportsTextIn: true,
-          supportsTextOut: !supportsImage,
-          supportsImageIn: false,
-          supportsImageOut: supportsImage,
+          supportsTextOut: !supportsImageOut,
+          supportsImageIn,
+          supportsImageOut,
           supportsEmbeddingsIn: false,
         };
       }

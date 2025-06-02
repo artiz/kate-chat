@@ -4,7 +4,7 @@
   "description": "KateChat - Universal AI Chat Interface",
   "private": true,
   "scripts": {
-    "dev": "node esbuild.dev.js",
+    "dev": "node  --trace-deprecation --experimental-default-type=module esbuild.dev.js",
     "build": "node esbuild.prod.js",
     "start": "node serve.js",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",

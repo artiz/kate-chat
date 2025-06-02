@@ -36,7 +36,7 @@ const context = await esbuild.context({
   },
   plugins: [
     clean({ patterns: ["./dist/*.js"] }),
-    polyfillNode(),
+    //polyfillNode(),
     sassPlugin({
       filter: /\.module\.scss$/,
       transform: postcssModules({}),

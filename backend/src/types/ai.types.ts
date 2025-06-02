@@ -1,4 +1,3 @@
-import { Mode } from "fs";
 import { MessageRole } from "../entities/Message";
 
 export enum ApiProvider {

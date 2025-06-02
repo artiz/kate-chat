@@ -34,6 +34,9 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     // Create HTTP link for queries and mutations
     const httpLink = new HttpLink({
       uri: apiUrl,
+      headers: {
+        "Accept-Encoding": "br, gzip", // Use Brotli and gzip compression
+      },
     });
 
     // Create WebSocket link for subscriptions

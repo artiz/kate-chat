@@ -231,7 +231,6 @@ type Chat {
   id: ID!
   title: String!
   description: String!
-  isActive: Boolean!
   isPristine: Boolean!
   modelId: String
   user: User!
@@ -379,7 +378,6 @@ input CreateChatInput {
 input UpdateChatInput {
   title: String
   description: String
-  isActive: Boolean
   modelId: String
   temperature
   maxTokens

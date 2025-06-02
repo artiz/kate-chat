@@ -1,7 +1,6 @@
 import "reflect-metadata";
 import express from "express";
 import { createServer } from "http";
-import { Server } from "socket.io";
 import cors from "cors";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
@@ -58,7 +57,13 @@ async function bootstrap() {
 
   // Create Express application
   const app = express();
-  app.use(cors());
+  app.use(
+    cors({
+      origin: true,
+      credentials: true,
+      maxAge: 86_400, // 24 hours in seconds without subsequent OPTIONS requests
+    })
+  );
   app.use(express.json({ limit: MAX_INPUT_JSON }));
 
   // Set up auth middleware

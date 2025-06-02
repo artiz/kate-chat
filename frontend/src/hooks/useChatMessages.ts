@@ -31,7 +31,6 @@ interface HookProps {
 export interface UpdateChatInput {
   title?: string;
   description?: string;
-  isActive?: boolean;
   modelId?: string;
   temperature?: number;
   maxTokens?: number;
@@ -169,7 +168,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       mutateChat({
         variables: {
           id: chatId,
-          input: pick(input, ["title", "description", "isActive", "modelId", "temperature", "maxTokens", "topP"]),
+          input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP"]),
         },
       });
 

@@ -18,10 +18,10 @@ import { createLogger } from "@/utils/logger";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { ModelMessageContent } from "@/types/ai.types";
 import { randomUUID } from "crypto";
+import { OUTPUT_FOLDER } from "@/config/application";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
-const OUTPUT_FOLDER = process.env.OUTPUT_FOLDER || path.join(__dirname, "../../output");
 
 const logger = createLogger(__filename);
 
@@ -53,10 +53,7 @@ export class MessageResolver {
 
     // Verify the chat belongs to the user
     const chat = await this.chatRepository.findOne({
-      where: {
-        id: chatId,
-        isActive: true,
-      },
+      where: { id: chatId },
     });
 
     if (!chat) throw new Error("Chat not found");
@@ -100,7 +97,7 @@ export class MessageResolver {
     if (!message) return null;
 
     // Verify the message belongs to an active chat
-    if (!message.chat?.isActive) return null;
+    if (!message.chat) return null;
 
     return message;
   }
@@ -120,10 +117,7 @@ export class MessageResolver {
     if (!modelId) throw new Error("Model ID is required");
 
     const chat = await this.chatRepository.findOne({
-      where: {
-        id: chatId,
-        isActive: true,
-      },
+      where: { id: chatId },
     });
     if (!chat) throw new Error("Chat not found");
 
@@ -163,6 +157,9 @@ export class MessageResolver {
         // For display purposes, append image markdown to the content
         content += `${content ? "\n\n" : ""}![Uploaded Image](/output/${imageFile})`;
       }
+
+      chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
+      await this.chatRepository.save(chat);
     }
 
     let messageData = this.messageRepository.create({
@@ -292,6 +289,9 @@ export class MessageResolver {
         // Save base64 image to output folder
         const fileName = await saveImageFromBase64(aiResponse.content, `${message.id}-res.png`);
         content = `![Generated Image](/output/${fileName})`;
+
+        chat.files = [...(chat.files || []), fileName];
+        await this.chatRepository.save(chat);
       }
 
       const aiMessage = await this.messageRepository.save(

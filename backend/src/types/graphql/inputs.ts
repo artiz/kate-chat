@@ -70,9 +70,6 @@ export class UpdateChatInput {
   description?: string;
 
   @Field({ nullable: true })
-  isActive?: boolean;
-
-  @Field({ nullable: true })
   modelId?: string;
 
   @Field({ nullable: true })

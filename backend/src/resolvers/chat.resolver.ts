@@ -1,3 +1,4 @@
+import fs from "fs";
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
 import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
@@ -9,6 +10,9 @@ import { GqlChatsList } from "../types/graphql/responses";
 import { AIService } from "../services/ai.service";
 import { Message, MessageRole } from "@/entities/Message";
 import { MessageEvent } from "http";
+import { OUTPUT_FOLDER } from "@/config/application";
+import path from "path";
+import { ok } from "assert";
 
 @Resolver(Chat)
 export class ChatResolver {
@@ -35,7 +39,6 @@ export class ChatResolver {
       user: {
         id: user.userId,
       },
-      isActive: true,
     } as any;
 
     if (searchTerm) {
@@ -79,10 +82,7 @@ export class ChatResolver {
     if (!user) throw new Error("Authentication required");
 
     const chat = await this.chatRepository.findOne({
-      where: {
-        id,
-        isActive: true,
-      },
+      where: { id },
       relations: ["user"],
     });
 
@@ -102,7 +102,6 @@ export class ChatResolver {
     const chat = this.chatRepository.create({
       ...input,
       user: dbUser,
-      isActive: true,
       isPristine: true,
     });
 
@@ -119,10 +118,7 @@ export class ChatResolver {
     if (!user) throw new Error("Authentication required");
 
     const chat = await this.chatRepository.findOne({
-      where: {
-        id,
-        isActive: true,
-      },
+      where: { id },
     });
 
     if (!chat) throw new Error("Chat not found");
@@ -139,14 +135,25 @@ export class ChatResolver {
     const chat = await this.chatRepository.findOne({
       where: {
         id,
-        isActive: true,
       },
     });
 
     if (!chat) throw new Error("Chat not found");
 
-    chat.isActive = false;
-    await this.chatRepository.save(chat);
+    if (chat.files?.length) {
+      const queue = [...chat.files];
+      await Promise.all(
+        Array.from({ length: 5 }, async () => {
+          while (queue.length) {
+            const fileName = queue.pop();
+            ok(fileName);
+            await fs.promises.unlink(path.join(OUTPUT_FOLDER, fileName));
+          }
+        })
+      );
+    }
+
+    await this.chatRepository.delete({ id });
     return true;
   }
 }

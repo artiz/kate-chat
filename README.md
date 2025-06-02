@@ -69,7 +69,7 @@ The project consists of two main parts:
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18+)
+- Node.js (v20+)
 - AWS Account with Bedrock access (instructions below)
 - OpenAI API Account (instructions below)
 - Docker and Docker Compose (optional, for development environment)

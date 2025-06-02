@@ -12,7 +12,6 @@ type Chat {
   createdAt: DateTimeISO!
   description: String!
   id: ID!
-  isActive: Boolean!
   isPristine: Boolean!
   lastBotMessage: String
   maxTokens: Float
@@ -213,7 +212,6 @@ input TestModelInput {
 
 input UpdateChatInput {
   description: String
-  isActive: Boolean
   maxTokens: Float
   modelId: String
   temperature: Float

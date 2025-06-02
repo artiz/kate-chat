@@ -13,6 +13,7 @@ import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
 import { ModelMessageContent } from "@/types/ai.types";
+import { JSONTransformer } from "@/utils/db";
 
 export enum MessageRole {
   USER = "user",
@@ -24,13 +25,6 @@ export enum MessageRole {
 export enum MessageType {
   MESSAGE = "message",
   SYSTEM = "system",
-}
-
-function JSONTransformer<T>() {
-  return {
-    to: (value: T) => JSON.stringify(value),
-    from: (value: string) => JSON.parse(value) as T,
-  };
 }
 
 @ObjectType()
@@ -64,7 +58,7 @@ export class Message {
   modelName: string; // The name of the model used for this message
 
   @Field(() => Chat)
-  @ManyToOne(() => Chat)
+  @ManyToOne(() => Chat, { onDelete: "CASCADE" })
   chat?: Chat;
 
   @Field({ nullable: true })
@@ -72,7 +66,7 @@ export class Message {
   chatId?: string;
 
   @Field(() => User, { nullable: true })
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   user?: User;
 
   @Field()

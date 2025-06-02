@@ -42,8 +42,8 @@ describe("AIService", () => {
     it("should generate a response using Anthropic provider", async () => {
       const aiService = new AIService();
       const messages: ModelMessage[] = [
-        { role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
-        { role: MessageRole.USER, content: "Hello, how are you?" },
+        { role: MessageRole.ASSISTANT, body: "You are a helpful AI assistant." },
+        { role: MessageRole.USER, body: "Hello, how are you?" },
       ];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
@@ -58,7 +58,7 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(messages, modelId, ApiProvider.AWS_BEDROCK);
+      const response = await aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId });
 
       expect(response.content).toBe("I'm doing well, thanks for asking!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -68,8 +68,8 @@ describe("AIService", () => {
     it("should generate a response using Meta provider", async () => {
       const aiService = new AIService();
       const messages: ModelMessage[] = [
-        { role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
-        { role: MessageRole.USER, content: "Hello, how are you?" },
+        { role: MessageRole.ASSISTANT, body: "You are a helpful AI assistant." },
+        { role: MessageRole.USER, body: "Hello, how are you?" },
       ];
       const modelId = "meta.llama2-13b-chat-v1";
 
@@ -84,7 +84,7 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(messages, modelId, ApiProvider.AWS_BEDROCK);
+      const response = await aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId });
 
       expect(response.content).toBe("I'm a language model, I don't have feelings, but I'm here to help!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -93,10 +93,10 @@ describe("AIService", () => {
 
     it("should throw an error for unsupported model provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
       const modelId = "unknown.model-v1";
 
-      await expect(aiService.invokeModel(messages, modelId, ApiProvider.AWS_BEDROCK)).rejects.toThrow(
+      await expect(aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId })).rejects.toThrow(
         "Unsupported model provider"
       );
     });
@@ -105,7 +105,7 @@ describe("AIService", () => {
   describe("streamResponse", () => {
     it("should stream a response using Anthropic provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
       const callbacks = {
@@ -145,7 +145,7 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      await aiService.invokeModelAsync(messages, modelId, callbacks);
+      await aiService.invokeModelAsync(ApiProvider.AWS_BEDROCK, { messages, modelId }, callbacks);
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).toHaveBeenCalledTimes(2);
@@ -158,7 +158,7 @@ describe("AIService", () => {
     it("should simulate streaming for non-streaming models", async () => {
       // Mock the AIService.generateResponse method directly to avoid timeout issues
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
       const modelId = "ai21.j2-ultra-v1"; // Non-streaming model
 
       const callbacks = {
@@ -191,7 +191,7 @@ describe("AIService", () => {
       //   expect(callbacks.onComplete).toHaveBeenCalledWith("Hello there!");
       //   expect(callbacks.onError).not.toHaveBeenCalled();
 
-      const response = await aiService.invokeModel(messages, modelId, ApiProvider.AWS_BEDROCK);
+      const response = await aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId });
 
       expect(response.content).toBe("I'm doing well, thanks for asking!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -200,7 +200,7 @@ describe("AIService", () => {
 
     it("should handle errors during streaming", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, content: "Hello" }];
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
       const callbacks = {
@@ -214,7 +214,7 @@ describe("AIService", () => {
       const mockError = new Error("Stream processing error");
       (bedrockClient.send as jest.Mock).mockRejectedValueOnce(mockError);
 
-      await aiService.invokeModelAsync(messages, modelId, callbacks);
+      await aiService.invokeModelAsync(ApiProvider.AWS_BEDROCK, { messages, modelId }, callbacks);
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).not.toHaveBeenCalled();

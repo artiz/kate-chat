@@ -13,6 +13,7 @@ import {
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { Message } from "./Message";
+import { JSONTransformer } from "@/utils/db";
 
 @ObjectType()
 @Entity("chats")
@@ -34,8 +35,11 @@ export class Chat {
   user: User;
 
   @Field(() => [Message], { nullable: true })
-  @OneToMany(() => Message, m => m.chat, { cascade: true })
+  @OneToMany(() => Message, m => m.chat, { cascade: true, onDelete: "CASCADE" })
   messages: Message[];
+
+  @Column({ type: "json", nullable: true, transformer: JSONTransformer<string[]>() })
+  files?: string[];
 
   @Field({ nullable: true })
   @Column({
@@ -68,10 +72,6 @@ export class Chat {
   @Field({ nullable: true })
   @Column({ nullable: true, type: "float" })
   topP?: number;
-
-  @Field()
-  @Column({ default: true })
-  isActive: boolean;
 
   @Field()
   @Column({ default: false })
