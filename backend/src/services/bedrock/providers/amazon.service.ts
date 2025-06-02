@@ -164,7 +164,7 @@ export class AmazonService implements BedrockModelServiceProvider {
     });
 
     const body: Record<string, any> = {
-      inputText: prompt,
+      inputText: systemPrompt,
       messages: requestMessages,
       inferenceConfig: {
         maxTokenCount: maxTokens,
