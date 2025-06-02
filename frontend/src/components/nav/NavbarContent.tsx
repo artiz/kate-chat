@@ -165,7 +165,7 @@ const NavbarContent: React.FC = () => {
   };
 
   return (
-    <Stack h="100%" justify="space-between" gap="xs">
+    <Stack h="100%" justify="space-between" gap="0">
       <Stack gap="xs">
         <Button leftSection={<IconPlus size={16} />} variant="light" onClick={handleNewChat} fullWidth>
           New Chat
@@ -189,7 +189,7 @@ const NavbarContent: React.FC = () => {
         </Stack>
         <Divider my="xs" />
 
-        <ScrollArea h="calc(100vh - 280px)" type="auto">
+        <ScrollArea h="calc(100vh - 280px)" type="auto" offsetScrollbars>
           <Stack gap="xs">
             {loading ? (
               <Group justify="center" p="md">

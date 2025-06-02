@@ -28,7 +28,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
   * Chat settings (temperature, max tokens, etc.) ✅
   * Chat message pagination ✅
   * Image resolution/count 
-  * Copy code section
+  * Copy code section ✅
   * Chat message editing
   * Chat message deletion
 * Add "no any" TS rule and setup strict type checking
