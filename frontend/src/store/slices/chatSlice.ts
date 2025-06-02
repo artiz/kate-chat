@@ -21,6 +21,7 @@ export interface Message {
   modelName?: string;
   user?: User;
   createdAt: string;
+  streaming?: boolean;
 }
 
 export interface Chat {

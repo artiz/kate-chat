@@ -3,7 +3,7 @@ import { Paper, Text, Stack, Group, Avatar, Loader, Box, ScrollArea } from "@man
 import { IconRobot, IconUser } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
-import classes from "./ChatMessages.module.scss";
+import classes from "./ChatMessage.module.scss";
 
 export const ChatMessagePreview: React.FC<{ html?: string[]; text?: string }> = ({ html, text }) => {
   return (

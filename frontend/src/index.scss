@@ -13,7 +13,7 @@
     --input-bd: var(--mantine-color-gray-4);
     --input-bg: var(--mantine-color-white);
     --input-bd-focus: var(--mantine-primary-color-filled);
-    --theme-default-time: 0.3s;
+    --theme-default-time: 0.2s;
   }
 }
 [data-mantine-color-scheme="dark"] {
@@ -22,7 +22,7 @@
     --input-bd: var(--mantine-color-dark-4);
     --input-bg: var(--mantine-color-dark-6);
     --input-bd-focus: var(--mantine-primary-color-filled);
-    --theme-default-time: 0.3s;
+    --theme-default-time: 0.2s;
   }
 }
 

@@ -60,6 +60,9 @@ export class GqlMessage {
 
   @Field(() => Message, { nullable: true })
   message?: Message;
+
+  @Field({ nullable: true })
+  streaming?: boolean;
 }
 
 @ObjectType()

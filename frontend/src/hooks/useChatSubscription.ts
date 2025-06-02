@@ -19,6 +19,7 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
         modelName
       }
       error
+      streaming
     }
   }
 `;
@@ -50,9 +51,9 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
   }, [id]);
 
   const addChatMessage = useCallback(
-    throttle((message: Message) => {
+    throttle((message: Message, streaming?: boolean) => {
       if (!message) return;
-      addMessage(message);
+      addMessage({ ...message, streaming });
     }, 200),
     [dispatch, addMessage]
   );

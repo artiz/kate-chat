@@ -87,6 +87,7 @@ type GqlCostsInfo {
 type GqlMessage {
   error: String
   message: Message
+  streaming: Boolean
   type: String!
 }
 

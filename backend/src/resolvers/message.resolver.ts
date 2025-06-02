@@ -270,7 +270,12 @@ export class MessageResolver {
           if (pubSub) {
             await pubSub.publish(NEW_MESSAGE, {
               chatId,
-              data: { message: aiMessage },
+              data: {
+                message: {
+                  ...aiMessage,
+                  streaming: true, // Indicate this is a streaming message
+                },
+              },
             });
           }
         }

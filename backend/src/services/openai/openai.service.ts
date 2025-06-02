@@ -14,6 +14,7 @@ import {
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
+import { notEmpty } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
@@ -93,21 +94,23 @@ export class OpenAIService {
       content:
         typeof msg.body === "string"
           ? msg.body
-          : msg.body.map(part => {
-              if (part.contentType === "text") {
-                return { type: "text", text: part.content };
-              } else if (part.contentType === "image") {
-                return {
-                  type: "image_url",
-                  image_url: {
-                    url: part.content,
-                  },
-                };
-              } else {
-                logger.warn({ ...part }, `Unsupported message content type`);
-                return ""; // Ignore unsupported types
-              }
-            }),
+          : msg.body
+              .filter(part => part.content)
+              .map(part => {
+                if (part.contentType === "text") {
+                  return { type: "text", text: part.content };
+                } else if (part.contentType === "image") {
+                  return {
+                    type: "image_url",
+                    image_url: {
+                      url: part.content,
+                    },
+                  };
+                } else {
+                  logger.warn({ ...part }, `Unsupported message content type`);
+                  return ""; // Ignore unsupported types
+                }
+              }),
     }));
 
     if (systemPrompt) {
@@ -192,6 +195,11 @@ export class OpenAIService {
       max_tokens: maxTokens,
       stream: true,
     };
+
+    if (modelId.startsWith("gpt-4o")) {
+      params.temperature = undefined; // GPT-4o models do not support temperature
+    }
+
     logger.debug(params, "Invoking OpenAI model streaming");
 
     try {
