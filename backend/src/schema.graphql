@@ -14,6 +14,7 @@ type Chat {
   id: ID!
   isPristine: Boolean!
   lastBotMessage: String
+  lastBotMessageId: String
   maxTokens: Float
   messages: [Message!]
   messagesCount: Float!
@@ -168,7 +169,7 @@ type Mutation {
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
-  deleteMessage(id: String!): Boolean!
+  deleteMessage(deleteFollowing: Boolean, id: ID!): [ID!]!
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
   reloadModels: GqlModelsList!

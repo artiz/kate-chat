@@ -62,6 +62,14 @@ export class ChatResolver {
           .orderBy("createdAt", "DESC")
           .limit(1);
       }, "chat_lastBotMessage")
+      .addSelect(sq => {
+        return sq
+          .select("m.id")
+          .from(Message, "m")
+          .where("m.chatId = chat.id and m.role = :role", { role: MessageRole.ASSISTANT })
+          .orderBy("createdAt", "DESC")
+          .limit(1);
+      }, "chat_lastBotMessageId")
       .leftJoinAndSelect("chat.user", "user")
       .where(query)
       .skip(offset)

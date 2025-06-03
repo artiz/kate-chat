@@ -150,6 +150,6 @@ async function bootstrap() {
 
 // Start the application
 bootstrap().catch(error => {
-  logger.error({ error }, "Error starting server");
+  logger.error(error, "Error starting server");
   process.exit(1);
 });

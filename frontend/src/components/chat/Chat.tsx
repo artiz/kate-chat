@@ -73,10 +73,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const { chat, messages, messagesLoading, loadCompleted, addChatMessage, loadMoreMessages, updateChat } =
-    useChatMessages({
-      chatId,
-    });
+  const {
+    chat,
+    messages,
+    messagesLoading,
+    loadCompleted,
+    removeMessages,
+    addChatMessage,
+    loadMoreMessages,
+    updateChat,
+  } = useChatMessages({
+    chatId,
+  });
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
@@ -457,7 +465,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
         ) : null}
 
         <div className={classes.messagesList}>
-          {messages && <ChatMessages messages={messages} sending={sending} selectedModelName={selectedModel?.name} />}
+          {messages && (
+            <ChatMessages
+              messages={messages}
+              sending={sending}
+              selectedModelName={selectedModel?.name}
+              onMessageDeleted={removeMessages} // Reload messages after deletion
+            />
+          )}
         </div>
       </Paper>
       <Box style={{ position: "relative" }}>

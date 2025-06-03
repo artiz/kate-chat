@@ -20,6 +20,7 @@ type HookResult = {
   messagesLoading: boolean;
   loadCompleted: boolean;
   addChatMessage: (msg: Message) => void;
+  removeMessages: (messageIds: string[]) => void;
   loadMoreMessages: () => void;
   updateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
 };
@@ -83,7 +84,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
             // Parse and set messages
             parseChatMessages(messages).then(parsedMessages => {
-              setMessages(prev => (prev ? [...parsedMessages, ...prev] : parsedMessages));
+              setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
             });
 
             setTimeout(() => setLoadCompleted(true), 300);
@@ -122,6 +123,33 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       clearTimeout(timeout);
     };
   }, [chatId]);
+
+  const removeMessages = useCallback(
+    (messageIds: string[]) => {
+      if (!chatId || !messageIds.length) return;
+      setMessages(prev => {
+        if (!prev) return []; // If no messages yet, return empty array
+
+        // Filter out messages that match the IDs to be removed
+        const updatedMessages = prev.filter(msg => !messageIds.includes(msg.id));
+        if (updatedMessages.length === prev.length) {
+          return prev; // No changes made, return original array
+        }
+
+        // If the last message was removed, reset the lastBotMessage in chat
+        if (chat && messageIds.includes(chat.lastBotMessageId || "")) {
+          updateChat(chatId, {
+            ...chat,
+            lastBotMessage: "...",
+            lastBotMessageHtml: undefined,
+          });
+        }
+
+        return updatedMessages;
+      });
+    },
+    [chatId, chat]
+  );
 
   // Update chat mutation (for changing the model)
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
@@ -216,6 +244,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     messages,
     messagesLoading,
     loadCompleted,
+    removeMessages,
     addChatMessage,
     loadMoreMessages,
     updateChat,

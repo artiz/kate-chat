@@ -1,4 +1,4 @@
-import { ObjectType, Field } from "type-graphql";
+import { ObjectType, Field, ID } from "type-graphql";
 import { User } from "../../entities/User";
 import { Chat } from "../../entities/Chat";
 import { Message, MessageType } from "../../entities/Message";
@@ -81,6 +81,12 @@ export class GqlMessagesList {
 
   @Field(() => Chat, { nullable: true })
   chat?: Chat;
+}
+
+ObjectType();
+export class DeleteMessagesResponse {
+  @Field(() => [ID], { nullable: true })
+  deletedMessages?: string[];
 }
 
 @ObjectType()

@@ -33,6 +33,7 @@ export interface Chat {
   isPristine?: boolean;
   messagesCount: number;
   lastBotMessage?: string;
+  lastBotMessageId?: string;
   lastBotMessageHtml?: string[];
   temperature?: number;
   maxTokens?: number;

@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root } from "type-graphql";
-import { Repository } from "typeorm";
+import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID } from "type-graphql";
+import { In, MoreThan, Repository } from "typeorm";
 import { Message, MessageRole, MessageType } from "@/entities/Message";
 import { Chat } from "@/entities/Chat";
 import { CreateMessageInput, GetMessagesInput } from "@/types/graphql/inputs";
@@ -12,13 +12,14 @@ import { AIService } from "@/services/ai.service";
 import { GraphQLContext } from "@/middleware/authMiddleware";
 import { User } from "@/entities/User";
 import { getErrorMessage } from "@/utils/errors";
-import { GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
+import { DeleteMessagesResponse, GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
 import { ok } from "assert";
 import { createLogger } from "@/utils/logger";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { ModelMessageContent } from "@/types/ai.types";
 import { randomUUID } from "crypto";
 import { OUTPUT_FOLDER } from "@/config/application";
+import { notEmpty } from "@/utils/assert";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -356,21 +357,109 @@ export class MessageResolver {
     };
   }
 
-  @Mutation(() => Boolean)
-  async deleteMessage(@Arg("id") id: string, @Ctx() context: GraphQLContext): Promise<boolean> {
+  @Mutation(() => [ID])
+  async deleteMessage(
+    @Arg("id", () => ID) id: string,
+    @Arg("deleteFollowing", { nullable: true }) deleteFollowing: boolean = false,
+    @Ctx() context: GraphQLContext
+  ): Promise<string[]> {
     const { user } = context;
     if (!user) throw new Error("Authentication required");
 
     const message = await this.messageRepository.findOne({
-      where: {
-        id,
-      },
+      where: { id },
+      relations: ["chat"],
     });
 
     if (!message) throw new Error("Message not found");
+    if (!message.chat) throw new Error("Chat not found for this message");
 
+    const chatId = message.chatId;
+    const chat = message.chat;
+
+    // Get all file references that need to be removed
+    const deletedImageFiles: string[] = [];
+
+    // Process this message's images
+    if (message.jsonContent?.length) {
+      for (const content of message.jsonContent) {
+        if (content.contentType === "image" && content.fileName) {
+          deletedImageFiles.push(content.fileName);
+        }
+      }
+    }
+
+    // If deleteFollowing is true, find and delete all messages after this one
+    const messagesToDelete = (
+      deleteFollowing
+        ? await this.messageRepository.find({
+            where: {
+              chatId,
+              createdAt: MoreThan(message.createdAt),
+            },
+          })
+        : [
+            message.role === MessageRole.USER
+              ? await this.messageRepository.findOne({
+                  where: {
+                    chatId,
+                    createdAt: MoreThan(message.createdAt),
+                    role: In([MessageRole.ASSISTANT, MessageRole.ERROR]),
+                  },
+                  order: { createdAt: "ASC" },
+                })
+              : null,
+          ]
+    ).filter(notEmpty);
+
+    const result: string[] = [message.id]; // Start with the original message ID
+    if (messagesToDelete.length) {
+      // Process each message to find image files
+      for (const msg of messagesToDelete) {
+        if (msg.jsonContent?.length) {
+          for (const content of msg.jsonContent) {
+            if (content.contentType === "image" && content.fileName) {
+              deletedImageFiles.push(content.fileName);
+            }
+          }
+        }
+
+        // Delete the following message
+        if (msg.id !== id) {
+          // Skip the original message, we'll delete it separately
+          result.push(msg.id);
+          await this.messageRepository.remove(msg);
+        }
+      }
+    }
+
+    // Delete the original message
     await this.messageRepository.remove(message);
-    return true;
+
+    // Remove image files from disk and update chat.files
+    if (deletedImageFiles.length > 0) {
+      // Remove the files from the chat.files array
+      if (chat.files?.length) {
+        chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
+        await this.chatRepository.save(chat);
+      }
+
+      // Delete the files from disk
+      await Promise.all(
+        deletedImageFiles.map(async fileName => {
+          try {
+            const filePath = path.join(OUTPUT_FOLDER, fileName);
+            if (fs.existsSync(filePath)) {
+              await fs.promises.unlink(filePath);
+            }
+          } catch (error) {
+            logger.error(`Failed to delete file ${fileName}: ${error}`);
+          }
+        })
+      );
+    }
+
+    return result; // Return all deleted message IDs including the original
   }
 }
 

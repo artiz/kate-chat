@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Paper, Text, Group, Avatar, ActionIcon, Tooltip } from "@mantine/core";
-import { IconCopy, IconCopyCheck, IconRobot, IconUser } from "@tabler/icons-react";
+import { IconCopy, IconCopyCheck, IconRobot, IconUser, IconTrash } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import classes from "./ChatMessage.module.scss";
@@ -133,6 +133,17 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <ActionIcon disabled size="sm" className="check-icon">
               <IconCopyCheck />
             </ActionIcon>
+            <Tooltip label="Delete message" position="top" withArrow>
+              <ActionIcon
+                className="delete-message-btn"
+                data-message-id={id}
+                size="sm"
+                color="red"
+                variant="transparent"
+              >
+                <IconTrash />
+              </ActionIcon>
+            </Tooltip>
           </div>
         </Paper>
       </>

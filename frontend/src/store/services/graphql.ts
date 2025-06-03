@@ -74,6 +74,12 @@ export const DELETE_CHAT_MUTATION = gql`
   }
 `;
 
+export const DELETE_MESSAGE_MUTATION = gql`
+  mutation DeleteMessage($id: ID!, $deleteFollowing: Boolean) {
+    deleteMessage(id: $id, deleteFollowing: $deleteFollowing)
+  }
+`;
+
 export const CREATE_CHAT_MUTATION = gql`
   mutation CreateChat($input: CreateChatInput!) {
     createChat(input: $input) {
@@ -373,6 +379,7 @@ export const graphqlApi = api.injectEndpoints({
                   updatedAt
                   messagesCount
                   lastBotMessage
+                  lastBotMessageId
                 }
                 total
                 hasMore
@@ -421,6 +428,10 @@ interface GetInitialDataResponse {
       hasMore: boolean;
     };
   };
+}
+
+export interface DeleteMessageResponse {
+  deleteMessage: string[];
 }
 
 export const { useGetCurrentUserQuery, useGetModelsQuery, useGetChatsQuery, useGetInitialDataQuery } = graphqlApi;
