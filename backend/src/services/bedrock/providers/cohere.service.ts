@@ -8,6 +8,21 @@ import {
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 
+type CohereFinishReason = "COMPLETE | MAX_TOKENS | ERROR | ERROR_TOXIC";
+type CohereGeneration = {
+  finish_reason: CohereFinishReason;
+  id: string;
+  text: string;
+  likelihood?: number;
+  token_likelihoods?: [{ token: string; likelihood: number }];
+  is_finished?: boolean;
+  index?: number;
+};
+type CohereResponse = {
+  generations: CohereGeneration[];
+  id: string;
+  prompt: string;
+};
 export class CohereService implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
@@ -51,7 +66,7 @@ export class CohereService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: CohereResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.generations?.[0]?.text || "",

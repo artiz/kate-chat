@@ -8,12 +8,39 @@ import {
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 import { logger } from "@/utils/logger";
-import { text } from "stream/consumers";
-import { notEmpty } from "@/utils/assert";
+import { notEmpty, ok } from "@/utils/assert";
 
 type AmazonMessageRole = "user" | "assistant";
 type AmazonImageFormat = "jpeg" | "png" | "gif" | "webp";
 type AmazonVideoFormat = "mkv" | "mov" | "mp4" | "webm" | "three_gp" | "flv" | "mpeg" | "mpg" | "wmv";
+
+type TextPart = {
+  text: string;
+};
+type AmazonNovaResponse = {
+  output: {
+    message: {
+      content: TextPart[];
+      role: AmazonMessageRole;
+    };
+  };
+  stopReason?: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    cacheReadInputTokenCount: number;
+    cacheWriteInputTokenCount: number;
+  };
+};
+
+type TitanTextPart = {
+  outputText: string;
+};
+type AmazonTitanResponse = {
+  results: TitanTextPart[];
+  stopReason?: string;
+};
 
 // https://docs.aws.amazon.com/nova/latest/userguide/complete-request-schema.html
 type AmazonRequestMessagePart =
@@ -167,7 +194,7 @@ export class AmazonService implements BedrockModelServiceProvider {
       inputText: systemPrompt,
       messages: requestMessages,
       inferenceConfig: {
-        maxTokenCount: maxTokens,
+        maxTokens,
         temperature,
         topP,
         stopSequences: [],
@@ -188,10 +215,34 @@ export class AmazonService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(
+    responseBody: AmazonNovaResponse | AmazonTitanResponse,
+    request: InvokeModelParamsRequest
+  ): ModelResponse {
+    logger.debug({ responseBody }, "Amazon model response");
+
+    if (request.modelId.startsWith("amazon.titan")) {
+      // Amazon Titan response
+      const response = responseBody as AmazonTitanResponse;
+      ok(response.results, "Amazon Titan response should have results");
+      const content = response.results[0]?.outputText || "";
+      return {
+        type: "text",
+        content,
+      };
+    }
+
+    // Amazon Nova response
+    const response = responseBody as AmazonNovaResponse;
+    const message = response.output.message;
+    const content = message.content.map(part => part.text).join("");
     return {
       type: "text",
-      content: responseBody.results?.[0]?.outputText || "",
+      content,
+      usage: {
+        inputTokens: response.usage?.inputTokens,
+        outputTokens: response.usage?.outputTokens,
+      },
     };
   }
 }

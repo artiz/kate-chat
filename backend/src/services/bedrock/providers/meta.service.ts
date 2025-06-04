@@ -1,13 +1,17 @@
 import {
-  ModelMessage,
   ModelResponse,
   BedrockModelServiceProvider,
-  StreamCallbacks,
   InvokeModelParamsRequest,
   InvokeModelParamsResponse,
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 
+type MetaInvokeModelResponse = {
+  generation?: string;
+  prompt_token_count?: number;
+  generation_token_count?: number;
+  stop_reason?: string;
+};
 export class MetaService implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
@@ -36,6 +40,7 @@ export class MetaService implements BedrockModelServiceProvider {
       }
     }
 
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-meta.html
     const params = {
       modelId,
       body: JSON.stringify({
@@ -49,7 +54,7 @@ export class MetaService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: MetaInvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.generation || "",

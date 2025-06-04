@@ -59,6 +59,9 @@ export class CreateChatInput {
 
   @Field({ nullable: true })
   modelId?: string;
+
+  @Field({ nullable: true })
+  systemPrompt?: string;
 }
 
 @InputType()

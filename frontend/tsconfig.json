@@ -16,15 +16,11 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "noImplicitAny": true,
     "paths": {
       "@/*": ["./src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "src/**/*"],
-  "exclude": ["node_modules", "**/*.test.tsx", "**/*.test.ts"]
+  "exclude": ["../node_modules/**/*.*", "node_modules/**/*.*", "**/*.test.tsx", "**/*.test.ts"]
 }

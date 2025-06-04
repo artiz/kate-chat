@@ -114,7 +114,10 @@
   {
     "provider": "amazon",
     "modelId": "amazon.nova-lite-v1:0",
-    "modelIdOverride": "us.amazon.nova-lite-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.amazon.nova-lite-v1:0",
+      "us": "us.amazon.nova-lite-v1:0"
+    },
     "name": "Nova Lite",
     "regions": [
       "us-east-1",
@@ -135,7 +138,10 @@
   {
     "provider": "amazon",
     "modelId": "amazon.nova-micro-v1:0",
-    "modelIdOverride": "us.amazon.nova-micro-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.amazon.nova-micro-v1:0",
+      "us": "us.amazon.nova-micro-v1:0"
+    },
     "name": "Nova Micro",
     "regions": [
       "us-east-1",
@@ -277,6 +283,10 @@
   {
     "provider": "mistral",
     "modelId": "mistral.pixtral-large-2502-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.mistral.pixtral-large-2502-v1:0",
+      "us": "us.mistral.pixtral-large-2502-v1:0"
+    },
     "name": "Pixtral Large (25.02)",
     "regions": ["us-east-1", "us-east-2", "us-east-3", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"]
   },

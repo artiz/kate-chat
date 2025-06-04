@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@apollo/client";
 import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
-import { addChat, Chat } from "../store/slices/chatSlice";
+import { addChat, Chat } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION } from "../store/services/graphql";
+import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION, CreateChatInput } from "../store/services/graphql";
 import { useChatMessages } from "@/hooks";
 
 export const CreateChat: React.FC = () => {
@@ -84,7 +84,7 @@ export const CreateChat: React.FC = () => {
       return;
     }
 
-    const chatInput: any = {
+    const chatInput: CreateChatInput = {
       title: "New Chat",
       modelId: modelToUse.modelId,
     };

@@ -60,6 +60,10 @@ export interface ModelMessage {
 
 export interface ModelResponse {
   type: ContentType;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
   // TODO: Add support for > 1 image
   content: string;
 }

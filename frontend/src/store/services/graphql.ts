@@ -232,6 +232,13 @@ export interface ImageInput {
   bytesBase64: string;
 }
 
+export interface CreateChatInput {
+  title: string;
+  description?: string;
+  modelId?: string;
+  systemPrompt?: string;
+}
+
 // Create the API endpoints
 export const graphqlApi = api.injectEndpoints({
   endpoints: builder => ({

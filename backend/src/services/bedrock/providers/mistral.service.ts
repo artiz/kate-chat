@@ -12,6 +12,15 @@ import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
 
+type ModelResponseOutput = {
+  text: string;
+  stopReason?: string;
+};
+
+type MistralInvokeModelResponse = {
+  outputs: ModelResponseOutput[];
+};
+
 export class MistralService implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
@@ -58,7 +67,7 @@ export class MistralService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: MistralInvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.outputs[0]?.text || "",

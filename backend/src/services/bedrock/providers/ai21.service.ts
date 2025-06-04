@@ -9,6 +9,25 @@ import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
 
+type ModelResponseChoice = {
+  index?: number;
+  message: {
+    role: string;
+    content: string;
+    tool_calls?: unknown[];
+  };
+  finish_reason?: string;
+};
+
+type InvokeModelResponse = {
+  choices: ModelResponseChoice[];
+  usage: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+};
+
 export class AI21Service implements BedrockModelServiceProvider {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
@@ -54,10 +73,10 @@ export class AI21Service implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: InvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
-      content: responseBody.completions?.[0]?.data?.text || "",
+      content: responseBody.choices?.[0]?.message?.content || "",
     };
   }
 }

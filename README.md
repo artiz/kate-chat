@@ -31,7 +31,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
   * Copy code section ✅
   * Chat message editing
   * Chat message deletion ✅
-* Add "no any" TS rule and setup strict type checking
+* Add "no any" TS rule and setup strict type checking ✅
 * Finish user profile management (change password, etc.) ✅
 * Add user registration with Google, GitHub, and MS account
 * Add Demo mode when no LLM providers configured on Backend and AWS_REGION/AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or OPENAI_API_KEY are stored in local storage and sent to the backend as "X-Aws-Region", "X-Aws-Access-Key-Id", "X-Aws-Secret-Access-Key", "X-Openai-Api-Key" headers

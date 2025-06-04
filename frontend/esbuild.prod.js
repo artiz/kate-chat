@@ -1,6 +1,8 @@
 const esbuild = require("esbuild");
 const { clean } = require("esbuild-plugin-clean");
 const { polyfillNode } = require("esbuild-plugin-polyfill-node");
+const { sassPlugin, postcssModules } = require("esbuild-sass-plugin");
+
 const fs = require("fs");
 
 // Create directory if it doesn't exist
@@ -31,7 +33,17 @@ esbuild
       ".ttf": "file",
       ".eot": "file",
     },
-    plugins: [clean({ patterns: ["./dist/*"] }), polyfillNode()],
+    plugins: [
+      clean({ patterns: ["./dist/*"] }),
+      sassPlugin({
+        filter: /\.module\.scss$/,
+        transform: postcssModules({}),
+      }),
+      sassPlugin({
+        filter: /\.scss$/,
+      }),
+      polyfillNode(),
+    ],
     define: {
       "process.env.NODE_ENV": '"production"',
       "process.env.REACT_APP_API_URL": '"http://localhost:4000"',

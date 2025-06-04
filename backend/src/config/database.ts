@@ -1,4 +1,13 @@
-import { AbstractLogger, DataSource, DataSourceOptions, LogLevel, LogMessage, QueryRunner } from "typeorm";
+import {
+  AbstractLogger,
+  DataSource,
+  DataSourceOptions,
+  LogLevel,
+  LogMessage,
+  ObjectLiteral,
+  QueryRunner,
+  Repository,
+} from "typeorm";
 import { Chat } from "../entities/Chat";
 import { Message } from "../entities/Message";
 import { Model } from "../entities/Model";
@@ -57,7 +66,7 @@ export const AppDataSource = new DataSource({
 });
 
 // Helper function to get a repository from the data source
-export function getRepository<T>(entityClass: any): any {
+export function getRepository<T extends ObjectLiteral>(entityClass: new () => T): Repository<T> {
   return AppDataSource.getRepository(entityClass);
 }
 

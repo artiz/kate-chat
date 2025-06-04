@@ -6,7 +6,7 @@ import { logger } from "./index";
  */
 export class TypeORMPinoLogger implements Logger {
   // Log queries
-  logQuery(query: string, parameters?: any[], queryRunner?: QueryRunner) {
+  logQuery(query: string, parameters?: unknown[], queryRunner?: QueryRunner) {
     logger.debug(
       {
         query,
@@ -17,7 +17,7 @@ export class TypeORMPinoLogger implements Logger {
   }
 
   // Log query errors
-  logQueryError(error: string | Error, query: string, parameters?: any[], queryRunner?: QueryRunner) {
+  logQueryError(error: string | Error, query: string, parameters?: unknown[], queryRunner?: QueryRunner) {
     logger.error(
       {
         error: typeof error === "string" ? { message: error } : error,
@@ -29,7 +29,7 @@ export class TypeORMPinoLogger implements Logger {
   }
 
   // Log query that is too slow
-  logQuerySlow(time: number, query: string, parameters?: any[], queryRunner?: QueryRunner) {
+  logQuerySlow(time: number, query: string, parameters?: unknown[], queryRunner?: QueryRunner) {
     logger.warn(
       {
         query,
@@ -51,7 +51,7 @@ export class TypeORMPinoLogger implements Logger {
   }
 
   // Log general database messages
-  log(level: "log" | "info" | "warn", message: any, queryRunner?: QueryRunner) {
+  log(level: "log" | "info" | "warn", message: unknown, queryRunner?: QueryRunner) {
     switch (level) {
       case "log":
         logger.debug({ message }, "TypeORM log");

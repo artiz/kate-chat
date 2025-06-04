@@ -29,6 +29,7 @@ type Chat {
 input CreateChatInput {
   description: String
   modelId: String
+  systemPrompt: String
   title: String!
 }
 

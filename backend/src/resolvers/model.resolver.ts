@@ -117,7 +117,7 @@ export class ModelResolver {
       // Get models from the database
       const modelRepository = getRepository(Model);
       const models = await modelRepository.find({
-        order: { apiProvider: "ASK", provider: "ASK", name: "ASC" },
+        order: { apiProvider: { direction: "ASC" }, provider: { direction: "DESC" }, name: { direction: "ASC" } },
       });
 
       // Get provider information
@@ -142,7 +142,7 @@ export class ModelResolver {
     const modelRepository = getRepository(Model);
     const dbModels = await modelRepository.find({
       where: { isActive: true },
-      order: { apiProvider: "ASK", provider: "ASK", name: "ASC" },
+      order: { apiProvider: { direction: "ASC" }, provider: { direction: "DESC" }, name: { direction: "ASC" } },
     });
 
     return dbModels;

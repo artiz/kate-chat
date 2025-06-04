@@ -6,10 +6,32 @@ import {
   InvokeModelParamsRequest,
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
-import { log } from "console";
 import { logger } from "@/utils/logger";
 
 type AnthropicMessageRole = "user" | "assistant";
+type AnthropicResponseType = "tool_use" | "text" | "image";
+
+type AnthropicResponese = {
+  id: string;
+  model: string;
+  role: AnthropicMessageRole;
+  content: [
+    {
+      type: AnthropicResponseType;
+      text?: string;
+      image?: unknown;
+      id?: string;
+      name?: string;
+      input?: string;
+    },
+  ];
+  stop_reason?: string;
+  stop_sequence?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  };
+};
 
 type AnthropicRequestMessagePart =
   | string
@@ -99,10 +121,14 @@ export class AnthropicService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: any, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: AnthropicResponese, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.content[0].text || "",
+      usage: {
+        inputTokens: responseBody.usage?.input_tokens,
+        outputTokens: responseBody.usage?.output_tokens,
+      },
     };
   }
 }

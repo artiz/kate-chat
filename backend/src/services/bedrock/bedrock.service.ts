@@ -22,7 +22,7 @@ const logger = createLogger(__filename);
 interface BedrockModelConfigRecord {
   provider: string;
   modelId: string;
-  modelIdOverride?: string;
+  modelIdOverride?: Record<string, string>;
   name: string;
   regions: string[];
 }
@@ -177,7 +177,7 @@ export class BedrockService {
   }
 
   getModelProvider(modelId: string) {
-    if (modelId.startsWith("us.amazon")) {
+    if (modelId.startsWith("us.") || modelId.startsWith("eu.") || modelId.startsWith("ap.")) {
       return modelId.substring(3).split(".")[0];
     }
 
@@ -239,7 +239,7 @@ export class BedrockService {
     );
 
     const modelIdOverrides = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
-      (acc: Record<string, string>, region) => {
+      (acc: Record<string, Record<string, string>>, region) => {
         const { modelId, modelIdOverride } = region;
         if (modelIdOverride) {
           acc[modelId] = modelIdOverride;
@@ -266,8 +266,15 @@ export class BedrockService {
       }
 
       if (model.modelId && model.providerName) {
-        const modelId = modelIdOverrides[model.modelId] || model.modelId;
+        let modelId = model.modelId;
         const providerName = model.providerName;
+
+        if (modelIdOverrides[model.modelId]) {
+          const map = modelIdOverrides[model.modelId];
+          // Use the override if available
+          const region = bedrockRegion.split("-")[0]; // Get the region prefix (e.g., "us")
+          modelId = map[region] || map[modelId] || modelId;
+        }
 
         models[modelId] = {
           apiProvider: ApiProvider.AWS_BEDROCK,

@@ -7,7 +7,7 @@ import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "../../store/services
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { removeChat, updateChat } from "@/store/slices/chatSlice";
+import { Chat, removeChat, updateChat } from "@/store/slices/chatSlice";
 
 import classes from "./NavbarContent.module.scss";
 
@@ -130,7 +130,7 @@ const NavbarContent: React.FC = () => {
   };
 
   // Handle edit chat
-  const handleEditClick = (e: React.MouseEvent, chat: any) => {
+  const handleEditClick = (e: React.MouseEvent, chat: Chat) => {
     e.stopPropagation();
     setIsEditing(chat.id);
     setEditedTitle(chat.title || "Untitled Chat");
