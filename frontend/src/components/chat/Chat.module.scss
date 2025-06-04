@@ -107,9 +107,10 @@
 
 .anchorContainer {
   position: absolute;
-  width: 100%;
+  width: 40px;
+  left: 50%;
   bottom: 0;
-  top: -3.5em;
+  top: -4em;
   height: 40px;
   z-index: 2;
   display: flex;

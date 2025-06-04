@@ -29,7 +29,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                     <span class="language"><LANG></span>
                 </span>
 
-                <button tabindex="0" type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn">
+                <div tabindex="0" type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn">
                     <div class="copy-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -55,8 +55,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                         </svg>
 
                     </div>
-                    <span>Copy code</span>
-                </button>
+                </div>
         `;
 
   const processCodeElements = useCallback(
@@ -96,7 +95,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     const timestamp = new Date(createdAt).toLocaleString();
 
     return (
-      <>
+      <div className={classes.messageContainer}>
         <Group align="center">
           <Avatar radius="xl" size="md">
             {isUserMessage ? <IconUser /> : <IconRobot />}
@@ -110,7 +109,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             </Text>
           </Group>
         </Group>
-        <Paper className={`${classes.message} ${classes[role] || ""}`} ref={componentRef} p="sm">
+        <div className={`${classes.message} ${classes[role] || ""}`} ref={componentRef}>
           {html ? (
             html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
           ) : (
@@ -145,8 +144,8 @@ export const ChatMessage = (props: ChatMessageProps) => {
               </ActionIcon>
             </Tooltip>
           </div>
-        </Paper>
-      </>
+        </div>
+      </div>
     );
   }, [role, id, user, modelName, content, html, createdAt]);
 

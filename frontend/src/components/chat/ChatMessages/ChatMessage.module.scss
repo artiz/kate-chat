@@ -1,6 +1,15 @@
-.message {
-  width: 100%;
+.messageContainer {
   overflow-x: auto;
+  flex-grow: 1;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--mb-padding, var(--mantine-spacing-sm));
+  border-radius: var(--mantine-radius-md);
+  margin-top: var(--mb-margin, var(--mantine-spacing-xs));
 
   :global p {
     margin-block-start: 0;
@@ -86,10 +95,11 @@
     border-top-left-radius: 0.25em;
 
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     flex-direction: row;
     white-space: normal;
+    gap: 1rem;
 
     :global .title {
       width: fit-content;
@@ -99,7 +109,7 @@
       flex-direction: row;
       cursor: pointer;
       user-select: none;
-      min-height: 2.5rem;
+      min-height: 2rem;
 
       :global .header-toggle {
         margin-right: 0.5rem;
@@ -111,7 +121,7 @@
     }
 
     :global .action-btn {
-      padding: 0.2rem 0.5rem;
+      padding: 0.1rem;
       line-height: 1;
       display: flex;
       justify-content: center;
@@ -188,7 +198,7 @@
 }
 
 [data-mantine-color-scheme="dark"] {
-  .message {
+  .messageContainer {
     :global pre {
       background-color: var(--mantine-color-dark-6);
     }
@@ -200,14 +210,14 @@
       }
     }
 
-    &.user {
+    .message.user {
       background-color: var(--mantine-color-dark-8);
     }
   }
 }
 
 [data-mantine-color-scheme="light"] {
-  .message {
+  .messageContainer {
     :global pre {
       background-color: var(--mantine-color-gray-1);
     }
@@ -219,7 +229,7 @@
       }
     }
 
-    &.user {
+    .message.user {
       background-color: var(--mantine-color-blue-0);
     }
   }
