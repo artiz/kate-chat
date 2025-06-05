@@ -3,6 +3,7 @@ import { bedrockClient } from "../../config/bedrock";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { MessageRole } from "../../entities/Message";
 import { ApiProvider, ModelMessage } from "../../types/ai.types";
+import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
 
 process.env.OPENAI_API_KEY = "OPENAI_API_KEY";
 
@@ -169,12 +170,11 @@ describe("AIService", () => {
       };
 
       // Mock the AWS Bedrock response
+      const response: A21InvokeModelResponse = {
+        choices: [{ message: { role: "assistant", content: "I'm doing well, thanks for asking!" } }],
+      };
       const mockResponse = {
-        body: Buffer.from(
-          JSON.stringify({
-            completions: [{ data: { text: "I'm doing well, thanks for asking!" } }],
-          })
-        ),
+        body: Buffer.from(JSON.stringify(response)),
       };
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
@@ -184,18 +184,12 @@ describe("AIService", () => {
         return {} as any;
       });
 
-      //   await aiService.invokeModelAsync(messages, modelId, callbacks, ApiProvider.AWS_BEDROCK);
+      await aiService.invokeModelAsync(ApiProvider.AWS_BEDROCK, { messages, modelId }, callbacks);
+      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
 
-      //   expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      //   expect(callbacks.onToken).toHaveBeenCalled();
-      //   expect(callbacks.onComplete).toHaveBeenCalledWith("Hello there!");
-      //   expect(callbacks.onError).not.toHaveBeenCalled();
-
-      const response = await aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId });
-
-      expect(response.content).toBe("I'm doing well, thanks for asking!");
-      expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
-      expect(bedrockClient.send).toHaveBeenCalledTimes(1);
+      expect(callbacks.onToken).toHaveBeenCalled();
+      expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!");
+      expect(callbacks.onError).not.toHaveBeenCalled();
     });
 
     it("should handle errors during streaming", async () => {

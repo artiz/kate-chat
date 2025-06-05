@@ -23,7 +23,7 @@ type CohereResponse = {
   id: string;
   prompt: string;
 };
-export class CohereService implements BedrockModelServiceProvider {
+export class CohereService implements BedrockModelServiceProvider<CohereResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
     // Convert messages to Cohere format

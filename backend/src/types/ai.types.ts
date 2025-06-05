@@ -92,9 +92,8 @@ export type InvokeModelParamsRequest = {
   imageBase64?: string;
 };
 
-export interface BedrockModelServiceProvider<T = any> {
+export interface BedrockModelServiceProvider<T = unknown> {
   getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse>;
 
-  // TODO: setup typed response
   parseResponse(responseBody: T, request?: InvokeModelParamsRequest): ModelResponse;
 }

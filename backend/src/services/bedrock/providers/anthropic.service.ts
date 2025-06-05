@@ -53,7 +53,7 @@ export type AnthropicRequestMessage = {
 /**
  * See format info at https://docs.anthropic.com/en/api/messages
  */
-export class AnthropicService implements BedrockModelServiceProvider {
+export class AnthropicService implements BedrockModelServiceProvider<AnthropicResponese> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
 

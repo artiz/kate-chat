@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { GraphQLContext } from "../middleware/authMiddleware";
+import { GraphQLContext } from "../middleware/auth.middleware";
 import { User } from "../entities/User";
 import { GqlChatsList } from "../types/graphql/responses";
 import { AIService } from "../services/ai.service";

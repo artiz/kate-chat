@@ -17,11 +17,11 @@ type ModelResponseOutput = {
   stopReason?: string;
 };
 
-type MistralInvokeModelResponse = {
+type MistralResponse = {
   outputs: ModelResponseOutput[];
 };
 
-export class MistralService implements BedrockModelServiceProvider {
+export class MistralService implements BedrockModelServiceProvider<MistralResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
     ok(messages.length);
@@ -67,7 +67,7 @@ export class MistralService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: MistralInvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: MistralResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.outputs[0]?.text || "",

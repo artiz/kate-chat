@@ -6,13 +6,13 @@ import {
 } from "@/types/ai.types";
 import { MessageRole } from "@/entities/Message";
 
-type MetaInvokeModelResponse = {
+type MetaResponse = {
   generation?: string;
   prompt_token_count?: number;
   generation_token_count?: number;
   stop_reason?: string;
 };
-export class MetaService implements BedrockModelServiceProvider {
+export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
     // Convert messages to Llama chat format
@@ -54,7 +54,7 @@ export class MetaService implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: MetaInvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: MetaResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.generation || "",

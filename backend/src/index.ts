@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import express from "express";
 import { createServer } from "http";
+import path from "path";
 import cors from "cors";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
@@ -9,19 +10,20 @@ import { ChatResolver } from "./resolvers/chat.resolver";
 import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
 import { UserResolver } from "./resolvers/user.resolver";
 import { ModelResolver } from "./resolvers/model.resolver";
-import path from "path";
-import { authMiddleware, graphQlAuthChecker } from "./middleware/authMiddleware";
+import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 import { execute, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
-import { PubSub } from "graphql-subscriptions";
-import { MessageType } from "./entities/Message";
-import { logger } from "./utils/logger";
+import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
+import { MessagesService } from "@/services/messages.service";
+import { unsubscribe } from "diagnostics_channel";
 
 // Load environment variables
 config();
+
+const logger = createLogger("server");
 
 const OUTPUT_FOLDER = process.env.OUTPUT_FOLDER || path.join(__dirname, "../output");
 
@@ -32,17 +34,14 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  // Create PubSub instance for subscriptions
-  const pubSub = new PubSub();
+  const messagesService = new MessagesService();
 
   const schemaPubSub = {
     publish: (routingKey: string, ...args: unknown[]) => {
-      pubSub.publish(routingKey, args?.length === 1 ? args[0] : args);
+      messagesService.publishGraphQL(routingKey, args?.length === 1 ? args[0] : args);
     },
     subscribe: (routingKey: string, dynamicId?: unknown): AsyncIterable<unknown> => {
-      return {
-        [Symbol.asyncIterator]: () => pubSub.asyncIterator(routingKey),
-      };
+      return messagesService.subscribeGraphQL(routingKey, dynamicId);
     },
   };
 
@@ -93,7 +92,6 @@ async function bootstrap() {
 
         // Extract the authorization header
         const authHeader = (connectionParams?.authorization as string) || "";
-        const { getUserFromToken } = require("./middleware/authMiddleware");
         const user = getUserFromToken(authHeader);
 
         if (user) {
@@ -104,16 +102,16 @@ async function bootstrap() {
 
         return {
           user,
-          pubSub, // Add pubSub to the WebSocket context
         };
       },
       onSubscribe: (ctx, msg) => {
         const chatId = msg.payload?.variables?.chatId;
         if (chatId) {
-          setTimeout(() => {
-            pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
-          }, 500);
+          messagesService.connectClient(ctx.extra.socket, chatId as string);
         }
+      },
+      onClose: ctx => {
+        messagesService.disconnectClient(ctx.extra.socket);
       },
       onError: (ctx, error) => {
         logger.error({ ctx, error }, "GraphQL subscription error");
@@ -131,7 +129,6 @@ async function bootstrap() {
         // Use the user from the request (set by authMiddleware)
         return {
           user: req.raw.user,
-          pubSub, // Add pubSub to the context
         };
       },
     })

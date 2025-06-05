@@ -9,7 +9,7 @@ import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
 
-type ModelResponseChoice = {
+type A21ModelResponseChoice = {
   index?: number;
   message: {
     role: string;
@@ -19,16 +19,16 @@ type ModelResponseChoice = {
   finish_reason?: string;
 };
 
-type InvokeModelResponse = {
-  choices: ModelResponseChoice[];
-  usage: {
+export type A21InvokeModelResponse = {
+  choices: A21ModelResponseChoice[];
+  usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
   };
 };
 
-export class AI21Service implements BedrockModelServiceProvider {
+export class AI21Service implements BedrockModelServiceProvider<A21InvokeModelResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
     let prompt = systemPrompt ? `System: ${systemPrompt}\n` : "";
@@ -73,10 +73,14 @@ export class AI21Service implements BedrockModelServiceProvider {
     return { params };
   }
 
-  parseResponse(responseBody: InvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseResponse(responseBody: A21InvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.choices?.[0]?.message?.content || "",
+      usage: {
+        inputTokens: responseBody.usage?.prompt_tokens || 0,
+        outputTokens: responseBody.usage?.completion_tokens || 0,
+      },
     };
   }
 }

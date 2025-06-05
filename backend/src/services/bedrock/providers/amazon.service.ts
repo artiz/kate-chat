@@ -73,7 +73,7 @@ export type AmazonRequestMessage = {
   content: AmazonRequestMessagePart[];
 };
 
-export class AmazonService implements BedrockModelServiceProvider {
+export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResponse | AmazonTitanResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
 

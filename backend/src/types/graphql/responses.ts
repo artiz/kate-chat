@@ -83,12 +83,6 @@ export class GqlMessagesList {
   chat?: Chat;
 }
 
-ObjectType();
-export class DeleteMessagesResponse {
-  @Field(() => [ID], { nullable: true })
-  deletedMessages?: string[];
-}
-
 @ObjectType()
 export class ProviderDetail {
   @Field()
