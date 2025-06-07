@@ -19,12 +19,15 @@ export const DeleteMessageModal: React.FC<DeleteMessageModalProps> = ({
       <Stack>
         <Text>What would you like to delete?</Text>
 
-        <Group justify="space-between" mt="md">
+        <Group mt="md">
           <Button variant="outline" color="red" onClick={onDeleteSingle}>
             Only this message
           </Button>
           <Button color="red" onClick={onDeleteWithFollowing}>
-            This message and all following
+            This one and all following
+          </Button>
+          <Button ms="4" variant="outline" onClick={onClose}>
+            Cancel
           </Button>
         </Group>
       </Stack>

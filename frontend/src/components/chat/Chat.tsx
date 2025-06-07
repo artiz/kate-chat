@@ -117,6 +117,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   useLayoutEffect(() => {
     autoScroll();
   }, [messages]);
+
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
