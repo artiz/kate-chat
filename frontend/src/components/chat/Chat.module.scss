@@ -117,6 +117,12 @@
   flex-direction: column;
   justify-items: center;
   align-items: center;
+  opacity: 0;
+  transition: all 0.5s ease;
+
+  &.visible {
+    opacity: 1;
+  }
 
   .anchor {
     background-color: var(--mantine-color-body);

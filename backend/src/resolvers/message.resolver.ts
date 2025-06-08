@@ -114,7 +114,7 @@ export class MessageResolver {
     },
   })
   newMessage(@Root() payload: { data: GqlMessage; chatId: string }, @Arg("chatId") chatId: string): GqlMessage {
-    const { message, error, type = MessageType.MESSAGE } = payload.data;
+    const { message, type = MessageType.MESSAGE, error, ...rest } = payload.data;
     logger.trace(
       {
         type,
@@ -129,6 +129,7 @@ export class MessageResolver {
       message,
       error,
       type,
+      ...rest,
     };
   }
 

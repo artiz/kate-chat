@@ -70,8 +70,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const currentUser = useAppSelector(state => state.user.currentUser);
 
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
-  const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   const {
     chat,
@@ -94,6 +94,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useEffect(() => {
     setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
+    chatInputRef.current?.focus();
   }, [chat]);
 
   useEffect(() => {
@@ -105,10 +106,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // #region Scrolling
   const scrollToBottom = useCallback(() => {
-    autoScrollTimer.current = setTimeout(
-      () => messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0),
-      20
-    );
+    setTimeout(() => messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0), 20);
   }, [messagesContainerRef]);
 
   const autoScroll = useCallback(() => {
@@ -119,16 +117,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useLayoutEffect(() => {
     autoScroll();
-  }, [messages]);
+  }, [messages, chat?.lastBotMessageHtml]);
 
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
-        if (autoScrollTimer.current) {
-          clearTimeout(autoScrollTimer.current);
-        }
+        scrollToBottom();
       } else if (messages?.length) {
         setShowAnchorButton(true);
       }
@@ -480,13 +476,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </div>
       </Paper>
       <Box style={{ position: "relative" }}>
-        {showAnchorButton && (
-          <div className={classes.anchorContainer}>
-            <div className={classes.anchor}>
-              <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
-            </div>
+        <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
+          <div className={classes.anchor}>
+            <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
           </div>
-        )}
+        </div>
       </Box>
 
       {/* Message input */}
@@ -517,6 +511,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
         <Group align="flex-start" className={classes.chatInputGroup}>
           <Textarea
+            ref={chatInputRef}
             className={classes.chatInput}
             placeholder="Type your message..."
             value={userMessage}

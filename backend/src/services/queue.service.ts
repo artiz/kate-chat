@@ -2,11 +2,12 @@ import { PubSub } from "graphql-subscriptions";
 import { createClient, RedisClientType } from "redis";
 
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
-import { Message } from "@/entities/Message";
+import { Message, MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { IncomingMessage } from "http";
 import { WebSocket } from "ws";
 import { ok } from "@/utils/assert";
+import { stream } from "undici";
 
 const logger = createLogger(__filename);
 
@@ -101,13 +102,13 @@ export class QueueService {
 
                 try {
                   const data = JSON.parse(message);
-                  const { chatId, messageId, error } = data;
+                  const { chatId, messageId, error, streaming } = data;
 
                   if (clientChatId === chatId) {
                     if (channel === CHAT_ERRORS_CHANNEL) {
                       return await this.pubSub.publish(NEW_MESSAGE, {
                         chatId,
-                        data: { error },
+                        data: { error: error || "Unknown error" },
                       });
                     }
 
@@ -117,7 +118,12 @@ export class QueueService {
                       // Send to client via GraphQL PubSub
                       await this.pubSub.publish(NEW_MESSAGE, {
                         chatId,
-                        data: { message: messageData },
+
+                        data: {
+                          error: messageData.role === MessageRole.ERROR ? messageData.content : null,
+                          message: messageData,
+                          streaming,
+                        },
                       });
                     }
                   }
@@ -175,12 +181,12 @@ export class QueueService {
     }
   }
 
-  async publishMessage(chatId: string, message: Message): Promise<void> {
+  async publishMessage(chatId: string, message: Message, streaming = false): Promise<void> {
     // Publish directly if Redis is not configured
     if (!this.redisClient || !this.redisClient.isOpen) {
       return await this.pubSub.publish(NEW_MESSAGE, {
         chatId,
-        data: { message },
+        data: { message, streaming },
       });
     }
 
@@ -196,7 +202,7 @@ export class QueueService {
       );
 
       // Broadcast message to all clients using Redis PubSub
-      await this.redisClient.publish(CHAT_MESSAGES_CHANNEL, JSON.stringify({ chatId, messageId }));
+      await this.redisClient.publish(CHAT_MESSAGES_CHANNEL, JSON.stringify({ chatId, messageId, streaming }));
     } catch (error) {
       logger.error(error, `Failed to publish message ${messageId} in Redis`);
     }

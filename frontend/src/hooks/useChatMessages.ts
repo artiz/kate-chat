@@ -212,7 +212,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
         // If the last message is from the same user and has the same content, skip adding
         if (existingNdx !== -1) {
           prev[existingNdx] = { ...message }; // Update the last message instead
-          return [...prev];
+          return prev;
         } else {
           return [...prev, message];
         }
@@ -227,7 +227,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       }
     };
 
-    if (0 && msg.content) {
+    if (msg.content) {
       parseMarkdown(msg.content).then(html => {
         addMessage({ ...msg, html });
       });

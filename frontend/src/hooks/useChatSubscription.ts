@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { Message, MessageType, MessageRole } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { useAppDispatch } from "@/store";
-import { throttle } from "lodash";
+
+const THROTTLE_TIMEOUT = 60; // ms throttle timeout
 
 // GraphQL queries and subscriptions
 const NEW_MESSAGE_SUBSCRIPTION = gql`
@@ -40,6 +40,8 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
   addMessage,
 }) => {
   const [wsConnected, setWsConnected] = useState(false);
+  const lastTs = useRef(0);
+  const addMessageTs = useRef<NodeJS.Timeout>(null);
 
   // Effect to update connection status
   useEffect(() => {
@@ -48,13 +50,27 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     }
   }, [id]);
 
-  const addChatMessage = useMemo(
-    () =>
-      throttle((message: Message, streaming?: boolean) => {
-        if (!message) return;
-        addMessage({ ...message, streaming });
-      }, 200),
+  const addChatMessage = useCallback(
+    (message: Message) => {
+      if (!message) return;
+      const now = Date.now();
+      // Throttle to avoid too many updates in a short time
+      if (now - lastTs.current < THROTTLE_TIMEOUT) {
+        if (addMessageTs.current) {
+          clearTimeout(addMessageTs.current);
+        }
 
+        addMessageTs.current = setTimeout(() => addMessage(message), THROTTLE_TIMEOUT);
+        return;
+      }
+
+      lastTs.current = now;
+
+      if (addMessageTs.current) {
+        clearTimeout(addMessageTs.current);
+      }
+      addMessage(message);
+    },
     [addMessage]
   );
 
@@ -67,7 +83,11 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     onComplete: () => {
       setWsConnected(false);
     },
-    onData: (options: OnDataOptions<{ newMessage?: { type: MessageType; message: Message; error: string } }>) => {
+    onData: (
+      options: OnDataOptions<{
+        newMessage?: { type: MessageType; message: Message; error: string; streaming: boolean };
+      }>
+    ) => {
       const data = options.data?.data || {};
 
       setWsConnected(true);
@@ -76,7 +96,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 
         if (response.type === MessageType.MESSAGE) {
           if (response.message) {
-            setTimeout(() => addChatMessage(response.message), 0);
+            setTimeout(() => addChatMessage({ ...response.message, streaming: response.streaming }), 0);
           } else if (response.error) {
             notifications.show({
               title: "Model interaction error",
@@ -86,7 +106,11 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
           }
 
           // If it's an assistant message after we sent something, clear loading state
-          if (response.error || response.message?.role === MessageRole.ASSISTANT) {
+          if (
+            response.error ||
+            response.message?.role === MessageRole.ASSISTANT ||
+            response.message?.role === MessageRole.ERROR
+          ) {
             resetSending();
           }
         }

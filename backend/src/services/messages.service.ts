@@ -209,13 +209,7 @@ export class MessagesService {
           // stream token
         } else {
           aiMessage.content += token;
-          const streamingMessage = {
-            ...aiMessage,
-            streaming: true, // Indicate this is a streaming message
-          };
-
-          // Publish message to Queue
-          await this.queueService.publishMessage(chatId, streamingMessage);
+          await this.queueService.publishMessage(chatId, aiMessage, true);
         }
       };
 

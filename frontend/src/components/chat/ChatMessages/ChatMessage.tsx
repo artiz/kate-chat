@@ -109,7 +109,10 @@ export const ChatMessage = (props: ChatMessageProps) => {
             </Text>
           </Group>
         </Group>
-        <div className={`${classes.message} ${classes[role] || ""}`} ref={componentRef}>
+        <div
+          className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}
+          ref={componentRef}
+        >
           {html ? (
             html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
           ) : (
@@ -125,6 +128,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                 size="sm"
                 color="gray"
                 variant="transparent"
+                disabled={streaming}
               >
                 <IconCopy />
               </ActionIcon>
@@ -139,6 +143,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                 size="sm"
                 color="red"
                 variant="transparent"
+                disabled={streaming}
               >
                 <IconTrash />
               </ActionIcon>

@@ -9,6 +9,7 @@ export enum MessageType {
 export enum MessageRole {
   USER = "user",
   ASSISTANT = "assistant",
+  ERROR = "error",
 }
 
 export interface Message {
