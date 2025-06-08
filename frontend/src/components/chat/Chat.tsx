@@ -92,15 +92,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
     addMessage: addChatMessage,
   });
 
-  // #region Scrolling
-  useEffect(() => {
-    setShowAnchorButton(false);
-  }, [chatId]);
-
   useEffect(() => {
     setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
   }, [chat]);
 
+  useEffect(() => {
+    if (loadCompleted) {
+      setShowAnchorButton(false);
+      scrollToBottom();
+    }
+  }, [chatId, loadCompleted]);
+
+  // #region Scrolling
   const scrollToBottom = useCallback(() => {
     autoScrollTimer.current = setTimeout(
       () => messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0),

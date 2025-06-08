@@ -124,32 +124,29 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     };
   }, [chatId]);
 
-  const removeMessages = useCallback(
-    (messageIds: string[]) => {
-      if (!chatId || !messageIds.length) return;
-      setMessages(prev => {
-        if (!prev) return []; // If no messages yet, return empty array
+  const removeMessages = (messageIds: string[]) => {
+    if (!chatId || !messageIds.length) return;
+    setMessages(prev => {
+      if (!prev) return []; // If no messages yet, return empty array
 
-        // Filter out messages that match the IDs to be removed
-        const updatedMessages = prev.filter(msg => !messageIds.includes(msg.id));
-        if (updatedMessages.length === prev.length) {
-          return prev; // No changes made, return original array
-        }
+      // Filter out messages that match the IDs to be removed
+      const updatedMessages = prev.filter(msg => !messageIds.includes(msg.id));
+      if (updatedMessages.length === prev.length) {
+        return prev; // No changes made, return original array
+      }
 
-        // If the last message was removed, reset the lastBotMessage in chat
-        if (chat && messageIds.includes(chat.lastBotMessageId || "")) {
-          updateChat(chatId, {
-            ...chat,
-            lastBotMessage: "...",
-            lastBotMessageHtml: undefined,
-          });
-        }
+      // If the last message was removed, reset the lastBotMessage in chat
+      if (chat && messageIds.includes(chat.lastBotMessageId || "")) {
+        updateChat(chatId, {
+          ...chat,
+          lastBotMessage: "...",
+          lastBotMessageHtml: undefined,
+        });
+      }
 
-        return updatedMessages;
-      });
-    },
-    [chatId, chat]
-  );
+      return updatedMessages;
+    });
+  };
 
   // Update chat mutation (for changing the model)
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
@@ -214,7 +211,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
         const existingNdx = prev.findLastIndex(m => m.id === message.id);
         // If the last message is from the same user and has the same content, skip adding
         if (existingNdx !== -1) {
-          prev[existingNdx] = message; // Update the last message instead
+          prev[existingNdx] = { ...message }; // Update the last message instead
           return [...prev];
         } else {
           return [...prev, message];
@@ -230,7 +227,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       }
     };
 
-    if (msg.content) {
+    if (0 && msg.content) {
       parseMarkdown(msg.content).then(html => {
         addMessage({ ...msg, html });
       });

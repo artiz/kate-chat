@@ -1,6 +1,5 @@
-import { ContentBlockStart } from "@aws-sdk/client-bedrock-runtime";
 import path from "path";
-import pino from "pino";
+import pino, { LoggerOptions } from "pino";
 
 const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === "production" ? "info" : "debug");
 
@@ -17,7 +16,7 @@ const redactPaths = ["password", "headers.Authorization", "*.headers.Authorizati
   })
   .flat(2);
 
-const loggerConfig = {
+const loggerConfig: LoggerOptions = {
   level,
   redact: {
     paths: redactPaths,
@@ -29,8 +28,8 @@ const loggerConfig = {
           target: "pino-pretty",
           options: {
             colorize: true,
-            translateTime: "SYS:standard",
-            ignore: "pid,hostname",
+            translateTime: "UTC:yyyy-mm-dd HH:MM:ss.l",
+            ignore: "hostname",
           },
         }
       : undefined,

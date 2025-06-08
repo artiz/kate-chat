@@ -17,19 +17,18 @@ import { getErrorMessage } from "@/utils/errors";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
 import { getRepository } from "@/config/database";
+import { IncomingMessage } from "http";
+import { QueueService } from "./queue.service";
 
 const logger = createLogger(__filename);
 
-// TODO: setup Redis connection (https://docs.bullmq.io/guide/introduction ?) and:
-// 1. Store generated messages in Redis by ID with exporation in 5 min
-// 2. Use Redis PubSub to broadcast { chatId, messageId }  to all clients
-// 3. Check where chatId in current instace client, get message from Redis and send it to client
-
+// TODO: move to statics in MessagesService
 // one staticGraphQL PubSub instance for subscriptions
 const pubSub = new PubSub();
 const clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
 
 export class MessagesService {
+  private queueService: QueueService;
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
   private modelRepository: Repository<Model>;
@@ -37,21 +36,29 @@ export class MessagesService {
   private aiService: AIService;
 
   constructor() {
+    this.queueService = new QueueService(pubSub);
     this.aiService = new AIService();
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
     this.modelRepository = getRepository(Model);
   }
 
-  public connectClient(socket: WebSocket, chatId: string) {
+  public connectClient(socket: WebSocket, request: IncomingMessage, chatId: string) {
+    const clientIp = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
+    logger.info({ chatId, clientIp }, "Client connected");
+
     clients.set(socket, chatId);
     setTimeout(() => {
       pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
     }, 300);
+
+    this.queueService.connectClient(socket, chatId);
   }
 
   public disconnectClient(socket: WebSocket) {
+    const chatId = clients.get(socket);
     clients.delete(socket);
+    this.queueService.disconnectClient(socket, chatId);
   }
 
   public publishGraphQL(routingKey: string, payload: unknown) {
@@ -136,16 +143,15 @@ export class MessagesService {
       await this.chatRepository.save(chat);
     }
 
-    // Publish the new message event if pubSub is available
-    await pubSub.publish(NEW_MESSAGE, {
-      chatId,
-      data: { message },
-    });
+    // Publish message to Queue
+    await this.queueService.publishMessage(chatId, message);
 
-    // Get previous messages for context (limited to 20 for performance)
+    // Get previous messages for context
     const previousMessages = await this.messageRepository.find({
       where: { chatId },
       order: { createdAt: "DESC" },
+      // TODO: make this configurable
+      // Limit to last 100 messages for context
       take: 100,
     });
 
@@ -157,11 +163,8 @@ export class MessagesService {
       ok(aiMessage);
       const savedMessage = await this.messageRepository.save(aiMessage);
 
-      // Publish the new message event for the AI response if pubSub is available
-      await pubSub.publish(NEW_MESSAGE, {
-        chatId,
-        data: { message: savedMessage },
-      });
+      // Publish message to Queue
+      await this.queueService.publishMessage(chatId, savedMessage);
     };
 
     const request = {
@@ -189,39 +192,30 @@ export class MessagesService {
       const handleStreaming = async (token: string, completed?: boolean, error?: Error) => {
         if (completed) {
           if (error) {
-            const errorMessage = getErrorMessage(error);
-
-            await pubSub.publish(NEW_MESSAGE, {
-              chatId,
-              data: { error: errorMessage },
-            });
-
-            aiMessage.role = MessageRole.ERROR;
-            aiMessage.content = errorMessage;
-            completeRequest(aiMessage).catch(err => {
-              logger.error(err, "Error sending AI response");
-            });
-
-            return logger.error(error, "Error generating AI response");
+            completeRequest({
+              ...aiMessage,
+              content: getErrorMessage(error),
+              role: MessageRole.ERROR,
+            }).catch(err => logger.error(err, "Error sending AI response"));
+            return;
           }
 
           aiMessage.content = token;
           completeRequest(aiMessage).catch(err => {
-            logger.error(error, "Error sending AI response");
+            this.queueService.publishError(chatId, getErrorMessage(err));
+            logger.error(err, "Error sending AI response");
           });
 
           // stream token
         } else {
           aiMessage.content += token;
-          await pubSub.publish(NEW_MESSAGE, {
-            chatId,
-            data: {
-              message: {
-                ...aiMessage,
-                streaming: true, // Indicate this is a streaming message
-              },
-            },
-          });
+          const streamingMessage = {
+            ...aiMessage,
+            streaming: true, // Indicate this is a streaming message
+          };
+
+          // Publish message to Queue
+          await this.queueService.publishMessage(chatId, streamingMessage);
         }
       };
 
@@ -260,12 +254,21 @@ export class MessagesService {
       logger.error(error, "Error generating AI response");
 
       logger.debug(`Publishing AI response event for chat ${chatId}`);
-      await pubSub.publish(NEW_MESSAGE, {
-        chatId,
-        data: { error: getErrorMessage(error) },
-      });
+      const errorChatMessage = await this.messageRepository.save(
+        this.messageRepository.create({
+          content: getErrorMessage(error),
+          role: MessageRole.ERROR,
+          modelId: model.modelId, // real model used
+          modelName: model.name,
+          chatId,
+          user,
+        })
+      );
 
-      throw new Error(`Failed to generate AI response: ${getErrorMessage(error)}`);
+      completeRequest(errorChatMessage).catch(err => {
+        this.queueService.publishError(chatId, getErrorMessage(err));
+        logger.error(err, "Error sending AI response");
+      });
     }
 
     return message;

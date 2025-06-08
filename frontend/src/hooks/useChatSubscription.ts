@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { Message, MessageType, MessageRole } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
@@ -41,8 +41,6 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 }) => {
   const [wsConnected, setWsConnected] = useState(false);
 
-  const dispatch = useAppDispatch();
-
   // Effect to update connection status
   useEffect(() => {
     if (id) {
@@ -50,12 +48,14 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     }
   }, [id]);
 
-  const addChatMessage = useCallback(
-    throttle((message: Message, streaming?: boolean) => {
-      if (!message) return;
-      addMessage({ ...message, streaming });
-    }, 200),
-    [dispatch, addMessage]
+  const addChatMessage = useMemo(
+    () =>
+      throttle((message: Message, streaming?: boolean) => {
+        if (!message) return;
+        addMessage({ ...message, streaming });
+      }, 200),
+
+    [addMessage]
   );
 
   // Subscribe to new messages in this chat

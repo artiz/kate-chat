@@ -1,4 +1,5 @@
 
 output/**/*.png
-output/**/*.jng
+output/**/*.jpg
+output/**/*.jpeg
 output/**/*.webp

@@ -115,7 +115,7 @@ export class AnthropicService implements BedrockModelServiceProvider<AnthropicRe
       }),
     };
 
-    logger.debug({ params }, "Call Anthropic model");
+    logger.debug({ modelId }, "Call Anthropic model");
 
     // This part will be moved to the base service
     return { params };

@@ -62,7 +62,7 @@ export class MistralService implements BedrockModelServiceProvider<MistralRespon
       }),
     };
 
-    logger.debug({ modelId, messages: mistralMessages }, "Call Mistral model");
+    logger.debug({ modelId }, "Call Mistral model");
 
     return { params };
   }

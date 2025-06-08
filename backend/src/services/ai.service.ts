@@ -129,7 +129,6 @@ export class AIService {
         },
         onError: (error: Error) => {
           callback("", true, error);
-          logger.error(error, "Error during streaming");
         },
       }
     );

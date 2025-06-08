@@ -107,7 +107,7 @@ async function bootstrap() {
       onSubscribe: (ctx, msg) => {
         const chatId = msg.payload?.variables?.chatId;
         if (chatId) {
-          messagesService.connectClient(ctx.extra.socket, chatId as string);
+          messagesService.connectClient(ctx.extra.socket, ctx.extra.request, chatId as string);
         }
       },
       onClose: ctx => {

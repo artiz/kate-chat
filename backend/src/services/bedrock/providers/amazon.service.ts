@@ -105,20 +105,21 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
       // Add the final assistant prompt
       prompt += "Assistant:";
 
+      const body = {
+        inputText: prompt,
+        textGenerationConfig: {
+          maxTokenCount: maxTokens,
+          temperature,
+          topP,
+          stopSequences: [],
+        },
+      };
       const params = {
         modelId,
-        body: JSON.stringify({
-          inputText: prompt,
-          textGenerationConfig: {
-            maxTokenCount: maxTokens,
-            temperature,
-            topP,
-            stopSequences: [],
-          },
-        }),
+        body: JSON.stringify(body),
       };
 
-      logger.debug({ modelId, params }, "Call Amazon Titan model");
+      logger.debug({ modelId, textGenerationConfig: body.textGenerationConfig }, "Call Amazon Titan model");
 
       return { params };
     }
@@ -191,7 +192,6 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
     });
 
     const body: Record<string, any> = {
-      inputText: systemPrompt,
       messages: requestMessages,
       inferenceConfig: {
         maxTokens,
@@ -210,7 +210,7 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
       body: JSON.stringify(body),
     };
 
-    logger.debug({ modelId, params }, "Call Amazon model");
+    logger.debug({ modelId, inferenceConfig: body.inferenceConfig }, "Call Amazon model");
 
     return { params };
   }
