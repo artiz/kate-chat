@@ -28,26 +28,12 @@ import {
   IconRocket,
   IconBook2,
   IconBrandAws,
-  IconMessage,
-  IconMessagePlus,
   IconRefresh,
-  IconTestPipe,
   IconAlertCircle,
-  IconFilter,
-  IconServer,
-  IconCoin,
-  IconReportMoney,
 } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { useMutation, useLazyQuery } from "@apollo/client";
-import {
-  Model,
-  ProviderInfo,
-  setModels,
-  setProviders,
-  setModelsAndProviders,
-  updateModel,
-} from "@/store/slices/modelSlice";
+import { Model, setModelsAndProviders, updateModel } from "@/store/slices/modelSlice";
 import {
   CREATE_CHAT_MUTATION,
   RELOAD_MODELS_MUTATION,
@@ -56,7 +42,7 @@ import {
   GET_COSTS_QUERY,
 } from "@/store/services/graphql";
 import { notifications } from "@mantine/notifications";
-import { Message } from "@/store/slices/chatSlice";
+import { addChat, Message } from "@/store/slices/chatSlice";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
 
@@ -138,6 +124,7 @@ export const ModelsDashboard: React.FC = () => {
   // Create chat mutation
   const [createChat, { loading: creatingChat }] = useMutation(CREATE_CHAT_MUTATION, {
     onCompleted: data => {
+      dispatch(addChat(data.createChat));
       navigate(`/chat/${data.createChat.id}`);
     },
     onError: error => {

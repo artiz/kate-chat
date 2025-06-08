@@ -42,6 +42,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
   creatingChat,
 }) => {
   const user = useAppSelector(state => state.user.currentUser);
+  const { providers } = useAppSelector(state => state.models);
 
   // Filtering state
   const [providerFilter, setProviderFilter] = useState<string>();
@@ -50,17 +51,18 @@ export const ModelsList: React.FC<ModelsListProps> = ({
 
   // Get unique providers and API providers for filters
   const uniqueProviders = useMemo(() => {
-    const providers = [...new Set(models.map(model => model.provider))].filter(Boolean);
-    return providers.map(provider => ({ value: provider || "", label: provider || "Unknown" }));
+    const prvdrs = [...new Set(models.map(model => model.provider))].filter(Boolean);
+    return prvdrs.map(provider => ({ value: provider || "", label: provider || "Unknown" }));
   }, [models]);
 
-  const uniqueApiProviders = useMemo(() => {
-    const apiProviders = [...new Set(models.map(model => model.apiProvider))];
-    return apiProviders.map(apiProvider => ({
-      value: apiProvider,
-      label: apiProvider === "bedrock" ? "AWS Bedrock" : "OpenAI",
-    }));
-  }, [models]);
+  const apiProviders = useMemo(() => {
+    return (
+      providers?.map(provider => ({
+        value: provider.id,
+        label: provider.name || "Unknown",
+      })) || []
+    );
+  }, [providers]);
 
   // Filtered models based on selections
   const filteredModels = useMemo(() => {
@@ -100,7 +102,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
               <Select
                 placeholder="API Provider"
                 clearable
-                data={uniqueApiProviders}
+                data={apiProviders}
                 value={apiProviderFilter || null}
                 onChange={v => setApiProviderFilter(v || undefined)}
                 size="sm"

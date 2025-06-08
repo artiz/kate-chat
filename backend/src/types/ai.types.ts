@@ -3,6 +3,7 @@ import { MessageRole } from "../entities/Message";
 export enum ApiProvider {
   AWS_BEDROCK = "bedrock",
   OPEN_AI = "open_ai",
+  YANDEX = "yandex",
 }
 
 export type ContentType = "text" | "image" | "video" | "audio";

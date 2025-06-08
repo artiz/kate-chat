@@ -100,6 +100,7 @@ export const RELOAD_MODELS_MUTATION = gql`
         ${MODEL_FRAGMENT}   
       }
       providers {
+        id
         name
         isConnected
         costsInfoAvailable
@@ -285,6 +286,7 @@ export const graphqlApi = api.injectEndpoints({
                   apiProvider
                 }
                 providers {
+                  id
                   name
                   isConnected
                   costsInfoAvailable

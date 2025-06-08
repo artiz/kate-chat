@@ -12,15 +12,18 @@ import {
 } from "../types/ai.types";
 import { BedrockService } from "./bedrock/bedrock.service";
 import { OpenAIService } from "./openai/openai.service";
+import { YandexService } from "./yandex/yandex.service";
 import { logger } from "../utils/logger";
 import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai";
 export class AIService {
   private bedrockService: BedrockService;
   private openAIService: OpenAIService;
+  private yandexService: YandexService;
 
   constructor() {
     this.bedrockService = new BedrockService();
     this.openAIService = new OpenAIService();
+    this.yandexService = new YandexService();
   }
 
   // Main method to interact with models
@@ -41,6 +44,8 @@ export class AIService {
       return await this.bedrockService.invokeModel(request);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
       return await this.openAIService.invokeModel(request);
+    } else if (apiProvider === ApiProvider.YANDEX) {
+      return await this.yandexService.invokeModel(request);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }
@@ -68,6 +73,8 @@ export class AIService {
       return await this.bedrockService.invokeModelAsync(request, callbacks);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
       return await this.openAIService.invokeModelAsync(request, callbacks);
+    } else if (apiProvider === ApiProvider.YANDEX) {
+      return await this.yandexService.invokeModelAsync(request, callbacks);
     } else {
       callbacks.onError?.(new Error(`Unsupported API provider: ${apiProvider}`));
     }
@@ -133,6 +140,8 @@ export class AIService {
       return this.openAIService.getCosts(startTime, endTime);
     } else if (providerId === ApiProvider.AWS_BEDROCK) {
       return this.bedrockService.getCosts(startTime, endTime);
+    } else if (providerId === ApiProvider.YANDEX) {
+      return this.yandexService.getCosts(startTime, endTime);
     } else {
       throw new Error(`Unsupported provider: ${providerId}`);
     }
@@ -149,6 +158,10 @@ export class AIService {
     // Get OpenAI models
     const openAiModels = await this.openAIService.getOpenAIModels();
     Object.assign(models, openAiModels);
+
+    // Get Yandex models
+    const yandexModels = await this.yandexService.getYandexModels();
+    Object.assign(models, yandexModels);
 
     return models;
   }
@@ -178,6 +191,19 @@ export class AIService {
       providers.push({
         id: ApiProvider.OPEN_AI,
         name: "OpenAI",
+        isConnected: false,
+        details: { error: "Failed to get provider info" },
+      });
+    }
+
+    // Get Yandex provider info
+    try {
+      providers.push(await this.yandexService.getYandexInfo());
+    } catch (error) {
+      logger.error(error, "Error getting Yandex provider info");
+      providers.push({
+        id: ApiProvider.YANDEX,
+        name: "Yandex",
         isConnected: false,
         details: { error: "Failed to get provider info" },
       });

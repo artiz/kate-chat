@@ -73,6 +73,7 @@ The project consists of two main parts:
 - Node.js (v20+)
 - AWS Account with Bedrock access (instructions below)
 - OpenAI API Account (instructions below)
+- Yandex Foundation Models [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
 - Docker and Docker Compose (optional, for development environment)
 
 ### AWS Bedrock API keys retrieval

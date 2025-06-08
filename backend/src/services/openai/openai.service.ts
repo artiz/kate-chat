@@ -14,7 +14,6 @@ import {
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
-import { notEmpty } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
