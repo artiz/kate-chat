@@ -8,6 +8,7 @@ import { IncomingMessage } from "http";
 import { WebSocket } from "ws";
 import { ok } from "@/utils/assert";
 import { stream } from "undici";
+import { QUEUE_MESSAGE_EXPIRATION_SEC } from "@/config/application";
 
 const logger = createLogger(__filename);
 
@@ -197,8 +198,7 @@ export class QueueService {
       await this.redisClient.set(
         `message:${messageId}`,
         JSON.stringify(message),
-        // TODO: use config for expiration
-        { EX: 300 } // 5 minutes expiration
+        { EX: QUEUE_MESSAGE_EXPIRATION_SEC } // message expiration to prevent stale data
       );
 
       // Broadcast message to all clients using Redis PubSub

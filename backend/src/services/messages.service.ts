@@ -14,7 +14,7 @@ import { ModelMessageContent } from "@/types/ai.types";
 import { OUTPUT_FOLDER } from "@/config/application";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
-import { DEFAULT_PROMPT } from "@/config/ai";
+import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
 import { getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
@@ -22,21 +22,20 @@ import { QueueService } from "./queue.service";
 
 const logger = createLogger(__filename);
 
-// TODO: move to statics in MessagesService
-// one staticGraphQL PubSub instance for subscriptions
-const pubSub = new PubSub();
-const clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
-
 export class MessagesService {
-  private queueService: QueueService;
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
   private modelRepository: Repository<Model>;
 
+  private queueService: QueueService;
   private aiService: AIService;
 
+  // one staticGraphQL PubSub instance for subscriptions
+  private static pubSub = new PubSub();
+  private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
+
   constructor() {
-    this.queueService = new QueueService(pubSub);
+    this.queueService = new QueueService(MessagesService.pubSub);
     this.aiService = new AIService();
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
@@ -47,27 +46,27 @@ export class MessagesService {
     const clientIp = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
     logger.info({ chatId, clientIp }, "Client connected");
 
-    clients.set(socket, chatId);
+    MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
-      pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
+      MessagesService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
     }, 300);
 
     this.queueService.connectClient(socket, chatId);
   }
 
   public disconnectClient(socket: WebSocket) {
-    const chatId = clients.get(socket);
-    clients.delete(socket);
+    const chatId = MessagesService.clients.get(socket);
+    MessagesService.clients.delete(socket);
     this.queueService.disconnectClient(socket, chatId);
   }
 
   public publishGraphQL(routingKey: string, payload: unknown) {
-    pubSub.publish(routingKey, payload);
+    MessagesService.pubSub.publish(routingKey, payload);
   }
 
   public subscribeGraphQL(routingKey: string, dynamicId: unknown): AsyncIterable<unknown> {
     return {
-      [Symbol.asyncIterator]: () => pubSub.asyncIterator(routingKey),
+      [Symbol.asyncIterator]: () => MessagesService.pubSub.asyncIterator(routingKey),
     };
   }
 
@@ -135,7 +134,10 @@ export class MessagesService {
       chat,
     });
 
-    const message = await this.messageRepository.save(messageData);
+    const message = await this.messageRepository.save(messageData).catch(err => {
+      this.queueService.publishError(chatId, getErrorMessage(err));
+      throw err;
+    });
 
     // Set chat isPristine to false when adding the first message
     if (chat.isPristine) {
@@ -150,9 +152,7 @@ export class MessagesService {
     const previousMessages = await this.messageRepository.find({
       where: { chatId },
       order: { createdAt: "DESC" },
-      // TODO: make this configurable
-      // Limit to last 100 messages for context
-      take: 100,
+      take: CONTEXT_MESSAGES_LIMIT,
     });
 
     // Generate AI response
