@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Stack, Button, NavLink, Text, Group, Loader, Divider, ScrollArea, Menu, ActionIcon } from "@mantine/core";
 import { IconPlus, IconSettings, IconMessage, IconRobot, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
@@ -21,6 +21,11 @@ const NavbarContent: React.FC = () => {
 
   // Get chats from Redux store
   const { chats, loading, error } = useAppSelector(state => state.chats);
+  const { providers } = useAppSelector(state => state.models);
+
+  const noActiveProviders = useMemo(() => {
+    return providers.length === 0 || !providers.some(provider => provider.isConnected);
+  }, [providers]);
 
   // Mutations
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
@@ -167,7 +172,13 @@ const NavbarContent: React.FC = () => {
   return (
     <Stack h="100%" justify="space-between" gap="0">
       <Stack gap="xs">
-        <Button leftSection={<IconPlus size={16} />} variant="light" onClick={handleNewChat} fullWidth>
+        <Button
+          leftSection={<IconPlus size={16} />}
+          disabled={noActiveProviders}
+          variant="light"
+          onClick={handleNewChat}
+          fullWidth
+        >
           New Chat
         </Button>
 

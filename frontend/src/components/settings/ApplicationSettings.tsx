@@ -30,6 +30,10 @@ import {
   STORAGE_YANDEX_API_KEY,
 } from "@/store/slices/authSlice";
 
+interface IProps {
+  onReloadAppData?: () => void;
+}
+
 // GraphQL mutations and queries
 const UPDATE_USER_MUTATION = gql`
   mutation UpdateUser($input: UpdateUserInput!) {
@@ -52,7 +56,7 @@ const CHANGE_PASSWORD_MUTATION = gql`
   }
 `;
 
-export const ApplicationSettings: React.FC = () => {
+export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProps) => {
   const user = useAppSelector(state => state.user.currentUser);
   const models = useAppSelector(state => state.models.models);
   const dispatch = useAppDispatch();
@@ -65,18 +69,16 @@ export const ApplicationSettings: React.FC = () => {
   const [defaultSystemPrompt, setDefaultSystemPrompt] = useState(user?.defaultSystemPrompt || "");
 
   // local connection settings
-  const [awsRegion, setAwsRegion] = useState<string>();
-  const [awsProfile, setAwsProfile] = useState<string>();
-  const [awsAccessKeyId, setAwsAccessKeyId] = useState<string>();
-  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState<string>();
-  const [openaiApiKey, setOpenaiApiKey] = useState<string>();
-  const [openaiApiAdminKey, setOpenaiApiAdminKey] = useState<string>();
-  const [yandexApiKey, setYandexApiKey] = useState<string>();
-  const [yandexApiFolderId, setYandexApiFolderId] = useState<string>();
+  const [awsRegion, setAwsRegion] = useState<string>("");
+  const [awsProfile, setAwsProfile] = useState<string>("");
+  const [awsAccessKeyId, setAwsAccessKeyId] = useState<string>("");
+  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState<string>("");
+  const [openaiApiKey, setOpenaiApiKey] = useState<string>("");
+  const [openaiApiAdminKey, setOpenaiApiAdminKey] = useState<string>("");
+  const [yandexApiKey, setYandexApiKey] = useState<string>("");
+  const [yandexApiFolderId, setYandexApiFolderId] = useState<string>("");
 
   useEffect(() => {
-    if (!user) return;
-
     // Load initial connection settings from localStorage or defaults
     setAwsRegion(localStorage.getItem(STORAGE_AWS_REGION) || "");
     setAwsProfile(localStorage.getItem(STORAGE_AWS_PROFILE) || "");
@@ -192,6 +194,8 @@ export const ApplicationSettings: React.FC = () => {
     localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
     localStorage.setItem(STORAGE_YANDEX_API_KEY, yandexApiKey || "");
     localStorage.setItem(STORAGE_YANDEX_API_FOLDER_ID, yandexApiFolderId || "");
+
+    onReloadAppData?.();
   };
 
   // Handle password change
@@ -248,7 +252,7 @@ export const ApplicationSettings: React.FC = () => {
       <Tabs.Panel value="ai">
         {/* Connectivity */}
         <Paper withBorder p="xl">
-          <form onSubmit={handleConnectivityUpdate}>
+          <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
             <Stack gap="md">
               <Title order={3}>AWS Bedrock</Title>
               <TextInput
@@ -318,7 +322,7 @@ export const ApplicationSettings: React.FC = () => {
 
         {/* Default Settings */}
         <Paper withBorder p="xl">
-          <form onSubmit={handleUserDefaultsUpdate}>
+          <form name="user-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
             <Stack gap="md">
               <Select
                 label="Default AI Model"
@@ -355,7 +359,7 @@ export const ApplicationSettings: React.FC = () => {
       <Tabs.Panel value="profile">
         {/* Profile Settings */}
         <Paper withBorder p="xl">
-          <form onSubmit={handleProfileUpdate}>
+          <form name="profile-settings" onSubmit={handleProfileUpdate}>
             <Stack gap="md">
               <Group grow>
                 <TextInput label="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} required />
@@ -377,7 +381,7 @@ export const ApplicationSettings: React.FC = () => {
       <Tabs.Panel value="password">
         {/* Password Settings */}
         <Paper withBorder p="xl">
-          <form onSubmit={handlePasswordChange}>
+          <form name="password-settings" onSubmit={handlePasswordChange}>
             <Stack gap="md">
               <PasswordInput
                 label="Current Password"

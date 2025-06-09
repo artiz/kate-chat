@@ -101,9 +101,13 @@ export class YandexService extends BaseProviderService {
 
   // Invoke Yandex model for text generation
   async invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse> {
+    if (!this.apiKey) {
+      throw new Error("Yandex API key is not set. Set YANDEX_API_KEY/YANDEX_API_FOLDER_ID in connection seettings.");
+    }
+
     const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     const yandexMessages = this.formatMessages(messages, systemPrompt);
-    const modelUri = modelId.replace("{folder}", this.connection.YANDEX_API_FOLDER_ID ?? "default");
+    const modelUri = modelId.replace("{folder}", this.folderId ?? "default");
 
     const body: YandexCompletionRequest = {
       modelUri,
@@ -152,8 +156,10 @@ export class YandexService extends BaseProviderService {
 
   // Streaming implementation for Yandex
   async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
-    if (!this.apiKey) {
-      callbacks.onError?.(new Error("Yandex API key is not set. Set YANDEX_API_KEY in environment variables."));
+    if (!this.apiKey || !this.folderId) {
+      callbacks.onError?.(
+        new Error("Yandex API key is not set. Set YANDEX_API_KEY/YANDEX_API_FOLDER_ID in environment variables.")
+      );
       return;
     }
 
@@ -161,7 +167,7 @@ export class YandexService extends BaseProviderService {
 
     const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     const yandexMessages = this.formatMessages(messages, systemPrompt);
-    const modelUri = modelId.replace("{folder}", this.connection.YANDEX_API_FOLDER_ID ?? "default");
+    const modelUri = modelId.replace("{folder}", this.folderId ?? "default");
 
     const body: YandexCompletionRequest = {
       stream: true,
@@ -228,7 +234,7 @@ export class YandexService extends BaseProviderService {
     const details: Record<string, string | number | boolean | undefined> = {
       configured: isConnected,
       credentialsValid: "N/A",
-      folderId: this.connection.YANDEX_API_FOLDER_ID || "N/A",
+      folderId: this.folderId || "N/A",
     };
 
     return {

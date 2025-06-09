@@ -1,6 +1,6 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Title, Text, Grid, Card, Button, Group, Stack, Divider } from "@mantine/core";
+import React, { useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Title, Text, Grid, Card, Button, Group, Stack, Divider, Alert } from "@mantine/core";
 import { IconPlus, IconMessage } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import { ChatMessagePreview } from "@/components/chat/ChatMessages/ChatMessagePreview";
@@ -8,6 +8,11 @@ import { ChatMessagePreview } from "@/components/chat/ChatMessages/ChatMessagePr
 export const ChatList: React.FC = () => {
   const navigate = useNavigate();
   const { chats, loading, error } = useAppSelector(state => state.chats);
+
+  const { providers } = useAppSelector(state => state.models);
+  const noActiveProviders = useMemo(() => {
+    return providers.length === 0 || !providers.some(provider => provider.isConnected);
+  }, [providers]);
 
   // Handle creating a new chat or using existing pristine chat
   const handleNewChat = () => {
@@ -21,6 +26,25 @@ export const ChatList: React.FC = () => {
 
   if (error) {
     return <Text c="red">Error loading chats. Please try again.</Text>;
+  }
+
+  if (noActiveProviders) {
+    return (
+      <Alert color="yellow" title="No Active Providers">
+        <Text size="sm">
+          No active AI providers connected.
+          <ol>
+            <li>
+              Please configure at least one provider on the <Link to="/settings">settings</Link> page
+            </li>
+            <li>
+              Then fetch models on the <Link to="/models">models</Link> page
+            </li>
+            <li>After that, you can create a new chat</li>
+          </ol>
+        </Text>
+      </Alert>
+    );
   }
 
   if (chats.length === 0) {
@@ -59,14 +83,14 @@ export const ChatList: React.FC = () => {
       <Grid>
         {chats.map(chat => (
           <Grid.Col key={chat.id} span={{ base: 12, sm: 6, md: 4 }}>
-            <Card
-              withBorder
-              padding="md"
-              radius="md"
-              onClick={() => handleOpenChat(chat.id)}
-              style={{ cursor: "pointer" }}
-            >
-              <Group m="0" align="center" justify="space-between">
+            <Card withBorder padding="md" radius="md">
+              <Group
+                m="0"
+                align="center"
+                justify="space-between"
+                onClick={() => handleOpenChat(chat.id)}
+                style={{ cursor: "pointer" }}
+              >
                 <Text fw={500} size="lg" mb="xs" truncate>
                   {chat.title || "Untitled Chat"}
                 </Text>

@@ -11,9 +11,9 @@ export const ChatMessagePreview: React.FC<{ html?: string[]; text?: string }> = 
       {text ? (
         <>
           {html ? (
-            html.map((part, index) => <Text size="sm" key={index} dangerouslySetInnerHTML={{ __html: part }} />)
+            html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)
           ) : (
-            <Text size="sm">{text}</Text>
+            <div>{text}</div>
           )}
         </>
       ) : (

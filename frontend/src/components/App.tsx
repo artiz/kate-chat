@@ -44,6 +44,7 @@ const AppContent: React.FC = () => {
     isLoading,
     isError,
     error,
+    refetch: refetchInitialData,
   } = useGetInitialDataQuery(undefined, {
     skip: !isAuthenticated,
     refetchOnMountOrArgChange: true,
@@ -112,7 +113,7 @@ const AppContent: React.FC = () => {
               <Route path="chat/:id" element={<Chat />} />
               <Route path="chat/new" element={<CreateChat />} />
               <Route path="models" element={<Models />} />
-              <Route path="settings" element={<Settings />} />
+              <Route path="settings" element={<Settings onReloadAppData={refetchInitialData} />} />
             </Route>
 
             {/* Fallback route */}

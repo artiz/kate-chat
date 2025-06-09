@@ -26,7 +26,8 @@
 
   &.preview {
     height: 200px;
-    padding-top: var(--mb-padding, var(--mantine-spacing-sm));
+    padding: var(--mb-padding, var(--mantine-spacing-sm)) 0 0 0;
+    font-size: 80%;
 
     :global img {
       max-width: 50%;

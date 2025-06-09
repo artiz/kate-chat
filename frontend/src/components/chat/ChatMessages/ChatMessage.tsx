@@ -114,9 +114,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
           ref={componentRef}
         >
           {html ? (
-            html.map((part, index) => <Text key={index} dangerouslySetInnerHTML={{ __html: part }} />)
+            html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)
           ) : (
-            <Text>{content}</Text>
+            <div>{content}</div>
           )}
 
           <div className={classes.messageFooter}>
