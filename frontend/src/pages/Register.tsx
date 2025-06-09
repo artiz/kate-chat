@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { RECAPTCHA_SITE_KEY } from "../utils/config";
+import { OAuthButtons } from "../components/auth";
 
 // Registration mutation is imported from graphql.ts
 
@@ -145,6 +146,8 @@ const RegisterForm: React.FC = () => {
           <Button type="submit" fullWidth mt="xl" loading={loading}>
             Register
           </Button>
+
+          <OAuthButtons variant="light" />
 
           <Text ta="center" mt="md">
             Already have an account?{" "}

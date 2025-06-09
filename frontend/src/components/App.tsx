@@ -15,6 +15,7 @@ import { ThemeProvider, useTheme } from "../hooks/useTheme";
 // Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import { OAuthCallbackHandler } from "@/components/auth";
 import { ChatList } from "@/pages/ChatList";
 import { Chat } from "@/pages/Chat";
 import { CreateChat } from "@/pages/CreateChat";
@@ -105,6 +106,7 @@ const AppContent: React.FC = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
 
             {/* Protected routes */}
             <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>

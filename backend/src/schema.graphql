@@ -198,6 +198,7 @@ type Query {
 }
 
 input RegisterInput {
+  authProvider: String
   avatarUrl: String
   email: String!
   firstName: String!
@@ -239,12 +240,15 @@ input UpdateUserInput {
 }
 
 type User {
+  authProvider: String
   avatarUrl: String
   createdAt: DateTimeISO!
   defaultModelId: String
   defaultSystemPrompt: String
   email: String!
   firstName: String!
+  githubId: String
+  googleId: String
   id: ID!
   lastName: String!
   msalId: String

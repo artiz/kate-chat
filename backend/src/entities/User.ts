@@ -7,6 +7,7 @@ import {
   PrimaryColumn,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { AuthProvider } from "../types/ai.types";
 import { Field, ID, ObjectType } from "type-graphql";
 
 @ObjectType()
@@ -46,6 +47,18 @@ export class User {
   @Field({ nullable: true })
   @Column({ nullable: true })
   msalId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  googleId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  githubId?: string;
+
+  @Field(() => String, { nullable: true })
+  @Column({ nullable: true, type: "varchar" })
+  authProvider?: AuthProvider;
 
   @Field()
   @CreateDateColumn()

@@ -17,16 +17,15 @@ export interface ConnectionParams {
 declare global {
   namespace Express {
     interface Request {
-      user?: TokenPayload;
+      tokenPayload?: TokenPayload;
       connectionParams?: ConnectionParams;
     }
   }
 }
 
 export type GraphQLContext = {
-  user?: TokenPayload;
+  tokenPayload?: TokenPayload;
   connectionParams: ConnectionParams;
-  pubSub?: PubSubEngine;
 };
 
 // GraphQL context authentication
@@ -47,7 +46,7 @@ export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
 };
 
 export const graphQlAuthChecker = ({ context }: { context: GraphQLContext }, roles: string[]): boolean => {
-  const user = context.user;
+  const user = context.tokenPayload;
   if (!user) return false;
   if (roles.length === 0) return true;
 
@@ -62,12 +61,12 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     if (authHeader) {
       const token = authHeader.split(" ")[1];
       if (token) {
-        const user = verifyToken(token);
-        if (!user) {
+        const tokenPayload = verifyToken(token);
+        if (!tokenPayload) {
           logger.warn("Invalid or expired token");
           res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         } else {
-          req.user = user;
+          req.tokenPayload = tokenPayload;
           req.connectionParams = {
             AWS_REGION: getHeader(req.headers["x-aws-region"]),
             AWS_PROFILE: getHeader(req.headers["x-aws-profile"]),

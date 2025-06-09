@@ -13,17 +13,15 @@ import { MessageEvent } from "http";
 import { OUTPUT_FOLDER } from "@/config/application";
 import path from "path";
 import { ok } from "assert";
+import { BaseResolver } from "./base.resolver";
 
 @Resolver(Chat)
-export class ChatResolver {
+export class ChatResolver extends BaseResolver {
   private chatRepository: Repository<Chat>;
-  private userRepository: Repository<User>;
-  private messageRepository: Repository<Message>;
 
   constructor() {
+    super();
     this.chatRepository = getRepository(Chat);
-    this.userRepository = getRepository(User);
-    this.messageRepository = getRepository(Message);
   }
 
   @Query(() => GqlChatsList)
@@ -31,8 +29,7 @@ export class ChatResolver {
     @Arg("input", { nullable: true }) input: GetChatsInput = {},
     @Ctx() context: GraphQLContext
   ): Promise<GqlChatsList> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
+    const user = await this.validateContextToken(context);
     const { offset = 0, limit = 20, searchTerm } = input;
 
     let query = {
@@ -86,11 +83,10 @@ export class ChatResolver {
 
   @Query(() => Chat, { nullable: true })
   async getChatById(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Chat | null> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
+    const user = await this.validateContextToken(context);
 
     const chat = await this.chatRepository.findOne({
-      where: { id },
+      where: { id, user: { id: user.userId } },
       relations: ["user"],
     });
 
@@ -100,16 +96,10 @@ export class ChatResolver {
 
   @Mutation(() => Chat)
   async createChat(@Arg("input") input: CreateChatInput, @Ctx() context: GraphQLContext): Promise<Chat> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
-    const dbUser = await this.userRepository.findOne({
-      where: { id: user.userId },
-    });
-    if (!dbUser) throw new Error("User not found");
-
+    const user = await this.validateContextUser(context);
     const chat = this.chatRepository.create({
       ...input,
-      user: dbUser,
+      user,
       isPristine: true,
     });
 
@@ -122,8 +112,7 @@ export class ChatResolver {
     @Arg("input") input: UpdateChatInput,
     @Ctx() context: GraphQLContext
   ): Promise<Chat> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
+    await this.validateContextToken(context);
 
     const chat = await this.chatRepository.findOne({
       where: { id },
@@ -137,8 +126,7 @@ export class ChatResolver {
 
   @Mutation(() => Boolean)
   async deleteChat(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<boolean> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
+    await this.validateContextToken(context);
 
     const chat = await this.chatRepository.findOne({
       where: {

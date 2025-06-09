@@ -2,34 +2,24 @@ import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai.service";
 import { Model } from "../entities/Model";
 
-import {
-  GqlModelsList,
-  GqlModel,
-  GqlProviderInfo,
-  ProviderDetail,
-  GqlCostsInfo,
-  GqlServiceCostInfo,
-  GqlAmount,
-} from "../types/graphql/responses";
+import { GqlModelsList, GqlModel, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { ApiProvider, ModelMessage, ProviderInfo, ServiceCostInfo } from "../types/ai.types";
+import { ModelMessage } from "../types/ai.types";
 import { Message, MessageRole } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
-import { OpenAIService } from "@/services/openai/openai.service";
-import { BedrockService } from "@/services/bedrock/bedrock.service";
 import { getErrorMessage } from "@/utils/errors";
-import { getSystemErrorMap } from "util";
-import { DEFAULT_PROMPT } from "@/config/ai";
 import { ConnectionParams, GraphQLContext } from "@/middleware/auth.middleware";
+import { BaseResolver } from "./base.resolver";
 
 const logger = createLogger(__filename);
 
 @Resolver()
-export class ModelResolver {
+export class ModelResolver extends BaseResolver {
   private aiService: AIService;
 
   constructor() {
+    super();
     this.aiService = new AIService();
   }
 
@@ -197,16 +187,9 @@ export class ModelResolver {
       // Find the model by ID
       const model = await modelRepository.findOne({ where: { id: modelId } });
 
-      if (!model) {
-        throw new Error("Model not found");
-      }
+      if (!model) throw new Error("Model not found");
+      if (!model.isActive) throw new Error("Model is not active");
 
-      if (!model.isActive) {
-        throw new Error("Model is not active");
-      }
-
-      // Create service instance
-      const aiService = new AIService();
       const timestamp = new Date();
 
       // Create a message format for the test
@@ -217,7 +200,7 @@ export class ModelResolver {
       };
 
       // Generate a response using the AI service
-      const response = await aiService.invokeModel(model.apiProvider, context.connectionParams, {
+      const response = await this.aiService.invokeModel(model.apiProvider, context.connectionParams, {
         modelId: model.modelId,
         messages: [message],
       });

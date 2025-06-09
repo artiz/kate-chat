@@ -10,6 +10,7 @@ if (!JWT_SECRET) {
 export interface TokenPayload {
   userId: string;
   email: string;
+  roles?: string[]; // Optional roles for the user
 }
 
 export function generateToken(payload: TokenPayload): string {

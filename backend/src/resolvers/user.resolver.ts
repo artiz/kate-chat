@@ -10,40 +10,32 @@ import { AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
+import { AuthProvider } from "../types/ai.types";
+import { BaseResolver } from "./base.resolver";
+import { GraphQLContext } from "@/middleware/auth.middleware";
 
 @Resolver(User)
-export class UserResolver {
-  private userRepository: Repository<User>;
-
-  constructor() {
-    this.userRepository = getRepository(User);
-  }
-
+export class UserResolver extends BaseResolver {
   @Query(() => User, { nullable: true })
-  async currentUser(@Ctx() context: { user?: TokenPayload }): Promise<User | null> {
-    const { user } = context;
-    if (!user?.userId) return null;
-
-    const dbUser = await this.userRepository.findOne({
-      where: { id: user.userId },
-    });
-
-    return dbUser;
+  async currentUser(@Ctx() context: GraphQLContext): Promise<User | null> {
+    return await this.loadUserFromContext(context);
   }
 
   @Mutation(() => AuthResponse)
   async register(@Arg("input") input: RegisterInput): Promise<AuthResponse> {
-    const { email, password, firstName, lastName, avatarUrl, recaptchaToken } = input;
+    const { email, password, firstName, lastName, avatarUrl, recaptchaToken, authProvider } = input;
 
-    // Verify reCAPTCHA token
-    if (recaptchaToken) {
-      const isValid = await verifyRecaptchaToken(recaptchaToken, "register");
-      if (!isValid) {
-        logger.warn({ email }, "Registration attempt failed reCAPTCHA validation");
-        throw new Error("reCAPTCHA validation failed. Please try again.");
+    // Verify reCAPTCHA token for local registration
+    if (authProvider !== AuthProvider.GOOGLE && authProvider !== AuthProvider.GITHUB) {
+      if (recaptchaToken) {
+        const isValid = await verifyRecaptchaToken(recaptchaToken, "register");
+        if (!isValid) {
+          logger.warn({ email }, "Registration attempt failed reCAPTCHA validation");
+          throw new Error("reCAPTCHA validation failed. Please try again.");
+        }
+      } else {
+        throw new Error("Registration attempt without reCAPTCHA token");
       }
-    } else {
-      throw new Error("Registration attempt without reCAPTCHA token");
     }
 
     // Check if user already exists
@@ -52,18 +44,19 @@ export class UserResolver {
       throw new Error("User with this email already exists");
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // Hash password for local users
+    const hashedPassword = authProvider ? "" : await bcrypt.hash(password, 12);
 
     // Create new user
     const user = this.userRepository.create({
       email,
-      password: hashedPassword, // Note: Add this field to your User entity
+      password: hashedPassword,
       firstName,
       lastName,
       avatarUrl,
       defaultSystemPrompt: DEFAULT_PROMPT,
       msalId: "-", // Provide a default or make this nullable
+      authProvider: authProvider || AuthProvider.LOCAL,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -81,33 +74,26 @@ export class UserResolver {
   }
 
   @Mutation(() => User)
-  async updateUser(@Arg("input") input: UpdateUserInput, @Ctx() context: { user?: TokenPayload }): Promise<User> {
-    const { user } = context;
-    if (!user?.userId) throw new Error("Not authenticated");
-
-    const dbUser = await this.userRepository.findOne({
-      where: { id: user.userId },
-    });
-
-    if (!dbUser) throw new Error("User not found");
+  async updateUser(@Arg("input") input: UpdateUserInput, @Ctx() context: GraphQLContext): Promise<User> {
+    const user = await this.validateContextUser(context);
 
     // Check if email is being updated and if it's already in use
-    if (input.email && input.email !== dbUser.email) {
+    if (input.email && input.email !== user.email) {
       const existingUser = await this.userRepository.findOne({ where: { email: input.email } });
       if (existingUser) {
         throw new Error("Email is already in use");
       }
-      dbUser.email = input.email;
+      user.email = input.email;
     }
 
     // Update user properties
-    if (input.firstName) dbUser.firstName = input.firstName;
-    if (input.lastName) dbUser.lastName = input.lastName;
-    if (input.avatarUrl) dbUser.avatarUrl = input.avatarUrl;
-    if (input.defaultModelId) dbUser.defaultModelId = input.defaultModelId;
-    if (input.defaultSystemPrompt) dbUser.defaultSystemPrompt = input.defaultSystemPrompt;
+    if (input.firstName) user.firstName = input.firstName;
+    if (input.lastName) user.lastName = input.lastName;
+    if (input.avatarUrl) user.avatarUrl = input.avatarUrl;
+    if (input.defaultModelId) user.defaultModelId = input.defaultModelId;
+    if (input.defaultSystemPrompt) user.defaultSystemPrompt = input.defaultSystemPrompt;
 
-    return await this.userRepository.save(dbUser);
+    return await this.userRepository.save(user);
   }
 
   @Mutation(() => AuthResponse)
@@ -139,27 +125,19 @@ export class UserResolver {
   }
 
   @Query(() => AuthResponse)
-  async refreshToken(@Ctx() context: { user?: TokenPayload }): Promise<AuthResponse> {
-    const { user } = context;
-    if (!user) {
-      throw new Error("Invalid email or password");
-    }
-
-    const dbUser = await this.userRepository.findOne({
-      where: { id: user.userId },
-    });
-
-    if (!dbUser) throw new Error("User not found");
+  async refreshToken(@Ctx() context: GraphQLContext): Promise<AuthResponse> {
+    const user = await this.validateContextUser(context);
+    if (!user) throw new Error("User not found");
 
     // Generate JWT token
     const token = generateToken({
-      userId: dbUser.id,
+      userId: user.id,
       email: user.email,
     });
 
     return {
       token,
-      user: dbUser,
+      user,
     };
   }
 }

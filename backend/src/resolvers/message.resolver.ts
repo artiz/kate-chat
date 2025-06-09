@@ -1,14 +1,14 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID } from "type-graphql";
 import { Repository } from "typeorm";
-import { Message, MessageRole, MessageType } from "@/entities/Message";
-import { Chat, Model, User } from "@/entities";
+import { Message, MessageType } from "@/entities/Message";
+import { Chat } from "@/entities";
 import { CreateMessageInput, GetMessagesInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
-import { AIService } from "@/services/ai.service";
 import { GraphQLContext } from "@/middleware/auth.middleware";
 import { GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { MessagesService } from "@/services/messages.service";
+import { BaseResolver } from "./base.resolver";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -16,16 +16,15 @@ export const NEW_MESSAGE = "NEW_MESSAGE";
 const logger = createLogger(__filename);
 
 @Resolver(Message)
-export class MessageResolver {
+export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
-  private userRepository: Repository<User>;
   private messageService: MessagesService;
 
   constructor() {
+    super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
-    this.userRepository = getRepository(User);
     this.messageService = new MessagesService();
   }
 
@@ -34,9 +33,7 @@ export class MessageResolver {
     @Arg("input") input: GetMessagesInput,
     @Ctx() context: GraphQLContext
   ): Promise<GqlMessagesList> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
-
+    await this.validateContextToken(context);
     const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
     // Verify the chat belongs to the user
@@ -72,8 +69,7 @@ export class MessageResolver {
 
   @Query(() => Message, { nullable: true })
   async getMessageById(@Arg("id") id: string, @Ctx() context: GraphQLContext): Promise<Message | null> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
+    await this.validateContextToken(context);
 
     const message = await this.messageRepository.findOne({
       where: {
@@ -92,13 +88,7 @@ export class MessageResolver {
 
   @Mutation(() => Message)
   async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
-    // TODO: create BaseResolver to handle common logic like authentication
-    if (!context.user) throw new Error("Authentication required");
-    const user = await this.userRepository.findOne({
-      where: { id: context.user.userId },
-    });
-    if (!user) throw new Error("User not found");
-
+    const user = await this.validateContextUser(context);
     return await this.messageService.createMessage(input, context.connectionParams, user);
   }
 
@@ -109,7 +99,14 @@ export class MessageResolver {
       return payload.chatId === args.chatId;
     },
   })
-  newMessage(@Root() payload: { data: GqlMessage; chatId: string }, @Arg("chatId") chatId: string): GqlMessage {
+  async newMessage(
+    @Root() payload: { data: GqlMessage; chatId: string },
+    @Arg("chatId") chatId: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<GqlMessage> {
+    // ?????????
+    await this.validateContextToken(context);
+
     const { message, type = MessageType.MESSAGE, error, ...rest } = payload.data;
     logger.trace(
       {
@@ -135,9 +132,7 @@ export class MessageResolver {
     @Arg("deleteFollowing", { nullable: true }) deleteFollowing: boolean = false,
     @Ctx() context: GraphQLContext
   ): Promise<string[]> {
-    const { user } = context;
-    if (!user) throw new Error("Authentication required");
-
+    await this.validateContextToken(context);
     return await this.messageService.deleteMessage(id, deleteFollowing);
   }
 }

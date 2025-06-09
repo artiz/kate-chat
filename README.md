@@ -16,17 +16,18 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Chat history storage and management, messages deletion
 - Rich markdown formatting: code blocks, images, MatJAX formulas etc.
 - Images input support (drag & drop, copy-paste, etc.)
-- User authentication (email/password)
+- User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
 - Responsive UI with Mantine
 
 ## TODO
+* Setup images uploads to S3 (selecte bucket name in settings), add backend methods to download images from S3 woth correct cache headers
+* Extend docker-compose.yml to include Postgres and Nginx for production-like environment to run 2-3 instances of the backend app
+* Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Image resolution/count 
   * Chat message editing
-* Add user registration with Google, GitHub, and MS account
-* Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Open AI code interpreter support  
 * Finish custom models support (enter ARN for Bedrock models)
 * Add support for more Google LLM provider
@@ -53,9 +54,11 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 
 ## Project Structure
 
-The project consists of two main parts:
+The project consists of several parts:
 1. Backend - GraphQL API server
 2. Frontend - Web interface
+3. Database - any TypePRM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
+4. Redis - for message queue and caching (optional, but recommended for production)
 
 ## Getting Started
 

@@ -6,6 +6,13 @@ export enum ApiProvider {
   YANDEX = "yandex",
 }
 
+export enum AuthProvider {
+  LOCAL = "local",
+  GOOGLE = "google",
+  GITHUB = "github",
+  MICROSOFT = "microsoft",
+}
+
 export type ContentType = "text" | "image" | "video" | "audio";
 export interface ProviderInfo {
   id: ApiProvider;

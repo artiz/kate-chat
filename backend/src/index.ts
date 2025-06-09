@@ -5,6 +5,10 @@ import path from "path";
 import cors from "cors";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
+import session from "express-session";
+import passport from "passport";
+import { configurePassport } from "./config/passport";
+import authRoutes from "./controllers/auth.controller";
 import { initializeDatabase } from "./config/database";
 import { ChatResolver } from "./resolvers/chat.resolver";
 import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
@@ -18,7 +22,6 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
-import { unsubscribe } from "diagnostics_channel";
 
 // Load environment variables
 config();
@@ -65,7 +68,25 @@ async function bootstrap() {
   );
   app.use(express.json({ limit: MAX_INPUT_JSON }));
 
-  // Set up auth middleware
+  // Set up session and passport
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "katechat-secret",
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: process.env.NODE_ENV === "production" },
+    })
+  );
+
+  // Initialize and configure Passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+  configurePassport();
+
+  // Set up auth routes
+  app.use("/api/auth", authRoutes);
+
+  // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
   app.use("/output", express.static(OUTPUT_FOLDER));
 
@@ -128,7 +149,7 @@ async function bootstrap() {
       context: req => {
         // Use the user from the request (set by authMiddleware)
         return {
-          user: req.raw.user,
+          tokenPayload: req.raw.tokenPayload,
           connectionParams: req.raw.connectionParams || {},
         };
       },

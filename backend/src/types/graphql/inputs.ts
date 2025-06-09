@@ -1,6 +1,6 @@
 import { InputType, Field } from "type-graphql";
 import { MessageRole } from "../../entities/Message";
-import { ApiProvider } from "../ai.types";
+import { ApiProvider, AuthProvider } from "../ai.types";
 
 @InputType()
 export class UpdateUserInput {
@@ -42,6 +42,9 @@ export class RegisterInput {
 
   @Field({ nullable: true })
   recaptchaToken?: string;
+
+  @Field(() => String, { nullable: true })
+  authProvider?: AuthProvider;
 }
 
 @InputType()

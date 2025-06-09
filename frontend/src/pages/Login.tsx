@@ -7,6 +7,7 @@ import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
+import { OAuthButtons } from "../components/auth";
 
 // Login mutation is imported from graphql.ts
 
@@ -89,6 +90,8 @@ const Login: React.FC = () => {
           <Button type="submit" fullWidth mt="xl" loading={loading}>
             Sign in
           </Button>
+
+          <OAuthButtons variant="light" />
 
           <Text ta="center" mt="md">
             Don't have an account?{" "}
