@@ -1,5 +1,6 @@
 import http from "node:http";
 import esbuild from "esbuild";
+import { config } from "dotenv";
 import { clean } from "esbuild-plugin-clean";
 import { polyfillNode } from "esbuild-plugin-polyfill-node";
 import { sassPlugin, postcssModules } from "esbuild-sass-plugin";
@@ -9,6 +10,9 @@ import fs from "fs";
 if (!fs.existsSync("./dist")) {
   fs.mkdirSync("./dist");
 }
+
+// Load environment variables
+config();
 
 // Development build configuration
 const context = await esbuild.context({
@@ -31,8 +35,10 @@ const context = await esbuild.context({
     ".eot": "file",
   },
   define: {
-    "process.env.NODE_ENV": '"development"',
-    "process.env.REACT_APP_API_URL": '"http://localhost:4000"',
+    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
+    "process.env.REACT_APP_API_URL": JSON.stringify(process.env.REACT_APP_API_URL),
+    "process.env.REACT_APP_WS_URL": JSON.stringify(process.env.REACT_APP_WS_URL),
+    "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
   },
   plugins: [
     clean({ patterns: ["./dist/*.js"] }),

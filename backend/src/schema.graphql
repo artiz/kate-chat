@@ -203,6 +203,7 @@ input RegisterInput {
   firstName: String!
   lastName: String!
   password: String!
+  recaptchaToken: String
 }
 
 type Subscription {

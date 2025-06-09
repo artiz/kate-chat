@@ -1,9 +1,12 @@
-const esbuild = require("esbuild");
-const { clean } = require("esbuild-plugin-clean");
-const { polyfillNode } = require("esbuild-plugin-polyfill-node");
-const { sassPlugin, postcssModules } = require("esbuild-sass-plugin");
+import esbuild from "esbuild";
+import { config } from "dotenv";
+import { clean } from "esbuild-plugin-clean";
+import { polyfillNode } from "esbuild-plugin-polyfill-node";
+import { sassPlugin, postcssModules } from "esbuild-sass-plugin";
+import fs from "fs";
 
-const fs = require("fs");
+// Load environment variables
+config();
 
 // Create directory if it doesn't exist
 if (!fs.existsSync("./dist")) {
@@ -45,8 +48,10 @@ esbuild
       polyfillNode(),
     ],
     define: {
-      "process.env.NODE_ENV": '"production"',
-      "process.env.REACT_APP_API_URL": '"http://localhost:4000"',
+      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
+      "process.env.REACT_APP_API_URL": JSON.stringify(process.env.REACT_APP_API_URL),
+      "process.env.REACT_APP_WS_URL": JSON.stringify(process.env.REACT_APP_WS_URL),
+      "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
     },
     metafile: true,
   })

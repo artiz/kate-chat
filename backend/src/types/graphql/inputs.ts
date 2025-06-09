@@ -39,6 +39,9 @@ export class RegisterInput {
 
   @Field({ nullable: true })
   avatarUrl?: string;
+
+  @Field({ nullable: true })
+  recaptchaToken?: string;
 }
 
 @InputType()

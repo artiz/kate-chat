@@ -8,6 +8,8 @@ import { ObjectId } from "mongodb";
 import { RegisterInput, LoginInput, UpdateUserInput } from "../types/graphql/inputs";
 import { AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
+import { verifyRecaptchaToken } from "../utils/recaptcha";
+import { logger } from "../utils/logger";
 
 @Resolver(User)
 export class UserResolver {
@@ -31,7 +33,18 @@ export class UserResolver {
 
   @Mutation(() => AuthResponse)
   async register(@Arg("input") input: RegisterInput): Promise<AuthResponse> {
-    const { email, password, firstName, lastName, avatarUrl } = input;
+    const { email, password, firstName, lastName, avatarUrl, recaptchaToken } = input;
+
+    // Verify reCAPTCHA token
+    if (recaptchaToken) {
+      const isValid = await verifyRecaptchaToken(recaptchaToken, "register");
+      if (!isValid) {
+        logger.warn({ email }, "Registration attempt failed reCAPTCHA validation");
+        throw new Error("reCAPTCHA validation failed. Please try again.");
+      }
+    } else {
+      throw new Error("Registration attempt without reCAPTCHA token");
+    }
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({ where: { email } });

@@ -7,10 +7,22 @@ import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { RECAPTCHA_SITE_KEY } from "../utils/config";
 
 // Registration mutation is imported from graphql.ts
 
-const Register: React.FC = () => {
+// Component that wraps the registration form with the reCAPTCHA provider
+const RegisterWithReCaptcha: React.FC = () => {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey={RECAPTCHA_SITE_KEY}>
+      <RegisterForm />
+    </GoogleReCaptchaProvider>
+  );
+};
+
+// Main registration form component
+const RegisterForm: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
@@ -56,19 +68,44 @@ const Register: React.FC = () => {
     },
   });
 
+  // Get reCAPTCHA
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
   // Handle form submission
   const handleSubmit = async (values: typeof form.values) => {
-    dispatch(loginStart());
-    await register({
-      variables: {
-        input: {
-          email: values.email,
-          password: values.password,
-          firstName: values.firstName,
-          lastName: values.lastName,
+    if (!executeRecaptcha) {
+      notifications.show({
+        title: "reCAPTCHA Error",
+        message: "reCAPTCHA has not loaded. Please try again later.",
+        color: "red",
+      });
+      return;
+    }
+
+    try {
+      // Execute reCAPTCHA and get token
+      const recaptchaToken = await executeRecaptcha("register");
+
+      dispatch(loginStart());
+      await register({
+        variables: {
+          input: {
+            email: values.email,
+            password: values.password,
+            firstName: values.firstName,
+            lastName: values.lastName,
+            recaptchaToken, // Add the recaptcha token to the input
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      dispatch(loginFailure());
+      notifications.show({
+        title: "Registration Failed",
+        message: "There was an error with the reCAPTCHA verification.",
+        color: "red",
+      });
+    }
   };
 
   return (
@@ -121,4 +158,4 @@ const Register: React.FC = () => {
   );
 };
 
-export default Register;
+export default RegisterWithReCaptcha;
