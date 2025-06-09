@@ -20,16 +20,12 @@ export class MessageResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
   private userRepository: Repository<User>;
-  private modelRepository: Repository<Model>;
-  private aiService: AIService;
   private messageService: MessagesService;
 
   constructor() {
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
-    this.modelRepository = getRepository(Model);
     this.userRepository = getRepository(User);
-    this.aiService = new AIService();
     this.messageService = new MessagesService();
   }
 
@@ -103,7 +99,7 @@ export class MessageResolver {
     });
     if (!user) throw new Error("User not found");
 
-    return await this.messageService.createMessage(input, user);
+    return await this.messageService.createMessage(input, context.connectionParams, user);
   }
 
   @Subscription(() => GqlMessage, {

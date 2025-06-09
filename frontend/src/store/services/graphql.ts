@@ -347,6 +347,7 @@ export const graphqlApi = api.injectEndpoints({
           total: number;
           hasMore: boolean;
         };
+        refreshToken: { token: string };
       },
       void
     >({
@@ -393,13 +394,16 @@ export const graphqlApi = api.injectEndpoints({
                 total
                 hasMore
               }
+              refreshToken {
+                token
+              }
             }
           `,
         },
       }),
 
       transformResponse: async (response: GetInitialDataResponse) => {
-        const { currentUser, getModels, getChats } = response.data || {};
+        const { currentUser, getModels, getChats, refreshToken } = response.data || {};
         const chats = getChats || {
           chats: [],
           total: 0,
@@ -417,6 +421,7 @@ export const graphqlApi = api.injectEndpoints({
           models: getModels?.models || [],
           providers: getModels?.providers || [],
           chats,
+          refreshToken,
         };
       },
       providesTags: ["User", "Model", { type: "Chat", id: "LIST" }],
@@ -435,6 +440,9 @@ interface GetInitialDataResponse {
       chats: Chat[];
       total: number;
       hasMore: boolean;
+    };
+    refreshToken: {
+      token: string;
     };
   };
 }

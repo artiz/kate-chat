@@ -1,5 +1,4 @@
 import { Message, MessageRole } from "../entities/Message";
-import { Model } from "../entities/Model";
 import {
   AIModelInfo,
   ApiProvider,
@@ -15,51 +14,36 @@ import { OpenAIService } from "./openai/openai.service";
 import { YandexService } from "./yandex/yandex.service";
 import { logger } from "../utils/logger";
 import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai";
+import { ConnectionParams } from "@/middleware/auth.middleware";
+import { BaseProviderService } from "./base.provider";
+
 export class AIService {
-  private bedrockService: BedrockService;
-  private openAIService: OpenAIService;
-  private yandexService: YandexService;
-
-  constructor() {
-    this.bedrockService = new BedrockService();
-    this.openAIService = new OpenAIService();
-    this.yandexService = new YandexService();
-  }
-
-  // Main method to interact with models
-  async invokeModel(apiProvider: ApiProvider, inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
-    const request: InvokeModelParamsRequest = {
-      ...inputRequest,
-
-      temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
-      maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
-      topP: inputRequest.topP ?? DEFAULT_TOP_P,
-
-      // Join user duplicate messages
-      messages: this.preprocessMessages(inputRequest.messages),
-    };
-
-    // Determine which API provider to use and invoke the appropriate service
+  /**
+   * Get the appropriate API provider service instance.
+   * @param apiProvider The API provider type.
+   * @param connection The connection parameters.
+   * @returns The API provider service instance.
+   */
+  protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseProviderService {
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return await this.bedrockService.invokeModel(request);
+      return new BedrockService(connection);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return await this.openAIService.invokeModel(request);
+      return new OpenAIService(connection);
     } else if (apiProvider === ApiProvider.YANDEX) {
-      return await this.yandexService.invokeModel(request);
+      return new YandexService(connection);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }
   }
 
-  // Stream response from models
-  async invokeModelAsync(
+  // Main method to interact with models
+  async invokeModel(
     apiProvider: ApiProvider,
-    inputRequest: InvokeModelParamsRequest,
-    callbacks: StreamCallbacks
-  ): Promise<void> {
+    connection: ConnectionParams,
+    inputRequest: InvokeModelParamsRequest
+  ): Promise<ModelResponse> {
     const request: InvokeModelParamsRequest = {
       ...inputRequest,
-
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
@@ -68,16 +52,29 @@ export class AIService {
       messages: this.preprocessMessages(inputRequest.messages),
     };
 
-    // Determine which API provider to use and invoke the appropriate service
-    if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return await this.bedrockService.invokeModelAsync(request, callbacks);
-    } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return await this.openAIService.invokeModelAsync(request, callbacks);
-    } else if (apiProvider === ApiProvider.YANDEX) {
-      return await this.yandexService.invokeModelAsync(request, callbacks);
-    } else {
-      callbacks.onError?.(new Error(`Unsupported API provider: ${apiProvider}`));
-    }
+    const providerService = this.getApiProvider(apiProvider, connection);
+    return providerService.invokeModel(request);
+  }
+
+  // Stream response from models
+  async invokeModelAsync(
+    apiProvider: ApiProvider,
+    connection: ConnectionParams,
+    inputRequest: InvokeModelParamsRequest,
+    callbacks: StreamCallbacks
+  ): Promise<void> {
+    const request: InvokeModelParamsRequest = {
+      ...inputRequest,
+      temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
+      maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
+      topP: inputRequest.topP ?? DEFAULT_TOP_P,
+
+      // Join user duplicate messages
+      messages: this.preprocessMessages(inputRequest.messages),
+    };
+
+    const providerService = this.getApiProvider(apiProvider, connection);
+    return providerService.invokeModelAsync(request, callbacks);
   }
 
   // Format messages for model invocation
@@ -92,6 +89,7 @@ export class AIService {
   // Adapter method for message resolver
   async getCompletion(
     apiProvider: ApiProvider,
+    connection: ConnectionParams,
     request: InvokeModelParamsRequest,
     messages: Message[]
   ): Promise<ModelResponse> {
@@ -99,7 +97,7 @@ export class AIService {
     const formattedMessages = this.formatMessages(messages);
 
     // Invoke the model
-    const response = await this.invokeModel(apiProvider, {
+    const response = await this.invokeModel(apiProvider, connection, {
       ...request,
       messages: formattedMessages,
     });
@@ -109,6 +107,7 @@ export class AIService {
 
   streamCompletion(
     apiProvider: ApiProvider,
+    connection: ConnectionParams,
     request: InvokeModelParamsRequest,
     messages: Message[],
     callback: (token: string, completed?: boolean, error?: Error) => void
@@ -116,6 +115,7 @@ export class AIService {
     // Stream the completion in background
     this.invokeModelAsync(
       apiProvider,
+      connection,
       {
         ...request,
         messages: this.formatMessages(messages),
@@ -134,79 +134,53 @@ export class AIService {
     );
   }
 
-  async getCosts(providerId: string, startTime: number, endTime: number | undefined): Promise<UsageCostInfo> {
-    if (providerId === ApiProvider.OPEN_AI) {
-      return this.openAIService.getCosts(startTime, endTime);
-    } else if (providerId === ApiProvider.AWS_BEDROCK) {
-      return this.bedrockService.getCosts(startTime, endTime);
-    } else if (providerId === ApiProvider.YANDEX) {
-      return this.yandexService.getCosts(startTime, endTime);
-    } else {
-      throw new Error(`Unsupported provider: ${providerId}`);
-    }
+  async getCosts(
+    apiProvider: ApiProvider,
+    connection: ConnectionParams,
+    startTime: number,
+    endTime: number | undefined
+  ): Promise<UsageCostInfo> {
+    const providerService = this.getApiProvider(apiProvider, connection);
+    return providerService.getCosts(startTime, endTime);
   }
 
   // Get all models from all providers
-  async getModels(): Promise<Record<string, AIModelInfo>> {
-    const models: Record<string, AIModelInfo> = {};
+  async getModels(connection: ConnectionParams): Promise<Record<string, AIModelInfo>> {
+    const models = await Promise.all(
+      [ApiProvider.AWS_BEDROCK, ApiProvider.OPEN_AI, ApiProvider.YANDEX].map(async apiProvider => {
+        const service = this.getApiProvider(apiProvider, connection);
+        return await service.getModels();
+      })
+    );
 
-    // Get Bedrock models
-    const bedrockModels = await this.bedrockService.getBedrockModels();
-    Object.assign(models, bedrockModels);
-
-    // Get OpenAI models
-    const openAiModels = await this.openAIService.getOpenAIModels();
-    Object.assign(models, openAiModels);
-
-    // Get Yandex models
-    const yandexModels = await this.yandexService.getYandexModels();
-    Object.assign(models, yandexModels);
-
-    return models;
+    return models.reduce(
+      (acc, models) => {
+        return Object.assign(acc, models);
+      },
+      {} as Record<string, AIModelInfo>
+    );
   }
 
   // Get provider information
-  async getProviderInfo(): Promise<ProviderInfo[]> {
-    const providers: ProviderInfo[] = [];
+  async getProviderInfo(connection: ConnectionParams, testConnection = false): Promise<ProviderInfo[]> {
+    const providers: ProviderInfo[] = await Promise.all(
+      [ApiProvider.AWS_BEDROCK, ApiProvider.OPEN_AI, ApiProvider.YANDEX].map(async apiProvider => {
+        try {
+          const service = this.getApiProvider(apiProvider, connection);
+          return service.getInfo(testConnection);
+        } catch (error) {
+          logger.error(error, `Error getting ${apiProvider} provider info`);
+          return {
+            id: apiProvider,
+            name: BaseProviderService.getApiProviderName(apiProvider),
+            isConnected: false,
+            details: { error: "Failed to get provider info" },
+          };
+        }
+      })
+    );
 
-    // Get Bedrock provider info
-    try {
-      providers.push(await this.bedrockService.getBedrockInfo());
-    } catch (error) {
-      logger.error(error, "Error getting Bedrock provider info");
-      providers.push({
-        id: ApiProvider.AWS_BEDROCK,
-        name: "AWS Bedrock",
-        isConnected: false,
-        details: { error: "Failed to get provider info" },
-      });
-    }
-
-    // Get OpenAI provider info
-    try {
-      providers.push(await this.openAIService.getOpenAIInfo());
-    } catch (error) {
-      logger.error(error, "Error getting OpenAI provider info");
-      providers.push({
-        id: ApiProvider.OPEN_AI,
-        name: "OpenAI",
-        isConnected: false,
-        details: { error: "Failed to get provider info" },
-      });
-    }
-
-    // Get Yandex provider info
-    try {
-      providers.push(await this.yandexService.getYandexInfo());
-    } catch (error) {
-      logger.error(error, "Error getting Yandex provider info");
-      providers.push({
-        id: ApiProvider.YANDEX,
-        name: "Yandex",
-        isConnected: false,
-        details: { error: "Failed to get provider info" },
-      });
-    }
+    logger.info({ providers }, `Getting info for providers`);
 
     return providers;
   }

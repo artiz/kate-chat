@@ -1,5 +1,15 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "./index";
+import {
+  STORAGE_AWS_ACCESS_KEY_ID,
+  STORAGE_AWS_PROFILE,
+  STORAGE_AWS_REGION,
+  STORAGE_AWS_SECRET_ACCESS_KEY,
+  STORAGE_OPENAI_API_ADMIN_KEY,
+  STORAGE_OPENAI_API_KEY,
+  STORAGE_YANDEX_API_FOLDER_ID,
+  STORAGE_YANDEX_API_KEY,
+} from "./slices/authSlice";
 
 export type GrpahQLErrorResponse = {
   errors: {
@@ -32,6 +42,15 @@ export const api = createApi({
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
+
+      headers.set("x-openai-api-key", localStorage.getItem(STORAGE_OPENAI_API_KEY) || "");
+      headers.set("x-openai-api-admin-key", localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "");
+      headers.set("x-aws-region", localStorage.getItem(STORAGE_AWS_REGION) || "");
+      headers.set("x-aws-profile", localStorage.getItem(STORAGE_AWS_PROFILE) || "");
+      headers.set("x-aws-access-key-id", localStorage.getItem(STORAGE_AWS_ACCESS_KEY_ID) || "");
+      headers.set("x-aws-secret-access-key", localStorage.getItem(STORAGE_AWS_SECRET_ACCESS_KEY) || "");
+      headers.set("x-yandex-api-key", localStorage.getItem(STORAGE_YANDEX_API_KEY) || "");
+      headers.set("x-yandex-api-folder-id", localStorage.getItem(STORAGE_YANDEX_API_FOLDER_ID) || "");
 
       return headers;
     },

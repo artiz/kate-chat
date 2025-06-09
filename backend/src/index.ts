@@ -129,6 +129,7 @@ async function bootstrap() {
         // Use the user from the request (set by authMiddleware)
         return {
           user: req.raw.user,
+          connectionParams: req.raw.connectionParams || {},
         };
       },
     })

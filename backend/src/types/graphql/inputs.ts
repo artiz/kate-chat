@@ -1,5 +1,6 @@
 import { InputType, Field } from "type-graphql";
 import { MessageRole } from "../../entities/Message";
+import { ApiProvider } from "../ai.types";
 
 @InputType()
 export class UpdateUserInput {
@@ -178,7 +179,7 @@ export class TestModelInput {
 @InputType()
 export class GetCostsInput {
   @Field()
-  providerId: string;
+  apiProvider: ApiProvider;
 
   @Field()
   startTime: number;

@@ -22,7 +22,7 @@ import { Models } from "@/pages/Models";
 import { Settings } from "@/pages/Settings";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_UNAUTHORIZED } from "@/store/api";
-import { logout } from "@/store/slices/authSlice";
+import { loginSuccess, logout } from "@/store/slices/authSlice";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -46,6 +46,8 @@ const AppContent: React.FC = () => {
     error,
   } = useGetInitialDataQuery(undefined, {
     skip: !isAuthenticated,
+    refetchOnMountOrArgChange: true,
+    pollingInterval: 600_000, // Poll
   });
 
   useEffect(() => {
@@ -54,6 +56,7 @@ const AppContent: React.FC = () => {
       dispatch(setUser(initData.user));
       dispatch(setModelsAndProviders(initData));
       dispatch(setChats(initData.chats));
+      dispatch(loginSuccess(initData.refreshToken?.token));
     }
   }, [isAuthenticated, initData, dispatch]);
 
@@ -73,7 +76,7 @@ const AppContent: React.FC = () => {
         });
       }
     }
-  }, [isError, error, navigate]);
+  }, [isError, error, navigate, initData]);
 
   // Make sure the theme is applied to the document element
   React.useEffect(() => {

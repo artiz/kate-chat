@@ -14,6 +14,8 @@ import {
 import { MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
+import { BaseProviderService } from "../base.provider";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
 
@@ -62,14 +64,16 @@ export type OpenAiRequestMessage = {
   content: OpenAiRequestMessagePart[] | string;
 };
 
-export class OpenAIService {
+export class OpenAIService extends BaseProviderService {
   private openAiApiKey: string;
   private openAiApiAdminKey: string;
   private baseUrl: string;
 
-  constructor() {
-    this.openAiApiKey = process.env.OPENAI_API_KEY || "";
-    this.openAiApiAdminKey = process.env.OPENAI_API_ADMIN_KEY || "";
+  constructor(connection: ConnectionParams) {
+    super(connection);
+
+    this.openAiApiKey = connection.OPENAI_API_KEY || "";
+    this.openAiApiAdminKey = connection.OPENAI_API_ADMIN_KEY || "";
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
 
     if (!this.openAiApiKey) {
@@ -337,31 +341,33 @@ export class OpenAIService {
     }
   }
 
-  // Helper method to get all supported OpenAI models with their metadata
   // Get OpenAI provider information including account details
-  async getOpenAIInfo(): Promise<ProviderInfo> {
+  async getInfo(checkConnection = false): Promise<ProviderInfo> {
     const isConnected = !!this.openAiApiKey;
     const details: Record<string, string | number | boolean> = {
       apiUrl: this.baseUrl,
       configured: isConnected,
+      credentialsValid: "N/A",
     };
 
-    try {
-      // Fetch models
-      await axios.get(`${this.baseUrl}/models`, {
-        headers: this.getHeaders(),
-        fetchOptions,
-      });
+    if (isConnected && checkConnection) {
+      try {
+        // Fetch models
+        await axios.get(`${this.baseUrl}/models`, {
+          headers: this.getHeaders(),
+          fetchOptions,
+        });
 
-      details.credentialsValid = true;
-    } catch (error) {
-      logger.error(error, "Error fetching OpenAI models information");
-      details.credentialsValid = false;
+        details.credentialsValid = true;
+      } catch (error) {
+        logger.warn(error, "Error fetching OpenAI models information");
+        details.credentialsValid = false;
+      }
     }
 
     return {
       id: ApiProvider.OPEN_AI,
-      name: "OpenAI",
+      name: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
       costsInfoAvailable: !!this.openAiApiAdminKey,
       isConnected,
       details,
@@ -448,7 +454,7 @@ export class OpenAIService {
     return result;
   }
 
-  async getOpenAIModels(): Promise<Record<string, AIModelInfo>> {
+  async getModels(): Promise<Record<string, AIModelInfo>> {
     if (!this.openAiApiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
       return {};
@@ -473,7 +479,7 @@ export class OpenAIService {
 
         models[model.id] = {
           apiProvider: ApiProvider.OPEN_AI,
-          provider: "OpenAI",
+          provider: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
           name: getModelName(model.id),
           description: `${model.id} by OpenAI`,
           supportsStreaming: !supportsImageOut,

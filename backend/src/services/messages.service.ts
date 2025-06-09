@@ -19,6 +19,7 @@ import { createLogger } from "@/utils/logger";
 import { getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
 
@@ -70,7 +71,7 @@ export class MessagesService {
     };
   }
 
-  public async createMessage(input: CreateMessageInput, user: User): Promise<Message> {
+  public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
     const { chatId, modelId, images, role = MessageRole.USER } = input;
     let { content = "" } = input;
 
@@ -213,14 +214,14 @@ export class MessagesService {
         }
       };
 
-      this.aiService.streamCompletion(model.apiProvider, request, requestMessages, handleStreaming);
+      this.aiService.streamCompletion(model.apiProvider, connection, request, requestMessages, handleStreaming);
 
       return message;
     }
 
     // sync call
     try {
-      const aiResponse = await this.aiService.getCompletion(model.apiProvider, request, requestMessages);
+      const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, requestMessages);
       let content = aiResponse.content;
       if (aiResponse.type === "image") {
         // Save base64 image to output folder

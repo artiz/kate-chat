@@ -3,7 +3,13 @@ import pino, { LoggerOptions } from "pino";
 
 const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === "production" ? "info" : "debug");
 
-const redactPaths = ["password", "headers.Authorization", "*.headers.Authorization", "*.headers.authorization"]
+const redactPaths = [
+  "connectionParams",
+  "password",
+  "headers.Authorization",
+  "*.headers.Authorization",
+  "*.headers.authorization",
+]
   .map(path => {
     if (path.startsWith("*.")) {
       return ["req", "request", "res", "response", "config", "ctx", "context"].map(prefix => [

@@ -21,6 +21,7 @@ import { BedrockService } from "@/services/bedrock/bedrock.service";
 import { getErrorMessage } from "@/utils/errors";
 import { getSystemErrorMap } from "util";
 import { DEFAULT_PROMPT } from "@/config/ai";
+import { ConnectionParams, GraphQLContext } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
 
@@ -32,10 +33,13 @@ export class ModelResolver {
     this.aiService = new AIService();
   }
 
-  private async getProviderInfo(): Promise<GqlProviderInfo[]> {
+  private async getProviderInfo(
+    connectionParams: ConnectionParams,
+    testConnection?: boolean
+  ): Promise<GqlProviderInfo[]> {
     try {
       // Get provider info from AIService
-      const providersInfo = await this.aiService.getProviderInfo();
+      const providersInfo = await this.aiService.getProviderInfo(connectionParams, testConnection);
 
       // Convert to GqlProviderInfo format
       return providersInfo.map(provider => {
@@ -59,13 +63,13 @@ export class ModelResolver {
     }
   }
 
-  private async refreshModels(): Promise<GqlModelsList> {
+  private async refreshModels(connectionParams: ConnectionParams): Promise<GqlModelsList> {
     try {
       // Get the repository
       const modelRepository = getRepository(Model);
 
       // Get the models from AWS Bedrock
-      const models = await this.aiService.getModels();
+      const models = await this.aiService.getModels(connectionParams);
 
       const dbModels = await modelRepository.find({});
       const enabledMap = dbModels.reduce(
@@ -101,7 +105,7 @@ export class ModelResolver {
       }
 
       // Get provider information
-      const providers = await this.getProviderInfo();
+      const providers = await this.getProviderInfo(connectionParams, true);
 
       return { models: outModels, providers, total: outModels.length };
     } catch (error) {
@@ -112,7 +116,7 @@ export class ModelResolver {
 
   @Query(() => GqlModelsList)
   @Authorized()
-  async getModels(): Promise<GqlModelsList> {
+  async getModels(@Ctx() context: GraphQLContext): Promise<GqlModelsList> {
     try {
       // Get models from the database
       const modelRepository = getRepository(Model);
@@ -121,14 +125,14 @@ export class ModelResolver {
       });
 
       // Get provider information
-      const providers = await this.getProviderInfo();
+      const providers = await this.getProviderInfo(context.connectionParams);
 
       if (models.length) {
         return { models, providers, total: models.length };
       }
 
       // If no models in database, refresh from API
-      return this.refreshModels();
+      return this.refreshModels(context.connectionParams);
     } catch (error) {
       logger.error(error, "Error fetching models");
       return { error: "Failed to fetch models" };
@@ -150,8 +154,8 @@ export class ModelResolver {
 
   @Mutation(() => GqlModelsList)
   @Authorized()
-  async reloadModels(): Promise<GqlModelsList> {
-    return this.refreshModels();
+  async reloadModels(@Ctx() context: GraphQLContext): Promise<GqlModelsList> {
+    return this.refreshModels(context.connectionParams);
   }
 
   @Mutation(() => GqlModel)
@@ -183,7 +187,7 @@ export class ModelResolver {
 
   @Mutation(() => Message)
   @Authorized()
-  async testModel(@Arg("input") input: TestModelInput): Promise<Message> {
+  async testModel(@Arg("input") input: TestModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
     try {
       const { modelId, text } = input;
 
@@ -213,7 +217,7 @@ export class ModelResolver {
       };
 
       // Generate a response using the AI service
-      const response = await aiService.invokeModel(model.apiProvider, {
+      const response = await aiService.invokeModel(model.apiProvider, context.connectionParams, {
         modelId: model.modelId,
         messages: [message],
       });
@@ -236,12 +240,12 @@ export class ModelResolver {
 
   @Query(() => GqlCostsInfo)
   @Authorized()
-  async getCosts(@Arg("input") input: GetCostsInput): Promise<GqlCostsInfo> {
+  async getCosts(@Arg("input") input: GetCostsInput, @Ctx() context: GraphQLContext): Promise<GqlCostsInfo> {
     try {
-      const { providerId, startTime, endTime } = input;
+      const { apiProvider, startTime, endTime } = input;
 
       // Get costs based on provider
-      const usageCosts = await this.aiService.getCosts(providerId, startTime, endTime);
+      const usageCosts = await this.aiService.getCosts(apiProvider, context.connectionParams, startTime, endTime);
       // Map to GraphQL type
       return {
         start: usageCosts.start,

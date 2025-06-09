@@ -13,8 +13,9 @@ import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import axios from "axios";
 import { MessageRole } from "@/entities/Message";
-import { YANDEX_API_URL, YANDEX_API_KEY, YANDEX_API_FOLDER, YANDEX_MODELS } from "@/config/yandex";
-import { Mode } from "fs";
+import { YANDEX_API_URL, YANDEX_MODELS } from "@/config/yandex";
+import { BaseProviderService } from "../base.provider";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const agent = new Agent({
   keepAliveTimeout: 30_000,
@@ -58,14 +59,14 @@ export type YandexCompletionResponse = {
   };
 };
 
-export class YandexService {
+export class YandexService extends BaseProviderService {
   private apiKey: string;
+  private folderId: string;
 
-  constructor() {
-    this.apiKey = YANDEX_API_KEY || "";
-    if (!this.apiKey) {
-      logger.warn("YANDEX_API_KEY environment variable is not set");
-    }
+  constructor(connection: ConnectionParams) {
+    super(connection);
+    this.apiKey = connection.YANDEX_API_KEY || "";
+    this.folderId = connection.YANDEX_API_FOLDER_ID || "";
   }
 
   // Convert messages to Yandex format
@@ -102,15 +103,16 @@ export class YandexService {
   async invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse> {
     const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     const yandexMessages = this.formatMessages(messages, systemPrompt);
+    const modelUri = modelId.replace("{folder}", this.connection.YANDEX_API_FOLDER_ID ?? "default");
 
     const body: YandexCompletionRequest = {
-      modelUri: modelId,
+      modelUri,
       messages: yandexMessages,
       temperature,
       maxTokens,
     };
 
-    logger.debug({ body, modelId }, "Invoking Yandex model");
+    logger.debug({ modelUri, temperature, maxTokens }, "Invoking Yandex model");
 
     try {
       // Make API request to Yandex
@@ -159,15 +161,17 @@ export class YandexService {
 
     const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
     const yandexMessages = this.formatMessages(messages, systemPrompt);
+    const modelUri = modelId.replace("{folder}", this.connection.YANDEX_API_FOLDER_ID ?? "default");
+
     const body: YandexCompletionRequest = {
       stream: true,
-      modelUri: modelId,
+      modelUri,
       messages: yandexMessages,
       temperature,
       maxTokens,
     };
 
-    logger.debug({ body, modelId }, "Invoking Yandex model streaming");
+    logger.debug({ body, modelUri }, "Invoking Yandex model streaming");
 
     try {
       const response = await axios.post(YANDEX_API_URL + "/foundationModels/v1/completion", body, {
@@ -218,17 +222,18 @@ export class YandexService {
     }
   }
 
-  // Get Yandex provider information
-  async getYandexInfo(): Promise<ProviderInfo> {
+  async getInfo(checkConnection = false): Promise<ProviderInfo> {
     const isConnected = !!this.apiKey;
 
     const details: Record<string, string | number | boolean | undefined> = {
       configured: isConnected,
+      credentialsValid: "N/A",
+      folderId: this.connection.YANDEX_API_FOLDER_ID || "N/A",
     };
 
     return {
       id: ApiProvider.YANDEX,
-      name: "Yandex",
+      name: BaseProviderService.getApiProviderName(ApiProvider.YANDEX),
       isConnected,
       costsInfoAvailable: false, // Yandex doesn't support cost retrieval via API
       details,
@@ -236,7 +241,7 @@ export class YandexService {
   }
 
   // Get available Yandex models
-  async getYandexModels(): Promise<Record<string, AIModelInfo>> {
+  async getModels(): Promise<Record<string, AIModelInfo>> {
     // If API key is not set, return empty object
     if (!this.apiKey) {
       return {};
@@ -246,7 +251,7 @@ export class YandexService {
       (map, model) => {
         map[model.uri] = {
           apiProvider: ApiProvider.YANDEX,
-          provider: "Yandex",
+          provider: BaseProviderService.getApiProviderName(ApiProvider.YANDEX),
           name: model.name,
           description: model.description || "",
           supportsStreaming: true,

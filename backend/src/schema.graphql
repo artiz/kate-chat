@@ -56,8 +56,8 @@ input GetChatsInput {
 }
 
 input GetCostsInput {
+  apiProvider: String!
   endTime: Float
-  providerId: String!
   startTime: Float!
 }
 
@@ -194,6 +194,7 @@ type Query {
   getCosts(input: GetCostsInput!): GqlCostsInfo!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
+  refreshToken: AuthResponse!
 }
 
 input RegisterInput {

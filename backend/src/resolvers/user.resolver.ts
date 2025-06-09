@@ -124,4 +124,29 @@ export class UserResolver {
       user,
     };
   }
+
+  @Query(() => AuthResponse)
+  async refreshToken(@Ctx() context: { user?: TokenPayload }): Promise<AuthResponse> {
+    const { user } = context;
+    if (!user) {
+      throw new Error("Invalid email or password");
+    }
+
+    const dbUser = await this.userRepository.findOne({
+      where: { id: user.userId },
+    });
+
+    if (!dbUser) throw new Error("User not found");
+
+    // Generate JWT token
+    const token = generateToken({
+      userId: dbUser.id,
+      email: user.email,
+    });
+
+    return {
+      token,
+      user: dbUser,
+    };
+  }
 }

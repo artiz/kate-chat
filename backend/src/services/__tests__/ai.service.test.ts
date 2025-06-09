@@ -1,11 +1,14 @@
 import { AIService } from "../ai.service";
-import { bedrockClient } from "../../config/bedrock";
+import { BedrockService } from "../bedrock/bedrock.service";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { MessageRole } from "../../entities/Message";
 import { ApiProvider, ModelMessage } from "../../types/ai.types";
 import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
 
-process.env.OPENAI_API_KEY = "OPENAI_API_KEY";
+// Mock the BedrockRuntimeClient
+const bedrockClient = {
+  send: jest.fn(),
+};
 
 // Mock the AWS SDK
 jest.mock("@aws-sdk/client-bedrock", () => {
@@ -15,22 +18,30 @@ jest.mock("@aws-sdk/client-bedrock", () => {
   };
 });
 
+// Using real implementation for BedrockService but mocking the client interactions
+jest.mock("../bedrock/bedrock.service", () => {
+  const originalModule = jest.requireActual("../bedrock/bedrock.service");
+  return {
+    BedrockService: jest.fn().mockImplementation(() => {
+      const instance = new originalModule.BedrockService({
+        AWS_REGION: "us-west-2",
+        AWS_PROFILE: "default",
+      });
+      // Replace the bedrockClient with our mock
+      instance.bedrockClient = bedrockClient;
+      // Spy on the methods we want to track
+      jest.spyOn(instance, "invokeModel");
+      jest.spyOn(instance, "invokeModelAsync");
+      return instance;
+    }),
+  };
+});
+
 jest.mock("@aws-sdk/client-bedrock-runtime", () => {
   return {
     InvokeModelCommand: jest.fn(),
     InvokeModelWithResponseStreamCommand: jest.fn(),
-    BedrockRuntimeClient: jest.fn(),
-  };
-});
-
-jest.mock("../../config/bedrock", () => {
-  return {
-    bedrockManagementClient: {
-      send: jest.fn(),
-    },
-    bedrockClient: {
-      send: jest.fn(),
-    },
+    BedrockRuntimeClient: jest.fn().mockImplementation(() => bedrockClient),
   };
 });
 
@@ -57,9 +68,17 @@ describe("AIService", () => {
         ),
       };
 
+      // Mock the AWS Bedrock client response
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId });
+      const response = await aiService.invokeModel(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_REGION: "us-west-2",
+          AWS_PROFILE: "default",
+        },
+        { messages, modelId }
+      );
 
       expect(response.content).toBe("I'm doing well, thanks for asking!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -83,9 +102,17 @@ describe("AIService", () => {
         ),
       };
 
+      // Mock the AWS Bedrock client response
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId });
+      const response = await aiService.invokeModel(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_REGION: "us-west-2",
+          AWS_PROFILE: "default",
+        },
+        { messages, modelId }
+      );
 
       expect(response.content).toBe("I'm a language model, I don't have feelings, but I'm here to help!");
       expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
@@ -97,9 +124,16 @@ describe("AIService", () => {
       const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
       const modelId = "unknown.model-v1";
 
-      await expect(aiService.invokeModel(ApiProvider.AWS_BEDROCK, { messages, modelId })).rejects.toThrow(
-        "Unsupported model provider"
-      );
+      await expect(
+        aiService.invokeModel(
+          ApiProvider.AWS_BEDROCK,
+          {
+            AWS_REGION: "us-west-2",
+            AWS_PROFILE: "default",
+          },
+          { messages, modelId }
+        )
+      ).rejects.toThrow("Unsupported model provider");
     });
   });
 
@@ -146,7 +180,15 @@ describe("AIService", () => {
 
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
 
-      await aiService.invokeModelAsync(ApiProvider.AWS_BEDROCK, { messages, modelId }, callbacks);
+      await aiService.invokeModelAsync(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_REGION: "us-west-2",
+          AWS_PROFILE: "default",
+        },
+        { messages, modelId },
+        callbacks
+      );
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).toHaveBeenCalledTimes(2);
@@ -157,7 +199,6 @@ describe("AIService", () => {
     });
 
     it("should simulate streaming for non-streaming models", async () => {
-      // Mock the AIService.generateResponse method directly to avoid timeout issues
       const aiService = new AIService();
       const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
       const modelId = "ai21.j2-ultra-v1"; // Non-streaming model
@@ -169,7 +210,7 @@ describe("AIService", () => {
         onError: jest.fn(),
       };
 
-      // Mock the AWS Bedrock response
+      // Mock the AWS Bedrock response for the non-streaming model
       const response: A21InvokeModelResponse = {
         choices: [{ message: { role: "assistant", content: "I'm doing well, thanks for asking!" } }],
       };
@@ -177,14 +218,24 @@ describe("AIService", () => {
         body: Buffer.from(JSON.stringify(response)),
       };
 
+      // Mock the AWS Bedrock client response
       (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
+
       // Mock the setTimeout to execute immediately
       jest.spyOn(global, "setTimeout").mockImplementation(callback => {
         callback();
         return {} as any;
       });
 
-      await aiService.invokeModelAsync(ApiProvider.AWS_BEDROCK, { messages, modelId }, callbacks);
+      await aiService.invokeModelAsync(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_REGION: "us-west-2",
+          AWS_PROFILE: "default",
+        },
+        { messages, modelId },
+        callbacks
+      );
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
 
       expect(callbacks.onToken).toHaveBeenCalled();
@@ -208,7 +259,15 @@ describe("AIService", () => {
       const mockError = new Error("Stream processing error");
       (bedrockClient.send as jest.Mock).mockRejectedValueOnce(mockError);
 
-      await aiService.invokeModelAsync(ApiProvider.AWS_BEDROCK, { messages, modelId }, callbacks);
+      await aiService.invokeModelAsync(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_REGION: "us-west-2",
+          AWS_PROFILE: "default",
+        },
+        { messages, modelId },
+        callbacks
+      );
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).not.toHaveBeenCalled();

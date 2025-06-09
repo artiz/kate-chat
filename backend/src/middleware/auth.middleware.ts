@@ -3,16 +3,29 @@ import { verifyToken, TokenPayload } from "../utils/jwt";
 import { PubSubEngine } from "graphql-subscriptions";
 import { logger } from "../utils/logger";
 
+export interface ConnectionParams {
+  AWS_REGION?: string;
+  AWS_PROFILE?: string;
+  AWS_ACCESS_KEY_ID?: string;
+  AWS_SECRET_ACCESS_KEY?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_API_ADMIN_KEY?: string;
+  YANDEX_API_KEY?: string;
+  YANDEX_API_FOLDER_ID?: string;
+}
+
 declare global {
   namespace Express {
     interface Request {
       user?: TokenPayload;
+      connectionParams?: ConnectionParams;
     }
   }
 }
 
 export type GraphQLContext = {
   user?: TokenPayload;
+  connectionParams: ConnectionParams;
   pubSub?: PubSubEngine;
 };
 
@@ -55,6 +68,16 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
           res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         } else {
           req.user = user;
+          req.connectionParams = {
+            AWS_REGION: getHeader(req.headers["x-aws-region"]),
+            AWS_PROFILE: getHeader(req.headers["x-aws-profile"]),
+            AWS_ACCESS_KEY_ID: getHeader(req.headers["x-aws-access-key-id"]),
+            AWS_SECRET_ACCESS_KEY: getHeader(req.headers["x-aws-secret-access-key"]),
+            OPENAI_API_KEY: getHeader(req.headers["x-openai-api-key"]),
+            OPENAI_API_ADMIN_KEY: getHeader(req.headers["x-openai-api-admin-key"]),
+            YANDEX_API_KEY: getHeader(req.headers["x-yandex-api-key"]),
+            YANDEX_API_FOLDER_ID: getHeader(req.headers["x-yandex-api-folder-id"]),
+          };
         }
       }
     }
@@ -64,4 +87,11 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     logger.error(error, "Auth middleware error, path: %s", req.path);
     next();
   }
+};
+
+const getHeader = (headerValue: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(headerValue)) {
+    return headerValue[0];
+  }
+  return headerValue;
 };
