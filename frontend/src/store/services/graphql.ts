@@ -240,6 +240,46 @@ export interface CreateChatInput {
   systemPrompt?: string;
 }
 
+export interface GetInitialDataResponse {
+  data: {
+    currentUser: User;
+    getModels: {
+      models: Model[];
+      providers?: ProviderInfo[];
+    };
+    getChats: {
+      chats: Chat[];
+      total: number;
+      hasMore: boolean;
+    };
+    refreshToken: {
+      token: string;
+    };
+  };
+}
+
+export interface GqlAmount {
+  amount: number;
+  currency: string;
+}
+
+export interface GqlServiceCostInfo {
+  name: string;
+  type: string;
+  amounts: GqlAmount[];
+}
+
+export interface GqlCostsInfo {
+  start: Date;
+  end?: Date;
+  error?: string;
+  costs: GqlServiceCostInfo[];
+}
+
+export interface DeleteMessageResponse {
+  deleteMessage: string[];
+}
+
 // Create the API endpoints
 export const graphqlApi = api.injectEndpoints({
   endpoints: builder => ({
@@ -428,27 +468,5 @@ export const graphqlApi = api.injectEndpoints({
     }),
   }),
 });
-
-interface GetInitialDataResponse {
-  data: {
-    currentUser: User;
-    getModels: {
-      models: Model[];
-      providers?: ProviderInfo[];
-    };
-    getChats: {
-      chats: Chat[];
-      total: number;
-      hasMore: boolean;
-    };
-    refreshToken: {
-      token: string;
-    };
-  };
-}
-
-export interface DeleteMessageResponse {
-  deleteMessage: string[];
-}
 
 export const { useGetCurrentUserQuery, useGetModelsQuery, useGetChatsQuery, useGetInitialDataQuery } = graphqlApi;

@@ -31,7 +31,7 @@ const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "outline" }) => {
         <Button
           leftSection={<IconBrandGithub size={16} />}
           variant={variant}
-          color="gray.3"
+          color="blue.9"
           onClick={handleGithubLogin}
         >
           GitHub

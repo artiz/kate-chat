@@ -40,6 +40,7 @@ import {
   UPDATE_MODEL_STATUS_MUTATION,
   TEST_MODEL_MUTATION,
   GET_COSTS_QUERY,
+  GqlCostsInfo,
 } from "@/store/services/graphql";
 import { notifications } from "@mantine/notifications";
 import { addChat, Message } from "@/store/slices/chatSlice";
@@ -170,18 +171,21 @@ export const ModelsDashboard: React.FC = () => {
   });
 
   // Get costs query
-  const [getCosts, { loading: costsLoading, data: costsData }] = useLazyQuery(GET_COSTS_QUERY, {
-    onCompleted: data => {
-      // Query completed successfully
-    },
-    onError: error => {
-      notifications.show({
-        title: "Error",
-        message: error.message || "Failed to fetch cost information",
-        color: "red",
-      });
-    },
-  });
+  const [getCosts, { loading: costsLoading, data: costsData }] = useLazyQuery<{ getCosts: GqlCostsInfo }>(
+    GET_COSTS_QUERY,
+    {
+      onCompleted: data => {
+        // Query completed successfully
+      },
+      onError: error => {
+        notifications.show({
+          title: "Error",
+          message: error.message || "Failed to fetch cost information",
+          color: "red",
+        });
+      },
+    }
+  );
 
   // Handle creating a new chat with the selected model
   const handleCreateChat = (model: Model) => {
@@ -263,7 +267,7 @@ export const ModelsDashboard: React.FC = () => {
   };
 
   // Handle date change and refresh costs
-  const handleRefreshCosts = (providerId: string | undefined) => {
+  const handleRefreshCosts = (apiProvider: string | undefined) => {
     // Convert dates to Unix timestamps (seconds)
     const startTime = costStartDate ? Math.floor(costStartDate.getTime() / 1000) : undefined;
     const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
@@ -271,7 +275,7 @@ export const ModelsDashboard: React.FC = () => {
     getCosts({
       variables: {
         input: {
-          providerId,
+          apiProvider,
           startTime,
           endTime,
         },
@@ -294,6 +298,21 @@ export const ModelsDashboard: React.FC = () => {
 
     handleCloseTestModal();
   };
+
+  const totalCosts = useMemo(() => {
+    if (!costsData?.getCosts || !costsData.getCosts.costs) return [];
+    const map = costsData.getCosts.costs.reduce(
+      (map, cost) => {
+        cost.amounts?.forEach(amount => {
+          map[amount.currency] = (map[amount.currency] || 0) + amount.amount;
+        });
+        return map;
+      },
+      {} as Record<string, number>
+    );
+
+    return Object.entries(map).map(([currency, amount]) => [currency, amount.toFixed(2)]);
+  }, [costsData]);
 
   if (loading || reloading) {
     return (
@@ -437,10 +456,25 @@ export const ModelsDashboard: React.FC = () => {
                           <Table.Td>{cost.type}</Table.Td>
                           <Table.Td style={{ textAlign: "right" }}>
                             {cost.amounts.map((amount, i) => (
-                              <Text key={i}>
-                                {amount.amount.toFixed(2)} {amount.currency}
-                              </Text>
+                              <span key={i}>
+                                {amount.amount.toFixed(2)}&nbsp;{amount.currency}
+                              </span>
                             ))}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+
+                      {totalCosts.map(cost => (
+                        <Table.Tr key={`total-${cost[0]}`}>
+                          <Table.Td colSpan={2}>
+                            <Text c="blue" fw={500}>
+                              TOTAL {cost[0]}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td style={{ textAlign: "right" }}>
+                            <Text c="blue" fw={500}>
+                              {cost[1]}
+                            </Text>
                           </Table.Td>
                         </Table.Tr>
                       ))}

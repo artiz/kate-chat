@@ -219,11 +219,14 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       });
 
       if (chat && message.role === MessageRole.ASSISTANT) {
-        updateChat(chatId, {
+        const update = {
           ...chat,
           lastBotMessage: message.content,
           lastBotMessageHtml: message.html,
-        });
+        };
+
+        setChat(update);
+        updateChatInState(update);
       }
     };
 

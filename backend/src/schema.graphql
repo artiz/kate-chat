@@ -119,6 +119,7 @@ type GqlModel {
   supportsTextIn: Boolean!
   supportsTextOut: Boolean!
   updatedAt: DateTimeISO!
+  user: User!
 }
 
 type GqlModelsList {
@@ -164,6 +165,27 @@ type Message {
   role: String!
   updatedAt: DateTimeISO!
   user: User
+}
+
+type Model {
+  apiProvider: String!
+  createdAt: DateTimeISO!
+  description: String!
+  id: ID!
+  isActive: Boolean!
+  isCustom: Boolean!
+  modelId: String!
+  name: String!
+  provider: String
+  supportsEmbeddingsIn: Boolean!
+  supportsEmbeddingsOut: Boolean!
+  supportsImageIn: Boolean!
+  supportsImageOut: Boolean!
+  supportsStreaming: Boolean!
+  supportsTextIn: Boolean!
+  supportsTextOut: Boolean!
+  updatedAt: DateTimeISO!
+  user: User!
 }
 
 type Mutation {
@@ -251,6 +273,7 @@ type User {
   googleId: String
   id: ID!
   lastName: String!
+  models: [Model!]
   msalId: String
   updatedAt: DateTimeISO!
 }

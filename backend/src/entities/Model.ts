@@ -7,9 +7,11 @@ import {
   UpdateDateColumn,
   PrimaryColumn,
   PrimaryGeneratedColumn,
+  ManyToOne,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { ApiProvider } from "../types/ai.types";
+import { User } from "./User";
 
 @ObjectType()
 @Entity("models")
@@ -29,6 +31,10 @@ export class Model {
   @Field()
   @Column()
   description: string;
+
+  @Field(() => User)
+  @ManyToOne(() => User)
+  user: User;
 
   @Field({ nullable: true })
   @Column({ nullable: true })

@@ -53,7 +53,9 @@ export class ModelResolver extends BaseResolver {
     }
   }
 
-  private async refreshModels(connectionParams: ConnectionParams): Promise<GqlModelsList> {
+  private async refreshModels(context: GraphQLContext): Promise<GqlModelsList> {
+    const user = await this.validateContextToken(context);
+    const { connectionParams } = context;
     try {
       // Get the repository
       const modelRepository = getRepository(Model);
@@ -61,7 +63,9 @@ export class ModelResolver extends BaseResolver {
       // Get the models from AWS Bedrock
       const models = await this.aiService.getModels(connectionParams);
 
-      const dbModels = await modelRepository.find({});
+      const dbModels = await modelRepository.find({
+        where: { user: { id: user.userId } },
+      });
       const enabledMap = dbModels.reduce(
         (map: Record<string, boolean>, m: Model) => {
           map[m.modelId] = m.isActive;
@@ -74,6 +78,7 @@ export class ModelResolver extends BaseResolver {
       if (Object.keys(models).length) {
         await modelRepository.delete({
           isCustom: false,
+          user: { id: user.userId },
         });
       }
 
@@ -83,6 +88,7 @@ export class ModelResolver extends BaseResolver {
         // Create new model
         const model = modelRepository.create({
           ...info,
+          user: { id: user.userId },
           modelId: modelId,
           description: info.description || `${info.name} by ${info.provider}`,
           isActive: modelId in enabledMap ? enabledMap[modelId] : true,
@@ -107,10 +113,12 @@ export class ModelResolver extends BaseResolver {
   @Query(() => GqlModelsList)
   @Authorized()
   async getModels(@Ctx() context: GraphQLContext): Promise<GqlModelsList> {
+    const user = await this.validateContextToken(context);
     try {
       // Get models from the database
       const modelRepository = getRepository(Model);
       const models = await modelRepository.find({
+        where: { user: { id: user.userId } },
         order: { apiProvider: { direction: "ASC" }, provider: { direction: "DESC" }, name: { direction: "ASC" } },
       });
 
@@ -122,7 +130,7 @@ export class ModelResolver extends BaseResolver {
       }
 
       // If no models in database, refresh from API
-      return this.refreshModels(context.connectionParams);
+      return this.refreshModels(context);
     } catch (error) {
       logger.error(error, "Error fetching models");
       return { error: "Failed to fetch models" };
@@ -131,11 +139,11 @@ export class ModelResolver extends BaseResolver {
 
   @Query(() => [GqlModel])
   @Authorized()
-  async getActiveModels(): Promise<GqlModel[]> {
-    // Get models from the database
+  async getActiveModels(@Ctx() context: GraphQLContext): Promise<GqlModel[]> {
+    const user = await this.validateContextToken(context);
     const modelRepository = getRepository(Model);
     const dbModels = await modelRepository.find({
-      where: { isActive: true },
+      where: { isActive: true, id: user.userId },
       order: { apiProvider: { direction: "ASC" }, provider: { direction: "DESC" }, name: { direction: "ASC" } },
     });
 
@@ -145,12 +153,16 @@ export class ModelResolver extends BaseResolver {
   @Mutation(() => GqlModelsList)
   @Authorized()
   async reloadModels(@Ctx() context: GraphQLContext): Promise<GqlModelsList> {
-    return this.refreshModels(context.connectionParams);
+    return this.refreshModels(context);
   }
 
   @Mutation(() => GqlModel)
   @Authorized()
-  async updateModelStatus(@Arg("input") input: UpdateModelStatusInput): Promise<GqlModel> {
+  async updateModelStatus(
+    @Arg("input") input: UpdateModelStatusInput,
+    @Ctx() context: GraphQLContext
+  ): Promise<GqlModel> {
+    const user = await this.validateContextToken(context);
     try {
       const { modelId, isActive } = input;
 
@@ -158,7 +170,9 @@ export class ModelResolver extends BaseResolver {
       const modelRepository = getRepository(Model);
 
       // Find the model by ID
-      const model = await modelRepository.findOne({ where: { id: modelId } });
+      const model = await modelRepository.findOne({
+        where: { id: modelId, user: { id: user.userId } },
+      });
 
       if (!model) {
         throw new Error("Model not found");
@@ -178,6 +192,8 @@ export class ModelResolver extends BaseResolver {
   @Mutation(() => Message)
   @Authorized()
   async testModel(@Arg("input") input: TestModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
+    const user = await this.validateContextToken(context);
+
     try {
       const { modelId, text } = input;
 
@@ -185,7 +201,9 @@ export class ModelResolver extends BaseResolver {
       const modelRepository = getRepository(Model);
 
       // Find the model by ID
-      const model = await modelRepository.findOne({ where: { id: modelId } });
+      const model = await modelRepository.findOne({
+        where: { id: modelId, user: { id: user.userId } },
+      });
 
       if (!model) throw new Error("Model not found");
       if (!model.isActive) throw new Error("Model is not active");

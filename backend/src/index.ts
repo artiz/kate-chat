@@ -113,16 +113,16 @@ async function bootstrap() {
 
         // Extract the authorization header
         const authHeader = (connectionParams?.authorization as string) || "";
-        const user = getUserFromToken(authHeader);
+        const tokenPayload = getUserFromToken(authHeader);
 
-        if (user) {
-          logger.trace({ email: user.email }, "Authenticated WebSocket connection");
+        if (tokenPayload) {
+          logger.trace({ email: tokenPayload.email }, "Authenticated WebSocket connection");
         } else {
           logger.warn("WebSocket connection could not be authenticated");
         }
 
         return {
-          user,
+          tokenPayload,
         };
       },
       onSubscribe: (ctx, msg) => {

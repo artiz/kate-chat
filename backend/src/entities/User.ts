@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   PrimaryColumn,
   PrimaryGeneratedColumn,
+  OneToMany,
 } from "typeorm";
 import { AuthProvider } from "../types/ai.types";
 import { Field, ID, ObjectType } from "type-graphql";
+import { Model } from "./Model";
 
 @ObjectType()
 @Entity("users")
@@ -67,4 +69,8 @@ export class User {
   @Field()
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Field(() => [Model], { nullable: true })
+  @OneToMany(() => Model, m => m.user, { cascade: true, onDelete: "CASCADE" })
+  models: Model[];
 }

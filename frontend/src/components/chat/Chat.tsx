@@ -106,18 +106,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // #region Scrolling
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0), 20);
+    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
   }, [messagesContainerRef]);
 
   const autoScroll = useCallback(() => {
     if (!showAnchorButton) {
-      scrollToBottom();
+      setTimeout(scrollToBottom, 50);
     }
   }, [scrollToBottom, showAnchorButton]);
 
-  useLayoutEffect(() => {
-    autoScroll();
-  }, [messages, chat?.lastBotMessageHtml]);
+  useEffect(autoScroll, [messages, chat?.lastBotMessage]);
 
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

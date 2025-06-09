@@ -20,6 +20,7 @@ import { getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -84,8 +85,13 @@ export class MessagesService {
     if (!chat) throw new Error("Chat not found");
 
     // Verify the model exists
+    logger.debug(`Fetching model with ID: ${modelId} for user ${user.id}`);
+
     const model = await this.modelRepository.findOne({
-      where: { modelId },
+      where: {
+        modelId,
+        user: { id: user.id }, // Ensure the model belongs to the user
+      },
     });
     if (!model) throw new Error("Model not found");
 

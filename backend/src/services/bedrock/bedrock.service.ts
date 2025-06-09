@@ -262,7 +262,8 @@ export class BedrockService extends BaseProviderService {
   // Helper method to get all supported models with their metadata
   async getModels(): Promise<Record<string, AIModelInfo>> {
     // no AWS connection
-    if (!process.env.AWS_ACCESS_KEY_ID && !process.env.AWS_PROFILE) {
+    if (!this.connection.AWS_ACCESS_KEY_ID && !this.connection.AWS_PROFILE) {
+      logger.warn("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");
       return {};
     }
 

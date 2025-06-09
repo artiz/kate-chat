@@ -77,7 +77,7 @@ export async function initializeDatabase() {
     logger.info({ logging }, "Database connection established");
     return true;
   } catch (error) {
-    logger.error({ error }, "Error connecting to database");
+    logger.error(error, "Error connecting to database");
     return false;
   }
 }
