@@ -100,7 +100,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   useEffect(() => {
     if (loadCompleted) {
       setShowAnchorButton(false);
-      scrollToBottom();
+      setTimeout(scrollToBottom, 50);
     }
   }, [chatId, loadCompleted]);
 
@@ -135,9 +135,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
     scrollToBottom();
   }, [scrollToBottom]);
 
-  const firstMessageRef = useIntersectionObserver<HTMLDivElement>(() => {
-    loadMoreMessages();
-  }, [loadMoreMessages]);
+  const firstMessageRef = useIntersectionObserver<HTMLDivElement>(
+    () => {
+      loadMoreMessages();
+    },
+    [loadMoreMessages],
+    200
+  );
 
   // #endregion
 
