@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { verifyToken, TokenPayload } from "../utils/jwt";
 import { PubSubEngine } from "graphql-subscriptions";
 import { logger } from "../utils/logger";
+import { ParamsDictionary } from "express-serve-static-core";
+import { ParsedQs } from "qs";
+import { IncomingHttpHeaders } from "http";
 
 export interface ConnectionParams {
   AWS_REGION?: string;
@@ -67,16 +70,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
           res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         } else {
           req.tokenPayload = tokenPayload;
-          req.connectionParams = {
-            AWS_REGION: getHeader(req.headers["x-aws-region"]),
-            AWS_PROFILE: getHeader(req.headers["x-aws-profile"]),
-            AWS_ACCESS_KEY_ID: getHeader(req.headers["x-aws-access-key-id"]),
-            AWS_SECRET_ACCESS_KEY: getHeader(req.headers["x-aws-secret-access-key"]),
-            OPENAI_API_KEY: getHeader(req.headers["x-openai-api-key"]),
-            OPENAI_API_ADMIN_KEY: getHeader(req.headers["x-openai-api-admin-key"]),
-            YANDEX_API_KEY: getHeader(req.headers["x-yandex-api-key"]),
-            YANDEX_API_FOLDER_ID: getHeader(req.headers["x-yandex-api-folder-id"]),
-          };
+          req.connectionParams = loadConnectionParams(req.headers);
         }
       }
     }
@@ -94,3 +88,16 @@ const getHeader = (headerValue: string | string[] | undefined): string | undefin
   }
   return headerValue;
 };
+
+function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
+  return {
+    AWS_REGION: getHeader(headers["x-aws-region"]) || process.env.AWS_REGION || "eu-central-1",
+    AWS_PROFILE: getHeader(headers["x-aws-profile"]) || process.env.AWS_PROFILE,
+    AWS_ACCESS_KEY_ID: getHeader(headers["x-aws-access-key-id"]) || process.env.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY: getHeader(headers["x-aws-secret-access-key"]) || process.env.AWS_SECRET_ACCESS_KEY,
+    OPENAI_API_KEY: getHeader(headers["x-openai-api-key"]) || process.env.OPENAI_API_KEY,
+    OPENAI_API_ADMIN_KEY: getHeader(headers["x-openai-api-admin-key"]) || process.env.OPENAI_API_ADMIN_KEY,
+    YANDEX_API_KEY: getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_API_KEY,
+    YANDEX_API_FOLDER_ID: getHeader(headers["x-yandex-api-folder-id"]) || process.env.YANDEX_API_FOLDER_ID,
+  };
+}

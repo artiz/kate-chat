@@ -23,7 +23,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Responsive UI with Mantine
 
 ## TODO
-* Setup images uploads to S3 (selecte bucket name in settings), add backend methods to download images from S3 woth correct cache headers
+* Setup images uploads to S3 (selected bucket name in settings), add backend methods to download images from S3 woth correct cache headers
 * Extend docker-compose.yml to include Postgres and Nginx for production-like environment to run 2-3 instances of the backend app
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
