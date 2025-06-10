@@ -10,6 +10,7 @@ import {
   STORAGE_YANDEX_API_FOLDER_ID,
   STORAGE_YANDEX_API_KEY,
 } from "./slices/authSlice";
+import { APP_API_URL } from "@/utils/config";
 
 export type GrpahQLErrorResponse = {
   errors: {
@@ -35,7 +36,7 @@ export const ERROR_UNKNOWN = "Unknown error";
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.REACT_APP_API_URL || "http://localhost:4000",
+    baseUrl: APP_API_URL,
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.token;
 

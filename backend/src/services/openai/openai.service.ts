@@ -203,7 +203,7 @@ export class OpenAIService extends BaseProviderService {
       params.temperature = undefined; // GPT-4o models do not support temperature
     }
 
-    logger.debug(params, "Invoking OpenAI model streaming");
+    logger.debug({ ...params, messages: [] }, "Invoking OpenAI model streaming");
 
     try {
       const response = await axios.post(`${this.baseUrl}/chat/completions`, params, {

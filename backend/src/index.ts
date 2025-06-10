@@ -83,11 +83,11 @@ async function bootstrap() {
   app.use(passport.session());
   configurePassport();
 
-  // Set up auth routes
-  app.use("/api/auth", authRoutes);
-
   // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
+
+  // Set up auth routes
+  app.use("/auth", authRoutes);
   app.use("/output", express.static(OUTPUT_FOLDER));
 
   logger.info({ output: OUTPUT_FOLDER }, "Express application initialized");

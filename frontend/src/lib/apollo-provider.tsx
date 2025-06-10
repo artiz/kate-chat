@@ -104,6 +104,10 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     const errorLink = onError(({ graphQLErrors, networkError }) => {
       if (graphQLErrors) {
         graphQLErrors.forEach(({ message, locations, path }) => {
+          if (path?.[0] && typeof path[0] === "string" && ["login", "register", "resetPassword"].includes(path[0])) {
+            return;
+          }
+
           console.error(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
 
           // Show error notification

@@ -1,20 +1,17 @@
 import esbuild from "esbuild";
 import { config } from "dotenv";
 import { clean } from "esbuild-plugin-clean";
-import { polyfillNode } from "esbuild-plugin-polyfill-node";
 import { sassPlugin, postcssModules } from "esbuild-sass-plugin";
 import fs from "fs";
-
-// Load environment variables
-config();
+import path from "path";
 
 // Create directory if it doesn't exist
 if (!fs.existsSync("./dist")) {
   fs.mkdirSync("./dist");
 }
 
-// Copy index.html to dist
-fs.copyFileSync("./src/index.html", "./dist/index.html");
+// Load environment variables
+config({ path: path.resolve(process.cwd(), ".env.production") });
 
 // Production build configuration
 esbuild
@@ -37,7 +34,7 @@ esbuild
       ".eot": "file",
     },
     plugins: [
-      clean({ patterns: ["./dist/*"] }),
+      clean({ patterns: ["./dist/*.*"] }),
       sassPlugin({
         filter: /\.module\.scss$/,
         transform: postcssModules({}),
@@ -45,18 +42,21 @@ esbuild
       sassPlugin({
         filter: /\.scss$/,
       }),
-      polyfillNode(),
     ],
     define: {
       "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
-      "process.env.REACT_APP_API_URL": JSON.stringify(process.env.REACT_APP_API_URL),
-      "process.env.REACT_APP_WS_URL": JSON.stringify(process.env.REACT_APP_WS_URL),
+      "process.env.APP_API_URL": JSON.stringify(process.env.APP_API_URL),
       "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
     },
     metafile: true,
   })
   .then(result => {
-    console.log("⚡ Build complete!");
+    console.log("⚡ Build complete! Bundle created in ./dist");
+    console.log(`📦 Config: APP_API_URL: ${process.env.APP_API_URL}`);
+
+    // Copy index.html to dist
+    fs.copyFileSync("./src/index.html", "./dist/index.html");
+    fs.copyFileSync("./src/favicon.ico", "./dist/favicon.ico");
 
     // Output bundle size analysis
     const outputSize = Object.entries(result.metafile.outputs).reduce((total, [name, data]) => {

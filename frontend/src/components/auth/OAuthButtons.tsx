@@ -12,11 +12,11 @@ const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "outline" }) => {
   const apiUrl = APP_API_URL;
 
   const handleGoogleLogin = () => {
-    window.location.href = `${apiUrl}/api/auth/google`;
+    window.location.href = `${apiUrl}/auth/google`;
   };
 
   const handleGithubLogin = () => {
-    window.location.href = `${apiUrl}/api/auth/github`;
+    window.location.href = `${apiUrl}/auth/github`;
   };
 
   return (

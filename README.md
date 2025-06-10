@@ -23,8 +23,9 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Responsive UI with Mantine
 
 ## TODO
-* Setup images uploads to S3 (selected bucket name in settings), add backend methods to download images from S3 woth correct cache headers
-* Extend docker-compose.yml to include Postgres and Nginx for production-like environment to run 2-3 instances of the backend app
+* Extend docker-compose.yml to include Postgres and Nginx for production-like environment to run 2-3 instances of the backend app ✅
+* Setup images uploads to S3 (selected bucket name in settings), add backend methods to download images from S3 woth correct cache headers 🏃‍➡️ (need to finish docker env)
+
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
@@ -159,11 +160,22 @@ cp frontend/.env.example frontend/.env
 ```
 Edit the `.env` files with your configuration settings.
 
-3. Start the development environment using Docker
+3. Start the production-like environment using Docker
+
+add the following to your `/etc/hosts` file:
 ```
-docker-compose up -d
+127.0.0.1       katechat.dev.com
+```
+Then run the following commands:
+
+```
+export COMPOSE_BAKE=true
+npm run install:all
+npm run frontend:build
+docker compose up --build
 ```
 
+App will be available at `http://katechat.dev.com`
 
 ### Development Mode
 
@@ -171,14 +183,14 @@ To run the projects in development mode:
 
 #### 
 ```
-npm install:all
+npm run install:all
 npm run dev
 ```
 
 ### Production Build
 
 ```
-npm install:all
+npm run install:all
 npm run build
 ```
 

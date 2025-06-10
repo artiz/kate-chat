@@ -36,8 +36,7 @@ const context = await esbuild.context({
   },
   define: {
     "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
-    "process.env.REACT_APP_API_URL": JSON.stringify(process.env.REACT_APP_API_URL),
-    "process.env.REACT_APP_WS_URL": JSON.stringify(process.env.REACT_APP_WS_URL),
+    "process.env.APP_API_URL": JSON.stringify(process.env.APP_API_URL),
     "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
   },
   plugins: [
@@ -124,7 +123,7 @@ http
       headers: req.headers,
     };
 
-    if (req.url.startsWith("/output/")) {
+    if (req.url.startsWith("/output/") || req.url.startsWith("/files/")) {
       const proxyReq = http.request(backendProxy, proxyRes => {
         console.log(`Proxying request to backend: ${req.url}`);
         res.writeHead(proxyRes.statusCode, proxyRes.headers);

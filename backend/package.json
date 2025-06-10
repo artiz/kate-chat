@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node -r tsconfig-paths/register dist/index.js",
-    "dev": "npx ts-node-dev --require tsconfig-paths/register --inspect=9222 -r dotenv/config src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "npx ts-node-dev -r tsconfig-paths/register --inspect=9222 -r dotenv/config src/index.ts",
+    "build": "tsc -p tsconfig.json && tsconfig-replace-paths -p tsconfig.json",
     "test": "jest",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,js,json,css,scss}\""
@@ -44,6 +44,7 @@
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.16.0",
     "pino": "^9.7.0",
     "pino-pretty": "^13.0.0",
     "prettier": "^3.2.5",
@@ -53,6 +54,7 @@
     "sqlite3": "^5.1.7",
     "ts-jest": "^29.3.3",
     "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "type-graphql": "^2.0.0-rc.2",
     "typeorm": "^0.3.24",
     "typescript": "^5.8.3",
@@ -66,6 +68,6 @@
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.16",
     "ts-node-dev": "^2.0.0",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-replace-paths": "^0.0.14"
   }
 }

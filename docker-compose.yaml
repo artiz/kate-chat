@@ -1,6 +1,25 @@
 name: kate-chat
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: kate-chat-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=katechat
+      - POSTGRES_PASSWORD=katechat
+      - POSTGRES_DB=katechat
+    networks:
+      - kate-chat-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U katechat"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: valkey/valkey
     container_name: kate-chat-redis
@@ -8,6 +27,13 @@ services:
       - 6379:6379
     volumes:
       - redis-data:/data
+    networks:
+      - kate-chat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     scale: 3
@@ -16,44 +42,42 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - redis
-    ports:
-      - "4000-4003:4000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+      - postgres
+    expose:
+      - "4000"
     environment:
       - NODE_ENV=development
       - PORT=4000
+      - DB_TYPE="postgres"
+      - DB_URL=postgres://katechat:katechat@postgres:5432/katechat
+      - REDIS_URL=redis://redis:6379
+      - CALLBACK_URL_BASE=http://katechat.dev.com
+      - FRONTEND_URL=http://katechat.dev.com
+      - ALLOWED_ORIGINS=http://katechat.dev.com
+
     networks:
       - kate-chat-network
     env_file:
       - ./backend/.env
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: kate-chat-frontend
+    
+  nginx:
+    image: nginx:alpine
+    container_name: kate-chat-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./backend/output:/usr/share/nginx/html/output
     depends_on:
       - backend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:4000
-      - REACT_APP_WS_URL=ws://localhost:4000
     networks:
       - kate-chat-network
-    env_file:
-      - ./frontend/.env
 
 networks:
   kate-chat-network:
     driver: bridge
 
 volumes:
-  db_data: {}
+  postgres-data: {}
   redis-data: {}
