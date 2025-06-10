@@ -113,12 +113,12 @@ export class ModelResolver extends BaseResolver {
   @Query(() => GqlModelsList)
   @Authorized()
   async getModels(@Ctx() context: GraphQLContext): Promise<GqlModelsList> {
-    const user = await this.validateContextToken(context);
+    const user = await this.validateContextUser(context);
     try {
       // Get models from the database
       const modelRepository = getRepository(Model);
       const models = await modelRepository.find({
-        where: { user: { id: user.userId } },
+        where: { user: { id: user.id } },
         order: { apiProvider: { direction: "ASC" }, provider: { direction: "DESC" }, name: { direction: "ASC" } },
       });
 

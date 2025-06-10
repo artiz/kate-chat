@@ -11,8 +11,9 @@ import {
   Divider,
   ActionIcon,
   Tooltip,
+  em,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { IconUser, IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "../store";
@@ -23,6 +24,7 @@ import { useTheme } from "../hooks/useTheme";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
+  const isMobile = useMediaQuery(`(max-width: ${em(750)})`);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { colorScheme, toggleColorScheme } = useTheme();
@@ -86,10 +88,10 @@ export const MainLayout: React.FC = () => {
                       {userInitials}
                     </Avatar>
                     <div>
-                      <Text size="sm" fw={500}>
+                      <Text visibleFrom="sm" size="sm" fw={500}>
                         {user?.firstName} {user?.lastName}
                       </Text>
-                      <Text size="xs" c="dimmed">
+                      <Text visibleFrom="sm" size="xs" c="dimmed">
                         {user?.email}
                       </Text>
                     </div>
@@ -113,7 +115,7 @@ export const MainLayout: React.FC = () => {
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
-        <NavbarContent />
+        <NavbarContent navbarToggle={isMobile ? toggle : undefined} />
       </AppShell.Navbar>
 
       <AppShell.Main>

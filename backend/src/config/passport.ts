@@ -44,7 +44,7 @@ export const configurePassport = () => {
         {
           clientID: GOOGLE_CLIENT_ID,
           clientSecret: GOOGLE_CLIENT_SECRET,
-          callbackURL: `${CALLBACK_URL_BASE}/api/auth/google/callback`,
+          callbackURL: `${CALLBACK_URL_BASE}/auth/google/callback`,
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
@@ -112,7 +112,7 @@ export const configurePassport = () => {
         {
           clientID: GITHUB_CLIENT_ID,
           clientSecret: GITHUB_CLIENT_SECRET,
-          callbackURL: `${CALLBACK_URL_BASE}/api/auth/github/callback`,
+          callbackURL: `${CALLBACK_URL_BASE}/auth/github/callback`,
           scope: ["user:email"], // Request email scope
         },
         async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {

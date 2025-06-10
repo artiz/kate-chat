@@ -136,8 +136,23 @@ export class BedrockService extends BaseProviderService {
               }
             } else if (provider === "amazon") {
               // For Amazon models
+              logger.trace({ chunkData }, "Received chunk from Amazon model");
+
+              // TODO: Handle usage data properly
+              // "metadata": {
+              //  "usage": {
+              //    "inputTokens": 161,
+              //    "outputTokens": 159,
+              //    "cacheReadInputTokenCount": 0,
+              //    "cacheWriteInputTokenCount": 0
+              //  },
+              //  "metrics": {},
+              //  "trace": {}
+              // },
               if (chunkData.outputText) {
                 token = chunkData.outputText;
+              } else if (chunkData.contentBlockDelta?.delta?.text) {
+                token = chunkData.contentBlockDelta.delta.text;
               }
             } else if (provider === "mistral") {
               // For Mistral models

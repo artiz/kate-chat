@@ -1,8 +1,10 @@
 import { getRepository } from "@/config/database";
 import { User } from "@/entities";
 import { GraphQLContext } from "@/middleware/auth.middleware";
+import { HttpError } from "@/types/exceptions";
 import { TokenPayload } from "@/utils/jwt";
-import { P } from "pino";
+import { HttpStatusCode } from "axios";
+import { GraphQLError } from "graphql";
 import { Repository } from "typeorm";
 
 export class BaseResolver {
@@ -28,7 +30,11 @@ export class BaseResolver {
   protected async validateContextUser(context: GraphQLContext): Promise<User> {
     const { tokenPayload } = context;
     if (!tokenPayload?.userId) {
-      throw new Error("Not authenticated");
+      throw new GraphQLError("Unauthorized", {
+        extensions: {
+          code: 401,
+        },
+      });
     }
 
     const user = await this.userRepository.findOne({
@@ -36,7 +42,11 @@ export class BaseResolver {
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new GraphQLError("Forbidden", {
+        extensions: {
+          code: 403,
+        },
+      });
     }
 
     return user;
@@ -44,7 +54,13 @@ export class BaseResolver {
 
   protected async validateContextToken(context: GraphQLContext): Promise<TokenPayload> {
     const { tokenPayload } = context;
-    if (!tokenPayload) throw new Error("Authentication required");
+
+    if (!tokenPayload)
+      throw new GraphQLError("Unauthorized", {
+        extensions: {
+          code: 401,
+        },
+      });
 
     return tokenPayload;
   }

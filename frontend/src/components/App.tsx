@@ -22,7 +22,7 @@ import { CreateChat } from "@/pages/CreateChat";
 import { Models } from "@/pages/Models";
 import { Settings } from "@/pages/Settings";
 import { MainLayout } from "../components/MainLayout";
-import { ERROR_UNAUTHORIZED } from "@/store/api";
+import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, logout } from "@/store/slices/authSlice";
 
 // PrivateRoute component for protected routes
@@ -65,11 +65,14 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // Handle errors from the initial data query
     if (isError) {
-      if ("status" in error && error.status === "PARSING_ERROR" && error.error === ERROR_UNAUTHORIZED) {
+      if (
+        "status" in error &&
+        (error.status === "PARSING_ERROR" || error.status === "CUSTOM_ERROR") &&
+        (error.error === ERROR_UNAUTHORIZED || error.error === ERROR_FORBIDDEN)
+      ) {
         dispatch(logout());
         navigate("/login");
       } else if ("error" in error) {
-        console.error("Parsing error:", error.error);
         // Show error notification
         notifications.show({
           title: "GraphQL Error",

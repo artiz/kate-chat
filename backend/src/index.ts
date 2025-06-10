@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { createServer } from "http";
 import path from "path";
 import cors from "cors";
@@ -15,13 +15,15 @@ import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
 import { UserResolver } from "./resolvers/user.resolver";
 import { ModelResolver } from "./resolvers/model.resolver";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
-import { execute, subscribe } from "graphql";
+import { execute, GraphQLError, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
+import { HttpError } from "./types/exceptions";
+import e from "express";
 
 // Load environment variables
 config();
@@ -155,6 +157,27 @@ async function bootstrap() {
       },
     })
   );
+
+  // last one - error handler
+  const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof HttpError) {
+      logger.error(err, "HTTP error");
+      res.status(err.statusCode).send({
+        status: err.statusCode,
+        message: err.message,
+        details: err.details,
+      });
+    } else {
+      logger.error(err, "Unhandled error in request");
+      res.status(500).send({
+        status: 500,
+        name: err.name || "InternalServerError",
+        message: "Something went wrong",
+      });
+    }
+  };
+
+  app.use(errorHandler);
 
   // Start the server
   const PORT = process.env.PORT || 4000;

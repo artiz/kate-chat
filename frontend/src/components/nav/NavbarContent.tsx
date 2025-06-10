@@ -11,7 +11,11 @@ import { Chat, removeChat, updateChat } from "@/store/slices/chatSlice";
 
 import classes from "./NavbarContent.module.scss";
 
-const NavbarContent: React.FC = () => {
+interface IProps {
+  navbarToggle?: () => void;
+}
+
+const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -121,6 +125,7 @@ const NavbarContent: React.FC = () => {
 
   // Handle navigation to create new chat
   const handleNewChat = () => {
+    navbarToggle?.();
     navigate("/chat/new");
   };
 
@@ -131,6 +136,7 @@ const NavbarContent: React.FC = () => {
 
   // Handle navigation to models page
   const handleModelsClick = () => {
+    navbarToggle?.();
     navigate("/models");
   };
 

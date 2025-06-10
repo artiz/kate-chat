@@ -197,6 +197,7 @@ export class AIService {
 
     return messages.reduce((acc: ModelMessage[], msg: ModelMessage) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
+
       // Check if the last message is of the same role and content
       if (lastMessage && lastMessage.role === msg.role) {
         if (lastMessage.body === msg.body) {
@@ -213,7 +214,7 @@ export class AIService {
             lastMessage.body.push({ content: msg.body, contentType: "text" });
           }
         }
-      } else {
+      } else if (msg.body?.length) {
         acc.push(msg);
       }
 

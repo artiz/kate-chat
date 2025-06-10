@@ -48,10 +48,10 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=4000
-      - DB_TYPE="postgres"
+      - DB_TYPE=postgres
       - DB_URL=postgres://katechat:katechat@postgres:5432/katechat
       - REDIS_URL=redis://redis:6379
-      - CALLBACK_URL_BASE=http://katechat.dev.com
+      - CALLBACK_URL_BASE=http://katechat.dev.com/api
       - FRONTEND_URL=http://katechat.dev.com
       - ALLOWED_ORIGINS=http://katechat.dev.com
 
