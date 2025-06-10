@@ -180,7 +180,7 @@ export class AIService {
       })
     );
 
-    logger.info({ providers }, `Getting info for providers`);
+    logger.debug({ providers }, `Getting info for providers`);
 
     return providers;
   }

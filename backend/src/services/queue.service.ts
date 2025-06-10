@@ -4,11 +4,9 @@ import { createClient, RedisClientType } from "redis";
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Message, MessageRole } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
-import { IncomingMessage } from "http";
 import { WebSocket } from "ws";
 import { ok } from "@/utils/assert";
-import { stream } from "undici";
-import { QUEUE_MESSAGE_EXPIRATION_SEC } from "@/config/application";
+import { QUEUE_MESSAGE_EXPIRATION_SEC, REDIS_URL } from "@/config/application";
 
 const logger = createLogger(__filename);
 
@@ -31,6 +29,7 @@ export class QueueService {
     // but will not share messages between multiple instances
     try {
       const client: RedisClientType = createClient({
+        url: REDIS_URL,
         socket: {
           reconnectStrategy: retries => {
             if (retries > 10) {

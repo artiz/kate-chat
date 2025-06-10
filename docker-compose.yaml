@@ -2,7 +2,7 @@ name: kate-chat
 
 services:
   redis:
-    image: redislabs/redistimeseries
+    image: valkey/valkey
     container_name: kate-chat-redis
     ports:
       - 6379:6379
