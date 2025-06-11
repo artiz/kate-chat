@@ -274,6 +274,5 @@ type User {
   id: ID!
   lastName: String!
   models: [Model!]
-  msalId: String
   updatedAt: DateTimeISO!
 }

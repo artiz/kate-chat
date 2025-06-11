@@ -3,14 +3,14 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 export const STORAGE_AUTH_TOKEN = "auth-token";
 export const STORAGE_USER_DATA = "user-data";
 
-export const STORAGE_AWS_REGION = "aws-region";
-export const STORAGE_AWS_PROFILE = "aws-profile";
-export const STORAGE_AWS_ACCESS_KEY_ID = "aws-access-key-id";
-export const STORAGE_AWS_SECRET_ACCESS_KEY = "aws-secret-access-key";
+export const STORAGE_AWS_BEDROCK_REGION = "aws-bedrock-region";
+export const STORAGE_AWS_BEDROCK_PROFILE = "aws-bedrock-profile";
+export const STORAGE_AWS_BEDROCK_ACCESS_KEY_ID = "aws-bedrock-access-key-id";
+export const STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY = "aws-bedrock-secret-access-key";
 export const STORAGE_OPENAI_API_KEY = "openai-api-key";
 export const STORAGE_OPENAI_API_ADMIN_KEY = "openai-api-admin-key";
-export const STORAGE_YANDEX_API_KEY = "yandex-api-key";
-export const STORAGE_YANDEX_API_FOLDER_ID = "yandex-api-folder-id";
+export const STORAGE_YANDEX_FM_API_KEY = "yandex-fm-api-key";
+export const STORAGE_YANDEX_FM_API_FOLDER_ID = "yandex-fm-api-folder-id";
 
 interface AuthState {
   token: string | null;

@@ -7,14 +7,14 @@ import { ParsedQs } from "qs";
 import { IncomingHttpHeaders } from "http";
 
 export interface ConnectionParams {
-  AWS_REGION?: string;
-  AWS_PROFILE?: string;
-  AWS_ACCESS_KEY_ID?: string;
-  AWS_SECRET_ACCESS_KEY?: string;
+  AWS_BEDROCK_REGION?: string;
+  AWS_BEDROCK_PROFILE?: string;
+  AWS_BEDROCK_ACCESS_KEY_ID?: string;
+  AWS_BEDROCK_SECRET_ACCESS_KEY?: string;
   OPENAI_API_KEY?: string;
   OPENAI_API_ADMIN_KEY?: string;
-  YANDEX_API_KEY?: string;
-  YANDEX_API_FOLDER_ID?: string;
+  YANDEX_FM_API_KEY?: string;
+  YANDEX_FM_API_FOLDER_ID?: string;
 }
 
 declare global {
@@ -91,13 +91,14 @@ const getHeader = (headerValue: string | string[] | undefined): string | undefin
 
 function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
   return {
-    AWS_REGION: getHeader(headers["x-aws-region"]) || process.env.AWS_REGION || "eu-central-1",
-    AWS_PROFILE: getHeader(headers["x-aws-profile"]) || process.env.AWS_PROFILE,
-    AWS_ACCESS_KEY_ID: getHeader(headers["x-aws-access-key-id"]) || process.env.AWS_ACCESS_KEY_ID,
-    AWS_SECRET_ACCESS_KEY: getHeader(headers["x-aws-secret-access-key"]) || process.env.AWS_SECRET_ACCESS_KEY,
+    AWS_BEDROCK_REGION: getHeader(headers["x-aws-region"]) || process.env.AWS_BEDROCK_REGION || "eu-central-1",
+    AWS_BEDROCK_PROFILE: getHeader(headers["x-aws-profile"]) || process.env.AWS_BEDROCK_PROFILE,
+    AWS_BEDROCK_ACCESS_KEY_ID: getHeader(headers["x-aws-access-key-id"]) || process.env.AWS_BEDROCK_ACCESS_KEY_ID,
+    AWS_BEDROCK_SECRET_ACCESS_KEY:
+      getHeader(headers["x-aws-secret-access-key"]) || process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
     OPENAI_API_KEY: getHeader(headers["x-openai-api-key"]) || process.env.OPENAI_API_KEY,
     OPENAI_API_ADMIN_KEY: getHeader(headers["x-openai-api-admin-key"]) || process.env.OPENAI_API_ADMIN_KEY,
-    YANDEX_API_KEY: getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_API_KEY,
-    YANDEX_API_FOLDER_ID: getHeader(headers["x-yandex-api-folder-id"]) || process.env.YANDEX_API_FOLDER_ID,
+    YANDEX_FM_API_KEY: getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_FM_API_KEY,
+    YANDEX_FM_API_FOLDER_ID: getHeader(headers["x-yandex-api-folder-id"]) || process.env.YANDEX_FM_API_FOLDER_ID,
   };
 }

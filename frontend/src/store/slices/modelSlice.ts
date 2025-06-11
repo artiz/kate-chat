@@ -1,3 +1,4 @@
+import { ApiProvider } from "@/types/ai";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export interface ProviderDetail {
@@ -7,7 +8,7 @@ export interface ProviderDetail {
 
 export interface ProviderInfo {
   name: string;
-  id: string;
+  id: ApiProvider;
   isConnected: boolean;
   details: ProviderDetail[];
   costsInfoAvailable?: boolean;

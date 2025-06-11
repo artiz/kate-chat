@@ -35,6 +35,15 @@ services:
       timeout: 5s
       retries: 5
 
+  localstack:
+    container_name: kate-chat-localstack
+    image: localstack/localstack:s3-latest
+    ports:
+      - "4566:4566"
+    volumes:
+      - "./config/init-s3.py:/etc/localstack/init/ready.d/init-s3.py"  # ready hook
+
+
   backend:
     scale: 3
     build:

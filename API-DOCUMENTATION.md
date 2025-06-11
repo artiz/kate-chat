@@ -219,7 +219,6 @@ type User {
   firstName: String!
   lastName: String!
   avatarUrl: String
-  msalId: String
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!
 }

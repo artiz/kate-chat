@@ -1,9 +1,9 @@
 import { MessageRole } from "../entities/Message";
 
 export enum ApiProvider {
-  AWS_BEDROCK = "bedrock",
+  AWS_BEDROCK = "aws_bedrock",
   OPEN_AI = "open_ai",
-  YANDEX = "yandex",
+  YANDEX_FM = "yandex_fm",
 }
 
 export enum AuthProvider {

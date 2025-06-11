@@ -38,19 +38,19 @@ export class BedrockService extends BaseProviderService {
   constructor(connection: ConnectionParams) {
     super(connection);
 
-    if (!connection.AWS_REGION) {
-      logger.warn("AWS_REGION is not set. Skipping AWS Bedrock initialization.");
+    if (!connection.AWS_BEDROCK_REGION) {
+      logger.warn("AWS_BEDROCK_REGION is not set. Skipping AWS Bedrock initialization.");
       return;
     }
 
     const config = {
-      region: connection.AWS_REGION,
-      profile: connection.AWS_PROFILE || "", // Use AWS profile if set
-      credentials: connection.AWS_PROFILE
+      region: connection.AWS_BEDROCK_REGION,
+      profile: connection.AWS_BEDROCK_PROFILE || "", // Use AWS profile if set
+      credentials: connection.AWS_BEDROCK_PROFILE
         ? undefined
         : {
-            accessKeyId: connection.AWS_ACCESS_KEY_ID || "",
-            secretAccessKey: connection.AWS_SECRET_ACCESS_KEY || "",
+            accessKeyId: connection.AWS_BEDROCK_ACCESS_KEY_ID || "",
+            secretAccessKey: connection.AWS_BEDROCK_SECRET_ACCESS_KEY || "",
           },
     };
 
@@ -238,9 +238,9 @@ export class BedrockService extends BaseProviderService {
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
     const isConnected = !!this.bedrockClient;
-    const region = this.connection.AWS_REGION;
-    const profile = this.connection.AWS_PROFILE;
-    const accessKey = this.connection.AWS_ACCESS_KEY_ID;
+    const region = this.connection.AWS_BEDROCK_REGION;
+    const profile = this.connection.AWS_BEDROCK_PROFILE;
+    const accessKey = this.connection.AWS_BEDROCK_ACCESS_KEY_ID;
 
     const details: Record<string, string | number | boolean | undefined> = {
       configured: isConnected,
@@ -277,7 +277,7 @@ export class BedrockService extends BaseProviderService {
   // Helper method to get all supported models with their metadata
   async getModels(): Promise<Record<string, AIModelInfo>> {
     // no AWS connection
-    if (!this.connection.AWS_ACCESS_KEY_ID && !this.connection.AWS_PROFILE) {
+    if (!this.connection.AWS_BEDROCK_ACCESS_KEY_ID && !this.connection.AWS_BEDROCK_PROFILE) {
       logger.warn("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");
       return {};
     }
@@ -355,16 +355,16 @@ export class BedrockService extends BaseProviderService {
       costs: [],
     };
 
-    if (!this.connection.AWS_ACCESS_KEY_ID && !this.connection.AWS_PROFILE) {
+    if (!this.connection.AWS_BEDROCK_ACCESS_KEY_ID && !this.connection.AWS_BEDROCK_PROFILE) {
       result.error =
-        "AWS credentials are not set. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY or AWS_PROFILE in config.";
+        "AWS credentials are not set. Set AWS_BEDROCK_ACCESS_KEY_ID and AWS_BEDROCK_SECRET_ACCESS_KEY or AWS_BEDROCK_PROFILE in config.";
       return result;
     }
 
     try {
       // Create Cost Explorer client using the same region/credentials as Bedrock
       const costExplorerClient = new CostExplorerClient({
-        region: this.connection.AWS_REGION,
+        region: this.connection.AWS_BEDROCK_REGION,
         credentials: await this.bedrockClient.config.credentials(),
       });
 

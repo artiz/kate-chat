@@ -17,14 +17,14 @@ import { notifications } from "@mantine/notifications";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import {
-  STORAGE_AWS_ACCESS_KEY_ID,
-  STORAGE_AWS_PROFILE,
-  STORAGE_AWS_REGION,
-  STORAGE_AWS_SECRET_ACCESS_KEY,
+  STORAGE_AWS_BEDROCK_ACCESS_KEY_ID,
+  STORAGE_AWS_BEDROCK_PROFILE,
+  STORAGE_AWS_BEDROCK_REGION,
+  STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
   STORAGE_OPENAI_API_ADMIN_KEY,
   STORAGE_OPENAI_API_KEY,
-  STORAGE_YANDEX_API_FOLDER_ID,
-  STORAGE_YANDEX_API_KEY,
+  STORAGE_YANDEX_FM_API_FOLDER_ID,
+  STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { APP_API_URL } from "@/utils/config";
 
@@ -46,12 +46,12 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         "Accept-Encoding": "br, gzip", // Use Brotli and gzip compression
         "x-openai-api-key": localStorage.getItem(STORAGE_OPENAI_API_KEY) || "",
         "x-openai-api-admin-key": localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "",
-        "x-aws-region": localStorage.getItem(STORAGE_AWS_REGION) || "",
-        "x-aws-profile": localStorage.getItem(STORAGE_AWS_PROFILE) || "",
-        "x-aws-access-key-id": localStorage.getItem(STORAGE_AWS_ACCESS_KEY_ID) || "",
-        "x-aws-secret-access-key": localStorage.getItem(STORAGE_AWS_SECRET_ACCESS_KEY) || "",
-        "x-yandex-api-key": localStorage.getItem(STORAGE_YANDEX_API_KEY) || "",
-        "x-yandex-api-folder-id": localStorage.getItem(STORAGE_YANDEX_API_FOLDER_ID) || "",
+        "x-aws-region": localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || "",
+        "x-aws-profile": localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || "",
+        "x-aws-access-key-id": localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || "",
+        "x-aws-secret-access-key": localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || "",
+        "x-yandex-api-key": localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "",
+        "x-yandex-api-folder-id": localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "",
       },
     });
 

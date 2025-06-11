@@ -50,7 +50,7 @@ import { ModelsList } from "../ModelsList";
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
   switch (provider?.toLowerCase()) {
-    case "openai":
+    case "open_ai":
       return <IconBrandOpenai size={24} />;
     case "anthropic":
       return <IconBook2 size={24} />;

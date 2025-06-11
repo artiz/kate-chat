@@ -88,7 +88,6 @@ export const configurePassport = () => {
                 password: "", // No password for OAuth users
                 authProvider: AuthProvider.GOOGLE,
                 defaultSystemPrompt: DEFAULT_PROMPT,
-                msalId: "-", // Default value
               });
 
               user = await userRepository.save(user);
@@ -162,7 +161,6 @@ export const configurePassport = () => {
                 password: "", // No password for OAuth users
                 authProvider: AuthProvider.GITHUB,
                 defaultSystemPrompt: DEFAULT_PROMPT,
-                msalId: "-", // Default value
               });
 
               user = await userRepository.save(user);

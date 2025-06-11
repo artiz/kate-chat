@@ -13,7 +13,7 @@ import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import axios from "axios";
 import { MessageRole } from "@/entities/Message";
-import { YANDEX_API_URL, YANDEX_MODELS } from "@/config/yandex";
+import { YANDEX_FM_API_URL, YANDEX_MODELS } from "@/config/yandex";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
@@ -65,8 +65,8 @@ export class YandexService extends BaseProviderService {
 
   constructor(connection: ConnectionParams) {
     super(connection);
-    this.apiKey = connection.YANDEX_API_KEY || "";
-    this.folderId = connection.YANDEX_API_FOLDER_ID || "";
+    this.apiKey = connection.YANDEX_FM_API_KEY || "";
+    this.folderId = connection.YANDEX_FM_API_FOLDER_ID || "";
   }
 
   // Convert messages to Yandex format
@@ -102,7 +102,9 @@ export class YandexService extends BaseProviderService {
   // Invoke Yandex model for text generation
   async invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse> {
     if (!this.apiKey) {
-      throw new Error("Yandex API key is not set. Set YANDEX_API_KEY/YANDEX_API_FOLDER_ID in connection seettings.");
+      throw new Error(
+        "Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER_ID in connection seettings."
+      );
     }
 
     const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
@@ -121,7 +123,7 @@ export class YandexService extends BaseProviderService {
     try {
       // Make API request to Yandex
       const response = await axios.post<YandexCompletionResponse>(
-        YANDEX_API_URL + "/foundationModels/v1/completion",
+        YANDEX_FM_API_URL + "/foundationModels/v1/completion",
         body,
         {
           headers: {
@@ -158,7 +160,7 @@ export class YandexService extends BaseProviderService {
   async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
     if (!this.apiKey || !this.folderId) {
       callbacks.onError?.(
-        new Error("Yandex API key is not set. Set YANDEX_API_KEY/YANDEX_API_FOLDER_ID in environment variables.")
+        new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER_ID in environment variables.")
       );
       return;
     }
@@ -180,7 +182,7 @@ export class YandexService extends BaseProviderService {
     logger.debug({ body, modelUri }, "Invoking Yandex model streaming");
 
     try {
-      const response = await axios.post(YANDEX_API_URL + "/foundationModels/v1/completion", body, {
+      const response = await axios.post(YANDEX_FM_API_URL + "/foundationModels/v1/completion", body, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Api-Key ${this.apiKey}`,
@@ -238,8 +240,8 @@ export class YandexService extends BaseProviderService {
     };
 
     return {
-      id: ApiProvider.YANDEX,
-      name: BaseProviderService.getApiProviderName(ApiProvider.YANDEX),
+      id: ApiProvider.YANDEX_FM,
+      name: BaseProviderService.getApiProviderName(ApiProvider.YANDEX_FM),
       isConnected,
       costsInfoAvailable: false, // Yandex doesn't support cost retrieval via API
       details,
@@ -256,8 +258,8 @@ export class YandexService extends BaseProviderService {
     return YANDEX_MODELS.reduce(
       (map, model) => {
         map[model.uri] = {
-          apiProvider: ApiProvider.YANDEX,
-          provider: BaseProviderService.getApiProviderName(ApiProvider.YANDEX),
+          apiProvider: ApiProvider.YANDEX_FM,
+          provider: BaseProviderService.getApiProviderName(ApiProvider.YANDEX_FM),
           name: model.name,
           description: model.description || "",
           supportsStreaming: true,

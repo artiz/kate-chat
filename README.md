@@ -13,7 +13,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - Yandex Foundation Models
-- Demo mode when no LLM providers configured on Backend and AWS_REGION/AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or OPENAI_API_KEY are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
+- Demo mode when no LLM providers configured on Backend and AWS_BEDROCK_REGION/AWS_BEDROCK_ACCESS_KEY_ID/AWS_BEDROCK_SECRET_ACCESS_KEY or OPENAI_API_KEY are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - On-the-fly model switching
 - Chat history storage and management, messages deletion
 - Rich markdown formatting: code blocks, images, MatJAX formulas etc.
@@ -106,15 +106,15 @@ The project consists of several parts:
    - Open the `.env` file in the backend directory
    - Add your AWS credentials:
      ```
-     AWS_REGION=us-east-1  # or your preferred region
-     AWS_ACCESS_KEY_ID=your_access_key_id
-     AWS_SECRET_ACCESS_KEY=your_secret_access_key
+     AWS_BEDROCK_REGION=us-east-1  # or your preferred region
+     AWS_BEDROCK_ACCESS_KEY_ID=your_access_key_id
+     AWS_BEDROCK_SECRET_ACCESS_KEY=your_secret_access_key
      ```
 
 6. **Verify AWS Region Availability**
    - Not all Bedrock models are available in every AWS region
    - Check the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html) for model availability by region
-   - Make sure to set the `AWS_REGION` to a region that supports your desired models
+   - Make sure to set the `AWS_BEDROCK_REGION` to a region that supports your desired models
 
 ### OpenAI API keys retrieval
 

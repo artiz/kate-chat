@@ -24,8 +24,8 @@ jest.mock("../bedrock/bedrock.service", () => {
   return {
     BedrockService: jest.fn().mockImplementation(() => {
       const instance = new originalModule.BedrockService({
-        AWS_REGION: "us-west-2",
-        AWS_PROFILE: "default",
+        AWS_BEDROCK_REGION: "us-west-2",
+        AWS_BEDROCK_PROFILE: "default",
       });
       // Replace the bedrockClient with our mock
       instance.bedrockClient = bedrockClient;
@@ -74,8 +74,8 @@ describe("AIService", () => {
       const response = await aiService.invokeModel(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_REGION: "us-west-2",
-          AWS_PROFILE: "default",
+          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId }
       );
@@ -108,8 +108,8 @@ describe("AIService", () => {
       const response = await aiService.invokeModel(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_REGION: "us-west-2",
-          AWS_PROFILE: "default",
+          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId }
       );
@@ -128,8 +128,8 @@ describe("AIService", () => {
         aiService.invokeModel(
           ApiProvider.AWS_BEDROCK,
           {
-            AWS_REGION: "us-west-2",
-            AWS_PROFILE: "default",
+            AWS_BEDROCK_REGION: "us-west-2",
+            AWS_BEDROCK_PROFILE: "default",
           },
           { messages, modelId }
         )
@@ -183,8 +183,8 @@ describe("AIService", () => {
       await aiService.invokeModelAsync(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_REGION: "us-west-2",
-          AWS_PROFILE: "default",
+          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId },
         callbacks
@@ -230,8 +230,8 @@ describe("AIService", () => {
       await aiService.invokeModelAsync(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_REGION: "us-west-2",
-          AWS_PROFILE: "default",
+          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId },
         callbacks
@@ -262,8 +262,8 @@ describe("AIService", () => {
       await aiService.invokeModelAsync(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_REGION: "us-west-2",
-          AWS_PROFILE: "default",
+          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId },
         callbacks

@@ -81,23 +81,23 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   </Table.Tbody>
                 </Table>
 
-                {provider.id === "bedrock" && !provider.isConnected && (
+                {provider.id === "aws_bedrock" && !provider.isConnected && (
                   <Alert color="yellow" title="AWS Bedrock Configuration">
                     <Text size="sm">
                       AWS Bedrock requires AWS credentials. Set the following environment variables:
                     </Text>
                     <Code block mt="xs">
-                      AWS_REGION=us-west-2
+                      AWS_BEDROCK_REGION=us-west-2
                       <br />
                       and
                       <br />
-                      AWS_PROFILE=your_profile
+                      AWS_BEDROCK_PROFILE=your_profile
                       <br />
                       or
                       <br />
-                      AWS_ACCESS_KEY_ID=your_access_key
+                      AWS_BEDROCK_ACCESS_KEY_ID=your_access_key
                       <br />
-                      AWS_SECRET_ACCESS_KEY=your_secret_key
+                      AWS_BEDROCK_SECRET_ACCESS_KEY=your_secret_key
                     </Code>
                   </Alert>
                 )}
@@ -113,13 +113,13 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   </Alert>
                 )}
 
-                {provider.id === "yandex" && !provider.isConnected && (
+                {provider.id === "yandex_fm" && !provider.isConnected && (
                   <Alert color="yellow" title="Yandex Configuration">
                     <Text size="sm">Yandex requires an API key. Set the following environment variable:</Text>
                     <Code block mt="xs">
-                      YANDEX_API_KEY=your_yandex_api_key
+                      YANDEX_FM_API_KEY=your_yandex_api_key
                       <br />
-                      YANDEX_API_FOLDER_ID=your_yandex_folder_id
+                      YANDEX_FM_API_FOLDER_ID=your_yandex_folder_id
                     </Code>
                   </Alert>
                 )}

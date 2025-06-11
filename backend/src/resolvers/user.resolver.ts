@@ -55,7 +55,6 @@ export class UserResolver extends BaseResolver {
       lastName,
       avatarUrl,
       defaultSystemPrompt: DEFAULT_PROMPT,
-      msalId: "-", // Provide a default or make this nullable
       authProvider: authProvider || AuthProvider.LOCAL,
     });
 

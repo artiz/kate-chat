@@ -13,7 +13,7 @@ import { BedrockService } from "./bedrock/bedrock.service";
 import { OpenAIService } from "./openai/openai.service";
 import { YandexService } from "./yandex/yandex.service";
 import { logger } from "../utils/logger";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai";
+import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, ENABLED_API_PROVIDERS } from "@/config/ai";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseProviderService } from "./base.provider";
 
@@ -25,11 +25,15 @@ export class AIService {
    * @returns The API provider service instance.
    */
   protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseProviderService {
+    if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
+      throw new Error(`API provider ${apiProvider} is not enabled`);
+    }
+
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
       return new BedrockService(connection);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
       return new OpenAIService(connection);
-    } else if (apiProvider === ApiProvider.YANDEX) {
+    } else if (apiProvider === ApiProvider.YANDEX_FM) {
       return new YandexService(connection);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
@@ -147,7 +151,7 @@ export class AIService {
   // Get all models from all providers
   async getModels(connection: ConnectionParams): Promise<Record<string, AIModelInfo>> {
     const models = await Promise.all(
-      [ApiProvider.AWS_BEDROCK, ApiProvider.OPEN_AI, ApiProvider.YANDEX].map(async apiProvider => {
+      ENABLED_API_PROVIDERS.map(async apiProvider => {
         const service = this.getApiProvider(apiProvider, connection);
         return await service.getModels();
       })
@@ -164,7 +168,7 @@ export class AIService {
   // Get provider information
   async getProviderInfo(connection: ConnectionParams, testConnection = false): Promise<ProviderInfo[]> {
     const providers: ProviderInfo[] = await Promise.all(
-      [ApiProvider.AWS_BEDROCK, ApiProvider.OPEN_AI, ApiProvider.YANDEX].map(async apiProvider => {
+      ENABLED_API_PROVIDERS.map(async apiProvider => {
         try {
           const service = this.getApiProvider(apiProvider, connection);
           return service.getInfo(testConnection);

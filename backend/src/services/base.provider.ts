@@ -23,12 +23,12 @@ export abstract class BaseProviderService {
 
   static getApiProviderName(apiProvider: ApiProvider): string {
     switch (apiProvider) {
-      case ApiProvider.OPEN_AI:
-        return "OpenAI";
       case ApiProvider.AWS_BEDROCK:
         return "AWS Bedrock";
-      case ApiProvider.YANDEX:
-        return "Yandex";
+      case ApiProvider.OPEN_AI:
+        return "OpenAI";
+      case ApiProvider.YANDEX_FM:
+        return "Yandex FM";
       default:
         throw new Error(`Unsupported API provider: ${apiProvider}`);
     }

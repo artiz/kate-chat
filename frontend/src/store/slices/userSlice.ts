@@ -7,6 +7,8 @@ export interface User {
   lastName: string;
   defaultModelId?: string;
   defaultSystemPrompt?: string;
+  githubId?: string;
+  googleId?: string;
 }
 
 interface UserState {

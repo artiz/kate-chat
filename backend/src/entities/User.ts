@@ -48,10 +48,6 @@ export class User {
 
   @Field({ nullable: true })
   @Column({ nullable: true })
-  msalId?: string;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
   googleId?: string;
 
   @Field({ nullable: true })

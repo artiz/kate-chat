@@ -1,7 +1,7 @@
 // Yandex AI API Configuration
 
 // Base URL for Yandex API
-export const YANDEX_API_URL = process.env.YANDEX_API_URL || "https://llm.api.cloud.yandex.net";
+export const YANDEX_FM_API_URL = process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net";
 
 export interface YandexModel {
   uri: string;

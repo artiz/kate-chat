@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   Title,
@@ -20,15 +20,16 @@ import { useAppSelector, useAppDispatch } from "@/store";
 import { useTheme } from "@/hooks/useTheme";
 import { setUser } from "@/store/slices/userSlice";
 import {
-  STORAGE_AWS_ACCESS_KEY_ID,
-  STORAGE_AWS_PROFILE,
-  STORAGE_AWS_REGION,
-  STORAGE_AWS_SECRET_ACCESS_KEY,
+  STORAGE_AWS_BEDROCK_ACCESS_KEY_ID,
+  STORAGE_AWS_BEDROCK_PROFILE,
+  STORAGE_AWS_BEDROCK_REGION,
+  STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
   STORAGE_OPENAI_API_ADMIN_KEY,
   STORAGE_OPENAI_API_KEY,
-  STORAGE_YANDEX_API_FOLDER_ID,
-  STORAGE_YANDEX_API_KEY,
+  STORAGE_YANDEX_FM_API_FOLDER_ID,
+  STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
+import { ApiProvider } from "@/types/ai";
 
 interface IProps {
   onReloadAppData?: () => void;
@@ -58,7 +59,7 @@ const CHANGE_PASSWORD_MUTATION = gql`
 
 export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProps) => {
   const user = useAppSelector(state => state.user.currentUser);
-  const models = useAppSelector(state => state.models.models);
+  const { models, providers } = useAppSelector(state => state.models);
   const dispatch = useAppDispatch();
 
   // User profile form state
@@ -78,17 +79,31 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
   const [yandexApiKey, setYandexApiKey] = useState<string>("");
   const [yandexApiFolderId, setYandexApiFolderId] = useState<string>("");
 
+  const enabledApiProviders: Set<ApiProvider> = useMemo(() => {
+    return new Set(providers.map(provider => provider.id as ApiProvider));
+  }, [providers]);
+
+  const isLocalUser = useMemo(() => {
+    return !user?.googleId && !user?.githubId;
+  }, [user]);
+
   useEffect(() => {
     // Load initial connection settings from localStorage or defaults
-    setAwsRegion(localStorage.getItem(STORAGE_AWS_REGION) || "");
-    setAwsProfile(localStorage.getItem(STORAGE_AWS_PROFILE) || "");
-    setAwsAccessKeyId(localStorage.getItem(STORAGE_AWS_ACCESS_KEY_ID) || "");
-    setAwsSecretAccessKey(localStorage.getItem(STORAGE_AWS_SECRET_ACCESS_KEY) || "");
-    setOpenaiApiKey(localStorage.getItem(STORAGE_OPENAI_API_KEY) || "");
-    setOpenaiApiAdminKey(localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "");
-    setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_API_KEY) || "");
-    setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_API_FOLDER_ID) || "");
-  }, [user]);
+    if (enabledApiProviders.has("aws_bedrock")) {
+      setAwsRegion(localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || "");
+      setAwsProfile(localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || "");
+      setAwsAccessKeyId(localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || "");
+      setAwsSecretAccessKey(localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || "");
+    }
+    if (enabledApiProviders.has("open_ai")) {
+      setOpenaiApiKey(localStorage.getItem(STORAGE_OPENAI_API_KEY) || "");
+      setOpenaiApiAdminKey(localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "");
+    }
+    if (enabledApiProviders.has("yandex_fm")) {
+      setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "");
+      setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "");
+    }
+  }, [user, enabledApiProviders]);
 
   // Update when user changes
   useEffect(() => {
@@ -186,14 +201,14 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
 
   const handleConnectivityUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem(STORAGE_AWS_REGION, awsRegion || "");
-    localStorage.setItem(STORAGE_AWS_PROFILE, awsProfile || "");
-    localStorage.setItem(STORAGE_AWS_ACCESS_KEY_ID, awsAccessKeyId || "");
-    localStorage.setItem(STORAGE_AWS_SECRET_ACCESS_KEY, awsSecretAccessKey || "");
+    localStorage.setItem(STORAGE_AWS_BEDROCK_REGION, awsRegion || "");
+    localStorage.setItem(STORAGE_AWS_BEDROCK_PROFILE, awsProfile || "");
+    localStorage.setItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, awsAccessKeyId || "");
+    localStorage.setItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY, awsSecretAccessKey || "");
     localStorage.setItem(STORAGE_OPENAI_API_KEY, openaiApiKey || "");
     localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
-    localStorage.setItem(STORAGE_YANDEX_API_KEY, yandexApiKey || "");
-    localStorage.setItem(STORAGE_YANDEX_API_FOLDER_ID, yandexApiFolderId || "");
+    localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
+    localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER_ID, yandexApiFolderId || "");
 
     onReloadAppData?.();
   };
@@ -246,7 +261,7 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
         <Tabs.Tab value="ai">AI Settings</Tabs.Tab>
         <Tabs.Tab value="ui">UI Preferences</Tabs.Tab>
         <Tabs.Tab value="profile">Profile Settings</Tabs.Tab>
-        <Tabs.Tab value="password">Password</Tabs.Tab>
+        {isLocalUser && <Tabs.Tab value="password">Password</Tabs.Tab>}
       </Tabs.List>
 
       <Tabs.Panel value="ai">
@@ -254,62 +269,73 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
         <Paper withBorder p="xl">
           <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
             <Stack gap="md">
-              <Title order={3}>AWS Bedrock</Title>
-              <TextInput
-                label="AWS region"
-                autoComplete="off"
-                value={awsRegion}
-                onChange={e => setAwsRegion(e.target.value)}
-              />
-              <TextInput
-                label="AWS profile"
-                autoComplete="off"
-                value={awsProfile}
-                onChange={e => setAwsProfile(e.target.value)}
-              />
-              <PasswordInput
-                label="AWS access key ID"
-                autoComplete="off"
-                value={awsAccessKeyId}
-                onChange={e => setAwsAccessKeyId(e.target.value)}
-              />
-              <PasswordInput
-                label="AWS secret access key"
-                autoComplete="off"
-                value={awsSecretAccessKey}
-                onChange={e => setAwsSecretAccessKey(e.target.value)}
-              />
+              {enabledApiProviders.has("aws_bedrock") && (
+                <>
+                  <Title order={3}>AWS Bedrock</Title>
+                  <TextInput
+                    label="AWS region"
+                    autoComplete="off"
+                    value={awsRegion}
+                    onChange={e => setAwsRegion(e.target.value)}
+                  />
+                  <TextInput
+                    label="AWS profile"
+                    autoComplete="off"
+                    value={awsProfile}
+                    onChange={e => setAwsProfile(e.target.value)}
+                  />
+                  <PasswordInput
+                    label="AWS access key ID"
+                    autoComplete="off"
+                    value={awsAccessKeyId}
+                    onChange={e => setAwsAccessKeyId(e.target.value)}
+                  />
+                  <PasswordInput
+                    label="AWS secret access key"
+                    autoComplete="off"
+                    value={awsSecretAccessKey}
+                    onChange={e => setAwsSecretAccessKey(e.target.value)}
+                  />
 
-              <Divider />
+                  <Divider />
+                </>
+              )}
+              {enabledApiProviders.has("open_ai") && (
+                <>
+                  <Title order={3}>Open AI</Title>
+                  <PasswordInput
+                    label="OpenAI API Key"
+                    autoComplete="off"
+                    value={openaiApiKey}
+                    onChange={e => setOpenaiApiKey(e.target.value)}
+                  />
+                  <PasswordInput
+                    label="OpenAI API Admin Key"
+                    autoComplete="off"
+                    value={openaiApiAdminKey}
+                    onChange={e => setOpenaiApiAdminKey(e.target.value)}
+                  />
+                  <Divider />
+                </>
+              )}
 
-              <Title order={3}>Open AI</Title>
-              <PasswordInput
-                label="OpenAI API Key"
-                autoComplete="off"
-                value={openaiApiKey}
-                onChange={e => setOpenaiApiKey(e.target.value)}
-              />
-              <PasswordInput
-                label="OpenAI API Admin Key"
-                autoComplete="off"
-                value={openaiApiAdminKey}
-                onChange={e => setOpenaiApiAdminKey(e.target.value)}
-              />
-              <Divider />
-
-              <Title order={3}>Yandex Foundational Models</Title>
-              <PasswordInput
-                label="Yandex API Key"
-                autoComplete="off"
-                value={yandexApiKey}
-                onChange={e => setYandexApiKey(e.target.value)}
-              />
-              <PasswordInput
-                label="Yandex API Folder ID"
-                autoComplete="off"
-                value={yandexApiFolderId}
-                onChange={e => setYandexApiFolderId(e.target.value)}
-              />
+              {enabledApiProviders.has("yandex_fm") && (
+                <>
+                  <Title order={3}>Yandex Foundational Models</Title>
+                  <PasswordInput
+                    label="Yandex API Key"
+                    autoComplete="off"
+                    value={yandexApiKey}
+                    onChange={e => setYandexApiKey(e.target.value)}
+                  />
+                  <PasswordInput
+                    label="Yandex API Folder ID"
+                    autoComplete="off"
+                    value={yandexApiFolderId}
+                    onChange={e => setYandexApiFolderId(e.target.value)}
+                  />
+                </>
+              )}
 
               <Group justify="right" mt="md">
                 <Button type="submit" loading={updateLoading}>
@@ -366,7 +392,14 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
                 <TextInput label="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} required />
               </Group>
 
-              <TextInput label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+              <TextInput
+                label="Email"
+                disabled={!isLocalUser}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
 
               <Group justify="right" mt="md">
                 <Button type="submit" loading={updateLoading}>
@@ -378,43 +411,47 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
         </Paper>
       </Tabs.Panel>
 
-      <Tabs.Panel value="password">
-        {/* Password Settings */}
-        <Paper withBorder p="xl">
-          <form name="password-settings" onSubmit={handlePasswordChange}>
-            <Stack gap="md">
-              <PasswordInput
-                label="Current Password"
-                value={currentPassword}
-                onChange={e => setCurrentPassword(e.target.value)}
-                required
-              />
+      {isLocalUser && (
+        <Tabs.Panel value="password">
+          {/* Password Settings */}
+          <Paper withBorder p="xl">
+            <form name="password-settings" onSubmit={handlePasswordChange}>
+              <Stack gap="md">
+                <PasswordInput
+                  label="Current Password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  required
+                />
 
-              <Divider my="sm" />
+                <Divider my="sm" />
 
-              <PasswordInput
-                label="New Password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                required
-              />
+                <PasswordInput
+                  label="New Password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  required
+                />
 
-              <PasswordInput
-                label="Confirm New Password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                required
-              />
+                <PasswordInput
+                  label="Confirm New Password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                />
 
-              <Group justify="right" mt="md">
-                <Button type="submit" loading={passwordLoading}>
-                  Change Password
-                </Button>
-              </Group>
-            </Stack>
-          </form>
-        </Paper>
-      </Tabs.Panel>
+                <Group justify="right" mt="md">
+                  <Button type="submit" loading={passwordLoading}>
+                    Change Password
+                  </Button>
+                </Group>
+              </Stack>
+            </form>
+          </Paper>
+        </Tabs.Panel>
+      )}
+
+      {/* UI Preferences */}
 
       <Tabs.Panel value="ui">
         {/* UI Preferences */}

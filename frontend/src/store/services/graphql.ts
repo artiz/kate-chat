@@ -405,6 +405,8 @@ export const graphqlApi = api.injectEndpoints({
                 createdAt
                 defaultModelId
                 defaultSystemPrompt
+                googleId
+                githubId
               }
               getModels {
                 models {
