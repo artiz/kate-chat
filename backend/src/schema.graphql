@@ -3,6 +3,14 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type ApplicationConfig {
+  demoMode: Boolean!
+  maxChatMessages: Float
+  maxChats: Float
+  maxImages: Float
+  s3Connected: Boolean
+}
+
 type AuthResponse {
   token: String!
   user: User!
@@ -17,7 +25,7 @@ type Chat {
   lastBotMessageId: String
   maxTokens: Float
   messages: [Message!]
-  messagesCount: Float!
+  messagesCount: Float
   modelId: String
   temperature: Float
   title: String!
@@ -208,6 +216,7 @@ type ProviderDetail {
 }
 
 type Query {
+  appConfig: ApplicationConfig
   currentUser: User
   getActiveModels: [GqlModel!]!
   getChatById(id: ID!): Chat

@@ -30,7 +30,7 @@ export const MainLayout: React.FC = () => {
   const { colorScheme, toggleColorScheme } = useTheme();
 
   // Get user data from Redux store
-  const user = useAppSelector(state => state.user.currentUser);
+  const { currentUser, appConfig } = useAppSelector(state => state.user);
 
   // Handle logout
   const handleLogout = () => {
@@ -39,12 +39,12 @@ export const MainLayout: React.FC = () => {
     navigate("/login");
   };
 
-  if (!user) {
+  if (!currentUser) {
     return null;
   }
 
   // User data for display
-  const userInitials = `${user?.firstName?.[0]}${user?.lastName?.[0]}`.toUpperCase();
+  const userInitials = `${currentUser?.firstName?.[0]}${currentUser?.lastName?.[0]}`.toUpperCase();
 
   return (
     <AppShell
@@ -63,6 +63,18 @@ export const MainLayout: React.FC = () => {
             <Text size="lg" fw={700}>
               KateChat
             </Text>
+            {appConfig?.demoMode && (
+              <Tooltip
+                label={`Demo mode, max chats per user: ${appConfig.maxChats},
+                      max chat messages: ${appConfig.maxChatMessages},
+                      max images: ${appConfig.maxImages}`}
+                color="red"
+              >
+                <Text size="sm" c="red" fw={500}>
+                  Demo Mode
+                </Text>
+              </Tooltip>
+            )}
           </Group>
 
           <Group>
@@ -89,10 +101,10 @@ export const MainLayout: React.FC = () => {
                     </Avatar>
                     <div>
                       <Text visibleFrom="sm" size="sm" fw={500}>
-                        {user?.firstName} {user?.lastName}
+                        {currentUser?.firstName} {currentUser?.lastName}
                       </Text>
                       <Text visibleFrom="sm" size="xs" c="dimmed">
-                        {user?.email}
+                        {currentUser?.email}
                       </Text>
                     </div>
                     <IconChevronRight size={18} stroke={1.5} />

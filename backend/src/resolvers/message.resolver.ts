@@ -33,13 +33,18 @@ export class MessageResolver extends BaseResolver {
     @Arg("input") input: GetMessagesInput,
     @Ctx() context: GraphQLContext
   ): Promise<GqlMessagesList> {
-    await this.validateContextToken(context);
+    const token = await this.validateContextToken(context);
     const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
     // Verify the chat belongs to the user
-    const chat = await this.chatRepository.findOne({
-      where: { id: chatId },
-    });
+    const chat = await this.chatRepository
+      .createQueryBuilder("chat")
+      .addSelect(sq => {
+        return sq.select("COUNT(*)").from(Message, "m").where("m.chatId = chat.id");
+      }, "chat_messagesCount")
+      .leftJoinAndSelect("chat.user", "user")
+      .where({ id: chatId, user: { id: token.userId } })
+      .getOne();
 
     if (!chat) throw new Error("Chat not found");
 

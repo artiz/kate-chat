@@ -26,6 +26,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   // Get chats from Redux store
   const { chats, loading, error } = useAppSelector(state => state.chats);
   const { providers } = useAppSelector(state => state.models);
+  const { appConfig } = useAppSelector(state => state.user);
 
   const noActiveProviders = useMemo(() => {
     return providers.length === 0 || !providers.some(provider => provider.isConnected);
@@ -180,7 +181,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
       <Stack gap="xs">
         <Button
           leftSection={<IconPlus size={16} />}
-          disabled={noActiveProviders}
+          disabled={noActiveProviders || (appConfig?.demoMode && chats.length >= (appConfig.maxChats ?? 0))}
           variant="light"
           onClick={handleNewChat}
           fullWidth

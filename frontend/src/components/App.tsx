@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import { ApolloWrapper } from "../lib/apollo-provider";
 import { theme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
-import { setUser } from "../store/slices/userSlice";
+import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { useAppSelector } from "../store";
@@ -56,6 +56,7 @@ const AppContent: React.FC = () => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
       dispatch(setUser(initData.user));
+      dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
       dispatch(setChats(initData.chats));
       dispatch(loginSuccess(initData.refreshToken?.token));

@@ -4,6 +4,7 @@ import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
 import { Chat, Message } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
+import { Application } from "express";
 
 const MODEL_FRAGMENT = `
     id
@@ -60,6 +61,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       description
       modelId
       isPristine
+      messagesCount
       temperature
       maxTokens
       topP
@@ -189,6 +191,7 @@ export const GET_CHAT_MESSAGES = gql`
         title
         modelId
         isPristine
+        messagesCount
         createdAt
         updatedAt
         temperature
@@ -240,6 +243,14 @@ export interface CreateChatInput {
   systemPrompt?: string;
 }
 
+export interface ApplicationConfig {
+  demoMode: boolean;
+  s3Connected: boolean;
+  maxChats?: number;
+  maxChatMessages?: number;
+  maxImages?: number;
+}
+
 export interface GetInitialDataResponse {
   data: {
     currentUser: User;
@@ -255,6 +266,7 @@ export interface GetInitialDataResponse {
     refreshToken: {
       token: string;
     };
+    appConfig: ApplicationConfig;
   };
 }
 
@@ -357,6 +369,7 @@ export const graphqlApi = api.injectEndpoints({
                   id
                   title
                   isPristine
+                  messagesCount
                   updatedAt
                 }
                 total
@@ -388,6 +401,7 @@ export const graphqlApi = api.injectEndpoints({
           hasMore: boolean;
         };
         refreshToken: { token: string };
+        appConfig: ApplicationConfig;
       },
       void
     >({
@@ -428,8 +442,8 @@ export const graphqlApi = api.injectEndpoints({
                   id
                   title
                   isPristine
-                  updatedAt
                   messagesCount
+                  updatedAt
                   lastBotMessage
                   lastBotMessageId
                 }
@@ -439,13 +453,20 @@ export const graphqlApi = api.injectEndpoints({
               refreshToken {
                 token
               }
+              appConfig {
+                demoMode
+                s3Connected
+                maxChats
+                maxChatMessages
+                maxImages
+              }
             }
           `,
         },
       }),
 
       transformResponse: async (response: GetInitialDataResponse) => {
-        const { currentUser, getModels, getChats, refreshToken } = response.data || {};
+        const { currentUser, getModels, getChats, refreshToken, appConfig } = response.data || {};
         const chats = getChats || {
           chats: [],
           total: 0,
@@ -464,6 +485,7 @@ export const graphqlApi = api.injectEndpoints({
           providers: getModels?.providers || [],
           chats,
           refreshToken,
+          appConfig,
         };
       },
       providesTags: ["User", "Model", { type: "Chat", id: "LIST" }],

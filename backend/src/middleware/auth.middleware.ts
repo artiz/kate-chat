@@ -107,7 +107,6 @@ function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
     S3_REGION: getHeader(headers["x-s3-region"]) || process.env.S3_REGION || "us-east-1",
     S3_ACCESS_KEY_ID: getHeader(headers["x-s3-access-key-id"]) || process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: getHeader(headers["x-s3-secret-access-key"]) || process.env.S3_SECRET_ACCESS_KEY,
-    S3_FILES_BUCKET_NAME:
-      getHeader(headers["x-s3-bucket-name"]) || process.env.S3_FILES_BUCKET_NAME || "katechatdevfiles",
+    S3_FILES_BUCKET_NAME: getHeader(headers["x-s3-bucket-name"]) || process.env.S3_FILES_BUCKET_NAME,
   };
 }

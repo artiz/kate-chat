@@ -1,4 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { ApplicationConfig } from "../services/graphql";
+import { set } from "lodash";
 
 export interface User {
   id: string;
@@ -15,12 +17,14 @@ interface UserState {
   currentUser: User | null;
   loading: boolean;
   error: string | null;
+  appConfig: ApplicationConfig | null;
 }
 
 const initialState: UserState = {
   currentUser: null,
   loading: false,
   error: null,
+  appConfig: null,
 };
 
 const userSlice = createSlice({
@@ -41,8 +45,11 @@ const userSlice = createSlice({
     clearUser(state) {
       state.currentUser = null;
     },
+    setAppConfig(state, action: PayloadAction<ApplicationConfig>) {
+      state.appConfig = action.payload;
+    },
   },
 });
 
-export const { setUser, setUserLoading, setUserError, clearUser } = userSlice.actions;
+export const { setUser, setUserLoading, setUserError, clearUser, setAppConfig } = userSlice.actions;
 export default userSlice.reducer;

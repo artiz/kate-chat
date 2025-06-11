@@ -57,7 +57,7 @@ export class Chat {
   })
   lastBotMessageId?: string;
 
-  @Field({ defaultValue: 0 })
+  @Field({ nullable: true, defaultValue: 0 })
   @Column({
     nullable: true,
     select: false,

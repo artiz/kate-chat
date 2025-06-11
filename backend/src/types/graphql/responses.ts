@@ -163,3 +163,21 @@ export class GqlCostsInfo {
   @Field(() => [GqlServiceCostInfo])
   costs: GqlServiceCostInfo[];
 }
+
+@ObjectType()
+export class ApplicationConfig {
+  @Field()
+  demoMode: boolean;
+
+  @Field({ nullable: true })
+  s3Connected: boolean;
+
+  @Field({ nullable: true })
+  maxChats?: number;
+
+  @Field({ nullable: true })
+  maxChatMessages?: number;
+
+  @Field({ nullable: true })
+  maxImages?: number;
+}

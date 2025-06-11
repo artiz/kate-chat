@@ -67,7 +67,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
-  const currentUser = useAppSelector(state => state.user.currentUser);
+  const { appConfig } = useAppSelector(state => state.user);
 
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -256,6 +256,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
       topP: 0.9,
     });
   };
+
+  const messagesLimitReached = useMemo(() => {
+    return appConfig?.demoMode && (chat?.messagesCount ?? 0) >= (appConfig.maxChatMessages || 0);
+  }, [chat, appConfig]);
+
+  const sendMessageAllowed = useMemo(() => {
+    return (!userMessage?.trim() && !selectedImages.length) || sending || messagesLoading || messagesLimitReached;
+  }, [userMessage, selectedImages, sending, messagesLoading, messagesLimitReached]);
 
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -485,6 +493,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </div>
       </Box>
 
+      {messagesLimitReached && (
+        <Tooltip label={`You have reached the limit of ${appConfig?.maxChatMessages} messages in this chat`}>
+          <Text size="xs" c="red" mb="sm">
+            Messages limit reached
+          </Text>
+        </Tooltip>
+      )}
       {/* Message input */}
       <div className={[classes.chatInputContainer, selectedFiles.length ? classes.columned : ""].join(" ")}>
         {selectedModel?.supportsImageIn && (
@@ -522,13 +537,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
             maxRows={5}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
-            disabled={sending || messagesLoading}
+            disabled={sending || messagesLoading || messagesLimitReached}
           />
-
-          <Button
-            onClick={handleSendMessage}
-            disabled={(!userMessage?.trim() && !selectedImages.length) || sending || messagesLoading}
-          >
+          <Button onClick={handleSendMessage} disabled={sendMessageAllowed}>
             <IconSend size={16} /> Send
           </Button>
         </Group>

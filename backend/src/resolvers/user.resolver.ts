@@ -6,19 +6,32 @@ import { generateToken, TokenPayload } from "../utils/jwt";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
 import { RegisterInput, LoginInput, UpdateUserInput } from "../types/graphql/inputs";
-import { AuthResponse } from "../types/graphql/responses";
+import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
 import { AuthProvider } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from "@/middleware/auth.middleware";
+import { DEMO_MODE } from "@/config/application";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
   @Query(() => User, { nullable: true })
   async currentUser(@Ctx() context: GraphQLContext): Promise<User | null> {
     return await this.loadUserFromContext(context);
+  }
+
+  @Query(() => ApplicationConfig, { nullable: true })
+  async appConfig(@Ctx() context: GraphQLContext): Promise<ApplicationConfig> {
+    const connection = context.connectionParams;
+    return {
+      demoMode: !!DEMO_MODE,
+      s3Connected: !!connection.S3_FILES_BUCKET_NAME,
+      maxChats: DEMO_MODE ? 5 : -1,
+      maxChatMessages: DEMO_MODE ? 75 : -1,
+      maxImages: DEMO_MODE ? 10 : -1,
+    };
   }
 
   @Mutation(() => AuthResponse)
