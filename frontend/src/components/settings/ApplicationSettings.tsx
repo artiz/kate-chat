@@ -14,7 +14,11 @@ import {
   SegmentedControl,
   Textarea,
   Tabs,
+  Collapse,
+  ActionIcon,
+  Box,
 } from "@mantine/core";
+import { IconChevronDown, IconChevronUp, IconHelp } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { useTheme } from "@/hooks/useTheme";
@@ -28,12 +32,19 @@ import {
   STORAGE_OPENAI_API_KEY,
   STORAGE_YANDEX_FM_API_FOLDER_ID,
   STORAGE_YANDEX_FM_API_KEY,
+  STORAGE_S3_ENDPOINT,
+  STORAGE_S3_REGION,
+  STORAGE_S3_ACCESS_KEY_ID,
+  STORAGE_S3_SECRET_ACCESS_KEY,
+  STORAGE_S3_FILES_BUCKET_NAME,
 } from "@/store/slices/authSlice";
 import { ApiProvider } from "@/types/ai";
 
 interface IProps {
   onReloadAppData?: () => void;
 }
+
+type ColorScheme = "light" | "dark" | "auto";
 
 // GraphQL mutations and queries
 const UPDATE_USER_MUTATION = gql`
@@ -78,6 +89,17 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
   const [openaiApiAdminKey, setOpenaiApiAdminKey] = useState<string>("");
   const [yandexApiKey, setYandexApiKey] = useState<string>("");
   const [yandexApiFolderId, setYandexApiFolderId] = useState<string>("");
+  const [s3Endpoint, setS3Endpoint] = useState<string>("");
+  const [s3Region, setS3Region] = useState<string>("");
+  const [s3AccessKeyId, setS3AccessKeyId] = useState<string>("");
+  const [s3SecretAccessKey, setS3SecretAccessKey] = useState<string>("");
+  const [s3FilesBucketName, setS3FilesBucketName] = useState<string>("");
+
+  // Help section state
+  const [awsHelpOpen, setAwsHelpOpen] = useState(false);
+  const [openaiHelpOpen, setOpenaiHelpOpen] = useState(false);
+  const [yandexHelpOpen, setYandexHelpOpen] = useState(false);
+  const [s3HelpOpen, setS3HelpOpen] = useState(false);
 
   const enabledApiProviders: Set<ApiProvider> = useMemo(() => {
     return new Set(providers.map(provider => provider.id as ApiProvider));
@@ -103,6 +125,12 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
       setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "");
       setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "");
     }
+    // Load S3 settings
+    setS3Endpoint(localStorage.getItem(STORAGE_S3_ENDPOINT) || "");
+    setS3Region(localStorage.getItem(STORAGE_S3_REGION) || "");
+    setS3AccessKeyId(localStorage.getItem(STORAGE_S3_ACCESS_KEY_ID) || "");
+    setS3SecretAccessKey(localStorage.getItem(STORAGE_S3_SECRET_ACCESS_KEY) || "");
+    setS3FilesBucketName(localStorage.getItem(STORAGE_S3_FILES_BUCKET_NAME) || "");
   }, [user, enabledApiProviders]);
 
   // Update when user changes
@@ -123,7 +151,6 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
 
   // UI preferences state
   const { colorScheme, setColorScheme } = useTheme();
-  const [language, setLanguage] = useState("en");
 
   // Update user mutation
   const [updateUser, { loading: updateLoading }] = useMutation(UPDATE_USER_MUTATION, {
@@ -209,6 +236,11 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
     localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
     localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
     localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER_ID, yandexApiFolderId || "");
+    localStorage.setItem(STORAGE_S3_ENDPOINT, s3Endpoint || "");
+    localStorage.setItem(STORAGE_S3_REGION, s3Region || "");
+    localStorage.setItem(STORAGE_S3_ACCESS_KEY_ID, s3AccessKeyId || "");
+    localStorage.setItem(STORAGE_S3_SECRET_ACCESS_KEY, s3SecretAccessKey || "");
+    localStorage.setItem(STORAGE_S3_FILES_BUCKET_NAME, s3FilesBucketName || "");
 
     onReloadAppData?.();
   };
@@ -236,14 +268,16 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
     });
   };
 
-  // Handle UI preferences
-  const handleUiPreferencesUpdate = () => {
-    // Theme preference is saved automatically via localStorage
-    notifications.show({
-      title: "Preferences Saved",
-      message: "Your UI preferences have been updated",
-      color: "green",
-    });
+  const handleThemeUpdate = (val: string) => {
+    const value = val as ColorScheme;
+    setColorScheme(value);
+    // Also update the document element directly
+    if (value === "auto") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.mantine = prefersDark ? "dark" : "light";
+    } else {
+      document.documentElement.dataset.mantine = value;
+    }
   };
 
   const modelSelectData = models
@@ -259,7 +293,6 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
     <Tabs defaultValue="ai">
       <Tabs.List mb="md">
         <Tabs.Tab value="ai">AI Settings</Tabs.Tab>
-        <Tabs.Tab value="ui">UI Preferences</Tabs.Tab>
         <Tabs.Tab value="profile">Profile Settings</Tabs.Tab>
         {isLocalUser && <Tabs.Tab value="password">Password</Tabs.Tab>}
       </Tabs.List>
@@ -271,30 +304,67 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
             <Stack gap="md">
               {enabledApiProviders.has("aws_bedrock") && (
                 <>
-                  <Title order={3}>AWS Bedrock</Title>
+                  <Group justify="space-between" align="center">
+                    <Title order={3}>AWS Bedrock</Title>
+                    <ActionIcon
+                      variant="subtle"
+                      onClick={() => setAwsHelpOpen(!awsHelpOpen)}
+                      aria-label="Toggle AWS Bedrock help"
+                    >
+                      <IconHelp size={16} />
+                    </ActionIcon>
+                  </Group>
+
+                  <Collapse in={awsHelpOpen}>
+                    <Paper p="sm" bg="gray.4" mb="md">
+                      <Text size="sm" c="dark.5">
+                        <strong>How to get AWS Bedrock credentials:</strong>
+                      </Text>
+                      <Text size="sm" mt="xs" c="dark.5">
+                        1. Sign in to the AWS Management Console
+                        <br />
+                        2. Go to IAM (Identity and Access Management)
+                        <br />
+                        3. Create a new user or use existing one
+                        <br />
+                        4. Attach the "AmazonBedrockFullAccess" policy
+                        <br />
+                        5. Generate access keys in Security credentials tab
+                        <br />
+                        6. Choose your preferred AWS region (e.g., us-east-1, us-west-2)
+                        <br />
+                        7. Optionally configure AWS profile in ~/.aws/credentials
+                      </Text>
+                    </Paper>
+                  </Collapse>
+
                   <TextInput
                     label="AWS region"
                     autoComplete="off"
                     value={awsRegion}
                     onChange={e => setAwsRegion(e.target.value)}
+                    placeholder="us-east-1"
                   />
                   <TextInput
                     label="AWS profile"
                     autoComplete="off"
                     value={awsProfile}
                     onChange={e => setAwsProfile(e.target.value)}
+                    placeholder="default"
                   />
                   <PasswordInput
                     label="AWS access key ID"
                     autoComplete="off"
                     value={awsAccessKeyId}
                     onChange={e => setAwsAccessKeyId(e.target.value)}
+                    placeholder="AKIA..."
                   />
                   <PasswordInput
                     label="AWS secret access key"
                     autoComplete="off"
                     value={awsSecretAccessKey}
                     onChange={e => setAwsSecretAccessKey(e.target.value)}
+                    placeholder="..."
                   />
 
                   <Divider />
@@ -302,18 +372,51 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
               )}
               {enabledApiProviders.has("open_ai") && (
                 <>
-                  <Title order={3}>Open AI</Title>
+                  <Group justify="space-between" align="center">
+                    <Title order={3}>OpenAI</Title>
+                    <ActionIcon
+                      variant="subtle"
+                      onClick={() => setOpenaiHelpOpen(!openaiHelpOpen)}
+                      aria-label="Toggle OpenAI help"
+                    >
+                      <IconHelp size={16} />
+                    </ActionIcon>
+                  </Group>
+
+                  <Collapse in={openaiHelpOpen}>
+                    <Paper p="sm" bg="gray.4" mb="md">
+                      <Text size="sm" c="dark.5">
+                        <strong>How to get OpenAI API keys:</strong>
+                      </Text>
+                      <Text size="sm" c="dark.5">
+                        1. Sign up or log in to OpenAI Platform (platform.openai.com)
+                        <br />
+                        2. Navigate to API keys section in your account
+                        <br />
+                        3. Click "Create new secret key"
+                        <br />
+                        4. Copy and store the key securely
+                        <br />
+                        5. Set usage limits and billing information as needed
+                        <br />
+                        6. Admin key is optional and used for organization management
+                      </Text>
+                    </Paper>
+                  </Collapse>
+
                   <PasswordInput
                     label="OpenAI API Key"
                     autoComplete="off"
                     value={openaiApiKey}
                     onChange={e => setOpenaiApiKey(e.target.value)}
+                    placeholder="sk-..."
                   />
                   <PasswordInput
                     label="OpenAI API Admin Key"
                     autoComplete="off"
                     value={openaiApiAdminKey}
                     onChange={e => setOpenaiApiAdminKey(e.target.value)}
+                    placeholder="sk-..."
                   />
                   <Divider />
                 </>
@@ -321,21 +424,135 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
 
               {enabledApiProviders.has("yandex_fm") && (
                 <>
-                  <Title order={3}>Yandex Foundational Models</Title>
+                  <Group justify="space-between" align="center">
+                    <Title order={3}>Yandex Foundational Models</Title>
+                    <ActionIcon
+                      variant="subtle"
+                      onClick={() => setYandexHelpOpen(!yandexHelpOpen)}
+                      aria-label="Toggle Yandex help"
+                    >
+                      <IconHelp size={16} />
+                    </ActionIcon>
+                  </Group>
+
+                  <Collapse in={yandexHelpOpen}>
+                    <Paper p="sm" bg="gray.4" mb="md">
+                      <Text size="sm" c="dark.5">
+                        <strong>How to get Yandex Cloud credentials:</strong>
+                      </Text>
+                      <Text size="sm" c="dark.5">
+                        1. Sign up for Yandex Cloud (cloud.yandex.com)
+                        <br />
+                        2. Create or select a folder in your cloud
+                        <br />
+                        3. Go to Service accounts and create a new service account
+                        <br />
+                        4. Assign the "ai.models.user" role to the service account
+                        <br />
+                        5. Create an API key for the service account
+                        <br />
+                        6. Copy the folder ID from the folder overview page
+                      </Text>
+                    </Paper>
+                  </Collapse>
+
                   <PasswordInput
                     label="Yandex API Key"
                     autoComplete="off"
                     value={yandexApiKey}
                     onChange={e => setYandexApiKey(e.target.value)}
+                    placeholder="AQVN..."
                   />
                   <PasswordInput
                     label="Yandex API Folder ID"
                     autoComplete="off"
                     value={yandexApiFolderId}
                     onChange={e => setYandexApiFolderId(e.target.value)}
+                    placeholder="b1g..."
                   />
+
+                  <Divider />
                 </>
               )}
+
+              {/* S3 Configuration */}
+              <Group justify="space-between" align="center">
+                <Title order={3}>S3 File Storage</Title>
+                <ActionIcon variant="subtle" onClick={() => setS3HelpOpen(!s3HelpOpen)} aria-label="Toggle S3 help">
+                  <IconHelp size={16} />
+                </ActionIcon>
+              </Group>
+
+              <Collapse in={s3HelpOpen}>
+                <Paper p="sm" bg="gray.4" mb="md">
+                  <Text size="sm" c="dark.5">
+                    <strong>How to configure S3 storage:</strong>
+                  </Text>
+                  <Text size="sm" c="dark.5">
+                    <strong>AWS S3:</strong>
+                    <br />
+                    1. Create an S3 bucket in AWS Console
+                    <br />
+                    2. Endpoint: https://s3.amazonaws.com or https://s3.&lt;region&gt;.amazonaws.com
+                    <br />
+                    3. Use your AWS credentials (Access Key ID and Secret)
+                    <br />
+                    4. Set appropriate bucket permissions
+                    <br />
+                    <br />
+                    <strong>MinIO (local development):</strong>
+                    <br />
+                    1. Install and run MinIO server
+                    <br />
+                    2. Endpoint: http://localhost:9000 (or your MinIO URL)
+                    <br />
+                    3. Use MinIO root credentials or created user credentials
+                    <br />
+                    4. Create a bucket through MinIO Console
+                    <br />
+                    <br />
+                    <strong>Other S3-compatible services:</strong>
+                    <br />
+                    DigitalOcean Spaces, Backblaze B2, etc. - use their respective endpoints and credentials
+                  </Text>
+                </Paper>
+              </Collapse>
+
+              <TextInput
+                label="S3 Endpoint"
+                autoComplete="off"
+                value={s3Endpoint}
+                onChange={e => setS3Endpoint(e.target.value)}
+                placeholder="https://s3.amazonaws.com or http://localhost:9000"
+              />
+              <TextInput
+                label="S3 Region"
+                autoComplete="off"
+                value={s3Region}
+                onChange={e => setS3Region(e.target.value)}
+                placeholder="us-east-1"
+              />
+              <PasswordInput
+                label="S3 Access Key ID"
+                autoComplete="off"
+                value={s3AccessKeyId}
+                onChange={e => setS3AccessKeyId(e.target.value)}
+                placeholder="AKIA... or minioadmin"
+              />
+              <PasswordInput
+                label="S3 Secret Access Key"
+                autoComplete="off"
+                value={s3SecretAccessKey}
+                onChange={e => setS3SecretAccessKey(e.target.value)}
+                placeholder="Secret key or minioadmin"
+              />
+              <TextInput
+                label="S3 Files Bucket Name"
+                autoComplete="off"
+                value={s3FilesBucketName}
+                onChange={e => setS3FilesBucketName(e.target.value)}
+                placeholder="my-files-bucket"
+              />
 
               <Group justify="right" mt="md">
                 <Button type="submit" loading={updateLoading}>
@@ -347,7 +564,7 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
         </Paper>
 
         {/* Default Settings */}
-        <Paper withBorder p="xl">
+        <Paper withBorder p="xl" mt="lg">
           <form name="user-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
             <Stack gap="md">
               <Select
@@ -386,6 +603,20 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
         {/* Profile Settings */}
         <Paper withBorder p="xl">
           <form name="profile-settings" onSubmit={handleProfileUpdate}>
+            <Stack gap="md" mb="lg">
+              <Text mb="xs">Theme</Text>
+              <SegmentedControl
+                value={colorScheme}
+                onChange={handleThemeUpdate}
+                data={[
+                  { label: "Light", value: "light" },
+                  { label: "Dark", value: "dark" },
+                  { label: "Auto", value: "auto" },
+                ]}
+                fullWidth
+              />
+            </Stack>
+
             <Stack gap="md">
               <Group grow>
                 <TextInput label="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} required />
@@ -450,56 +681,6 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
           </Paper>
         </Tabs.Panel>
       )}
-
-      {/* UI Preferences */}
-
-      <Tabs.Panel value="ui">
-        {/* UI Preferences */}
-        <Paper withBorder p="xl">
-          <Stack gap="md">
-            <div>
-              <Text mb="xs">Theme</Text>
-              <SegmentedControl
-                value={colorScheme}
-                onChange={value => {
-                  const newValue = value as "light" | "dark" | "auto";
-                  setColorScheme(newValue);
-
-                  // Also update the document element directly
-                  if (newValue === "auto") {
-                    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-                    document.documentElement.dataset.mantine = prefersDark ? "dark" : "light";
-                  } else {
-                    document.documentElement.dataset.mantine = newValue;
-                  }
-                }}
-                data={[
-                  { label: "Light", value: "light" },
-                  { label: "Dark", value: "dark" },
-                  { label: "Auto", value: "auto" },
-                ]}
-                fullWidth
-              />
-            </div>
-
-            <Select
-              label="Language"
-              value={language}
-              onChange={value => setLanguage(value as string)}
-              data={[
-                { value: "en", label: "English" },
-                { value: "es", label: "Spanish" },
-                { value: "fr", label: "French" },
-                { value: "de", label: "German" },
-              ]}
-            />
-
-            <Group justify="right" mt="md">
-              <Button onClick={handleUiPreferencesUpdate}>Save Preferences</Button>
-            </Group>
-          </Stack>
-        </Paper>
-      </Tabs.Panel>
     </Tabs>
   );
 };

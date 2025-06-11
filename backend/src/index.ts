@@ -9,6 +9,7 @@ import session from "express-session";
 import passport from "passport";
 import { configurePassport } from "./config/passport";
 import authRoutes from "./controllers/auth.controller";
+import filesRoutes from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
 import { ChatResolver } from "./resolvers/chat.resolver";
 import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
@@ -23,14 +24,13 @@ import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
 import { HttpError } from "./types/exceptions";
-import e from "express";
 
 // Load environment variables
 config();
 
-const logger = createLogger("server");
+process.setMaxListeners(0); // Disable max listeners limit for the process
 
-const OUTPUT_FOLDER = process.env.OUTPUT_FOLDER || path.join(__dirname, "../output");
+const logger = createLogger("server");
 
 async function bootstrap() {
   // Initialize database connection
@@ -88,11 +88,10 @@ async function bootstrap() {
   // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
 
-  // Set up auth routes
+  // Set up routes
   app.use("/auth", authRoutes);
-  app.use("/output", express.static(OUTPUT_FOLDER));
-
-  logger.info({ output: OUTPUT_FOLDER }, "Express application initialized");
+  app.use("/files", filesRoutes);
+  app.use("/api/files", filesRoutes);
 
   // Create HTTP server
   const httpServer = createServer(app);

@@ -11,7 +11,6 @@ import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Chat, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import { ModelMessageContent } from "@/types/ai.types";
-import { OUTPUT_FOLDER } from "@/config/application";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
@@ -20,7 +19,7 @@ import { getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { log } from "console";
+import { S3Service } from "./s3.service";
 
 const logger = createLogger(__filename);
 
@@ -73,6 +72,8 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
+    // Initialize S3 service with connection params
+    const s3Service = new S3Service(connection);
     const { chatId, modelId, images, role = MessageRole.USER } = input;
     let { content = "" } = input;
 
@@ -96,6 +97,21 @@ export class MessagesService {
     if (!model) throw new Error("Model not found");
 
     // Create and save user message
+    let message = await this.messageRepository
+      .save({
+        content,
+        role,
+        modelId: model.modelId, // real model used
+        modelName: model.name,
+        chatId,
+        user,
+        chat,
+      })
+      .catch(err => {
+        this.queueService.publishError(chatId, getErrorMessage(err));
+        throw err;
+      });
+
     let jsonContent: ModelMessageContent[] | undefined = undefined;
 
     // If there's an image, handle it
@@ -109,11 +125,14 @@ export class MessagesService {
         });
       }
 
-      const date = new Date().toISOString().substring(0, 10);
-      for (const image of images) {
-        const imageId = randomUUID().toString();
-        const ext = path.extname(image.fileName) || ".png"; // Default to .png if no extension
-        const imageFile = await this.saveImageFromBase64(image.bytesBase64, `${date}-${imageId}${ext}`);
+      for (let index = 0; index < images.length; ++index) {
+        const image = images[index];
+        const imageFile = await this.saveImageFromBase64(s3Service, image.bytesBase64, {
+          chatId: chat.id,
+          messageId: message.id,
+          isInput: true,
+          index,
+        });
 
         jsonContent.push({
           content: image.bytesBase64,
@@ -123,25 +142,17 @@ export class MessagesService {
         });
 
         // For display purposes, append image markdown to the content
-        content += `${content ? "\n\n" : ""}![Uploaded Image](/output/${imageFile})`;
+        content += `${content ? "\n\n" : ""}![Uploaded Image](${s3Service.getFileUrl(imageFile)})`;
       }
 
       chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
       await this.chatRepository.save(chat);
     }
 
-    let messageData = this.messageRepository.create({
-      content,
-      jsonContent,
-      role,
-      modelId: model.modelId, // real model used
-      modelName: model.name,
-      chatId,
-      user,
-      chat,
-    });
-
-    const message = await this.messageRepository.save(messageData).catch(err => {
+    // update message content
+    message.jsonContent = jsonContent;
+    message.content = content;
+    message = await this.messageRepository.save(message).catch(err => {
       this.queueService.publishError(chatId, getErrorMessage(err));
       throw err;
     });
@@ -230,9 +241,13 @@ export class MessagesService {
       const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, requestMessages);
       let content = aiResponse.content;
       if (aiResponse.type === "image") {
-        // Save base64 image to output folder
-        const fileName = await this.saveImageFromBase64(aiResponse.content, `${message.id}-res.png`);
-        content = `![Generated Image](/output/${fileName})`;
+        // Save base64 image to S3
+        const fileName = await this.saveImageFromBase64(s3Service, aiResponse.content, {
+          chatId: chat.id,
+          messageId: message.id,
+          isInput: false,
+        });
+        content = `![Generated Image](${s3Service.getFileUrl(fileName)})`;
 
         chat.files = [...(chat.files || []), fileName];
         await this.chatRepository.save(chat);
@@ -275,7 +290,11 @@ export class MessagesService {
     return message;
   }
 
-  public async deleteMessage(id: string, deleteFollowing: boolean = false): Promise<string[]> {
+  public async deleteMessage(
+    connection: ConnectionParams,
+    id: string,
+    deleteFollowing: boolean = false
+  ): Promise<string[]> {
     const message = await this.messageRepository.findOne({
       where: { id },
       relations: ["chat"],
@@ -310,11 +329,12 @@ export class MessagesService {
           })
         : [
             message.role === MessageRole.USER
-              ? await this.messageRepository.findOne({
+              ? // If the message is from the user, find the one next system or error message
+                await this.messageRepository.findOne({
                   where: {
                     chatId,
                     createdAt: MoreThan(message.createdAt),
-                    role: In([MessageRole.ASSISTANT, MessageRole.ERROR]),
+                    role: In([MessageRole.SYSTEM, MessageRole.ERROR]),
                   },
                   order: { createdAt: "ASC" },
                 })
@@ -348,20 +368,20 @@ export class MessagesService {
 
     // Remove image files from disk and update chat.files
     if (deletedImageFiles.length > 0) {
+      let s3Service = new S3Service(connection);
+
       // Remove the files from the chat.files array
       if (chat.files?.length) {
         chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
         await this.chatRepository.save(chat);
       }
 
-      // Delete the files from disk
+      // Delete the files from S3
+      // TODO: move this to a background job
       await Promise.all(
         deletedImageFiles.map(async fileName => {
           try {
-            const filePath = path.join(OUTPUT_FOLDER, fileName);
-            if (fs.existsSync(filePath)) {
-              await fs.promises.unlink(filePath);
-            }
+            await s3Service.deleteFile(fileName);
           } catch (error) {
             logger.error(`Failed to delete file ${fileName}: ${error}`);
           }
@@ -372,19 +392,24 @@ export class MessagesService {
     return result; // Return all deleted message IDs including the original
   }
 
-  public async saveImageFromBase64(content: string, filename: string): Promise<string> {
-    if (!fs.existsSync(OUTPUT_FOLDER)) {
-      fs.mkdirSync(OUTPUT_FOLDER, { recursive: true });
-    }
+  public async saveImageFromBase64(
+    s3Service: S3Service,
+    content: string,
+    { chatId, messageId, isInput, index = 0 }: { chatId: string; messageId: string; isInput: boolean; index?: number }
+  ): Promise<string> {
+    // Parse extension from base64 content if possible, default to .png
+    const matches = content.match(/^data:image\/(\w+);base64,/);
+    const ext = matches ? `.${matches[1]}` : ".png";
 
-    // Generate filename with messageId prefix
-    const filepath = path.join(OUTPUT_FOLDER, filename);
+    // Create key in format: <chat_id>-<message_id>-in-<index>.<ext> for user uploads
+    // or <chat_id>-<message_id>-out-<index>.<ext> for generated files
+    const fileType = isInput ? "in" : "out";
+    const key = `${chatId}-${messageId}-${fileType}-${index}${ext}`;
 
-    // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-    const base64Data = content.replace(/^data:image\/[a-z]+;base64,/, "");
+    // Upload to S3
+    await s3Service.uploadFile(content, key);
 
-    // Save base64 image to file
-    await fs.promises.writeFile(filepath, base64Data, "base64");
-    return filename;
+    // Return the file key
+    return key;
   }
 }

@@ -104,7 +104,6 @@ export class MessageResolver extends BaseResolver {
     @Arg("chatId") chatId: string,
     @Ctx() context: GraphQLContext
   ): Promise<GqlMessage> {
-    // ?????????
     await this.validateContextToken(context);
 
     const { message, type = MessageType.MESSAGE, error, ...rest } = payload.data;
@@ -133,6 +132,6 @@ export class MessageResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<string[]> {
     await this.validateContextToken(context);
-    return await this.messageService.deleteMessage(id, deleteFollowing);
+    return await this.messageService.deleteMessage(context.connectionParams, id, deleteFollowing);
   }
 }

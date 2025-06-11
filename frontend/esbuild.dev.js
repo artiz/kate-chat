@@ -123,7 +123,7 @@ http
       headers: req.headers,
     };
 
-    if (req.url.startsWith("/output/") || req.url.startsWith("/files/")) {
+    if (req.url.startsWith("/api/") || req.url.startsWith("/files/")) {
       const proxyReq = http.request(backendProxy, proxyRes => {
         console.log(`Proxying request to backend: ${req.url}`);
         res.writeHead(proxyRes.statusCode, proxyRes.headers);

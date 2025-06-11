@@ -18,6 +18,7 @@
     "@aws-sdk/client-bedrock": "^3.810.0",
     "@aws-sdk/client-bedrock-runtime": "^3.810.0",
     "@aws-sdk/client-cost-explorer": "^3.818.0",
+    "@aws-sdk/client-s3": "^3.826.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.1",

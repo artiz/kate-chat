@@ -43,16 +43,27 @@ export class BedrockService extends BaseProviderService {
       return;
     }
 
-    const config = {
-      region: connection.AWS_BEDROCK_REGION,
-      profile: connection.AWS_BEDROCK_PROFILE || "", // Use AWS profile if set
-      credentials: connection.AWS_BEDROCK_PROFILE
-        ? undefined
-        : {
+    logger.debug(
+      {
+        region: connection.AWS_BEDROCK_REGION,
+        profile: connection.AWS_BEDROCK_PROFILE,
+        accessKeyId: connection.AWS_BEDROCK_ACCESS_KEY_ID?.substring(0, 6) || "N/A",
+      },
+      "Initializing AWS Bedrock client"
+    );
+
+    const config = connection.AWS_BEDROCK_PROFILE
+      ? {
+          region: connection.AWS_BEDROCK_REGION,
+          profile: connection.AWS_BEDROCK_PROFILE,
+        } // Use AWS profile if set
+      : {
+          region: connection.AWS_BEDROCK_REGION,
+          credentials: {
             accessKeyId: connection.AWS_BEDROCK_ACCESS_KEY_ID || "",
             secretAccessKey: connection.AWS_BEDROCK_SECRET_ACCESS_KEY || "",
           },
-    };
+        };
 
     // AWS Bedrock client configuration
     this.bedrockClient = new BedrockRuntimeClient(config);
@@ -80,6 +91,10 @@ export class BedrockService extends BaseProviderService {
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
   async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
+    if (!this.bedrockClient) {
+      throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
+    }
+
     const { modelId } = request;
     callbacks.onStart?.();
 

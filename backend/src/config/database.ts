@@ -5,6 +5,7 @@ import {
   LogLevel,
   LogMessage,
   ObjectLiteral,
+  QueryFailedError,
   QueryRunner,
   Repository,
 } from "typeorm";
@@ -74,6 +75,12 @@ export async function initializeDatabase() {
     logger.info({ logging }, "Database connection established");
     return true;
   } catch (error) {
+    // retry in case of parallel run
+    if (error instanceof QueryFailedError) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return initializeDatabase();
+    }
+
     logger.error(error, "Error connecting to database");
     return false;
   }

@@ -1,4 +1,3 @@
-import fs from "fs";
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
 import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
@@ -10,10 +9,9 @@ import { GqlChatsList } from "../types/graphql/responses";
 import { AIService } from "../services/ai.service";
 import { Message, MessageRole } from "@/entities/Message";
 import { MessageEvent } from "http";
-import { OUTPUT_FOLDER } from "@/config/application";
-import path from "path";
 import { ok } from "assert";
 import { BaseResolver } from "./base.resolver";
+import { S3Service } from "@/services/s3.service";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
@@ -137,13 +135,16 @@ export class ChatResolver extends BaseResolver {
     if (!chat) throw new Error("Chat not found");
 
     if (chat.files?.length) {
+      const s3Service = new S3Service(context.connectionParams);
       const queue = [...chat.files];
+
+      // TODO: move this to background task
       await Promise.all(
         Array.from({ length: 5 }, async () => {
           while (queue.length) {
             const fileName = queue.pop();
             ok(fileName);
-            await fs.promises.unlink(path.join(OUTPUT_FOLDER, fileName));
+            await s3Service.deleteFile(fileName);
           }
         })
       );
