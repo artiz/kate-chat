@@ -15,6 +15,10 @@
     --input-bd-focus: var(--mantine-primary-color-filled);
     --theme-default-time: 0.2s;
   }
+
+  ::selection {
+    background-color: var(--mantine-color-gray-4);
+  }
 }
 [data-mantine-color-scheme="dark"] {
   @include meta.load-css("highlight.js/styles/a11y-dark");
@@ -24,12 +28,17 @@
     --input-bd-focus: var(--mantine-primary-color-filled);
     --theme-default-time: 0.2s;
   }
+
+  ::selection {
+    background-color: var(--mantine-color-brand-9);
+  }
 }
 
 /* Global CSS */
 body {
   margin: 0;
-  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-family: Roboto, "Segoe UI", system-ui;
+  text-wrap: balance;
 }
 
 html,
