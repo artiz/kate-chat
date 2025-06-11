@@ -16,7 +16,7 @@ export interface ConnectionParams {
   S3_REGION?: string;
   S3_ACCESS_KEY_ID?: string;
   S3_SECRET_ACCESS_KEY?: string;
-  S3_FILES_BUCKET_NAME: string;
+  S3_FILES_BUCKET_NAME?: string;
 }
 
 declare global {

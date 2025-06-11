@@ -1,5 +1,5 @@
 import * as path from "path";
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
@@ -10,17 +10,21 @@ export class S3Service {
   private bucketName: string;
 
   constructor(connection: ConnectionParams) {
+    if (!connection.S3_FILES_BUCKET_NAME) {
+      throw new Error("S3_FILES_BUCKET_NAME must be provided in connection parameters");
+    }
+
+    this.bucketName = connection.S3_FILES_BUCKET_NAME;
     const endpoint = connection.S3_ENDPOINT;
     const region = connection.S3_REGION;
     const accessKeyId = connection.S3_ACCESS_KEY_ID;
     const secretAccessKey = connection.S3_SECRET_ACCESS_KEY;
-    this.bucketName = connection.S3_FILES_BUCKET_NAME;
 
     if (!accessKeyId || !secretAccessKey) {
       throw new Error("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be provided in connection parameters");
     }
 
-    const clientOptions: any = {
+    const clientOptions: S3ClientConfig = {
       region,
       credentials: {
         accessKeyId,
