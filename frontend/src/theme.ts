@@ -13,9 +13,9 @@ const brandColors: Record<string, MantineColorsTuple> = {
 export const themeBase = createTheme({
   primaryColor: "brand",
   colors: brandColors,
-  fontFamily: "Inter, sans-serif",
+  fontFamily: `Roboto, "Segoe UI", system-ui`,
   headings: {
-    fontFamily: "Inter, sans-serif",
+    fontFamily: `"Segoe UI", system-ui`,
   },
   defaultRadius: "md",
   components: {

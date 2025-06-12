@@ -115,7 +115,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
   }, [scrollToBottom, showAnchorButton]);
 
-  useEffect(autoScroll, [messages, chat?.lastBotMessage]);
+  useEffect(() => {
+    autoScroll();
+  }, [messages, chat?.lastBotMessage]);
 
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

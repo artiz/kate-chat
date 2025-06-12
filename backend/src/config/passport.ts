@@ -46,7 +46,7 @@ export const configurePassport = () => {
           clientSecret: GOOGLE_CLIENT_SECRET,
           callbackURL: `${CALLBACK_URL_BASE}/auth/google/callback`,
         },
-        async (accessToken, refreshToken, profile, done) => {
+        async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {
           try {
             // Check if user exists by googleId
             let user = await userRepository.findOne({
@@ -62,6 +62,7 @@ export const configurePassport = () => {
               if (user) {
                 user.googleId = profile.id;
                 user.authProvider = AuthProvider.GOOGLE;
+                user.password = ""; // No password for OAuth users
                 user = await userRepository.save(user);
                 logger.info({ userId: user.id }, "User linked with Google account");
               }
@@ -85,7 +86,6 @@ export const configurePassport = () => {
                 firstName,
                 lastName,
                 avatarUrl,
-                password: "", // No password for OAuth users
                 authProvider: AuthProvider.GOOGLE,
                 defaultSystemPrompt: DEFAULT_PROMPT,
               });
@@ -130,6 +130,7 @@ export const configurePassport = () => {
               if (user) {
                 user.githubId = profile.id;
                 user.authProvider = AuthProvider.GITHUB;
+                user.password = ""; // No password for OAuth users
                 user = await userRepository.save(user);
                 logger.info({ userId: user.id }, "User linked with GitHub account");
               }
@@ -158,7 +159,6 @@ export const configurePassport = () => {
                 firstName,
                 lastName,
                 avatarUrl,
-                password: "", // No password for OAuth users
                 authProvider: AuthProvider.GITHUB,
                 defaultSystemPrompt: DEFAULT_PROMPT,
               });

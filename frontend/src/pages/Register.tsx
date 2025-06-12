@@ -10,6 +10,7 @@ import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlic
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { RECAPTCHA_SITE_KEY } from "../utils/config";
 import { OAuthButtons } from "../components/auth";
+import { clearUser, setUser } from "@/store/slices/userSlice";
 
 // Registration mutation is imported from graphql.ts
 
@@ -38,10 +39,12 @@ const RegisterForm: React.FC = () => {
   // Define register mutation
   const [register, { loading }] = useMutation(REGISTER_MUTATION, {
     onCompleted: data => {
+      dispatch(setUser(data.register.user));
       dispatch(loginSuccess(data.register.token));
       navigate("/chat");
     },
     onError: error => {
+      dispatch(clearUser());
       dispatch(loginFailure());
       notifications.show({
         title: "Registration Failed",

@@ -8,6 +8,7 @@ import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { OAuthButtons } from "../components/auth";
+import { clearUser, setUser } from "@/store/slices/userSlice";
 
 // Login mutation is imported from graphql.ts
 
@@ -27,9 +28,11 @@ const Login: React.FC = () => {
   const [login, { loading }] = useMutation(LOGIN_MUTATION, {
     onCompleted: data => {
       dispatch(loginSuccess(data.login.token));
+      dispatch(setUser(data.login.user));
       navigate("/chat");
     },
     onError: error => {
+      dispatch(clearUser());
       dispatch(loginFailure());
       notifications.show({
         title: "Login Failed",

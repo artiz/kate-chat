@@ -17,7 +17,6 @@ export const CHAT_ERRORS_CHANNEL = "chat:errors";
 export class QueueService {
   private pubSub: PubSub;
   private redisClient: RedisClientType | null = null;
-  private hasLoggedConnectionRefused = false;
 
   private static subscriptions: Map<string, RedisClientType> = new Map<string, RedisClientType>();
 
@@ -27,11 +26,16 @@ export class QueueService {
     // init Redis client for storing messages and PubSub
     // NOTE: Redis connection is optional - application works without Redis
     // but will not share messages between multiple instances
+    if (!REDIS_URL) {
+      logger.warn("Redis URL not configured - multi-instance support disabled");
+      return;
+    }
+
     try {
       const client: RedisClientType = createClient({
         url: REDIS_URL,
         socket: {
-          reconnectStrategy: retries => {
+          reconnectStrategy: (retries: number) => {
             if (retries > 10) {
               logger.warn("Too many Redis connection attempts, stopping reconnect");
               return false; // Stop reconnecting after 10 retries
@@ -46,14 +50,10 @@ export class QueueService {
       this.redisClient = client;
 
       // Add event listeners for Redis connection
-      this.redisClient.on("error", err => {
+      this.redisClient.on("error", (err: Error) => {
         // Only log once to avoid flooding
         if (err.message.includes("ECONNREFUSED")) {
-          // Avoid multiple warnings about connection refused
-          if (!this.hasLoggedConnectionRefused) {
-            logger.warn("Redis connection refused - multi-instance support disabled");
-            this.hasLoggedConnectionRefused = true;
-          }
+          logger.warn("Redis connection refused - multi-instance support disabled");
         } else {
           logger.error(err, "Redis client error");
         }
@@ -61,7 +61,6 @@ export class QueueService {
 
       this.redisClient.on("connect", () => {
         logger.info("Redis connected - multi-instance support enabled");
-        this.hasLoggedConnectionRefused = false;
       });
 
       // Attempt to connect but don't block startup
@@ -204,6 +203,12 @@ export class QueueService {
       await this.redisClient.publish(CHAT_MESSAGES_CHANNEL, JSON.stringify({ chatId, messageId, streaming }));
     } catch (error) {
       logger.error(error, `Failed to publish message ${messageId} in Redis`);
+
+      // fallback to publish if Redis fails
+      return await this.pubSub.publish(NEW_MESSAGE, {
+        chatId,
+        data: { error },
+      });
     }
   }
 
