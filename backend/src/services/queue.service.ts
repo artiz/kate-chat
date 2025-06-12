@@ -37,7 +37,7 @@ export class QueueService {
         socket: {
           reconnectStrategy: (retries: number) => {
             if (retries > 10) {
-              logger.warn("Too many Redis connection attempts, stopping reconnect");
+              logger.warn("Redis connection refused - multi-instance support disabled");
               return false; // Stop reconnecting after 10 retries
             }
             // Exponential backoff with a maximum delay of 5 seconds
@@ -52,9 +52,7 @@ export class QueueService {
       // Add event listeners for Redis connection
       this.redisClient.on("error", (err: Error) => {
         // Only log once to avoid flooding
-        if (err.message.includes("ECONNREFUSED")) {
-          logger.warn("Redis connection refused - multi-instance support disabled");
-        } else {
+        if (!err.message.includes("ECONNREFUSED")) {
           logger.error(err, "Redis client error");
         }
       });

@@ -26,6 +26,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
+* Add "Switch model" button to the chat message to repeat the previous messages with another model
 * Add more UI stuff like:
   * Image resolution/count 
   * Chat message editing
