@@ -72,21 +72,15 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    // Initialize S3 service with connection params
-    const s3Service = new S3Service(connection);
     const { chatId, modelId, images, role = MessageRole.USER } = input;
     let { content = "" } = input;
 
     if (!chatId) throw new Error("Chat ID is required");
     if (!modelId) throw new Error("Model ID is required");
-
     const chat = await this.chatRepository.findOne({
       where: { id: chatId },
     });
     if (!chat) throw new Error("Chat not found");
-
-    // Verify the model exists
-    logger.debug(`Fetching model with ID: ${modelId} for user ${user.id}`);
 
     const model = await this.modelRepository.findOne({
       where: {
@@ -96,7 +90,9 @@ export class MessagesService {
     });
     if (!model) throw new Error("Model not found");
 
-    // Create and save user message
+    const s3Service = new S3Service(connection);
+
+    // Save user message
     let message = await this.messageRepository
       .save({
         content,
@@ -119,10 +115,7 @@ export class MessagesService {
       jsonContent = [];
 
       if (content) {
-        jsonContent.push({
-          content,
-          contentType: "text",
-        });
+        jsonContent.push({ content, contentType: "text" });
       }
 
       for (let index = 0; index < images.length; ++index) {
