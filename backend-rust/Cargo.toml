@@ -1,0 +1,92 @@
+[package]
+name = "kate-chat-backend"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+# Web framework
+rocket = { version = "0.5.1", features = ["json"] }
+
+# GraphQL
+async-graphql = { version = "7.0", features = ["chrono"] }
+async-graphql-rocket = "7.0"
+
+# Database
+diesel = { version = "2.1", features = ["postgres", "sqlite", "uuid", "chrono", "r2d2"] }
+libsqlite3-sys = { version = "0.26", features = ["bundled"] }
+diesel_migrations = "2.1"
+
+# JSON/Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Authentication
+jsonwebtoken = "9.0"
+bcrypt = "0.15"
+
+# HTTP Client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# UUID
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Environment variables
+dotenv = "0.15"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# AWS SDK
+aws-config = "1.0"
+aws-sdk-bedrockruntime = "1.0"
+aws-sdk-bedrock = "1.0"
+aws-sdk-s3 = "1.0"
+aws-smithy-types = "1.0"
+aws-smithy-runtime-api = "1.0"
+aws-credential-types = "1.0"
+
+# Base64
+base64 = "0.22"
+
+# Regular expressions
+regex = "1.0"
+
+# Async trait
+async-trait = "0.1"
+
+# CORS
+rocket_cors = "0.6.0"
+
+# WebSocket support for subscriptions
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# OAuth
+oauth2 = "4.4"
+
+# Session management (removed for Rocket 0.4 compatibility)
+
+# Password hashing
+argon2 = "0.5"
+
+# Configuration
+config = "0.14"
+
+# File uploads
+tempfile = "3.8"
+
+[dev-dependencies]
+# Testing
+tokio-test = "0.4"
+

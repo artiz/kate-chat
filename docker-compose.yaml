@@ -81,6 +81,18 @@ services:
       - kate-chat-network
     env_file:
       - ./backend/.env
+
+  backend-rust:
+    build:
+      context: ./backend-rust
+      dockerfile: Dockerfile
+    container_name: kate-chat-backend-rust
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+    networks:
+      - kate-chat-network
     
   nginx:
     image: nginx:alpine
