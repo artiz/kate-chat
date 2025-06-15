@@ -107,7 +107,7 @@ export class YandexService extends BaseProviderService {
       );
     }
 
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
     const yandexMessages = this.formatMessages(messages, systemPrompt);
     const modelUri = modelId.replace("{folder}", this.folderId ?? "default");
 
@@ -167,7 +167,7 @@ export class YandexService extends BaseProviderService {
 
     callbacks.onStart?.();
 
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
     const yandexMessages = this.formatMessages(messages, systemPrompt);
     const modelUri = modelId.replace("{folder}", this.folderId ?? "default");
 

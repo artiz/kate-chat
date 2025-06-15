@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
 import { PubSub } from "graphql-subscriptions";
-import { In, MoreThan, Repository } from "typeorm";
+import { In, MoreThan, MoreThanOrEqual, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
 import { Message, MessageRole, MessageType } from "../entities/Message";
@@ -10,7 +10,7 @@ import { AIService } from "./ai.service";
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Chat, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
-import { ModelMessageContent } from "@/types/ai.types";
+import { InvokeModelParamsRequest, ModelMessageContent } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
@@ -72,9 +72,7 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    const { chatId, modelId, images, role = MessageRole.USER } = input;
-    let { content = "" } = input;
-
+    const { chatId, modelId } = input;
     if (!chatId) throw new Error("Chat ID is required");
     if (!modelId) throw new Error("Model ID is required");
     const chat = await this.chatRepository.findOne({
@@ -92,73 +90,6 @@ export class MessagesService {
 
     const s3Service = new S3Service(connection);
 
-    // Save user message
-    let message = await this.messageRepository
-      .save({
-        content,
-        role,
-        modelId: model.modelId, // real model used
-        modelName: model.name,
-        chatId,
-        user,
-        chat,
-      })
-      .catch(err => {
-        this.queueService.publishError(chatId, getErrorMessage(err));
-        throw err;
-      });
-
-    let jsonContent: ModelMessageContent[] | undefined = undefined;
-
-    // If there's an image, handle it
-    if (images) {
-      jsonContent = [];
-
-      if (content) {
-        jsonContent.push({ content, contentType: "text" });
-      }
-
-      for (let index = 0; index < images.length; ++index) {
-        const image = images[index];
-        const imageFile = await this.saveImageFromBase64(s3Service, image.bytesBase64, {
-          chatId: chat.id,
-          messageId: message.id,
-          isInput: true,
-          index,
-        });
-
-        jsonContent.push({
-          content: image.bytesBase64,
-          contentType: "image",
-          fileName: imageFile,
-          mimeType: image.mimeType,
-        });
-
-        // For display purposes, append image markdown to the content
-        content += `${content ? "\n\n" : ""}![Uploaded Image](${s3Service.getFileUrl(imageFile)})`;
-      }
-
-      chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
-      await this.chatRepository.save(chat);
-    }
-
-    // update message content
-    message.jsonContent = jsonContent;
-    message.content = content;
-    message = await this.messageRepository.save(message).catch(err => {
-      this.queueService.publishError(chatId, getErrorMessage(err));
-      throw err;
-    });
-
-    // Set chat isPristine to false when adding the first message
-    if (chat.isPristine) {
-      chat.isPristine = false;
-      await this.chatRepository.save(chat);
-    }
-
-    // Publish message to Queue
-    await this.queueService.publishMessage(chatId, message);
-
     // Get previous messages for context
     const previousMessages = await this.messageRepository.find({
       where: { chatId },
@@ -166,121 +97,108 @@ export class MessagesService {
       take: CONTEXT_MESSAGES_LIMIT,
     });
 
+    // Save user message
+    const userMessage = await this.publishUserMessage(input, user, chat, model, s3Service);
+    const inputMessages = previousMessages.reverse();
+    inputMessages.push(userMessage);
+
     // Generate AI response
-    const requestMessages = previousMessages.reverse();
-    const systemPrompt = user.defaultSystemPrompt || DEFAULT_PROMPT;
+    const assistantMessage = await this.messageRepository.save(
+      this.messageRepository.create({
+        content: "",
+        role: MessageRole.ASSISTANT,
+        modelId: model.modelId, // real model used
+        modelName: model.name,
+        chatId,
+        user,
+        chat,
+      })
+    );
 
-    const completeRequest = async (aiMessage: Message) => {
-      ok(aiMessage);
-      const savedMessage = await this.messageRepository.save(aiMessage);
+    await this.publishAssistantMessage(
+      input,
+      connection,
+      user,
+      model,
+      chat,
+      s3Service,
+      inputMessages,
+      assistantMessage
+    );
 
-      // Publish message to Queue
-      await this.queueService.publishMessage(chatId, savedMessage);
-    };
+    return userMessage;
+  }
 
-    const request = {
-      messages: [],
+  public async switchMessageModel(
+    messageId: string,
+    modelId: string,
+    connection: ConnectionParams,
+    user: User
+  ): Promise<Message> {
+    // Find the original message
+    let originalMessage = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ["chat", "chat.user", "user"],
+    });
+
+    if (!originalMessage) throw new Error("Message not found");
+    if (!originalMessage.chat) throw new Error("Chat not found for this message");
+    // Verify the message belongs to the current user's chat
+    if (originalMessage.chat.user?.id !== user.id) throw new Error("Unauthorized access to this message");
+
+    const chat = originalMessage.chat;
+
+    // Find the new model
+    const model = await this.modelRepository.findOne({
+      where: {
+        modelId,
+        user: { id: user.id },
+      },
+    });
+
+    if (!model) throw new Error("Model not found or not accessible");
+
+    // Get previous messages for context (up to the original message)
+    const chatId = originalMessage.chatId || originalMessage.chat.id;
+    const contextMessages = await this.messageRepository
+      .createQueryBuilder("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.createdAt <= :createdAt", { createdAt: originalMessage.createdAt })
+      .andWhere("message.id <> :id", { id: originalMessage.id })
+      .orderBy("message.createdAt", "ASC")
+      .getMany();
+
+    // TODO: remove files if they are
+    originalMessage.content = ""; // Clear content to indicate it's being regenerated
+    originalMessage.modelId = model.modelId; // Update to the new model
+    originalMessage.modelName = model.name; // Update model name
+    originalMessage = await this.messageRepository.save(originalMessage);
+
+    const input: CreateMessageInput = {
+      chatId,
+      content: "",
       modelId: model.modelId,
-      systemPrompt,
-      temperature: input.temperature,
-      maxTokens: input.maxTokens,
-      topP: input.topP,
+      role: MessageRole.USER,
+      temperature: chat.temperature,
+      maxTokens: chat.maxTokens,
+      topP: chat.topP,
     };
 
-    if (model.supportsStreaming) {
-      const aiMessage = await this.messageRepository.save(
-        this.messageRepository.create({
-          content: "",
-          role: MessageRole.ASSISTANT,
-          modelId: model.modelId, // real model used
-          modelName: model.name,
-          chatId,
-          user,
-          chat,
-        })
-      );
+    const s3Service = new S3Service(connection);
 
-      const handleStreaming = async (token: string, completed?: boolean, error?: Error) => {
-        if (completed) {
-          if (error) {
-            completeRequest({
-              ...aiMessage,
-              content: getErrorMessage(error),
-              role: MessageRole.ERROR,
-            }).catch(err => logger.error(err, "Error sending AI response"));
-            return;
-          }
+    // Call publishAssistantMessage to generate new response
+    await this.publishAssistantMessage(
+      input,
+      connection,
+      user,
+      model,
+      chat,
+      s3Service,
+      contextMessages,
+      originalMessage
+    );
 
-          aiMessage.content = token;
-          completeRequest(aiMessage).catch(err => {
-            this.queueService.publishError(chatId, getErrorMessage(err));
-            logger.error(err, "Error sending AI response");
-          });
-
-          // stream token
-        } else {
-          aiMessage.content += token;
-          await this.queueService.publishMessage(chatId, aiMessage, true);
-        }
-      };
-
-      this.aiService.streamCompletion(model.apiProvider, connection, request, requestMessages, handleStreaming);
-
-      return message;
-    }
-
-    // sync call
-    try {
-      const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, requestMessages);
-      let content = aiResponse.content;
-      if (aiResponse.type === "image") {
-        // Save base64 image to S3
-        const fileName = await this.saveImageFromBase64(s3Service, aiResponse.content, {
-          chatId: chat.id,
-          messageId: message.id,
-          isInput: false,
-        });
-        content = `![Generated Image](${s3Service.getFileUrl(fileName)})`;
-
-        chat.files = [...(chat.files || []), fileName];
-        await this.chatRepository.save(chat);
-      }
-
-      const aiMessage = await this.messageRepository.save(
-        this.messageRepository.create({
-          content,
-          role: MessageRole.ASSISTANT,
-          modelId: model.modelId, // real model used
-          modelName: model.name,
-          chatId,
-          user,
-          chat,
-        })
-      );
-
-      await completeRequest(aiMessage);
-    } catch (error: unknown) {
-      logger.error(error, "Error generating AI response");
-
-      logger.debug(`Publishing AI response event for chat ${chatId}`);
-      const errorChatMessage = await this.messageRepository.save(
-        this.messageRepository.create({
-          content: getErrorMessage(error),
-          role: MessageRole.ERROR,
-          modelId: model.modelId, // real model used
-          modelName: model.name,
-          chatId,
-          user,
-        })
-      );
-
-      completeRequest(errorChatMessage).catch(err => {
-        this.queueService.publishError(chatId, getErrorMessage(err));
-        logger.error(err, "Error sending AI response");
-      });
-    }
-
-    return message;
+    return originalMessage;
   }
 
   public async deleteMessage(
@@ -317,7 +235,7 @@ export class MessagesService {
         ? await this.messageRepository.find({
             where: {
               chatId,
-              createdAt: MoreThan(message.createdAt),
+              createdAt: MoreThanOrEqual(message.createdAt),
             },
           })
         : [
@@ -388,21 +306,197 @@ export class MessagesService {
   public async saveImageFromBase64(
     s3Service: S3Service,
     content: string,
-    { chatId, messageId, isInput, index = 0 }: { chatId: string; messageId: string; isInput: boolean; index?: number }
-  ): Promise<string> {
+    { chatId, messageId, index = 0 }: { chatId: string; messageId: string; index?: number }
+  ): Promise<{ fileName: string; contentType: string }> {
     // Parse extension from base64 content if possible, default to .png
     const matches = content.match(/^data:image\/(\w+);base64,/);
-    const ext = matches ? `.${matches[1]}` : ".png";
-
-    // Create key in format: <chat_id>-<message_id>-in-<index>.<ext> for user uploads
-    // or <chat_id>-<message_id>-out-<index>.<ext> for generated files
-    const fileType = isInput ? "in" : "out";
-    const key = `${chatId}-${messageId}-${fileType}-${index}${ext}`;
+    const type = matches ? `${matches[1]}` : "png";
+    const fileName = `${chatId}-${messageId}-${index}.${type}`;
+    const contentType = `image/${type}`;
 
     // Upload to S3
-    await s3Service.uploadFile(content, key);
+    await s3Service.uploadFile(content, fileName, contentType);
 
     // Return the file key
-    return key;
+    return {
+      fileName,
+      contentType,
+    };
+  }
+
+  protected async publishUserMessage(
+    input: CreateMessageInput,
+    user: User,
+    chat: Chat,
+    model: Model,
+    s3Service: S3Service
+  ): Promise<Message> {
+    const { images, role = MessageRole.USER } = input;
+    let { content = "" } = input;
+
+    let userMessage = await this.messageRepository
+      .save({
+        content,
+        role,
+        modelId: model.modelId, // real model used
+        modelName: model.name,
+        chatId: chat.id,
+        user,
+        chat,
+      })
+      .catch(err => {
+        this.queueService.publishError(chat.id, getErrorMessage(err));
+        throw err;
+      });
+
+    let jsonContent: ModelMessageContent[] | undefined = undefined;
+
+    // If there's an image, handle it
+    if (images) {
+      jsonContent = [];
+
+      if (content) {
+        jsonContent.push({ content, contentType: "text" });
+      }
+
+      for (let index = 0; index < images.length; ++index) {
+        const image = images[index];
+        const { fileName } = await this.saveImageFromBase64(s3Service, image.bytesBase64, {
+          chatId: chat.id,
+          messageId: userMessage.id,
+          index,
+        });
+
+        jsonContent.push({
+          content: image.bytesBase64,
+          contentType: "image",
+          fileName,
+          mimeType: image.mimeType,
+        });
+
+        // For display purposes, append image markdown to the content
+        content += `${content ? "\n\n" : ""}![Uploaded Image](${s3Service.getFileUrl(fileName)})`;
+      }
+
+      chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
+      await this.chatRepository.save(chat);
+    }
+
+    // update message content
+    userMessage.jsonContent = jsonContent;
+    userMessage.content = content;
+    userMessage = await this.messageRepository.save(userMessage).catch(err => {
+      this.queueService.publishError(chat.id, getErrorMessage(err));
+      throw err;
+    });
+
+    // Set chat isPristine to false when adding the first message
+    if (chat.isPristine) {
+      chat.isPristine = false;
+      await this.chatRepository.save(chat);
+    }
+
+    // Publish message to Queue
+    await this.queueService.publishMessage(chat.id, userMessage);
+
+    return userMessage;
+  }
+
+  protected async publishAssistantMessage(
+    input: CreateMessageInput,
+    connection: ConnectionParams,
+    user: User,
+    model: Model,
+    chat: Chat,
+    s3Service: S3Service,
+    inputMessages: Message[],
+    assistantMessage: Message
+  ): Promise<void> {
+    const systemPrompt = user.defaultSystemPrompt || DEFAULT_PROMPT;
+    const request: InvokeModelParamsRequest = {
+      modelId: model.modelId,
+      systemPrompt,
+      temperature: input.temperature,
+      maxTokens: input.maxTokens,
+      topP: input.topP,
+    };
+
+    const completeRequest = async (message: Message) => {
+      ok(message);
+      const savedMessage = await this.messageRepository.save(message);
+
+      // Publish message to Queue
+      await this.queueService.publishMessage(chat.id, savedMessage);
+    };
+
+    if (!model.supportsStreaming) {
+      // sync call
+      try {
+        const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
+
+        if (aiResponse.type === "image") {
+          // Save base64 image to S3
+          const { fileName, contentType } = await this.saveImageFromBase64(s3Service, aiResponse.content, {
+            chatId: chat.id,
+            messageId: assistantMessage.id,
+          });
+
+          assistantMessage.content = `![Generated Image](${s3Service.getFileUrl(fileName)})`;
+          assistantMessage.jsonContent = [
+            {
+              content: aiResponse.content,
+              contentType: "image",
+              fileName,
+              mimeType: contentType,
+            },
+          ];
+
+          chat.files = [...(chat.files || []), fileName];
+          await this.chatRepository.save(chat);
+        } else {
+          assistantMessage.content = aiResponse.content;
+        }
+
+        await completeRequest(assistantMessage);
+      } catch (error: unknown) {
+        logger.error(error, "Error generating AI response");
+
+        logger.debug(`Publishing AI response event for chat ${chat.id}`);
+        assistantMessage.content = getErrorMessage(error);
+        assistantMessage.role = MessageRole.ERROR;
+
+        await completeRequest(assistantMessage).catch(err => {
+          this.queueService.publishError(chat.id, getErrorMessage(err));
+          logger.error(err, "Error sending AI response");
+        });
+      }
+
+      return;
+    }
+
+    const handleStreaming = async (token: string, completed?: boolean, error?: Error) => {
+      if (completed) {
+        if (error) {
+          return completeRequest({
+            ...assistantMessage,
+            content: getErrorMessage(error),
+            role: MessageRole.ERROR,
+          }).catch(err => logger.error(err, "Error sending AI response"));
+        }
+
+        assistantMessage.content = token;
+        completeRequest(assistantMessage).catch(err => {
+          this.queueService.publishError(chat.id, getErrorMessage(err));
+          logger.error(err, "Error sending AI response");
+        });
+
+        // stream token
+      } else {
+        assistantMessage.content += token;
+        await this.queueService.publishMessage(chat.id, assistantMessage, true);
+      }
+    };
+
+    this.aiService.streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming);
   }
 }

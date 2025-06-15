@@ -1,11 +1,11 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID } from "type-graphql";
 import { Repository } from "typeorm";
-import { Message, MessageType } from "@/entities/Message";
-import { Chat } from "@/entities";
-import { CreateMessageInput, GetMessagesInput } from "@/types/graphql/inputs";
+import { Message, MessageType, MessageRole } from "@/entities/Message";
+import { Chat, Model } from "@/entities";
+import { CreateMessageInput, GetMessagesInput, SwitchModelInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from "@/middleware/auth.middleware";
-import { GqlMessage, GqlMessagesList } from "@/types/graphql/responses";
+import { GqlMessage, GqlMessagesList, SwitchModelResponse } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { MessagesService } from "@/services/messages.service";
 import { BaseResolver } from "./base.resolver";
@@ -19,12 +19,14 @@ const logger = createLogger(__filename);
 export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
+  private modelRepository: Repository<Model>;
   private messageService: MessagesService;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
+    this.modelRepository = getRepository(Model);
     this.messageService = new MessagesService();
   }
 
@@ -138,5 +140,21 @@ export class MessageResolver extends BaseResolver {
   ): Promise<string[]> {
     await this.validateContextToken(context);
     return await this.messageService.deleteMessage(context.connectionParams, id, deleteFollowing);
+  }
+
+  @Mutation(() => SwitchModelResponse)
+  async switchModel(
+    @Arg("messageId", () => ID) messageId: string,
+    @Arg("modelId") modelId: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<SwitchModelResponse> {
+    try {
+      const user = await this.validateContextUser(context);
+      const message = await this.messageService.switchMessageModel(messageId, modelId, context.connectionParams, user);
+      return { message };
+    } catch (error) {
+      logger.error(error, "Error switching model");
+      return { error: `Failed to switch model: ${error instanceof Error ? error.message : String(error)}` };
+    }
   }
 }

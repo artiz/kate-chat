@@ -55,7 +55,7 @@ export type AnthropicRequestMessage = {
  */
 export class AnthropicService implements BedrockModelServiceProvider<AnthropicResponese> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
 
     // Convert messages to Anthropic format
     // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-messages.html

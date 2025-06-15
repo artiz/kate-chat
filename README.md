@@ -18,6 +18,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - Chat history storage and management, messages deletion
 - Rich markdown formatting: code blocks, images, MatJAX formulas etc.
+- Chat message "Switch model" logic for the previous messages with another model
 - On-the-fly model switching
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Responsive UI with Mantine
@@ -26,7 +27,6 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
-* Add "Switch model" button to the chat message to repeat the previous messages with another model
 * Add more UI stuff like:
   * Image resolution/count 
   * Chat message editing

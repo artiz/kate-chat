@@ -14,7 +14,7 @@ type MetaResponse = {
 };
 export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     // Convert messages to Llama chat format
 
     let prompt =

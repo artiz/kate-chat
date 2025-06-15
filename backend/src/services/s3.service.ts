@@ -62,7 +62,7 @@ export class S3Service {
   public async uploadFile(content: string, key: string, contentType?: string): Promise<string> {
     try {
       // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-      const base64Data = content.replace(/^data:image\/[a-z]+;base64,/, "");
+      const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
 
       const params = {
         Bucket: this.bucketName,

@@ -193,3 +193,12 @@ export class GetCostsInput {
   @Field({ nullable: true })
   endTime?: number;
 }
+
+@InputType()
+export class SwitchModelInput {
+  @Field()
+  messageId: string;
+
+  @Field()
+  modelId: string;
+}

@@ -204,6 +204,7 @@ type Mutation {
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
   reloadModels: GqlModelsList!
+  switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
@@ -240,6 +241,11 @@ input RegisterInput {
 
 type Subscription {
   newMessage(chatId: String!): GqlMessage!
+}
+
+type SwitchModelResponse {
+  error: String
+  message: Message
 }
 
 input TestModelInput {

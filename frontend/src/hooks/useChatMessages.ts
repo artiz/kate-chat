@@ -13,6 +13,7 @@ import { useAppDispatch } from "@/store";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
 import { GET_CHAT_MESSAGES, GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
 import { debounce, pick } from "lodash";
+import { createPolymorphicComponent } from "@mantine/core";
 
 type HookResult = {
   chat: Chat | undefined;
@@ -231,9 +232,14 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     };
 
     if (msg.content) {
-      parseMarkdown(msg.content).then(html => {
-        addMessage({ ...msg, html });
-      });
+      parseMarkdown(msg.content)
+        .then(html => {
+          addMessage({ ...msg, html });
+        })
+        .catch(error => {
+          console.error("Error parsing markdown:", error);
+          addMessage({ ...msg });
+        });
     } else {
       addMessage(msg);
     }

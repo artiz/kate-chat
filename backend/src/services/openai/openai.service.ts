@@ -131,7 +131,7 @@ export class OpenAIService extends BaseProviderService {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
 
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = inputRequest;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
 
     // Determine if this is an image generation request
     if (modelId.startsWith("dall-e")) {
@@ -175,7 +175,7 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    const { systemPrompt, messages, modelId, temperature, maxTokens } = inputRequest;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
 
     callbacks.onStart?.();
 

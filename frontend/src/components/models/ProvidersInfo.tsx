@@ -4,6 +4,7 @@ import { IconBrandOpenai, IconBrandAws, IconServer, IconReportMoney } from "@tab
 import { ProviderInfo } from "@/store/slices/modelSlice";
 import { ApiProvider } from "@reduxjs/toolkit/query/react";
 import { Link } from "react-router-dom";
+import { ProviderIcon } from "../icons/ProviderIcon";
 
 interface ProvidersInfoProps {
   providers: ProviderInfo[];
@@ -35,13 +36,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
               <Stack gap="xs">
                 <Group justify="space-between">
                   <Group>
-                    {provider.name === "OpenAI" ? (
-                      <IconBrandOpenai size={24} />
-                    ) : provider.name === "AWS Bedrock" ? (
-                      <IconBrandAws size={24} />
-                    ) : (
-                      <IconServer size={24} />
-                    )}
+                    <ProviderIcon apiProvider={provider.id} />
                     <Text fw={500}>{provider.name}</Text>
                   </Group>
                   <Group>

@@ -82,6 +82,26 @@ export const DELETE_MESSAGE_MUTATION = gql`
   }
 `;
 
+export const SWITCH_MODEL_MUTATION = gql`
+  mutation SwitchModel($messageId: ID!, $modelId: String!) {
+    switchModel(messageId: $messageId, modelId: $modelId) {
+      message {
+        id
+        content
+        role
+        createdAt
+        modelId
+        modelName
+        user {
+          lastName
+          firstName
+        }
+      }
+      error
+    }
+  }
+`;
+
 export const CREATE_CHAT_MUTATION = gql`
   mutation CreateChat($input: CreateChatInput!) {
     createChat(input: $input) {
@@ -290,6 +310,13 @@ export interface GqlCostsInfo {
 
 export interface DeleteMessageResponse {
   deleteMessage: string[];
+}
+
+export interface SwitchModelResponse {
+  switchModel: {
+    message: Message;
+    error?: string;
+  };
 }
 
 // Create the API endpoints

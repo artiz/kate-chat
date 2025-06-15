@@ -4,7 +4,12 @@ import { IconRobot } from "@tabler/icons-react";
 import { Message } from "@/store/slices/chatSlice";
 import { gql, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { DELETE_MESSAGE_MUTATION, DeleteMessageResponse } from "@/store/services/graphql";
+import {
+  DELETE_MESSAGE_MUTATION,
+  DeleteMessageResponse,
+  SWITCH_MODEL_MUTATION,
+  SwitchModelResponse,
+} from "@/store/services/graphql";
 
 import { ok } from "@/utils/assert";
 import { ChatMessage } from "./ChatMessage";
@@ -15,6 +20,7 @@ interface ChatMessagesProps {
   sending: boolean;
   selectedModelName?: string;
   onMessageDeleted?: (ids: string[]) => void;
+  onMessageModelSwitch?: (message: Message) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -22,6 +28,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   sending,
   selectedModelName,
   onMessageDeleted,
+  onMessageModelSwitch,
 }) => {
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +55,36 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     },
   });
 
+  // Switch model mutation
+  const [switchModel, { loading: switchingModel }] = useMutation<SwitchModelResponse>(SWITCH_MODEL_MUTATION, {
+    onCompleted: res => {
+      if (res.switchModel.error) {
+        return notifications.show({
+          title: "Error",
+          message: res.switchModel.error,
+          color: "red",
+        });
+      }
+      onMessageModelSwitch?.(res.switchModel.message);
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to delete message",
+        color: "red",
+      });
+    },
+  });
+
+  const handleSwitchModel = useCallback((messageId: string, modelId: string) => {
+    switchModel({
+      variables: {
+        messageId,
+        modelId,
+      },
+    });
+  }, []);
+
   // common messages interaction logic
   const handleMessageClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -59,6 +96,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         "copy-message-btn",
         "delete-message-btn",
         "message-image",
+        "switch-model-btn",
       ];
 
       let el: HTMLElement = e.target as HTMLElement;
@@ -152,6 +190,12 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         // TODO: Implement image popup logic
         // openImagePopup((target as HTMLImageElement).src);
         target.parentElement?.classList.toggle("closed");
+      } else if (target.classList.contains("switch-model-btn")) {
+        const messageId = target.dataset["messageId"];
+        const modelId = target.dataset["modelId"];
+        ok(messageId, "Message ID should be defined for switch model");
+        ok(modelId, "Model ID should be defined for switch model");
+        handleSwitchModel(messageId, modelId);
       }
     },
     [messages]
@@ -188,7 +232,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       <Stack gap="md" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
           <Group key={msg.id} align="flex-start" gap="xs">
-            <ChatMessage message={msg} index={index} />
+            <ChatMessage message={msg} index={index} disabled={deletingMessage || switchingModel} />
           </Group>
         ))}
 

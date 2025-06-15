@@ -4,6 +4,8 @@ import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { MessageRole } from "../../entities/Message";
 import { ApiProvider, ModelMessage } from "../../types/ai.types";
 import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
+import { log } from "console";
+import { logger } from "../../utils/logger";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
@@ -30,22 +32,24 @@ jest.mock("@aws-sdk/client-bedrock", () => {
   };
 });
 
-// Using real implementation for BedrockService but mocking the client interactions
+// Mock BedrockService to use real implementation but with mocked clients
+let mockedBedrockInstance: any;
+
 jest.mock("../bedrock/bedrock.service", () => {
   const originalModule = jest.requireActual("../bedrock/bedrock.service");
+
+  class MockedBedrockService extends originalModule.BedrockService {
+    constructor(connection: any) {
+      super(connection);
+      // Replace the clients with our mocks after construction
+      this.bedrockClient = bedrockClient;
+      this.bedrockManagementClient = { send: jest.fn() };
+      mockedBedrockInstance = this;
+    }
+  }
+
   return {
-    BedrockService: jest.fn().mockImplementation(() => {
-      const instance = new originalModule.BedrockService({
-        AWS_BEDROCK_REGION: "us-west-2",
-        AWS_BEDROCK_PROFILE: "default",
-      });
-      // Replace the bedrockClient with our mock
-      instance.bedrockClient = bedrockClient;
-      // Spy on the methods we want to track
-      jest.spyOn(instance, "invokeModel");
-      jest.spyOn(instance, "invokeModelAsync");
-      return instance;
-    }),
+    BedrockService: MockedBedrockService,
   };
 });
 
@@ -60,6 +64,8 @@ jest.mock("@aws-sdk/client-bedrock-runtime", () => {
 describe("AIService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset the setTimeout mock
+    jest.restoreAllMocks();
   });
 
   describe("generateResponse", () => {
@@ -81,12 +87,12 @@ describe("AIService", () => {
       };
 
       // Mock the AWS Bedrock client response
-      (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
+      bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       const response = await aiService.invokeModel(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId }
@@ -105,7 +111,7 @@ describe("AIService", () => {
       ];
       const modelId = "meta.llama2-13b-chat-v1";
 
-      // Mock the AWS Bedrock response
+      // Mock the AWS Bedrock response for Meta provider
       const mockResponse = {
         body: Buffer.from(
           JSON.stringify({
@@ -115,12 +121,12 @@ describe("AIService", () => {
       };
 
       // Mock the AWS Bedrock client response
-      (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
+      bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       const response = await aiService.invokeModel(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId }
@@ -140,7 +146,7 @@ describe("AIService", () => {
         aiService.invokeModel(
           ApiProvider.AWS_BEDROCK,
           {
-            AWS_BEDROCK_REGION: "us-west-2",
+            AWS_BEDROCK_REGION: "aws-region",
             AWS_BEDROCK_PROFILE: "default",
           },
           { messages, modelId }
@@ -190,7 +196,7 @@ describe("AIService", () => {
         },
       };
 
-      (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
+      bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       await aiService.invokeModelAsync(
         ApiProvider.AWS_BEDROCK,
@@ -242,14 +248,14 @@ describe("AIService", () => {
       await aiService.invokeModelAsync(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId },
         callbacks
       );
-      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
 
+      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).toHaveBeenCalled();
       expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!");
       expect(callbacks.onError).not.toHaveBeenCalled();
@@ -274,7 +280,7 @@ describe("AIService", () => {
       await aiService.invokeModelAsync(
         ApiProvider.AWS_BEDROCK,
         {
-          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
         { messages, modelId },

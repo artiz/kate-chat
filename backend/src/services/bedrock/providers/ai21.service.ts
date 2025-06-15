@@ -30,7 +30,7 @@ export type A21InvokeModelResponse = {
 
 export class AI21Service implements BedrockModelServiceProvider<A21InvokeModelResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     let prompt = systemPrompt ? `System: ${systemPrompt}\n` : "";
 
     // Convert messages to AI21 format

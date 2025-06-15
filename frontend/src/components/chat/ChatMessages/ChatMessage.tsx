@@ -1,20 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Paper, Text, Group, Avatar, ActionIcon, Tooltip } from "@mantine/core";
-import { IconCopy, IconCopyCheck, IconRobot, IconUser, IconTrash } from "@tabler/icons-react";
+import { Paper, Text, Group, Avatar, ActionIcon, Tooltip, Menu } from "@mantine/core";
+import { IconCopy, IconCopyCheck, IconRobot, IconUser, IconTrash, IconRefresh } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import classes from "./ChatMessage.module.scss";
 import { debounce } from "lodash";
+import { useSelector } from "react-redux";
+import { useAppSelector } from "@/store";
+import { ProviderIcon } from "@/components/icons/ProviderIcon";
 
 interface ChatMessageProps {
   message: Message;
   index: number;
+  disabled?: boolean;
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index } = props;
+  const { message, index, disabled = false } = props;
   const { role, id, modelName, content, html, createdAt, user, streaming = false } = message;
+  const { models } = useAppSelector(state => state.models);
   const componentRef = useRef<HTMLDivElement>(null);
+
+  const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
 
   const codeHeaderTemplate = `
                 <span class="title">
@@ -92,6 +99,69 @@ export const ChatMessage = (props: ChatMessageProps) => {
     }
   }, [role, streaming]);
 
+  const actions = useMemo(() => {
+    return (
+      <div className={classes.messageFooter}>
+        <Tooltip label="Copy message" position="top" withArrow>
+          <ActionIcon
+            className="copy-message-btn"
+            data-message-id={id}
+            data-message-index={index}
+            size="sm"
+            color="gray"
+            variant="transparent"
+            disabled={disableActions}
+          >
+            <IconCopy />
+          </ActionIcon>
+        </Tooltip>
+        <ActionIcon disabled size="sm" className="check-icon">
+          <IconCopyCheck />
+        </ActionIcon>
+        <Tooltip label="Delete message" position="top" withArrow>
+          <ActionIcon
+            className="delete-message-btn"
+            data-message-id={id}
+            size="sm"
+            color="red.4"
+            variant="transparent"
+            disabled={disableActions}
+          >
+            <IconTrash />
+          </ActionIcon>
+        </Tooltip>
+
+        {role === MessageRole.ASSISTANT && (
+          <Menu shadow="md" width={200}>
+            <Menu.Target>
+              <ActionIcon size="sm" color="gray" variant="transparent" disabled={disableActions}>
+                <Tooltip label={`Switch model: ${modelName}`} position="top" withArrow>
+                  <IconRefresh />
+                </Tooltip>
+              </ActionIcon>
+            </Menu.Target>
+
+            <Menu.Dropdown className={classes.switchModelDropdown}>
+              {models.map(model => (
+                <Menu.Item
+                  key={model.id}
+                  data-message-id={id}
+                  data-model-id={model.modelId}
+                  className="switch-model-btn"
+                  leftSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
+                >
+                  {model.name}
+                </Menu.Item>
+              ))}
+
+              {/* <Menu.Divider /> */}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </div>
+    );
+  }, [id, index, role, modelName, disableActions, models]);
+
   const cmp = useMemo(() => {
     const isUserMessage = role === MessageRole.USER;
     const username = isUserMessage
@@ -127,40 +197,11 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <div className={classes.htmlBlock}>{content}</div>
           )}
 
-          <div className={classes.messageFooter}>
-            <Tooltip label="Copy message" position="top" withArrow>
-              <ActionIcon
-                className="copy-message-btn"
-                data-message-id={id}
-                data-message-index={index}
-                size="sm"
-                color="gray"
-                variant="transparent"
-                disabled={streaming}
-              >
-                <IconCopy />
-              </ActionIcon>
-            </Tooltip>
-            <ActionIcon disabled size="sm" className="check-icon">
-              <IconCopyCheck />
-            </ActionIcon>
-            <Tooltip label="Delete message" position="top" withArrow>
-              <ActionIcon
-                className="delete-message-btn"
-                data-message-id={id}
-                size="sm"
-                color="red"
-                variant="transparent"
-                disabled={streaming}
-              >
-                <IconTrash />
-              </ActionIcon>
-            </Tooltip>
-          </div>
+          {actions}
         </div>
       </div>
     );
-  }, [role, id, user, modelName, content, html, createdAt]);
+  }, [role, id, user, modelName, content, html, createdAt, streaming, actions]);
 
   return cmp;
 };

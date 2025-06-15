@@ -199,6 +199,15 @@
   }
 }
 
+.switchModelDropdown {
+  max-height: 300px;
+  overflow-y: auto;
+
+  :global .mantine-Menu-itemLabel {
+    font-size: 90%;
+  }
+}
+
 .messageFooter {
   display: flex;
   flex-direction: row;
@@ -220,7 +229,8 @@
 
 [data-mantine-color-scheme="dark"] {
   .messageContainer {
-    :global .code-block {
+    :global .code-block,
+    :global pre {
       background-color: var(--mantine-color-dark-6);
     }
 
@@ -239,7 +249,8 @@
 
 [data-mantine-color-scheme="light"] {
   .messageContainer {
-    :global .code-block {
+    :global .code-block,
+    :global pre {
       background-color: var(--mantine-color-gray-1);
     }
 

@@ -92,7 +92,7 @@ export type InvokeModelParamsResponse = {
 
 export type InvokeModelParamsRequest = {
   systemPrompt?: string;
-  messages: ModelMessage[];
+  messages?: ModelMessage[];
   modelId: string;
   temperature?: number;
   maxTokens?: number;

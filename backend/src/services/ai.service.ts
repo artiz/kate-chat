@@ -51,9 +51,8 @@ export class AIService {
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
-
       // Join user duplicate messages
-      messages: this.preprocessMessages(inputRequest.messages),
+      messages: this.preprocessMessages(inputRequest.messages || []),
     };
 
     const providerService = this.getApiProvider(apiProvider, connection);
@@ -74,7 +73,7 @@ export class AIService {
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
 
       // Join user duplicate messages
-      messages: this.preprocessMessages(inputRequest.messages),
+      messages: this.preprocessMessages(inputRequest.messages || []),
     };
 
     const providerService = this.getApiProvider(apiProvider, connection);

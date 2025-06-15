@@ -483,6 +483,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               sending={sending}
               selectedModelName={selectedModel?.name}
               onMessageDeleted={removeMessages} // Reload messages after deletion
+              onMessageModelSwitch={addChatMessage}
             />
           )}
         </div>

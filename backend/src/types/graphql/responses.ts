@@ -181,3 +181,12 @@ export class ApplicationConfig {
   @Field({ nullable: true })
   maxImages?: number;
 }
+
+@ObjectType()
+export class SwitchModelResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => Message, { nullable: true })
+  message?: Message;
+}

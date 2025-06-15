@@ -36,7 +36,7 @@ export interface Model {
   id: string;
   name: string;
   modelId: string;
-  apiProvider: string;
+  apiProvider: ApiProvider;
   provider: string;
   isActive: boolean;
   supportsImageIn?: boolean;
