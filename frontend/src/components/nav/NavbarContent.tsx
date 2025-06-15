@@ -178,7 +178,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
 
   return (
     <Stack h="100%" justify="space-between" gap="0">
-      <Stack gap="xs">
+      <Stack gap="0">
         <Button
           leftSection={<IconPlus size={16} />}
           disabled={noActiveProviders || (appConfig?.demoMode && chats.length >= (appConfig.maxChats ?? 0))}
@@ -191,7 +191,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
 
         <Divider my="xs" />
 
-        <Stack gap="xs">
+        <Stack gap="0">
           <NavLink
             label="Models"
             leftSection={<IconRobot size={16} />}
@@ -207,8 +207,8 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
         </Stack>
         <Divider my="xs" />
 
-        <ScrollArea h="calc(100vh - 280px)" type="auto" offsetScrollbars>
-          <Stack gap="xs">
+        <ScrollArea h="calc(100vh - 280px)" type="auto">
+          <Stack gap="0">
             {loading ? (
               <Group justify="center" p="md">
                 <Loader size="sm" />
@@ -239,7 +239,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
                       />
                     </form>
                   ) : (
-                    <Group justify="space-between" wrap="nowrap" className={classes.chatItem}>
+                    <Group justify="space-between" wrap="nowrap" className={classes.chatItem} gap="0">
                       <NavLink
                         style={{ flex: 1 }}
                         active={chat.id === currentChatId}

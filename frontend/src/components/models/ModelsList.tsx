@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
+import { ProviderIcon } from "../icons/ProviderIcon";
 
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
@@ -138,7 +139,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
               <Stack gap="xs">
                 <Group justify="space-between">
                   <Group>
-                    {getProviderIcon(model.provider)}
+                    <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
                     <Text fw={500}>{model.name}</Text>
                   </Group>
                   <Group>

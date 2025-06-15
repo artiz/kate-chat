@@ -75,7 +75,7 @@ export type AmazonRequestMessage = {
 
 export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResponse | AmazonTitanResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
 
     // #region Titan models
     // Format request for Amazon Titan models
@@ -142,7 +142,7 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
             // input format "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABv..."
             //
             const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)/);
-            if (!parts || parts.length !== 3) {
+            if (!parts || parts.length < 3) {
               logger.error({ content: m.content.substring(0, 256) }, "Invalid image format");
               throw new Error(
                 "Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,...',"

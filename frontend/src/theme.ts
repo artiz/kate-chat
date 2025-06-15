@@ -15,7 +15,7 @@ export const themeBase = createTheme({
   colors: brandColors,
   fontFamily: `Roboto, "Segoe UI", system-ui`,
   headings: {
-    fontFamily: `"Segoe UI", system-ui`,
+    fontFamily: `Roboto, "Segoe UI", system-ui`,
   },
   defaultRadius: "md",
   components: {
