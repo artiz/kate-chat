@@ -1,5 +1,3 @@
-import { MessageRole } from "../entities/Message";
-
 export enum ApiProvider {
   AWS_BEDROCK = "aws_bedrock",
   OPEN_AI = "open_ai",
@@ -11,6 +9,18 @@ export enum AuthProvider {
   GOOGLE = "google",
   GITHUB = "github",
   MICROSOFT = "microsoft",
+}
+
+export enum MessageRole {
+  USER = "user",
+  ASSISTANT = "assistant",
+  ERROR = "error",
+  SYSTEM = "system",
+}
+
+export enum MessageType {
+  MESSAGE = "message",
+  SYSTEM = "system",
 }
 
 export type ContentType = "text" | "image" | "video" | "audio";

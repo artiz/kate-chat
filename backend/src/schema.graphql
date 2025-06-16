@@ -69,6 +69,11 @@ input GetCostsInput {
   startTime: Float!
 }
 
+input GetImagesInput {
+  limit: Float = 20
+  offset: Float = 0
+}
+
 input GetMessagesInput {
   chatId: String!
   limit: Float = 20
@@ -92,6 +97,24 @@ type GqlCostsInfo {
   end: DateTimeISO
   error: String
   start: DateTimeISO!
+}
+
+type GqlImage {
+  chat: Chat!
+  createdAt: DateTimeISO!
+  fileName: String!
+  fileUrl: String!
+  id: ID!
+  message: Message!
+  mimeType: String!
+  role: String!
+}
+
+type GqlImagesList {
+  error: String
+  images: [GqlImage!]
+  nextPage: Float
+  total: Float
 }
 
 type GqlMessage {
@@ -220,6 +243,7 @@ type Query {
   appConfig: ApplicationConfig
   currentUser: User
   getActiveModels: [GqlModel!]!
+  getAllImages(input: GetImagesInput!): GqlImagesList!
   getChatById(id: ID!): Chat
   getChatMessages(input: GetMessagesInput!): GqlMessagesList!
   getChats(input: GetChatsInput): GqlChatsList!

@@ -5,7 +5,7 @@ import {
   BedrockModelServiceProvider,
   InvokeModelParamsRequest,
 } from "@/types/ai.types";
-import { MessageRole } from "@/entities/Message";
+import { MessageRole } from "@/types/ai.types";
 import { logger } from "@/utils/logger";
 
 type AnthropicMessageRole = "user" | "assistant";

@@ -1,9 +1,9 @@
 import { ObjectType, Field, ID } from "type-graphql";
 import { User } from "../../entities/User";
 import { Chat } from "../../entities/Chat";
-import { Message, MessageType } from "../../entities/Message";
+import { Message } from "../../entities/Message";
 import { Model } from "../../entities/Model";
-import { ServiceCostInfo } from "../../types/ai.types";
+import { MessageRole, MessageType } from "../../types/ai.types";
 
 @ObjectType()
 export class UserResponse {
@@ -189,4 +189,46 @@ export class SwitchModelResponse {
 
   @Field(() => Message, { nullable: true })
   message?: Message;
+}
+
+@ObjectType()
+export class GqlImage {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  fileName: string;
+
+  @Field()
+  fileUrl: string;
+
+  @Field()
+  mimeType: string;
+
+  @Field()
+  createdAt: Date;
+
+  @Field()
+  role: MessageRole;
+
+  @Field(() => Message)
+  message: Message;
+
+  @Field(() => Chat)
+  chat: Chat;
+}
+
+@ObjectType()
+export class GqlImagesList {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => [GqlImage], { nullable: true })
+  images?: GqlImage[];
+
+  @Field({ nullable: true })
+  total?: number;
+
+  @Field({ nullable: true })
+  nextPage?: number;
 }

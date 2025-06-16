@@ -1,6 +1,5 @@
 import { InputType, Field } from "type-graphql";
-import { MessageRole } from "../../entities/Message";
-import { ApiProvider, AuthProvider } from "../ai.types";
+import { ApiProvider, AuthProvider, MessageRole } from "../ai.types";
 
 @InputType()
 export class UpdateUserInput {
@@ -201,4 +200,13 @@ export class SwitchModelInput {
 
   @Field()
   modelId: string;
+}
+
+@InputType()
+export class GetImagesInput {
+  @Field({ nullable: true, defaultValue: 0 })
+  offset?: number;
+
+  @Field({ nullable: true, defaultValue: 20 })
+  limit?: number;
 }

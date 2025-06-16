@@ -69,6 +69,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const processCodeElements = useCallback(
     debounce(() => {
       if (!componentRef.current) return;
+
       componentRef.current.querySelectorAll("pre").forEach(pre => {
         if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
           const data = pre.querySelector(".code-data");
@@ -83,6 +84,14 @@ export const ChatMessage = (props: ChatMessageProps) => {
           block.appendChild(pre);
         }
       });
+
+      componentRef.current.querySelectorAll("img").forEach(img => {
+        if (!img?.classList?.contains("message-image")) {
+          img.classList.add("message-image");
+          const fileName = img.src.split("/").pop() || "";
+          img.setAttribute("data-file-name", fileName);
+        }
+      });
     }, 250),
     []
   );
@@ -90,7 +99,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
   useEffect(() => {
     if (streaming) return;
 
-    if (componentRef.current && role !== MessageRole.USER) {
+    if (componentRef.current && role !== MessageRole.ERROR) {
       const observer = new MutationObserver(processCodeElements);
       observer.observe(componentRef.current, { childList: true, subtree: true });
       processCodeElements(); // Initial call to inject code elements

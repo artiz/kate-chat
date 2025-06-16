@@ -24,10 +24,12 @@
   }
 
   :global img {
-    max-width: 460px;
+    max-width: 256px;
+    max-height: 256px;
     align-self: center;
     height: auto;
     margin: 0 auto;
+    cursor: pointer;
   }
 
   &.preview {
@@ -91,6 +93,7 @@
     margin: 0.5rem 0;
     padding: 1em;
     clip-path: none;
+    font-size: 90%;
     transition: all var(--theme-default-time) ease;
   }
 

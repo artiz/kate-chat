@@ -11,7 +11,7 @@ import {
   ServiceCostInfo,
   InvokeModelParamsRequest,
 } from "@/types/ai.types";
-import { MessageRole } from "@/entities/Message";
+import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";

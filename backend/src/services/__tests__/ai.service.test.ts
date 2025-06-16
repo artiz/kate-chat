@@ -1,11 +1,7 @@
 import { AIService } from "../ai.service";
-import { BedrockService } from "../bedrock/bedrock.service";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { MessageRole } from "../../entities/Message";
-import { ApiProvider, ModelMessage } from "../../types/ai.types";
+import { ApiProvider, MessageRole, ModelMessage } from "../../types/ai.types";
 import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
-import { log } from "console";
-import { logger } from "../../utils/logger";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {

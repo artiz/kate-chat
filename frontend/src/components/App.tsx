@@ -21,6 +21,7 @@ import { Chat } from "@/pages/Chat";
 import { CreateChat } from "@/pages/CreateChat";
 import { Models } from "@/pages/Models";
 import { Settings } from "@/pages/Settings";
+import { Library } from "@/pages/Library";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, logout } from "@/store/slices/authSlice";
@@ -120,6 +121,7 @@ const AppContent: React.FC = () => {
               <Route path="chat/new" element={<CreateChat />} />
               <Route path="models" element={<Models />} />
               <Route path="settings" element={<Settings onReloadAppData={refetchInitialData} />} />
+              <Route path="library" element={<Library />} />
             </Route>
 
             {/* Fallback route */}

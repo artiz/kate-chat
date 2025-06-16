@@ -6,7 +6,7 @@ import {
   InvokeModelParamsRequest,
   InvokeModelParamsResponse,
 } from "@/types/ai.types";
-import { MessageRole } from "@/entities/Message";
+import { MessageRole } from "@/types/ai.types";
 
 type CohereFinishReason = "COMPLETE | MAX_TOKENS | ERROR | ERROR_TOXIC";
 type CohereGeneration = {

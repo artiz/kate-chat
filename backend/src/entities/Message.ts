@@ -1,31 +1,9 @@
-import {
-  Entity,
-  ObjectIdColumn,
-  ObjectId,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  PrimaryColumn,
-  PrimaryGeneratedColumn,
-} from "typeorm";
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
-import { ModelMessageContent } from "@/types/ai.types";
+import { MessageRole, ModelMessageContent } from "@/types/ai.types";
 import { JSONTransformer } from "@/utils/db";
-
-export enum MessageRole {
-  USER = "user",
-  ASSISTANT = "assistant",
-  ERROR = "error",
-  SYSTEM = "system",
-}
-
-export enum MessageType {
-  MESSAGE = "message",
-  SYSTEM = "system",
-}
 
 @ObjectType()
 @Entity("messages")

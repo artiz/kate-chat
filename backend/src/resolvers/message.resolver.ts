@@ -1,14 +1,15 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID } from "type-graphql";
 import { Repository } from "typeorm";
-import { Message, MessageType, MessageRole } from "@/entities/Message";
+import { Message } from "@/entities/Message";
 import { Chat, Model } from "@/entities";
-import { CreateMessageInput, GetMessagesInput, SwitchModelInput } from "@/types/graphql/inputs";
+import { CreateMessageInput, GetMessagesInput, SwitchModelInput, GetImagesInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from "@/middleware/auth.middleware";
-import { GqlMessage, GqlMessagesList, SwitchModelResponse } from "@/types/graphql/responses";
+import { GqlMessage, GqlMessagesList, SwitchModelResponse, GqlImagesList, GqlImage } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { MessagesService } from "@/services/messages.service";
 import { BaseResolver } from "./base.resolver";
+import { MessageType } from "@/types/ai.types";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -91,6 +92,61 @@ export class MessageResolver extends BaseResolver {
     if (!message.chat) return null;
 
     return message;
+  }
+
+  @Query(() => GqlImagesList)
+  async getAllImages(@Arg("input") input: GetImagesInput, @Ctx() context: GraphQLContext): Promise<GqlImagesList> {
+    const token = await this.validateContextToken(context);
+    const { offset: skip = 0, limit: take = 50 } = input;
+
+    // Get all messages with images for the user
+    const messages = await this.messageRepository
+      .createQueryBuilder("message")
+      .leftJoinAndSelect("message.chat", "chat")
+      .leftJoinAndSelect("message.user", "user")
+      .where("chat.userId = :userId", { userId: token.userId })
+      .andWhere("message.jsonContent IS NOT NULL")
+      .orderBy("message.createdAt", "DESC")
+      .skip(skip)
+      .take(take)
+      .getMany();
+
+    // Extract images from jsonContent and create GqlImage objects
+    const images: GqlImage[] = [];
+
+    for (const message of messages) {
+      if (message.jsonContent) {
+        for (const content of message.jsonContent) {
+          if (content.contentType === "image" && content.fileName) {
+            images.push({
+              id: `${message.id}-${content.fileName}`,
+              fileName: content.fileName,
+              fileUrl: `/files/${content.fileName}`,
+              mimeType: content.mimeType || "image/jpeg",
+              role: message.role,
+              createdAt: message.createdAt,
+              message: message,
+              chat: message.chat!,
+            });
+          }
+        }
+      }
+    }
+
+    // Get total count
+    const totalMessages = await this.messageRepository
+      .createQueryBuilder("message")
+      .leftJoin("message.chat", "chat")
+      .where("chat.userId = :userId", { userId: token.userId })
+      .andWhere("message.jsonContent IS NOT NULL")
+      .getCount();
+
+    const nextPage = skip + take;
+    return {
+      images,
+      total: images.length,
+      nextPage: nextPage < totalMessages ? nextPage : undefined,
+    };
   }
 
   @Mutation(() => Message)

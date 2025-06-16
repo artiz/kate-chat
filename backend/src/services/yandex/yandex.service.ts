@@ -12,7 +12,7 @@ import {
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import axios from "axios";
-import { MessageRole } from "@/entities/Message";
+import { MessageRole } from "@/types/ai.types";
 import { YANDEX_FM_API_URL, YANDEX_MODELS } from "@/config/yandex";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";

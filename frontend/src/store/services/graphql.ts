@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
-import { Chat, Message } from "../slices/chatSlice";
+import { Chat, Message, MessageRole } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
 import { Application } from "express";
 
@@ -222,6 +222,32 @@ export const GET_CHAT_MESSAGES = gql`
   }
 `;
 
+export const GET_ALL_IMAGES = gql`
+  query GetAllImages($input: GetImagesInput!) {
+    getAllImages(input: $input) {
+      images {
+        id
+        fileName
+        fileUrl
+        mimeType
+        role
+        createdAt
+        message {
+          id
+          content
+        }
+        chat {
+          id
+          title
+        }
+      }
+      total
+      nextPage
+      error
+    }
+  }
+`;
+
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;
@@ -248,6 +274,37 @@ export interface GetChatMessagesResponse {
     total: number;
     hasMore: boolean;
   };
+}
+
+export interface LibraryImage {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  role: MessageRole;
+  mimeType: string;
+  createdAt: string;
+  message: {
+    id: string;
+    content: string;
+  };
+  chat: {
+    id: string;
+    title: string;
+  };
+}
+
+export interface GetAllImagesResponse {
+  getAllImages: {
+    images: LibraryImage[];
+    total: number;
+    nextPage?: number;
+    error?: string;
+  };
+}
+
+export interface GetImagesInput {
+  offset?: number;
+  limit?: number;
 }
 
 export interface ImageInput {

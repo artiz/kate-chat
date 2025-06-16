@@ -14,6 +14,7 @@ import {
 import { ok } from "@/utils/assert";
 import { ChatMessage } from "./ChatMessage";
 import { DeleteMessageModal } from "./DeleteMessageModal";
+import { ImageModal } from "@/components/modal/ImagePopup";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -34,6 +35,13 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   // State for delete confirmation modal
   const [messageToDelete, setMessageToDelete] = useState<string | undefined>();
+  const [imageToShow, setImageToShow] = useState<string | undefined>();
+  const [imageFileName, setImageFileName] = useState<string | undefined>();
+
+  const resetSelectedImage = () => {
+    setImageToShow(undefined);
+    setImageFileName(undefined);
+  };
 
   // Delete message mutation
   const [deleteMessage, { loading: deletingMessage }] = useMutation<DeleteMessageResponse>(DELETE_MESSAGE_MUTATION, {
@@ -131,7 +139,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
       // copy code block
       if (target.classList.contains("code-copy-btn")) {
-        const data = target.parentElement?.nextElementSibling?.querySelector(".code-data") as HTMLElement;
+        const data = target.parentElement?.parentElement?.nextElementSibling?.querySelector(
+          ".code-data"
+        ) as HTMLElement;
         if (data) {
           const code = decodeURIComponent(data.dataset.code || "").trim();
           navigator.clipboard.writeText(code);
@@ -187,9 +197,11 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       }
       // code toggle btn
       else if (target.classList.contains("message-image")) {
-        // TODO: Implement image popup logic
-        // openImagePopup((target as HTMLImageElement).src);
-        target.parentElement?.classList.toggle("closed");
+        const fileName = target.dataset["fileName"];
+        const imageUrl = (target as HTMLImageElement).src;
+
+        setImageToShow(imageUrl);
+        setImageFileName(fileName);
       } else if (target.classList.contains("switch-model-btn")) {
         const messageId = target.dataset["messageId"];
         const modelId = target.dataset["modelId"];
@@ -263,6 +275,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         onDeleteSingle={handleDeleteSingleMessage}
         onDeleteWithFollowing={handleDeleteMessageAndFollowing}
       />
+
+      {/* Image Preview Modal */}
+      <ImageModal fileName={imageFileName ?? ""} fileUrl={imageToShow ?? ""} onClose={resetSelectedImage} />
     </>
   );
 };

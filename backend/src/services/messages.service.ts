@@ -5,12 +5,12 @@ import { PubSub } from "graphql-subscriptions";
 import { In, MoreThan, MoreThanOrEqual, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
-import { Message, MessageRole, MessageType } from "../entities/Message";
+import { Message } from "../entities/Message";
 import { AIService } from "./ai.service";
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Chat, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
-import { InvokeModelParamsRequest, ModelMessageContent } from "@/types/ai.types";
+import { InvokeModelParamsRequest, MessageRole, MessageType, ModelMessageContent } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
@@ -168,7 +168,14 @@ export class MessagesService {
       .orderBy("message.createdAt", "ASC")
       .getMany();
 
-    // TODO: remove files if they are
+    const files =
+      originalMessage?.jsonContent
+        ?.filter(content => content.fileName)
+        .map(content => content.fileName)
+        .filter(notEmpty) || [];
+
+    await this.removeFiles(connection, files, chat);
+
     originalMessage.content = ""; // Clear content to indicate it's being regenerated
     originalMessage.modelId = model.modelId; // Update to the new model
     originalMessage.modelName = model.name; // Update model name
@@ -279,25 +286,7 @@ export class MessagesService {
 
     // Remove image files from disk and update chat.files
     if (deletedImageFiles.length > 0) {
-      let s3Service = new S3Service(connection);
-
-      // Remove the files from the chat.files array
-      if (chat.files?.length) {
-        chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
-        await this.chatRepository.save(chat);
-      }
-
-      // Delete the files from S3
-      // TODO: move this to a background job
-      await Promise.all(
-        deletedImageFiles.map(async fileName => {
-          try {
-            await s3Service.deleteFile(fileName);
-          } catch (error) {
-            logger.error(`Failed to delete file ${fileName}: ${error}`);
-          }
-        })
-      );
+      await this.removeFiles(connection, deletedImageFiles, chat);
     }
 
     return result; // Return all deleted message IDs including the original
@@ -498,5 +487,29 @@ export class MessagesService {
     };
 
     this.aiService.streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming);
+  }
+
+  protected async removeFiles(connection: ConnectionParams, deletedImageFiles: string[], chat: Chat): Promise<void> {
+    if (!deletedImageFiles || deletedImageFiles.length === 0) return;
+
+    let s3Service = new S3Service(connection);
+
+    // Remove the files from the chat.files array
+    if (chat.files?.length) {
+      chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
+      await this.chatRepository.save(chat);
+    }
+
+    // Delete the files from S3
+    // TODO: move this to a background job
+    await Promise.all(
+      deletedImageFiles.map(async fileName => {
+        try {
+          await s3Service.deleteFile(fileName);
+        } catch (error) {
+          logger.error(`Failed to delete file ${fileName}: ${error}`);
+        }
+      })
+    );
   }
 }

@@ -4,14 +4,12 @@ import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from "../middleware/auth.middleware";
-import { User } from "../entities/User";
 import { GqlChatsList } from "../types/graphql/responses";
-import { AIService } from "../services/ai.service";
-import { Message, MessageRole } from "@/entities/Message";
-import { MessageEvent } from "http";
+import { Message } from "@/entities/Message";
 import { ok } from "assert";
 import { BaseResolver } from "./base.resolver";
 import { S3Service } from "@/services/s3.service";
+import { MessageRole } from "@/types/ai.types";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {

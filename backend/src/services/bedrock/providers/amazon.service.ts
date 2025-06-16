@@ -6,7 +6,7 @@ import {
   InvokeModelParamsRequest,
   InvokeModelParamsResponse,
 } from "@/types/ai.types";
-import { MessageRole } from "@/entities/Message";
+import { MessageRole } from "@/types/ai.types";
 import { logger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Stack, Button, NavLink, Divider, ScrollArea } from "@mantine/core";
-import { IconPlus, IconSettings, IconRobot } from "@tabler/icons-react";
+import { IconPlus, IconSettings, IconRobot, IconPhoto } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
 
@@ -65,6 +65,15 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
             leftSection={<IconSettings size={16} />}
             active={location.pathname === "/settings"}
             onClick={() => navigate("/settings")}
+          />
+          <NavLink
+            label="Library"
+            leftSection={<IconPhoto size={16} />}
+            active={location.pathname === "/library"}
+            onClick={() => {
+              navbarToggle?.();
+              navigate("/library");
+            }}
           />
         </Stack>
         <Divider my="xs" />
