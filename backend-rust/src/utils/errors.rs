@@ -79,6 +79,7 @@ impl<'r> Responder<'r, 'static> for AppError {
     fn respond_to(self, _: &'r Request<'_>) -> Result<Response<'static>, Status> {
         let (status, message) = match self {
             AppError::Auth(_) => (Status::Unauthorized, self.to_string()),
+            AppError::Jwt(_) => (Status::Unauthorized, self.to_string()),
             AppError::NotFound(_) => (Status::NotFound, self.to_string()),
             AppError::Validation(_) => (Status::BadRequest, self.to_string()),
             _ => (Status::InternalServerError, self.to_string()),

@@ -5,7 +5,6 @@ use async_graphql::{Context, Object, Result};
 use crate::models::*;
 use crate::graphql::GraphQLContext;
 use crate::schema::*;
-use crate::config::AppConfig;
 use crate::utils::jwt;
 
 #[derive(Default)]
@@ -17,7 +16,6 @@ impl Mutation {
     /// Register a new user
     async fn register(&self, ctx: &Context<'_>, input: RegisterInput) -> Result<AuthResponse> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
-        let config = ctx.data::<AppConfig>()?;
         let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
 
         // Check if user already exists
@@ -52,7 +50,7 @@ impl Mutation {
             .first(&mut conn)
             .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
 
-        let token = jwt::create_token(&user.id, &config.jwt_secret)?;
+        let token = jwt::create_token(&user.id, &gql_ctx.config.jwt_secret)?;
 
         Ok(AuthResponse { token, user })
     }
@@ -60,7 +58,6 @@ impl Mutation {
     /// Login user
     async fn login(&self, ctx: &Context<'_>, input: LoginInput) -> Result<AuthResponse> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
-        let config = ctx.data::<AppConfig>()?;
         let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
 
         let user: User = users::table
@@ -79,7 +76,7 @@ impl Mutation {
             return Err(async_graphql::Error::new("Invalid credentials"));
         }
 
-        let token = jwt::create_token(&user.id, &config.jwt_secret)?;
+        let token = jwt::create_token(&user.id, &gql_ctx.config.jwt_secret)?;
 
         Ok(AuthResponse { token, user })
     }
@@ -190,7 +187,6 @@ impl Mutation {
     async fn create_message(&self, ctx: &Context<'_>, input: CreateMessageInput) -> Result<Message> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let _config = ctx.data::<AppConfig>()?;
         let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
 
         // Verify chat belongs to user
@@ -277,7 +273,6 @@ impl Mutation {
     async fn test_model(&self, ctx: &Context<'_>, input: TestModelInput) -> Result<Message> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let _config = ctx.data::<AppConfig>()?;
 
         // TODO: Implement actual model testing
         let test_content = input.text.unwrap_or_else(|| "2+2=".to_string());

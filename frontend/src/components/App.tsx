@@ -70,7 +70,7 @@ const AppContent: React.FC = () => {
       if (
         "status" in error &&
         (error.status === "PARSING_ERROR" || error.status === "CUSTOM_ERROR") &&
-        (error.error === ERROR_UNAUTHORIZED || error.error === ERROR_FORBIDDEN)
+        (error.error?.includes(ERROR_UNAUTHORIZED) || error.error?.includes(ERROR_FORBIDDEN))
       ) {
         dispatch(logout());
         navigate("/login");

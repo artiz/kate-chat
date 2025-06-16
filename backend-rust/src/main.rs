@@ -8,7 +8,6 @@ mod services;
 mod controllers;
 mod utils;
 
-use futures_util::stream::All;
 use log::debug;
 use rocket::{Build, Rocket, fairing::AdHoc, State};
 use rocket_cors::{AllowedOrigins, CorsOptions};
@@ -26,16 +25,23 @@ use crate::database::DbPool;
 async fn graphql_handler(
     schema: &State<GraphQLSchema>,
     db_pool: &State<DbPool>,
+    config: &State<AppConfig>,
     request: GraphQLRequest,
     optional_user: OptionalUser,
 ) -> GraphQLResponse {
-    let ctx = GraphQLContext::new(db_pool.inner().clone(), optional_user.0);
+    let ctx = GraphQLContext::new(db_pool.inner().clone(), config.inner().clone(), optional_user.0);
+
     request.data(ctx).execute(schema.inner()).await
 }
 
 #[rocket::get("/graphql")]
 async fn graphql_query_handler() -> &'static str {
     "GraphQL Playground - use POST /graphql for queries"
+}
+
+#[rocket::options("/graphql")]
+async fn graphql_options_handler() -> rocket::http::Status {
+    rocket::http::Status::Ok
 }
 
 #[rocket::launch]
@@ -68,7 +74,7 @@ async fn rocket() -> Rocket<Build> {
         }))
         .manage(config)
         .manage(schema)
-        .mount("/", rocket::routes![graphql_handler, graphql_query_handler])
+        .mount("/", rocket::routes![graphql_handler, graphql_query_handler, graphql_options_handler])
         .mount("/auth", auth::routes())
         .mount("/files", files::routes())
         .mount("/api/files", files::routes())

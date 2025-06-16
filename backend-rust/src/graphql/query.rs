@@ -4,7 +4,6 @@ use async_graphql::{Context, Object, Result, InputObject};
 use crate::models::*;
 use crate::graphql::GraphQLContext;
 use crate::schema::*;
-use crate::config::AppConfig;
 
 #[derive(Default)]
 pub struct Query;
@@ -50,7 +49,8 @@ impl Query {
 
     /// Get application configuration
     async fn app_config(&self, ctx: &Context<'_>) -> Result<ApplicationConfig> {
-        let config: &AppConfig = ctx.data::<AppConfig>()?;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let config = &gql_ctx.config;
         
         Ok(ApplicationConfig {
             demo_mode: config.demo_mode,
@@ -294,9 +294,8 @@ impl Query {
     async fn refresh_token(&self, ctx: &Context<'_>) -> Result<AuthResponse> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let config = ctx.data::<AppConfig>()?;
 
-        let token = crate::utils::jwt::create_token(&user.id, &config.jwt_secret)?;
+        let token = crate::utils::jwt::create_token(&user.id, &gql_ctx.config.jwt_secret)?;
 
         Ok(AuthResponse {
             token,
