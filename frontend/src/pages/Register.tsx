@@ -23,6 +23,14 @@ const RegisterWithReCaptcha: React.FC = () => {
   );
 };
 
+interface RegisterFormProps {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+}
+
 // Main registration form component
 const RegisterForm: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -55,7 +63,7 @@ const RegisterForm: React.FC = () => {
   });
 
   // Form definition
-  const form = useForm({
+  const form = useForm<RegisterFormProps>({
     initialValues: {
       email: "",
       password: "",
@@ -64,11 +72,12 @@ const RegisterForm: React.FC = () => {
       lastName: "",
     },
     validate: {
-      email: value => (/^\S+@\S+$/.test(value) ? null : "Invalid email"),
-      password: value => (value.length < 8 ? "Password must be at least 8 characters" : null),
-      confirmPassword: (value, values) => (value !== values.password ? "Passwords do not match" : null),
-      firstName: value => (value.length === 0 ? "First name is required" : null),
-      lastName: value => (value.length === 0 ? "Last name is required" : null),
+      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : "Invalid email"),
+      password: (value: string) => (value.length < 8 ? "Password must be at least 8 characters" : null),
+      confirmPassword: (value: string, values: RegisterFormProps) =>
+        value !== values.password ? "Passwords do not match" : null,
+      firstName: (value: string) => (value.length === 0 ? "First name is required" : null),
+      lastName: (value: string) => (value.length === 0 ? "Last name is required" : null),
     },
   });
 
@@ -124,7 +133,13 @@ const RegisterForm: React.FC = () => {
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
-            <TextInput label="Email" placeholder="you@example.com" required {...form.getInputProps("email")} />
+            <TextInput
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              required
+              {...form.getInputProps("email")}
+            />
 
             <Group grow>
               <TextInput

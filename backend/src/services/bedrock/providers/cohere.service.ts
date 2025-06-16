@@ -25,7 +25,7 @@ type CohereResponse = {
 };
 export class CohereService implements BedrockModelServiceProvider<CohereResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     // Convert messages to Cohere format
     let prompt = systemPrompt ? `System: ${systemPrompt}\n` : "";
 

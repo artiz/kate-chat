@@ -95,7 +95,7 @@ export function ChatSettings({
         </div>
 
         <div className={classes.settingItem}>
-          <Group position="apart" mb={5}>
+          <Group p="apart" mb={5}>
             <Text size="sm" fw={500}>
               Max Tokens
             </Text>
@@ -109,11 +109,11 @@ export function ChatSettings({
         </div>
 
         <div className={classes.settingItem}>
-          <Group position="apart" mb={5}>
+          <Group p="apart" mb={5}>
             <Text size="sm" fw={500}>
               Top P
             </Text>
-            <Group spacing={5}>
+            <Group gap={5}>
               <Text size="sm" c="dimmed">
                 {topPValue?.toFixed(2)}
               </Text>

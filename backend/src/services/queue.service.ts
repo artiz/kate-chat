@@ -2,11 +2,12 @@ import { PubSub } from "graphql-subscriptions";
 import { createClient, RedisClientType } from "redis";
 
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
-import { Message, MessageRole } from "@/entities/Message";
+import { Message } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { WebSocket } from "ws";
 import { ok } from "@/utils/assert";
 import { QUEUE_MESSAGE_EXPIRATION_SEC, REDIS_URL } from "@/config/application";
+import { MessageRole } from "@/types/ai.types";
 
 const logger = createLogger(__filename);
 

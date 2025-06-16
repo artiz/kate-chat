@@ -22,7 +22,7 @@ import {
   Paper,
   Divider,
 } from "@mantine/core";
-import { DatePicker } from "@mantine/dates";
+import { DatePicker, DateStringValue } from "@mantine/dates";
 import {
   IconBrandOpenai,
   IconRocket,
@@ -404,11 +404,16 @@ export const ModelsDashboard: React.FC = () => {
               value={costStartDate}
               date={costStartDate}
               highlightToday
-              onChange={d => d && setCostStartDate(d)}
-              onDateChange={d => d && setCostStartDate(d)}
+              onChange={(d: string) => d && setCostStartDate(new Date(d))}
+              onDateChange={(d: DateStringValue) => d && setCostStartDate(new Date(d))}
               maxDate={today}
             />
-            <DatePicker value={costEndDate} highlightToday onChange={d => d && setCostEndDate(d)} maxDate={today} />
+            <DatePicker
+              value={costEndDate}
+              highlightToday
+              onChange={(d: string) => d && setCostEndDate(new Date(d))}
+              maxDate={today}
+            />
           </Group>
 
           <Button

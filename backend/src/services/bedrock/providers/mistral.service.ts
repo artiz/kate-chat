@@ -2,7 +2,6 @@ import {
   ModelMessage,
   ModelResponse,
   BedrockModelServiceProvider,
-  StreamCallbacks,
   InvokeModelParamsRequest,
   InvokeModelParamsResponse,
 } from "@/types/ai.types";
@@ -23,7 +22,7 @@ type MistralResponse = {
 
 export class MistralService implements BedrockModelServiceProvider<MistralResponse> {
   async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
-    const { systemPrompt, messages, modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     ok(messages.length);
 
     // Convert messages to Mistral format

@@ -1,8 +1,9 @@
-import { Message, MessageRole } from "../entities/Message";
+import { Message } from "../entities/Message";
 import {
   AIModelInfo,
   ApiProvider,
   InvokeModelParamsRequest,
+  MessageRole,
   ModelMessage,
   ModelResponse,
   ProviderInfo,
