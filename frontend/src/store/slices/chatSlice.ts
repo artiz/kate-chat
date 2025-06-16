@@ -32,6 +32,7 @@ export interface Chat {
   updatedAt: string;
   modelId?: string;
   isPristine?: boolean;
+  isPinned?: boolean;
   messagesCount: number;
   lastBotMessage?: string;
   lastBotMessageId?: string;

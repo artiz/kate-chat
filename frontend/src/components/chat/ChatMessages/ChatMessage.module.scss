@@ -10,7 +10,7 @@
   padding: var(--mb-padding, var(--mantine-spacing-sm));
   border-radius: var(--mantine-radius-md);
 
-  margin-top: var(--mb-margin, var(--mantine-spacing-xs));
+  margin-top: var(--mantine-spacing-xs);
 
   .htmlBlock {
     display: flex;
@@ -42,8 +42,8 @@
   }
 
   :global table {
-    margin-top: var(--mb-margin, var(--mantine-spacing-md));
-    margin-bottom: var(--mb-margin, var(--mantine-spacing-md));
+    margin-top: var(--mantine-spacing-md);
+    margin-bottom: var(--mantine-spacing-md);
     border-spacing: 0;
 
     td,

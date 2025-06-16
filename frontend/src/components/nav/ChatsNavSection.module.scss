@@ -14,3 +14,14 @@
     opacity: 1;
   }
 }
+
+.chatsBlock {
+  margin-top: var(--mantine-spacing-sm);
+
+  .chatsBlockLabel {
+    font-weight: 600;
+    font-size: 80%;
+    margin-bottom: 0.1em;
+    color: var(--mantine-color-dark-4);
+  }
+}
