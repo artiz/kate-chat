@@ -7,8 +7,9 @@ mod middleware;
 mod services;
 mod controllers;
 mod utils;
+mod websocket;
 
-use tracing::{info, debug, warn, instrument};
+use tracing::{info, debug, warn, error, instrument};
 use rocket::{Build, Rocket, fairing::AdHoc, State};
 use rocket_cors::{AllowedOrigins, CorsOptions};
 use rocket::config::{Config};
@@ -21,6 +22,7 @@ use crate::graphql::{create_schema, GraphQLContext, GraphQLSchema};
 use crate::middleware::auth::OptionalUser;
 use crate::database::DbPool;
 use crate::utils::logger::init_logging;
+use crate::websocket::WebSocketServer;
 
 #[rocket::post("/graphql", data = "<request>", format = "application/json")]
 #[instrument(skip(schema, db_pool, config, request), fields(user_id = ?optional_user.0.as_ref().map(|u| &u.id)))]
@@ -81,6 +83,18 @@ async fn rocket() -> Rocket<Build> {
         .expect("Error creating CORS fairing");
 
     let schema = create_schema();
+    let db_pool = establish_connection().await;
+
+    // Start WebSocket server for GraphQL subscriptions
+    let ws_server = WebSocketServer::new(schema.clone());
+    let ws_port = config.port + 1; // Use next port for WebSocket server
+    
+    info!("Starting WebSocket server on port {}", ws_port);
+    tokio::spawn(async move {
+        if let Err(e) = ws_server.start(ws_port).await {
+            error!("WebSocket server error: {}", e);
+        }
+    });
 
     let rocket_config = Config {
          port: config.port,
@@ -91,11 +105,9 @@ async fn rocket() -> Rocket<Build> {
     
     rocket::custom(rocket_config)
         .attach(cors)
-        .attach(AdHoc::on_ignite("Database", |rocket| async {
-            info!("Establishing database connection...");
-            let db = establish_connection().await;
-            info!("Database connection established");
-            rocket.manage(db)
+        .attach(AdHoc::on_ignite("Database", move |rocket| async move {
+            info!("Database connection already established");
+            rocket.manage(db_pool)
         }))
         .attach(AdHoc::on_liftoff("Server Started", |_| Box::pin(async {
             info!("🚀 Kate Chat Backend server has started successfully!");

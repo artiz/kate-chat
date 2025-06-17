@@ -31,7 +31,6 @@ diesel::table! {
         model_name -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
-        user_name -> Nullable<Text>,
     }
 }
 

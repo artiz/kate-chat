@@ -85,6 +85,31 @@ pub struct GqlModel {
     pub updated_at: NaiveDateTime,
 }
 
+impl GqlModel {
+    pub fn from_model(model: &Model, user: User) -> Self {
+        Self {
+            id: model.id.clone(),
+            name: model.name.clone(),
+            description: model.description.clone(),
+            model_id: model.model_id.clone(),
+            api_provider: model.api_provider.clone(),
+            provider: model.provider.clone(),
+            is_active: model.is_active,
+            is_custom: model.is_custom,
+            supports_text_in: model.supports_text_in,
+            supports_text_out: model.supports_text_out,
+            supports_image_in: model.supports_image_in,
+            supports_image_out: model.supports_image_out,
+            supports_embeddings_in: model.supports_embeddings_in,
+            supports_embeddings_out: model.supports_embeddings_out,
+            supports_streaming: model.supports_streaming,
+            user,
+            created_at: model.created_at,
+            updated_at: model.updated_at,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlModelsList {
     pub models: Vec<GqlModel>,

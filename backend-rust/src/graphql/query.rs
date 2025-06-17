@@ -232,26 +232,7 @@ impl Query {
 
         let gql_models: Vec<GqlModel> = models_result
             .into_iter()
-            .map(|model| GqlModel {
-                id: model.id,
-                name: model.name,
-                description: model.description,
-                model_id: model.model_id,
-                api_provider: model.api_provider,
-                provider: model.provider,
-                is_active: model.is_active,
-                is_custom: model.is_custom,
-                supports_text_in: model.supports_text_in,
-                supports_text_out: model.supports_text_out,
-                supports_image_in: model.supports_image_in,
-                supports_image_out: model.supports_image_out,
-                supports_embeddings_in: model.supports_embeddings_in,
-                supports_embeddings_out: model.supports_embeddings_out,
-                supports_streaming: model.supports_streaming,
-                user: user.clone(),
-                created_at: model.created_at,
-                updated_at: model.updated_at,
-            })
+            .map(|model| GqlModel::from_model(&model, user.clone()))
             .collect();
 
         let total_count = gql_models.len() as i32;
@@ -278,26 +259,7 @@ impl Query {
 
         let gql_models: Vec<GqlModel> = models_result
             .into_iter()
-            .map(|model| GqlModel {
-                id: model.id,
-                name: model.name,
-                description: model.description,
-                model_id: model.model_id,
-                api_provider: model.api_provider,
-                provider: model.provider,
-                is_active: model.is_active,
-                is_custom: model.is_custom,
-                supports_text_in: model.supports_text_in,
-                supports_text_out: model.supports_text_out,
-                supports_image_in: model.supports_image_in,
-                supports_image_out: model.supports_image_out,
-                supports_embeddings_in: model.supports_embeddings_in,
-                supports_embeddings_out: model.supports_embeddings_out,
-                supports_streaming: model.supports_streaming,
-                user: user.clone(),
-                created_at: model.created_at,
-                updated_at: model.updated_at,
-            })
+            .map(|model| GqlModel::from_model(&model, user.clone()))
             .collect();
 
         Ok(gql_models)
@@ -380,27 +342,8 @@ impl Query {
                 .filter(models::id.eq(&new_model.id))
                 .first(&mut conn)
                 .map_err(|e| AppError::Database(e.to_string()))?;
-            
-            gql_models.push(GqlModel {
-                id: saved_model.id,
-                name: saved_model.name,
-                description: saved_model.description,
-                model_id: saved_model.model_id,
-                api_provider: saved_model.api_provider,
-                provider: saved_model.provider,
-                is_active: saved_model.is_active,
-                is_custom: saved_model.is_custom,
-                supports_text_in: saved_model.supports_text_in,
-                supports_text_out: saved_model.supports_text_out,
-                supports_image_in: saved_model.supports_image_in,
-                supports_image_out: saved_model.supports_image_out,
-                supports_embeddings_in: saved_model.supports_embeddings_in,
-                supports_embeddings_out: saved_model.supports_embeddings_out,
-                supports_streaming: saved_model.supports_streaming,
-                user: user.clone(),
-                created_at: saved_model.created_at,
-                updated_at: saved_model.updated_at,
-            });
+
+            gql_models.push(GqlModel::from_model(&saved_model, user.clone()));
         }
         
         let total_count = gql_models.len() as i32;

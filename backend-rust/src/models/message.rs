@@ -34,6 +34,16 @@ impl From<&str> for MessageRole {
     }
 }
 
+impl From<MessageRole> for String {
+    fn from(role: MessageRole) -> Self {
+        match role {
+            MessageRole::Assistant => "assistant".to_string(),
+            MessageRole::System => "system".to_string(),
+            MessageRole::User => "user".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, SimpleObject)]
 #[diesel(table_name = messages)]
 pub struct Message {
@@ -46,7 +56,6 @@ pub struct Message {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub user_name: Option<String>,
 }
 
 impl Message {
@@ -71,7 +80,6 @@ pub struct NewMessage {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub user_name: Option<String>,
 }
 
 impl NewMessage {
@@ -88,7 +96,6 @@ impl NewMessage {
             id: Uuid::new_v4().to_string(),
             chat_id,
             user_id,
-            user_name: None, // User name can be set later if needed
             content,
             role,
             model_id,
@@ -124,7 +131,6 @@ pub struct GqlMessage  {
     pub chat_id: String,
     pub user_id: Option<String>,
     pub user: Option<User>,
-    pub user_name: Option<String>,
     pub content: String,
     pub role: String,
     pub model_id: String,
@@ -140,7 +146,6 @@ impl From<Message> for GqlMessage {
             chat_id: message.chat_id,
             user_id: message.user_id,
             user: None,
-            user_name: message.user_name,
             content: message.content,
             role: message.role,
             model_id: message.model_id,
@@ -160,7 +165,32 @@ pub struct GqlMessagesList {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone)]
+pub enum MessageType {
+    Message,
+    System,
+}
+
+impl From<MessageType> for String {
+    fn from(msg_type: MessageType) -> Self {
+        match msg_type {
+            MessageType::Message => "message".to_string(),
+            MessageType::System => "system".to_string(),
+        }
+    }
+}
+
+impl From<String> for MessageType {
+    fn from(msg_type: String) -> Self {
+        match msg_type.as_str() {
+            "message" => MessageType::Message,
+            "system" => MessageType::System,
+            &_ => todo!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct GqlNewMessage {
     pub message: Option<Message>,
     pub error: Option<String>,

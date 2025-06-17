@@ -46,6 +46,7 @@ esbuild
     define: {
       "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
       "process.env.APP_API_URL": JSON.stringify(process.env.APP_API_URL),
+      "process.env.APP_WS_URL": JSON.stringify(process.env.APP_WS_URL),
       "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
     },
     metafile: true,
