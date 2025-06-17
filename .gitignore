@@ -10,4 +10,7 @@ tsconfig.tsbuildinfo
 
 # data
 backend/katechat.sqlite
+backend-rust/katechat.sqlite
 
+# Rust
+backend-rust/target/
