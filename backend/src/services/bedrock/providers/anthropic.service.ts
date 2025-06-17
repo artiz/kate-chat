@@ -104,7 +104,9 @@ export class AnthropicService implements BedrockModelServiceProvider<AnthropicRe
       };
     });
 
-    const params = {
+    logger.debug({ modelId }, "Call Anthropic model");
+
+    return {
       modelId,
       body: JSON.stringify({
         anthropic_version: "bedrock-2023-05-31",
@@ -114,11 +116,6 @@ export class AnthropicService implements BedrockModelServiceProvider<AnthropicRe
         temperature,
       }),
     };
-
-    logger.debug({ modelId }, "Call Anthropic model");
-
-    // This part will be moved to the base service
-    return { params };
   }
 
   parseResponse(responseBody: AnthropicResponese, request: InvokeModelParamsRequest): ModelResponse {

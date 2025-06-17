@@ -94,10 +94,8 @@ export interface StreamCallbacks {
 }
 
 export type InvokeModelParamsResponse = {
-  params: {
-    modelId: string;
-    body: string;
-  };
+  modelId: string;
+  body: string;
 };
 
 export type InvokeModelParamsRequest = {

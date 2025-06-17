@@ -50,8 +50,9 @@ export class MistralService implements BedrockModelServiceProvider<MistralRespon
     }
 
     mistralMessages.push(`[INST]${parseMessageContent(lastUserMessage)}[/INST]`);
+    logger.debug({ modelId }, "Call Mistral model");
 
-    const params = {
+    return {
       modelId,
       body: JSON.stringify({
         prompt: mistralMessages.join("\n"),
@@ -60,10 +61,6 @@ export class MistralService implements BedrockModelServiceProvider<MistralRespon
         temperature,
       }),
     };
-
-    logger.debug({ modelId }, "Call Mistral model");
-
-    return { params };
   }
 
   parseResponse(responseBody: MistralResponse, request: InvokeModelParamsRequest): ModelResponse {

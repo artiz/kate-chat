@@ -203,39 +203,33 @@ export class BedrockService extends BaseProviderService {
     if (provider == "anthropic") {
       const { AnthropicService } = await import("./providers/anthropic.service");
       const anthropicService = new AnthropicService();
-      const result = await anthropicService.getInvokeModelParams(request);
+      params = await anthropicService.getInvokeModelParams(request);
       service = anthropicService;
-      params = result.params;
     } else if (provider == "amazon") {
       const { AmazonService } = await import("./providers/amazon.service");
       const amazonService = new AmazonService();
-      const result = await amazonService.getInvokeModelParams(request);
+      params = await amazonService.getInvokeModelParams(request);
       service = amazonService;
-      params = result.params;
     } else if (provider == "ai21") {
       const { AI21Service } = await import("./providers/ai21.service");
       const ai21Service = new AI21Service();
-      const result = await ai21Service.getInvokeModelParams(request);
+      params = await ai21Service.getInvokeModelParams(request);
       service = ai21Service;
-      params = result.params;
     } else if (provider == "cohere") {
       const { CohereService } = await import("./providers/cohere.service");
       const cohereService = new CohereService();
-      const result = await cohereService.getInvokeModelParams(request);
+      params = await cohereService.getInvokeModelParams(request);
       service = cohereService;
-      params = result.params;
     } else if (provider == "meta") {
       const { MetaService } = await import("./providers/meta.service");
       const metaService = new MetaService();
-      const result = await metaService.getInvokeModelParams(request);
+      params = await metaService.getInvokeModelParams(request);
       service = metaService;
-      params = result.params;
     } else if (provider == "mistral") {
       const { MistralService } = await import("./providers/mistral.service");
       const mistralService = new MistralService();
-      const result = await mistralService.getInvokeModelParams(request);
+      params = await mistralService.getInvokeModelParams(request);
       service = mistralService;
-      params = result.params;
     } else {
       throw new Error(`Unsupported model provider: ${provider}`);
     }

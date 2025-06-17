@@ -31,7 +31,7 @@ export const ChatList: React.FC = () => {
   if (noActiveProviders) {
     return (
       <Alert color="yellow" title="No Active Providers">
-        <Text size="sm">
+        <div>
           No active AI providers connected.
           <ol>
             <li>
@@ -42,7 +42,7 @@ export const ChatList: React.FC = () => {
             </li>
             <li>After that, you can create a new chat</li>
           </ol>
-        </Text>
+        </div>
       </Alert>
     );
   }

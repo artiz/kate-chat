@@ -121,7 +121,7 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
 
       logger.debug({ modelId, textGenerationConfig: body.textGenerationConfig }, "Call Amazon Titan model");
 
-      return { params };
+      return params;
     }
     // #endregion
 
@@ -205,14 +205,12 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
       body.system = [{ text: systemPrompt }];
     }
 
-    const params = {
+    logger.debug({ modelId, inferenceConfig: body.inferenceConfig }, "Call Amazon model");
+
+    return {
       modelId,
       body: JSON.stringify(body),
     };
-
-    logger.debug({ modelId, inferenceConfig: body.inferenceConfig }, "Call Amazon model");
-
-    return { params };
   }
 
   parseResponse(

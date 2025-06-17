@@ -175,7 +175,7 @@ export class UpdateModelStatusInput {
 @InputType()
 export class TestModelInput {
   @Field()
-  modelId: string;
+  id: string;
 
   @Field({ defaultValue: "2+2=" })
   text: string;

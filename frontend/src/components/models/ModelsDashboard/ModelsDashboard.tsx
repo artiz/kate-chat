@@ -244,7 +244,7 @@ export const ModelsDashboard: React.FC = () => {
     testModel({
       variables: {
         input: {
-          modelId: currentTestingModel.id,
+          id: currentTestingModel.id,
           text: testText,
         },
       },

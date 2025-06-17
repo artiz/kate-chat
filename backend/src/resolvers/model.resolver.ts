@@ -195,14 +195,14 @@ export class ModelResolver extends BaseResolver {
     const user = await this.validateContextToken(context);
 
     try {
-      const { modelId, text } = input;
+      const { id, text } = input;
 
       // Get the repository
       const modelRepository = getRepository(Model);
 
       // Find the model by ID
       const model = await modelRepository.findOne({
-        where: { id: modelId, user: { id: user.userId } },
+        where: { id, user: { id: user.userId } },
       });
 
       if (!model) throw new Error("Model not found");
@@ -224,11 +224,12 @@ export class ModelResolver extends BaseResolver {
       });
 
       logger.debug({ message, response }, "Test model inference");
+
       return {
-        id: "",
+        id: "00000000-0000-0000-0000-000000000000",
         role: MessageRole.ASSISTANT,
         content: response.content,
-        modelId,
+        modelId: model.modelId,
         modelName: model.name,
         createdAt: timestamp,
         updatedAt: timestamp,

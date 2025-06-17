@@ -70,7 +70,7 @@ export class AI21Service implements BedrockModelServiceProvider<A21InvokeModelRe
 
     logger.debug({ modelId, prompt }, "Call A21 model");
 
-    return { params };
+    return params;
   }
 
   parseResponse(responseBody: A21InvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
