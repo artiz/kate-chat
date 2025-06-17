@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct CohereRequestMessage {
@@ -114,5 +117,58 @@ impl CohereProvider {
 
     pub fn parse_response(response: CohereResponse) -> Result<String, String> {
         Ok(response.text)
+    }
+
+    pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
+        let mut chat_history = Vec::new();
+        let mut current_message = String::new();
+
+        for (i, msg) in request.messages.iter().enumerate() {
+            if i == request.messages.len() - 1 && msg.role == AIMessageRole::User {
+                current_message = msg.content.clone();
+            } else {
+                let role = match msg.role {
+                    AIMessageRole::Assistant => "CHATBOT",
+                    AIMessageRole::System => "SYSTEM",
+                    _ => "USER",
+                };
+                chat_history.push(serde_json::json!({
+                    "role": role,
+                    "content": msg.content
+                }));
+            }
+        }
+
+        let body = serde_json::json!({
+            "message": current_message,
+            "chatHistory": chat_history,
+            "maxTokens": request.max_tokens.unwrap_or(4096),
+            "temperature": request.temperature.unwrap_or(0.7),
+            "p": request.top_p.unwrap_or(0.9),
+            "preamble": request.system_prompt
+        });
+
+        Ok(body)
+    }
+
+    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+        let content = response
+            .get("text")
+            .and_then(|text| text.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let usage = response.get("usage").map(|u| Usage {
+            input_tokens: u.get("inputTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            output_tokens: u.get("outputTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            total_tokens: None,
+        });
+
+        Ok(ModelResponse {
+            content,
+            model_id: model_id.to_string(),
+            usage,
+            finish_reason: response.get("finishReason").and_then(|r| r.as_str()).map(|s| s.to_string()),
+        })
     }
 }

@@ -51,8 +51,9 @@ pub fn init_logging() {
         let console_layer = fmt::layer()
             .pretty()
             .with_timer(SystemTime)
-            .with_target(true)
-            .with_thread_ids(true)
+            .with_target(false)
+            // .with_span_events(FmtSpan::ENTER | FmtSpan::EXIT)
+            .with_thread_ids(false)
             .with_writer(io::stdout);
 
         tracing_subscriber::registry()

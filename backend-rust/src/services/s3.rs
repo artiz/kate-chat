@@ -34,7 +34,7 @@ impl S3Service {
         }
 
         if let (Some(access_key), Some(secret_key)) = 
-            (&self.config.aws_access_key_id, &self.config.aws_secret_access_key) {
+            (&self.config.aws_bedrock_access_key_id, &self.config.aws_bedrock_secret_access_key) {
             let credentials = aws_credential_types::Credentials::new(
                 access_key,
                 secret_key,

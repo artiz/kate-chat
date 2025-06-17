@@ -4,20 +4,21 @@ use aws_sdk_bedrockruntime::{Client as BedrockRuntimeClient, primitives::Blob};
 use aws_sdk_bedrock::{Client as BedrockClient, types::ModelModality};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::error::Error;
 use chrono::{DateTime};
+use log::error;
 
 use crate::config::AppConfig;
 use crate::services::ai::*;
 use crate::utils::errors::AppError;
-// TODO: Uncomment the following imports and use providers
-// use crate::services::bedrock::providers::{
-//     anthropic::AnthropicProvider,
-//     amazon::AmazonProvider,
-//     ai21::AI21Provider,
-//     cohere::CohereProvider,
-//     meta::MetaProvider,
-//     mistral::MistralProvider,
-// };
+use crate::services::bedrock::providers::{
+    anthropic::AnthropicProvider,
+    amazon::AmazonProvider,
+    ai21::AI21Provider,
+    cohere::CohereProvider,
+    meta::MetaProvider,
+    mistral::MistralProvider,
+};
 
 #[allow(dead_code)]
 pub struct BedrockService {
@@ -54,12 +55,14 @@ impl BedrockService {
     async fn build_aws_config(&self) -> Result<aws_config::SdkConfig, AppError> {
         let mut config_builder = aws_config::defaults(BehaviorVersion::v2025_01_17());
 
-        if let Some(region) = &self.config.aws_region {
-            config_builder = config_builder.region(Region::new(region.clone()));
+        if let Some(region) = &self.config.aws_bedrock_region {
+            config_builder = config_builder
+                .region(Region::new(region.clone()))
+                .profile_name(&self.config.aws_bedrock_profile_name);
         }
 
         if let (Some(access_key), Some(secret_key)) = 
-            (&self.config.aws_access_key_id, &self.config.aws_secret_access_key) {
+            (&self.config.aws_bedrock_access_key_id, &self.config.aws_bedrock_secret_access_key) {
             let credentials = aws_sdk_bedrockruntime::config::Credentials::new(
                 access_key,
                 secret_key,
@@ -81,329 +84,7 @@ impl BedrockService {
         }
     }
 
-    fn format_anthropic_request(&self, request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let mut messages = Vec::new();
-        let mut system_message = request.system_prompt.clone();
 
-        for msg in &request.messages {
-            let role = match msg.role {
-                MessageRole::User => "user",
-                MessageRole::Assistant => "assistant",
-                MessageRole::System => {
-                    system_message = Some(msg.content.clone());
-                    continue;
-                }
-            };
-
-            messages.push(serde_json::json!({
-                "role": role,
-                "content": msg.content
-            }));
-        }
-
-        let mut body = serde_json::json!({
-            "messages": messages,
-            "max_tokens": request.max_tokens.unwrap_or(4096),
-            "anthropic_version": "bedrock-2023-05-31"
-        });
-
-        if let Some(temp) = request.temperature {
-            body["temperature"] = temp.into();
-        }
-
-        if let Some(top_p) = request.top_p {
-            body["top_p"] = top_p.into();
-        }
-
-        if let Some(system) = system_message {
-            body["system"] = system.into();
-        }
-
-        Ok(body)
-    }
-
-    fn format_amazon_request(&self, request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let mut input_text = String::new();
-
-        if let Some(system) = &request.system_prompt {
-            input_text.push_str(&format!("System: {}\n\n", system));
-        }
-
-        for msg in &request.messages {
-            match msg.role {
-                MessageRole::User => input_text.push_str(&format!("Human: {}\n\n", msg.content)),
-                MessageRole::Assistant => input_text.push_str(&format!("Assistant: {}\n\n", msg.content)),
-                MessageRole::System => input_text.push_str(&format!("System: {}\n\n", msg.content)),
-            }
-        }
-
-        input_text.push_str("Assistant:");
-
-        let body = serde_json::json!({
-            "inputText": input_text,
-            "textGenerationConfig": {
-                "maxTokenCount": request.max_tokens.unwrap_or(4096),
-                "temperature": request.temperature.unwrap_or(0.7),
-                "topP": request.top_p.unwrap_or(0.9)
-            }
-        });
-
-        Ok(body)
-    }
-
-    fn parse_anthropic_response(&self, response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
-        let content = response
-            .get("content")
-            .and_then(|c| c.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|item| item.get("text"))
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("input_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("output_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            total_tokens: None,
-        });
-
-        Ok(ModelResponse {
-            content,
-            model_id: model_id.to_string(),
-            usage,
-            finish_reason: response.get("stop_reason").and_then(|r| r.as_str()).map(|s| s.to_string()),
-        })
-    }
-
-    fn parse_amazon_response(&self, response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
-        let content = response
-            .get("results")
-            .and_then(|r| r.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|item| item.get("outputText"))
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        Ok(ModelResponse {
-            content,
-            model_id: model_id.to_string(),
-            usage: None,
-            finish_reason: None,
-        })
-    }
-
-    fn format_ai21_request(&self, request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let messages = request.messages.iter().map(|msg| {
-            serde_json::json!({
-                "role": match msg.role {
-                    MessageRole::User => "user",
-                    MessageRole::Assistant => "assistant",
-                    MessageRole::System => "system",
-                },
-                "text": msg.content
-            })
-        }).collect::<Vec<_>>();
-
-        let body = serde_json::json!({
-            "messages": messages,
-            "maxTokens": request.max_tokens.unwrap_or(4096),
-            "temperature": request.temperature.unwrap_or(0.7),
-            "topP": request.top_p.unwrap_or(0.9),
-            "system": request.system_prompt
-        });
-
-        Ok(body)
-    }
-
-    fn parse_ai21_response(&self, response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
-        let content = response
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|choice| choice.get("message"))
-            .and_then(|msg| msg.get("content"))
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("promptTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("completionTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            total_tokens: u.get("totalTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-        });
-
-        Ok(ModelResponse {
-            content,
-            model_id: model_id.to_string(),
-            usage,
-            finish_reason: response
-                .get("choices")
-                .and_then(|c| c.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|choice| choice.get("finishReason"))
-                .and_then(|r| r.as_str())
-                .map(|s| s.to_string()),
-        })
-    }
-
-    fn format_cohere_request(&self, request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let mut chat_history = Vec::new();
-        let mut current_message = String::new();
-
-        for (i, msg) in request.messages.iter().enumerate() {
-            if i == request.messages.len() - 1 && msg.role == MessageRole::User {
-                current_message = msg.content.clone();
-            } else {
-                let role = match msg.role {
-                    MessageRole::Assistant => "CHATBOT",
-                    MessageRole::System => "SYSTEM",
-                    _ => "USER",
-                };
-                chat_history.push(serde_json::json!({
-                    "role": role,
-                    "content": msg.content
-                }));
-            }
-        }
-
-        let body = serde_json::json!({
-            "message": current_message,
-            "chatHistory": chat_history,
-            "maxTokens": request.max_tokens.unwrap_or(4096),
-            "temperature": request.temperature.unwrap_or(0.7),
-            "p": request.top_p.unwrap_or(0.9),
-            "preamble": request.system_prompt
-        });
-
-        Ok(body)
-    }
-
-    fn parse_cohere_response(&self, response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
-        let content = response
-            .get("text")
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("inputTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("outputTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            total_tokens: None,
-        });
-
-        Ok(ModelResponse {
-            content,
-            model_id: model_id.to_string(),
-            usage,
-            finish_reason: response.get("finishReason").and_then(|r| r.as_str()).map(|s| s.to_string()),
-        })
-    }
-
-    fn format_meta_request(&self, request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let mut prompt = String::new();
-
-        if let Some(system) = &request.system_prompt {
-            prompt.push_str(&format!("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>", system));
-        } else {
-            prompt.push_str("<|begin_of_text|>");
-        }
-
-        for msg in &request.messages {
-            let role = match msg.role {
-                MessageRole::Assistant => "assistant",
-                MessageRole::System => "system",
-                _ => "user",
-            };
-            prompt.push_str(&format!(
-                "<|start_header_id|>{}<|end_header_id|>\n\n{}<|eot_id|>",
-                role, msg.content
-            ));
-        }
-
-        prompt.push_str("<|start_header_id|>assistant<|end_header_id|>\n\n");
-
-        let body = serde_json::json!({
-            "prompt": prompt,
-            "max_gen_len": request.max_tokens.unwrap_or(4096),
-            "temperature": request.temperature.unwrap_or(0.7),
-            "top_p": request.top_p.unwrap_or(0.9)
-        });
-
-        Ok(body)
-    }
-
-    fn parse_meta_response(&self, response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
-        let content = response
-            .get("generation")
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        Ok(ModelResponse {
-            content,
-            model_id: model_id.to_string(),
-            usage: Some(Usage {
-                input_tokens: response.get("prompt_token_count").and_then(|t| t.as_i64()).map(|t| t as i32),
-                output_tokens: response.get("generation_token_count").and_then(|t| t.as_i64()).map(|t| t as i32),
-                total_tokens: None,
-            }),
-            finish_reason: response.get("stop_reason").and_then(|r| r.as_str()).map(|s| s.to_string()),
-        })
-    }
-
-    fn format_mistral_request(&self, request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let messages = request.messages.iter().map(|msg| {
-            serde_json::json!({
-                "role": match msg.role {
-                    MessageRole::Assistant => "assistant",
-                    MessageRole::System => "system",
-                    _ => "user",
-                },
-                "content": msg.content
-            })
-        }).collect::<Vec<_>>();
-
-        let body = serde_json::json!({
-            "messages": messages,
-            "max_tokens": request.max_tokens.unwrap_or(4096),
-            "temperature": request.temperature.unwrap_or(0.7),
-            "top_p": request.top_p.unwrap_or(0.9)
-        });
-
-        Ok(body)
-    }
-
-    fn parse_mistral_response(&self, response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
-        let content = response
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|choice| choice.get("message"))
-            .and_then(|msg| msg.get("content"))
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("prompt_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("completion_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            total_tokens: u.get("total_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-        });
-
-        Ok(ModelResponse {
-            content,
-            model_id: model_id.to_string(),
-            usage,
-            finish_reason: response
-                .get("choices")
-                .and_then(|c| c.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|choice| choice.get("finish_reason"))
-                .and_then(|r| r.as_str())
-                .map(|s| s.to_string()),
-        })
-    }
 }
 
 #[async_trait]
@@ -415,17 +96,20 @@ impl AIProviderService for BedrockService {
         let provider = self.get_model_provider(&request.model_id);
         
         let body = match provider.as_str() {
-            "anthropic" => self.format_anthropic_request(&request)?,
-            "amazon" => self.format_amazon_request(&request)?,
-            "ai21" => self.format_ai21_request(&request)?,
-            "cohere" => self.format_cohere_request(&request)?,
-            "meta" => self.format_meta_request(&request)?,
-            "mistral" => self.format_mistral_request(&request)?,
+            "anthropic" => AnthropicProvider::format_request(&request)?,
+            "amazon" => AmazonProvider::format_request(&request)?,
+            "ai21" => AI21Provider::format_request(&request)?,
+            "cohere" => CohereProvider::format_request(&request)?,
+            "meta" => MetaProvider::format_request(&request)?,
+            "mistral" => MistralProvider::format_request(&request)?,
             _ => return Err(AppError::Validation(format!("Unsupported provider: {}", provider))),
         };
 
         let body_bytes = serde_json::to_vec(&body)
-            .map_err(|e| AppError::Internal(format!("Failed to serialize request: {}", e)))?;
+            .map_err(|e| {
+                error!("Failed to serialize Bedrock request for model {}: {:?}", request.model_id, e);
+                AppError::Internal(format!("Failed to serialize request: {}", e))
+            })?;
 
         let response = client
             .invoke_model()
@@ -433,19 +117,25 @@ impl AIProviderService for BedrockService {
             .body(Blob::new(body_bytes))
             .send()
             .await
-            .map_err(|e| AppError::Aws(format!("Bedrock invoke failed: {}", e)))?;
+            .map_err(|e| {
+                error!("Bedrock invoke failed for model {}: {:?}", request.model_id, e);
+                AppError::Aws(format!("Bedrock invoke failed: {}", e.source().unwrap_or(&e).to_string()))
+            })?;
 
         let response_body = response.body().as_ref();
         let response_json: Value = serde_json::from_slice(response_body)
-            .map_err(|e| AppError::Internal(format!("Failed to parse response: {}", e)))?;
+            .map_err(|e| {
+                error!("Failed to parse Bedrock response for model {}: {:?}. Response body: {:?}", request.model_id, e, String::from_utf8_lossy(response_body));
+                AppError::Internal(format!("Failed to parse response: {}", e))
+            })?;
 
         match provider.as_str() {
-            "anthropic" => self.parse_anthropic_response(response_json, &request.model_id),
-            "amazon" => self.parse_amazon_response(response_json, &request.model_id),
-            "ai21" => self.parse_ai21_response(response_json, &request.model_id),
-            "cohere" => self.parse_cohere_response(response_json, &request.model_id),
-            "meta" => self.parse_meta_response(response_json, &request.model_id),
-            "mistral" => self.parse_mistral_response(response_json, &request.model_id),
+            "anthropic" => AnthropicProvider::parse_model_response(response_json, &request.model_id),
+            "amazon" => AmazonProvider::parse_model_response(response_json, &request.model_id),
+            "ai21" => AI21Provider::parse_model_response(response_json, &request.model_id),
+            "cohere" => CohereProvider::parse_model_response(response_json, &request.model_id),
+            "meta" => MetaProvider::parse_model_response(response_json, &request.model_id),
+            "mistral" => MistralProvider::parse_model_response(response_json, &request.model_id),
             _ => Err(AppError::Validation(format!("Unsupported provider: {}", provider))),
         }
     }
@@ -487,7 +177,10 @@ impl AIProviderService for BedrockService {
             .list_foundation_models()
             .send()
             .await
-            .map_err(|e| AppError::Aws(format!("Failed to list models: {}", e)))?;
+            .map_err(|e| {
+                error!("Failed to list Bedrock models: {:?}", e);
+                AppError::Aws(format!("Failed to list models: {}", e))
+            })?;
 
         let mut models = HashMap::new();
 
@@ -529,11 +222,11 @@ impl AIProviderService for BedrockService {
         let mut details = HashMap::new();
         details.insert("configured".to_string(), "true".to_string());
 
-        if let Some(region) = &self.config.aws_region {
+        if let Some(region) = &self.config.aws_bedrock_region {
             details.insert("region".to_string(), region.clone());
         }
 
-        let is_connected = self.config.aws_access_key_id.is_some() || 
+        let is_connected = self.config.aws_bedrock_access_key_id.is_some() || 
                           std::env::var("AWS_PROFILE").is_ok();
 
         if test_connection && is_connected {

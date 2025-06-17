@@ -351,6 +351,7 @@ impl Mutation {
                     id: uuid::Uuid::new_v4().to_string(),
                     chat_id: "test".to_string(),
                     user_id: Some(user.id.clone()),
+                    user_name: format!("{} {}", user.first_name, user.last_name).into(),
                     content: response.content,
                     role: "assistant".to_string(),
                     model_id: model.model_id.clone(),

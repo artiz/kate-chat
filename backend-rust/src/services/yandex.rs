@@ -176,7 +176,9 @@ impl AIProviderService for YandexService {
 
     async fn get_info(&self, test_connection: bool) -> Result<ProviderInfo, AppError> {
         let mut details = HashMap::new();
-        let is_connected = self.config.yandex_api_key.is_some() && self.config.yandex_folder_id.is_some();
+
+        let is_connected = self.config.yandex_api_key.is_some() 
+            && self.config.yandex_folder_id.is_some();
         
         details.insert("configured".to_string(), is_connected.to_string());
         

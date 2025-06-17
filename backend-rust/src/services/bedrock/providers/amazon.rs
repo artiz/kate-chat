@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, ModelResponse, MessageRole as AIMessageRole};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct AmazonRequestMessage {
@@ -291,5 +293,52 @@ impl AmazonProvider {
         } else {
             Err("No results found in Titan response".to_string())
         }
+    }
+
+    pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
+        let mut input_text = String::new();
+
+        if let Some(system) = &request.system_prompt {
+            input_text.push_str(&format!("System: {}\n\n", system));
+        }
+
+        for msg in &request.messages {
+            match msg.role {
+                AIMessageRole::User => input_text.push_str(&format!("Human: {}\n\n", msg.content)),
+                AIMessageRole::Assistant => input_text.push_str(&format!("Assistant: {}\n\n", msg.content)),
+                AIMessageRole::System => input_text.push_str(&format!("System: {}\n\n", msg.content)),
+            }
+        }
+
+        input_text.push_str("Assistant:");
+
+        let body = serde_json::json!({
+            "inputText": input_text,
+            "textGenerationConfig": {
+                "maxTokenCount": request.max_tokens.unwrap_or(4096),
+                "temperature": request.temperature.unwrap_or(0.7),
+                "topP": request.top_p.unwrap_or(0.9)
+            }
+        });
+
+        Ok(body)
+    }
+
+    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+        let content = response
+            .get("results")
+            .and_then(|r| r.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|item| item.get("outputText"))
+            .and_then(|text| text.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        Ok(ModelResponse {
+            content,
+            model_id: model_id.to_string(),
+            usage: None,
+            finish_reason: None,
+        })
     }
 }

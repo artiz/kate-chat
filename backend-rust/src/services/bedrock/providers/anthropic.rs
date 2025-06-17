@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct AnthropicRequestMessage {
@@ -140,5 +142,70 @@ impl AnthropicProvider {
         } else {
             Err("No content blocks found".to_string())
         }
+    }
+
+    pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
+        let mut messages = Vec::new();
+        let mut system_message = request.system_prompt.clone();
+
+        for msg in &request.messages {
+            let role = match msg.role {
+                AIMessageRole::User => "user",
+                AIMessageRole::Assistant => "assistant",
+                AIMessageRole::System => {
+                    system_message = Some(msg.content.clone());
+                    continue;
+                }
+            };
+
+            messages.push(serde_json::json!({
+                "role": role,
+                "content": msg.content
+            }));
+        }
+
+        let mut body = serde_json::json!({
+            "messages": messages,
+            "max_tokens": request.max_tokens.unwrap_or(4096),
+            "anthropic_version": "bedrock-2023-05-31"
+        });
+
+        if let Some(temp) = request.temperature {
+            body["temperature"] = temp.into();
+        }
+
+        if let Some(top_p) = request.top_p {
+            body["top_p"] = top_p.into();
+        }
+
+        if let Some(system) = system_message {
+            body["system"] = system.into();
+        }
+
+        Ok(body)
+    }
+
+    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+        let content = response
+            .get("content")
+            .and_then(|c| c.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|item| item.get("text"))
+            .and_then(|text| text.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let usage = response.get("usage").map(|u| Usage {
+            input_tokens: u.get("input_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            output_tokens: u.get("output_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            total_tokens: None,
+        });
+
+        Ok(ModelResponse {
+            content,
+            model_id: model_id.to_string(),
+            usage,
+            finish_reason: response.get("stop_reason").and_then(|r| r.as_str()).map(|s| s.to_string()),
+        })
     }
 }

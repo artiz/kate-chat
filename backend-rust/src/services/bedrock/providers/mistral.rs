@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct MistralRequestMessage {
@@ -23,11 +26,11 @@ pub struct MistralRequest {
 #[derive(Debug, Deserialize)]
 pub struct MistralUsage {
     #[serde(rename = "prompt_tokens")]
-    pub prompt_tokens: Option<u32>,
+    pub prompt_tokens: Option<i32>,
     #[serde(rename = "completion_tokens")]
-    pub completion_tokens: Option<u32>,
+    pub completion_tokens: Option<i32>,
     #[serde(rename = "total_tokens")]
-    pub total_tokens: Option<u32>,
+    pub total_tokens: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,11 +116,55 @@ impl MistralProvider {
         }
     }
 
-    pub fn parse_response(response: MistralResponse) -> Result<String, String> {
-        if let Some(choice) = response.choices.first() {
-            Ok(choice.message.content.clone())
-        } else {
-            Err("No choices found in Mistral response".to_string())
-        }
+    pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
+        let messages = request.messages.iter().map(|msg| {
+            serde_json::json!({
+                "role": match msg.role {
+                    AIMessageRole::Assistant => "assistant",
+                    AIMessageRole::System => "system",
+                    _ => "user",
+                },
+                "content": msg.content
+            })
+        }).collect::<Vec<_>>();
+
+        let body = serde_json::json!({
+            "messages": messages,
+            "max_tokens": request.max_tokens.unwrap_or(4096),
+            "temperature": request.temperature.unwrap_or(0.7),
+            "top_p": request.top_p.unwrap_or(0.9)
+        });
+
+        Ok(body)
+    }
+
+    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+        let mistral_response: MistralResponse = serde_json::from_value(response)
+            .map_err(|e| AppError::Json(format!("Failed to parse Mistral response: {}", e)))?; 
+
+        let choice = mistral_response
+            .choices
+            .first();
+            
+        let content = choice
+            .and_then(|choice| Some(choice.message.content.as_str()))
+            .unwrap_or("")
+            .to_string();
+        
+
+        let usage = mistral_response.usage.map(|u| Usage {
+            input_tokens: u.prompt_tokens,
+            output_tokens: u.completion_tokens,
+            total_tokens: u.total_tokens,
+        });
+
+        Ok(ModelResponse {
+            content,
+            model_id: model_id.to_string(),
+            usage,
+            finish_reason: choice
+                .and_then(|c| c.finish_reason.clone())
+                .map(|s| s.to_string()),
+        })
     }
 }

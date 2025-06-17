@@ -274,18 +274,19 @@ impl AIService {
                 Ok(response)
             }
             Err(e) => {
-                let duration = start_time.elapsed();
-                error!(
-                    "Model invocation failed for provider {:?} after {}ms: {}", 
-                    api_provider,
-                    duration.as_millis(),
-                    e
-                );
+                // let duration = start_time.elapsed();
+                // error!(
+                //     "Model invocation failed for provider {:?} after {}ms: {}", 
+                //     api_provider,
+                //     duration.as_millis(),
+                //     e
+                // );
                 Err(e)
             }
         }
     }
 
+    #[allow(dead_code)]
     pub async fn invoke_model_stream<F, C, E>(
         &self,
         api_provider: ApiProvider,

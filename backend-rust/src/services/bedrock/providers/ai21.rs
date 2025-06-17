@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct AI21RequestMessage {
@@ -116,5 +119,59 @@ impl AI21Provider {
         } else {
             Err("No choices found in AI21 response".to_string())
         }
+    }
+
+    pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
+        let messages = request.messages.iter().map(|msg| {
+            serde_json::json!({
+                "role": match msg.role {
+                    AIMessageRole::User => "user",
+                    AIMessageRole::Assistant => "assistant",
+                    AIMessageRole::System => "system",
+                },
+                "text": msg.content
+            })
+        }).collect::<Vec<_>>();
+
+        let body = serde_json::json!({
+            "messages": messages,
+            "maxTokens": request.max_tokens.unwrap_or(4096),
+            "temperature": request.temperature.unwrap_or(0.7),
+            "topP": request.top_p.unwrap_or(0.9),
+            "system": request.system_prompt
+        });
+
+        Ok(body)
+    }
+
+    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+        let content = response
+            .get("choices")
+            .and_then(|c| c.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|choice| choice.get("message"))
+            .and_then(|msg| msg.get("content"))
+            .and_then(|text| text.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let usage = response.get("usage").map(|u| Usage {
+            input_tokens: u.get("promptTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            output_tokens: u.get("completionTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            total_tokens: u.get("totalTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+        });
+
+        Ok(ModelResponse {
+            content,
+            model_id: model_id.to_string(),
+            usage,
+            finish_reason: response
+                .get("choices")
+                .and_then(|c| c.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|choice| choice.get("finishReason"))
+                .and_then(|r| r.as_str())
+                .map(|s| s.to_string()),
+        })
     }
 }

@@ -10,9 +10,10 @@ pub struct AppConfig {
     pub cors_origin: Option<String>,
     
     // AWS Configuration
-    pub aws_region: Option<String>,
-    pub aws_access_key_id: Option<String>,
-    pub aws_secret_access_key: Option<String>,
+    pub aws_bedrock_region: Option<String>,
+    pub aws_bedrock_profile_name: String,
+    pub aws_bedrock_access_key_id: Option<String>,
+    pub aws_bedrock_secret_access_key: Option<String>,
     
     // OAuth Configuration
     pub google_client_id: Option<String>,
@@ -58,17 +59,19 @@ impl AppConfig {
                 .unwrap_or(4000),
             cors_origin: env::var("CORS_ORIGIN").ok(),
             
-            // AWS
-            aws_region: env::var("AWS_REGION").ok(),
-            aws_access_key_id: env::var("AWS_ACCESS_KEY_ID").ok(),
-            aws_secret_access_key: env::var("AWS_SECRET_ACCESS_KEY").ok(),
+            // AWS Bedrock
+            aws_bedrock_region: env::var("AWS_BEDROCK_REGION").ok(),
+            aws_bedrock_profile_name: env::var("AWS_BEDROCK_PROFILE")
+                .unwrap_or_else(|_| "default".to_string()),
+            aws_bedrock_access_key_id: env::var("AWS_BEDROCK_ACCESS_KEY_ID").ok(),
+            aws_bedrock_secret_access_key: env::var("AWS_BEDROCK_SECRET_ACCESS_KEY").ok(),
 
             // OpenAI
             openai_api_key: env::var("OPENAI_API_KEY").ok(),
             
             // Yandex
-            yandex_api_key: env::var("YANDEX_API_KEY").ok(),
-            yandex_folder_id: env::var("YANDEX_FOLDER_ID").ok(),
+            yandex_api_key: env::var("YANDEX_FM_API_KEY").ok(),
+            yandex_folder_id: env::var("YANDEX_FM_API_FOLDER").ok(),
             
             // OAuth
             google_client_id: env::var("GOOGLE_CLIENT_ID").ok(),

@@ -5,7 +5,7 @@ use uuid::Uuid;
 use async_graphql::{SimpleObject, InputObject, Enum};
 
 use crate::schema::messages;
-use crate::models::{Chat};
+use crate::models::{Chat, User};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Enum, Copy, Eq)]
 pub enum MessageRole {
@@ -46,6 +46,7 @@ pub struct Message {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub user_name: Option<String>,
 }
 
 impl Message {
@@ -70,6 +71,7 @@ pub struct NewMessage {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub user_name: Option<String>,
 }
 
 impl NewMessage {
@@ -86,6 +88,7 @@ impl NewMessage {
             id: Uuid::new_v4().to_string(),
             chat_id,
             user_id,
+            user_name: None, // User name can be set later if needed
             content,
             role,
             model_id,
@@ -115,10 +118,42 @@ pub struct ImageInput {
     pub mime_type: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct GqlMessage  {
+    pub id: String,
+    pub chat_id: String,
+    pub user_id: Option<String>,
+    pub user: Option<User>,
+    pub user_name: Option<String>,
+    pub content: String,
+    pub role: String,
+    pub model_id: String,
+    pub model_name: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
+impl From<Message> for GqlMessage {
+    fn from(message: Message) -> Self {
+        Self {
+            id: message.id,
+            chat_id: message.chat_id,
+            user_id: message.user_id,
+            user: None,
+            user_name: message.user_name,
+            content: message.content,
+            role: message.role,
+            model_id: message.model_id,
+            model_name: message.model_name,
+            created_at: message.created_at,
+            updated_at: message.updated_at,
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlMessagesList {
-    pub messages: Vec<Message>,
+    pub messages: Vec<GqlMessage>,
     pub chat: Option<Chat>,
     pub total: Option<i32>,
     pub has_more: bool,
@@ -126,7 +161,7 @@ pub struct GqlMessagesList {
 }
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
-pub struct GqlMessage {
+pub struct GqlNewMessage {
     pub message: Option<Message>,
     pub error: Option<String>,
     pub streaming: Option<bool>,

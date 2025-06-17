@@ -23,6 +23,9 @@ pub enum AppError {
     
     #[error("Bad request: {0}")]
     BadRequest(String),
+
+    #[error("JSON error: {0}")]
+    Json(String),
     
     #[error("Not found: {0}")]
     #[allow(dead_code)]
@@ -47,6 +50,7 @@ impl Clone for AppError {
             AppError::Bcrypt(msg) => AppError::Bcrypt(msg.clone()),
             AppError::Validation(msg) => AppError::Validation(msg.clone()),
             AppError::BadRequest(msg) => AppError::BadRequest(msg.clone()),
+            AppError::Json(msg) => AppError::Json(msg.clone()),
             AppError::NotFound(msg) => AppError::NotFound(msg.clone()),
             AppError::Internal(msg) => AppError::Internal(msg.clone()),
             AppError::Aws(msg) => AppError::Aws(msg.clone()),

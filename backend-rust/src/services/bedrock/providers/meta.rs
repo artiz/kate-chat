@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
+use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct MetaRequestMessage {
@@ -112,5 +115,57 @@ impl MetaProvider {
 
     pub fn parse_response(response: MetaResponse) -> Result<String, String> {
         Ok(response.generation)
+    }
+
+    pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
+        let mut prompt = String::new();
+
+        if let Some(system) = &request.system_prompt {
+            prompt.push_str(&format!("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>", system));
+        } else {
+            prompt.push_str("<|begin_of_text|>");
+        }
+
+        for msg in &request.messages {
+            let role = match msg.role {
+                AIMessageRole::Assistant => "assistant",
+                AIMessageRole::System => "system",
+                _ => "user",
+            };
+            prompt.push_str(&format!(
+                "<|start_header_id|>{}<|end_header_id|>\n\n{}<|eot_id|>",
+                role, msg.content
+            ));
+        }
+
+        prompt.push_str("<|start_header_id|>assistant<|end_header_id|>\n\n");
+
+        let body = serde_json::json!({
+            "prompt": prompt,
+            "max_gen_len": request.max_tokens.unwrap_or(4096),
+            "temperature": request.temperature.unwrap_or(0.7),
+            "top_p": request.top_p.unwrap_or(0.9)
+        });
+
+        Ok(body)
+    }
+
+    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+        let content = response
+            .get("generation")
+            .and_then(|text| text.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        Ok(ModelResponse {
+            content,
+            model_id: model_id.to_string(),
+            usage: Some(Usage {
+                input_tokens: response.get("prompt_token_count").and_then(|t| t.as_i64()).map(|t| t as i32),
+                output_tokens: response.get("generation_token_count").and_then(|t| t.as_i64()).map(|t| t as i32),
+                total_tokens: None,
+            }),
+            finish_reason: response.get("stop_reason").and_then(|r| r.as_str()).map(|s| s.to_string()),
+        })
     }
 }

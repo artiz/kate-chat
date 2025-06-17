@@ -169,7 +169,7 @@ impl Query {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(GqlMessagesList {
-            messages: messages_result,
+            messages: messages_result.into_iter().map(|msg| GqlMessage::from(msg)).collect(),
             chat,
             total: Some(total as i32),
             has_more: (offset + limit) < total as i32,
