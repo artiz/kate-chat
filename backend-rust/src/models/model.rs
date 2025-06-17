@@ -30,30 +30,8 @@ pub struct Model {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = models)]
-pub struct NewModel {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub model_id: String,
-    pub api_provider: String,
-    pub provider: Option<String>,
-    pub is_active: bool,
-    pub is_custom: bool,
-    pub supports_text_in: bool,
-    pub supports_text_out: bool,
-    pub supports_image_in: bool,
-    pub supports_image_out: bool,
-    pub supports_embeddings_in: bool,
-    pub supports_embeddings_out: bool,
-    pub supports_streaming: bool,
-    pub user_id: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-}
 
-impl NewModel {
+impl Model {
     pub fn new(
         name: String,
         description: String,
@@ -136,6 +114,13 @@ pub struct UpdateModelStatusInput {
     pub is_active: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct TestModelInput {
+    pub id: String,
+    #[graphql(default = "2+2=")]
+    pub text: String,
+}
+
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlCostsInfo {
@@ -156,4 +141,27 @@ pub struct GqlServiceCostInfo {
 pub struct GqlAmount {
     pub amount: f64,
     pub currency: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Insertable)]
+#[diesel(table_name = models)]
+pub struct NewModel {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub model_id: String,
+    pub api_provider: String,
+    pub provider: Option<String>,
+    pub is_active: bool,
+    pub is_custom: bool,
+    pub supports_text_in: bool,
+    pub supports_text_out: bool,
+    pub supports_image_in: bool,
+    pub supports_image_out: bool,
+    pub supports_embeddings_in: bool,
+    pub supports_embeddings_out: bool,
+    pub supports_streaming: bool,
+    pub user_id: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }

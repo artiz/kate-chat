@@ -1,11 +1,13 @@
 use rocket::{Request, request::{self, FromRequest}, http::Status};
 use diesel::prelude::*;
+use tracing::{debug, warn};
 
 use crate::database::DbPool;
 use crate::models::User;
 use crate::schema::users;
 use crate::utils::jwt::{verify_token, extract_token_from_header};
 use crate::config::AppConfig;
+use crate::{log_security_event};
 
 pub struct AuthenticatedUser(pub User);
 
@@ -26,17 +28,28 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
 
         let auth_header = match req.headers().get_one("Authorization") {
             Some(header) => header,
-            None => return request::Outcome::Forward(Status::Unauthorized),
+            None => {
+                debug!("No Authorization header found in request");
+                return request::Outcome::Forward(Status::Unauthorized);
+            }
         };
 
         let token = match extract_token_from_header(auth_header) {
             Some(token) => token,
-            None => return request::Outcome::Error((Status::Unauthorized, "Invalid auth header format")),
+            None => {
+                warn!("Invalid Authorization header format");
+                log_security_event!("invalid_auth_header_format",);
+                return request::Outcome::Error((Status::Unauthorized, "Invalid auth header format"));
+            }
         };
 
         let claims = match verify_token(token, &config.jwt_secret) {
             Ok(claims) => claims,
-            Err(_) => return request::Outcome::Error((Status::Unauthorized, "Invalid token")),
+            Err(e) => {
+                warn!("Token verification failed: {}", e);
+                log_security_event!("token_verification_failed", error = %e);
+                return request::Outcome::Error((Status::Unauthorized, "Invalid token"));
+            }
         };
 
         let mut conn = match db_pool.get() {
@@ -48,14 +61,22 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
             .filter(users::id.eq(&claims.sub))
             .first::<User>(&mut conn)
         {
-            Ok(user) => user,
-            Err(_) => return request::Outcome::Error((Status::Unauthorized, "User not found")),
+            Ok(user) => {
+                debug!("Authentication successful for user: {}", user.id);
+                user
+            },
+            Err(e) => {
+                warn!("User not found in database for ID: {}, error: {}", claims.sub, e);
+                log_security_event!("user_not_found", user_id = %claims.sub);
+                return request::Outcome::Error((Status::Unauthorized, "User not found"));
+            }
         };
 
         request::Outcome::Success(AuthenticatedUser(user))
     }
 }
 
+#[derive(Debug)]
 pub struct OptionalUser(pub Option<User>);
 
 #[rocket::async_trait]

@@ -205,7 +205,7 @@ impl AIProviderService for OpenAIService {
         }
 
         Ok(ProviderInfo {
-            id: "OPEN_AI".to_string(),
+            id: "open_ai".to_string(),
             name: "OpenAI".to_string(),
             is_connected,
             costs_info_available: false,

@@ -550,7 +550,7 @@ impl AIProviderService for BedrockService {
         }
 
         Ok(ProviderInfo {
-            id: "AWS_BEDROCK".to_string(),
+            id: "aws_bedrock".to_string(),
             name: "AWS Bedrock".to_string(),
             is_connected,
             costs_info_available: is_connected,

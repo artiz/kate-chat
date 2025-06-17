@@ -21,6 +21,9 @@ pub enum AppError {
     #[error("Validation error: {0}")]
     Validation(String),
     
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+    
     #[error("Not found: {0}")]
     #[allow(dead_code)]
     NotFound(String),
@@ -43,6 +46,7 @@ impl Clone for AppError {
             AppError::Jwt(msg) => AppError::Jwt(msg.clone()),
             AppError::Bcrypt(msg) => AppError::Bcrypt(msg.clone()),
             AppError::Validation(msg) => AppError::Validation(msg.clone()),
+            AppError::BadRequest(msg) => AppError::BadRequest(msg.clone()),
             AppError::NotFound(msg) => AppError::NotFound(msg.clone()),
             AppError::Internal(msg) => AppError::Internal(msg.clone()),
             AppError::Aws(msg) => AppError::Aws(msg.clone()),
@@ -75,6 +79,8 @@ impl From<reqwest::Error> for AppError {
     }
 }
 
+// AppError automatically converts to async_graphql::Error through the generic Display trait implementation
+
 impl<'r> Responder<'r, 'static> for AppError {
     fn respond_to(self, _: &'r Request<'_>) -> Result<Response<'static>, Status> {
         let (status, message) = match self {
@@ -82,6 +88,7 @@ impl<'r> Responder<'r, 'static> for AppError {
             AppError::Jwt(_) => (Status::Unauthorized, self.to_string()),
             AppError::NotFound(_) => (Status::NotFound, self.to_string()),
             AppError::Validation(_) => (Status::BadRequest, self.to_string()),
+            AppError::BadRequest(_) => (Status::BadRequest, self.to_string()),
             _ => (Status::InternalServerError, self.to_string()),
         };
 

@@ -133,8 +133,3 @@ pub struct GqlMessage {
     pub r#type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, InputObject)]
-pub struct TestModelInput {
-    pub model_id: String,
-    pub text: Option<String>,
-}

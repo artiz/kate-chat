@@ -2,22 +2,42 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
+use tracing::{info, debug, error, instrument};
+use std::fmt;
 
 use crate::config::AppConfig;
 use crate::services::bedrock::BedrockService;
 use crate::services::openai::OpenAIService;
 use crate::services::yandex::YandexService;
 use crate::utils::errors::AppError;
+// Logging macros imported at crate level
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub enum ApiProvider {
-    #[serde(rename = "AWS_BEDROCK")]
+    #[serde(rename = "aws_bedrock")]
     AwsBedrock,
-    #[serde(rename = "OPEN_AI")]
+    #[serde(rename = "open_ai")]
     OpenAi,
-    #[serde(rename = "YANDEX_FM")]
+    #[serde(rename = "yandex_fm")]
     YandexFm,
 }
+
+impl ApiProvider {
+    fn as_str(&self) -> &'static str {
+        match self {
+            ApiProvider::AwsBedrock => "aws_bedrock",
+            ApiProvider::OpenAi => "open_ai",
+            ApiProvider::YandexFm => "yandex_fm",
+        }
+    }
+}
+
+impl fmt::Display for ApiProvider {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MessageRole {
@@ -208,6 +228,16 @@ impl AIService {
     }
 
     pub fn get_provider(&self, api_provider: ApiProvider) -> Result<AIProviderWrapper, AppError> {
+        let provider_str = match api_provider {
+            ApiProvider::AwsBedrock => "aws_bedrock",
+            ApiProvider::OpenAi => "open_ai",
+            ApiProvider::YandexFm => "yandex_fm",
+        };
+        
+        if !self.config.is_provider_enabled(provider_str) {
+            return Err(AppError::BadRequest(format!("API provider {} is not enabled", provider_str)));
+        }
+        
         match api_provider {
             ApiProvider::AwsBedrock => {
                 Ok(AIProviderWrapper::Bedrock(BedrockService::new(self.config.clone())))
@@ -221,13 +251,39 @@ impl AIService {
         }
     }
 
+    #[instrument(skip(self, request), fields(provider = ?api_provider, model_id = %request.model_id))]
     pub async fn invoke_model(
         &self,
         api_provider: ApiProvider,
         request: InvokeModelRequest,
     ) -> Result<ModelResponse, AppError> {
+        debug!("Invoking model {} with provider {:?}", request.model_id, api_provider);
+        
+        let start_time = std::time::Instant::now();
         let provider = self.get_provider(api_provider)?;
-        provider.invoke_model(request).await
+        
+        match provider.invoke_model(request).await {
+            Ok(response) => {
+                let duration = start_time.elapsed();
+                info!(
+                    "Model invocation successful for {} ({:?}) in {}ms", 
+                    response.model_id, 
+                    api_provider,
+                    duration.as_millis()
+                );
+                Ok(response)
+            }
+            Err(e) => {
+                let duration = start_time.elapsed();
+                error!(
+                    "Model invocation failed for provider {:?} after {}ms: {}", 
+                    api_provider,
+                    duration.as_millis(),
+                    e
+                );
+                Err(e)
+            }
+        }
     }
 
     pub async fn invoke_model_stream<F, C, E>(
@@ -245,26 +301,43 @@ impl AIService {
         provider.invoke_model_stream(request, callbacks).await
     }
 
+    #[instrument(skip(self))]
     pub async fn get_all_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError> {
         let mut all_models = HashMap::new();
         
         // Get models from all enabled providers
-        let providers = vec![ApiProvider::AwsBedrock, ApiProvider::OpenAi, ApiProvider::YandexFm];
+        let providers = self.get_enabled_providers();
+        info!("Fetching models from {} enabled providers", providers.len());
         
         for provider_type in providers {
-            if let Ok(provider) = self.get_provider(provider_type) {
-                if let Ok(models) = provider.get_models().await {
-                    all_models.extend(models);
+            debug!("Fetching models from provider: {:?}", provider_type);
+            
+            match self.get_provider(provider_type) {
+                Ok(provider) => {
+                    match provider.get_models().await {
+                        Ok(models) => {
+                            let model_count = models.len();
+                            debug!("Retrieved {} models from provider {:?}", model_count, provider_type);
+                            all_models.extend(models);
+                        }
+                        Err(e) => {
+                            error!("Failed to get models from provider {:?}: {}", provider_type, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to create provider {:?}: {}", provider_type, e);
                 }
             }
         }
         
+        info!("Total models retrieved: {}", all_models.len());
         Ok(all_models)
     }
 
     pub async fn get_provider_info(&self, test_connection: bool) -> Result<Vec<ProviderInfo>, AppError> {
         let mut providers = Vec::new();
-        let provider_types = vec![ApiProvider::AwsBedrock, ApiProvider::OpenAi, ApiProvider::YandexFm];
+        let provider_types = self.get_enabled_providers();
         
         for provider_type in provider_types {
             if let Ok(provider) = self.get_provider(provider_type) {
@@ -290,6 +363,22 @@ impl AIService {
         }
         
         Ok(providers)
+    }
+
+    fn get_enabled_providers(&self) -> Vec<ApiProvider> {
+        let mut providers = Vec::new();
+
+        if self.config.is_provider_enabled("aws_bedrock") {
+            providers.push(ApiProvider::AwsBedrock);
+        }
+        if self.config.is_provider_enabled("open_ai") {
+            providers.push(ApiProvider::OpenAi);
+        }
+        if self.config.is_provider_enabled("yandex_fm") {
+            providers.push(ApiProvider::YandexFm);
+        }
+        
+        providers
     }
 
     fn get_provider_name(&self, provider: &ApiProvider) -> String {

@@ -8,7 +8,7 @@ mod services;
 mod controllers;
 mod utils;
 
-use log::debug;
+use tracing::{info, debug, warn, instrument};
 use rocket::{Build, Rocket, fairing::AdHoc, State};
 use rocket_cors::{AllowedOrigins, CorsOptions};
 use rocket::config::{Config};
@@ -20,8 +20,10 @@ use crate::controllers::{auth, files};
 use crate::graphql::{create_schema, GraphQLContext, GraphQLSchema};
 use crate::middleware::auth::OptionalUser;
 use crate::database::DbPool;
+use crate::utils::logger::init_logging;
 
 #[rocket::post("/graphql", data = "<request>", format = "application/json")]
+#[instrument(skip(schema, db_pool, config, request), fields(user_id = ?optional_user.0.as_ref().map(|u| &u.id)))]
 async fn graphql_handler(
     schema: &State<GraphQLSchema>,
     db_pool: &State<DbPool>,
@@ -29,9 +31,18 @@ async fn graphql_handler(
     request: GraphQLRequest,
     optional_user: OptionalUser,
 ) -> GraphQLResponse {
+    debug!("Processing GraphQL request");
+    
     let ctx = GraphQLContext::new(db_pool.inner().clone(), config.inner().clone(), optional_user.0);
-
-    request.data(ctx).execute(schema.inner()).await
+    let response = request.data(ctx).execute(schema.inner()).await;
+    
+    if response.0.is_ok() {
+        debug!("GraphQL request completed successfully");
+    } else {
+        warn!("GraphQL request completed with errors");
+    }
+    
+    response
 }
 
 #[rocket::get("/graphql")]
@@ -46,12 +57,22 @@ async fn graphql_options_handler() -> rocket::http::Status {
 
 #[rocket::launch]
 async fn rocket() -> Rocket<Build> {
-    env_logger::init();
+    // Initialize logging first
+    init_logging();
     dotenv::dotenv().ok();
 
     let config = AppConfig::from_env();
 
-    debug!("Starting on port {}", config.port);
+    info!("Starting Kate Chat Backend on port {}", config.port);
+    info!("Environment: {}", std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()));
+    info!("Log level: {}", std::env::var("LOG_LEVEL").unwrap_or_else(|_| "debug".to_string()));
+    info!("Api Providers: {}", std::env::var("ENABLED_API_PROVIDERS").unwrap_or_else(|_| "none".to_string()));
+
+    if !config.enabled_api_providers.is_empty() {
+        info!("Enabled API providers: {:?}", config.enabled_api_providers);
+    } else {
+        warn!("No API providers enabled. Set ENABLED_API_PROVIDERS environment variable.");
+    }
 
     let cors = CorsOptions::default()
         .allowed_origins(AllowedOrigins::All) // some_exact(&config.cors_origin.split(',').collect::<Vec<_>>())
@@ -66,12 +87,19 @@ async fn rocket() -> Rocket<Build> {
          ..Config::debug_default()
      };
      
+    info!("Initializing Rocket server...");
+    
     rocket::custom(rocket_config)
         .attach(cors)
         .attach(AdHoc::on_ignite("Database", |rocket| async {
+            info!("Establishing database connection...");
             let db = establish_connection().await;
+            info!("Database connection established");
             rocket.manage(db)
         }))
+        .attach(AdHoc::on_liftoff("Server Started", |_| Box::pin(async {
+            info!("🚀 Kate Chat Backend server has started successfully!");
+        })))
         .manage(config)
         .manage(schema)
         .mount("/", rocket::routes![graphql_handler, graphql_query_handler, graphql_options_handler])

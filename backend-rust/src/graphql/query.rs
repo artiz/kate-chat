@@ -4,6 +4,7 @@ use async_graphql::{Context, Object, Result, InputObject};
 use crate::models::*;
 use crate::graphql::GraphQLContext;
 use crate::schema::*;
+use crate::utils::errors::AppError;
 
 #[derive(Default)]
 pub struct Query;
@@ -65,7 +66,7 @@ impl Query {
     async fn get_chats(&self, ctx: &Context<'_>, input: Option<GetChatsInput>) -> Result<GqlChatsList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
         let input = input.unwrap_or(GetChatsInput {
             limit: Some(20),
@@ -92,7 +93,7 @@ impl Query {
 
         let chats_result: Vec<Chat> = query
             .load(&mut conn)
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         let total_query = chats::table
             .filter(chats::user_id.eq(&user.id))
@@ -100,7 +101,7 @@ impl Query {
 
         let total: i64 = total_query
             .get_result(&mut conn)
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(GqlChatsList {
             chats: chats_result,
@@ -114,14 +115,14 @@ impl Query {
     async fn get_chat_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<Chat>> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
         let chat_result: Option<Chat> = chats::table
             .filter(chats::id.eq(&id))
             .filter(chats::user_id.eq(&user.id))
             .first(&mut conn)
             .optional()
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(chat_result)
     }
@@ -130,7 +131,7 @@ impl Query {
     async fn get_chat_messages(&self, ctx: &Context<'_>, input: GetMessagesInput) -> Result<GqlMessagesList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
         // First verify the chat belongs to the user
         let chat: Option<Chat> = chats::table
@@ -138,7 +139,7 @@ impl Query {
             .filter(chats::user_id.eq(&user.id))
             .first(&mut conn)
             .optional()
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         if chat.is_none() {
             return Ok(GqlMessagesList {
@@ -159,13 +160,13 @@ impl Query {
             .limit(limit as i64)
             .offset(offset as i64)
             .load(&mut conn)
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         let total: i64 = messages::table
             .filter(messages::chat_id.eq(&input.chat_id))
             .count()
             .get_result(&mut conn)
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(GqlMessagesList {
             messages: messages_result,
@@ -180,14 +181,14 @@ impl Query {
     async fn get_message_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<Message>> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
         let message_result: Option<Message> = messages::table
             .filter(messages::id.eq(&id))
             .filter(messages::user_id.eq(&user.id))
             .first(&mut conn)
             .optional()
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(message_result)
     }
@@ -196,13 +197,38 @@ impl Query {
     async fn get_models(&self, ctx: &Context<'_>) -> Result<GqlModelsList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
         let models_result: Vec<Model> = models::table
             .filter(models::user_id.eq(&user.id))
             .order(models::name.asc())
             .load(&mut conn)
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Get provider information from AI service
+        let ai_service = crate::services::ai::AIService::new(gql_ctx.config.clone());
+        let provider_info = ai_service.get_provider_info(false).await
+            .map_err(|e| AppError::Internal(format!("Failed to get provider info: {}", e)))?;
+
+        let providers: Vec<GqlProviderInfo> = provider_info
+            .into_iter()
+            .map(|info| GqlProviderInfo {
+                id: info.id,
+                name: info.name,
+                is_connected: info.is_connected,
+                costs_info_available: info.costs_info_available,
+                details: info.details
+                    .into_iter()
+                    .map(|(key, value)| ProviderDetail { key, value })
+                    .collect(),
+            })
+            .collect();
+
+        // If no models in database, auto-reload from API providers
+        if models_result.is_empty() {
+            // Use the reload_models logic from mutation
+            return self.refresh_models_for_query(gql_ctx, &user, ai_service, providers).await;
+        }
 
         let gql_models: Vec<GqlModel> = models_result
             .into_iter()
@@ -228,12 +254,11 @@ impl Query {
             })
             .collect();
 
-        let providers = vec![]; // TODO: Implement providers logic
-
+        let total_count = gql_models.len() as i32;
         Ok(GqlModelsList {
             models: gql_models,
             providers,
-            total: None,
+            total: Some(total_count),
             error: None,
         })
     }
@@ -242,14 +267,14 @@ impl Query {
     async fn get_active_models(&self, ctx: &Context<'_>) -> Result<Vec<GqlModel>> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx.db_pool.get().map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
 
         let models_result: Vec<Model> = models::table
             .filter(models::user_id.eq(&user.id))
             .filter(models::is_active.eq(true))
             .order(models::name.asc())
             .load(&mut conn)
-            .map_err(|e| async_graphql::Error::new(format!("Database error: {}", e)))?;
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         let gql_models: Vec<GqlModel> = models_result
             .into_iter()
@@ -300,6 +325,90 @@ impl Query {
         Ok(AuthResponse {
             token,
             user: user.clone(),
+        })
+    }
+}
+
+
+impl Query {
+    // TODO: extract this logic to a service or utility function and reuse it in mutations
+    // Helper method to refresh models when database is empty
+    async fn refresh_models_for_query(
+        &self,
+        gql_ctx: &GraphQLContext,
+        user: &User,
+        ai_service: crate::services::ai::AIService,
+        providers: Vec<GqlProviderInfo>,
+    ) -> Result<GqlModelsList> {
+        let mut conn = gql_ctx.db_pool.get().map_err(|e| AppError::Database(e.to_string()))?;
+        
+        // Get all models from enabled providers
+        let all_models = ai_service.get_all_models().await
+            .map_err(|e| AppError::Internal(format!("Failed to get models from AI providers: {}", e)))?;
+        
+        let mut gql_models = Vec::new();
+        
+        // Save new models to database
+        for (model_id, model_info) in all_models {
+            let new_model = NewModel {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: model_info.name.clone(),
+                description: model_info.description.clone(),
+                model_id: model_id.clone(),
+                api_provider: model_info.api_provider.to_string(),
+                provider: model_info.provider.clone(),
+                is_active: true, // New models are active by default
+                is_custom: false,
+                supports_text_in: model_info.supports_text_in,
+                supports_text_out: model_info.supports_text_out,
+                supports_image_in: model_info.supports_image_in,
+                supports_image_out: model_info.supports_image_out,
+                supports_embeddings_in: model_info.supports_embeddings_in,
+                supports_embeddings_out: model_info.supports_embeddings_out,
+                supports_streaming: model_info.supports_streaming,
+                user_id: user.id.clone(),
+                created_at: chrono::Utc::now().naive_utc(),
+                updated_at: chrono::Utc::now().naive_utc(),
+            };
+            
+            diesel::insert_into(models::table)
+                .values(&new_model)
+                .execute(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            
+            let saved_model: Model = models::table
+                .filter(models::id.eq(&new_model.id))
+                .first(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            
+            gql_models.push(GqlModel {
+                id: saved_model.id,
+                name: saved_model.name,
+                description: saved_model.description,
+                model_id: saved_model.model_id,
+                api_provider: saved_model.api_provider,
+                provider: saved_model.provider,
+                is_active: saved_model.is_active,
+                is_custom: saved_model.is_custom,
+                supports_text_in: saved_model.supports_text_in,
+                supports_text_out: saved_model.supports_text_out,
+                supports_image_in: saved_model.supports_image_in,
+                supports_image_out: saved_model.supports_image_out,
+                supports_embeddings_in: saved_model.supports_embeddings_in,
+                supports_embeddings_out: saved_model.supports_embeddings_out,
+                supports_streaming: saved_model.supports_streaming,
+                user: user.clone(),
+                created_at: saved_model.created_at,
+                updated_at: saved_model.updated_at,
+            });
+        }
+        
+        let total_count = gql_models.len() as i32;
+        Ok(GqlModelsList {
+            models: gql_models,
+            providers,
+            total: Some(total_count),
+            error: None,
         })
     }
 }

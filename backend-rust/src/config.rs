@@ -38,6 +38,9 @@ pub struct AppConfig {
     // Yandex
     pub yandex_api_key: Option<String>,
     pub yandex_folder_id: Option<String>,
+    
+    // Enabled API providers
+    pub enabled_api_providers: Vec<String>,
 }
 
 impl AppConfig {
@@ -83,6 +86,36 @@ impl AppConfig {
             demo_max_chats: env::var("DEMO_MAX_CHATS").ok().and_then(|s| s.parse().ok()),
             demo_max_images: env::var("DEMO_MAX_IMAGES").ok().and_then(|s| s.parse().ok()),
             
+            // Enabled API providers
+            enabled_api_providers: Self::parse_enabled_providers(),
         }
+    }
+    
+    fn parse_enabled_providers() -> Vec<String> {
+        let all_providers = vec!["aws_bedrock".to_string(), "open_ai".to_string(), "yandex_fm".to_string()];
+
+        match env::var("ENABLED_API_PROVIDERS") {
+            Ok(value) => {
+                if value.trim() == "*" {
+                    // If "*", return all providers
+                    all_providers
+                } else {
+                    // Split by comma and filter valid providers
+                    value
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty() && all_providers.contains(s))
+                        .collect()
+                }
+            }
+            Err(_) => {
+                // If not set, return empty list (no providers enabled by default)
+                vec![]
+            }
+        }
+    }
+    
+    pub fn is_provider_enabled(&self, provider: &str) -> bool {
+        self.enabled_api_providers.contains(&provider.to_string())
     }
 }
