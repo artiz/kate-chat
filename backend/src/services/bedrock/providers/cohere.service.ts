@@ -52,7 +52,7 @@ export class CohereService implements BedrockModelServiceProvider<CohereResponse
     prompt += "Chatbot:";
 
     // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-cohere-command.html
-    return (params = {
+    return {
       modelId,
       body: JSON.stringify({
         prompt: prompt.substring(0, 2048), // Cohere has a max input length
@@ -61,7 +61,7 @@ export class CohereService implements BedrockModelServiceProvider<CohereResponse
         temperature,
         stop_sequences: ["User:"],
       }),
-    });
+    };
   }
 
   parseResponse(responseBody: CohereResponse, request: InvokeModelParamsRequest): ModelResponse {

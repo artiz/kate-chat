@@ -143,6 +143,7 @@ export class MessagesService {
 
     if (!originalMessage) throw new Error("Message not found");
     if (!originalMessage.chat) throw new Error("Chat not found for this message");
+    if (originalMessage.role === MessageRole.USER) throw new Error("User messages cannot be switched");
     // Verify the message belongs to the current user's chat
     if (originalMessage.chat.user?.id !== user.id) throw new Error("Unauthorized access to this message");
 
@@ -185,7 +186,7 @@ export class MessagesService {
       chatId,
       content: "",
       modelId: model.modelId,
-      role: MessageRole.USER,
+      role: MessageRole.ASSISTANT,
       temperature: chat.temperature,
       maxTokens: chat.maxTokens,
       topP: chat.topP,

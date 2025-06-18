@@ -5,7 +5,7 @@ export const themeOverride: MantineThemeOverride = {
   components: {
     // Add component-specific styles and props here
     Paper: {
-      defaultProps: theme => ({
+      defaultProps: (theme: any) => ({
         // Apply different shadows based on color scheme
         shadow: theme.colorScheme === "dark" ? "md" : "sm",
       }),

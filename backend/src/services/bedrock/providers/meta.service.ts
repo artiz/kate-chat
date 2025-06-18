@@ -41,7 +41,7 @@ export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
     }
 
     // https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-meta.html
-    return (params = {
+    return {
       modelId,
       body: JSON.stringify({
         prompt,
@@ -49,7 +49,7 @@ export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
         temperature,
         top_p: topP,
       }),
-    });
+    };
   }
 
   parseResponse(responseBody: MetaResponse, request: InvokeModelParamsRequest): ModelResponse {

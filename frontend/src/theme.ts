@@ -1,4 +1,4 @@
-import { createTheme, mergeMantineTheme, DefaultMantineColor, MantineColorsTuple } from "@mantine/core";
+import { createTheme, mergeMantineTheme, MantineColorsTuple, MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { themeOverride } from "./theme.override";
 
 // Define brand colors
@@ -10,7 +10,8 @@ const brandColors: Record<string, MantineColorsTuple> = {
 };
 
 // Create a basic theme with brand colors
-export const themeBase = createTheme({
+export const themeBase: MantineThemeOverride = createTheme({
+  // Use the brand color as the primary color
   primaryColor: "brand",
   colors: brandColors,
   fontFamily: `Roboto, "Segoe UI", system-ui`,
@@ -44,4 +45,4 @@ export const themeBase = createTheme({
 });
 
 // Merge the basic theme with theme overrides
-export const theme = mergeMantineTheme(themeBase, themeOverride);
+export const theme = mergeMantineTheme(themeBase as MantineTheme, themeOverride);

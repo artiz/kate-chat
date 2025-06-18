@@ -99,7 +99,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
   useEffect(() => {
     if (streaming) return;
 
-    if (componentRef.current && role !== MessageRole.ERROR) {
+    if (componentRef.current) {
       const observer = new MutationObserver(processCodeElements);
       observer.observe(componentRef.current, { childList: true, subtree: true });
       processCodeElements(); // Initial call to inject code elements
@@ -140,7 +140,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
           </ActionIcon>
         </Tooltip>
 
-        {role === MessageRole.ASSISTANT && (
+        {(role === MessageRole.ASSISTANT || role === MessageRole.ERROR) && (
           <Menu shadow="md" width={200}>
             <Menu.Target>
               <ActionIcon size="sm" color="gray" variant="transparent" disabled={disableActions}>
