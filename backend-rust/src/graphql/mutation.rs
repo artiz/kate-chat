@@ -293,7 +293,7 @@ impl Mutation {
                 .filter(chats::id.eq(&input.chat_id))
                 .filter(chats::is_pristine.eq(true)),
         )
-        .set((chats::is_pristine.eq(false)))
+        .set(chats::is_pristine.eq(false))
         .execute(&mut conn)
         .map_err(|e| AppError::Database(e.to_string()))?;
 
