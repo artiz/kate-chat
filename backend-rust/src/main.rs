@@ -86,7 +86,7 @@ async fn rocket() -> Rocket<Build> {
     let db_pool = establish_connection().await;
 
     // Start WebSocket server for GraphQL subscriptions
-    let ws_server = WebSocketServer::new(schema.clone());
+    let ws_server = WebSocketServer::new(schema.clone(), db_pool.clone(), config.clone());
     let ws_port = config.port + 1; // Use next port for WebSocket server
     
     info!("Starting WebSocket server on port {}", ws_port);

@@ -6,7 +6,7 @@ use tracing::{info, debug, error};
 
 use crate::models::message::{GqlNewMessage};
 use crate::services::pubsub::{get_global_pubsub};
-use crate::models::MessageType;
+use crate::models::{MessageType, User};
 
 
 #[derive(Default)]
@@ -16,16 +16,19 @@ pub struct SubscriptionRoot;
 impl SubscriptionRoot {
     async fn new_message(
         &self,
-        _ctx: &Context<'_>,
+        ctx: &Context<'_>,
         chat_id: String,
     ) -> Result<impl Stream<Item = GqlNewMessage>> {
-        // TODO: Validate authentication
-        // let context = ctx.data::<GraphQLContext>()?;
-        // if context.user.is_none() {
-        //     return Err(async_graphql::Error::new("Authentication required for subscriptions"));
-        // }
-
-        debug!("Setting up subscription for chat_id: {}", chat_id);
+        // Validate authentication - get user from context
+        let user = ctx.data_opt::<User>();
+        match user {
+            Some(user) => {
+                debug!("Setting up subscription for chat_id: {} by user: {}", chat_id, user.id);
+            }
+            None => {
+                return Err(async_graphql::Error::new("Authentication required for subscriptions"));
+            }
+        }
 
         // Get the global PubSub service
         let pubsub = get_global_pubsub();
