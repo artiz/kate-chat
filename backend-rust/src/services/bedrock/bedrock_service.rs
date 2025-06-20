@@ -150,7 +150,7 @@ impl AIProviderService for BedrockService {
         C: Fn(String) + Send + Sync,
         E: Fn(AppError) + Send + Sync,
     {
-        // For now, simulate streaming by calling the regular invoke and chunking the response
+        // TODO: implement real streaming
         match self.invoke_model(request).await {
             Ok(response) => {
                 // Simulate streaming by sending chunks
