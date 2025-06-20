@@ -22,9 +22,6 @@ CREATE TABLE chats (
     description TEXT NOT NULL DEFAULT '',
     user_id VARCHAR(64),
     files TEXT,
-    -- JSON string
-    last_bot_message TEXT,
-    last_bot_message_id VARCHAR(64),
     messages_count INTEGER DEFAULT 0,
     model_id VARCHAR(64),
     temperature REAL,

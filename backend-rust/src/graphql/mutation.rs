@@ -318,18 +318,28 @@ impl Mutation {
         };
         let ai_service = AIService::new(gql_ctx.config.clone());
 
-        // TODO: load all prev chat messages to maintain context
-        // join all same role messages as it done in nodejs preprocessMessages
-        let test_message = crate::services::ai::ModelMessage {
-            role: crate::services::ai::MessageRole::User,
-            content: input.content.clone(),
-            timestamp: Some(Utc::now()),
-        };
+        // Load previous messages for context (up to 100 messages)
+        const CONTEXT_MESSAGES_LIMIT: i64 = 100;
+        
+        let previous_messages: Vec<Message> = messages::table
+            .filter(messages::chat_id.eq(&input.chat_id))
+            .order(messages::created_at.desc())
+            .limit(CONTEXT_MESSAGES_LIMIT)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
-        // Create invoke request
+        // Reverse to chronological order and add current user message
+        let mut input_messages = previous_messages;
+        input_messages.reverse();
+        input_messages.push(message.clone());
+
+        // Convert database messages to AI service format and preprocess
+        let model_messages = preprocess_messages(convert_messages_to_model_format(&input_messages));
+
+        // Create invoke request with preprocessed message context
         let invoke_request = crate::services::ai::InvokeModelRequest {
             model_id: model_id.clone(),
-            messages: vec![test_message],
+            messages: model_messages,
             temperature: input.temperature,
             max_tokens: input.max_tokens,
             top_p: input.top_p,
@@ -670,4 +680,76 @@ impl Mutation {
             error: None,
         })
     }
+}
+
+/// Convert database Message to AI service ModelMessage format
+fn convert_messages_to_model_format(messages: &[Message]) -> Vec<crate::services::ai::ModelMessage> {
+    messages
+        .iter()
+        .map(|msg| crate::services::ai::ModelMessage {
+            role: match msg.role.to_lowercase().as_str() {
+                "assistant" => crate::services::ai::MessageRole::Assistant,
+                "system" => crate::services::ai::MessageRole::System,
+                _ => crate::services::ai::MessageRole::User,
+            },
+            content: msg.content.clone(),
+            timestamp: Some(msg.created_at.and_utc()),
+        })
+        .collect()
+}
+
+/// Preprocess messages: sort by timestamp and join consecutive messages from the same role
+fn preprocess_messages(mut messages: Vec<crate::services::ai::ModelMessage>) -> Vec<crate::services::ai::ModelMessage> {
+    if messages.is_empty() {
+        return messages;
+    }
+
+    // Sort messages by timestamp, with role-based tiebreaking
+    messages.sort_by(|a, b| {
+        let a_time = a.timestamp.unwrap_or_else(|| Utc::now());
+        let b_time = b.timestamp.unwrap_or_else(|| Utc::now());
+        
+        if a_time == b_time {
+            // If same timestamp, sort by role (user messages first)
+            match (&a.role, &b.role) {
+                (crate::services::ai::MessageRole::User, crate::services::ai::MessageRole::User) => std::cmp::Ordering::Equal,
+                (crate::services::ai::MessageRole::User, _) => std::cmp::Ordering::Less,
+                (_, crate::services::ai::MessageRole::User) => std::cmp::Ordering::Greater,
+                _ => std::cmp::Ordering::Equal,
+            }
+        } else {
+            a_time.cmp(&b_time)
+        }
+    });
+
+    // Join consecutive messages from the same role
+    let mut result: Vec<crate::services::ai::ModelMessage> = Vec::new();
+    
+    for msg in messages {
+        if msg.content.trim().is_empty() {
+            continue; // Skip empty messages
+        }
+
+        if let Some(last_msg) = result.last_mut() {
+            if last_msg.role == msg.role {
+                // Same role - check for duplicates and join
+                if last_msg.content == msg.content {
+                    // Skip duplicate messages
+                    continue;
+                } else {
+                    // Join messages with newline
+                    last_msg.content.push('\n');
+                    last_msg.content.push_str(&msg.content);
+                }
+            } else {
+                // Different role - add as new message
+                result.push(msg);
+            }
+        } else {
+            // First message
+            result.push(msg);
+        }
+    }
+
+    result
 }

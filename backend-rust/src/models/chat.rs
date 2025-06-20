@@ -14,8 +14,6 @@ pub struct Chat {
     pub description: String,
     pub user_id: Option<String>,
     pub files: Option<String>, // JSON string
-    pub last_bot_message: Option<String>,
-    pub last_bot_message_id: Option<String>,
     pub messages_count: Option<i32>,
     pub model_id: Option<String>,
     pub temperature: Option<f32>,
@@ -34,8 +32,6 @@ pub struct NewChat {
     pub description: String,
     pub user_id: Option<String>,
     pub files: Option<String>,
-    pub last_bot_message: Option<String>,
-    pub last_bot_message_id: Option<String>,
     pub messages_count: Option<i32>,
     pub model_id: Option<String>,
     pub temperature: Option<f32>,
@@ -55,8 +51,6 @@ impl NewChat {
             description: description.unwrap_or_default(),
             user_id,
             files: None,
-            last_bot_message: None,
-            last_bot_message_id: None,
             messages_count: Some(0),
             model_id,
             temperature: None,
@@ -88,9 +82,52 @@ pub struct UpdateChatInput {
 }
 
 
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct GqlChat {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub user_id: Option<String>,
+    pub files: Option<String>, // JSON string
+    pub messages_count: Option<i32>,
+    pub model_id: Option<String>,
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<i32>,
+    pub top_p: Option<f32>,
+    pub is_pristine: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub last_bot_message: Option<String>,
+    pub last_bot_message_id: Option<String>,
+}
+
+impl From<Chat> for GqlChat {
+    fn from(chat: Chat) -> Self {
+        Self {
+            id: chat.id,
+            title: chat.title,
+            description: chat.description,
+            user_id: chat.user_id,
+            files: chat.files,
+            messages_count: chat.messages_count,
+            model_id: chat.model_id,
+            temperature: chat.temperature,
+            max_tokens: chat.max_tokens,
+            top_p: chat.top_p,
+            is_pristine: chat.is_pristine,
+            created_at: chat.created_at,
+            updated_at: chat.updated_at,
+            last_bot_message: None,
+            last_bot_message_id: None,
+        }
+    }
+}
+
+
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlChatsList {
-    pub chats: Vec<Chat>,
+    pub chats: Vec<GqlChat>,
     pub total: Option<i32>,
     pub has_more: bool,
     pub error: Option<String>,
