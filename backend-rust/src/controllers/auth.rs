@@ -194,6 +194,7 @@ pub async fn google_callback(
                 users::auth_provider.eq(AuthProvider::Google.to_string()),
                 users::google_id.eq(&user_info.id),
                 users::updated_at.eq(Utc::now().naive_utc()),
+                users::avatar_url.eq(&user_info.picture),
             ))
             .execute(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
