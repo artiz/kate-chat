@@ -6,7 +6,6 @@ use tracing::{debug, info, warn};
 
 use crate::models::GqlNewMessage;
 
-
 type ChatSubscriptions = Arc<RwLock<HashMap<String, broadcast::Sender<GqlNewMessage>>>>;
 
 #[derive(Clone)]
@@ -21,21 +20,22 @@ impl PubSubService {
         }
     }
 
-    pub async fn subscribe_to_chat(&self, chat_id: &str) -> Result<broadcast::Receiver<GqlNewMessage>> {
+    pub async fn subscribe_to_chat(
+        &self,
+        chat_id: &str,
+    ) -> Result<broadcast::Receiver<GqlNewMessage>> {
         let mut subscriptions = self.subscriptions.write().await;
-        
+
         // Get or create the broadcast channel for this chat
-        let sender = subscriptions
-            .entry(chat_id.to_string())
-            .or_insert_with(|| {
-                debug!("Creating new broadcast channel for chat_id: {}", chat_id);
-                let (tx, _) = broadcast::channel(1000); // Buffer up to 1000 messages
-                tx
-            });
+        let sender = subscriptions.entry(chat_id.to_string()).or_insert_with(|| {
+            debug!("Creating new broadcast channel for chat_id: {}", chat_id);
+            let (tx, _) = broadcast::channel(1000); // Buffer up to 1000 messages
+            tx
+        });
 
         let receiver = sender.subscribe();
         info!("New subscriber added to chat_id: {}", chat_id);
-        
+
         Ok(receiver)
     }
 
@@ -46,7 +46,10 @@ impl PubSubService {
         if let Some(sender) = subscriptions.get(chat_id) {
             match sender.send(message) {
                 Ok(subscriber_count) => {
-                    debug!("Published message to {} subscribers for chat_id: {}", subscriber_count, chat_id);
+                    debug!(
+                        "Published message to {} subscribers for chat_id: {}",
+                        subscriber_count, chat_id
+                    );
                 }
                 Err(e) => {
                     warn!("Failed to publish message to chat_id {}: {}", chat_id, e);
@@ -55,7 +58,7 @@ impl PubSubService {
         } else {
             debug!("No subscribers found for chat_id: {}", chat_id);
         }
-        
+
         Ok(())
     }
 

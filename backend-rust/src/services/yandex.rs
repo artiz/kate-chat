@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 use crate::config::AppConfig;
 use crate::services::ai::*;
@@ -23,12 +23,16 @@ impl YandexService {
     }
 
     fn get_api_key(&self) -> Result<&str, AppError> {
-        self.config.yandex_api_key.as_deref()
+        self.config
+            .yandex_api_key
+            .as_deref()
             .ok_or_else(|| AppError::Auth("Yandex API key not configured".to_string()))
     }
 
     fn get_folder_id(&self) -> Result<&str, AppError> {
-        self.config.yandex_folder_id.as_deref()
+        self.config
+            .yandex_folder_id
+            .as_deref()
             .ok_or_else(|| AppError::Auth("Yandex folder ID not configured".to_string()))
     }
 }
@@ -38,13 +42,13 @@ impl AIProviderService for YandexService {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError> {
         let api_key = self.get_api_key()?;
         let folder_id = self.get_folder_id()?;
-        
+
         let mut messages = Vec::new();
-        
+
         for msg in &request.messages {
             let role = match msg.role {
                 MessageRole::User => "user",
-                MessageRole::Assistant => "assistant", 
+                MessageRole::Assistant => "assistant",
                 MessageRole::System => "system",
             };
 
@@ -64,7 +68,8 @@ impl AIProviderService for YandexService {
             "messages": messages
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post("https://llm.api.cloud.yandex.net/foundationModels/v1/completion")
             .header("Authorization", format!("Api-Key {}", api_key))
             .header("Content-Type", "application/json")
@@ -75,10 +80,15 @@ impl AIProviderService for YandexService {
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::Internal(format!("Yandex API error: {}", error_text)));
+            return Err(AppError::Internal(format!(
+                "Yandex API error: {}",
+                error_text
+            )));
         }
 
-        let response_json: Value = response.json().await
+        let response_json: Value = response
+            .json()
+            .await
             .map_err(|e| AppError::Internal(format!("Failed to parse Yandex response: {}", e)))?;
 
         let content = response_json
@@ -96,9 +106,18 @@ impl AIProviderService for YandexService {
             .get("result")
             .and_then(|r| r.get("usage"))
             .map(|u| Usage {
-                input_tokens: u.get("inputTextTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-                output_tokens: u.get("completionTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-                total_tokens: u.get("totalTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+                input_tokens: u
+                    .get("inputTextTokens")
+                    .and_then(|t| t.as_i64())
+                    .map(|t| t as i32),
+                output_tokens: u
+                    .get("completionTokens")
+                    .and_then(|t| t.as_i64())
+                    .map(|t| t as i32),
+                total_tokens: u
+                    .get("totalTokens")
+                    .and_then(|t| t.as_i64())
+                    .map(|t| t as i32),
             });
 
         Ok(ModelResponse {
@@ -141,35 +160,41 @@ impl AIProviderService for YandexService {
     async fn get_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError> {
         // Yandex Foundation Models - hardcoded list since they don't have a models API
         let mut models = HashMap::new();
-        
-        // YandexGPT models
-        models.insert("yandexgpt".to_string(), AIModelInfo {
-            api_provider: ApiProvider::YandexFm,
-            provider: Some("Yandex".to_string()),
-            name: "YandexGPT".to_string(),
-            description: "Yandex Foundation Model for text generation".to_string(),
-            supports_streaming: true,
-            supports_text_in: true,
-            supports_text_out: true,
-            supports_image_in: false,
-            supports_image_out: false,
-            supports_embeddings_in: false,
-            supports_embeddings_out: false,
-        });
 
-        models.insert("yandexgpt-lite".to_string(), AIModelInfo {
-            api_provider: ApiProvider::YandexFm,
-            provider: Some("Yandex".to_string()),
-            name: "YandexGPT Lite".to_string(),
-            description: "Lightweight Yandex Foundation Model".to_string(),
-            supports_streaming: true,
-            supports_text_in: true,
-            supports_text_out: true,
-            supports_image_in: false,
-            supports_image_out: false,
-            supports_embeddings_in: false,
-            supports_embeddings_out: false,
-        });
+        // YandexGPT models
+        models.insert(
+            "yandexgpt".to_string(),
+            AIModelInfo {
+                api_provider: ApiProvider::YandexFm,
+                provider: Some("Yandex".to_string()),
+                name: "YandexGPT".to_string(),
+                description: "Yandex Foundation Model for text generation".to_string(),
+                supports_streaming: true,
+                supports_text_in: true,
+                supports_text_out: true,
+                supports_image_in: false,
+                supports_image_out: false,
+                supports_embeddings_in: false,
+                supports_embeddings_out: false,
+            },
+        );
+
+        models.insert(
+            "yandexgpt-lite".to_string(),
+            AIModelInfo {
+                api_provider: ApiProvider::YandexFm,
+                provider: Some("Yandex".to_string()),
+                name: "YandexGPT Lite".to_string(),
+                description: "Lightweight Yandex Foundation Model".to_string(),
+                supports_streaming: true,
+                supports_text_in: true,
+                supports_text_out: true,
+                supports_image_in: false,
+                supports_image_out: false,
+                supports_embeddings_in: false,
+                supports_embeddings_out: false,
+            },
+        );
 
         Ok(models)
     }
@@ -177,11 +202,11 @@ impl AIProviderService for YandexService {
     async fn get_info(&self, test_connection: bool) -> Result<ProviderInfo, AppError> {
         let mut details = HashMap::new();
 
-        let is_connected = self.config.yandex_api_key.is_some() 
-            && self.config.yandex_folder_id.is_some();
-        
+        let is_connected =
+            self.config.yandex_api_key.is_some() && self.config.yandex_folder_id.is_some();
+
         details.insert("configured".to_string(), is_connected.to_string());
-        
+
         if let Some(folder_id) = &self.config.yandex_folder_id {
             details.insert("folder_id".to_string(), folder_id.clone());
         }
@@ -221,7 +246,11 @@ impl AIProviderService for YandexService {
         })
     }
 
-    async fn get_costs(&self, start_time: i64, end_time: Option<i64>) -> Result<UsageCostInfo, AppError> {
+    async fn get_costs(
+        &self,
+        start_time: i64,
+        end_time: Option<i64>,
+    ) -> Result<UsageCostInfo, AppError> {
         Ok(UsageCostInfo {
             start: DateTime::from_timestamp(start_time, 0).unwrap_or_default(),
             end: end_time.and_then(|t| DateTime::from_timestamp(t, 0)),

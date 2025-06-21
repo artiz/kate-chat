@@ -1,8 +1,8 @@
+use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, Usage};
+use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
-use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct MetaRequestMessage {
@@ -45,12 +45,18 @@ pub struct MetaResponse {
 pub struct MetaProvider;
 
 impl MetaProvider {
-    pub fn format_messages_to_prompt(messages: &[Message], system_prompt: Option<String>) -> String {
+    pub fn format_messages_to_prompt(
+        messages: &[Message],
+        system_prompt: Option<String>,
+    ) -> String {
         let mut prompt = String::new();
 
         // Add system prompt if provided
         if let Some(system) = system_prompt {
-            prompt.push_str(&format!("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>", system));
+            prompt.push_str(&format!(
+                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>",
+                system
+            ));
         } else {
             prompt.push_str("<|begin_of_text|>");
         }
@@ -63,30 +69,34 @@ impl MetaProvider {
             };
 
             // Extract text content from structured format if needed
-            let content = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Extract text content from structured format
-                    parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    if content_type == "text" {
-                                        return obj.get("content").and_then(|v| v.as_str());
+            let content =
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                    if parsed.is_array() {
+                        // Extract text content from structured format
+                        parsed
+                            .as_array()
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .filter_map(|part| {
+                                if let Some(obj) = part.as_object() {
+                                    if let Some(content_type) =
+                                        obj.get("contentType").and_then(|v| v.as_str())
+                                    {
+                                        if content_type == "text" {
+                                            return obj.get("content").and_then(|v| v.as_str());
+                                        }
                                     }
                                 }
-                            }
-                            None
-                        })
-                        .collect::<Vec<&str>>()
-                        .join(" ")
+                                None
+                            })
+                            .collect::<Vec<&str>>()
+                            .join(" ")
+                    } else {
+                        msg.get_body().to_string()
+                    }
                 } else {
                     msg.get_body().to_string()
-                }
-            } else {
-                msg.get_body().to_string()
-            };
+                };
 
             prompt.push_str(&format!(
                 "<|start_header_id|>{}<|end_header_id|>\n\n{}<|eot_id|>",
@@ -121,7 +131,10 @@ impl MetaProvider {
         let mut prompt = String::new();
 
         if let Some(system) = &request.system_prompt {
-            prompt.push_str(&format!("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>", system));
+            prompt.push_str(&format!(
+                "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>",
+                system
+            ));
         } else {
             prompt.push_str("<|begin_of_text|>");
         }
@@ -150,7 +163,10 @@ impl MetaProvider {
         Ok(body)
     }
 
-    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+    pub fn parse_model_response(
+        response: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
         let content = response
             .get("generation")
             .and_then(|text| text.as_str())
@@ -161,11 +177,20 @@ impl MetaProvider {
             content,
             model_id: model_id.to_string(),
             usage: Some(Usage {
-                input_tokens: response.get("prompt_token_count").and_then(|t| t.as_i64()).map(|t| t as i32),
-                output_tokens: response.get("generation_token_count").and_then(|t| t.as_i64()).map(|t| t as i32),
+                input_tokens: response
+                    .get("prompt_token_count")
+                    .and_then(|t| t.as_i64())
+                    .map(|t| t as i32),
+                output_tokens: response
+                    .get("generation_token_count")
+                    .and_then(|t| t.as_i64())
+                    .map(|t| t as i32),
                 total_tokens: None,
             }),
-            finish_reason: response.get("stop_reason").and_then(|r| r.as_str()).map(|s| s.to_string()),
+            finish_reason: response
+                .get("stop_reason")
+                .and_then(|r| r.as_str())
+                .map(|s| s.to_string()),
         })
     }
 }

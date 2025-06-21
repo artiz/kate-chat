@@ -1,8 +1,8 @@
+use async_graphql::{InputObject, SimpleObject};
+use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::{ Utc, NaiveDateTime};
 use uuid::Uuid;
-use async_graphql::{SimpleObject, InputObject};
 
 use crate::schema::chats;
 
@@ -43,7 +43,12 @@ pub struct NewChat {
 }
 
 impl NewChat {
-    pub fn new(title: String, description: Option<String>, user_id: Option<String>, model_id: Option<String>) -> Self {
+    pub fn new(
+        title: String,
+        description: Option<String>,
+        user_id: Option<String>,
+        model_id: Option<String>,
+    ) -> Self {
         let now = Utc::now().naive_utc();
         Self {
             id: Uuid::new_v4().to_string(),
@@ -80,8 +85,6 @@ pub struct UpdateChatInput {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct GqlChat {
@@ -123,7 +126,6 @@ impl From<Chat> for GqlChat {
         }
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlChatsList {

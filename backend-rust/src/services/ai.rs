@@ -1,9 +1,9 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
-use tracing::{info, debug, error, instrument};
 use std::fmt;
+use tracing::{debug, error, info, instrument};
 
 use crate::config::AppConfig;
 use crate::services::bedrock::BedrockService;
@@ -22,7 +22,6 @@ pub enum ApiProvider {
     YandexFm,
 }
 
-
 impl ApiProvider {
     fn as_str(&self) -> &'static str {
         match self {
@@ -38,7 +37,6 @@ impl fmt::Display for ApiProvider {
         write!(f, "{}", self.as_str())
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MessageRole {
@@ -128,7 +126,7 @@ pub struct Amount {
 }
 
 #[allow(dead_code)]
-pub struct StreamCallbacks<F, C, E> 
+pub struct StreamCallbacks<F, C, E>
 where
     F: Fn(String) + Send + Sync,
     C: Fn(String) + Send + Sync,
@@ -143,20 +141,24 @@ where
 #[allow(dead_code)]
 pub trait AIProviderService: Send + Sync {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError>;
-    
+
     async fn invoke_model_stream<F, C, E>(
-        &self, 
+        &self,
         request: InvokeModelRequest,
-        callbacks: StreamCallbacks<F, C, E>
+        callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
         F: Fn(String) + Send + Sync,
         C: Fn(String) + Send + Sync,
         E: Fn(AppError) + Send + Sync;
-    
+
     async fn get_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError>;
     async fn get_info(&self, test_connection: bool) -> Result<ProviderInfo, AppError>;
-    async fn get_costs(&self, start_time: i64, end_time: Option<i64>) -> Result<UsageCostInfo, AppError>;
+    async fn get_costs(
+        &self,
+        start_time: i64,
+        end_time: Option<i64>,
+    ) -> Result<UsageCostInfo, AppError>;
 }
 
 #[allow(dead_code)]
@@ -175,11 +177,11 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Yandex(service) => service.invoke_model(request).await,
         }
     }
-    
+
     async fn invoke_model_stream<F, C, E>(
-        &self, 
+        &self,
         request: InvokeModelRequest,
-        callbacks: StreamCallbacks<F, C, E>
+        callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
         F: Fn(String) + Send + Sync,
@@ -187,12 +189,18 @@ impl AIProviderService for AIProviderWrapper {
         E: Fn(AppError) + Send + Sync,
     {
         match self {
-            AIProviderWrapper::Bedrock(service) => service.invoke_model_stream(request, callbacks).await,
-            AIProviderWrapper::OpenAi(service) => service.invoke_model_stream(request, callbacks).await,
-            AIProviderWrapper::Yandex(service) => service.invoke_model_stream(request, callbacks).await,
+            AIProviderWrapper::Bedrock(service) => {
+                service.invoke_model_stream(request, callbacks).await
+            }
+            AIProviderWrapper::OpenAi(service) => {
+                service.invoke_model_stream(request, callbacks).await
+            }
+            AIProviderWrapper::Yandex(service) => {
+                service.invoke_model_stream(request, callbacks).await
+            }
         }
     }
-    
+
     async fn get_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError> {
         match self {
             AIProviderWrapper::Bedrock(service) => service.get_models().await,
@@ -200,7 +208,7 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Yandex(service) => service.get_models().await,
         }
     }
-    
+
     async fn get_info(&self, test_connection: bool) -> Result<ProviderInfo, AppError> {
         match self {
             AIProviderWrapper::Bedrock(service) => service.get_info(test_connection).await,
@@ -208,8 +216,12 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Yandex(service) => service.get_info(test_connection).await,
         }
     }
-    
-    async fn get_costs(&self, start_time: i64, end_time: Option<i64>) -> Result<UsageCostInfo, AppError> {
+
+    async fn get_costs(
+        &self,
+        start_time: i64,
+        end_time: Option<i64>,
+    ) -> Result<UsageCostInfo, AppError> {
         match self {
             AIProviderWrapper::Bedrock(service) => service.get_costs(start_time, end_time).await,
             AIProviderWrapper::OpenAi(service) => service.get_costs(start_time, end_time).await,
@@ -234,21 +246,24 @@ impl AIService {
             ApiProvider::OpenAi => "open_ai",
             ApiProvider::YandexFm => "yandex_fm",
         };
-        
+
         if !self.config.is_provider_enabled(provider_str) {
-            return Err(AppError::BadRequest(format!("API provider {} is not enabled", provider_str)));
+            return Err(AppError::BadRequest(format!(
+                "API provider {} is not enabled",
+                provider_str
+            )));
         }
-        
+
         match api_provider {
-            ApiProvider::AwsBedrock => {
-                Ok(AIProviderWrapper::Bedrock(BedrockService::new(self.config.clone())))
-            }
-            ApiProvider::OpenAi => {
-                Ok(AIProviderWrapper::OpenAi(OpenAIService::new(self.config.clone())))
-            }
-            ApiProvider::YandexFm => {
-                Ok(AIProviderWrapper::Yandex(YandexService::new(self.config.clone())))
-            }
+            ApiProvider::AwsBedrock => Ok(AIProviderWrapper::Bedrock(BedrockService::new(
+                self.config.clone(),
+            ))),
+            ApiProvider::OpenAi => Ok(AIProviderWrapper::OpenAi(OpenAIService::new(
+                self.config.clone(),
+            ))),
+            ApiProvider::YandexFm => Ok(AIProviderWrapper::Yandex(YandexService::new(
+                self.config.clone(),
+            ))),
         }
     }
 
@@ -258,17 +273,20 @@ impl AIService {
         api_provider: ApiProvider,
         request: InvokeModelRequest,
     ) -> Result<ModelResponse, AppError> {
-        debug!("Invoking model {} with provider {:?}", request.model_id, api_provider);
-        
+        debug!(
+            "Invoking model {} with provider {:?}",
+            request.model_id, api_provider
+        );
+
         let start_time = std::time::Instant::now();
         let provider = self.get_provider(api_provider)?;
-        
+
         match provider.invoke_model(request).await {
             Ok(response) => {
                 let duration = start_time.elapsed();
                 info!(
-                    "Model invocation successful for {} ({:?}) in {}ms", 
-                    response.model_id, 
+                    "Model invocation successful for {} ({:?}) in {}ms",
+                    response.model_id,
                     api_provider,
                     duration.as_millis()
                 );
@@ -277,7 +295,7 @@ impl AIService {
             Err(e) => {
                 // let duration = start_time.elapsed();
                 // error!(
-                //     "Model invocation failed for provider {:?} after {}ms: {}", 
+                //     "Model invocation failed for provider {:?} after {}ms: {}",
                 //     api_provider,
                 //     duration.as_millis(),
                 //     e
@@ -306,41 +324,48 @@ impl AIService {
     #[instrument(skip(self))]
     pub async fn get_all_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError> {
         let mut all_models = HashMap::new();
-        
+
         // Get models from all enabled providers
         let providers = self.get_enabled_providers();
         info!("Fetching models from {} enabled providers", providers.len());
-        
+
         for provider_type in providers {
             debug!("Fetching models from provider: {:?}", provider_type);
-            
+
             match self.get_provider(provider_type) {
-                Ok(provider) => {
-                    match provider.get_models().await {
-                        Ok(models) => {
-                            let model_count = models.len();
-                            debug!("Retrieved {} models from provider {:?}", model_count, provider_type);
-                            all_models.extend(models);
-                        }
-                        Err(e) => {
-                            error!("Failed to get models from provider {:?}: {}", provider_type, e);
-                        }
+                Ok(provider) => match provider.get_models().await {
+                    Ok(models) => {
+                        let model_count = models.len();
+                        debug!(
+                            "Retrieved {} models from provider {:?}",
+                            model_count, provider_type
+                        );
+                        all_models.extend(models);
                     }
-                }
+                    Err(e) => {
+                        error!(
+                            "Failed to get models from provider {:?}: {}",
+                            provider_type, e
+                        );
+                    }
+                },
                 Err(e) => {
                     error!("Failed to create provider {:?}: {}", provider_type, e);
                 }
             }
         }
-        
+
         info!("Total models retrieved: {}", all_models.len());
         Ok(all_models)
     }
 
-    pub async fn get_provider_info(&self, test_connection: bool) -> Result<Vec<ProviderInfo>, AppError> {
+    pub async fn get_provider_info(
+        &self,
+        test_connection: bool,
+    ) -> Result<Vec<ProviderInfo>, AppError> {
         let mut providers = Vec::new();
         let provider_types = self.get_enabled_providers();
-        
+
         for provider_type in provider_types {
             if let Ok(provider) = self.get_provider(provider_type) {
                 match provider.get_info(test_connection).await {
@@ -363,7 +388,7 @@ impl AIService {
                 }
             }
         }
-        
+
         Ok(providers)
     }
 
@@ -379,7 +404,7 @@ impl AIService {
         if self.config.is_provider_enabled("yandex_fm") {
             providers.push(ApiProvider::YandexFm);
         }
-        
+
         providers
     }
 

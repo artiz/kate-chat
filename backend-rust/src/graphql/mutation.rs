@@ -53,8 +53,8 @@ impl Mutation {
             Some(hashed_password),
             input.first_name,
             input.last_name,
-            None, // Google ID not provided
-            None, // GitHub ID not provided
+            None,                                  // Google ID not provided
+            None,                                  // GitHub ID not provided
             Some(AuthProvider::Local.to_string()), // Auth provider
             None,
         );
@@ -324,7 +324,7 @@ impl Mutation {
 
         // Load previous messages for context (up to 100 messages)
         const CONTEXT_MESSAGES_LIMIT: i64 = 100;
-        
+
         let previous_messages: Vec<Message> = messages::table
             .filter(messages::chat_id.eq(&input.chat_id))
             .order(messages::created_at.desc())
@@ -687,7 +687,9 @@ impl Mutation {
 }
 
 /// Convert database Message to AI service ModelMessage format
-fn convert_messages_to_model_format(messages: &[Message]) -> Vec<crate::services::ai::ModelMessage> {
+fn convert_messages_to_model_format(
+    messages: &[Message],
+) -> Vec<crate::services::ai::ModelMessage> {
     messages
         .iter()
         .map(|msg| crate::services::ai::ModelMessage {
@@ -703,7 +705,9 @@ fn convert_messages_to_model_format(messages: &[Message]) -> Vec<crate::services
 }
 
 /// Preprocess messages: sort by timestamp and join consecutive messages from the same role
-fn preprocess_messages(mut messages: Vec<crate::services::ai::ModelMessage>) -> Vec<crate::services::ai::ModelMessage> {
+fn preprocess_messages(
+    mut messages: Vec<crate::services::ai::ModelMessage>,
+) -> Vec<crate::services::ai::ModelMessage> {
     if messages.is_empty() {
         return messages;
     }
@@ -712,11 +716,14 @@ fn preprocess_messages(mut messages: Vec<crate::services::ai::ModelMessage>) -> 
     messages.sort_by(|a, b| {
         let a_time = a.timestamp.unwrap_or_else(|| Utc::now());
         let b_time = b.timestamp.unwrap_or_else(|| Utc::now());
-        
+
         if a_time == b_time {
             // If same timestamp, sort by role (user messages first)
             match (&a.role, &b.role) {
-                (crate::services::ai::MessageRole::User, crate::services::ai::MessageRole::User) => std::cmp::Ordering::Equal,
+                (
+                    crate::services::ai::MessageRole::User,
+                    crate::services::ai::MessageRole::User,
+                ) => std::cmp::Ordering::Equal,
                 (crate::services::ai::MessageRole::User, _) => std::cmp::Ordering::Less,
                 (_, crate::services::ai::MessageRole::User) => std::cmp::Ordering::Greater,
                 _ => std::cmp::Ordering::Equal,
@@ -728,7 +735,7 @@ fn preprocess_messages(mut messages: Vec<crate::services::ai::ModelMessage>) -> 
 
     // Join consecutive messages from the same role
     let mut result: Vec<crate::services::ai::ModelMessage> = Vec::new();
-    
+
     for msg in messages {
         if msg.content.trim().is_empty() {
             continue; // Skip empty messages

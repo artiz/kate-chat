@@ -1,8 +1,8 @@
+use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, Usage};
+use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
-use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct AnthropicRequestMessage {
@@ -53,72 +53,88 @@ pub struct AnthropicProvider;
 
 impl AnthropicProvider {
     pub fn format_messages(messages: &[Message]) -> Vec<AnthropicRequestMessage> {
-        messages.iter().map(|msg| {
-            let role = match msg.get_role() {
-                MessageRole::Assistant => "assistant",
-                _ => "user",
-            };
+        messages
+            .iter()
+            .map(|msg| {
+                let role = match msg.get_role() {
+                    MessageRole::Assistant => "assistant",
+                    _ => "user",
+                };
 
-            // Handle both string and structured content
-            let content = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Handle structured content with images/text
-                    let content_parts: Vec<serde_json::Value> = parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    match content_type {
-                                        "image" => {
-                                            if let Some(content) = obj.get("content").and_then(|v| v.as_str()) {
-                                                // Parse data URL format: data:image/type;base64,data
-                                                if let Some(captures) = regex::Regex::new(r"^data:(image/[^;]+);base64,(.*)$")
-                                                    .unwrap()
-                                                    .captures(content) {
-                                                    let media_type = captures.get(1).unwrap().as_str();
-                                                    let base64_data = captures.get(2).unwrap().as_str();
-                                                    
-                                                    return Some(json!({
-                                                        "type": "image",
-                                                        "source": {
-                                                            "type": "base64",
-                                                            "media_type": media_type,
-                                                            "data": base64_data
+                // Handle both string and structured content
+                let content =
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                        if parsed.is_array() {
+                            // Handle structured content with images/text
+                            let content_parts: Vec<serde_json::Value> = parsed
+                                .as_array()
+                                .unwrap_or(&vec![])
+                                .iter()
+                                .filter_map(|part| {
+                                    if let Some(obj) = part.as_object() {
+                                        if let Some(content_type) =
+                                            obj.get("contentType").and_then(|v| v.as_str())
+                                        {
+                                            match content_type {
+                                                "image" => {
+                                                    if let Some(content) =
+                                                        obj.get("content").and_then(|v| v.as_str())
+                                                    {
+                                                        // Parse data URL format: data:image/type;base64,data
+                                                        if let Some(captures) = regex::Regex::new(
+                                                            r"^data:(image/[^;]+);base64,(.*)$",
+                                                        )
+                                                        .unwrap()
+                                                        .captures(content)
+                                                        {
+                                                            let media_type =
+                                                                captures.get(1).unwrap().as_str();
+                                                            let base64_data =
+                                                                captures.get(2).unwrap().as_str();
+
+                                                            return Some(json!({
+                                                                "type": "image",
+                                                                "source": {
+                                                                    "type": "base64",
+                                                                    "media_type": media_type,
+                                                                    "data": base64_data
+                                                                }
+                                                            }));
                                                         }
-                                                    }));
+                                                    }
                                                 }
+                                                "text" => {
+                                                    if let Some(content) =
+                                                        obj.get("content").and_then(|v| v.as_str())
+                                                    {
+                                                        return Some(json!({
+                                                            "type": "text",
+                                                            "text": content
+                                                        }));
+                                                    }
+                                                }
+                                                _ => {}
                                             }
-                                        },
-                                        "text" => {
-                                            if let Some(content) = obj.get("content").and_then(|v| v.as_str()) {
-                                                return Some(json!({
-                                                    "type": "text",
-                                                    "text": content
-                                                }));
-                                            }
-                                        },
-                                        _ => {}
+                                        }
                                     }
-                                }
-                            }
-                            None
-                        })
-                        .collect();
-                    
-                    json!(content_parts)
-                } else {
-                    json!(msg.get_body())
-                }
-            } else {
-                json!(msg.get_body())
-            };
+                                    None
+                                })
+                                .collect();
 
-            AnthropicRequestMessage {
-                role: role.to_string(),
-                content,
-            }
-        }).collect()
+                            json!(content_parts)
+                        } else {
+                            json!(msg.get_body())
+                        }
+                    } else {
+                        json!(msg.get_body())
+                    };
+
+                AnthropicRequestMessage {
+                    role: role.to_string(),
+                    content,
+                }
+            })
+            .collect()
     }
 
     pub fn create_request_body(
@@ -138,7 +154,10 @@ impl AnthropicProvider {
 
     pub fn parse_response(response: AnthropicResponse) -> Result<String, String> {
         if let Some(content_block) = response.content.first() {
-            content_block.text.clone().ok_or_else(|| "No text content found".to_string())
+            content_block
+                .text
+                .clone()
+                .ok_or_else(|| "No text content found".to_string())
         } else {
             Err("No content blocks found".to_string())
         }
@@ -185,7 +204,10 @@ impl AnthropicProvider {
         Ok(body)
     }
 
-    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+    pub fn parse_model_response(
+        response: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
         let content = response
             .get("content")
             .and_then(|c| c.as_array())
@@ -196,8 +218,14 @@ impl AnthropicProvider {
             .to_string();
 
         let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("input_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("output_tokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            input_tokens: u
+                .get("input_tokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
+            output_tokens: u
+                .get("output_tokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
             total_tokens: None,
         });
 
@@ -205,7 +233,10 @@ impl AnthropicProvider {
             content,
             model_id: model_id.to_string(),
             usage,
-            finish_reason: response.get("stop_reason").and_then(|r| r.as_str()).map(|s| s.to_string()),
+            finish_reason: response
+                .get("stop_reason")
+                .and_then(|r| r.as_str())
+                .map(|s| s.to_string()),
         })
     }
 }

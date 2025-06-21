@@ -1,8 +1,8 @@
+use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, Usage};
+use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
-use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct MistralRequestMessage {
@@ -61,44 +61,51 @@ pub struct MistralProvider;
 
 impl MistralProvider {
     pub fn format_messages(messages: &[Message]) -> Vec<MistralRequestMessage> {
-        messages.iter().map(|msg| {
-            let role = match msg.get_role() {
-                MessageRole::Assistant => "assistant",
-                MessageRole::System => "system",
-                _ => "user",
-            };
+        messages
+            .iter()
+            .map(|msg| {
+                let role = match msg.get_role() {
+                    MessageRole::Assistant => "assistant",
+                    MessageRole::System => "system",
+                    _ => "user",
+                };
 
-            // Extract text content from structured format if needed
-            let content = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Extract text content from structured format
-                    parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    if content_type == "text" {
-                                        return obj.get("content").and_then(|v| v.as_str());
+                // Extract text content from structured format if needed
+                let content =
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                        if parsed.is_array() {
+                            // Extract text content from structured format
+                            parsed
+                                .as_array()
+                                .unwrap_or(&vec![])
+                                .iter()
+                                .filter_map(|part| {
+                                    if let Some(obj) = part.as_object() {
+                                        if let Some(content_type) =
+                                            obj.get("contentType").and_then(|v| v.as_str())
+                                        {
+                                            if content_type == "text" {
+                                                return obj.get("content").and_then(|v| v.as_str());
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                            None
-                        })
-                        .collect::<Vec<&str>>()
-                        .join(" ")
-                } else {
-                    msg.get_body().to_string()
-                }
-            } else {
-                msg.get_body().to_string()
-            };
+                                    None
+                                })
+                                .collect::<Vec<&str>>()
+                                .join(" ")
+                        } else {
+                            msg.get_body().to_string()
+                        }
+                    } else {
+                        msg.get_body().to_string()
+                    };
 
-            MistralRequestMessage {
-                role: role.to_string(),
-                content,
-            }
-        }).collect()
+                MistralRequestMessage {
+                    role: role.to_string(),
+                    content,
+                }
+            })
+            .collect()
     }
 
     pub fn create_request_body(
@@ -117,16 +124,20 @@ impl MistralProvider {
     }
 
     pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let messages = request.messages.iter().map(|msg| {
-            serde_json::json!({
-                "role": match msg.role {
-                    AIMessageRole::Assistant => "assistant",
-                    AIMessageRole::System => "system",
-                    _ => "user",
-                },
-                "content": msg.content
+        let messages = request
+            .messages
+            .iter()
+            .map(|msg| {
+                serde_json::json!({
+                    "role": match msg.role {
+                        AIMessageRole::Assistant => "assistant",
+                        AIMessageRole::System => "system",
+                        _ => "user",
+                    },
+                    "content": msg.content
+                })
             })
-        }).collect::<Vec<_>>();
+            .collect::<Vec<_>>();
 
         let body = serde_json::json!({
             "messages": messages,
@@ -138,19 +149,19 @@ impl MistralProvider {
         Ok(body)
     }
 
-    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+    pub fn parse_model_response(
+        response: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
         let mistral_response: MistralResponse = serde_json::from_value(response)
-            .map_err(|e| AppError::Json(format!("Failed to parse Mistral response: {}", e)))?; 
+            .map_err(|e| AppError::Json(format!("Failed to parse Mistral response: {}", e)))?;
 
-        let choice = mistral_response
-            .choices
-            .first();
-            
+        let choice = mistral_response.choices.first();
+
         let content = choice
             .and_then(|choice| Some(choice.message.content.as_str()))
             .unwrap_or("")
             .to_string();
-        
 
         let usage = mistral_response.usage.map(|u| Usage {
             input_tokens: u.prompt_tokens,

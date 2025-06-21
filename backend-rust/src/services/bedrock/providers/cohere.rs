@@ -1,8 +1,8 @@
+use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, Usage};
+use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
-use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct CohereRequestMessage {
@@ -58,30 +58,34 @@ impl CohereProvider {
             };
 
             // Extract text content from structured format if needed
-            let content = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Extract text content from structured format
-                    parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    if content_type == "text" {
-                                        return obj.get("content").and_then(|v| v.as_str());
+            let content =
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                    if parsed.is_array() {
+                        // Extract text content from structured format
+                        parsed
+                            .as_array()
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .filter_map(|part| {
+                                if let Some(obj) = part.as_object() {
+                                    if let Some(content_type) =
+                                        obj.get("contentType").and_then(|v| v.as_str())
+                                    {
+                                        if content_type == "text" {
+                                            return obj.get("content").and_then(|v| v.as_str());
+                                        }
                                     }
                                 }
-                            }
-                            None
-                        })
-                        .collect::<Vec<&str>>()
-                        .join(" ")
+                                None
+                            })
+                            .collect::<Vec<&str>>()
+                            .join(" ")
+                    } else {
+                        msg.get_body().to_string()
+                    }
                 } else {
                     msg.get_body().to_string()
-                }
-            } else {
-                msg.get_body().to_string()
-            };
+                };
 
             // The last message becomes the current message, others go to history
             if i == messages.len() - 1 && msg.get_role() == MessageRole::User {
@@ -151,7 +155,10 @@ impl CohereProvider {
         Ok(body)
     }
 
-    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+    pub fn parse_model_response(
+        response: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
         let content = response
             .get("text")
             .and_then(|text| text.as_str())
@@ -159,8 +166,14 @@ impl CohereProvider {
             .to_string();
 
         let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("inputTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("outputTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            input_tokens: u
+                .get("inputTokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
+            output_tokens: u
+                .get("outputTokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
             total_tokens: None,
         });
 
@@ -168,7 +181,10 @@ impl CohereProvider {
             content,
             model_id: model_id.to_string(),
             usage,
-            finish_reason: response.get("finishReason").and_then(|r| r.as_str()).map(|s| s.to_string()),
+            finish_reason: response
+                .get("finishReason")
+                .and_then(|r| r.as_str())
+                .map(|s| s.to_string()),
         })
     }
 }

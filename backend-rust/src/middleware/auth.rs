@@ -1,13 +1,17 @@
-use rocket::{Request, request::{self, FromRequest}, http::Status};
 use diesel::prelude::*;
+use rocket::{
+    http::Status,
+    request::{self, FromRequest},
+    Request,
+};
 use tracing::{debug, warn};
 
+use crate::config::AppConfig;
 use crate::database::DbPool;
+use crate::log_security_event;
 use crate::models::User;
 use crate::schema::users;
-use crate::utils::jwt::{verify_token, extract_token_from_header, Claims};
-use crate::config::AppConfig;
-use crate::{log_security_event};
+use crate::utils::jwt::{extract_token_from_header, verify_token, Claims};
 
 pub struct AuthenticatedUser(pub User);
 
@@ -23,7 +27,12 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
 
         let db_pool = match req.guard::<&rocket::State<DbPool>>().await {
             request::Outcome::Success(pool) => pool,
-            _ => return request::Outcome::Error((Status::InternalServerError, "Database not available")),
+            _ => {
+                return request::Outcome::Error((
+                    Status::InternalServerError,
+                    "Database not available",
+                ))
+            }
         };
 
         let auth_header = match req.headers().get_one("Authorization") {
@@ -39,7 +48,10 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
             None => {
                 warn!("Invalid Authorization header format");
                 log_security_event!("invalid_auth_header_format",);
-                return request::Outcome::Error((Status::Unauthorized, "Invalid auth header format"));
+                return request::Outcome::Error((
+                    Status::Unauthorized,
+                    "Invalid auth header format",
+                ));
             }
         };
 
@@ -54,7 +66,12 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
 
         let mut conn = match db_pool.get() {
             Ok(conn) => conn,
-            Err(_) => return request::Outcome::Error((Status::InternalServerError, "Database connection failed")),
+            Err(_) => {
+                return request::Outcome::Error((
+                    Status::InternalServerError,
+                    "Database connection failed",
+                ))
+            }
         };
 
         let user = match users::table
@@ -64,9 +81,12 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
             Ok(user) => {
                 debug!("Authentication successful for user: {}", user.id);
                 user
-            },
+            }
             Err(e) => {
-                warn!("User not found in database for ID: {}, error: {}", claims.sub, e);
+                warn!(
+                    "User not found in database for ID: {}, error: {}",
+                    claims.sub, e
+                );
                 log_security_event!("user_not_found", user_id = %claims.sub);
                 return request::Outcome::Error((Status::Unauthorized, "User not found"));
             }
@@ -94,11 +114,15 @@ impl<'r> FromRequest<'r> for OptionalUser {
 }
 
 #[allow(dead_code)]
-pub async fn get_user_from_token(token: &str, jwt_secret: &str, db_pool: &DbPool) -> Result<User, String> {
-    let claims = verify_token(token, jwt_secret)
-        .map_err(|_| "Invalid token".to_string())?;
+pub async fn get_user_from_token(
+    token: &str,
+    jwt_secret: &str,
+    db_pool: &DbPool,
+) -> Result<User, String> {
+    let claims = verify_token(token, jwt_secret).map_err(|_| "Invalid token".to_string())?;
 
-    let mut conn = db_pool.get()
+    let mut conn = db_pool
+        .get()
         .map_err(|_| "Database connection failed".to_string())?;
 
     let user = users::table
@@ -114,11 +138,11 @@ pub async fn get_user_from_token(token: &str, jwt_secret: &str, db_pool: &DbPool
 pub fn get_user_from_websocket_token(auth_header: Option<&str>) -> Option<Claims> {
     let auth_header = auth_header?;
     let token = extract_token_from_header(auth_header)?;
-    
+
     // For WebSocket auth, we'll use a default secret for now
     // In production, this should come from config
     let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret".to_string());
-    
+
     match verify_token(token, &jwt_secret) {
         Ok(claims) => Some(claims),
         Err(e) => {

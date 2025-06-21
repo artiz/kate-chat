@@ -1,9 +1,9 @@
-use std::fmt;
+use async_graphql::{InputObject, SimpleObject};
+use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::{Utc, NaiveDateTime};
+use std::fmt;
 use uuid::Uuid;
-use async_graphql::{SimpleObject, InputObject};
 
 use crate::schema::users::{self};
 
@@ -18,7 +18,6 @@ pub enum AuthProvider {
     #[serde(rename = "microsoft")]
     Microsoft,
 }
-
 
 impl AuthProvider {
     pub fn as_str(&self) -> &'static str {
@@ -36,7 +35,6 @@ impl fmt::Display for AuthProvider {
         write!(f, "{}", self.as_str())
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, SimpleObject)]
 #[diesel(table_name = users)]

@@ -1,7 +1,7 @@
-use rocket::{Route, routes, post, get, delete, State};
-use rocket::serde::json::Json;
 use rocket::form::{Form, FromForm};
 use rocket::fs::TempFile;
+use rocket::serde::json::Json;
+use rocket::{delete, get, post, routes, Route, State};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -29,11 +29,7 @@ pub struct FileUpload<'f> {
 }
 
 pub fn routes() -> Vec<Route> {
-    routes![
-        upload_file,
-        delete_file,
-        health_check
-    ]
+    routes![upload_file, delete_file, health_check]
 }
 
 #[post("/upload", data = "<upload>")]
@@ -43,26 +39,30 @@ pub async fn upload_file(
     config: &State<AppConfig>,
 ) -> Result<Json<FileUploadResponse>, AppError> {
     let file = &mut upload.file;
-    
+
     if file.len() == 0 {
         return Err(AppError::Validation("No file provided".to_string()));
     }
 
     // Read file data
-    let path = file.path().ok_or_else(|| AppError::Internal("File path not available".to_string()))?;
+    let path = file
+        .path()
+        .ok_or_else(|| AppError::Internal("File path not available".to_string()))?;
     let buffer = std::fs::read(path)
         .map_err(|e| AppError::Internal(format!("Failed to read file: {}", e)))?;
 
     // Generate unique key for S3
-    let extension = file.name()
+    let extension = file
+        .name()
         .and_then(|name| std::path::Path::new(name).extension())
         .and_then(|ext| ext.to_str())
         .unwrap_or("bin");
-    
+
     let key = format!("uploads/{}.{}", Uuid::new_v4(), extension);
-    
+
     // Determine content type
-    let content_type = file.content_type()
+    let content_type = file
+        .content_type()
         .map(|ct| ct.to_string())
         .unwrap_or_else(|| "application/octet-stream".to_string());
 

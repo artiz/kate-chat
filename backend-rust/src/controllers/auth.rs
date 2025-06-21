@@ -232,7 +232,6 @@ pub async fn google_callback(
         "{}/oauth-callback?token={}",
         frontend_url, token
     )))
-    
 }
 
 #[get("/github")]

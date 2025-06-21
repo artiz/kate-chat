@@ -1,10 +1,10 @@
 // Provider-specific implementations for different Bedrock model families
 #[allow(dead_code)]
-pub mod anthropic;
+pub mod ai21;
 #[allow(dead_code)]
 pub mod amazon;
 #[allow(dead_code)]
-pub mod ai21;
+pub mod anthropic;
 #[allow(dead_code)]
 pub mod cohere;
 #[allow(dead_code)]

@@ -1,37 +1,38 @@
 use std::env;
 use std::io;
+use tracing_appender::{non_blocking, rolling};
 use tracing_subscriber::{
     fmt::{self, time::SystemTime},
     layer::SubscriberExt,
     util::SubscriberInitExt,
     EnvFilter,
 };
-use tracing_appender::{non_blocking, rolling};
 
 /// Initialize the logging system
 pub fn init_logging() {
-    let log_level = env::var("LOG_LEVEL")
-        .unwrap_or_else(|_| {
-            if env::var("ENVIRONMENT").unwrap_or_default() == "production" {
-                "info".to_string()
-            } else {
-                "debug".to_string()
-            }
-        });
+    let log_level = env::var("LOG_LEVEL").unwrap_or_else(|_| {
+        if env::var("ENVIRONMENT").unwrap_or_default() == "production" {
+            "info".to_string()
+        } else {
+            "debug".to_string()
+        }
+    });
 
     let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production";
 
     // Create env filter
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            EnvFilter::new(format!("kate_chat_backend={},tower_http=debug,sqlx=info", log_level))
-        });
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new(format!(
+            "kate_chat_backend={},tower_http=debug,sqlx=info",
+            log_level
+        ))
+    });
 
     if is_production {
         // Production: JSON logs to file
         let file_appender = rolling::daily("logs", "kate-chat-backend.log");
         let (non_blocking_file, _guard) = non_blocking(file_appender);
-        
+
         let file_layer = fmt::layer()
             .json()
             .with_timer(SystemTime)

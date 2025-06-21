@@ -78,9 +78,4 @@ diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(messages -> users (user_id));
 diesel::joinable!(models -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    chats,
-    messages,
-    models,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(chats, messages, models, users,);

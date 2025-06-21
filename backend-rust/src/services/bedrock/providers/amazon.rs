@@ -1,8 +1,8 @@
+use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse};
+use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, ModelResponse, MessageRole as AIMessageRole};
-use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct AmazonRequestMessage {
@@ -115,110 +115,131 @@ impl AmazonProvider {
     }
 
     pub fn format_messages_for_nova(messages: &[Message]) -> Vec<AmazonRequestMessage> {
-        messages.iter().map(|msg| {
-            let role = match msg.get_role() {
-                MessageRole::Assistant => "assistant",
-                _ => "user",
-            };
+        messages
+            .iter()
+            .map(|msg| {
+                let role = match msg.get_role() {
+                    MessageRole::Assistant => "assistant",
+                    _ => "user",
+                };
 
-            let content = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Handle structured content with images/video/text
-                    parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    match content_type {
-                                        "image" | "video" => {
-                                            if let Some(content) = obj.get("content").and_then(|v| v.as_str()) {
-                                                // Parse data URL format: data:image/type;base64,data or data:video/type;base64,data
-                                                if let Some(captures) = regex::Regex::new(r"^data:(image|video)/([^;]+);base64,(.*)$")
+                let content =
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                        if parsed.is_array() {
+                            // Handle structured content with images/video/text
+                            parsed
+                                .as_array()
+                                .unwrap_or(&vec![])
+                                .iter()
+                                .filter_map(|part| {
+                                    if let Some(obj) = part.as_object() {
+                                        if let Some(content_type) =
+                                            obj.get("contentType").and_then(|v| v.as_str())
+                                        {
+                                            match content_type {
+                                                "image" | "video" => {
+                                                    if let Some(content) =
+                                                        obj.get("content").and_then(|v| v.as_str())
+                                                    {
+                                                        // Parse data URL format: data:image/type;base64,data or data:video/type;base64,data
+                                                        if let Some(captures) = regex::Regex::new(
+                                                        r"^data:(image|video)/([^;]+);base64,(.*)$",
+                                                    )
                                                     .unwrap()
-                                                    .captures(content) {
-                                                    let media_format = captures.get(1).unwrap().as_str();
-                                                    let media_type = captures.get(2).unwrap().as_str();
-                                                    let base64_data = captures.get(3).unwrap().as_str();
-                                                    
-                                                    if media_format == "image" {
-                                                        return Some(json!({
-                                                            "image": {
-                                                                "format": media_type,
-                                                                "source": {
-                                                                    "bytes": base64_data
+                                                    .captures(content)
+                                                    {
+                                                        let media_format =
+                                                            captures.get(1).unwrap().as_str();
+                                                        let media_type =
+                                                            captures.get(2).unwrap().as_str();
+                                                        let base64_data =
+                                                            captures.get(3).unwrap().as_str();
+
+                                                        if media_format == "image" {
+                                                            return Some(json!({
+                                                                "image": {
+                                                                    "format": media_type,
+                                                                    "source": {
+                                                                        "bytes": base64_data
+                                                                    }
                                                                 }
-                                                            }
-                                                        }));
-                                                    } else if media_format == "video" {
-                                                        return Some(json!({
-                                                            "video": {
-                                                                "format": media_type,
-                                                                "source": {
-                                                                    "bytes": base64_data
+                                                            }));
+                                                        } else if media_format == "video" {
+                                                            return Some(json!({
+                                                                "video": {
+                                                                    "format": media_type,
+                                                                    "source": {
+                                                                        "bytes": base64_data
+                                                                    }
                                                                 }
-                                                            }
+                                                            }));
+                                                        }
+                                                    }
+                                                    }
+                                                }
+                                                "text" => {
+                                                    if let Some(content) =
+                                                        obj.get("content").and_then(|v| v.as_str())
+                                                    {
+                                                        return Some(json!({
+                                                            "text": content
                                                         }));
                                                     }
                                                 }
+                                                _ => {}
                                             }
-                                        },
-                                        "text" => {
-                                            if let Some(content) = obj.get("content").and_then(|v| v.as_str()) {
-                                                return Some(json!({
-                                                    "text": content
-                                                }));
-                                            }
-                                        },
-                                        _ => {}
+                                        }
                                     }
-                                }
-                            }
-                            None
-                        })
-                        .collect()
-                } else {
-                    vec![json!({"text": msg.get_body()})]
-                }
-            } else {
-                vec![json!({"text": msg.get_body()})]
-            };
+                                    None
+                                })
+                                .collect()
+                        } else {
+                            vec![json!({"text": msg.get_body()})]
+                        }
+                    } else {
+                        vec![json!({"text": msg.get_body()})]
+                    };
 
-            AmazonRequestMessage {
-                role: role.to_string(),
-                content,
-            }
-        }).collect()
+                AmazonRequestMessage {
+                    role: role.to_string(),
+                    content,
+                }
+            })
+            .collect()
     }
 
     pub fn format_messages_for_titan(messages: &[Message]) -> String {
         let mut prompt = String::new();
 
         for msg in messages {
-            let content = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Extract text content from structured format
-                    parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    if content_type == "text" {
-                                        return obj.get("content").and_then(|v| v.as_str());
+            let content =
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                    if parsed.is_array() {
+                        // Extract text content from structured format
+                        parsed
+                            .as_array()
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .filter_map(|part| {
+                                if let Some(obj) = part.as_object() {
+                                    if let Some(content_type) =
+                                        obj.get("contentType").and_then(|v| v.as_str())
+                                    {
+                                        if content_type == "text" {
+                                            return obj.get("content").and_then(|v| v.as_str());
+                                        }
                                     }
                                 }
-                            }
-                            None
-                        })
-                        .collect::<Vec<&str>>()
-                        .join(" ")
+                                None
+                            })
+                            .collect::<Vec<&str>>()
+                            .join(" ")
+                    } else {
+                        msg.get_body().to_string()
+                    }
                 } else {
                     msg.get_body().to_string()
-                }
-            } else {
-                msg.get_body().to_string()
-            };
+                };
 
             match msg.get_role() {
                 MessageRole::User => prompt.push_str(&format!("Human: {}\n", content)),
@@ -274,12 +295,15 @@ impl AmazonProvider {
     }
 
     pub fn parse_nova_response(response: AmazonNovaResponse) -> Result<String, String> {
-        let content = response.output.message.content
+        let content = response
+            .output
+            .message
+            .content
             .iter()
             .map(|part| part.text.as_str())
             .collect::<Vec<&str>>()
             .join("");
-        
+
         if content.is_empty() {
             Err("No text content found in Nova response".to_string())
         } else {
@@ -305,8 +329,12 @@ impl AmazonProvider {
         for msg in &request.messages {
             match msg.role {
                 AIMessageRole::User => input_text.push_str(&format!("Human: {}\n\n", msg.content)),
-                AIMessageRole::Assistant => input_text.push_str(&format!("Assistant: {}\n\n", msg.content)),
-                AIMessageRole::System => input_text.push_str(&format!("System: {}\n\n", msg.content)),
+                AIMessageRole::Assistant => {
+                    input_text.push_str(&format!("Assistant: {}\n\n", msg.content))
+                }
+                AIMessageRole::System => {
+                    input_text.push_str(&format!("System: {}\n\n", msg.content))
+                }
             }
         }
 
@@ -324,7 +352,10 @@ impl AmazonProvider {
         Ok(body)
     }
 
-    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+    pub fn parse_model_response(
+        response: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
         let content = response
             .get("results")
             .and_then(|r| r.as_array())

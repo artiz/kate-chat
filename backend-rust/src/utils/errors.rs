@@ -1,42 +1,42 @@
-use thiserror::Error;
+use rocket::http::{ContentType, Status};
 use rocket::response::{Responder, Response};
 use rocket::Request;
-use rocket::http::{Status, ContentType};
 use std::io::Cursor;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(String),
-    
+
     #[error("Authentication error: {0}")]
     Auth(String),
-    
+
     #[error("JWT error: {0}")]
     Jwt(String),
-    
+
     #[error("Bcrypt error: {0}")]
     Bcrypt(String),
-    
+
     #[error("Validation error: {0}")]
     Validation(String),
-    
+
     #[error("Bad request: {0}")]
     BadRequest(String),
 
     #[error("JSON error: {0}")]
     Json(String),
-    
+
     #[error("Not found: {0}")]
     #[allow(dead_code)]
     NotFound(String),
-    
+
     #[error("Internal server error: {0}")]
     Internal(String),
-    
+
     #[error("AWS error: {0}")]
     Aws(String),
-    
+
     #[error("HTTP client error: {0}")]
     Http(String),
 }
@@ -104,8 +104,10 @@ impl<'r> Responder<'r, 'static> for AppError {
         Response::build()
             .status(status)
             .header(ContentType::JSON)
-            .sized_body(error_json.to_string().len(), Cursor::new(error_json.to_string()))
+            .sized_body(
+                error_json.to_string().len(),
+                Cursor::new(error_json.to_string()),
+            )
             .ok()
     }
 }
-

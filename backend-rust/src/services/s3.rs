@@ -1,5 +1,5 @@
 use aws_config::{BehaviorVersion, Region};
-use aws_sdk_s3::{Client as S3Client, primitives::ByteStream};
+use aws_sdk_s3::{primitives::ByteStream, Client as S3Client};
 use std::collections::HashMap;
 
 use crate::config::AppConfig;
@@ -33,14 +33,16 @@ impl S3Service {
             config_builder = config_builder.region(Region::new(region.clone()));
         }
 
-        if let (Some(access_key), Some(secret_key)) = 
-            (&self.config.aws_bedrock_access_key_id, &self.config.aws_bedrock_secret_access_key) {
+        if let (Some(access_key), Some(secret_key)) = (
+            &self.config.aws_bedrock_access_key_id,
+            &self.config.aws_bedrock_secret_access_key,
+        ) {
             let credentials = aws_credential_types::Credentials::new(
                 access_key,
                 secret_key,
                 None,
                 None,
-                "kate-chat"
+                "kate-chat",
             );
             config_builder = config_builder.credentials_provider(credentials);
         }
@@ -48,8 +50,16 @@ impl S3Service {
         Ok(config_builder.load().await)
     }
 
-    pub async fn upload_file(&mut self, key: &str, data: Vec<u8>, content_type: &str) -> Result<String, AppError> {
-        let bucket = self.config.s3_bucket.clone()
+    pub async fn upload_file(
+        &mut self,
+        key: &str,
+        data: Vec<u8>,
+        content_type: &str,
+    ) -> Result<String, AppError> {
+        let bucket = self
+            .config
+            .s3_bucket
+            .clone()
             .ok_or_else(|| AppError::Internal("S3 bucket not configured".to_string()))?;
         let client = self.get_client().await?;
 
@@ -67,11 +77,17 @@ impl S3Service {
 
         // Return the S3 URL
         let region = self.config.s3_region.as_deref().unwrap_or("us-east-1");
-        Ok(format!("https://{}.s3.{}.amazonaws.com/{}", bucket, region, key))
+        Ok(format!(
+            "https://{}.s3.{}.amazonaws.com/{}",
+            bucket, region, key
+        ))
     }
 
     pub async fn delete_file(&mut self, key: &str) -> Result<(), AppError> {
-        let bucket = self.config.s3_bucket.clone()
+        let bucket = self
+            .config
+            .s3_bucket
+            .clone()
             .ok_or_else(|| AppError::Internal("S3 bucket not configured".to_string()))?;
         let client = self.get_client().await?;
 
@@ -88,15 +104,24 @@ impl S3Service {
 
     #[allow(dead_code)]
     pub async fn get_file_url(&self, key: &str) -> Result<String, AppError> {
-        let bucket = self.config.s3_bucket.as_ref()
+        let bucket = self
+            .config
+            .s3_bucket
+            .as_ref()
             .ok_or_else(|| AppError::Internal("S3 bucket not configured".to_string()))?;
-        
+
         let region = self.config.s3_region.as_deref().unwrap_or("us-east-1");
-        Ok(format!("https://{}.s3.{}.amazonaws.com/{}", bucket, region, key))
+        Ok(format!(
+            "https://{}.s3.{}.amazonaws.com/{}",
+            bucket, region, key
+        ))
     }
 
     pub async fn test_connection(&mut self) -> Result<bool, AppError> {
-        let bucket = self.config.s3_bucket.clone()
+        let bucket = self
+            .config
+            .s3_bucket
+            .clone()
             .ok_or_else(|| AppError::Internal("S3 bucket not configured".to_string()))?;
         let client = self.get_client().await?;
 
@@ -111,18 +136,20 @@ impl S3Service {
 
     pub fn get_info(&self) -> HashMap<String, String> {
         let mut details = HashMap::new();
-        
-        details.insert("configured".to_string(), 
-                      self.config.s3_bucket.is_some().to_string());
-        
+
+        details.insert(
+            "configured".to_string(),
+            self.config.s3_bucket.is_some().to_string(),
+        );
+
         if let Some(bucket) = &self.config.s3_bucket {
             details.insert("bucket".to_string(), bucket.clone());
         }
-        
+
         if let Some(region) = &self.config.s3_region {
             details.insert("region".to_string(), region.clone());
         }
-        
+
         details
     }
 }

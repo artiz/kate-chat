@@ -1,11 +1,11 @@
+use async_graphql::{InputObject, SimpleObject};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc, NaiveDateTime};
 use uuid::Uuid;
-use async_graphql::{SimpleObject, InputObject};
 
-use crate::schema::models;
 use crate::models::User;
+use crate::schema::models;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, SimpleObject)]
 #[diesel(table_name = models)]
@@ -29,7 +29,6 @@ pub struct Model {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
-
 
 impl Model {
     pub fn new(
@@ -145,7 +144,6 @@ pub struct TestModelInput {
     #[graphql(default = "2+2=")]
     pub text: String,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlCostsInfo {

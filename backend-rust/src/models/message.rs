@@ -1,11 +1,11 @@
+use async_graphql::{Enum, InputObject, SimpleObject};
+use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::{Utc, NaiveDateTime};
 use uuid::Uuid;
-use async_graphql::{SimpleObject, InputObject, Enum};
 
-use crate::schema::messages;
 use crate::models::{Chat, User};
+use crate::schema::messages;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Enum, Copy, Eq)]
 pub enum MessageRole {
@@ -62,7 +62,7 @@ impl Message {
     pub fn get_role(&self) -> MessageRole {
         MessageRole::from(self.role.as_str())
     }
-    
+
     pub fn get_body(&self) -> &str {
         &self.content
     }
@@ -126,7 +126,7 @@ pub struct ImageInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
-pub struct GqlMessage  {
+pub struct GqlMessage {
     pub id: String,
     pub chat_id: String,
     pub user_id: Option<String>,
@@ -197,4 +197,3 @@ pub struct GqlNewMessage {
     pub streaming: Option<bool>,
     pub r#type: String,
 }
-

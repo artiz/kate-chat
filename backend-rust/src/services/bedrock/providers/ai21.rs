@@ -1,8 +1,8 @@
+use crate::models::message::{Message, MessageRole};
+use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, Usage};
+use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, ModelResponse, Usage, MessageRole as AIMessageRole};
-use crate::utils::errors::AppError;
 
 #[derive(Debug, Serialize)]
 pub struct AI21RequestMessage {
@@ -57,44 +57,51 @@ pub struct AI21Provider;
 
 impl AI21Provider {
     pub fn format_messages(messages: &[Message]) -> Vec<AI21RequestMessage> {
-        messages.iter().map(|msg| {
-            let role = match msg.get_role() {
-                MessageRole::Assistant => "assistant",
-                MessageRole::System => "system",
-                _ => "user",
-            };
+        messages
+            .iter()
+            .map(|msg| {
+                let role = match msg.get_role() {
+                    MessageRole::Assistant => "assistant",
+                    MessageRole::System => "system",
+                    _ => "user",
+                };
 
-            // Extract text content from structured format if needed
-            let text = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
-                if parsed.is_array() {
-                    // Extract text content from structured format
-                    parsed.as_array()
-                        .unwrap_or(&vec![])
-                        .iter()
-                        .filter_map(|part| {
-                            if let Some(obj) = part.as_object() {
-                                if let Some(content_type) = obj.get("contentType").and_then(|v| v.as_str()) {
-                                    if content_type == "text" {
-                                        return obj.get("content").and_then(|v| v.as_str());
+                // Extract text content from structured format if needed
+                let text =
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(msg.get_body()) {
+                        if parsed.is_array() {
+                            // Extract text content from structured format
+                            parsed
+                                .as_array()
+                                .unwrap_or(&vec![])
+                                .iter()
+                                .filter_map(|part| {
+                                    if let Some(obj) = part.as_object() {
+                                        if let Some(content_type) =
+                                            obj.get("contentType").and_then(|v| v.as_str())
+                                        {
+                                            if content_type == "text" {
+                                                return obj.get("content").and_then(|v| v.as_str());
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                            None
-                        })
-                        .collect::<Vec<&str>>()
-                        .join(" ")
-                } else {
-                    msg.get_body().to_string()
-                }
-            } else {
-                msg.get_body().to_string()
-            };
+                                    None
+                                })
+                                .collect::<Vec<&str>>()
+                                .join(" ")
+                        } else {
+                            msg.get_body().to_string()
+                        }
+                    } else {
+                        msg.get_body().to_string()
+                    };
 
-            AI21RequestMessage {
-                role: role.to_string(),
-                text,
-            }
-        }).collect()
+                AI21RequestMessage {
+                    role: role.to_string(),
+                    text,
+                }
+            })
+            .collect()
     }
 
     pub fn create_request_body(
@@ -122,16 +129,20 @@ impl AI21Provider {
     }
 
     pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let messages = request.messages.iter().map(|msg| {
-            serde_json::json!({
-                "role": match msg.role {
-                    AIMessageRole::User => "user",
-                    AIMessageRole::Assistant => "assistant",
-                    AIMessageRole::System => "system",
-                },
-                "text": msg.content
+        let messages = request
+            .messages
+            .iter()
+            .map(|msg| {
+                serde_json::json!({
+                    "role": match msg.role {
+                        AIMessageRole::User => "user",
+                        AIMessageRole::Assistant => "assistant",
+                        AIMessageRole::System => "system",
+                    },
+                    "text": msg.content
+                })
             })
-        }).collect::<Vec<_>>();
+            .collect::<Vec<_>>();
 
         let body = serde_json::json!({
             "messages": messages,
@@ -144,7 +155,10 @@ impl AI21Provider {
         Ok(body)
     }
 
-    pub fn parse_model_response(response: Value, model_id: &str) -> Result<ModelResponse, AppError> {
+    pub fn parse_model_response(
+        response: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
         let content = response
             .get("choices")
             .and_then(|c| c.as_array())
@@ -156,9 +170,18 @@ impl AI21Provider {
             .to_string();
 
         let usage = response.get("usage").map(|u| Usage {
-            input_tokens: u.get("promptTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            output_tokens: u.get("completionTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
-            total_tokens: u.get("totalTokens").and_then(|t| t.as_i64()).map(|t| t as i32),
+            input_tokens: u
+                .get("promptTokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
+            output_tokens: u
+                .get("completionTokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
+            total_tokens: u
+                .get("totalTokens")
+                .and_then(|t| t.as_i64())
+                .map(|t| t as i32),
         });
 
         Ok(ModelResponse {
