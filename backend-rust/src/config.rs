@@ -20,6 +20,8 @@ pub struct AppConfig {
     pub google_client_secret: Option<String>,
     pub github_client_id: Option<String>,
     pub github_client_secret: Option<String>,
+    pub callback_url_base: Option<String>,
+    pub frontend_url: Option<String>,
     
     // S3 Configuration
     pub s3_bucket: Option<String>,
@@ -42,6 +44,9 @@ pub struct AppConfig {
     
     // Enabled API providers
     pub enabled_api_providers: Vec<String>,
+
+
+
 }
 
 impl AppConfig {
@@ -78,6 +83,8 @@ impl AppConfig {
             google_client_secret: env::var("GOOGLE_CLIENT_SECRET").ok(),
             github_client_id: env::var("GITHUB_CLIENT_ID").ok(),
             github_client_secret: env::var("GITHUB_CLIENT_SECRET").ok(),
+            callback_url_base: env::var("CALLBACK_URL_BASE").ok(),
+            frontend_url: env::var("FRONTEND_URL").ok(),
             
             // S3
             s3_bucket: env::var("S3_BUCKET").ok(),
@@ -91,6 +98,8 @@ impl AppConfig {
             
             // Enabled API providers
             enabled_api_providers: Self::parse_enabled_providers(),
+
+            
         }
     }
     

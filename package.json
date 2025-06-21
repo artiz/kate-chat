@@ -28,6 +28,9 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,css,scss}": [
       "prettier --write"
+    ],
+    "*.rs": [
+      "rustfmt --edition 2021"
     ]
   }
 }

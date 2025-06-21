@@ -1,10 +1,42 @@
+use std::fmt;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use chrono::{Utc, NaiveDateTime};
 use uuid::Uuid;
 use async_graphql::{SimpleObject, InputObject};
 
-use crate::schema::users;
+use crate::schema::users::{self};
+
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
+pub enum AuthProvider {
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "google")]
+    Google,
+    #[serde(rename = "github")]
+    GitHub,
+    #[serde(rename = "microsoft")]
+    Microsoft,
+}
+
+
+impl AuthProvider {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AuthProvider::Local => "local",
+            AuthProvider::Google => "google",
+            AuthProvider::GitHub => "github",
+            AuthProvider::Microsoft => "microsoft",
+        }
+    }
+}
+
+impl fmt::Display for AuthProvider {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, SimpleObject)]
 #[diesel(table_name = users)]
@@ -50,6 +82,10 @@ impl NewUser {
         password: Option<String>,
         first_name: String,
         last_name: String,
+        google_id: Option<String>,
+        github_id: Option<String>,
+        auth_provider: Option<String>,
+        avatar_url: Option<String>,
     ) -> Self {
         let now = Utc::now().naive_utc();
         Self {
@@ -60,10 +96,10 @@ impl NewUser {
             last_name,
             default_model_id: None,
             default_system_prompt: None,
-            avatar_url: None,
-            google_id: None,
-            github_id: None,
-            auth_provider: None,
+            avatar_url: avatar_url,
+            google_id: google_id,
+            github_id: github_id,
+            auth_provider: auth_provider,
             created_at: now,
             updated_at: now,
         }

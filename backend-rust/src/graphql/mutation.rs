@@ -53,6 +53,10 @@ impl Mutation {
             Some(hashed_password),
             input.first_name,
             input.last_name,
+            None, // Google ID not provided
+            None, // GitHub ID not provided
+            Some(AuthProvider::Local.to_string()), // Auth provider
+            None,
         );
 
         let user = diesel::insert_into(users::table)
