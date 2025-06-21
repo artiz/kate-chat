@@ -27,6 +27,7 @@ bcrypt = "0.15"
 
 # HTTP Client
 reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
@@ -74,7 +75,6 @@ rocket_cors = "0.6.0"
 
 # WebSocket support for subscriptions
 tokio-tungstenite = "0.21"
-futures-util = "0.3"
 warp = "0.3"
 
 # PubSub for subscriptions
