@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::future::Future;
 use std::pin::Pin;
+use tracing::{debug, warn};
 
 use crate::config::AppConfig;
 use crate::services::ai::*;
@@ -23,6 +24,18 @@ pub struct BedrockService {
     config: AppConfig,
     runtime_client: Option<BedrockRuntimeClient>,
     bedrock_client: Option<BedrockClient>,
+}
+
+impl From<aws_sdk_bedrockruntime::types::ResponseStream> for AppError {
+    fn from(err: aws_sdk_bedrockruntime::types::ResponseStream) -> Self {
+        AppError::Aws(format!("Bedrock response stream error: {:?}", err))
+    }
+}
+
+impl From<&aws_sdk_bedrockruntime::types::ResponseStream> for AppError {
+    fn from(err: &aws_sdk_bedrockruntime::types::ResponseStream) -> Self {
+        AppError::Aws(format!("Bedrock response stream error: {:?}", err))
+    }
 }
 
 impl BedrockService {
@@ -171,22 +184,139 @@ impl AIProviderService for BedrockService {
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
-        // TODO: implement real streaming
-        match self.invoke_model(request).await {
-            Ok(response) => {
-                // Simulate streaming by sending chunks
-                let words: Vec<&str> = response.content.split_whitespace().collect();
-                for word in words {
-                    (callbacks.on_token)(format!("{} ", word)).await;
-                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+        let mut service = self.clone();
+        let client = service.get_runtime_client().await?;
+
+        let provider = self.get_model_provider(&request.model_id);
+
+        // Check if model supports streaming (Anthropic, Amazon, Mistral)
+        let supports_streaming = matches!(provider.as_str(), "anthropic" | "amazon" | "mistral");
+
+        if !supports_streaming {
+            // For models that don't support streaming, simulate streaming
+            debug!(
+                "Model {} doesn't support streaming, simulating",
+                request.model_id
+            );
+            match self.invoke_model(request).await {
+                Ok(response) => {
+                    // Simulate streaming by sending chunks of the response
+                    let words: Vec<&str> = response.content.split_whitespace().collect();
+                    for word in words {
+                        (callbacks.on_token)(format!("{} ", word)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                    }
+                    (callbacks.on_complete)(response.content).await;
+                    Ok(())
                 }
-                (callbacks.on_complete)(response.content).await;
-                Ok(())
+                Err(e) => {
+                    (callbacks.on_error)(e.clone()).await;
+                    Err(e)
+                }
             }
-            Err(e) => {
-                (callbacks.on_error)(e.clone()).await;
-                Err(e)
+        } else {
+            debug!("Starting real streaming for model: {}", request.model_id);
+
+            let body = match provider.as_str() {
+                "anthropic" => AnthropicProvider::format_request(&request)?,
+                "amazon" => AmazonProvider::format_request(&request)?,
+                "mistral" => MistralProvider::format_request(&request)?,
+                _ => {
+                    return Err(AppError::Validation(format!(
+                        "Unsupported streaming provider: {}",
+                        provider
+                    )))
+                }
+            };
+
+            let body_bytes = serde_json::to_vec(&body).map_err(|e| {
+                error!(
+                    "Failed to serialize Bedrock streaming request for model {}: {:?}",
+                    request.model_id, e
+                );
+                AppError::Internal(format!("Failed to serialize request: {}", e))
+            })?;
+
+            let response = client
+                .invoke_model_with_response_stream()
+                .model_id(&request.model_id)
+                .body(Blob::new(body_bytes))
+                .send()
+                .await
+                .map_err(|e| {
+                    error!(
+                        "Bedrock streaming invoke failed for model {}: {:?}",
+                        request.model_id, e
+                    );
+                    AppError::Aws(format!(
+                        "Bedrock streaming invoke failed: {}",
+                        e.source().unwrap_or(&e).to_string()
+                    ))
+                })?;
+
+            let mut full_response = String::new();
+
+            let mut stream = response.body;
+            loop {
+                match stream.recv().await {
+                    Ok(Some(event)) => {
+                        if event.is_chunk() {
+                            let chunk = event.as_chunk().unwrap();
+
+                            debug!("Received chunk: {:?}", chunk);
+                            if let Some(bytes) = chunk.bytes() {
+                                match std::str::from_utf8(bytes.as_ref()) {
+                                    Ok(chunk_str) => match serde_json::from_str::<Value>(chunk_str)
+                                    {
+                                        Ok(chunk_data) => {
+                                            let token = match provider.as_str() {
+                                                "anthropic" => {
+                                                    AnthropicProvider::parse_response_chunk(
+                                                        &chunk_data,
+                                                    )
+                                                }
+                                                "amazon" => AmazonProvider::parse_response_chunk(
+                                                    &chunk_data,
+                                                ),
+                                                "mistral" => MistralProvider::parse_response_chunk(
+                                                    &chunk_data,
+                                                ),
+                                                _ => None,
+                                            };
+
+                                            if let Some(token) = token {
+                                                full_response.push_str(&token);
+                                                (callbacks.on_token)(token).await;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            warn!(
+                                                "Failed to parse chunk JSON: {} - {}",
+                                                chunk_str, e
+                                            );
+                                        }
+                                    },
+                                    Err(e) => {
+                                        warn!("Failed to decode chunk bytes: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        // Stream ended
+                        break;
+                    }
+                    Err(e) => {
+                        let error = AppError::Aws(format!("Stream error: {}", e));
+                        (callbacks.on_error)(error.clone()).await;
+                        return Err(error);
+                    }
+                }
             }
+
+            (callbacks.on_complete)(full_response).await;
+            Ok(())
         }
     }
 

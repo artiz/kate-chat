@@ -373,4 +373,21 @@ impl AmazonProvider {
             finish_reason: None,
         })
     }
+
+    pub fn parse_response_chunk(chunk_data: &Value) -> Option<String> {
+        // For Amazon models, extract token from outputText or contentBlockDelta
+        if let Some(output_text) = chunk_data.get("outputText").and_then(|t| t.as_str()) {
+            return Some(output_text.to_string());
+        }
+
+        if let Some(content_block_delta) = chunk_data.get("contentBlockDelta") {
+            if let Some(delta) = content_block_delta.get("delta") {
+                if let Some(text) = delta.get("text").and_then(|t| t.as_str()) {
+                    return Some(text.to_string());
+                }
+            }
+        }
+
+        None
+    }
 }

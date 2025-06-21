@@ -149,6 +149,20 @@ impl MistralProvider {
         Ok(body)
     }
 
+    pub fn parse_response_chunk(chunk_data: &Value) -> Option<String> {
+        // For Mistral models, extract token from outputs[0].text
+        if let Some(outputs) = chunk_data.get("outputs") {
+            if let Some(output_array) = outputs.as_array() {
+                if let Some(first_output) = output_array.first() {
+                    if let Some(text) = first_output.get("text").and_then(|t| t.as_str()) {
+                        return Some(text.to_string());
+                    }
+                }
+            }
+        }
+        None
+    }
+
     pub fn parse_model_response(
         response: Value,
         model_id: &str,

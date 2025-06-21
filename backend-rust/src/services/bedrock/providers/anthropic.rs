@@ -163,6 +163,18 @@ impl AnthropicProvider {
         }
     }
 
+    pub fn parse_response_chunk(chunk_data: &Value) -> Option<String> {
+        // For Anthropic models, extract token from content_block_delta
+        if chunk_data.get("type").and_then(|t| t.as_str()) == Some("content_block_delta") {
+            if let Some(delta) = chunk_data.get("delta") {
+                if let Some(text) = delta.get("text").and_then(|t| t.as_str()) {
+                    return Some(text.to_string());
+                }
+            }
+        }
+        None
+    }
+
     pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
         let mut messages = Vec::new();
         let mut system_message = request.system_prompt.clone();

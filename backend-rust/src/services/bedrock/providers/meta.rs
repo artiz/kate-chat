@@ -127,6 +127,11 @@ impl MetaProvider {
         Ok(response.generation)
     }
 
+    pub fn parse_response_chunk(_chunk_data: &Value) -> Option<String> {
+        // Meta models don't support streaming
+        None
+    }
+
     pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
         let mut prompt = String::new();
 

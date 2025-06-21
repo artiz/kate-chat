@@ -82,6 +82,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     addChatMessage,
     loadMoreMessages,
     updateChat,
+    streaming,
   } = useChatMessages({
     chatId,
   });
@@ -106,14 +107,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // #region Scrolling
   const scrollToBottom = useCallback(() => {
-    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
+    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0 + 100);
   }, [messagesContainerRef]);
 
   const autoScroll = useCallback(() => {
     if (!showAnchorButton) {
-      setTimeout(scrollToBottom, 50);
+      setTimeout(scrollToBottom, 100);
     }
-  }, [scrollToBottom, showAnchorButton]);
+  }, [scrollToBottom, showAnchorButton, messagesContainerRef]);
 
   useEffect(() => {
     autoScroll();
@@ -454,7 +455,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
         p="md"
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className={[classes.messagesContainer, loadCompleted ? classes.loadCompleted : ""].join(" ")}
+        className={[
+          classes.messagesContainer,
+          loadCompleted ? classes.loadCompleted : "",
+          streaming ? classes.streaming : "",
+        ].join(" ")}
       >
         <div ref={firstMessageRef}>
           {messagesLoading && (
