@@ -44,9 +44,6 @@
 
   &.loadCompleted {
     scroll-behavior: smooth;
-    &.streaming {
-      scroll-behavior: default;
-    }
 
     .messagesList {
       opacity: 1;

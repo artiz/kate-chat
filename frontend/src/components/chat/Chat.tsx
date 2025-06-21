@@ -107,12 +107,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   // #region Scrolling
   const scrollToBottom = useCallback(() => {
-    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0 + 100);
+    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
   }, [messagesContainerRef]);
 
   const autoScroll = useCallback(() => {
     if (!showAnchorButton) {
-      setTimeout(scrollToBottom, 100);
+      setTimeout(scrollToBottom, 150);
     }
   }, [scrollToBottom, showAnchorButton, messagesContainerRef]);
 
@@ -125,12 +125,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
       const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
-        scrollToBottom();
-      } else if (messages?.length) {
+      } else if (messages?.length && !streaming) {
         setShowAnchorButton(true);
       }
     },
-    [messages?.length]
+    [messages?.length, streaming]
   );
 
   const anchorHandleClick = useCallback(() => {
