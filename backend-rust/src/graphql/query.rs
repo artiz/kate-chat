@@ -255,17 +255,17 @@ impl Query {
             .collect();
 
         // If no models in database, auto-reload from API providers
-        if models_result.is_empty() {
-            // Use the reload_models logic from mutation
-            return self
-                .refresh_models_for_query(gql_ctx, &user, ai_service, providers)
-                .await;
-        }
-
-        let gql_models: Vec<GqlModel> = models_result
+        let mut gql_models: Vec<GqlModel> = models_result
             .into_iter()
             .map(|model| GqlModel::from_model(&model, user.clone()))
             .collect();
+
+        if gql_models.is_empty() {
+            let models_service =
+                crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
+            // Use the reload_models logic from mutation
+            gql_models.extend(models_service.refresh_models(&user).await?);
+        }
 
         let total_count = gql_models.len() as i32;
         Ok(GqlModelsList {
@@ -323,74 +323,6 @@ impl Query {
         Ok(AuthResponse {
             token,
             user: user.clone(),
-        })
-    }
-}
-
-impl Query {
-    // TODO: extract this logic to a service or utility function and reuse it in mutations
-    // Helper method to refresh models when database is empty
-    async fn refresh_models_for_query(
-        &self,
-        gql_ctx: &GraphQLContext,
-        user: &User,
-        ai_service: crate::services::ai::AIService,
-        providers: Vec<GqlProviderInfo>,
-    ) -> Result<GqlModelsList> {
-        let mut conn = gql_ctx
-            .db_pool
-            .get()
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        // Get all models from enabled providers
-        let all_models = ai_service.get_all_models().await.map_err(|e| {
-            AppError::Internal(format!("Failed to get models from AI providers: {}", e))
-        })?;
-
-        let mut gql_models = Vec::new();
-
-        // Save new models to database
-        for (model_id, model_info) in all_models {
-            let new_model = NewModel {
-                id: uuid::Uuid::new_v4().to_string(),
-                name: model_info.name.clone(),
-                description: model_info.description.clone(),
-                model_id: model_id.clone(),
-                api_provider: model_info.api_provider.to_string(),
-                provider: model_info.provider.clone(),
-                is_active: true, // New models are active by default
-                is_custom: false,
-                supports_text_in: model_info.supports_text_in,
-                supports_text_out: model_info.supports_text_out,
-                supports_image_in: model_info.supports_image_in,
-                supports_image_out: model_info.supports_image_out,
-                supports_embeddings_in: model_info.supports_embeddings_in,
-                supports_embeddings_out: model_info.supports_embeddings_out,
-                supports_streaming: model_info.supports_streaming,
-                user_id: user.id.clone(),
-                created_at: chrono::Utc::now().naive_utc(),
-                updated_at: chrono::Utc::now().naive_utc(),
-            };
-
-            diesel::insert_into(models::table)
-                .values(&new_model)
-                .execute(&mut conn)
-                .map_err(|e| AppError::Database(e.to_string()))?;
-
-            let saved_model: Model = models::table
-                .filter(models::id.eq(&new_model.id))
-                .first(&mut conn)
-                .map_err(|e| AppError::Database(e.to_string()))?;
-
-            gql_models.push(GqlModel::from_model(&saved_model, user.clone()));
-        }
-
-        let total_count = gql_models.len() as i32;
-        Ok(GqlModelsList {
-            models: gql_models,
-            providers,
-            total: Some(total_count),
-            error: None,
         })
     }
 }

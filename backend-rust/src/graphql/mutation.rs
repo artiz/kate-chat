@@ -567,90 +567,22 @@ impl Mutation {
     }
 
     /// Reload models from providers  
-    #[instrument(skip(self, ctx), fields(user_id = tracing::field::Empty))]
+    #[instrument(skip(self, ctx))]
     async fn reload_models(&self, ctx: &Context<'_>) -> Result<GqlModelsList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
-        let mut conn = gql_ctx
-            .db_pool
-            .get()
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        tracing::Span::current().record("user_id", &user.id);
         info!("Reloading models from providers for user: {}", user.id);
 
         // Create AI service
         let ai_service = AIService::new(gql_ctx.config.clone());
 
-        // Get all models from enabled providers
-        let all_models = ai_service.get_all_models().await.map_err(|e| {
-            AppError::Internal(format!("Failed to get models from AI providers: {}", e))
-        })?;
-
-        // Get existing models for user to preserve isActive status
-        let existing_models: Vec<Model> = models::table
-            .filter(models::user_id.eq(&user.id))
-            .load(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        let enabled_map: std::collections::HashMap<String, bool> = existing_models
-            .iter()
-            .map(|m| (m.model_id.clone(), m.is_active))
-            .collect();
-
-        // Clear existing non-custom models for this user
-        if !all_models.is_empty() {
-            diesel::delete(
-                models::table
-                    .filter(models::user_id.eq(&user.id))
-                    .filter(models::is_custom.eq(false)),
-            )
-            .execute(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
-        }
-
-        let mut gql_models = Vec::new();
-
-        // Save new models to database
-        for (model_id, model_info) in all_models {
-            let is_active = enabled_map.get(&model_id).copied().unwrap_or(true);
-
-            let new_model = NewModel {
-                id: uuid::Uuid::new_v4().to_string(),
-                name: model_info.name.clone(),
-                description: model_info.description.clone(),
-                model_id: model_id.clone(),
-                api_provider: model_info.api_provider.to_string(),
-                provider: model_info.provider.clone(),
-                is_active,
-                is_custom: false,
-                supports_text_in: model_info.supports_text_in,
-                supports_text_out: model_info.supports_text_out,
-                supports_image_in: model_info.supports_image_in,
-                supports_image_out: model_info.supports_image_out,
-                supports_embeddings_in: model_info.supports_embeddings_in,
-                supports_embeddings_out: model_info.supports_embeddings_out,
-                supports_streaming: model_info.supports_streaming,
-                user_id: user.id.clone(),
-                created_at: Utc::now().naive_utc(),
-                updated_at: Utc::now().naive_utc(),
-            };
-
-            let saved_model = diesel::insert_into(models::table)
-                .values(&new_model)
-                .get_result::<Model>(&mut conn)
-                .map_err(|e| AppError::Database(e.to_string()))?;
-
-            gql_models.push(GqlModel::from_model(&saved_model, user.clone()));
-        }
-
-        // Get provider information
-        let provider_info = ai_service
+        let providers = ai_service
             .get_provider_info(true)
             .await
             .map_err(|e| AppError::Internal(format!("Failed to get provider info: {}", e)))?;
 
-        let gql_providers: Vec<GqlProviderInfo> = provider_info
+        // Get provider information
+        let gql_providers: Vec<GqlProviderInfo> = providers
             .into_iter()
             .map(|info| GqlProviderInfo {
                 id: info.id,
@@ -664,6 +596,10 @@ impl Mutation {
                     .collect(),
             })
             .collect();
+
+        let models_service =
+            crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
+        let gql_models = models_service.refresh_models(&user).await?;
 
         let total_count = gql_models.len() as i32;
         info!(
