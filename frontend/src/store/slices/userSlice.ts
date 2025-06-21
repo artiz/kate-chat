@@ -10,7 +10,8 @@ export interface User {
   defaultModelId?: string;
   defaultSystemPrompt?: string;
   githubId?: string;
-  googleId?: string;
+    googleId?: string;
+    avatarUrl?: string;
 }
 
 interface UserState {

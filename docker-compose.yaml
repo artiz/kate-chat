@@ -59,6 +59,7 @@ services:
     depends_on:
       - redis
       - postgres
+      - localstack
     expose:
       - "4000"
     environment:
@@ -81,12 +82,27 @@ services:
       - kate-chat-network
     env_file:
       - ./backend/.env
+
+  backend-rust:
+    build:
+      context: ./backend-rust
+      dockerfile: Dockerfile
+    container_name: kate-chat-backend-rust
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+    networks:
+      - kate-chat-network
     
   nginx:
     image: nginx:alpine
     container_name: kate-chat-nginx
     ports:
       - "80:80"
+    environment:
+      - API_PORT=4000
+      - WS_PORT=4000
     volumes:
       - ./config/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./frontend/dist:/usr/share/nginx/html

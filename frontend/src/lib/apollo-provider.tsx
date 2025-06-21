@@ -26,7 +26,7 @@ import {
   STORAGE_YANDEX_FM_API_FOLDER_ID,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
-import { APP_API_URL } from "@/utils/config";
+import { APP_API_URL, APP_WS_URL } from "@/utils/config";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
@@ -36,8 +36,8 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     // Extract the base URL from the API URL
     const apiUrl = APP_API_URL + "/graphql";
 
-    // Create WebSocket URL for subscriptions
-    const wsUrl = APP_API_URL.replace(/^http/, "ws") + "/graphql/subscriptions";
+    // Create WebSocket URL for subscriptions, replacing "http" with "ws" in case of same URL
+    const wsUrl = APP_WS_URL.replace(/^http/, "ws") + "/graphql/subscriptions";
 
     // Create HTTP link for queries and mutations
     const httpLink = new HttpLink({

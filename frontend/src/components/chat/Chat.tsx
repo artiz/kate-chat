@@ -41,8 +41,8 @@ import classes from "./Chat.module.scss";
 import { ImageInput } from "@/store/services/graphql";
 import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
 
-const SEND_MESSAGE = gql`
-  mutation SendMessage($input: CreateMessageInput!) {
+const CREATE_MESSAGE = gql`
+  mutation CreateMessage($input: CreateMessageInput!) {
     createMessage(input: $input) {
       id
       content
@@ -148,7 +148,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   // #endregion
 
   // #region Send message
-  const [sendMessage] = useMutation(SEND_MESSAGE, {
+  const [createMessage] = useMutation(CREATE_MESSAGE, {
     onCompleted: data => {
       if (data.createMessage) {
         addChatMessage(data.createMessage);
@@ -201,7 +201,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     try {
       // Convert images to base64
 
-      await sendMessage({
+      await createMessage({
         variables: {
           input: {
             chatId,

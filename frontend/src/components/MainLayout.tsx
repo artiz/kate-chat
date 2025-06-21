@@ -96,7 +96,7 @@ export const MainLayout: React.FC = () => {
               <Menu.Target>
                 <UnstyledButton>
                   <Group gap={8}>
-                    <Avatar color="blue" radius="xl">
+                    <Avatar color="blue" radius="xl" src={currentUser?.avatarUrl}>
                       {userInitials}
                     </Avatar>
                     <div>
