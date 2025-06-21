@@ -1,13 +1,14 @@
 use async_graphql::{Context, Object, Result};
 use chrono::Utc;
 use diesel::prelude::*;
+use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, warn};
 
 use crate::graphql::GraphQLContext;
 use crate::log_user_action;
 use crate::models::*;
 use crate::schema::*;
-use crate::services::ai::{AIService, ApiProvider};
+use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
 use crate::services::pubsub::get_global_pubsub;
 use crate::utils::errors::AppError;
 use crate::utils::jwt;
@@ -350,47 +351,171 @@ impl Mutation {
             system_prompt: user.default_system_prompt.clone(),
         };
 
-        // Test the model
-        match ai_service.invoke_model(api_provider, invoke_request).await {
-            Ok(response) => {
-                info!(
-                    "Got response for model: {}, response length: {}",
-                    model.model_id,
-                    response.content.len()
-                );
+        let ai_msg_data = NewMessage::new(
+            input.chat_id.clone(),
+            None,
+            "".to_string(), // Placeholder for AI response
+            String::from(MessageRole::Assistant),
+            model_id.clone(),
+            Some(model.name.clone()),
+        );
+        let ai_message = diesel::insert_into(messages::table)
+            .values(&ai_msg_data)
+            .get_result::<Message>(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
-                let ai_msg_data = NewMessage::new(
-                    input.chat_id.clone(),
-                    None,
-                    response.content,
-                    String::from(MessageRole::Assistant),
-                    model_id.clone(),
-                    Some(model.name.clone()),
-                );
-                let ai_message = diesel::insert_into(messages::table)
-                    .values(&ai_msg_data)
-                    .get_result::<Message>(&mut conn)
-                    .map_err(|e| AppError::Database(e.to_string()))?;
+        // Create a thread-safe accumulator for all tokens
+        let accumulated_content = Arc::new(Mutex::new(String::new()));
 
-                let pub_message = message::GqlNewMessage {
-                    r#type: String::from(message::MessageType::Message),
-                    error: None,
-                    message: Some(ai_message.clone()),
-                    streaming: Some(false),
+        let callbacks = StreamCallbacks {
+            on_token: |token: String| {
+                let pubsub = pubsub.clone();
+                let chat_id = input.chat_id.clone();
+                let mut ai_message_pub = ai_message.clone();
+                let accumulated_content = accumulated_content.clone();
+
+                // Accumulate tokens in a thread-safe way
+                if let Ok(mut content) = accumulated_content.lock() {
+                    content.push_str(&token);
+                    // Update the message with accumulated content
+                    ai_message_pub.content = content.clone();
+                }
+
+                Box::pin(async move {
+                    let pub_message = message::GqlNewMessage {
+                        r#type: String::from(message::MessageType::Message),
+                        error: None,
+                        message: Some(ai_message_pub),
+                        streaming: Some(true),
+                    };
+
+                    if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                        warn!("Failed to publish message to subscribers: {:?}", e);
+                    }
+                })
+            },
+            on_error: |error: AppError| {
+                let pubsub = pubsub.clone();
+                let chat_id = input.chat_id.clone();
+                let error_message = format!("Model inference error: {:?}", error);
+
+                let mut conn_cb = match gql_ctx
+                    .db_pool
+                    .get()
+                    .map_err(|e| AppError::Database(e.to_string()))
+                {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!(
+                            "Failed to get database connection in error callback: {:?}",
+                            e
+                        );
+                        return Box::pin(async move {
+                            let pub_message = message::GqlNewMessage {
+                                r#type: String::from(message::MessageType::Message),
+                                error: Some(format!("Database connection error: {:?}", e)),
+                                message: None,
+                                streaming: Some(false),
+                            };
+
+                            if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                                warn!("Failed to publish error to subscribers: {:?}", e);
+                            }
+                        });
+                    }
                 };
 
-                if let Err(e) = pubsub.publish_to_chat(&input.chat_id, pub_message).await {
-                    warn!("Failed to publish message to subscribers: {:?}", e);
-                }
-            }
-            Err(e) => {
-                error!(
-                    "Model inference failed for model: {}, error: {:?}",
-                    model.model_id, e
-                );
-                return Err(AppError::Internal(format!("Model inference failed: {}", e)).into());
-            }
-        }
+                // Update message in database with error
+                let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+                    .set((
+                        messages::content.eq(error_message.clone()),
+                        messages::role.eq(String::from(MessageRole::Error)),
+                        messages::updated_at.eq(Utc::now().naive_utc()),
+                    ))
+                    .execute(&mut conn_cb)
+                    .map_err(|e| {
+                        error!("Failed to write error message: {:?}", e);
+                    });
+
+                let mut error_ai_message = ai_message.clone();
+                error_ai_message.content = error_message;
+                error_ai_message.role = String::from(MessageRole::Error);
+
+                Box::pin(async move {
+                    let pub_message: GqlNewMessage = message::GqlNewMessage {
+                        r#type: String::from(message::MessageType::Message),
+                        error: error_ai_message.content.clone().into(),
+                        message: Some(error_ai_message),
+                        streaming: Some(false),
+                    };
+
+                    if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                        warn!("Failed to publish message to subscribers: {:?}", e);
+                    }
+                })
+            },
+
+            on_complete: |content: String| {
+                let pubsub = pubsub.clone();
+                let chat_id = input.chat_id.clone();
+
+                let mut conn_cb = match gql_ctx
+                    .db_pool
+                    .get()
+                    .map_err(|e| AppError::Database(e.to_string()))
+                {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!(
+                            "Failed to get database connection in complete callback: {:?}",
+                            e
+                        );
+                        return Box::pin(async move {
+                            let pub_message = message::GqlNewMessage {
+                                r#type: String::from(message::MessageType::Message),
+                                error: Some(format!("Database connection error: {:?}", e)),
+                                message: None,
+                                streaming: Some(false),
+                            };
+                            if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                                warn!("Failed to publish error to subscribers: {:?}", e);
+                            }
+                        });
+                    }
+                };
+
+                // Update message in database
+                let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+                    .set((
+                        messages::content.eq(content.clone()),
+                        messages::updated_at.eq(Utc::now().naive_utc()),
+                    ))
+                    .execute(&mut conn_cb)
+                    .map_err(|e| {
+                        error!("Failed to write assistant message: {:?}", e);
+                    });
+
+                let mut res_ai_message = ai_message.clone();
+                res_ai_message.content = content;
+
+                Box::pin(async move {
+                    let pub_message: GqlNewMessage = message::GqlNewMessage {
+                        r#type: String::from(message::MessageType::Message),
+                        error: None,
+                        message: Some(res_ai_message),
+                        streaming: Some(false),
+                    };
+
+                    if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                        warn!("Failed to publish message to subscribers: {:?}", e);
+                    }
+                })
+            },
+        };
+
+        let _ = ai_service
+            .invoke_model_stream(api_provider, invoke_request, callbacks)
+            .await;
 
         Ok(message)
     }

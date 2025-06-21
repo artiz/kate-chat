@@ -3,6 +3,8 @@ use chrono::DateTime;
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::config::AppConfig;
 use crate::services::ai::*;
@@ -135,9 +137,9 @@ impl AIProviderService for OpenAIService {
         callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
-        F: Fn(String) + Send + Sync,
-        C: Fn(String) + Send + Sync,
-        E: Fn(AppError) + Send + Sync,
+        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
         // TODO: Implement actual streaming for OpenAI
         // For now, simulate streaming
@@ -145,14 +147,14 @@ impl AIProviderService for OpenAIService {
             Ok(response) => {
                 let words: Vec<&str> = response.content.split_whitespace().collect();
                 for word in words {
-                    (callbacks.on_token)(format!("{} ", word));
+                    (callbacks.on_token)(format!("{} ", word)).await;
                     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                 }
-                (callbacks.on_complete)(response.content);
+                (callbacks.on_complete)(response.content).await;
                 Ok(())
             }
             Err(e) => {
-                (callbacks.on_error)(e.clone());
+                (callbacks.on_error)(e.clone()).await;
                 Err(e)
             }
         }

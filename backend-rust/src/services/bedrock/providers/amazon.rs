@@ -244,6 +244,7 @@ impl AmazonProvider {
             match msg.get_role() {
                 MessageRole::User => prompt.push_str(&format!("Human: {}\n", content)),
                 MessageRole::Assistant => prompt.push_str(&format!("Assistant: {}\n", content)),
+                MessageRole::Error => prompt.push_str(&format!("Assistant: {}\n", content)),
                 MessageRole::System => {
                     // Prepend system message
                     prompt = format!("System: {}\n{}", content, prompt);

@@ -3,6 +3,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use tracing::{debug, error, info, instrument};
 
 use crate::config::AppConfig;
@@ -128,9 +130,9 @@ pub struct Amount {
 #[allow(dead_code)]
 pub struct StreamCallbacks<F, C, E>
 where
-    F: Fn(String) + Send + Sync,
-    C: Fn(String) + Send + Sync,
-    E: Fn(AppError) + Send + Sync,
+    F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+    C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+    E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
 {
     pub on_token: F,
     pub on_complete: C,
@@ -148,9 +150,9 @@ pub trait AIProviderService: Send + Sync {
         callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
-        F: Fn(String) + Send + Sync,
-        C: Fn(String) + Send + Sync,
-        E: Fn(AppError) + Send + Sync;
+        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync;
 
     async fn get_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError>;
     async fn get_info(&self, test_connection: bool) -> Result<ProviderInfo, AppError>;
@@ -184,9 +186,9 @@ impl AIProviderService for AIProviderWrapper {
         callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
-        F: Fn(String) + Send + Sync,
-        C: Fn(String) + Send + Sync,
-        E: Fn(AppError) + Send + Sync,
+        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
         match self {
             AIProviderWrapper::Bedrock(service) => {
@@ -279,7 +281,7 @@ impl AIService {
         );
 
         let start_time = std::time::Instant::now();
-        let provider = self.get_provider(api_provider)?;
+        let provider: AIProviderWrapper = self.get_provider(api_provider)?;
 
         match provider.invoke_model(request).await {
             Ok(response) => {
@@ -305,7 +307,6 @@ impl AIService {
         }
     }
 
-    #[allow(dead_code)]
     pub async fn invoke_model_stream<F, C, E>(
         &self,
         api_provider: ApiProvider,
@@ -313,9 +314,9 @@ impl AIService {
         callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
-        F: Fn(String) + Send + Sync,
-        C: Fn(String) + Send + Sync,
-        E: Fn(AppError) + Send + Sync,
+        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
         let provider = self.get_provider(api_provider)?;
         provider.invoke_model_stream(request, callbacks).await

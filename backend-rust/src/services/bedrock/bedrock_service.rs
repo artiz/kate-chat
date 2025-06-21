@@ -7,6 +7,8 @@ use log::error;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::error::Error;
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::config::AppConfig;
 use crate::services::ai::*;
@@ -165,9 +167,9 @@ impl AIProviderService for BedrockService {
         callbacks: StreamCallbacks<F, C, E>,
     ) -> Result<(), AppError>
     where
-        F: Fn(String) + Send + Sync,
-        C: Fn(String) + Send + Sync,
-        E: Fn(AppError) + Send + Sync,
+        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
         // TODO: implement real streaming
         match self.invoke_model(request).await {
@@ -175,14 +177,14 @@ impl AIProviderService for BedrockService {
                 // Simulate streaming by sending chunks
                 let words: Vec<&str> = response.content.split_whitespace().collect();
                 for word in words {
-                    (callbacks.on_token)(format!("{} ", word));
+                    (callbacks.on_token)(format!("{} ", word)).await;
                     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                 }
-                (callbacks.on_complete)(response.content);
+                (callbacks.on_complete)(response.content).await;
                 Ok(())
             }
             Err(e) => {
-                (callbacks.on_error)(e.clone());
+                (callbacks.on_error)(e.clone()).await;
                 Err(e)
             }
         }

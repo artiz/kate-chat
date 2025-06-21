@@ -41,16 +41,10 @@ impl PubSubService {
 
     pub async fn publish_to_chat(&self, chat_id: &str, message: GqlNewMessage) -> Result<()> {
         let subscriptions = self.subscriptions.read().await;
-        debug!("Publishing message for chat_id: {}", chat_id);
 
         if let Some(sender) = subscriptions.get(chat_id) {
             match sender.send(message) {
-                Ok(subscriber_count) => {
-                    debug!(
-                        "Published message to {} subscribers for chat_id: {}",
-                        subscriber_count, chat_id
-                    );
-                }
+                Ok(_subscriber_count) => {}
                 Err(e) => {
                     warn!("Failed to publish message to chat_id {}: {}", chat_id, e);
                 }
@@ -58,7 +52,6 @@ impl PubSubService {
         } else {
             debug!("No subscribers found for chat_id: {}", chat_id);
         }
-
         Ok(())
     }
 

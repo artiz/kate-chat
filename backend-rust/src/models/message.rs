@@ -12,6 +12,7 @@ pub enum MessageRole {
     User,
     Assistant,
     System,
+    Error,
 }
 
 impl From<String> for MessageRole {
@@ -19,6 +20,7 @@ impl From<String> for MessageRole {
         match role.to_lowercase().as_str() {
             "assistant" => MessageRole::Assistant,
             "system" => MessageRole::System,
+            "error" => MessageRole::Error,
             _ => MessageRole::User,
         }
     }
@@ -29,6 +31,7 @@ impl From<&str> for MessageRole {
         match role.to_lowercase().as_str() {
             "assistant" => MessageRole::Assistant,
             "system" => MessageRole::System,
+            "error" => MessageRole::Error,
             _ => MessageRole::User,
         }
     }
@@ -40,6 +43,7 @@ impl From<MessageRole> for String {
             MessageRole::Assistant => "assistant".to_string(),
             MessageRole::System => "system".to_string(),
             MessageRole::User => "user".to_string(),
+            MessageRole::Error => "error".to_string(),
         }
     }
 }
