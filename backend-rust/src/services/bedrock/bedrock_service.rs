@@ -26,18 +26,6 @@ pub struct BedrockService {
     bedrock_client: Option<BedrockClient>,
 }
 
-impl From<aws_sdk_bedrockruntime::types::ResponseStream> for AppError {
-    fn from(err: aws_sdk_bedrockruntime::types::ResponseStream) -> Self {
-        AppError::Aws(format!("Bedrock response stream error: {:?}", err))
-    }
-}
-
-impl From<&aws_sdk_bedrockruntime::types::ResponseStream> for AppError {
-    fn from(err: &aws_sdk_bedrockruntime::types::ResponseStream) -> Self {
-        AppError::Aws(format!("Bedrock response stream error: {:?}", err))
-    }
-}
-
 impl BedrockService {
     pub fn new(config: AppConfig) -> Self {
         Self {
@@ -52,7 +40,10 @@ impl BedrockService {
             let aws_config = self.build_aws_config().await?;
             self.runtime_client = Some(BedrockRuntimeClient::new(&aws_config));
         }
-        Ok(self.runtime_client.as_ref().unwrap())
+        Ok(self
+            .runtime_client
+            .as_ref()
+            .expect("Runtime client should be initialized"))
     }
 
     async fn get_bedrock_client(&mut self) -> Result<&BedrockClient, AppError> {
@@ -60,7 +51,10 @@ impl BedrockService {
             let aws_config = self.build_aws_config().await?;
             self.bedrock_client = Some(BedrockClient::new(&aws_config));
         }
-        Ok(self.bedrock_client.as_ref().unwrap())
+        Ok(self
+            .bedrock_client
+            .as_ref()
+            .expect("Bedrock client should be initialized"))
     }
 
     async fn build_aws_config(&self) -> Result<aws_config::SdkConfig, AppError> {
@@ -97,6 +91,45 @@ impl BedrockService {
             model_id.split('.').next().unwrap_or("unknown").to_string()
         }
     }
+
+    fn format_request_for_provider(
+        &self,
+        provider: &str,
+        request: &InvokeModelRequest,
+    ) -> Result<Value, AppError> {
+        match provider {
+            "anthropic" => AnthropicProvider::format_request(request),
+            "amazon" => AmazonProvider::format_request(request),
+            "ai21" => AI21Provider::format_request(request),
+            "cohere" => CohereProvider::format_request(request),
+            "meta" => MetaProvider::format_request(request),
+            "mistral" => MistralProvider::format_request(request),
+            _ => Err(AppError::Validation(format!(
+                "Unsupported provider: {}",
+                provider
+            ))),
+        }
+    }
+
+    fn parse_response_for_provider(
+        &self,
+        provider: &str,
+        response_json: Value,
+        model_id: &str,
+    ) -> Result<ModelResponse, AppError> {
+        match provider {
+            "anthropic" => AnthropicProvider::parse_model_response(response_json, model_id),
+            "amazon" => AmazonProvider::parse_model_response(response_json, model_id),
+            "ai21" => AI21Provider::parse_model_response(response_json, model_id),
+            "cohere" => CohereProvider::parse_model_response(response_json, model_id),
+            "meta" => MetaProvider::parse_model_response(response_json, model_id),
+            "mistral" => MistralProvider::parse_model_response(response_json, model_id),
+            _ => Err(AppError::Validation(format!(
+                "Unsupported provider: {}",
+                provider
+            ))),
+        }
+    }
 }
 
 #[async_trait]
@@ -106,21 +139,7 @@ impl AIProviderService for BedrockService {
         let client = service.get_runtime_client().await?;
 
         let provider = self.get_model_provider(&request.model_id);
-
-        let body = match provider.as_str() {
-            "anthropic" => AnthropicProvider::format_request(&request)?,
-            "amazon" => AmazonProvider::format_request(&request)?,
-            "ai21" => AI21Provider::format_request(&request)?,
-            "cohere" => CohereProvider::format_request(&request)?,
-            "meta" => MetaProvider::format_request(&request)?,
-            "mistral" => MistralProvider::format_request(&request)?,
-            _ => {
-                return Err(AppError::Validation(format!(
-                    "Unsupported provider: {}",
-                    provider
-                )))
-            }
-        };
+        let body = self.format_request_for_provider(&provider, &request)?;
 
         let body_bytes = serde_json::to_vec(&body).map_err(|e| {
             error!(
@@ -158,20 +177,7 @@ impl AIProviderService for BedrockService {
             AppError::Internal(format!("Failed to parse response: {}", e))
         })?;
 
-        match provider.as_str() {
-            "anthropic" => {
-                AnthropicProvider::parse_model_response(response_json, &request.model_id)
-            }
-            "amazon" => AmazonProvider::parse_model_response(response_json, &request.model_id),
-            "ai21" => AI21Provider::parse_model_response(response_json, &request.model_id),
-            "cohere" => CohereProvider::parse_model_response(response_json, &request.model_id),
-            "meta" => MetaProvider::parse_model_response(response_json, &request.model_id),
-            "mistral" => MistralProvider::parse_model_response(response_json, &request.model_id),
-            _ => Err(AppError::Validation(format!(
-                "Unsupported provider: {}",
-                provider
-            ))),
-        }
+        self.parse_response_for_provider(&provider, response_json, &request.model_id)
     }
 
     async fn invoke_model_stream<F, C, E>(
@@ -217,17 +223,7 @@ impl AIProviderService for BedrockService {
         } else {
             debug!("Starting real streaming for model: {}", request.model_id);
 
-            let body = match provider.as_str() {
-                "anthropic" => AnthropicProvider::format_request(&request)?,
-                "amazon" => AmazonProvider::format_request(&request)?,
-                "mistral" => MistralProvider::format_request(&request)?,
-                _ => {
-                    return Err(AppError::Validation(format!(
-                        "Unsupported streaming provider: {}",
-                        provider
-                    )))
-                }
-            };
+            let body = self.format_request_for_provider(&provider, &request)?;
 
             let body_bytes = serde_json::to_vec(&body).map_err(|e| {
                 error!(
@@ -248,10 +244,15 @@ impl AIProviderService for BedrockService {
                         "Bedrock streaming invoke failed for model {}: {:?}",
                         request.model_id, e
                     );
-                    AppError::Aws(format!(
+                    let app_error = AppError::Aws(format!(
                         "Bedrock streaming invoke failed: {}",
                         e.source().unwrap_or(&e).to_string()
-                    ))
+                    ));
+
+                    #[allow(unused_must_use)]
+                    (callbacks.on_error)(app_error.clone());
+
+                    app_error
                 })?;
 
             let mut full_response = String::new();

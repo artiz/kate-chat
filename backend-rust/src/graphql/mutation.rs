@@ -537,7 +537,11 @@ impl Mutation {
         // Get the message to delete
         let message: Message = messages::table
             .filter(messages::id.eq(&id))
-            .filter(messages::user_id.eq(&user.id))
+            .filter(
+                messages::user_id
+                    .eq(&user.id)
+                    .or(messages::user_id.is_null()),
+            )
             .first(&mut conn)
             .map_err(|_| async_graphql::Error::new("Message not found"))?;
 
