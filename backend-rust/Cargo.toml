@@ -86,6 +86,7 @@ url = "2.5"
 
 # OAuth
 oauth2 = "4.4"
+urlencoding = "2.1"
 
 # Session management (removed for Rocket 0.4 compatibility)
 

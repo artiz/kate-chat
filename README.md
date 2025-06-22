@@ -155,6 +155,7 @@ cd kate-chat
 2. Set up environment variables
 ```
 cp backend/.env.example backend/.env
+cp backend-rust/.env.example backend-rust/.env
 cp frontend/.env.example frontend/.env
 ```
 Edit the `.env` files with your configuration settings.
@@ -180,11 +181,24 @@ App will be available at `http://katechat.dev.com`
 
 To run the projects in development mode:
 
-#### 
+#### Default nodejs backend
 ```
 npm run install:all
 npm run dev
 ```
+
+#### Rust backend
+
+First terminal:
+```
+APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run frontend:dev
+```
+Second terminal:
+```
+cd backent-rust
+cargo run
+```
+
 
 ### Production Build
 
