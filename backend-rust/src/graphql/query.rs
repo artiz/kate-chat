@@ -4,6 +4,7 @@ use diesel::prelude::*;
 use crate::graphql::GraphQLContext;
 use crate::models::*;
 use crate::schema::*;
+use crate::services::ai::ApiProvider;
 use crate::utils::errors::AppError;
 
 #[derive(Default)]
@@ -25,6 +26,7 @@ pub struct GetMessagesInput {
 
 #[derive(InputObject)]
 pub struct GetCostsInput {
+    pub api_provider: String,
     pub start_time: i64,
     pub end_time: Option<i64>,
 }
@@ -301,15 +303,42 @@ impl Query {
     }
 
     /// Get costs information
-    async fn get_costs(&self, _ctx: &Context<'_>, input: GetCostsInput) -> Result<GqlCostsInfo> {
-        // TODO: Implement actual costs retrieval from AWS
+    async fn get_costs(&self, ctx: &Context<'_>, input: GetCostsInput) -> Result<GqlCostsInfo> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let ai_service = crate::services::ai::AIService::new(gql_ctx.config.clone());
+
+        let costs_info = ai_service
+            .get_costs(
+                ApiProvider::from(input.api_provider),
+                input.start_time,
+                input.end_time,
+            )
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to get costs info: {}", e)))?;
+
+        // Convert costs_info to GqlCostsInfo format
+        let gql_costs: Vec<GqlServiceCostInfo> = costs_info
+            .costs
+            .into_iter()
+            .map(|service_cost| GqlServiceCostInfo {
+                name: service_cost.name,
+                r#type: service_cost.r#type,
+                amounts: service_cost
+                    .amounts
+                    .into_iter()
+                    .map(|amount| GqlAmount {
+                        amount: amount.amount,
+                        currency: amount.currency,
+                    })
+                    .collect(),
+            })
+            .collect();
+
         Ok(GqlCostsInfo {
-            start: chrono::DateTime::from_timestamp(input.start_time, 0).unwrap_or_default(),
-            end: input
-                .end_time
-                .and_then(|t| chrono::DateTime::from_timestamp(t, 0)),
-            costs: vec![],
-            error: None,
+            start: costs_info.start,
+            end: costs_info.end,
+            costs: gql_costs,
+            error: costs_info.error,
         })
     }
 

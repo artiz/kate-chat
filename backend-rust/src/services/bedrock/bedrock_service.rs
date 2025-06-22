@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use aws_config::{BehaviorVersion, Region};
 use aws_sdk_bedrock::{types::ModelModality, Client as BedrockClient};
+use aws_sdk_bedrockruntime::operation::invoke_model_with_response_stream::InvokeModelWithResponseStreamError;
 use aws_sdk_bedrockruntime::{primitives::Blob, Client as BedrockRuntimeClient};
-use chrono::DateTime;
+use aws_smithy_runtime_api::client::result::SdkError;
+use chrono::{DateTime, Utc};
 use log::error;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -19,11 +21,30 @@ use crate::services::bedrock::providers::{
 };
 use crate::utils::errors::AppError;
 
-#[allow(dead_code)]
 pub struct BedrockService {
     config: AppConfig,
     runtime_client: Option<BedrockRuntimeClient>,
     bedrock_client: Option<BedrockClient>,
+}
+
+impl Clone for BedrockService {
+    fn clone(&self) -> Self {
+        Self {
+            config: self.config.clone(),
+            runtime_client: None,
+            bedrock_client: None,
+        }
+    }
+}
+
+impl From<SdkError<InvokeModelWithResponseStreamError, aws_smithy_runtime_api::http::Response>>
+    for AppError
+{
+    fn from(
+        res: SdkError<InvokeModelWithResponseStreamError, aws_smithy_runtime_api::http::Response>,
+    ) -> Self {
+        AppError::Http(res.to_string())
+    }
 }
 
 impl BedrockService {
@@ -57,7 +78,7 @@ impl BedrockService {
             .expect("Bedrock client should be initialized"))
     }
 
-    async fn build_aws_config(&self) -> Result<aws_config::SdkConfig, AppError> {
+    pub(crate) async fn build_aws_config(&self) -> Result<aws_config::SdkConfig, AppError> {
         let mut config_builder = aws_config::defaults(BehaviorVersion::v2025_01_17());
 
         if let Some(region) = &self.config.aws_bedrock_region {
@@ -238,22 +259,7 @@ impl AIProviderService for BedrockService {
                 .model_id(&request.model_id)
                 .body(Blob::new(body_bytes))
                 .send()
-                .await
-                .map_err(|e| {
-                    error!(
-                        "Bedrock streaming invoke failed for model {}: {:?}",
-                        request.model_id, e
-                    );
-                    let app_error = AppError::Aws(format!(
-                        "Bedrock streaming invoke failed: {}",
-                        e.source().unwrap_or(&e).to_string()
-                    ));
-
-                    #[allow(unused_must_use)]
-                    (callbacks.on_error)(app_error.clone());
-
-                    app_error
-                })?;
+                .await?;
 
             let mut full_response = String::new();
 
@@ -415,22 +421,35 @@ impl AIProviderService for BedrockService {
         start_time: i64,
         end_time: Option<i64>,
     ) -> Result<UsageCostInfo, AppError> {
-        // TODO: Implement AWS Cost Explorer integration
-        Ok(UsageCostInfo {
-            start: DateTime::from_timestamp(start_time, 0).unwrap_or_default(),
-            end: end_time.and_then(|t| DateTime::from_timestamp(t, 0)),
-            costs: vec![],
-            error: Some("Cost information not yet implemented".to_string()),
-        })
-    }
-}
+        let start_date = DateTime::from_timestamp(start_time, 0).unwrap_or_default();
+        let end_date = end_time
+            .and_then(|t| DateTime::from_timestamp(t, 0))
+            .unwrap_or_else(|| Utc::now());
 
-impl Clone for BedrockService {
-    fn clone(&self) -> Self {
-        Self {
-            config: self.config.clone(),
-            runtime_client: None,
-            bedrock_client: None,
+        let mut result = UsageCostInfo {
+            start: start_date,
+            end: Some(end_date),
+            costs: vec![],
+            error: None,
+        };
+
+        // Check if credentials are available
+        if self.config.aws_bedrock_access_key_id.is_none() && std::env::var("AWS_PROFILE").is_err()
+        {
+            result.error = Some("AWS credentials are not set. Set AWS_BEDROCK_ACCESS_KEY_ID and AWS_BEDROCK_SECRET_ACCESS_KEY or AWS_BEDROCK_PROFILE in config.".to_string());
+            return Ok(result);
         }
+
+        match self.fetch_cost_data(start_date, end_date).await {
+            Ok(costs) => {
+                result.costs = costs;
+            }
+            Err(e) => {
+                error!("Error fetching AWS Bedrock usage information: {:?}", e);
+                result.error = Some(e.to_string());
+            }
+        }
+
+        Ok(result)
     }
 }

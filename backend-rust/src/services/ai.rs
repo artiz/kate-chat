@@ -34,6 +34,17 @@ impl ApiProvider {
     }
 }
 
+impl From<String> for ApiProvider {
+    fn from(msg_type: String) -> Self {
+        match msg_type.as_str() {
+            "aws_bedrock" => ApiProvider::AwsBedrock,
+            "open_ai" => ApiProvider::OpenAi,
+            "yandex_fm" => ApiProvider::YandexFm,
+            &_ => todo!(),
+        }
+    }
+}
+
 impl fmt::Display for ApiProvider {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.as_str())
@@ -415,5 +426,28 @@ impl AIService {
             ApiProvider::OpenAi => "OpenAI".to_string(),
             ApiProvider::YandexFm => "Yandex Foundation Models".to_string(),
         }
+    }
+
+    pub async fn get_costs(
+        &self,
+        api_provider: ApiProvider,
+        start_time: i64,
+        end_time: Option<i64>,
+    ) -> Result<UsageCostInfo, AppError> {
+        let provider: ApiProvider = match api_provider.as_str() {
+            "aws_bedrock" => ApiProvider::AwsBedrock,
+            "open_ai" => ApiProvider::OpenAi,
+            "yandex_fm" => ApiProvider::YandexFm,
+            _ => {
+                return Err(AppError::BadRequest(format!(
+                    "Unsupported API provider: {}",
+                    api_provider
+                )))
+            }
+        };
+        return self
+            .get_provider(provider)?
+            .get_costs(start_time, end_time)
+            .await;
     }
 }

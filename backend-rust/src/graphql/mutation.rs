@@ -513,9 +513,10 @@ impl Mutation {
             },
         };
 
-        let _ = ai_service
+        ai_service
             .invoke_model_stream(api_provider, invoke_request, callbacks)
-            .await;
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(message)
     }

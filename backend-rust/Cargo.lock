@@ -455,6 +455,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-costexplorer"
+version = "1.82.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04ce9863ceb1cb92c320204beb66108c3d34c650d40c956363e2241af2611c5c"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-s3"
 version = "1.92.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2409,6 +2431,7 @@ dependencies = [
  "aws-credential-types",
  "aws-sdk-bedrock",
  "aws-sdk-bedrockruntime",
+ "aws-sdk-costexplorer",
  "aws-sdk-s3",
  "aws-smithy-runtime-api",
  "aws-smithy-types",
