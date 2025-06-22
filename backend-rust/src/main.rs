@@ -89,8 +89,20 @@ async fn rocket() -> Rocket<Build> {
         warn!("No API providers enabled. Set ENABLED_API_PROVIDERS environment variable.");
     }
 
+    let allowed_origins = if let Some(allowed_origins) = config.allowed_origins.clone() {
+        let origins: Vec<&str> = allowed_origins.split(',').collect();
+        AllowedOrigins::some_exact(&origins)
+    } else {
+        warn!("ALLOWED_ORIGINS environment variable not set. Defaulting to current frontend host.");
+        let frontend_url = config
+            .frontend_url
+            .clone()
+            .unwrap_or_else(|| "http://localhost:3000".to_string());
+        AllowedOrigins::some_exact(&[frontend_url])
+    };
+
     let cors = CorsOptions::default()
-        .allowed_origins(AllowedOrigins::All) // some_exact(&config.cors_origin.split(',').collect::<Vec<_>>())
+        .allowed_origins(allowed_origins)
         .allow_credentials(true)
         .to_cors()
         .expect("Error creating CORS fairing");
@@ -139,5 +151,4 @@ async fn rocket() -> Rocket<Build> {
         )
         .mount("/auth", auth::routes())
         .mount("/files", files::routes())
-        .mount("/api/files", files::routes())
 }

@@ -11,6 +11,8 @@ use crate::services::pubsub::get_global_pubsub;
 #[derive(Default)]
 pub struct SubscriptionRoot;
 
+const CONNECTION_CONFIRM_TIMEOUT: Duration = Duration::from_millis(300);
+
 #[Subscription]
 impl SubscriptionRoot {
     async fn new_message(
@@ -19,6 +21,7 @@ impl SubscriptionRoot {
         chat_id: String,
     ) -> Result<impl Stream<Item = GqlNewMessage>> {
         // Validate authentication - get user from context
+        // User info is loadede in WebSocketServer::handle_connection_init
         let user = ctx.data_opt::<User>();
         match user {
             Some(user) => {
@@ -46,7 +49,7 @@ impl SubscriptionRoot {
         let pubsub_clone = pubsub.clone();
 
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(300)).await;
+            tokio::time::sleep(CONNECTION_CONFIRM_TIMEOUT).await;
             let system_message = GqlNewMessage {
                 r#type: String::from(MessageType::System),
                 error: None,

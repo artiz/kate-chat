@@ -7,7 +7,7 @@ pub struct AppConfig {
     pub jwt_secret: String,
     pub session_secret: String,
     pub port: u16,
-    pub cors_origin: Option<String>,
+    pub allowed_origins: Option<String>,
 
     // AWS Configuration
     pub aws_bedrock_region: Option<String>,
@@ -59,7 +59,7 @@ impl AppConfig {
                 .unwrap_or_else(|_| "4000".to_string())
                 .parse()
                 .unwrap_or(4000),
-            cors_origin: env::var("CORS_ORIGIN").ok(),
+            allowed_origins: env::var("ALLOWED_ORIGINS").ok(),
 
             // AWS Bedrock
             aws_bedrock_region: env::var("AWS_BEDROCK_REGION").ok(),

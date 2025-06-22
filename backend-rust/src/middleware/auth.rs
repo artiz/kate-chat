@@ -11,7 +11,7 @@ use crate::database::DbPool;
 use crate::log_security_event;
 use crate::models::User;
 use crate::schema::users;
-use crate::utils::jwt::{extract_token_from_header, verify_token, Claims};
+use crate::utils::jwt::{extract_token_from_header, verify_token};
 
 pub struct AuthenticatedUser(pub User);
 
@@ -131,23 +131,4 @@ pub async fn get_user_from_token(
         .map_err(|_| "User not found".to_string())?;
 
     Ok(user)
-}
-
-// Simple function for WebSocket authentication - returns token claims only
-#[allow(dead_code)]
-pub fn get_user_from_websocket_token(auth_header: Option<&str>) -> Option<Claims> {
-    let auth_header = auth_header?;
-    let token = extract_token_from_header(auth_header)?;
-
-    // For WebSocket auth, we'll use a default secret for now
-    // In production, this should come from config
-    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "default_secret".to_string());
-
-    match verify_token(token, &jwt_secret) {
-        Ok(claims) => Some(claims),
-        Err(e) => {
-            warn!("WebSocket token verification failed: {}", e);
-            None
-        }
-    }
 }
