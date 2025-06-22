@@ -6,8 +6,13 @@ use tracing::{error, info, instrument, warn};
 
 use crate::graphql::GraphQLContext;
 use crate::log_user_action;
-use crate::models::*;
-use crate::schema::*;
+use crate::models::{
+    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, GqlModel,
+    GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message, MessageRole, Model,
+    NewChat, NewMessage, NewUser, ProviderDetail, RegisterInput, TestModelInput, UpdateChatInput,
+    UpdateModelStatusInput, UpdateUserInput, User,
+};
+use crate::schema::{chats, messages, models, users};
 use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
 use crate::services::pubsub::get_global_pubsub;
 use crate::utils::errors::AppError;
@@ -354,7 +359,7 @@ impl Mutation {
         let ai_msg_data = NewMessage::new(
             input.chat_id.clone(),
             None,
-            "".to_string(), // Placeholder for AI response
+            String::new(), // Placeholder for AI response
             String::from(MessageRole::Assistant),
             model_id.clone(),
             Some(model.name.clone()),
@@ -731,7 +736,7 @@ impl Mutation {
             crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
         let gql_models = models_service.refresh_models(&user).await?;
 
-        let total_count = gql_models.len() as i32;
+        let total_count = gql_models.len().min(i32::MAX as usize) as i32;
         info!(
             "Successfully reloaded {} models for user: {}",
             total_count, user.id
@@ -780,8 +785,8 @@ fn preprocess_messages(
 
     // Sort messages by timestamp, with role-based tiebreaking
     messages.sort_by(|a, b| {
-        let a_time = a.timestamp.unwrap_or_else(|| Utc::now());
-        let b_time = b.timestamp.unwrap_or_else(|| Utc::now());
+        let a_time = a.timestamp.unwrap_or_else(Utc::now);
+        let b_time = b.timestamp.unwrap_or_else(Utc::now);
 
         if a_time == b_time {
             // If same timestamp, sort by role (user messages first)
@@ -813,11 +818,10 @@ fn preprocess_messages(
                 if last_msg.content == msg.content {
                     // Skip duplicate messages
                     continue;
-                } else {
-                    // Join messages with newline
-                    last_msg.content.push('\n');
-                    last_msg.content.push_str(&msg.content);
                 }
+                // Join messages with newline
+                last_msg.content.push('\n');
+                last_msg.content.push_str(&msg.content);
             } else {
                 // Different role - add as new message
                 result.push(msg);

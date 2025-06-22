@@ -230,7 +230,7 @@ impl AIProviderService for BedrockService {
                     // Simulate streaming by sending chunks of the response
                     let words: Vec<&str> = response.content.split_whitespace().collect();
                     for word in words {
-                        (callbacks.on_token)(format!("{} ", word)).await;
+                        (callbacks.on_token)(format!("{word} ")).await;
                         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                     }
                     (callbacks.on_complete)(response.content).await;

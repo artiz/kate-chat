@@ -2,8 +2,12 @@ use async_graphql::{Context, InputObject, Object, Result};
 use diesel::prelude::*;
 
 use crate::graphql::GraphQLContext;
-use crate::models::*;
-use crate::schema::*;
+use crate::models::{
+    AuthResponse, Chat, GqlAmount, GqlChat, GqlChatsList, GqlCostsInfo, GqlMessage,
+    GqlMessagesList, GqlModel, GqlModelsList, GqlProviderInfo, GqlServiceCostInfo, Message, Model,
+    ProviderDetail, User,
+};
+use crate::schema::{chats, messages, models};
 use crate::services::ai::ApiProvider;
 use crate::utils::errors::AppError;
 
@@ -88,8 +92,8 @@ impl Query {
         let mut query = chats::table
             .filter(chats::user_id.eq(&user.id))
             .order(chats::updated_at.desc())
-            .limit(limit as i64)
-            .offset(offset as i64)
+            .limit(i64::from(limit))
+            .offset(i64::from(offset))
             .into_boxed();
 
         if let Some(search_term) = &input.search_term {
@@ -111,10 +115,7 @@ impl Query {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(GqlChatsList {
-            chats: chats_result
-                .into_iter()
-                .map(|chat| GqlChat::from(chat))
-                .collect(),
+            chats: chats_result.into_iter().map(GqlChat::from).collect(),
             total: Some(total as i32),
             has_more: (offset + limit) < total as i32,
             error: None,
@@ -177,8 +178,8 @@ impl Query {
         let messages_result: Vec<Message> = messages::table
             .filter(messages::chat_id.eq(&input.chat_id))
             .order(messages::created_at.asc())
-            .limit(limit as i64)
-            .offset(offset as i64)
+            .limit(i64::from(limit))
+            .offset(i64::from(offset))
             .load(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -189,10 +190,7 @@ impl Query {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(GqlMessagesList {
-            messages: messages_result
-                .into_iter()
-                .map(|msg| GqlMessage::from(msg))
-                .collect(),
+            messages: messages_result.into_iter().map(GqlMessage::from).collect(),
             chat,
             total: Some(total as i32),
             has_more: (offset + limit) < total as i32,
@@ -269,7 +267,7 @@ impl Query {
             gql_models.extend(models_service.refresh_models(&user).await?);
         }
 
-        let total_count = gql_models.len() as i32;
+        let total_count = gql_models.len().min(i32::MAX as usize) as i32;
         Ok(GqlModelsList {
             models: gql_models,
             providers,
