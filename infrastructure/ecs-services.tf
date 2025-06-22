@@ -1,0 +1,224 @@
+# ECS Task Definition for Backend
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "${var.project_name}-${var.environment}-backend"
+  network_mode             = "awsvpc"
+  requires_compatibility   = ["FARGATE"]
+  cpu                      = var.backend_cpu
+  memory                   = var.backend_memory
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn           = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "backend"
+      image = "${aws_ecr_repository.backend.repository_url}:latest"
+      
+      essential = true
+      
+      portMappings = [
+        {
+          containerPort = 4000
+          protocol      = "tcp"
+        }
+      ]
+      
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = var.environment
+        },
+        {
+          name  = "PORT"
+          value = "4000"
+        },
+        {
+          name  = "DB_TYPE"
+          value = "postgres"
+        },
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.main.address
+        },
+        {
+          name  = "DB_PORT"
+          value = tostring(aws_db_instance.main.port)
+        },
+        {
+          name  = "DB_NAME"
+          value = aws_db_instance.main.db_name
+        },
+        {
+          name  = "DB_USERNAME"
+          value = aws_db_instance.main.username
+        },
+        {
+          name  = "REDIS_URL"
+          value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.port}"
+        },
+        {
+          name  = "S3_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "S3_FILES_BUCKET_NAME"
+          value = aws_s3_bucket.files.bucket
+        },
+        {
+          name  = "FRONTEND_URL"
+          value = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+        },
+        {
+          name  = "ALLOWED_ORIGINS"
+          value = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+        }
+      ]
+      
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = aws_secretsmanager_secret.db_password.arn
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+      
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost:4000/graphql || exit 1"]
+        interval = 30
+        timeout = 5
+        retries = 3
+      }
+    }
+  ])
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-backend-task"
+  }
+}
+
+# ECS Task Definition for Frontend
+resource "aws_ecs_task_definition" "frontend" {
+  family                   = "${var.project_name}-${var.environment}-frontend"
+  network_mode             = "awsvpc"
+  requires_compatibility   = ["FARGATE"]
+  cpu                      = var.frontend_cpu
+  memory                   = var.frontend_memory
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "frontend"
+      image = "${aws_ecr_repository.frontend.repository_url}:latest"
+      
+      essential = true
+      
+      portMappings = [
+        {
+          containerPort = 80
+          protocol      = "tcp"
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.frontend.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+      
+      healthCheck = {
+        command = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+        interval = 30
+        timeout = 5
+        retries = 3
+      }
+    }
+  ])
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-frontend-task"
+  }
+}
+
+# ECS Service for Backend
+resource "aws_ecs_service" "backend" {
+  name            = "${var.project_name}-${var.environment}-backend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs.id]
+    subnets          = aws_subnet.private[*].id
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 4000
+  }
+
+  depends_on = [aws_lb_listener.main]
+
+  deployment_configuration {
+    maximum_percent         = 200
+    minimum_healthy_percent = 100
+  }
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-backend-service"
+  }
+}
+
+# ECS Service for Frontend
+resource "aws_ecs_service" "frontend" {
+  name            = "${var.project_name}-${var.environment}-frontend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.frontend.arn
+  desired_count   = var.desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs.id]
+    subnets          = aws_subnet.private[*].id
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend.arn
+    container_name   = "frontend"
+    container_port   = 80
+  }
+
+  depends_on = [aws_lb_listener.main]
+
+  deployment_configuration {
+    maximum_percent         = 200
+    minimum_healthy_percent = 100
+  }
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-frontend-service"
+  }
+}

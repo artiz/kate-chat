@@ -1,0 +1,91 @@
+name: Infrastructure Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+        - plan
+        - apply
+        - destroy
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.6.0
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    defaults:
+      run:
+        working-directory: ./infrastructure
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Terraform Format
+      run: terraform fmt -check
+
+    - name: Terraform Init
+      run: |
+        terraform init \
+          -backend-config="bucket=katechat-terraform-state-${{ github.event.inputs.environment }}" \
+          -backend-config="key=terraform.tfstate" \
+          -backend-config="region=${{ env.AWS_REGION }}"
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+      run: |
+        terraform plan \
+          -var="environment=${{ github.event.inputs.environment }}" \
+          -var="aws_region=${{ env.AWS_REGION }}" \
+          -out=tfplan
+
+    - name: Terraform Apply
+      if: github.event.inputs.action == 'apply'
+      run: terraform apply -auto-approve tfplan
+
+    - name: Terraform Destroy
+      if: github.event.inputs.action == 'destroy'
+      run: |
+        terraform destroy \
+          -var="environment=${{ github.event.inputs.environment }}" \
+          -var="aws_region=${{ env.AWS_REGION }}" \
+          -auto-approve
+
+    - name: Output infrastructure info
+      if: github.event.inputs.action == 'apply'
+      run: |
+        echo "### Infrastructure Outputs" >> $GITHUB_STEP_SUMMARY
+        terraform output -json | jq -r 'to_entries[] | "- **\(.key)**: \(.value.value)"' >> $GITHUB_STEP_SUMMARY
