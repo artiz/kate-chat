@@ -29,7 +29,7 @@ const handleAuthResponse = (req: Request, res: Response) => {
 };
 
 // Google OAuth routes
-router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/google", passport.authenticate("google", { scope: ["openid", "profile", "email"] }));
 
 router.get(
   "/google/callback",

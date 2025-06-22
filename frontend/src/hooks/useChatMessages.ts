@@ -20,6 +20,7 @@ type HookResult = {
   messages: Message[] | undefined;
   messagesLoading: boolean;
   loadCompleted: boolean;
+  streaming: boolean;
   addChatMessage: (msg: Message) => void;
   removeMessages: (messageIds: string[]) => void;
   loadMoreMessages: () => void;
@@ -51,6 +52,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
   const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
+  const [streaming, setStreaming] = useState<boolean>(false);
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -231,6 +233,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       }
     };
 
+    setStreaming(msg.streaming || false);
+
     if (msg.content) {
       parseMarkdown(msg.content)
         .then(html => {
@@ -250,6 +254,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     messages,
     messagesLoading,
     loadCompleted,
+    streaming,
     removeMessages,
     addChatMessage,
     loadMoreMessages,

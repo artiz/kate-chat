@@ -11,20 +11,19 @@ export interface User {
   defaultSystemPrompt?: string;
   githubId?: string;
   googleId?: string;
+  avatarUrl?: string;
 }
 
 interface UserState {
   currentUser: User | null;
   loading: boolean;
-  error: string | null;
-  appConfig: ApplicationConfig | null;
+  error?: string;
+  appConfig?: ApplicationConfig;
 }
 
 const initialState: UserState = {
   currentUser: null,
   loading: false,
-  error: null,
-  appConfig: null,
 };
 
 const userSlice = createSlice({
@@ -33,7 +32,7 @@ const userSlice = createSlice({
   reducers: {
     setUser(state, action: PayloadAction<User>) {
       state.currentUser = action.payload;
-      state.error = null;
+      state.error = undefined;
     },
     setUserLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;

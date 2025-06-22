@@ -26,14 +26,16 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## TODO
 
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
+* Add imegaes generation (DALL-E) support in Rust backend
+* Add support for more Google LLM provider
+* Add support for more Azure LLM provider
+* Python backend (FastAPI)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Image resolution/count 
   * Chat message editing
 * Open AI code interpreter support  
 * Finish custom models support (enter ARN for Bedrock models)
-* Add support for more Google LLM provider
-* Add support for more Azure LLM provider
 
 ## Tech Stack
 
@@ -56,7 +58,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## Project Structure
 
 The project consists of several parts:
-1. Backend - GraphQL API server
+1. Backend - nodejs GraphQL API server. Also there is alternative backend implementation on Rust, Python is in plans.
 2. Frontend - Web interface
 3. Database - any TypePRM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
 4. Redis - for message queue and caching (optional, but recommended for production)
@@ -154,6 +156,7 @@ cd kate-chat
 2. Set up environment variables
 ```
 cp backend/.env.example backend/.env
+cp backend-rust/.env.example backend-rust/.env
 cp frontend/.env.example frontend/.env
 ```
 Edit the `.env` files with your configuration settings.
@@ -179,11 +182,24 @@ App will be available at `http://katechat.dev.com`
 
 To run the projects in development mode:
 
-#### 
+#### Default nodejs backend
 ```
 npm run install:all
 npm run dev
 ```
+
+#### Rust backend
+
+First terminal:
+```
+APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run frontend:dev
+```
+Second terminal:
+```
+cd backent-rust
+cargo run
+```
+
 
 ### Production Build
 

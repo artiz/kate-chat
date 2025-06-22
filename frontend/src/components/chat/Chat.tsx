@@ -41,8 +41,8 @@ import classes from "./Chat.module.scss";
 import { ImageInput } from "@/store/services/graphql";
 import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
 
-const SEND_MESSAGE = gql`
-  mutation SendMessage($input: CreateMessageInput!) {
+const CREATE_MESSAGE = gql`
+  mutation CreateMessage($input: CreateMessageInput!) {
     createMessage(input: $input) {
       id
       content
@@ -82,6 +82,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     addChatMessage,
     loadMoreMessages,
     updateChat,
+    streaming,
   } = useChatMessages({
     chatId,
   });
@@ -94,8 +95,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useEffect(() => {
     setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
-    chatInputRef.current?.focus();
   }, [chat]);
+
+  useEffect(() => {
+    chatInputRef.current?.focus();
+  }, [loadCompleted]);
 
   useEffect(() => {
     if (loadCompleted) {
@@ -111,9 +115,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const autoScroll = useCallback(() => {
     if (!showAnchorButton) {
-      setTimeout(scrollToBottom, 50);
+      setTimeout(scrollToBottom, 150);
     }
-  }, [scrollToBottom, showAnchorButton]);
+  }, [scrollToBottom, showAnchorButton, messagesContainerRef]);
 
   useEffect(() => {
     autoScroll();
@@ -124,12 +128,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
       const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
-        scrollToBottom();
-      } else if (messages?.length) {
+      } else if (messages?.length && !streaming) {
         setShowAnchorButton(true);
       }
     },
-    [messages?.length]
+    [messages?.length, streaming]
   );
 
   const anchorHandleClick = useCallback(() => {
@@ -148,7 +151,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   // #endregion
 
   // #region Send message
-  const [sendMessage] = useMutation(SEND_MESSAGE, {
+  const [createMessage] = useMutation(CREATE_MESSAGE, {
     onCompleted: data => {
       if (data.createMessage) {
         addChatMessage(data.createMessage);
@@ -201,7 +204,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     try {
       // Convert images to base64
 
-      await sendMessage({
+      await createMessage({
         variables: {
           input: {
             chatId,
@@ -454,7 +457,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
         p="md"
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className={[classes.messagesContainer, loadCompleted ? classes.loadCompleted : ""].join(" ")}
+        className={[
+          classes.messagesContainer,
+          loadCompleted ? classes.loadCompleted : "",
+          streaming ? classes.streaming : "",
+        ].join(" ")}
       >
         <div ref={firstMessageRef}>
           {messagesLoading && (

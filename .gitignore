@@ -9,8 +9,8 @@ tsconfig.tsbuildinfo
 **/.claude/settings.local.json
 
 # data
-backend/katechat.sqlite
-backend-rust/katechat.sqlite
+backend/*.sqlite
+backend-rust/*.sqlite
 
 # Rust
 backend-rust/target/

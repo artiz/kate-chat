@@ -37,7 +37,13 @@ export function ChatSettings({
   };
 
   const handleMaxTokensChange = (value: number | string) => {
-    const numValue = typeof value === "string" ? parseInt(value, 10) : value;
+    let numValue = typeof value === "string" ? parseInt(value, 10) : value;
+    if (isNaN(numValue) || numValue < 1) {
+      numValue = 1; // Ensure minimum value is 1
+    }
+    if (numValue > 2_000_000) {
+      numValue = 2_000_000; // Ensure maximum value is 2_000_000
+    }
     setTokensValue(numValue);
     onSettingsChange({ temperature: tempValue, maxTokens: numValue, topP: topPValue });
   };
@@ -105,7 +111,14 @@ export function ChatSettings({
               </ActionIcon>
             </Tooltip>
           </Group>
-          <NumberInput value={tokensValue} onChange={handleMaxTokensChange} min={1} max={32000} step={100} size="sm" />
+          <NumberInput
+            value={tokensValue}
+            onChange={handleMaxTokensChange}
+            min={1}
+            max={2_000_000}
+            step={100}
+            size="sm"
+          />
         </div>
 
         <div className={classes.settingItem}>

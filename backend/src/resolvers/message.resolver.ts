@@ -20,14 +20,12 @@ const logger = createLogger(__filename);
 export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
-  private modelRepository: Repository<Model>;
   private messageService: MessagesService;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
-    this.modelRepository = getRepository(Model);
     this.messageService = new MessagesService();
   }
 
