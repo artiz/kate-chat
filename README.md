@@ -26,6 +26,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## TODO
 
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
+* Add imegaes generation (DALL-E) support in Rust backend
 * Add support for more Google LLM provider
 * Add support for more Azure LLM provider
 * Python backend (FastAPI)
