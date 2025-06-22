@@ -7,7 +7,6 @@ diesel::table! {
         description -> Text,
         user_id -> Nullable<Text>,
         files -> Nullable<Text>,
-        messages_count -> Nullable<Integer>,
         model_id -> Nullable<Text>,
         temperature -> Nullable<Float>,
         max_tokens -> Nullable<Integer>,

@@ -95,8 +95,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useEffect(() => {
     setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
-    chatInputRef.current?.focus();
   }, [chat]);
+
+  useEffect(() => {
+    chatInputRef.current?.focus();
+  }, [loadCompleted]);
 
   useEffect(() => {
     if (loadCompleted) {

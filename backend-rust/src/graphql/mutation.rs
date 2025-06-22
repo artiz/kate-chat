@@ -4,13 +4,14 @@ use diesel::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, warn};
 
-use crate::graphql::GraphQLContext;
+use crate::graphql::query::GetChatStatsResult;
+use crate::graphql::{GraphQLContext, Query};
 use crate::log_user_action;
 use crate::models::{
-    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, GqlModel,
-    GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message, MessageRole, Model,
-    NewChat, NewMessage, NewUser, ProviderDetail, RegisterInput, TestModelInput, UpdateChatInput,
-    UpdateModelStatusInput, UpdateUserInput, User,
+    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, GqlChat,
+    GqlModel, GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message, MessageRole,
+    Model, NewChat, NewMessage, NewUser, ProviderDetail, RegisterInput, TestModelInput,
+    UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
 };
 use crate::schema::{chats, messages, models, users};
 use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
@@ -187,7 +188,7 @@ impl Mutation {
         ctx: &Context<'_>,
         id: String,
         input: UpdateChatInput,
-    ) -> Result<Chat> {
+    ) -> Result<GqlChat> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -212,13 +213,24 @@ impl Mutation {
         .execute(&mut conn)
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let updated_chat: Chat = chats::table
-            .filter(chats::id.eq(&id))
-            .filter(chats::user_id.eq(&user.id))
-            .first(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
+        let query: Query = Query::default();
 
-        Ok(updated_chat)
+        let GetChatStatsResult { chats, total: _ } = query.get_chats_with_stats(
+            gql_ctx.db_pool.clone(),
+            1,
+            0,
+            None,
+            user.id.clone(),
+            Some(id.clone()),
+        )?;
+
+        if chats.is_empty() {
+            return Err(AppError::NotFound("Chat not found".to_string()).into());
+        }
+
+        // First verify the chat belongs to the user
+        let chat = chats.into_iter().next().unwrap();
+        Ok(GqlChat::from(chat))
     }
 
     /// Delete chat

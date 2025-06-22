@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::{Chat, User};
+use crate::models::{GqlChat, User};
 use crate::schema::messages;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Enum, Copy, Eq)]
@@ -163,7 +163,7 @@ impl From<Message> for GqlMessage {
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlMessagesList {
     pub messages: Vec<GqlMessage>,
-    pub chat: Option<Chat>,
+    pub chat: Option<GqlChat>,
     pub total: Option<i32>,
     pub has_more: bool,
     pub error: Option<String>,

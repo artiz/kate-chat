@@ -22,7 +22,6 @@ CREATE TABLE chats (
     description TEXT NOT NULL DEFAULT '',
     user_id VARCHAR(64),
     files TEXT,
-    messages_count INTEGER DEFAULT 0,
     model_id VARCHAR(64),
     temperature REAL,
     max_tokens INTEGER,

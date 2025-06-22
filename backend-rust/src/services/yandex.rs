@@ -140,7 +140,7 @@ impl AIProviderService for YandexService {
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
-        // TODO: Implement actual streaming for Yandex
+        // IMPROVEMENT: Implement actual streaming for Yandex (still not supported by their API)
         // For now, simulate streaming
         match self.invoke_model(request).await {
             Ok(response) => {
