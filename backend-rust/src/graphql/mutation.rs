@@ -4,8 +4,7 @@ use diesel::prelude::*;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, warn};
 
-use crate::graphql::query::GetChatStatsResult;
-use crate::graphql::{GraphQLContext, Query};
+use crate::graphql::GraphQLContext;
 use crate::log_user_action;
 use crate::models::{
     message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, GqlChat,
@@ -15,6 +14,7 @@ use crate::models::{
 };
 use crate::schema::{chats, messages, models, users};
 use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
+use crate::services::chat::{ChatService, GetChatStatsResult};
 use crate::services::pubsub::get_global_pubsub;
 use crate::utils::errors::AppError;
 use crate::utils::jwt;
@@ -213,16 +213,9 @@ impl Mutation {
         .execute(&mut conn)
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let query: Query = Query::default();
-
-        let GetChatStatsResult { chats, total: _ } = query.get_chats_with_stats(
-            gql_ctx.db_pool.clone(),
-            1,
-            0,
-            None,
-            user.id.clone(),
-            Some(id.clone()),
-        )?;
+        let chat_service: ChatService = ChatService::new(&gql_ctx.db_pool);
+        let GetChatStatsResult { chats, total: _ } =
+            chat_service.get_chats_with_stats(1, 0, None, user.id.clone(), Some(id.clone()))?;
 
         if chats.is_empty() {
             return Err(AppError::NotFound("Chat not found".to_string()).into());

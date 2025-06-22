@@ -1378,9 +1378,12 @@ dependencies = [
  "diesel_derives",
  "itoa",
  "libsqlite3-sys",
+ "mysqlclient-sys",
+ "percent-encoding",
  "pq-sys",
  "r2d2",
  "time",
+ "url",
  "uuid",
 ]
 
@@ -2691,6 +2694,17 @@ dependencies = [
  "tokio",
  "tokio-util",
  "version_check",
+]
+
+[[package]]
+name = "mysqlclient-sys"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86a34a2bdec189f1060343ba712983e14cad7e87515cfd9ac4653e207535b6b1"
+dependencies = [
+ "pkg-config",
+ "semver",
+ "vcpkg",
 ]
 
 [[package]]

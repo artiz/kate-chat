@@ -1,15 +1,15 @@
 use async_graphql::{Context, InputObject, Object, Result};
 use diesel::prelude::*;
 
-use crate::database::DbPool;
 use crate::graphql::GraphQLContext;
 use crate::models::{
-    AuthResponse, Chat, ChatWithStats, GqlAmount, GqlChat, GqlChatsList, GqlCostsInfo, GqlMessage,
+    AuthResponse, Chat, GqlAmount, GqlChat, GqlChatsList, GqlCostsInfo, GqlMessage,
     GqlMessagesList, GqlModel, GqlModelsList, GqlProviderInfo, GqlServiceCostInfo, Message, Model,
     ProviderDetail, User,
 };
 use crate::schema::{chats, messages, models};
 use crate::services::ai::ApiProvider;
+use crate::services::chat::{ChatService, GetChatStatsResult};
 use crate::utils::errors::AppError;
 
 #[derive(Default)]
@@ -20,11 +20,6 @@ pub struct GetChatsInput {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub search_term: Option<String>,
-}
-
-pub struct GetChatStatsResult {
-    pub chats: Vec<ChatWithStats>,
-    pub total: i64,
 }
 
 #[derive(InputObject)]
@@ -48,13 +43,6 @@ pub struct ApplicationConfig {
     pub max_chats: i32,
     pub max_images: i32,
     pub s3_connected: bool,
-}
-
-// Struct for count result
-#[derive(QueryableByName, Debug)]
-struct CountResult {
-    #[diesel(sql_type = diesel::sql_types::BigInt)]
-    pub count: i64,
 }
 
 #[Object]
@@ -95,8 +83,9 @@ impl Query {
 
         let limit = input.limit.unwrap_or(20);
         let offset = input.offset.unwrap_or(0);
-        let GetChatStatsResult { chats, total } = self.get_chats_with_stats(
-            gql_ctx.db_pool.clone(),
+        let chat_service: ChatService = ChatService::new(&gql_ctx.db_pool);
+
+        let GetChatStatsResult { chats, total } = chat_service.get_chats_with_stats(
             limit,
             offset,
             input.search_term.clone(),
@@ -144,8 +133,8 @@ impl Query {
             .get()
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let GetChatStatsResult { chats, total: _ } = self.get_chats_with_stats(
-            gql_ctx.db_pool.clone(),
+        let chat_service: ChatService = ChatService::new(&gql_ctx.db_pool);
+        let GetChatStatsResult { chats, total: _ } = chat_service.get_chats_with_stats(
             1,
             0,
             None,
@@ -338,106 +327,5 @@ impl Query {
             token,
             user: user.clone(),
         })
-    }
-}
-
-impl Query {
-    pub fn get_chats_with_stats(
-        &self,
-        db_pool: DbPool,
-        limit: i32,
-        offset: i32,
-        search_term: Option<String>,
-        user_id: String,
-        chat_id: Option<String>,
-    ) -> Result<GetChatStatsResult, AppError> {
-        let mut conn = db_pool
-            .get()
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        // Build the base query with search filter if needed
-        let mut where_clause = format!("WHERE c.user_id = '{}'", user_id);
-        if let Some(search_term) = &search_term {
-            let escaped_term = search_term.replace('\'', "''"); // Basic SQL injection protection
-            where_clause.push_str(&format!(
-                " AND (c.title LIKE '%{}%' OR c.description LIKE '%{}%')",
-                escaped_term, escaped_term
-            ));
-        }
-
-        if let Some(chat_id) = &chat_id {
-            where_clause.push_str(&format!(" AND (c.id = '{}')", chat_id));
-        }
-
-        // Complex SQL query to get chats with message statistics
-        let sql_query = format!(
-            r#"
-            SELECT 
-                c.id,
-                c.title,
-                c.description,
-                c.user_id,
-                c.files,
-                c.model_id,
-                c.temperature,
-                c.max_tokens,
-                c.top_p,
-                c.is_pristine,
-                c.created_at,
-                c.updated_at,
-                COALESCE(msg_stats.messages_count, 0) as messages_count,
-                last_bot.content as last_bot_message,
-                last_bot.id as last_bot_message_id
-            FROM chats c
-            LEFT JOIN (
-                SELECT 
-                    chat_id,
-                    COUNT(*) as messages_count
-                FROM messages 
-                GROUP BY chat_id
-            ) msg_stats ON c.id = msg_stats.chat_id
-            LEFT JOIN (
-                SELECT DISTINCT
-                    m1.chat_id,
-                    m1.id,
-                    m1.content
-                FROM messages m1
-                WHERE m1.role = 'assistant'
-                    AND m1.created_at = (
-                        SELECT MAX(m2.created_at)
-                        FROM messages m2
-                        WHERE m2.chat_id = m1.chat_id 
-                            AND m2.role = 'assistant'
-                    )
-            ) last_bot ON c.id = last_bot.chat_id
-            {}
-            ORDER BY c.updated_at DESC
-            LIMIT {} OFFSET {}
-            "#,
-            where_clause, limit, offset
-        );
-
-        let chats = diesel::sql_query(&sql_query)
-            .load(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
-
-        // Get total count (for pagination) - apply the same search filter
-        let total: i64 = if search_term.is_some() {
-            // For searches, count using the same filter
-            let count_query = format!("SELECT COUNT(*) as count FROM chats c {}", where_clause);
-            let result: CountResult = diesel::sql_query(&count_query)
-                .get_result(&mut conn)
-                .map_err(|e| AppError::Database(e.to_string()))?;
-            result.count
-        } else {
-            // For non-search queries, use the simple count
-            chats::table
-                .filter(chats::user_id.eq(&user_id))
-                .count()
-                .get_result(&mut conn)
-                .map_err(|e| AppError::Database(e.to_string()))?
-        };
-
-        Ok(GetChatStatsResult { chats, total })
     }
 }

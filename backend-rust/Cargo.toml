@@ -3,6 +3,12 @@ name = "kate-chat-backend"
 version = "1.0.0"
 edition = "2021"
 
+[features]
+default = ["sqlite", "postgres"]
+sqlite = []
+postgres = []
+mysql = ["diesel/mysql"]
+
 [dependencies]
 # Web framework
 rocket = { version = "0.5.1", features = ["json"] }

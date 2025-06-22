@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod bedrock;
+pub mod chat;
 pub mod model;
 pub mod openai;
 pub mod pubsub;
