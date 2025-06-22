@@ -26,14 +26,15 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## TODO
 
 * Setup basic CI/CD pipeline with GitHub Actions to deploy the app to AWS (Azure?)
+* Add support for more Google LLM provider
+* Add support for more Azure LLM provider
+* Python backend (FastAPI)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Image resolution/count 
   * Chat message editing
 * Open AI code interpreter support  
 * Finish custom models support (enter ARN for Bedrock models)
-* Add support for more Google LLM provider
-* Add support for more Azure LLM provider
 
 ## Tech Stack
 
@@ -56,7 +57,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## Project Structure
 
 The project consists of several parts:
-1. Backend - GraphQL API server
+1. Backend - nodejs GraphQL API server. Also there is alternative backend implementation on Rust, Python is in plans.
 2. Frontend - Web interface
 3. Database - any TypePRM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
 4. Redis - for message queue and caching (optional, but recommended for production)
