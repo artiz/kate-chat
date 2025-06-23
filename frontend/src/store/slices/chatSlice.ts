@@ -85,6 +85,7 @@ const chatSlice = createSlice({
       });
       if (!found) {
         state.chats.push(action.payload);
+        state.total += 1;
       }
     },
     removeChat(state, action: PayloadAction<string>) {
