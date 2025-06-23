@@ -30,7 +30,7 @@ import {
   IconArrowBigRightLinesFilled,
   IconMatrix,
 } from "@tabler/icons-react";
-import { useAppSelector, useAppDispatch } from "../../store";
+import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
 import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
@@ -67,6 +67,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
+  const chats = useAppSelector(state => state.chats.chats);
+
   const { appConfig } = useAppSelector(state => state.user);
 
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
@@ -74,7 +76,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   const {
-    chat,
+    chat: initialChat,
     messages,
     messagesLoading,
     loadCompleted,
@@ -86,6 +88,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
   } = useChatMessages({
     chatId,
   });
+
+  const chat = useMemo(() => {
+    return chats.find(c => c.id === chatId) || initialChat;
+  }, [chats, chatId, initialChat]);
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
@@ -121,7 +127,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useEffect(() => {
     autoScroll();
-  }, [messages, chat?.lastBotMessage]);
+  }, [messages, chat?.lastBotMessage, sending]);
 
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

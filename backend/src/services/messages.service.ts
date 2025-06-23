@@ -72,7 +72,7 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    const { chatId, modelId } = input;
+    const { chatId, images, modelId } = input;
     if (!chatId) throw new Error("Chat ID is required");
     if (!modelId) throw new Error("Model ID is required");
     const chat = await this.chatRepository.findOne({
@@ -88,8 +88,6 @@ export class MessagesService {
     });
     if (!model) throw new Error("Model not found");
 
-    const s3Service = new S3Service(connection);
-
     // Get previous messages for context
     const previousMessages = await this.messageRepository.find({
       where: { chatId },
@@ -98,7 +96,7 @@ export class MessagesService {
     });
 
     // Save user message
-    const userMessage = await this.publishUserMessage(input, user, chat, model, s3Service);
+    const userMessage = await this.publishUserMessage(input, user, chat, model, connection);
     const inputMessages = previousMessages.reverse();
     inputMessages.push(userMessage);
 
@@ -115,16 +113,7 @@ export class MessagesService {
       })
     );
 
-    await this.publishAssistantMessage(
-      input,
-      connection,
-      user,
-      model,
-      chat,
-      s3Service,
-      inputMessages,
-      assistantMessage
-    );
+    await this.publishAssistantMessage(input, connection, user, model, chat, inputMessages, assistantMessage);
 
     return userMessage;
   }
@@ -195,16 +184,7 @@ export class MessagesService {
     const s3Service = new S3Service(connection);
 
     // Call publishAssistantMessage to generate new response
-    await this.publishAssistantMessage(
-      input,
-      connection,
-      user,
-      model,
-      chat,
-      s3Service,
-      contextMessages,
-      originalMessage
-    );
+    await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, originalMessage);
 
     return originalMessage;
   }
@@ -319,7 +299,7 @@ export class MessagesService {
     user: User,
     chat: Chat,
     model: Model,
-    s3Service: S3Service
+    connection: ConnectionParams
   ): Promise<Message> {
     const { images, role = MessageRole.USER } = input;
     let { content = "" } = input;
@@ -343,6 +323,7 @@ export class MessagesService {
 
     // If there's an image, handle it
     if (images) {
+      const s3Service = new S3Service(connection);
       jsonContent = [];
 
       if (content) {
@@ -398,7 +379,6 @@ export class MessagesService {
     user: User,
     model: Model,
     chat: Chat,
-    s3Service: S3Service,
     inputMessages: Message[],
     assistantMessage: Message
   ): Promise<void> {
@@ -425,6 +405,7 @@ export class MessagesService {
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
+          const s3Service = new S3Service(connection);
           // Save base64 image to S3
           const { fileName, contentType } = await this.saveImageFromBase64(s3Service, aiResponse.content, {
             chatId: chat.id,

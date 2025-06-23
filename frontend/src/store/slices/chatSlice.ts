@@ -75,7 +75,18 @@ const chatSlice = createSlice({
       state.total += 1;
     },
     updateChat(state, action: PayloadAction<Chat>) {
-      state.chats = state.chats.map(chat => (chat.id === action.payload.id ? action.payload : chat));
+      let found = false;
+      state.chats = state.chats.map(chat => {
+        if (chat.id === action.payload.id) {
+          found = true;
+          return action.payload;
+        }
+        return chat;
+      });
+      if (!found) {
+        state.chats.push(action.payload);
+        state.total += 1;
+      }
     },
     removeChat(state, action: PayloadAction<string>) {
       state.chats = state.chats.filter(chat => chat.id !== action.payload);

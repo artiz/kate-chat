@@ -71,10 +71,10 @@ export class QueueService {
   }
 
   connectClient(socket: WebSocket, clientChatId: string) {
-    // Only setup Redis subscriber if Redis is available
-    if (!this.redisClient || !this.redisClient.isReady) return;
-
     try {
+      // Only setup Redis subscriber if Redis is available
+      if (!this.redisClient || !this.redisClient.isReady) return;
+
       const subscriber = this.redisClient.duplicate();
 
       // Add error handling for subscriber
@@ -176,6 +176,11 @@ export class QueueService {
       await this.redisClient.publish(CHAT_ERRORS_CHANNEL, JSON.stringify({ chatId, error }));
     } catch (err) {
       logger.error(err, `Failed to publish error for chat ${chatId} in Redis`);
+      // fallback to publish if Redis fails
+      return await this.pubSub.publish(NEW_MESSAGE, {
+        chatId,
+        data: { error },
+      });
     }
   }
 
@@ -200,13 +205,13 @@ export class QueueService {
 
       // Broadcast message to all clients using Redis PubSub
       await this.redisClient.publish(CHAT_MESSAGES_CHANNEL, JSON.stringify({ chatId, messageId, streaming }));
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error(error, `Failed to publish message ${messageId} in Redis`);
 
       // fallback to publish if Redis fails
       return await this.pubSub.publish(NEW_MESSAGE, {
         chatId,
-        data: { error },
+        data: { message, streaming },
       });
     }
   }

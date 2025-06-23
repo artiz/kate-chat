@@ -236,6 +236,10 @@ export const ChatsNavSection = () => {
     navigate(`/chat/${id}`);
   };
 
+  const handleEditBlur = () => {
+    setTimeout(() => setIsEditing(null), 200); // Delay to allow click events to register
+  };
+
   // Handle edit chat
   const handleEditClick = (e: React.MouseEvent, chat: Chat) => {
     e.stopPropagation();
@@ -243,9 +247,7 @@ export const ChatsNavSection = () => {
     setEditedTitle(chat.title || "Untitled Chat");
   };
 
-  // Handle save edited title
-  const handleSaveTitle = (e: React.FormEvent, chatId: string) => {
-    e.preventDefault();
+  const updateTitle = (chatId: string) => {
     if (editedTitle.trim()) {
       updateChatMutation({
         variables: {
@@ -255,6 +257,20 @@ export const ChatsNavSection = () => {
           },
         },
       });
+    }
+  };
+
+  // Handle save edited title
+  const handleSaveTitle = (chatId: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    updateTitle(chatId);
+  };
+
+  const handleEditKeyUp = (chatId: string) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      updateTitle(chatId);
+    } else if (e.key === "Escape") {
+      setIsEditing(null);
     }
   };
 
@@ -302,19 +318,18 @@ export const ChatsNavSection = () => {
           {block.chats.map(chat => (
             <div key={chat.id} style={{ position: "relative" }}>
               {isEditing === chat.id ? (
-                <form onSubmit={e => handleSaveTitle(e, chat.id)}>
-                  <TextInput
-                    value={editedTitle}
-                    onChange={e => setEditedTitle(e.currentTarget.value)}
-                    autoFocus
-                    rightSection={
-                      <Button type="submit" size="xs" p="xs" variant="subtle">
-                        ✔️
-                      </Button>
-                    }
-                    onBlur={() => setIsEditing(null)}
-                  />
-                </form>
+                <TextInput
+                  value={editedTitle}
+                  onChange={e => setEditedTitle(e.currentTarget.value)}
+                  autoFocus
+                  rightSection={
+                    <Button size="xs" p="xs" variant="subtle" onClick={handleSaveTitle(chat.id)}>
+                      ✔️
+                    </Button>
+                  }
+                  onKeyUp={handleEditKeyUp(chat.id)}
+                  onBlur={handleEditBlur}
+                />
               ) : (
                 <Group justify="space-between" wrap="nowrap" className={classes.chatItem} gap="0">
                   <NavLink
