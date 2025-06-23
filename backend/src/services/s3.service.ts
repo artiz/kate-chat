@@ -42,7 +42,6 @@ export class S3Service {
     }
 
     this.s3client = new S3Client(clientOptions);
-    logger.info({ bucket: this.bucketName }, "S3 client initialized");
   }
 
   get client(): S3Client {

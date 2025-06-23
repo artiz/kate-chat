@@ -52,6 +52,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
   const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
   const [streaming, setStreaming] = useState<boolean>(false);
+  const updateTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -170,8 +171,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     },
   });
 
-  const mutateChat = debounce(updateChatMutation, 250);
-
   const updateChat = (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => {
     setChat(prev =>
       prev
@@ -192,12 +191,17 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     }
 
     if (chatId) {
-      mutateChat({
-        variables: {
-          id: chatId,
-          input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP"]),
-        },
-      });
+      if (updateTimeout.current) {
+        clearTimeout(updateTimeout.current);
+      }
+      updateTimeout.current = setTimeout(() => {
+        updateChatMutation({
+          variables: {
+            id: chatId,
+            input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP"]),
+          },
+        });
+      }, 300);
 
       afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
     }
