@@ -44,7 +44,6 @@ export interface Chat {
 
 interface ChatsState {
   chats: Chat[];
-  currentChat: Chat | null;
   loading: boolean;
   error: string | null;
   hasMore: boolean;
@@ -53,7 +52,6 @@ interface ChatsState {
 
 const initialState: ChatsState = {
   chats: [],
-  currentChat: null,
   loading: false,
   error: null,
   hasMore: false,
@@ -79,11 +77,12 @@ const chatSlice = createSlice({
       state.chats = state.chats.map(chat => {
         if (chat.id === action.payload.id) {
           found = true;
-          return action.payload;
+          return { ...chat, ...action.payload };
         }
         return chat;
       });
-      if (!found) {
+
+      if (!found && action.payload.id) {
         state.chats.push(action.payload);
         state.total += 1;
       }
@@ -92,9 +91,6 @@ const chatSlice = createSlice({
       state.chats = state.chats.filter(chat => chat.id !== action.payload);
     },
 
-    setCurrentChat(state, action: PayloadAction<Chat | null>) {
-      state.currentChat = action.payload;
-    },
     setChatLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload;
     },
@@ -105,6 +101,5 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setChats, addChat, updateChat, removeChat, setCurrentChat, setChatLoading, setChatError } =
-  chatSlice.actions;
+export const { setChats, addChat, updateChat, removeChat, setChatLoading, setChatError } = chatSlice.actions;
 export default chatSlice.reducer;

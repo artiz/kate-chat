@@ -1,15 +1,8 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions, useApolloClient, useMutation } from "@apollo/client";
-import {
-  Message,
-  MessageType,
-  MessageRole,
-  Chat,
-  updateChat as updateChatInState,
-  setCurrentChat,
-} from "@/store/slices/chatSlice";
+import { Message, MessageType, MessageRole, Chat, updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { useAppDispatch } from "@/store";
+import { useAppDispatch, useAppSelector } from "@/store";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
 import { GET_CHAT_MESSAGES, GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
 import { debounce, pick } from "lodash";
@@ -45,14 +38,13 @@ export interface UpdateChatInput {
 const MESSAGES_PER_PAGE = 50;
 
 export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = {}) => {
-  const [chat, setChat] = useState<Chat | undefined>();
-
   const [messages, setMessages] = useState<Message[] | undefined>();
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
   const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
   const [streaming, setStreaming] = useState<boolean>(false);
   const updateTimeout = useRef<NodeJS.Timeout | null>(null);
+  const chats = useAppSelector(state => state.chats.chats);
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -81,8 +73,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
               return; // If the chat ID doesn't match, do nothing
             }
 
-            dispatch(setCurrentChat(ch));
-            setChat(ch);
+            dispatch(updateChatInState(ch));
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
@@ -106,6 +97,11 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     },
     [chatId]
   );
+
+  const chat = useMemo(() => {
+    if (!chatId) return;
+    return chats.find(c => c.id === chatId);
+  }, [chats, chatId]);
 
   const loadMoreMessages = () => {
     if (!chatId || messagesLoading) return;
@@ -159,7 +155,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
         message: `Chat model has been updated`,
         color: "green",
       });
-      dispatch(setCurrentChat(data.updateChat));
+      dispatch(updateChatInState(data.updateChat));
     },
     onError: error => {
       console.error("Error updating chat:", error);
@@ -171,40 +167,30 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     },
   });
 
-  const updateChat = (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => {
-    setChat(prev =>
-      prev
-        ? {
-            ...prev,
-            ...input,
-          }
-        : undefined
-    );
+  const updateChat = (id: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => {
+    if (!id) return;
 
-    if (chat) {
-      dispatch(
-        updateChatInState({
-          ...chat,
-          ...input,
-        })
-      );
+    const existing = chats.find(c => c.id === id);
+    if (existing) {
+      updateChatInState({
+        ...existing,
+        ...input,
+      });
     }
 
-    if (chatId) {
-      if (updateTimeout.current) {
-        clearTimeout(updateTimeout.current);
-      }
-      updateTimeout.current = setTimeout(() => {
-        updateChatMutation({
-          variables: {
-            id: chatId,
-            input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP"]),
-          },
-        });
-      }, 300);
-
-      afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
+    if (updateTimeout.current) {
+      clearTimeout(updateTimeout.current);
     }
+    updateTimeout.current = setTimeout(() => {
+      updateChatMutation({
+        variables: {
+          id,
+          input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP"]),
+        },
+      });
+    }, 300);
+
+    afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
   };
 
   const addChatMessage = (msg: Message) => {
@@ -232,7 +218,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           isPristine: false,
         };
 
-        setChat(update);
         dispatch(updateChatInState(update));
       }
     };

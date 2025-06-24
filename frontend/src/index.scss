@@ -1,6 +1,7 @@
 @use "sass:meta";
 
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap");
 
 /* Import Mantine styles */
 @import "@mantine/core/styles.css";
@@ -37,7 +38,8 @@
 /* Global CSS */
 body {
   margin: 0;
-  font-family: Roboto, "Segoe UI", system-ui;
+  font-family: "Fira Code", "Consolas", "Segoe UI", system-ui;
+  --mantine-font-family-headings: "Fira Code", "Consolas", "Segoe UI", system-ui;
 }
 
 html,

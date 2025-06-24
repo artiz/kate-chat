@@ -67,7 +67,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
-  const chats = useAppSelector(state => state.chats.chats);
 
   const { appConfig } = useAppSelector(state => state.user);
 
@@ -76,7 +75,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   const {
-    chat: initialChat,
+    chat,
     messages,
     messagesLoading,
     loadCompleted,
@@ -88,10 +87,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   } = useChatMessages({
     chatId,
   });
-
-  const chat = useMemo(() => {
-    return chats.find(c => c.id === chatId) || initialChat;
-  }, [chats, chatId, initialChat]);
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
