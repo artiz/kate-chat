@@ -13,6 +13,8 @@ import {
   UsageCostInfo,
   ServiceCostInfo,
   InvokeModelParamsRequest,
+  ModelResponseUsage,
+  ModelResponseMetadata,
 } from "../../types/ai.types";
 import { ApiProvider } from "../../types/ai.types";
 import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
@@ -116,7 +118,7 @@ export class BedrockService extends BaseProviderService {
           await new Promise(resolve => setTimeout(resolve, 10));
         }
 
-        callbacks.onComplete?.(response.content);
+        callbacks.onComplete?.(response.content, response.metadata);
       } catch (e: unknown) {
         logger.error(e, "InvokeModel failed");
         callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
@@ -134,6 +136,7 @@ export class BedrockService extends BaseProviderService {
       const streamResponse = await this.bedrockClient.send(streamCommand);
 
       let fullResponse = "";
+      let metadata: ModelResponseMetadata | undefined = undefined;
 
       // Process the stream
       if (streamResponse.body) {
@@ -144,36 +147,40 @@ export class BedrockService extends BaseProviderService {
 
             // Extract the token based on model provider
             let token = "";
+            logger.trace(chunkData, "Сhunk received");
+
+            // Anthropic models
             if (provider === "anthropic") {
-              // For Anthropic models
               if (chunkData.type === "content_block_delta" && chunkData.delta?.text) {
                 token = chunkData.delta.text;
               }
+              // Amazon models
             } else if (provider === "amazon") {
-              // For Amazon models
-              logger.trace({ chunkData }, "Received chunk from Amazon model");
-
-              // TODO: Handle usage data properly
-              // "metadata": {
-              //  "usage": {
-              //    "inputTokens": 161,
-              //    "outputTokens": 159,
-              //    "cacheReadInputTokenCount": 0,
-              //    "cacheWriteInputTokenCount": 0
-              //  },
-              //  "metrics": {},
-              //  "trace": {}
-              // },
               if (chunkData.outputText) {
                 token = chunkData.outputText;
               } else if (chunkData.contentBlockDelta?.delta?.text) {
                 token = chunkData.contentBlockDelta.delta.text;
               }
+
+              if (chunkData.metadata?.usage) {
+                const usage = chunkData.metadata.usage;
+                metadata = {
+                  usage: {
+                    inputTokens: usage.inputTokens || usage.inputTokenCount,
+                    outputTokens: usage.outputTokens || usage.outputTokenCount,
+                    cacheReadInputTokens: usage.cacheReadInputTokenCount,
+                    cacheWriteInputTokens: usage.cacheWriteInputTokenCount,
+                  },
+                };
+              }
+
+              // Mistral models
             } else if (provider === "mistral") {
-              // For Mistral models
               if (chunkData.outputs && chunkData.outputs[0]?.text) {
                 token = chunkData.outputs[0].text;
               }
+            } else {
+              logger.warn(`Unsupported model provider: ${provider}. Cannot process streaming response.`);
             }
 
             if (token) {
@@ -184,7 +191,7 @@ export class BedrockService extends BaseProviderService {
         }
       }
 
-      callbacks.onComplete?.(fullResponse);
+      callbacks.onComplete?.(fullResponse, metadata);
     } catch (e: unknown) {
       logger.error(e, "InvokeModelWithResponseStreamCommand failed");
       callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));

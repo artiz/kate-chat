@@ -23,6 +23,12 @@ export interface Message {
   user?: User;
   createdAt: string;
   streaming?: boolean;
+  metadata?: {
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+    };
+  };
 }
 
 export interface Chat {

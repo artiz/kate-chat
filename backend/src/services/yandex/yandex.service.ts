@@ -145,9 +145,11 @@ export class YandexService extends BaseProviderService {
       return {
         type: "text",
         content: alternative.message?.text || "",
-        usage: {
-          inputTokens: result.result?.usage?.inputTextTokens,
-          outputTokens: result.result?.usage?.completionTokens,
+        metadata: {
+          usage: {
+            inputTokens: result.result?.usage?.inputTextTokens,
+            outputTokens: result.result?.usage?.completionTokens,
+          },
         },
       };
     } catch (error) {

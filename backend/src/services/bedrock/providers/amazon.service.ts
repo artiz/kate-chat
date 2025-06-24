@@ -237,9 +237,11 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
     return {
       type: "text",
       content,
-      usage: {
-        inputTokens: response.usage?.inputTokens,
-        outputTokens: response.usage?.outputTokens,
+      metadata: {
+        usage: {
+          inputTokens: response.usage?.inputTokens,
+          outputTokens: response.usage?.outputTokens,
+        },
       },
     };
   }

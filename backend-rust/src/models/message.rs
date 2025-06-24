@@ -130,6 +130,19 @@ pub struct ImageInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct MessageUsage {
+    pub input_tokens: i32,
+    pub output_tokens: i32,
+    pub cache_read_input_tokens: Option<i32>,
+    pub cache_write_input_tokens: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct MessageMetadata {
+    pub usage: MessageUsage,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
 pub struct GqlMessage {
     pub id: String,
     pub chat_id: String,
@@ -141,6 +154,7 @@ pub struct GqlMessage {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub metadata: Option<MessageMetadata>,
 }
 
 impl From<Message> for GqlMessage {
@@ -156,6 +170,7 @@ impl From<Message> for GqlMessage {
             model_name: message.model_name,
             created_at: message.created_at,
             updated_at: message.updated_at,
+            metadata: None,
         }
     }
 }

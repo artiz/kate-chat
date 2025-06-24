@@ -1,3 +1,6 @@
+import e from "express";
+import { Field, ObjectType } from "type-graphql";
+
 export enum ApiProvider {
   AWS_BEDROCK = "aws_bedrock",
   OPEN_AI = "open_ai",
@@ -76,20 +79,38 @@ export interface ModelMessage {
   timestamp?: Date;
 }
 
-export interface ModelResponse {
-  type: ContentType;
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-  };
+@ObjectType()
+export class ModelResponseUsage {
+  @Field({ nullable: true })
+  inputTokens?: number;
+
+  @Field({ nullable: true })
+  outputTokens?: number;
+
+  @Field({ nullable: true })
+  cacheReadInputTokens?: number;
+
+  @Field({ nullable: true })
+  cacheWriteInputTokens?: number;
+}
+
+@ObjectType()
+export class ModelResponseMetadata {
+  @Field(() => ModelResponseUsage, { nullable: true })
+  usage?: ModelResponseUsage;
+}
+
+export class ModelResponse {
+  metadata?: ModelResponseMetadata;
   // TODO: Add support for > 1 image
+  type: ContentType;
   content: string;
 }
 
 export interface StreamCallbacks {
   onStart?: () => void;
   onToken?: (token: string) => void;
-  onComplete?: (fullResponse: string) => void;
+  onComplete?: (content: string, metadata?: ModelResponseMetadata) => void;
   onError?: (error: Error) => void;
 }
 

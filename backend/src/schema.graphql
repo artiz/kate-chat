@@ -191,6 +191,7 @@ type Message {
   content: String!
   createdAt: DateTimeISO!
   id: ID!
+  metadata: ModelResponseMetadata
   modelId: String!
   modelName: String
   role: String!
@@ -217,6 +218,17 @@ type Model {
   supportsTextOut: Boolean!
   updatedAt: DateTimeISO!
   user: User!
+}
+
+type ModelResponseMetadata {
+  usage: ModelResponseUsage
+}
+
+type ModelResponseUsage {
+  cacheReadInputTokens: Float
+  cacheWriteInputTokens: Float
+  inputTokens: Float
+  outputTokens: Float
 }
 
 type Mutation {

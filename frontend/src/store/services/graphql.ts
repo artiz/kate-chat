@@ -203,6 +203,12 @@ export const GET_CHAT_MESSAGES = gql`
           lastName
           firstName
         }
+        metadata {
+          usage {
+            inputTokens
+            outputTokens
+          }
+        }
       }
       total
       hasMore

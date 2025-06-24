@@ -17,7 +17,7 @@ interface ChatMessageProps {
 
 export const ChatMessage = (props: ChatMessageProps) => {
   const { message, index, disabled = false } = props;
-  const { role, id, modelName, content, html, createdAt, user, streaming = false } = message;
+  const { role, id, modelName, content, html, createdAt, user, streaming = false, metadata } = message;
   const { models } = useAppSelector(state => state.models);
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -167,9 +167,22 @@ export const ChatMessage = (props: ChatMessageProps) => {
             </Menu.Dropdown>
           </Menu>
         )}
+
+        {/* Token usage display */}
+        {metadata?.usage && (metadata.usage.inputTokens || metadata.usage.outputTokens) && (
+          <Tooltip
+            label={`Input tokens: ${metadata.usage.inputTokens || "N/A"}, Output tokens: ${metadata.usage.outputTokens || "N/A"}`}
+            position="top"
+            withArrow
+          >
+            <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
+              IN: {metadata.usage.inputTokens || "N/A"}, OUT: {metadata.usage.outputTokens || "N/A"}
+            </Text>
+          </Tooltip>
+        )}
       </div>
     );
-  }, [id, index, role, modelName, disableActions, models]);
+  }, [id, index, role, modelName, disableActions, models, metadata]);
 
   const cmp = useMemo(() => {
     const isUserMessage = role === MessageRole.USER;

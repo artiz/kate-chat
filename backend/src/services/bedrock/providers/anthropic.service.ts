@@ -122,9 +122,11 @@ export class AnthropicService implements BedrockModelServiceProvider<AnthropicRe
     return {
       type: "text",
       content: responseBody.content[0].text || "",
-      usage: {
-        inputTokens: responseBody.usage?.input_tokens,
-        outputTokens: responseBody.usage?.output_tokens,
+      metadata: {
+        usage: {
+          inputTokens: responseBody.usage?.input_tokens,
+          outputTokens: responseBody.usage?.output_tokens,
+        },
       },
     };
   }

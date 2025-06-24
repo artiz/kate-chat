@@ -6,6 +6,7 @@ import {
   MessageRole,
   ModelMessage,
   ModelResponse,
+  ModelResponseMetadata,
   ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
@@ -114,7 +115,7 @@ export class AIService {
     connection: ConnectionParams,
     request: InvokeModelParamsRequest,
     messages: Message[],
-    callback: (token: string, completed?: boolean, error?: Error) => void
+    callback: (content: string, completed?: boolean, error?: Error, metadata?: ModelResponseMetadata) => void
   ) {
     // Stream the completion in background
     this.invokeModelAsync(
@@ -128,8 +129,8 @@ export class AIService {
         onToken: (token: string) => {
           callback(token);
         },
-        onComplete: (response: string) => {
-          callback(response, true);
+        onComplete: (response: string, metadata: ModelResponseMetadata | undefined) => {
+          callback(response, true, undefined, metadata);
         },
         onError: (error: Error) => {
           callback("", true, error);

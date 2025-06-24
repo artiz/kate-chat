@@ -38,8 +38,11 @@
 /* Global CSS */
 body {
   margin: 0;
-  font-family: "Fira Code", "Consolas", "Segoe UI", system-ui;
-  --mantine-font-family-headings: "Fira Code", "Consolas", "Segoe UI", system-ui;
+  --font-family: "Fira Code", "Consolas", "Segoe UI", system-ui;
+
+  font-family: var(--font-family);
+  --mantine-font-family-headings: var(--font-family);
+  --input-font-family: var(--font-family);
 }
 
 html,

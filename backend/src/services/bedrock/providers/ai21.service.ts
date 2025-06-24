@@ -77,9 +77,11 @@ export class AI21Service implements BedrockModelServiceProvider<A21InvokeModelRe
     return {
       type: "text",
       content: responseBody.choices?.[0]?.message?.content || "",
-      usage: {
-        inputTokens: responseBody.usage?.prompt_tokens || 0,
-        outputTokens: responseBody.usage?.completion_tokens || 0,
+      metadata: {
+        usage: {
+          inputTokens: responseBody.usage?.prompt_tokens || 0,
+          outputTokens: responseBody.usage?.completion_tokens || 0,
+        },
       },
     };
   }

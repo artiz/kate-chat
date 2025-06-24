@@ -10,7 +10,13 @@ import { AIService } from "./ai.service";
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Chat, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
-import { InvokeModelParamsRequest, MessageRole, MessageType, ModelMessageContent } from "@/types/ai.types";
+import {
+  InvokeModelParamsRequest,
+  MessageRole,
+  MessageType,
+  ModelMessageContent,
+  ModelResponseMetadata,
+} from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
@@ -445,7 +451,12 @@ export class MessagesService {
       return;
     }
 
-    const handleStreaming = async (token: string, completed?: boolean, error?: Error) => {
+    const handleStreaming = async (
+      token: string,
+      completed?: boolean,
+      error?: Error,
+      metadata?: ModelResponseMetadata
+    ) => {
       if (completed) {
         if (error) {
           return completeRequest({
@@ -456,6 +467,8 @@ export class MessagesService {
         }
 
         assistantMessage.content = token;
+        assistantMessage.metadata = metadata;
+
         completeRequest(assistantMessage).catch(err => {
           this.queueService.publishError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");

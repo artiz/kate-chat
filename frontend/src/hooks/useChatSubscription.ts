@@ -17,6 +17,12 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
         createdAt
         modelId
         modelName
+        metadata {
+          usage {
+            inputTokens
+            outputTokens
+          }
+        }
       }
       error
       streaming

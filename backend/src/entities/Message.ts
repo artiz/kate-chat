@@ -2,7 +2,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryG
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
-import { MessageRole, ModelMessageContent } from "@/types/ai.types";
+import { MessageRole, ModelMessageContent, ModelResponse, ModelResponseMetadata } from "@/types/ai.types";
 import { JSONTransformer } from "@/utils/db";
 
 @ObjectType()
@@ -26,6 +26,10 @@ export class Message {
 
   @Column({ type: "json", nullable: true, transformer: JSONTransformer<ModelMessageContent[]>() })
   jsonContent?: ModelMessageContent[];
+
+  @Column({ type: "json", nullable: true, transformer: JSONTransformer<ModelResponseMetadata>(), default: null })
+  @Field(() => ModelResponseMetadata, { nullable: true })
+  metadata?: ModelResponseMetadata;
 
   @Field()
   @Column()
