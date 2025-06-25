@@ -72,21 +72,7 @@ impl Message {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Insertable)]
-#[diesel(table_name = messages)]
-pub struct NewMessage {
-    pub id: String,
-    pub chat_id: String,
-    pub user_id: Option<String>,
-    pub content: String,
-    pub role: String,
-    pub model_id: String,
-    pub model_name: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-}
-
-impl NewMessage {
+impl Message {
     pub fn new(
         chat_id: String,
         user_id: Option<String>,
@@ -110,6 +96,21 @@ impl NewMessage {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct GqlMessage {
+    pub id: String,
+    pub chat_id: String,
+    pub user_id: Option<String>,
+    pub user: Option<User>,
+    pub content: String,
+    pub role: String,
+    pub model_id: String,
+    pub model_name: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub metadata: Option<MessageMetadata>,
+}
+
 #[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct CreateMessageInput {
     pub chat_id: String,
@@ -129,7 +130,7 @@ pub struct ImageInput {
     pub mime_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct MessageUsage {
     pub input_tokens: i32,
     pub output_tokens: i32,
@@ -137,24 +138,9 @@ pub struct MessageUsage {
     pub cache_write_input_tokens: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct MessageMetadata {
     pub usage: MessageUsage,
-}
-
-#[derive(Debug, Serialize, Deserialize, SimpleObject)]
-pub struct GqlMessage {
-    pub id: String,
-    pub chat_id: String,
-    pub user_id: Option<String>,
-    pub user: Option<User>,
-    pub content: String,
-    pub role: String,
-    pub model_id: String,
-    pub model_name: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub metadata: Option<MessageMetadata>,
 }
 
 impl From<Message> for GqlMessage {
@@ -211,7 +197,7 @@ impl From<String> for MessageType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct GqlNewMessage {
-    pub message: Option<Message>,
+    pub message: Option<GqlMessage>,
     pub error: Option<String>,
     pub streaming: Option<bool>,
     pub r#type: String,

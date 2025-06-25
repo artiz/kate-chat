@@ -243,8 +243,8 @@ impl AIProviderService for OpenAIService {
                 }
 
                 // Remove "data: " prefix
-                let data = if line.starts_with("data: ") {
-                    &line[6..]
+                let data = if let Some(stripped) = line.strip_prefix("data: ") {
+                    stripped
                 } else {
                     line
                 };

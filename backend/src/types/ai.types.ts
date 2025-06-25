@@ -1,4 +1,4 @@
-import e from "express";
+import "reflect-metadata";
 import { Field, ObjectType } from "type-graphql";
 
 export enum ApiProvider {

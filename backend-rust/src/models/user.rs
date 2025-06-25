@@ -75,6 +75,7 @@ pub struct NewUser {
 }
 
 impl NewUser {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         email: String,
         password: Option<String>,

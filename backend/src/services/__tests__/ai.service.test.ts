@@ -208,7 +208,7 @@ describe("AIService", () => {
       expect(callbacks.onToken).toHaveBeenCalledTimes(2);
       expect(callbacks.onToken).toHaveBeenNthCalledWith(1, "Hello");
       expect(callbacks.onToken).toHaveBeenNthCalledWith(2, ", world!");
-      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!");
+      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!", undefined);
       expect(callbacks.onError).not.toHaveBeenCalled();
     });
 
@@ -253,7 +253,9 @@ describe("AIService", () => {
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
       expect(callbacks.onToken).toHaveBeenCalled();
-      expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!");
+      expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!", {
+        usage: { inputTokens: 0, outputTokens: 0 },
+      });
       expect(callbacks.onError).not.toHaveBeenCalled();
     });
 
