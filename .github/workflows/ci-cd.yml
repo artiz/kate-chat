@@ -1,0 +1,316 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REPOSITORY_BACKEND: katechat-backend
+  ECR_REPOSITORY_FRONTEND: katechat-frontend
+  ECR_REPOSITORY_RUST: katechat-backend-rust
+  ECS_SERVICE_BACKEND: katechat-backend-service
+  ECS_SERVICE_FRONTEND: katechat-frontend-service
+  ECS_CLUSTER: katechat-cluster
+  CONTAINER_NAME_BACKEND: katechat-backend
+  CONTAINER_NAME_FRONTEND: katechat-frontend
+  CONTAINER_NAME_RUST: katechat-backend-rust
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm run install:all
+
+    - name: Run backend tests
+      run: |
+        cd backend
+        npm test
+
+    - name: Run frontend tests
+      run: |
+        cd frontend
+        npm test -- --watchAll=false
+
+    - name: Setup Rust
+      if: matrix.node-version == '20.x'
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: nightly
+
+    - name: Test Rust backend
+      if: matrix.node-version == '20.x'
+      run: |
+        cd backend-rust
+        cargo test
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm run install:all
+
+    - name: Lint backend
+      run: |
+        cd backend
+        npm run lint
+
+    - name: Lint frontend
+      run: |
+        cd frontend
+        npm run lint
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: nightly
+        components: rustfmt, clippy
+
+    - name: Lint Rust backend
+      run: |
+        cd backend-rust
+        cargo fmt --check
+        cargo clippy -- -D warnings
+
+  build:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
+    
+    outputs:
+      backend-image: ${{ steps.build-backend.outputs.image }}
+      frontend-image: ${{ steps.build-frontend.outputs.image }}
+      rust-image: ${{ steps.build-rust.outputs.image }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies and build frontend
+      run: |
+        npm run install:all
+        npm run frontend:build
+
+    # Build and push backend image
+    - name: Build and push backend image
+      id: build-backend
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG backend/
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    # Build and push Rust backend image
+    - name: Build and push Rust backend image
+      id: build-rust
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG backend-rust/
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    # Build and push frontend image (nginx with static files)
+    - name: Build and push frontend image
+      id: build-frontend
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Create a Dockerfile for the frontend
+        cat > frontend/Dockerfile.prod << EOF
+        FROM nginx:alpine
+        
+        # Copy the built frontend files
+        COPY dist /usr/share/nginx/html
+        
+        # Copy nginx configuration
+        COPY nginx.conf /etc/nginx/conf.d/default.conf
+        
+        EXPOSE 80
+        
+        CMD ["nginx", "-g", "daemon off;"]
+        EOF
+        
+        # Create nginx config for frontend
+        cat > frontend/nginx.conf << EOF
+        server {
+            listen 80;
+            server_name localhost;
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html index.htm;
+                try_files \$uri \$uri/ /index.html;
+            }
+            
+            location /api {
+                proxy_pass http://backend:4000;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+            }
+            
+            location /graphql {
+                proxy_pass http://backend:4000;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+            }
+        }
+        EOF
+        
+        docker build -f frontend/Dockerfile.prod -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG frontend/
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy to ECS Staging
+      run: |
+        # Update ECS service with new images
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }}-staging \
+          --service ${{ env.ECS_SERVICE_BACKEND }}-staging \
+          --force-new-deployment
+        
+        # Wait for deployment to complete
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }}-staging \
+          --services ${{ env.ECS_SERVICE_BACKEND }}-staging
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/master'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy to ECS Production
+      run: |
+        # Update ECS service with new images
+        aws ecs update-service \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --service ${{ env.ECS_SERVICE_BACKEND }} \
+          --force-new-deployment
+        
+        # Wait for deployment to complete
+        aws ecs wait services-stable \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE_BACKEND }}
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Production deployment successful!"
+        echo "Backend: ${{ needs.build.outputs.backend-image }}"
+        echo "Frontend: ${{ needs.build.outputs.frontend-image }}"
+        echo "Rust Backend: ${{ needs.build.outputs.rust-image }}"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
