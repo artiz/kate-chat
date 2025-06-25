@@ -2,6 +2,8 @@ name: Clean up feature frontend deployment
 
 on:
     delete:
+env:
+  AWS_REGION: eu-central-1
 
 jobs:
     handle_branch_deletion:
@@ -40,3 +42,6 @@ jobs:
               if: ${{ steps.encode_branch.outputs.BRANCH_NAME != 'master' && steps.encode_branch.outputs.BRANCH_NAME != '' }}
               run: |
                   aws s3 rm s3://katechat-frontend/${{ steps.encode_branch.outputs.BRANCH_NAME }} --recursive
+                # TODO: remove backend images from ECR
+                # docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME
+
