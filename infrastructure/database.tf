@@ -117,7 +117,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
       sse_algorithm = "AES256"
     }
   }
-
 }
 
 resource "aws_s3_bucket_public_access_block" "files" {
@@ -128,6 +127,26 @@ resource "aws_s3_bucket_public_access_block" "files" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+# S3 Bucket for file storage
+resource "aws_s3_bucket" "frontend_build" {
+  bucket = "katechat-frontend"
+
+  tags = {
+    Name = "katechat-frontend"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend_build" {
+  bucket = aws_s3_bucket.frontend_build.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+
 
 # CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "backend" {
