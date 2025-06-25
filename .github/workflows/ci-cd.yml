@@ -73,22 +73,19 @@ jobs:
         cd frontend
         npx prettier -c .
 
-    - name: Setup Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-
-    - name: Lint Rust backend
-      run: |
-        cd backend-rust
-        cargo fmt --check
-        cargo clippy -- -D warnings
-    - name: Test Rust backend
-      run: |
-        cd backend-rust
-        cargo test
-
+    # TODO: Uncomment when Rust backend becomes active
+    # - name: Setup Rust
+    #   uses: actions-rust-lang/setup-rust-toolchain@v1
+    #   with:
+    #     toolchain: stable
+    #     components: rustfmt, clippy
+    # - name: Lint/Test Rust backend
+    #   run: |
+    #     cd backend-rust
+    #     cargo fmt --check
+    #     cargo clippy -- -D warnings
+    #     cargo test
+    
 
   build:
     name: Build and Push Images
@@ -130,7 +127,7 @@ jobs:
         npm run install:all
         npm run frontend:build
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
           name: frontend-dist
           path: frontend/dist/
@@ -146,7 +143,7 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    # Build and push Rust backend image
+    # TODO: Uncomment when Rust backend becomes active
     # - name: Build and push Rust backend image
     #   id: build-rust
     #   env:
@@ -159,7 +156,7 @@ jobs:
 
     # Publish frontend to S3
     - name: Load frontend build
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
           name: frontend-dist
     - name: Use python
