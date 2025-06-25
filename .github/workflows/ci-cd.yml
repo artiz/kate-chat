@@ -22,18 +22,15 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: 20.x
         cache: 'npm'
 
     - name: Install dependencies
@@ -50,13 +47,11 @@ jobs:
         npm test -- --watchAll=false
 
     - name: Setup Rust
-      if: matrix.node-version == '20.x'
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: nightly
 
     - name: Test Rust backend
-      if: matrix.node-version == '20.x'
       run: |
         cd backend-rust
         cargo test

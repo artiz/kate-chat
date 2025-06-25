@@ -183,7 +183,7 @@ impl AIProviderService for BedrockService {
                 );
                 AppError::Aws(format!(
                     "Bedrock invoke failed: {}",
-                    e.source().unwrap_or(&e).to_string()
+                    e.source().unwrap_or(&e)
                 ))
             })?;
 
@@ -344,22 +344,10 @@ impl AIProviderService for BedrockService {
             {
                 let supports_streaming = model.response_streaming_supported().unwrap_or(false);
 
-                let supports_text_in = model
-                    .input_modalities()
-                    .iter()
-                    .any(|mod_type| *mod_type == ModelModality::Text);
-                let supports_image_in = model
-                    .input_modalities()
-                    .iter()
-                    .any(|mod_type| *mod_type == ModelModality::Image);
-                let supports_text_out = model
-                    .output_modalities()
-                    .iter()
-                    .any(|mod_type| *mod_type == ModelModality::Text);
-                let supports_image_out = model
-                    .output_modalities()
-                    .iter()
-                    .any(|mod_type| *mod_type == ModelModality::Image);
+                let supports_text_in = model.input_modalities().contains(&ModelModality::Text);
+                let supports_image_in = model.input_modalities().contains(&ModelModality::Image);
+                let supports_text_out = model.output_modalities().contains(&ModelModality::Text);
+                let supports_image_out = model.output_modalities().contains(&ModelModality::Image);
 
                 models.insert(
                     model_id.to_string(),
@@ -424,7 +412,7 @@ impl AIProviderService for BedrockService {
         let start_date = DateTime::from_timestamp(start_time, 0).unwrap_or_default();
         let end_date = end_time
             .and_then(|t| DateTime::from_timestamp(t, 0))
-            .unwrap_or_else(|| Utc::now());
+            .unwrap_or_else(Utc::now);
 
         let mut result = UsageCostInfo {
             start: start_date,

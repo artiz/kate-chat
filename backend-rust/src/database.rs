@@ -28,9 +28,10 @@ impl DatabaseType {
             .as_str()
         {
             "postgres" | "postgresql" => DatabaseType::Postgres,
+            "sqlite" => DatabaseType::Sqlite,
             #[cfg(feature = "mysql")]
             "mysql" => DatabaseType::Mysql,
-            "sqlite" | _ => DatabaseType::Sqlite,
+            _ => todo!("Unsupported database type. Please set DB_TYPE to 'sqlite', 'postgres', or 'mysql'."),
         }
     }
 }

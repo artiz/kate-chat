@@ -45,8 +45,8 @@ pub fn verify_token(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::e
 }
 
 pub fn extract_token_from_header(auth_header: &str) -> Option<&str> {
-    if auth_header.starts_with("Bearer ") {
-        Some(&auth_header[7..])
+    if let Some(stripped) = auth_header.strip_prefix("Bearer ") {
+        Some(stripped)
     } else {
         None
     }

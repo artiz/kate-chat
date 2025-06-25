@@ -193,7 +193,7 @@ pub async fn google_callback(
 
     // split user_info.name into first and last name
     let name_parts: Vec<&str> = user_info.name.split_whitespace().collect();
-    let first_name = name_parts.get(0).cloned().unwrap_or("");
+    let first_name = name_parts.first().cloned().unwrap_or("");
     let last_name = name_parts
         .get(1..)
         .map(|parts| parts.join(" "))
@@ -411,7 +411,7 @@ pub async fn github_callback(
     // Extract name from GitHub profile
     let display_name = user_info.name.unwrap_or_else(|| user_info.login.clone());
     let name_parts: Vec<&str> = display_name.split_whitespace().collect();
-    let first_name = name_parts.get(0).cloned().unwrap_or("User");
+    let first_name = name_parts.first().cloned().unwrap_or("User");
     let last_name = name_parts
         .get(1..)
         .map(|parts| parts.join(" "))

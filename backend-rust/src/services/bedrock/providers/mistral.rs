@@ -173,7 +173,7 @@ impl MistralProvider {
         let choice = mistral_response.choices.first();
 
         let content = choice
-            .and_then(|choice| Some(choice.message.content.as_str()))
+            .map(|choice| choice.message.content.as_str())
             .unwrap_or("")
             .to_string();
 

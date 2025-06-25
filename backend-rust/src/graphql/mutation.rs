@@ -8,8 +8,8 @@ use crate::graphql::GraphQLContext;
 use crate::log_user_action;
 use crate::models::{
     message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, GqlChat,
-    GqlModel, GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message, MessageRole,
-    Model, NewChat, NewMessage, NewUser, ProviderDetail, RegisterInput, TestModelInput,
+    GqlMessage, GqlModel, GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message,
+    MessageRole, Model, NewChat, NewUser, ProviderDetail, RegisterInput, TestModelInput,
     UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
 };
 use crate::schema::{chats, messages, models, users};
@@ -289,7 +289,7 @@ impl Mutation {
             return Err(AppError::Validation("Model is not active".to_string()).into());
         }
 
-        let new_message = NewMessage::new(
+        let new_message = Message::new(
             input.chat_id.clone(),
             Some(user.id.clone()),
             input.content.clone(),
@@ -316,7 +316,7 @@ impl Mutation {
         let gql_message = message::GqlNewMessage {
             r#type: String::from(message::MessageType::Message),
             error: None,
-            message: Some(message.clone()),
+            message: Some(GqlMessage::from(message.clone())),
             streaming: Some(false),
         };
 
@@ -361,7 +361,7 @@ impl Mutation {
             system_prompt: user.default_system_prompt.clone(),
         };
 
-        let ai_msg_data = NewMessage::new(
+        let ai_msg_data = Message::new(
             input.chat_id.clone(),
             None,
             String::new(), // Placeholder for AI response
@@ -395,7 +395,7 @@ impl Mutation {
                     let pub_message = message::GqlNewMessage {
                         r#type: String::from(message::MessageType::Message),
                         error: None,
-                        message: Some(ai_message_pub),
+                        message: Some(GqlMessage::from(ai_message_pub)),
                         streaming: Some(true),
                     };
 
@@ -455,7 +455,7 @@ impl Mutation {
                     let pub_message: GqlNewMessage = message::GqlNewMessage {
                         r#type: String::from(message::MessageType::Message),
                         error: error_ai_message.content.clone().into(),
-                        message: Some(error_ai_message),
+                        message: Some(GqlMessage::from(error_ai_message)),
                         streaming: Some(false),
                     };
 
@@ -512,7 +512,7 @@ impl Mutation {
                     let pub_message: GqlNewMessage = message::GqlNewMessage {
                         r#type: String::from(message::MessageType::Message),
                         error: None,
-                        message: Some(res_ai_message),
+                        message: Some(GqlMessage::from(res_ai_message)),
                         streaming: Some(false),
                     };
 
@@ -739,7 +739,7 @@ impl Mutation {
 
         let models_service =
             crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
-        let gql_models = models_service.refresh_models(&user).await?;
+        let gql_models = models_service.refresh_models(user).await?;
 
         let total_count = gql_models.len().min(i32::MAX as usize) as i32;
         info!(

@@ -240,7 +240,7 @@ impl Query {
             let models_service =
                 crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
             // Use the reload_models logic from mutation
-            gql_models.extend(models_service.refresh_models(&user).await?);
+            gql_models.extend(models_service.refresh_models(user).await?);
         }
 
         let total_count = gql_models.len().min(i32::MAX as usize) as i32;
