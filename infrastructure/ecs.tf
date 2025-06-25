@@ -7,63 +7,24 @@ resource "aws_ecr_repository" "backend" {
     scan_on_push = true
   }
 
-  lifecycle_policy {
-    policy = jsonencode({
-      rules = [
-        {
-          rulePriority = 1
-          description  = "Keep last 10 images"
-          selection = {
-            tagStatus     = "tagged"
-            tagPrefixList = ["v"]
-            countType     = "imageCountMoreThan"
-            countNumber   = 10
-          }
-          action = {
-            type = "expire"
-          }
-        }
-      ]
-    })
-  }
-
   tags = {
     Name = "${var.project_name}-backend-ecr"
   }
 }
 
-resource "aws_ecr_repository" "backend_rust" {
-  name                 = "${var.project_name}-backend-rust"
-  image_tag_mutability = "MUTABLE"
+# TODO: Uncomment and configure the Rust backend repository if needed
+# resource "aws_ecr_repository" "backend_rust" {
+#   name                 = "${var.project_name}-backend-rust"
+#   image_tag_mutability = "MUTABLE"
 
-  image_scanning_configuration {
-    scan_on_push = true
-  }
+#   image_scanning_configuration {
+#     scan_on_push = true
+#   }
 
-  lifecycle_policy {
-    policy = jsonencode({
-      rules = [
-        {
-          rulePriority = 1
-          description  = "Keep last 10 images"
-          selection = {
-            tagStatus     = "tagged"
-            tagPrefixList = ["v"]
-            countType     = "imageCountMoreThan"
-            countNumber   = 10
-          }
-          action = {
-            type = "expire"
-          }
-        }
-      ]
-    })
-  }
-
-  tags = {
-    Name = "${var.project_name}-backend-rust-ecr"
-  }
-}
+#   tags = {
+#     Name = "${var.project_name}-backend-rust-ecr"
+#   }
+# }
 
 resource "aws_ecr_repository" "frontend" {
   name                 = "${var.project_name}-frontend"
@@ -71,26 +32,6 @@ resource "aws_ecr_repository" "frontend" {
 
   image_scanning_configuration {
     scan_on_push = true
-  }
-
-  lifecycle_policy {
-    policy = jsonencode({
-      rules = [
-        {
-          rulePriority = 1
-          description  = "Keep last 10 images"
-          selection = {
-            tagStatus     = "tagged"
-            tagPrefixList = ["v"]
-            countType     = "imageCountMoreThan"
-            countNumber   = 10
-          }
-          action = {
-            type = "expire"
-          }
-        }
-      ]
-    })
   }
 
   tags = {

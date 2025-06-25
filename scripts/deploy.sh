@@ -14,8 +14,10 @@ NC='\033[0m' # No Color
 
 # Default values
 ENVIRONMENT="staging"
-AWS_REGION="us-east-1"
+AWS_REGION="eu-central-1"
 PROJECT_NAME="katechat"
+
+TERRAFORM_STATE_BUCKET="${PROJECT_NAME}-tf-state"
 
 # Function to print colored output
 print_status() {
@@ -68,13 +70,13 @@ check_prerequisites() {
 # Function to setup Terraform backend
 setup_terraform_backend() {
     local env=$1
-    local bucket_name="${PROJECT_NAME}-terraform-state-${env}"
+    local bucket_name="${TERRAFORM_STATE_BUCKET}-${env}"
     
     print_status "Setting up Terraform backend for ${env}..."
     
     # Check if bucket exists
     if aws s3api head-bucket --bucket "$bucket_name" 2>/dev/null; then
-        print_success "S3 bucket $bucket_name already exists."
+        print_success "S3 bucket $AWS_REGION::$bucket_name already exists."
     else
         print_status "Creating S3 bucket $bucket_name..."
         aws s3 mb "s3://$bucket_name" --region "$AWS_REGION"
@@ -122,7 +124,7 @@ display_deployment_info() {
     
     cd infrastructure
     
-    if [ -f terraform.tfstate ]; then
+    if [ -f .terraform/terraform.tfstate ]; then
         local alb_dns=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
         local ecr_urls=$(terraform output -json ecr_repository_urls 2>/dev/null || echo "{}")
         
@@ -213,7 +215,8 @@ case "${COMMAND:-help}" in
         check_prerequisites
         cd infrastructure
         terraform init \
-            -backend-config="bucket=${PROJECT_NAME}-terraform-state-${ENVIRONMENT}" \
+            -migrate-state \
+            -backend-config="bucket=${TERRAFORM_STATE_BUCKET}-${ENVIRONMENT}" \
             -backend-config="key=terraform.tfstate" \
             -backend-config="region=${AWS_REGION}"
         terraform plan \
@@ -226,7 +229,7 @@ case "${COMMAND:-help}" in
         check_prerequisites
         cd infrastructure
         terraform init \
-            -backend-config="bucket=${PROJECT_NAME}-terraform-state-${ENVIRONMENT}" \
+            -backend-config="bucket=${TERRAFORM_STATE_BUCKET}-${ENVIRONMENT}" \
             -backend-config="key=terraform.tfstate" \
             -backend-config="region=${AWS_REGION}"
         terraform apply \

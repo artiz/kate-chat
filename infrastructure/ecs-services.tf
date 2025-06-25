@@ -2,7 +2,6 @@
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-${var.environment}-backend"
   network_mode             = "awsvpc"
-  requires_compatibility   = ["FARGATE"]
   cpu                      = var.backend_cpu
   memory                   = var.backend_memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
@@ -107,7 +106,6 @@ resource "aws_ecs_task_definition" "backend" {
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "${var.project_name}-${var.environment}-frontend"
   network_mode             = "awsvpc"
-  requires_compatibility   = ["FARGATE"]
   cpu                      = var.frontend_cpu
   memory                   = var.frontend_memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
@@ -171,10 +169,8 @@ resource "aws_ecs_service" "backend" {
 
   depends_on = [aws_lb_listener.main]
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
+  deployment_maximum_percent = 200
+  deployment_minimum_healthy_percent = 100
 
   deployment_circuit_breaker {
     enable   = true
@@ -208,10 +204,8 @@ resource "aws_ecs_service" "frontend" {
 
   depends_on = [aws_lb_listener.main]
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
+  deployment_maximum_percent = 200
+  deployment_minimum_healthy_percent = 100
 
   deployment_circuit_breaker {
     enable   = true

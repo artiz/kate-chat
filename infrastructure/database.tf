@@ -49,9 +49,9 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.main.name
 
-  backup_window      = "03:00-04:00"
+  backup_window           = "03:00-04:00"
   backup_retention_period = var.environment == "production" ? 7 : 3
-  maintenance_window = "sun:04:00-sun:05:00"
+  maintenance_window      = "sun:04:00-sun:05:00"
 
   skip_final_snapshot       = var.environment != "production"
   final_snapshot_identifier = var.environment == "production" ? "${var.project_name}-${var.environment}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}" : null
@@ -110,16 +110,14 @@ resource "aws_s3_bucket_versioning" "files" {
   }
 }
 
-resource "aws_s3_bucket_encryption" "files" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
   bucket = aws_s3_bucket.files.id
-
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
     }
   }
+
 }
 
 resource "aws_s3_bucket_public_access_block" "files" {

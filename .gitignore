@@ -14,3 +14,7 @@ backend-rust/*.sqlite
 
 # Rust
 backend-rust/target/
+
+# terraform
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
