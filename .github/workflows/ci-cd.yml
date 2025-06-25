@@ -13,11 +13,8 @@ env:
   AWS_REGION: eu-central-1
   ECR_REPOSITORY_BACKEND: katechat-backend
   ECR_REPOSITORY_RUST: katechat-backend-rust
-  ECS_SERVICE_BACKEND: katechat-backend-service
-  ECS_CLUSTER: katechat-cluster
-  CONTAINER_NAME_BACKEND: katechat-backend
-  CONTAINER_NAME_RUST: katechat-backend-rust
-
+  ECS_SERVICE_BACKEND: backend-service
+  
 jobs:
   test:
     name: Run Tests
@@ -155,10 +152,6 @@ jobs:
     #     echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     # Publish frontend to S3
-    - name: Load frontend build
-      uses: actions/download-artifact@v4
-      with:
-          name: frontend-dist
     - name: Use python
       uses: actions/setup-python@v5
       with:
@@ -168,15 +161,14 @@ jobs:
     - name: Publish with S3
       run: |
           BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
-          ls .
-          aws s3 sync . s3://katechat-frontend/$BRANCH_NAME --delete --exact-timestamps
+          ls frontend/dist/
+          aws s3 sync frontend/dist/ s3://katechat-frontend/$BRANCH_NAME --delete --exact-timestamps
 
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
+    if: github.ref == 'refs/heads/master'
     
     steps:
     - name: Checkout code
@@ -193,53 +185,53 @@ jobs:
       run: |
         # Update ECS service with new images
         aws ecs update-service \
-          --cluster ${{ env.ECS_CLUSTER }}-staging \
-          --service ${{ env.ECS_SERVICE_BACKEND }}-staging \
+          --cluster katechat-staging-cluster \
+          --service katechat-staging-${{ env.ECS_SERVICE_BACKEND }} \
           --force-new-deployment
         
         # Wait for deployment to complete
         aws ecs wait services-stable \
-          --cluster ${{ env.ECS_CLUSTER }}-staging \
-          --services ${{ env.ECS_SERVICE_BACKEND }}-staging
+          --cluster katechat-staging-cluster \
+          --services katechat-staging-${{ env.ECS_SERVICE_BACKEND }}
 
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/master'
-    environment: production
+  # deploy-production:
+  #   name: Deploy to Production
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   if: github.ref == 'refs/heads/master'
+  #   environment: production
     
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+  #   - name: Configure AWS credentials
+  #     uses: aws-actions/configure-aws-credentials@v4
+  #     with:
+  #       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #       aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #       aws-region: ${{ env.AWS_REGION }}
 
-    - name: Deploy to ECS Production
-      run: |
-        # Update ECS service with new images
-        aws ecs update-service \
-          --cluster ${{ env.ECS_CLUSTER }} \
-          --service ${{ env.ECS_SERVICE_BACKEND }} \
-          --force-new-deployment
+  #   - name: Deploy to ECS Production
+  #     run: |
+  #       # Update ECS service with new images
+  #       aws ecs update-service \
+  #         --cluster ${{ env.ECS_CLUSTER }} \
+  #         --service ${{ env.ECS_SERVICE_BACKEND }} \
+  #         --force-new-deployment
         
-        # Wait for deployment to complete
-        aws ecs wait services-stable \
-          --cluster ${{ env.ECS_CLUSTER }} \
-          --services ${{ env.ECS_SERVICE_BACKEND }}
+  #       # Wait for deployment to complete
+  #       aws ecs wait services-stable \
+  #         --cluster ${{ env.ECS_CLUSTER }} \
+  #         --services ${{ env.ECS_SERVICE_BACKEND }}
 
-    - name: Notify deployment success
-      if: success()
-      run: |
-        echo "✅ Production deployment successful!"
-        echo "Backend: ${{ needs.build.outputs.backend-image }}"
-        echo "Frontend: ${{ needs.build.outputs.frontend-image }}"
-        echo "Rust Backend: ${{ needs.build.outputs.rust-image }}"
+  #   - name: Notify deployment success
+  #     if: success()
+  #     run: |
+  #       echo "✅ Production deployment successful!"
+  #       echo "Backend: ${{ needs.build.outputs.backend-image }}"
+  #       echo "Frontend: ${{ needs.build.outputs.frontend-image }}"
+  #       echo "Rust Backend: ${{ needs.build.outputs.rust-image }}"
 
   security-scan:
     name: Security Scan
