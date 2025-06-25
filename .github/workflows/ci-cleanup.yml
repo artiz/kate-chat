@@ -1,0 +1,42 @@
+name: Clean up feature frontend deployment
+
+on:
+    delete:
+
+jobs:
+    handle_branch_deletion:
+        name: Remove Deployment
+        # Only run this job when a branch (not a tag) is deleted
+        if: github.event.ref_type == 'branch' && github.event.ref != 'master'
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write
+            contents: read
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                aws-region: ${{ env.AWS_REGION }}
+            - name: Encode branch name
+              id: encode_branch
+              run: |
+                  BRANCH_NAME=$(echo ${{ github.event.ref }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
+                  echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_OUTPUT
+            - name: Branch has been deleted
+              run: |
+                  echo "Branch deleted: ${{ steps.encode_branch.outputs.BRANCH_NAME }}"
+            
+            - name: Use python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.9"
+            - name: Install awscli
+              run: pip install awscli
+            - name: Remove from S3
+              if: ${{ steps.encode_branch.outputs.BRANCH_NAME != 'master' && steps.encode_branch.outputs.BRANCH_NAME != '' }}
+              run: |
+                  aws s3 rm s3://katechat-frontend/${{ steps.encode_branch.outputs.BRANCH_NAME }} --recursive

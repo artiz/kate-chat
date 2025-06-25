@@ -169,7 +169,7 @@ jobs:
       run: |
           BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
           ls .
-          aws s3 sync dist s3://katechat-frontend/$BRANCH_NAME --delete --exact-timestamps
+          aws s3 sync . s3://katechat-frontend/$BRANCH_NAME --delete --exact-timestamps
 
   deploy-staging:
     name: Deploy to Staging
