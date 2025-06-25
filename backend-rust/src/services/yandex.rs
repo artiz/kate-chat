@@ -91,7 +91,7 @@ impl AIProviderService for YandexService {
         let response_json: Value = response
             .json()
             .await
-            .map_err(|e| AppError::Internal(format!("Failed to parse Yandex response: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Failed to parse Yandex response: {e}")))?;
 
         let content = response_json
             .get("result")

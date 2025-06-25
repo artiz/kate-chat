@@ -45,17 +45,7 @@ jobs:
       run: |
         cd frontend
         npm test -- --watchAll=false
-
-    - name: Setup Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: nightly
-
-    - name: Test Rust backend
-      run: |
-        cd backend-rust
-        cargo test
-
+   
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
@@ -86,7 +76,7 @@ jobs:
     - name: Setup Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: stable
         components: rustfmt, clippy
 
     - name: Lint Rust backend
@@ -94,6 +84,11 @@ jobs:
         cd backend-rust
         cargo fmt --check
         cargo clippy -- -D warnings
+    - name: Test Rust backend
+      run: |
+        cd backend-rust
+        cargo test
+
 
   build:
     name: Build and Push Images
