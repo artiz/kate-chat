@@ -1,4 +1,4 @@
-name: Clean up feature frontend deployment
+name: Clean up feature branch
 
 on:
     delete:
@@ -38,10 +38,11 @@ jobs:
                   python-version: "3.9"
             - name: Install awscli
               run: pip install awscli
-            - name: Remove from S3
+            - name: Cleanup docker images
               if: ${{ steps.encode_branch.outputs.BRANCH_NAME != 'master' && steps.encode_branch.outputs.BRANCH_NAME != '' }}
               run: |
-                  aws s3 rm s3://katechat-frontend/${{ steps.encode_branch.outputs.BRANCH_NAME }} --recursive
+                BRANCH_NAME=${{ steps.encode_branch.outputs.BRANCH_NAME }}
                 # TODO: remove backend images from ECR
                 # docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME
+                # docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME
 

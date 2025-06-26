@@ -43,10 +43,6 @@ resource "aws_ecs_task_definition" "backend" {
           value = aws_db_instance.main.username
         },
         {
-          name  = "DB_PASSWORD"
-          value = aws_secretsmanager_secret_version.db_password.secret_string
-        },
-        {
           name  = "REDIS_URL"
           value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.port}"
         },
