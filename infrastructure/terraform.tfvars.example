@@ -1,0 +1,32 @@
+# Terraform Variables for Staging Environment
+# Copy this file to terraform.tfvars and update with your values
+
+# AWS Configuration
+aws_region = "eu-central-1"
+environment = "staging"
+project_name = "katechat"
+
+# Domain Configuration (optional - for custom DNS)
+# If you want custom domain like staging.yourdomain.com instead of the long ALB name
+domain_name = ""  # Set to your domain, e.g., "katechat.app"
+certificate_arn = ""  # Set to your ACM certificate ARN if you have SSL
+
+# Database Configuration
+db_instance_class = "db.t3.micro"
+db_allocated_storage = 20
+db_engine_version = "16.9"
+
+# ECS Configuration
+backend_cpu = 256
+backend_memory = 512
+frontend_cpu = 256
+frontend_memory = 512
+desired_count = 2
+
+# Redis Configuration
+redis_node_type = "cache.t3.micro"
+redis_num_cache_nodes = 1
+
+# Example with custom domain (uncomment and modify):
+# domain_name = "katechat.app"
+# certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"

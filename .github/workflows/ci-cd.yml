@@ -135,8 +135,13 @@ jobs:
         RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
+
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME ./ -f frontend/Dockerfile
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME\
+          --build-arg APP_API_URL=$APP_API_URL\
+          --build-arg APP_WS_URL=$APP_WS_URL\
+          --build-arg RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY\
+          ./ -f frontend/Dockerfile
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME" >> $GITHUB_OUTPUT
     

@@ -1,4 +1,3 @@
-
 # Security Groups
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-${var.environment}-alb-sg"
@@ -207,10 +206,20 @@ resource "aws_lb_listener" "main" {
   port              = "80"
   protocol          = "HTTP"
 
-  # Default action redirects non-API requests to CloudFront
+  # Default action forwards to frontend, or redirects to HTTPS if certificate is available
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
+    type = var.certificate_arn != "" ? "redirect" : "forward"
+    
+    dynamic "redirect" {
+      for_each = var.certificate_arn != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+    
+    target_group_arn = var.certificate_arn != "" ? null : aws_lb_target_group.frontend.arn
   }
 }
 
@@ -226,7 +235,7 @@ resource "aws_lb_listener_rule" "backend_api" {
 
   condition {
     path_pattern {
-      values = ["/graphql*", "/api/*", "/auth/*", "/files/*"]
+      values = ["/graphql/*", "/auth/*", "/files/*"]
     }
   }
 }
@@ -261,7 +270,57 @@ resource "aws_lb_listener_rule" "backend_api_https" {
 
   condition {
     path_pattern {
-      values = ["/graphql*", "/api/*", "/auth/*", "/files/*"]
+      values = ["/graphql/*", "/auth/*", "/files/*"]
     }
   }
+}
+
+# Alternative: Network Load Balancer (shorter DNS name but limited features)
+# Note: Uncomment this section and comment out the ALB if you prefer shorter names
+# Warning: NLB doesn't support path-based routing like ALB
+
+# resource "aws_lb" "nlb" {
+#   name               = "${var.project_name}-${var.environment}-nlb"
+#   internal           = false
+#   load_balancer_type = "network"
+#   subnets            = aws_subnet.public[*].id
+# 
+#   enable_deletion_protection = var.environment == "production"
+# 
+#   tags = {
+#     Name = "${var.project_name}-${var.environment}-nlb"
+#   }
+# }
+
+# Route 53 Configuration (optional - for custom domain)
+resource "aws_route53_zone" "main" {
+  count = var.domain_name != "" ? 1 : 0
+  name  = var.domain_name
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-zone"
+  }
+}
+
+resource "aws_route53_record" "alb" {
+  count   = var.domain_name != "" ? 1 : 0
+  zone_id = aws_route53_zone.main[0].zone_id
+  name    = var.environment == "production" ? var.domain_name : "${var.environment}.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
+
+# Alternative: Create a simple CNAME for staging environment
+resource "aws_route53_record" "staging_simple" {
+  count   = var.domain_name != "" && var.environment == "staging" ? 1 : 0
+  zone_id = aws_route53_zone.main[0].zone_id
+  name    = "staging"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.main.dns_name]
 }

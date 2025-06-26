@@ -66,6 +66,10 @@ resource "aws_ecs_task_definition" "backend" {
           value = aws_s3_bucket.files.bucket
         },
         {
+          name  = "CALLBACK_URL_BASE"
+          value = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+        },
+        {
           name  = "FRONTEND_URL"
           value = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
         },
@@ -84,6 +88,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "SESSION_SECRET"
           value = random_password.backend_session_secret.result
+        },
+        {
+          name = "ENABLED_API_PROVIDERS",
+          value = "aws_bedrock,open_ai,yandex_fm"
         }
       ]
       
@@ -91,6 +99,26 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "DB_PASSWORD"
           valueFrom = aws_secretsmanager_secret.db_password.arn
+        },
+        {
+          name      = "RECAPTCHA_SECRET_KEY"
+          valueFrom = aws_secretsmanager_secret.recaptcha_secret_key.arn
+        },
+        {
+          name      = "GOOGLE_CLIENT_ID"
+          valueFrom = aws_secretsmanager_secret.google_client_id.arn
+        },
+        {
+          name      = "GOOGLE_CLIENT_SECRET"
+          valueFrom = aws_secretsmanager_secret.google_client_secret.arn
+        },
+        {
+          name      = "GITHUB_CLIENT_ID"
+          valueFrom = aws_secretsmanager_secret.github_client_id.arn
+        },
+        {
+          name      = "GITHUB_CLIENT_SECRET"
+          valueFrom = aws_secretsmanager_secret.github_client_secret.arn
         }
       ]
       

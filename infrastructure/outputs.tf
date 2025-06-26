@@ -81,3 +81,19 @@ output "cloudwatch_log_groups" {
     frontend = aws_cloudwatch_log_group.frontend.name
   }
 }
+
+# Domain and DNS outputs
+output "route53_zone_id" {
+  description = "Route 53 hosted zone ID"
+  value       = var.domain_name != "" ? aws_route53_zone.main[0].zone_id : null
+}
+
+output "custom_domain_name" {
+  description = "Custom domain name for the application"
+  value       = var.domain_name != "" ? (var.environment == "production" ? var.domain_name : "${var.environment}.${var.domain_name}") : null
+}
+
+output "staging_domain_name" {
+  description = "Staging subdomain name"
+  value       = var.domain_name != "" && var.environment == "staging" ? "staging.${var.domain_name}" : null
+}
