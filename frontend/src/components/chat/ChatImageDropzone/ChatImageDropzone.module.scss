@@ -1,3 +1,8 @@
 .dragging {
   background-color: var(--mantine-color-brand-8);
 }
+
+.disabled {
+  color: var(--mantine-color-gray-4);
+  cursor: not-allowed;
+}

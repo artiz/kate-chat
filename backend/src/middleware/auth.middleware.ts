@@ -93,7 +93,7 @@ const getHeader = (headerValue: string | string[] | undefined): string | undefin
 
 function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
   return {
-    AWS_BEDROCK_REGION: getHeader(headers["x-aws-region"]) || process.env.AWS_BEDROCK_REGION || "eu-central-1",
+    AWS_BEDROCK_REGION: getHeader(headers["x-aws-region"]) || process.env.AWS_BEDROCK_REGION,
     AWS_BEDROCK_PROFILE: getHeader(headers["x-aws-profile"]) || process.env.AWS_BEDROCK_PROFILE,
     AWS_BEDROCK_ACCESS_KEY_ID: getHeader(headers["x-aws-access-key-id"]) || process.env.AWS_BEDROCK_ACCESS_KEY_ID,
     AWS_BEDROCK_SECRET_ACCESS_KEY:

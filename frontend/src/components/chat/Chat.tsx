@@ -16,6 +16,7 @@ import {
   TextInput,
   Loader,
   Stack,
+  Alert,
 } from "@mantine/core";
 import {
   IconSend,
@@ -328,7 +329,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   return (
     <Container size="md" py="md" className={classes.container}>
-      <Group justify="space-between" mb="md" className={classes.titleRow}>
+      <Group justify="space-between" mb="sm" className={classes.titleRow}>
         <Group>
           {isEditingTitle ? (
             <form onSubmit={handleTitleUpdate}>
@@ -386,7 +387,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Group>
       </Group>
 
-      <Group mb="md" align="center" gap="xs" className={classes.modelRow}>
+      <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
         <IconRobot size={20} />
         <Text fw={500} size="sm">
           Model:
@@ -452,6 +453,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
         />
       </Group>
 
+      {!appConfig?.s3Connected && (
+        <Group mb="sm">
+          <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
+        </Group>
+      )}
+
       {/* Messages */}
       <Paper
         withBorder
@@ -515,7 +522,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       <div className={[classes.chatInputContainer, selectedFiles.length ? classes.columned : ""].join(" ")}>
         {selectedModel?.supportsImageIn && (
           <Group align="flex-start">
-            <ChatImageDropzone onFilesAdd={handleAddFiles} />
+            <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
             {selectedImages.map(file => (
               <Paper key={file.fileName} className={classes.filesList}>
                 <div className={classes.previewImage}>

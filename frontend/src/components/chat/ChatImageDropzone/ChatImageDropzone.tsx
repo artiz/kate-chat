@@ -5,10 +5,11 @@ import classes from "./ChatImageDropzone.module.scss";
 import { notEmpty } from "@/utils/assert";
 
 interface ChatImageDropzoneProps {
+  disabled?: boolean;
   onFilesAdd: (images: File[]) => void;
 }
 
-export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd }) => {
+export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd, disabled }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -16,6 +17,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
   // Handle paste events for clipboard images
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
+      if (disabled) return;
       if (e.clipboardData && e.clipboardData.items) {
         const files = Array.from(e.clipboardData.items)
           .map(f => f.getAsFile())
@@ -33,7 +35,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
     return () => {
       document.removeEventListener("paste", handlePaste);
     };
-  }, [onFilesAdd]);
+  }, [onFilesAdd, disabled]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -52,6 +54,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
+      if (disabled) return;
 
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         const files = Array.from(e.dataTransfer.files).filter(f => f.size > 0);
@@ -79,6 +82,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
   );
 
   const openFileDialog = () => {
+    if (disabled) return;
     fileInputRef.current?.click();
   };
 
@@ -86,7 +90,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
     <>
       <Box
         ref={dropzoneRef}
-        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""}`}
+        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""} ${disabled ? classes.disabled : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -104,6 +108,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
             onChange={handleFileSelect}
             className={classes.fileInput}
             style={{ display: "none" }}
+            disabled={disabled}
           />
 
           {/* Docs support: text/csv,application/json,*.doc,*.docx,*.pdf,*.txt    */}

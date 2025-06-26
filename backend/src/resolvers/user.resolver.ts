@@ -27,7 +27,11 @@ export class UserResolver extends BaseResolver {
     const connection = context.connectionParams;
     return {
       demoMode: !!DEMO_MODE,
-      s3Connected: !!connection.S3_FILES_BUCKET_NAME,
+      s3Connected: !!(
+        connection.S3_FILES_BUCKET_NAME &&
+        connection.S3_ACCESS_KEY_ID &&
+        connection.S3_SECRET_ACCESS_KEY
+      ),
       maxChats: DEMO_MODE ? 5 : -1,
       maxChatMessages: DEMO_MODE ? 75 : -1,
       maxImages: DEMO_MODE ? 10 : -1,
