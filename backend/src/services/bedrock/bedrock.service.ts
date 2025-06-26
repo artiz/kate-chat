@@ -40,8 +40,8 @@ export class BedrockService extends BaseProviderService {
   constructor(connection: ConnectionParams) {
     super(connection);
 
-    if (!connection.AWS_BEDROCK_REGION) {
-      logger.warn("AWS_BEDROCK_REGION is not set. Skipping AWS Bedrock initialization.");
+    if (!connection.AWS_BEDROCK_REGION || !connection.AWS_BEDROCK_PROFILE) {
+      logger.warn("AWS_BEDROCK_REGION/AWS_BEDROCK_PROFILE is not set. Skipping AWS Bedrock initialization.");
       return;
     }
 
@@ -259,7 +259,6 @@ export class BedrockService extends BaseProviderService {
     const accessKey = this.connection.AWS_BEDROCK_ACCESS_KEY_ID;
 
     const details: Record<string, string | number | boolean | undefined> = {
-      configured: isConnected,
       credentialsValid: "N/A",
     };
 

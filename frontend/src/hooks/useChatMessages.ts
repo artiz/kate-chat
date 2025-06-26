@@ -44,16 +44,22 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
   const [streaming, setStreaming] = useState<boolean>(false);
   const updateTimeout = useRef<NodeJS.Timeout | null>(null);
+  const loadTimeout = useRef<NodeJS.Timeout | null>(null);
   const chats = useAppSelector(state => state.chats.chats);
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
 
   // Get chat messages and chat details
+
   const loadMessages = useCallback(
     (offset = 0) => {
       if (!chatId) return;
       setMessagesLoading(true);
+      if (loadTimeout.current) {
+        clearTimeout(loadTimeout.current);
+      }
+
       client
         .query<GetChatMessagesResponse>({
           query: GET_CHAT_MESSAGES,
@@ -81,7 +87,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
               setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
             });
 
-            setTimeout(() => setLoadCompleted(true), 300);
+            loadTimeout.current = setTimeout(() => setLoadCompleted(true), 300);
           }
         })
         .catch(error => {
