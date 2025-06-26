@@ -127,25 +127,3 @@ resource "aws_s3_bucket_public_access_block" "files" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
-
-
-
-# CloudWatch Log Groups
-resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/${var.project_name}-${var.environment}-backend"
-  retention_in_days = var.environment == "production" ? 30 : 7
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-backend-logs"
-  }
-}
-
-resource "aws_cloudwatch_log_group" "frontend" {
-  name              = "/ecs/${var.project_name}-${var.environment}-frontend"
-  retention_in_days = var.environment == "production" ? 30 : 7
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-frontend-logs"
-  }
-}
-

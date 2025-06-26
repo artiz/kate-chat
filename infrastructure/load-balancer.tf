@@ -1,3 +1,4 @@
+
 # Security Groups
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-${var.environment}-alb-sg"
@@ -114,6 +115,27 @@ resource "aws_security_group" "redis" {
     Name = "${var.project_name}-${var.environment}-redis-sg"
   }
 }
+
+# CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/${var.project_name}-${var.environment}-backend"
+  retention_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-backend-logs"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "frontend" {
+  name              = "/ecs/${var.project_name}-${var.environment}-frontend"
+  retention_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-frontend-logs"
+  }
+}
+
+
 
 # Application Load Balancer
 resource "aws_lb" "main" {
