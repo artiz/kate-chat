@@ -39,7 +39,7 @@ if (process.env.DB_TYPE === "mysql") {
     url: process.env.DB_URL,
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
-    ssl,
+    ssl: ssl ? { rejectUnauthorized: false } : false,
   };
 } else if (process.env.DB_TYPE === "mssql") {
   dbOptions = {

@@ -20,7 +20,8 @@ env:
   ECR_REPOSITORY_FRONTEND: katechat-frontend
   ECR_REPOSITORY_RUST: katechat-backend-rust
   ECS_SERVICE_BACKEND: backend-service
-  
+  ECS_SERVICE_FRONTEND: frontend-service
+
 jobs:
   test:
     name: Run Tests
@@ -186,10 +187,15 @@ jobs:
           --service katechat-staging-${{ env.ECS_SERVICE_BACKEND }} \
           --force-new-deployment
         
-        # Wait for deployment to complete
-        aws ecs wait services-stable \
+        aws ecs update-service \
           --cluster katechat-staging-cluster \
-          --services katechat-staging-${{ env.ECS_SERVICE_BACKEND }}
+          --service katechat-staging-${{ env.ECS_SERVICE_FRONTEND }} \
+          --force-new-deployment
+
+        # Wait for deployment to complete
+        # aws ecs wait services-stable \
+        #   --cluster katechat-staging-cluster \
+        #   --services katechat-staging-${{ env.ECS_SERVICE_BACKEND }}
 
   # deploy-production:
   #   name: Deploy to Production
