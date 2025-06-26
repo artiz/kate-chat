@@ -12,6 +12,7 @@ on:
 env:
   AWS_REGION: eu-central-1
   ECR_REPOSITORY_BACKEND: katechat-backend
+  ECR_REPOSITORY_FRONTEND: katechat-frontend
   ECR_REPOSITORY_RUST: katechat-backend-rust
   ECS_SERVICE_BACKEND: backend-service
   
@@ -93,7 +94,7 @@ jobs:
     outputs:
       backend-image: ${{ steps.build-backend.outputs.image }}
       frontend-image: ${{ steps.build-frontend.outputs.image }}
-      rust-image: ${{ steps.build-rust.outputs.image }}
+      # rust-image: ${{ steps.build-rust.outputs.image }}
     
     steps:
     - name: Checkout code
@@ -119,16 +120,18 @@ jobs:
         node-version: '20.x'
         cache: 'npm'
 
-    - name: Install dependencies and build frontend
+    - name: Build and push frontend image
+      env:
+        APP_API_URL: "/api"
+        APP_WS_URL: "/ws"
+        RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        npm run install:all
-        npm run frontend:build
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-          name: frontend-dist
-          path: frontend/dist/
-
+        BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME ./ -f frontend/Dockerfile
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME" >> $GITHUB_OUTPUT
+    
     # Build and push backend image
     - name: Build and push backend image
       id: build-backend
@@ -136,7 +139,7 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME backend/
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME ./ -f backend/Dockerfile
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME" >> $GITHUB_OUTPUT
 
@@ -163,6 +166,9 @@ jobs:
           BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
           ls frontend/dist/
           aws s3 sync frontend/dist/ s3://katechat-frontend/$BRANCH_NAME --delete --exact-timestamps
+          # cleanup CloudFront cache
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='katechat-frontend'].Id" --output text)
+          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
 
   deploy-staging:
     name: Deploy to Staging

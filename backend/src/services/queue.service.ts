@@ -17,6 +17,7 @@ export const CHAT_ERRORS_CHANNEL = "chat:errors";
 
 export class QueueService {
   private pubSub: PubSub;
+  private connectionError: boolean = false;
   private redisClient: RedisClientType | null = null;
 
   private static subscriptions: Map<string, RedisClientType> = new Map<string, RedisClientType>();
@@ -52,8 +53,14 @@ export class QueueService {
 
       // Add event listeners for Redis connection
       this.redisClient.on("error", (err: Error) => {
+        const message = err.name == "AggregateError" ? (err as any).code : err.message;
         // Only log once to avoid flooding
-        if (!err.message.includes("ECONNREFUSED")) {
+        if (message?.includes("ECONNREFUSED")) {
+          if (!this.connectionError) {
+            logger.error(err, "Redis connection error");
+            this.connectionError = true;
+          }
+        } else {
           logger.error(err, "Redis client error");
         }
       });

@@ -3,11 +3,12 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
+RUN mkdir ./backend
+COPY backend/package.json ./backend
+RUN npm run install:backend
 
-RUN npm install
+COPY ./backend ./backend
+RUN npm run build:backend
 
-COPY . .
-
-RUN npm run build
-
+WORKDIR /app/backend/dist
 CMD ["npm", "run", "start"]

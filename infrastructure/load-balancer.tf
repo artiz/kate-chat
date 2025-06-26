@@ -39,8 +39,8 @@ resource "aws_security_group" "ecs" {
 
   ingress {
     description     = "HTTP from ALB"
-    from_port       = 4000
-    to_port         = 4000
+    from_port       = 8080
+    to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
@@ -133,7 +133,7 @@ resource "aws_lb" "main" {
 # Target Groups
 resource "aws_lb_target_group" "backend" {
   name        = "${var.project_name}-${var.environment}-backend-tg"
-  port        = 4000
+  port        = 8080
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
@@ -185,6 +185,7 @@ resource "aws_lb_listener" "main" {
   port              = "80"
   protocol          = "HTTP"
 
+  # Default action redirects non-API requests to CloudFront
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.frontend.arn
@@ -218,6 +219,7 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
   certificate_arn   = var.certificate_arn
 
+  # Default action redirects non-API requests to CloudFront
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.frontend.arn

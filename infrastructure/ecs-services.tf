@@ -10,13 +10,13 @@ resource "aws_ecs_task_definition" "backend" {
   container_definitions = jsonencode([
     {
       name  = "backend"
-      image = "${aws_ecr_repository.backend.repository_url}:latest"
+      image = "${aws_ecr_repository.backend.repository_url}:master"
       
       essential = true
       
       portMappings = [
         {
-          containerPort = 4000
+          containerPort = 8080
           protocol      = "tcp"
         }
       ]
@@ -28,7 +28,7 @@ resource "aws_ecs_task_definition" "backend" {
         },
         {
           name  = "PORT"
-          value = "4000"
+          value = "8080"
         },
         {
           name  = "DB_TYPE"
@@ -89,7 +89,7 @@ resource "aws_ecs_task_definition" "backend" {
       }
       
       healthCheck = {
-        command = ["CMD-SHELL", "curl -f http://localhost:4000/graphql || exit 1"]
+        command = ["CMD-SHELL", "curl -f http://localhost:8080/graphql || exit 1"]
         interval = 30
         timeout = 5
         retries = 3
@@ -113,7 +113,7 @@ resource "aws_ecs_task_definition" "frontend" {
   container_definitions = jsonencode([
     {
       name  = "frontend"
-      image = "${aws_ecr_repository.frontend.repository_url}:latest"
+      image = "${aws_ecr_repository.frontend.repository_url}:master"
       
       essential = true
       
@@ -164,7 +164,7 @@ resource "aws_ecs_service" "backend" {
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
     container_name   = "backend"
-    container_port   = 4000
+    container_port   = 8080
   }
 
   depends_on = [aws_lb_listener.main]
