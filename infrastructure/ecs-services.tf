@@ -27,7 +27,7 @@ resource "aws_ecs_task_definition" "backend" {
           protocol      = "tcp"
         }
       ]
-      
+
       environment = [
         {
           name  = "NODE_ENV"
@@ -36,6 +36,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "PORT"
           value = "8080"
+        },
+        {
+          name  = "DEMO_MODE"
+          value = "true"
         },
         {
           name  = "DB_TYPE"

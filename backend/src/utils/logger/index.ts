@@ -1,7 +1,8 @@
 import path from "path";
 import pino, { LoggerOptions } from "pino";
 
-const level = process.env.LOG_LEVEL || (process.env.NODE_ENV === "production" ? "info" : "debug");
+const isProd = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
+const level = process.env.LOG_LEVEL || (isProd ? "info" : "debug");
 
 const redactPaths = [
   "connectionParams",
@@ -28,23 +29,29 @@ const loggerConfig: LoggerOptions = {
     paths: redactPaths,
     censor: "*****",
   },
-  transport:
-    process.env.NODE_ENV !== "production"
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "UTC:yyyy-mm-dd HH:MM:ss.l",
-            ignore: "hostname",
-          },
-        }
-      : undefined,
+  transport: isProd
+    ? undefined
+    : {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "UTC:yyyy-mm-dd HH:MM:ss.l",
+          ignore: "hostname",
+        },
+      },
 };
 
 export const createLogger = (fileName: string) => {
   const name = path.basename(fileName);
   return pino({
     ...loggerConfig,
+    formatters: {
+      level: label => ({ level: label }),
+      bindings: bindings => ({
+        ...bindings,
+        pid: process.pid,
+      }),
+    },
     name,
   });
 };
