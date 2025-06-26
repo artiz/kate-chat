@@ -32,11 +32,14 @@ if (process.env.DB_TYPE === "mysql") {
     database: process.env.DB_NAME,
   };
 } else if (process.env.DB_TYPE === "postgres") {
+  const ssl = ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || "");
+
   dbOptions = {
     type: "postgres",
     url: process.env.DB_URL,
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
+    ssl,
   };
 } else if (process.env.DB_TYPE === "mssql") {
   dbOptions = {

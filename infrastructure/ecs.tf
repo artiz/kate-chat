@@ -76,6 +76,49 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Additional ECR permissions for the execution role
+resource "aws_iam_role_policy" "ecs_execution_ecr_policy" {
+  name = "${var.project_name}-${var.environment}-ecs-execution-ecr-policy"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Additional Secrets Manager permissions for the execution role
+resource "aws_iam_role_policy" "ecs_execution_secrets_policy" {
+  name = "${var.project_name}-${var.environment}-ecs-execution-secrets-policy"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.db_password.arn
+        ]
+      }
+    ]
+  })
+}
+
 # ECS Task Role
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.project_name}-${var.environment}-ecs-task-role"

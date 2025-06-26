@@ -1,3 +1,10 @@
+# Generate secrets and configurations for ECS services
+resource "random_password" "backend_session_secret" {
+  length  = 128
+  special = false
+}
+
+
 # ECS Task Definition for Backend
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-${var.environment}-backend"
@@ -35,8 +42,12 @@ resource "aws_ecs_task_definition" "backend" {
           value = "postgres"
         },
         {
+          name  = "DB_SSL"
+          value = "yes"
+        },
+        {
           name  = "DB_URL"
-          value = "postgres://${aws_db_instance.main.username}:${aws_secretsmanager_secret_version.db_password.secret_string}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}"
+          value = "postgres://${aws_db_instance.main.username}:${urlencode(aws_secretsmanager_secret_version.db_password.secret_string)}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}"
         },
         {
           name  = "DB_USERNAME"
@@ -61,6 +72,18 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "ALLOWED_ORIGINS"
           value = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+        },
+        {
+          name  = "JWT_EXPIRATION"
+          value = "86400"
+        },
+        {
+          name  = "JWT_SECRET"
+          value = random_password.backend_session_secret.result
+        },
+        {
+          name  = "SESSION_SECRET"
+          value = random_password.backend_session_secret.result
         }
       ]
       
