@@ -35,6 +35,8 @@ if (process.env.DB_TYPE === "mysql") {
   dbOptions = {
     type: "postgres",
     url: process.env.DB_URL,
+    username: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
   };
 } else if (process.env.DB_TYPE === "mssql") {
   dbOptions = {
@@ -49,7 +51,7 @@ if (process.env.DB_TYPE === "mysql") {
     type: "mongodb",
     url: process.env.DB_URL,
   };
-} else if (process.env.DB_TYPE !== "sqlite") {
+} else if (process.env.DB_TYPE && process.env.DB_TYPE !== "sqlite") {
   throw new Error(`Unsupported DB_TYPE: ${process.env.DB_TYPE}`);
 }
 

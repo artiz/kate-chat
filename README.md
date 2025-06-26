@@ -192,7 +192,7 @@ npm run dev
 
 First terminal:
 ```
-APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run frontend:dev
+APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:frontend
 ```
 Second terminal:
 ```
@@ -206,6 +206,18 @@ cargo run
 ```
 npm run install:all
 npm run build
+```
+
+### Docker Build
+
+```
+docker build -t katechat-backend ./ -f backend/Dockerfile  
+docker run --env-file=./backend/.env  -p4000:4000 katechat-backend 
+```
+
+```
+docker build -t katechat-frontend --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f frontend/Dockerfile  
+docker run -p3000:80 katechat-frontend
 ```
 
 ## API Documentation
