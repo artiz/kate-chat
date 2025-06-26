@@ -23,6 +23,11 @@ import {
   STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
   STORAGE_OPENAI_API_ADMIN_KEY,
   STORAGE_OPENAI_API_KEY,
+  STORAGE_S3_ACCESS_KEY_ID,
+  STORAGE_S3_ENDPOINT,
+  STORAGE_S3_FILES_BUCKET_NAME,
+  STORAGE_S3_REGION,
+  STORAGE_S3_SECRET_ACCESS_KEY,
   STORAGE_YANDEX_FM_API_FOLDER_ID,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
@@ -46,12 +51,20 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         "Accept-Encoding": "br, gzip", // Use Brotli and gzip compression
         "x-openai-api-key": localStorage.getItem(STORAGE_OPENAI_API_KEY) || "",
         "x-openai-api-admin-key": localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "",
+
         "x-aws-region": localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || "",
         "x-aws-profile": localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || "",
         "x-aws-access-key-id": localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || "",
         "x-aws-secret-access-key": localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || "",
+
         "x-yandex-api-key": localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "",
         "x-yandex-api-folder-id": localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "",
+
+        "x-s3-endpoint": localStorage.getItem(STORAGE_S3_ENDPOINT) || "",
+        "x-s3-region": localStorage.getItem(STORAGE_S3_REGION) || "",
+        "x-s3-access-key-id": localStorage.getItem(STORAGE_S3_ACCESS_KEY_ID) || "",
+        "x-s3-secret-access-key": localStorage.getItem(STORAGE_S3_SECRET_ACCESS_KEY) || "",
+        "x-s3-bucket-name": localStorage.getItem(STORAGE_S3_FILES_BUCKET_NAME) || "",
       },
     });
 
