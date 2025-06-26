@@ -235,7 +235,7 @@ resource "aws_lb_listener_rule" "backend_api" {
 
   condition {
     path_pattern {
-      values = ["/graphql", "/auth/*", "/files/*"]
+      values = ["/graphql", "/auth/*", "/files/*", "/health"]
     }
   }
 }
@@ -270,7 +270,7 @@ resource "aws_lb_listener_rule" "backend_api_https" {
 
   condition {
     path_pattern {
-      values = ["/graphql", "/auth/*", "/files/*"]
+      values = ["/graphql", "/auth/*", "/files/*", "/health"]
     }
   }
 }

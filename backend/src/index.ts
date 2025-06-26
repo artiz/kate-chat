@@ -9,6 +9,7 @@ import session from "express-session";
 import passport from "passport";
 import { configurePassport } from "./config/passport";
 import authRoutes from "./controllers/auth.controller";
+import healthRoutes from "./controllers/health.controller";
 import filesRoutes from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
 import { ChatResolver } from "./resolvers/chat.resolver";
@@ -89,6 +90,7 @@ async function bootstrap() {
   app.use(authMiddleware);
 
   // Set up routes
+  app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
   app.use("/files", filesRoutes);
   app.use("/api/files", filesRoutes);
