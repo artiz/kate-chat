@@ -130,8 +130,8 @@ jobs:
     - name: Build and push frontend image
       id: build-frontend
       env:
-        APP_API_URL: "/api"
-        APP_WS_URL: "/ws"
+        APP_API_URL: "/"
+        APP_WS_URL: "/"
         RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
