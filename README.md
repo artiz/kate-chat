@@ -25,6 +25,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Responsive UI with Mantine
 
 ## TODO
+* Add user role support, introduce Admin role, put DEFAULT_ADMIN_EMAIL to env var at deployment and setup admin role at login. Create admin page with registered users and basic statistics (models count, chats count)
 * Add support for more Google LLM provider
 * Add support for more Azure LLM provider
 * Add images generation (DALL-E) support in Rust backend
