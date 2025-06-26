@@ -53,7 +53,7 @@ export class QueueService {
 
       // Add event listeners for Redis connection
       this.redisClient.on("error", (err: Error) => {
-        const message = err.name == "AggregateError" ? (err as any).code : err.message;
+        const message = err.name === "AggregateError" ? (err as any).code : err.message;
         // Only log once to avoid flooding
         if (message?.includes("ECONNREFUSED")) {
           if (!this.connectionError) {
