@@ -325,6 +325,12 @@ export class MessagesService {
         throw err;
       });
 
+    // Set chat isPristine to false when adding the first message
+    if (chat.isPristine) {
+      chat.isPristine = false;
+      await this.chatRepository.save(chat);
+    }
+
     let jsonContent: ModelMessageContent[] | undefined = undefined;
 
     // If there's an image, handle it
@@ -366,12 +372,6 @@ export class MessagesService {
       this.queueService.publishError(chat.id, getErrorMessage(err));
       throw err;
     });
-
-    // Set chat isPristine to false when adding the first message
-    if (chat.isPristine) {
-      chat.isPristine = false;
-      await this.chatRepository.save(chat);
-    }
 
     // Publish message to Queue
     await this.queueService.publishMessage(chat.id, userMessage);

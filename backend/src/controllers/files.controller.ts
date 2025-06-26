@@ -26,6 +26,11 @@ router.get("/:fileKey", authMiddleware, async (req: Request, res: Response) => {
     const s3Client = s3Service.client;
     const bucketName = s3Service.bucket;
 
+    if (!s3Client) {
+      res.status(501).send("S3 client not configured");
+      return;
+    }
+
     const command = new GetObjectCommand({
       Bucket: bucketName,
       Key: fileKey,

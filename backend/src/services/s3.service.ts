@@ -10,18 +10,16 @@ export class S3Service {
   private bucketName: string;
 
   constructor(connection: ConnectionParams) {
-    if (!connection.S3_FILES_BUCKET_NAME) {
-      throw new Error("S3_FILES_BUCKET_NAME must be provided in connection parameters");
-    }
+    this.bucketName = connection.S3_FILES_BUCKET_NAME || "";
 
-    this.bucketName = connection.S3_FILES_BUCKET_NAME;
     const endpoint = connection.S3_ENDPOINT;
     const region = connection.S3_REGION;
     const accessKeyId = connection.S3_ACCESS_KEY_ID;
     const secretAccessKey = connection.S3_SECRET_ACCESS_KEY;
 
-    if (!accessKeyId || !secretAccessKey) {
-      throw new Error("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be provided in connection parameters");
+    if (this.bucketName || !accessKeyId || !secretAccessKey) {
+      logger.debug("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are not provided in connection parameters");
+      return;
     }
 
     const clientOptions: S3ClientConfig = {
@@ -59,6 +57,10 @@ export class S3Service {
    * @param contentType MIME type of the file (optional)
    */
   public async uploadFile(content: string, key: string, contentType?: string): Promise<string> {
+    if (!this.s3client) {
+      throw new Error("S3 client is not configured");
+    }
+
     try {
       // Remove data URL prefix if present (e.g., "data:image/png;base64,")
       const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
@@ -84,6 +86,10 @@ export class S3Service {
    * @param key S3 key of the file to delete
    */
   public async deleteFile(key: string): Promise<void> {
+    if (!this.s3client) {
+      throw new Error("S3 client is not configured");
+    }
+
     try {
       const params = {
         Bucket: this.bucketName,
@@ -103,6 +109,10 @@ export class S3Service {
    * @param key S3 key to check
    */
   public async fileExists(key: string): Promise<boolean> {
+    if (!this.s3client) {
+      throw new Error("S3 client is not configured");
+    }
+
     try {
       const params = {
         Bucket: this.bucketName,
