@@ -155,22 +155,6 @@ jobs:
     #     docker push $ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG
     #     echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    # Publish frontend to S3
-    - name: Use python
-      uses: actions/setup-python@v5
-      with:
-          python-version: "3.9"
-    - name: Install awscli
-      run: pip install awscli
-    - name: Publish with S3
-      run: |
-          BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
-          ls frontend/dist/
-          aws s3 sync frontend/dist/ s3://katechat-frontend/$BRANCH_NAME --delete --exact-timestamps
-          # cleanup CloudFront cache
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='katechat-frontend'].Id" --output text)
-          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
-
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
