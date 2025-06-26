@@ -10,7 +10,7 @@ on:
         type: choice
         options:
         - staging
-        - production
+        # - production
       action:
         description: 'Terraform action'
         required: true
@@ -18,12 +18,12 @@ on:
         type: choice
         options:
         - plan
-        - apply
-        - destroy
+        # - apply
+        # - destroy
 
 env:
   AWS_REGION: eu-central-1
-  TF_VERSION: 1.6.0
+  TF_VERSION: 1.12.2
 
 jobs:
   terraform:
@@ -57,7 +57,7 @@ jobs:
     - name: Terraform Init
       run: |
         terraform init \
-          -backend-config="bucket=katechat-terraform-state-${{ github.event.inputs.environment }}" \
+          -backend-config="bucket=katechat-tf-state-${{ github.event.inputs.environment }}" \
           -backend-config="key=terraform.tfstate" \
           -backend-config="region=${{ env.AWS_REGION }}"
 
