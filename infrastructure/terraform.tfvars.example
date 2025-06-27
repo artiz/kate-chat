@@ -21,7 +21,8 @@ backend_cpu = 256
 backend_memory = 512
 frontend_cpu = 256
 frontend_memory = 512
-desired_count = 2
+frontend_desired_count = 1
+backend_desired_count = 3
 
 # Redis Configuration
 redis_node_type = "cache.t3.micro"

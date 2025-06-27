@@ -75,8 +75,13 @@ variable "frontend_memory" {
   default     = 512
 }
 
-variable "desired_count" {
-  description = "Desired number of tasks"
+variable "frontend_desired_count" {
+  description = "Desired number of frontend tasks"
+  type        = number
+  default     = 1
+}
+variable "backend_desired_count" {
+  description = "Desired number of backend tasks"
   type        = number
   default     = 2
 }
