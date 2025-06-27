@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   security-events: write
   actions: read
 
@@ -229,6 +229,83 @@ jobs:
         # aws ecs wait services-stable \
         #   --cluster katechat-staging-cluster \
         #   --services katechat-staging-${{ env.ECS_SERVICE_BACKEND }}
+
+    - name: Get Load Balancer DNS
+      id: get-lb-dns
+      run: |
+        # Get the load balancer DNS name
+        LB_DNS=$(aws elbv2 describe-load-balancers \
+          --names katechat-staging-alb \
+          --query 'LoadBalancers[0].DNSName' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -n "$LB_DNS" ] && [ "$LB_DNS" != "None" ]; then
+          DEMO_URL="http://$LB_DNS/"
+          echo "demo-url=$DEMO_URL" >> $GITHUB_OUTPUT
+          echo "✅ Found load balancer DNS: $LB_DNS"
+        else
+          echo "⚠️ Could not retrieve load balancer DNS"
+          echo "demo-url=" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Update README with new demo URL
+      if: steps.get-lb-dns.outputs.demo-url != ''
+      run: |
+        DEMO_URL="${{ steps.get-lb-dns.outputs.demo-url }}"
+        echo "Updating README with demo URL: $DEMO_URL"
+        
+        # Update the demo URL in README.md
+        sed -i "s|**\[Try KateChat Demo →\]([^)]*)**|**[Try KateChat Demo →]($DEMO_URL)**|g" README.md
+        
+        # Check if changes were made
+        if git diff --quiet README.md; then
+          echo "No changes needed in README.md"
+        else
+          echo "README.md updated with new demo URL"
+          echo "readme-updated=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit and push README changes
+      if: steps.get-lb-dns.outputs.demo-url != ''
+      run: |
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are changes to commit
+        if ! git diff --quiet README.md; then
+          git add README.md
+          git commit -m "🚀 Update demo URL after deployment
+          
+          Auto-updated demo link to: ${{ steps.get-lb-dns.outputs.demo-url }}
+          
+          Deployed from commit: ${{ github.sha }}"
+          
+          # Push changes
+          git push
+          echo "✅ README.md updated and committed"
+        else
+          echo "ℹ️ No README.md changes to commit"
+        fi
+
+    - name: Deployment Summary
+      if: always()
+      run: |
+        echo "🚀 Staging Deployment Complete!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🔧 Services Updated:"
+        echo "  • Backend: katechat-staging-${{ env.ECS_SERVICE_BACKEND }}"
+        echo "  • Frontend: katechat-staging-${{ env.ECS_SERVICE_FRONTEND }}"
+        echo ""
+        if [ -n "${{ steps.get-lb-dns.outputs.demo-url }}" ]; then
+          echo "🌐 Demo URL: ${{ steps.get-lb-dns.outputs.demo-url }}"
+          echo "📝 README.md: Updated with latest demo link"
+        else
+          echo "⚠️  Demo URL: Could not retrieve load balancer DNS"
+        fi
+        echo "📦 Commit: ${{ github.sha }}"
+        echo "🌿 Branch: ${{ github.ref_name }}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   # deploy-production:
   #   name: Deploy to Production

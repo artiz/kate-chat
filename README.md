@@ -8,7 +8,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## Features
 
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
-- Distributed messages processing using external queue (Redis atm), full-pfledged production-like dev environment with docker-compose
+- Distributed messages processing using external queue (Redis), full-pfledged production-like dev environment with docker-compose
 - User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
 - Support for various LLM model Providers:
@@ -24,7 +24,29 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Responsive UI with Mantine
 
+## 🚀 Live Demo
+
+Experience KateChat in action with our live staging environment:
+
+**[Try KateChat Demo →](http://katechat-staging-alb-818633156.eu-central-1.elb.amazonaws.com/)**
+
+### Demo Features
+- ✨ Full-featured chat interface
+- 🔄 Real-time model switching
+- 📝 Rich markdown support with code highlighting
+- 🖼️ Image upload and processing capabilities
+- 💬 Multiple chat sessions
+
+### Getting Started with Demo
+To interact with AI models in the demo, you'll need to provide your own API keys for:
+- **AWS Bedrock** - Access to Claude, Llama, and other models
+- **OpenAI** - GPT-3.5, GPT-4, and other OpenAI models  
+- **Yandex Foundation Models** - YandexGPT and other Yandex models
+
+> 📋 **Note**: API keys are stored locally in your browser and sent securely to our backend. See the [Getting Started](#getting-started) section below for detailed instructions on obtaining API keys.
+
 ## TODO
+
 * Add user role support, introduce Admin role, put DEFAULT_ADMIN_EMAIL to env var at deployment and setup admin role at login. Create admin page with registered users and basic statistics (models count, chats count)
 * Add support for more Google LLM provider
 * Add support for more Azure LLM provider
