@@ -9,8 +9,28 @@ import {
   OneToMany,
 } from "typeorm";
 import { AuthProvider } from "../types/ai.types";
-import { Field, ID, ObjectType } from "type-graphql";
+import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
+import { JSONTransformer } from "@/utils/db";
+import { TokenPayload } from "@/utils/jwt";
+
+@ObjectType()
+@InputType()
+export class S3Settings {
+  @Field({ nullable: true })
+  s3Endpoint?: string;
+  @Field({ nullable: true })
+  s3Region?: string;
+  @Field({ nullable: true })
+  s3AccessKeyId?: string;
+  @Field({ nullable: true })
+  s3SecretAccessKey?: string;
+  @Field({ nullable: true })
+  s3FilesBucketName?: string;
+}
+
+@ObjectType()
+export class UserSettings extends S3Settings {}
 
 @ObjectType()
 @Entity("users")
@@ -69,4 +89,12 @@ export class User {
   @Field(() => [Model], { nullable: true })
   @OneToMany(() => Model, m => m.user, { cascade: true, onDelete: "CASCADE" })
   models: Model[];
+
+  @Field(() => UserSettings, { nullable: true })
+  @Column({ type: "json", nullable: true, transformer: JSONTransformer<UserSettings>() })
+  settings?: UserSettings;
+
+  toToken(): TokenPayload {
+    return { userId: this.id, email: this.email };
+  }
 }

@@ -24,14 +24,16 @@ export class UserResolver extends BaseResolver {
 
   @Query(() => ApplicationConfig, { nullable: true })
   async appConfig(@Ctx() context: GraphQLContext): Promise<ApplicationConfig> {
-    const connection = context.connectionParams;
+    const user = await this.loadUserFromContext(context);
+    const s3settings = user?.settings || {
+      s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME || "",
+      s3AccessKeyId: process.env.S3_ACCESS_KEY_ID || "",
+      s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+    };
+
     return {
       demoMode: !!DEMO_MODE,
-      s3Connected: !!(
-        connection.S3_FILES_BUCKET_NAME &&
-        connection.S3_ACCESS_KEY_ID &&
-        connection.S3_SECRET_ACCESS_KEY
-      ),
+      s3Connected: !!(s3settings.s3FilesBucketName && s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey),
       maxChats: DEMO_MODE ? 5 : -1,
       maxChatMessages: DEMO_MODE ? 75 : -1,
       maxImages: DEMO_MODE ? 10 : -1,
@@ -108,6 +110,12 @@ export class UserResolver extends BaseResolver {
     if (input.avatarUrl) user.avatarUrl = input.avatarUrl;
     if (input.defaultModelId) user.defaultModelId = input.defaultModelId;
     if (input.defaultSystemPrompt) user.defaultSystemPrompt = input.defaultSystemPrompt;
+    if (input.settings) {
+      user.settings = {
+        ...(user.settings || {}),
+        ...input.settings,
+      };
+    }
 
     return await this.userRepository.save(user);
   }

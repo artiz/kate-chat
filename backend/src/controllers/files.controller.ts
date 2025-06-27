@@ -12,18 +12,16 @@ const router = Router();
 // Get file from S3
 router.get("/:fileKey", authMiddleware, async (req: Request, res: Response) => {
   try {
-    ok(req.connectionParams);
-
     const fileKey = req.params.fileKey;
 
     // Create S3 service with connection params from request
-    const s3Service = new S3Service(req.connectionParams);
+    const s3Service = new S3Service(req.tokenPayload);
 
     logger.debug({ fileKey }, "Fetching file from S3");
 
     // Use the internal S3 client of S3Service class
     // This is a bit of a hack but avoids duplicating S3 client code
-    const s3Client = s3Service.client;
+    const s3Client = await s3Service.getClient();
     const bucketName = s3Service.bucket;
 
     if (!s3Client) {
@@ -55,7 +53,6 @@ router.get("/:fileKey", authMiddleware, async (req: Request, res: Response) => {
     }
   } catch (error) {
     logger.error(error, `Error fetching ${req.params.fileKey} from S3`);
-    logger.debug(req.connectionParams, "connection");
 
     if ((error as any).name === "NoSuchKey") {
       res.status(404).send("File not found");

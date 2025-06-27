@@ -12,11 +12,6 @@ export interface ConnectionParams {
   OPENAI_API_ADMIN_KEY?: string;
   YANDEX_FM_API_KEY?: string;
   YANDEX_FM_API_FOLDER_ID?: string;
-  S3_ENDPOINT?: string;
-  S3_REGION?: string;
-  S3_ACCESS_KEY_ID?: string;
-  S3_SECRET_ACCESS_KEY?: string;
-  S3_FILES_BUCKET_NAME?: string;
 }
 
 declare global {
@@ -38,7 +33,7 @@ export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
   if (!authHeader) return null;
 
   // Handle both "Bearer token" format and direct token
-  const token = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : authHeader;
+  const token = authHeader.split(" ")[1] || authHeader;
 
   if (!token) return null;
 
@@ -61,10 +56,11 @@ export const graphQlAuthChecker = ({ context }: { context: GraphQLContext }, rol
 // Export the middleware
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization || req.cookies["auth-token"] || req.cookies["authorization"];
 
     if (authHeader) {
-      const token = authHeader.split(" ")[1];
+      // Handle both "Bearer token" format and direct token
+      const token = authHeader.split(" ")[1] || authHeader;
       if (token) {
         const tokenPayload = verifyToken(token);
         if (!tokenPayload) {
@@ -102,11 +98,5 @@ function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
     OPENAI_API_ADMIN_KEY: getHeader(headers["x-openai-api-admin-key"]) || process.env.OPENAI_API_ADMIN_KEY,
     YANDEX_FM_API_KEY: getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_FM_API_KEY,
     YANDEX_FM_API_FOLDER_ID: getHeader(headers["x-yandex-api-folder-id"]) || process.env.YANDEX_FM_API_FOLDER_ID,
-
-    S3_ENDPOINT: getHeader(headers["x-s3-endpoint"]) || process.env.S3_ENDPOINT,
-    S3_REGION: getHeader(headers["x-s3-region"]) || process.env.S3_REGION || "us-east-1",
-    S3_ACCESS_KEY_ID: getHeader(headers["x-s3-access-key-id"]) || process.env.S3_ACCESS_KEY_ID,
-    S3_SECRET_ACCESS_KEY: getHeader(headers["x-s3-secret-access-key"]) || process.env.S3_SECRET_ACCESS_KEY,
-    S3_FILES_BUCKET_NAME: getHeader(headers["x-s3-bucket-name"]) || process.env.S3_FILES_BUCKET_NAME,
   };
 }

@@ -18,6 +18,7 @@ import {
   ActionIcon,
   Box,
   SimpleGrid,
+  Alert,
 } from "@mantine/core";
 import { IconChevronDown, IconChevronUp, IconHelp } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
@@ -33,11 +34,6 @@ import {
   STORAGE_OPENAI_API_KEY,
   STORAGE_YANDEX_FM_API_FOLDER_ID,
   STORAGE_YANDEX_FM_API_KEY,
-  STORAGE_S3_ENDPOINT,
-  STORAGE_S3_REGION,
-  STORAGE_S3_ACCESS_KEY_ID,
-  STORAGE_S3_SECRET_ACCESS_KEY,
-  STORAGE_S3_FILES_BUCKET_NAME,
 } from "@/store/slices/authSlice";
 import { ApiProvider } from "@/types/ai";
 
@@ -57,6 +53,13 @@ const UPDATE_USER_MUTATION = gql`
       lastName
       defaultModelId
       defaultSystemPrompt
+      settings {
+        s3Endpoint
+        s3Region
+        s3AccessKeyId
+        s3SecretAccessKey
+        s3FilesBucketName
+      }
     }
   }
 `;
@@ -126,12 +129,13 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
       setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "");
       setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "");
     }
+
     // Load S3 settings
-    setS3Endpoint(localStorage.getItem(STORAGE_S3_ENDPOINT) || "");
-    setS3Region(localStorage.getItem(STORAGE_S3_REGION) || "");
-    setS3AccessKeyId(localStorage.getItem(STORAGE_S3_ACCESS_KEY_ID) || "");
-    setS3SecretAccessKey(localStorage.getItem(STORAGE_S3_SECRET_ACCESS_KEY) || "");
-    setS3FilesBucketName(localStorage.getItem(STORAGE_S3_FILES_BUCKET_NAME) || "");
+    setS3Endpoint(user?.settings?.s3Endpoint || "");
+    setS3Region(user?.settings?.s3Region || "");
+    setS3AccessKeyId(user?.settings?.s3AccessKeyId || "");
+    setS3SecretAccessKey(user?.settings?.s3SecretAccessKey || "");
+    setS3FilesBucketName(user?.settings?.s3FilesBucketName || "");
   }, [user, enabledApiProviders]);
 
   // Update when user changes
@@ -227,7 +231,7 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
     });
   };
 
-  const handleConnectivityUpdate = (e: React.FormEvent) => {
+  const handleConnectivityUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem(STORAGE_AWS_BEDROCK_REGION, awsRegion || "");
     localStorage.setItem(STORAGE_AWS_BEDROCK_PROFILE, awsProfile || "");
@@ -237,11 +241,20 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
     localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
     localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
     localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER_ID, yandexApiFolderId || "");
-    localStorage.setItem(STORAGE_S3_ENDPOINT, s3Endpoint || "");
-    localStorage.setItem(STORAGE_S3_REGION, s3Region || "");
-    localStorage.setItem(STORAGE_S3_ACCESS_KEY_ID, s3AccessKeyId || "");
-    localStorage.setItem(STORAGE_S3_SECRET_ACCESS_KEY, s3SecretAccessKey || "");
-    localStorage.setItem(STORAGE_S3_FILES_BUCKET_NAME, s3FilesBucketName || "");
+
+    await updateUser({
+      variables: {
+        input: {
+          settings: {
+            s3Endpoint: s3Endpoint || "",
+            s3Region: s3Region || "",
+            s3AccessKeyId: s3AccessKeyId || "",
+            s3SecretAccessKey: s3SecretAccessKey || "",
+            s3FilesBucketName: s3FilesBucketName || "",
+          },
+        },
+      },
+    });
 
     onReloadAppData?.();
   };
@@ -482,6 +495,12 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
 
               {/* S3 Configuration */}
               <Divider />
+              {appConfig?.s3Connected && (
+                <Alert color="green" mb="md">
+                  S3 storage is connected on backend and ready to use. You could override these settings below, they
+                  will be stored in your profile to make uploaded/generated images available everywhere.
+                </Alert>
+              )}
               <Group justify="space-between" align="center">
                 <Title order={3}>S3 File Storage</Title>
                 <ActionIcon variant="subtle" onClick={() => setS3HelpOpen(!s3HelpOpen)} aria-label="Toggle S3 help">

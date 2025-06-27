@@ -133,7 +133,7 @@ export class ChatResolver extends BaseResolver {
     if (!chat) throw new Error("Chat not found");
 
     if (chat.files?.length) {
-      const s3Service = new S3Service(context.connectionParams);
+      const s3Service = new S3Service(context.tokenPayload);
       const queue = [...chat.files];
 
       // TODO: move this to background task

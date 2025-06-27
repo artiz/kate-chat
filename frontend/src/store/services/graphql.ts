@@ -48,6 +48,13 @@ export const LOGIN_MUTATION = gql`
         lastName
         defaultModelId
         defaultSystemPrompt
+        settings {
+          s3Endpoint
+          s3Region
+          s3AccessKeyId
+          s3SecretAccessKey
+          s3FilesBucketName
+        }
       }
     }
   }
@@ -512,6 +519,13 @@ export const graphqlApi = api.injectEndpoints({
                 googleId
                 githubId
                 avatarUrl
+                settings {
+                  s3Endpoint
+                  s3Region
+                  s3AccessKeyId
+                  s3SecretAccessKey
+                  s3FilesBucketName
+                }
               }
               getModels {
                 models {

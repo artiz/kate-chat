@@ -170,7 +170,7 @@ export class MessagesService {
         .map(content => content.fileName)
         .filter(notEmpty) || [];
 
-    await this.removeFiles(connection, files, chat);
+    await this.removeFiles(connection, files, chat, user);
 
     originalMessage.content = ""; // Clear content to indicate it's being regenerated
     originalMessage.modelId = model.modelId; // Update to the new model
@@ -187,7 +187,7 @@ export class MessagesService {
       topP: chat.topP,
     };
 
-    const s3Service = new S3Service(connection);
+    const s3Service = new S3Service(user.toToken());
 
     // Call publishAssistantMessage to generate new response
     await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, originalMessage);
@@ -198,7 +198,8 @@ export class MessagesService {
   public async deleteMessage(
     connection: ConnectionParams,
     id: string,
-    deleteFollowing: boolean = false
+    deleteFollowing: boolean = false,
+    user: User
   ): Promise<string[]> {
     const message = await this.messageRepository.findOne({
       where: { id },
@@ -273,7 +274,7 @@ export class MessagesService {
 
     // Remove image files from disk and update chat.files
     if (deletedImageFiles.length > 0) {
-      await this.removeFiles(connection, deletedImageFiles, chat);
+      await this.removeFiles(connection, deletedImageFiles, chat, user);
     }
 
     return result; // Return all deleted message IDs including the original
@@ -335,7 +336,7 @@ export class MessagesService {
 
     // If there's an image, handle it
     if (images) {
-      const s3Service = new S3Service(connection);
+      const s3Service = new S3Service(user.toToken());
       jsonContent = [];
 
       if (content) {
@@ -411,7 +412,7 @@ export class MessagesService {
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
-          const s3Service = new S3Service(connection);
+          const s3Service = new S3Service(user.toToken());
           // Save base64 image to S3
           const { fileName, contentType } = await this.saveImageFromBase64(s3Service, aiResponse.content, {
             chatId: chat.id,
@@ -484,10 +485,15 @@ export class MessagesService {
     this.aiService.streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming);
   }
 
-  protected async removeFiles(connection: ConnectionParams, deletedImageFiles: string[], chat: Chat): Promise<void> {
+  protected async removeFiles(
+    connection: ConnectionParams,
+    deletedImageFiles: string[],
+    chat: Chat,
+    user: User
+  ): Promise<void> {
     if (!deletedImageFiles || deletedImageFiles.length === 0) return;
 
-    let s3Service = new S3Service(connection);
+    let s3Service = new S3Service(user.toToken());
 
     // Remove the files from the chat.files array
     if (chat.files?.length) {

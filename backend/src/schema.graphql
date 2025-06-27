@@ -275,6 +275,14 @@ input RegisterInput {
   recaptchaToken: String
 }
 
+input S3Settings {
+  s3AccessKeyId: String
+  s3Endpoint: String
+  s3FilesBucketName: String
+  s3Region: String
+  s3SecretAccessKey: String
+}
+
 type Subscription {
   newMessage(chatId: String!): GqlMessage!
 }
@@ -310,6 +318,7 @@ input UpdateUserInput {
   email: String
   firstName: String
   lastName: String
+  settings: S3Settings
 }
 
 type User {
@@ -325,5 +334,14 @@ type User {
   id: ID!
   lastName: String!
   models: [Model!]
+  settings: UserSettings
   updatedAt: DateTimeISO!
+}
+
+type UserSettings {
+  s3AccessKeyId: String
+  s3Endpoint: String
+  s3FilesBucketName: String
+  s3Region: String
+  s3SecretAccessKey: String
 }

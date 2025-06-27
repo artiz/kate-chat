@@ -192,8 +192,8 @@ export class MessageResolver extends BaseResolver {
     @Arg("deleteFollowing", { nullable: true }) deleteFollowing: boolean = false,
     @Ctx() context: GraphQLContext
   ): Promise<string[]> {
-    await this.validateContextToken(context);
-    return await this.messageService.deleteMessage(context.connectionParams, id, deleteFollowing);
+    const user = await this.validateContextUser(context);
+    return await this.messageService.deleteMessage(context.connectionParams, id, deleteFollowing, user);
   }
 
   @Mutation(() => SwitchModelResponse)

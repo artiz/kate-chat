@@ -1,11 +1,10 @@
+import { GraphQLError } from "graphql";
+import { Repository } from "typeorm";
+
 import { getRepository } from "@/config/database";
 import { User } from "@/entities";
 import { GraphQLContext } from "@/middleware/auth.middleware";
-import { HttpError } from "@/types/exceptions";
 import { TokenPayload } from "@/utils/jwt";
-import { HttpStatusCode } from "axios";
-import { GraphQLError } from "graphql";
-import { Repository } from "typeorm";
 
 export class BaseResolver {
   protected userRepository: Repository<User>;

@@ -11,11 +11,6 @@ export const STORAGE_OPENAI_API_KEY = "openai-api-key";
 export const STORAGE_OPENAI_API_ADMIN_KEY = "openai-api-admin-key";
 export const STORAGE_YANDEX_FM_API_KEY = "yandex-fm-api-key";
 export const STORAGE_YANDEX_FM_API_FOLDER_ID = "yandex-fm-api-folder-id";
-export const STORAGE_S3_ENDPOINT = "s3-endpoint";
-export const STORAGE_S3_REGION = "s3-region";
-export const STORAGE_S3_ACCESS_KEY_ID = "s3-access-key-id";
-export const STORAGE_S3_SECRET_ACCESS_KEY = "s3-secret-access-key";
-export const STORAGE_S3_FILES_BUCKET_NAME = "s3-files-bucket-name";
 
 interface AuthState {
   token: string | null;
@@ -42,6 +37,7 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.loading = false;
       localStorage.setItem(STORAGE_AUTH_TOKEN, action.payload);
+      document.cookie = `${STORAGE_AUTH_TOKEN}=${action.payload || ""}; path=/`;
     },
     loginFailure(state) {
       state.loading = false;

@@ -2,6 +2,14 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ApplicationConfig } from "../services/graphql";
 import { set } from "lodash";
 
+export interface UserSettings {
+  s3Endpoint?: string;
+  s3Region?: string;
+  s3AccessKeyId?: string;
+  s3SecretAccessKey?: string;
+  s3FilesBucketName?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -12,6 +20,7 @@ export interface User {
   githubId?: string;
   googleId?: string;
   avatarUrl?: string;
+  settings?: UserSettings;
 }
 
 interface UserState {

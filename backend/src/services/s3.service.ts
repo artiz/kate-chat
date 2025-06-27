@@ -1,48 +1,121 @@
+import { Repository } from "typeorm";
 import * as path from "path";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
 import { ConnectionParams } from "@/middleware/auth.middleware";
+import { S3Settings, UserSettings } from "@/entities";
+import { getRepository } from "@/config/database";
+import { User } from "@/entities";
+import { TokenPayload } from "@/utils/jwt";
+import { ok } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
+const DEFAULT_REGION = "eu-central-1";
+
+const ConnectionSettingsCache: Map<string, S3Settings> = new Map();
+
 export class S3Service {
   private s3client: S3Client;
+  private connecting: boolean = true;
   private bucketName: string;
+  private userRepository: Repository<User>;
 
-  constructor(connection: ConnectionParams) {
-    this.bucketName = connection.S3_FILES_BUCKET_NAME || "";
-
-    const endpoint = connection.S3_ENDPOINT;
-    const region = connection.S3_REGION;
-    const accessKeyId = connection.S3_ACCESS_KEY_ID;
-    const secretAccessKey = connection.S3_SECRET_ACCESS_KEY;
-
-    if (this.bucketName || !accessKeyId || !secretAccessKey) {
-      logger.debug("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are not provided in connection parameters");
-      return;
-    }
-
-    const clientOptions: S3ClientConfig = {
-      region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-      requestHandler: {
-        socketTimeout: 1 * 60 * 1000, // ms
-      },
+  constructor(token?: TokenPayload) {
+    const envSettings: S3Settings = {
+      s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME,
+      s3Endpoint: process.env.S3_ENDPOINT || DEFAULT_REGION,
+      s3Region: process.env.S3_REGION,
+      s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
+      s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
     };
 
-    if (endpoint) {
-      clientOptions.endpoint = endpoint;
-      // For LocalStack and other S3-compatible services
-      clientOptions.forcePathStyle = true;
-    }
+    const init = (settings: S3Settings) => {
+      ok(settings.s3FilesBucketName, "S3 bucket name is required");
 
-    this.s3client = new S3Client(clientOptions);
+      const clientOptions: S3ClientConfig = {
+        region: settings.s3Region || DEFAULT_REGION,
+        credentials:
+          settings.s3AccessKeyId && settings.s3SecretAccessKey
+            ? {
+                accessKeyId: settings.s3AccessKeyId,
+                secretAccessKey: settings.s3SecretAccessKey,
+              }
+            : undefined,
+        requestHandler: {
+          socketTimeout: 1 * 60 * 1000, // ms
+        },
+      };
+
+      if (settings.s3Endpoint) {
+        clientOptions.endpoint = settings.s3Endpoint;
+        // For LocalStack and other S3-compatible services
+        clientOptions.forcePathStyle = true;
+      }
+
+      this.bucketName = settings.s3FilesBucketName;
+      this.s3client = new S3Client(clientOptions);
+      this.connecting = false;
+    };
+
+    this.userRepository = getRepository(User);
+
+    if (!envSettings.s3FilesBucketName || !envSettings.s3AccessKeyId || !envSettings.s3SecretAccessKey) {
+      if (token) {
+        const cached = ConnectionSettingsCache.get(token.userId);
+        if (cached) {
+          logger.debug("Using cached S3 settings for user", token.userId);
+          init(cached);
+          return;
+        }
+
+        this.userRepository
+          .findOne({
+            where: { id: token.userId },
+          })
+          .then(user => {
+            if (user && user.settings) {
+              const settings: S3Settings = {
+                ...envSettings,
+                ...(user.settings || {}),
+              };
+
+              if (settings.s3FilesBucketName && settings.s3AccessKeyId && settings.s3SecretAccessKey) {
+                init(settings);
+                ConnectionSettingsCache.set(token.userId, settings);
+              }
+            }
+          })
+          .catch(error => {
+            logger.error(error, "Failed to load user settings for S3 initialization");
+          });
+      } else {
+        logger.debug("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are not provided in env/user setings parameters");
+      }
+    } else {
+      try {
+        init(envSettings);
+      } catch (error) {
+        logger.error(error, "Failed to initialize S3 client with environment settings");
+      }
+    }
   }
 
-  get client(): S3Client {
+  async getClient(): Promise<S3Client> {
+    if (this.connecting) {
+      // Wait until the client is initialized
+      for (let ndx = 0; ndx < 10; ndx++) {
+        if (!this.connecting) {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50 * ndx)); // Exponential backoff
+      }
+    }
+
+    if (!this.s3client) {
+      throw new Error("S3 client is not initialized");
+    }
+
     return this.s3client;
   }
 
@@ -57,7 +130,8 @@ export class S3Service {
    * @param contentType MIME type of the file (optional)
    */
   public async uploadFile(content: string, key: string, contentType?: string): Promise<string> {
-    if (!this.s3client) {
+    const client = await this.getClient();
+    if (!client) {
       throw new Error("S3 client is not configured");
     }
 
@@ -73,7 +147,7 @@ export class S3Service {
       };
 
       logger.debug({ key }, "Uploading file to S3");
-      await this.s3client.send(new PutObjectCommand(params));
+      await client.send(new PutObjectCommand(params));
       return key;
     } catch (error) {
       logger.error(error, "Failed to upload file to S3");
@@ -86,7 +160,8 @@ export class S3Service {
    * @param key S3 key of the file to delete
    */
   public async deleteFile(key: string): Promise<void> {
-    if (!this.s3client) {
+    const client = await this.getClient();
+    if (!client) {
       throw new Error("S3 client is not configured");
     }
 
@@ -97,7 +172,7 @@ export class S3Service {
       };
 
       logger.debug({ key }, "Deleting file from S3");
-      await this.s3client.send(new DeleteObjectCommand(params));
+      await client.send(new DeleteObjectCommand(params));
     } catch (error) {
       logger.error(error, "Failed to delete file from S3");
       throw error;
@@ -109,7 +184,8 @@ export class S3Service {
    * @param key S3 key to check
    */
   public async fileExists(key: string): Promise<boolean> {
-    if (!this.s3client) {
+    const client = await this.getClient();
+    if (!client) {
       throw new Error("S3 client is not configured");
     }
 
@@ -119,7 +195,7 @@ export class S3Service {
         Key: key,
       };
 
-      await this.s3client.send(new GetObjectCommand(params));
+      await client.send(new GetObjectCommand(params));
       return true;
     } catch (error) {
       return false;

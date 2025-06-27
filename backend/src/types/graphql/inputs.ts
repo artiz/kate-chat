@@ -1,5 +1,6 @@
 import { InputType, Field } from "type-graphql";
 import { ApiProvider, AuthProvider, MessageRole } from "../ai.types";
+import { S3Settings, UserSettings } from "@/entities";
 
 @InputType()
 export class UpdateUserInput {
@@ -20,6 +21,9 @@ export class UpdateUserInput {
 
   @Field({ nullable: true })
   defaultSystemPrompt?: string;
+
+  @Field({ nullable: true })
+  settings?: S3Settings;
 }
 
 @InputType()

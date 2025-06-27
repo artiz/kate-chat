@@ -257,8 +257,8 @@ jobs:
         DEMO_URL="${{ steps.get-lb-dns.outputs.demo-url }}"
         echo "Updating README with demo URL: $DEMO_URL"
         
-        # Update the demo URL in README.md
-        sed -i "s|**\[Try KateChat Demo →\]([^)]*)**|**[Try KateChat Demo →]($DEMO_URL)**|g" README.md
+        # Update the demo URL in README.md using sed with proper escaping
+        perl -i -pe "s|\*\*\[Try KateChat Demo →\]\([^)]*\)\*\*|**[Try KateChat Demo →]($DEMO_URL)**|g" README.md
         
         # Check if changes were made
         if git diff --quiet README.md; then

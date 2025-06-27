@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import express, { NextFunction, Request, Response } from "express";
+import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import path from "path";
 import cors from "cors";
@@ -64,12 +65,13 @@ async function bootstrap() {
   const app = express();
   app.use(
     cors({
-      origin: true,
+      origin: (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()) || true,
       credentials: true,
       maxAge: 86_400, // 24 hours in seconds without subsequent OPTIONS requests
     })
   );
   app.use(express.json({ limit: MAX_INPUT_JSON }));
+  app.use(cookieParser());
 
   // Set up session and passport
   app.use(

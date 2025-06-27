@@ -24,7 +24,7 @@ import { Settings } from "@/pages/Settings";
 import { Library } from "@/pages/Library";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
-import { loginSuccess, logout } from "@/store/slices/authSlice";
+import { loginSuccess, logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -35,7 +35,7 @@ const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) =>
 const AppContent: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const { isAuthenticated, token } = useAppSelector(state => state.auth);
 
   // Get theme from context
   const { colorScheme } = useTheme();
@@ -63,6 +63,12 @@ const AppContent: React.FC = () => {
       dispatch(loginSuccess(initData.refreshToken?.token));
     }
   }, [isAuthenticated, initData, dispatch]);
+
+  useEffect(() => {
+    if (token) {
+      document.cookie = `${STORAGE_AUTH_TOKEN}=${token}; path=/`;
+    }
+  }, [token]);
 
   useEffect(() => {
     // Handle errors from the initial data query
