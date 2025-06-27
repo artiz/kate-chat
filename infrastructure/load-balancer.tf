@@ -209,7 +209,7 @@ resource "aws_lb_listener" "main" {
   # Default action forwards to frontend, or redirects to HTTPS if certificate is available
   default_action {
     type = var.certificate_arn != "" ? "redirect" : "forward"
-    
+
     dynamic "redirect" {
       for_each = var.certificate_arn != "" ? [1] : []
       content {
@@ -218,7 +218,7 @@ resource "aws_lb_listener" "main" {
         status_code = "HTTP_301"
       }
     }
-    
+
     target_group_arn = var.certificate_arn != "" ? null : aws_lb_target_group.frontend.arn
   }
 }

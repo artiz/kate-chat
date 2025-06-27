@@ -26,9 +26,9 @@ output "alb_zone_id" {
 output "ecr_repository_urls" {
   description = "URLs of the ECR repositories"
   value = {
-    backend      = aws_ecr_repository.backend.repository_url
+    backend = aws_ecr_repository.backend.repository_url
     # backend_rust = aws_ecr_repository.backend_rust.repository_url
-    frontend     = aws_ecr_repository.frontend.repository_url
+    frontend = aws_ecr_repository.frontend.repository_url
   }
 }
 

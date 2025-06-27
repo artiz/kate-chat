@@ -7,20 +7,20 @@ resource "random_password" "backend_session_secret" {
 
 # ECS Task Definition for Backend
 resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.project_name}-${var.environment}-backend"
-  network_mode             = "awsvpc"
-  cpu                      = var.backend_cpu
-  memory                   = var.backend_memory
-  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
+  family             = "${var.project_name}-${var.environment}-backend"
+  network_mode       = "awsvpc"
+  cpu                = var.backend_cpu
+  memory             = var.backend_memory
+  execution_role_arn = aws_iam_role.ecs_execution_role.arn
+  task_role_arn      = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
       name  = "backend"
       image = "${aws_ecr_repository.backend.repository_url}:master"
-      
+
       essential = true
-      
+
       portMappings = [
         {
           containerPort = 8080
@@ -94,11 +94,11 @@ resource "aws_ecs_task_definition" "backend" {
           value = random_password.backend_session_secret.result
         },
         {
-          name = "ENABLED_API_PROVIDERS",
+          name  = "ENABLED_API_PROVIDERS",
           value = "aws_bedrock,open_ai,yandex_fm"
         }
       ]
-      
+
       secrets = [
         {
           name      = "DB_PASSWORD"
@@ -125,7 +125,7 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = aws_secretsmanager_secret.github_client_secret.arn
         }
       ]
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -134,12 +134,12 @@ resource "aws_ecs_task_definition" "backend" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
-      
+
       healthCheck = {
-        command = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+        command  = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
         interval = 60
-        timeout = 5
-        retries = 10
+        timeout  = 5
+        retries  = 10
       }
     }
   ])
@@ -151,26 +151,26 @@ resource "aws_ecs_task_definition" "backend" {
 
 # ECS Task Definition for Frontend
 resource "aws_ecs_task_definition" "frontend" {
-  family                   = "${var.project_name}-${var.environment}-frontend"
-  network_mode             = "awsvpc"
-  cpu                      = var.frontend_cpu
-  memory                   = var.frontend_memory
-  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  family             = "${var.project_name}-${var.environment}-frontend"
+  network_mode       = "awsvpc"
+  cpu                = var.frontend_cpu
+  memory             = var.frontend_memory
+  execution_role_arn = aws_iam_role.ecs_execution_role.arn
 
   container_definitions = jsonencode([
     {
       name  = "frontend"
       image = "${aws_ecr_repository.frontend.repository_url}:master"
-      
+
       essential = true
-      
+
       portMappings = [
         {
           containerPort = 80
           protocol      = "tcp"
         }
       ]
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -179,12 +179,12 @@ resource "aws_ecs_task_definition" "frontend" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
-      
+
       healthCheck = {
-        command = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
+        command  = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
         interval = 30
-        timeout = 5
-        retries = 3
+        timeout  = 5
+        retries  = 3
       }
     }
   ])
@@ -216,7 +216,7 @@ resource "aws_ecs_service" "backend" {
 
   depends_on = [aws_lb_listener.main]
 
-  deployment_maximum_percent = 200
+  deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
 
   deployment_circuit_breaker {
@@ -251,7 +251,7 @@ resource "aws_ecs_service" "frontend" {
 
   depends_on = [aws_lb_listener.main]
 
-  deployment_maximum_percent = 200
+  deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
 
   deployment_circuit_breaker {
