@@ -18,8 +18,8 @@ on:
         type: choice
         options:
         - plan
-        # - apply
-        # - destroy
+        - apply
+        - destroy
 
 env:
   AWS_REGION: eu-central-1
