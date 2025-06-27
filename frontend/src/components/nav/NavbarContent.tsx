@@ -23,7 +23,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   }, [providers]);
 
   const newChatDisabled = useMemo(() => {
-    return noActiveProviders || (appConfig?.demoMode && chats.length >= (appConfig.maxChats ?? 0));
+    return noActiveProviders || (appConfig?.demoMode && chats.length > (appConfig.maxChats ?? 0));
   }, [noActiveProviders, appConfig, chats]);
 
   // Handle navigation to create new chat
