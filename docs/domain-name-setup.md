@@ -6,6 +6,17 @@ Unfortunately, AWS Application Load Balancers (ALBs) cannot have custom DNS name
 
 ### Solution 1: Custom Domain with Route 53 (Recommended)
 
+```
+# Register domain via AWS CLI (if available)
+aws route53domains register-domain \
+  --domain-name "katechat.tech" \
+  --duration-in-years 1 \
+  --admin-contact file://docs/contact.json \
+  --registrant-contact file://docs/contact.json \
+  --tech-contact file://docs/contact.json \
+  --region us-east-1
+```
+
 This is the best approach for production applications:
 
 #### Step 1: Set up your domain variables
@@ -77,14 +88,26 @@ For a professional application, I recommend **Solution 1** with a custom domain:
 
 ### 1. Purchase a domain (if you don't have one)
 - Use Route 53, GoDaddy, Namecheap, etc.
-- Example: `katechat.app`, `yourstartup.com`
+- Example: `katechat.tech`, `yourstartup.com`
 
 ### 2. Set up SSL certificate
+
+**Option A: Via AWS Console (Recommended)**
+1. Go to AWS Certificate Manager in eu-central-1 region
+2. Click "Request a certificate" → "Request a public certificate"
+3. Add domain names:
+   - Primary: `katechat.tech`
+   - Additional: `*.katechat.tech` (covers all subdomains)
+4. Choose "DNS validation" method
+5. Click "Create record in Route 53" to auto-validate
+6. Copy the certificate ARN once issued
+
+**Option B: Via AWS CLI**
 ```bash
 # Request certificate in AWS Certificate Manager
 aws acm request-certificate \
-  --domain-name "your-domain.com" \
-  --subject-alternative-names "*.your-domain.com" \
+  --domain-name "katechat.tech" \
+  --subject-alternative-names "*.katechat.tech" \
   --validation-method DNS \
   --region eu-central-1
 ```
@@ -92,7 +115,7 @@ aws acm request-certificate \
 ### 3. Update your configuration
 ```hcl
 # terraform.tfvars
-domain_name = "katechat.app"  # Your actual domain
+domain_name = "katechat.tech"  # Your actual domain
 certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/abcd1234-..."
 ```
 
@@ -102,8 +125,8 @@ Point your domain's nameservers to the Route 53 hosted zone nameservers.
 ## Final URLs
 
 After setup, you'll have:
-- **Staging**: `https://staging.katechat.app`
-- **Production**: `https://katechat.app`
+- **Staging**: `https://staging.katechat.tech`
+- **Production**: `https://katechat.tech`
 
 Both pointing to your load balancer with proper SSL certificates.
 

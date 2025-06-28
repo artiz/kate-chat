@@ -251,46 +251,6 @@ jobs:
           echo "demo-url=" >> $GITHUB_OUTPUT
         fi
 
-    - name: Update README with new demo URL
-      if: steps.get-lb-dns.outputs.demo-url != ''
-      run: |
-        DEMO_URL="${{ steps.get-lb-dns.outputs.demo-url }}"
-        echo "Updating README with demo URL: $DEMO_URL"
-        
-        # Update the demo URL in README.md using sed with proper escaping
-        perl -i -pe "s|\*\*\[Try KateChat Demo →\]\([^)]*\)\*\*|**[Try KateChat Demo →]($DEMO_URL)**|g" README.md
-        
-        # Check if changes were made
-        if git diff --quiet README.md; then
-          echo "No changes needed in README.md"
-        else
-          echo "README.md updated with new demo URL"
-          echo "readme-updated=true" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Commit and push README changes
-      if: steps.get-lb-dns.outputs.demo-url != ''
-      run: |
-        # Configure git
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        # Check if there are changes to commit
-        if ! git diff --quiet README.md; then
-          git add README.md
-          git commit -m "🚀 Update demo URL after deployment
-          
-          Auto-updated demo link to: ${{ steps.get-lb-dns.outputs.demo-url }}
-          
-          Deployed from commit: ${{ github.sha }}"
-          
-          # Push changes
-          git push
-          echo "✅ README.md updated and committed"
-        else
-          echo "ℹ️ No README.md changes to commit"
-        fi
-
     - name: Deployment Summary
       if: always()
       run: |
@@ -299,13 +259,6 @@ jobs:
         echo "🔧 Services Updated:"
         echo "  • Backend: katechat-staging-${{ env.ECS_SERVICE_BACKEND }}"
         echo "  • Frontend: katechat-staging-${{ env.ECS_SERVICE_FRONTEND }}"
-        echo ""
-        if [ -n "${{ steps.get-lb-dns.outputs.demo-url }}" ]; then
-          echo "🌐 Demo URL: ${{ steps.get-lb-dns.outputs.demo-url }}"
-          echo "📝 README.md: Updated with latest demo link"
-        else
-          echo "⚠️  Demo URL: Could not retrieve load balancer DNS"
-        fi
         echo "📦 Commit: ${{ github.sha }}"
         echo "🌿 Branch: ${{ github.ref_name }}"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -7,12 +7,13 @@ resource "random_password" "backend_session_secret" {
 
 # ECS Task Definition for Backend
 resource "aws_ecs_task_definition" "backend" {
-  family             = "${var.project_name}-${var.environment}-backend"
-  network_mode       = "awsvpc"
-  cpu                = var.backend_cpu
-  memory             = var.backend_memory
-  execution_role_arn = aws_iam_role.ecs_execution_role.arn
-  task_role_arn      = aws_iam_role.ecs_task_role.arn
+  family                   = "${var.project_name}-${var.environment}-backend"
+  network_mode             = "awsvpc"
+  cpu                      = var.backend_cpu
+  memory                   = var.backend_memory
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+  requires_compatibilities = ["FARGATE"]
 
   container_definitions = jsonencode([
     {
@@ -151,11 +152,12 @@ resource "aws_ecs_task_definition" "backend" {
 
 # ECS Task Definition for Frontend
 resource "aws_ecs_task_definition" "frontend" {
-  family             = "${var.project_name}-${var.environment}-frontend"
-  network_mode       = "awsvpc"
-  cpu                = var.frontend_cpu
-  memory             = var.frontend_memory
-  execution_role_arn = aws_iam_role.ecs_execution_role.arn
+  family                   = "${var.project_name}-${var.environment}-frontend"
+  network_mode             = "awsvpc"
+  cpu                      = var.frontend_cpu
+  memory                   = var.frontend_memory
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  requires_compatibilities = ["FARGATE"]
 
   container_definitions = jsonencode([
     {
@@ -200,7 +202,10 @@ resource "aws_ecs_service" "backend" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.backend_desired_count
-  launch_type     = "FARGATE"
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 
   network_configuration {
     security_groups  = [aws_security_group.ecs.id]
@@ -235,7 +240,10 @@ resource "aws_ecs_service" "frontend" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = var.frontend_desired_count
-  launch_type     = "FARGATE"
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
 
   network_configuration {
     security_groups  = [aws_security_group.ecs.id]

@@ -28,7 +28,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 
 Experience KateChat in action with our live staging environment:
 
-**[Try KateChat Demo →](http://katechat-staging-alb-818633156.eu-central-1.elb.amazonaws.com/)**
+**[Try KateChat Demo →](https://katechat.tech/)**
 
 ### Demo Features
 - ✨ Full-featured chat interface

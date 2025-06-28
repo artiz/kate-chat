@@ -17,8 +17,8 @@ resource "aws_db_instance" "main" {
 
   allocated_storage     = var.db_allocated_storage
   max_allocated_storage = var.db_allocated_storage * 2
-  storage_type          = "gp3"
-  storage_encrypted     = true
+  storage_type          = "gp2"
+  # storage_encrypted     = true
 
   db_name  = "katechat"
   username = "katechat"

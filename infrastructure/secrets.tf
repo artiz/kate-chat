@@ -8,7 +8,7 @@ resource "random_password" "db_password" {
 resource "aws_secretsmanager_secret" "db_password" {
   name                    = "${var.project_name}-${var.environment}-db-password"
   description             = "Database password for KateChat"
-  recovery_window_in_days = var.environment == "production" ? 30 : 7
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
 
   tags = {
     Name = "${var.project_name}-${var.environment}-db-password"
@@ -24,29 +24,29 @@ resource "aws_secretsmanager_secret_version" "db_password" {
 resource "aws_secretsmanager_secret" "recaptcha_secret_key" {
   name                    = "${var.project_name}-${var.environment}-recaptcha-secret-key"
   description             = "RECAPTCHA_SECRET_KEY"
-  recovery_window_in_days = var.environment == "production" ? 30 : 7
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
 
 resource "aws_secretsmanager_secret" "google_client_id" {
   name                    = "${var.project_name}-${var.environment}-google-client-id"
   description             = "Google OAuth Client ID"
-  recovery_window_in_days = var.environment == "production" ? 30 : 7
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
 
 resource "aws_secretsmanager_secret" "google_client_secret" {
   name                    = "${var.project_name}-${var.environment}-google-client-secret"
   description             = "Google OAuth Client Secret"
-  recovery_window_in_days = var.environment == "production" ? 30 : 7
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
 
 resource "aws_secretsmanager_secret" "github_client_id" {
   name                    = "${var.project_name}-${var.environment}-github-client-id"
   description             = "Github OAuth Client ID"
-  recovery_window_in_days = var.environment == "production" ? 30 : 7
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
 
 resource "aws_secretsmanager_secret" "github_client_secret" {
   name                    = "${var.project_name}-${var.environment}-github-client-secret"
   description             = "Github OAuth Client Secret"
-  recovery_window_in_days = var.environment == "production" ? 30 : 7
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
 }

@@ -19,16 +19,18 @@ variable "project_name" {
   default     = "katechat"
 }
 
+# use only one deployed version of the application for now
 variable "domain_name" {
   description = "Domain name for the application"
   type        = string
-  default     = ""
+  default     = "katechat.tech"
 }
+
 
 variable "certificate_arn" {
   description = "ARN of the SSL certificate"
   type        = string
-  default     = ""
+  default     = "arn:aws:acm:eu-central-1:508414931829:certificate/70c77f1e-3a3f-4530-b393-48bedf6fed60"
 }
 
 # Database configuration
@@ -41,7 +43,7 @@ variable "db_instance_class" {
 variable "db_allocated_storage" {
   description = "RDS allocated storage in GB"
   type        = number
-  default     = 20
+  default     = 10
 }
 
 variable "db_engine_version" {
@@ -90,7 +92,7 @@ variable "backend_desired_count" {
 variable "redis_node_type" {
   description = "ElastiCache node type"
   type        = string
-  default     = "cache.t3.micro"
+  default     = "cache.t2.micro"
 }
 
 variable "redis_num_cache_nodes" {
