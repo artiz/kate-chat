@@ -33,6 +33,14 @@ variable "certificate_arn" {
   default     = "arn:aws:acm:eu-central-1:508414931829:certificate/70c77f1e-3a3f-4530-b393-48bedf6fed60"
 }
 
+variable "aws_route53_record_zone_id" {
+  description = "Route 53 hosted zone ID"
+  type        = string
+  default     = "Z08280421TLAENXYORVOR"
+}
+
+
+
 # Database configuration
 variable "db_instance_class" {
   description = "RDS instance class"

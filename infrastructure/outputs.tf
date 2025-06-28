@@ -85,7 +85,7 @@ output "cloudwatch_log_groups" {
 # Domain and DNS outputs
 output "route53_zone_id" {
   description = "Route 53 hosted zone ID"
-  value       = var.domain_name != "" ? "Z08280421TLAENXYORVOR" : null
+  value       = var.aws_route53_record_zone_id
 }
 
 output "custom_domain_name" {
