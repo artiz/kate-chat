@@ -36,6 +36,7 @@ import {
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { ApiProvider } from "@/types/ai";
+import { UPDATE_USER_MUTATION } from "@/store/services/graphql";
 
 interface IProps {
   onReloadAppData?: () => void;
@@ -44,26 +45,6 @@ interface IProps {
 type ColorScheme = "light" | "dark" | "auto";
 
 // GraphQL mutations and queries
-const UPDATE_USER_MUTATION = gql`
-  mutation UpdateUser($input: UpdateUserInput!) {
-    updateUser(input: $input) {
-      id
-      email
-      firstName
-      lastName
-      defaultModelId
-      defaultSystemPrompt
-      settings {
-        s3Endpoint
-        s3Region
-        s3AccessKeyId
-        s3SecretAccessKey
-        s3FilesBucketName
-      }
-    }
-  }
-`;
-
 const CHANGE_PASSWORD_MUTATION = gql`
   mutation ChangePassword($input: ChangePasswordInput!) {
     changePassword(input: $input) {

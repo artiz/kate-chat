@@ -4,21 +4,44 @@ import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
 import { Chat, Message, MessageRole } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
-import { Application } from "express";
 
-const MODEL_FRAGMENT = `
-    id
-    name
-    modelId
-    provider
-    apiProvider
-    isActive
-    supportsImageIn
-    supportsTextIn
-    supportsEmbeddingsIn
-    supportsImageOut
-    supportsTextOut
-    supportsEmbeddingsOut 
+export const BASE_MODEL_FRAGMENT = `
+    fragment BaseModel on GqlModel {
+      id
+      name
+      modelId
+      provider
+      apiProvider
+      isActive
+      supportsImageIn
+      supportsTextIn
+      supportsEmbeddingsIn
+      supportsImageOut
+      supportsTextOut
+      supportsEmbeddingsOut
+    }
+`;
+
+export const BASE_USER_FRAGMENT = `
+    fragment BaseUser on User {
+      id
+      email
+      firstName
+      lastName
+      createdAt
+      defaultModelId
+      defaultSystemPrompt
+      googleId
+      githubId
+      avatarUrl
+      settings {
+        s3Endpoint
+        s3Region
+        s3AccessKeyId
+        s3SecretAccessKey
+        s3FilesBucketName
+      }
+    }
 `;
 
 export const REGISTER_MUTATION = gql`
@@ -26,12 +49,7 @@ export const REGISTER_MUTATION = gql`
     register(input: $input) {
       token
       user {
-        id
-        email
-        firstName
-        lastName
-        defaultModelId
-        defaultSystemPrompt
+        ...BaseUser
       }
     }
   }
@@ -42,20 +60,16 @@ export const LOGIN_MUTATION = gql`
     login(input: $input) {
       token
       user {
-        id
-        email
-        firstName
-        lastName
-        defaultModelId
-        defaultSystemPrompt
-        settings {
-          s3Endpoint
-          s3Region
-          s3AccessKeyId
-          s3SecretAccessKey
-          s3FilesBucketName
-        }
+        ...BaseUser
       }
+    }
+  }
+`;
+
+export const UPDATE_USER_MUTATION = gql`
+  mutation UpdateUser($input: UpdateUserInput!) {
+    updateUser(input: $input) {
+      ...BaseUser
     }
   }
 `;
@@ -126,7 +140,7 @@ export const RELOAD_MODELS_MUTATION = gql`
   mutation ReloadModels {
     reloadModels {
       models {
-        ${MODEL_FRAGMENT}   
+        ...BaseModel
       }
       providers {
         id
@@ -401,12 +415,7 @@ export const graphqlApi = api.injectEndpoints({
           query: `
             query CurrentUser {
               currentUser {
-                id
-                email
-                firstName
-                lastName
-                defaultModelId
-                defaultSystemPrompt
+                ...BaseUser
               }
             }
           `,
@@ -509,27 +518,11 @@ export const graphqlApi = api.injectEndpoints({
           query: `
             query GetInitialData {
               currentUser {
-                id
-                email
-                firstName
-                lastName
-                createdAt
-                defaultModelId
-                defaultSystemPrompt
-                googleId
-                githubId
-                avatarUrl
-                settings {
-                  s3Endpoint
-                  s3Region
-                  s3AccessKeyId
-                  s3SecretAccessKey
-                  s3FilesBucketName
-                }
+                ...BaseUser
               }
               getModels {
                 models {
-                    ${MODEL_FRAGMENT}
+                    ...BaseModel
                 }
                 providers {
                   id
@@ -566,6 +559,9 @@ export const graphqlApi = api.injectEndpoints({
                 maxImages
               }
             }
+
+            ${BASE_USER_FRAGMENT}
+            ${BASE_MODEL_FRAGMENT}
           `,
         },
       }),

@@ -7,6 +7,7 @@ import {
   split,
   from,
   NormalizedCacheObject,
+  gql,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
@@ -27,6 +28,8 @@ import {
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { APP_API_URL, APP_WS_URL } from "@/utils/config";
+import { createFragmentRegistry } from "@apollo/client/cache";
+import { BASE_MODEL_FRAGMENT, BASE_USER_FRAGMENT } from "@/store/services/graphql";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
@@ -150,7 +153,12 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       connectToDevTools: true,
       link: from([errorLink, authLink, splitLink]),
       name: "react-web-client",
-      cache: new InMemoryCache(),
+      cache: new InMemoryCache({
+        fragments: createFragmentRegistry(gql`
+          ${BASE_MODEL_FRAGMENT}
+          ${BASE_USER_FRAGMENT}
+        `),
+      }),
       defaultOptions: {
         watchQuery: {
           fetchPolicy: "cache-and-network",
