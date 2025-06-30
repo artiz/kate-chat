@@ -379,8 +379,8 @@ impl AIProviderService for BedrockService {
             details.insert("region".to_string(), region.clone());
         }
 
-        let is_connected =
-            self.config.aws_bedrock_access_key_id.is_some() || std::env::var("AWS_PROFILE").is_ok();
+        let is_connected = self.config.aws_bedrock_access_key_id.is_some()
+            || self.config.aws_bedrock_profile_name.is_some();
 
         if test_connection && is_connected {
             let mut service = self.clone();
@@ -422,7 +422,8 @@ impl AIProviderService for BedrockService {
         };
 
         // Check if credentials are available
-        if self.config.aws_bedrock_access_key_id.is_none() && std::env::var("AWS_PROFILE").is_err()
+        if self.config.aws_bedrock_access_key_id.is_none()
+            && self.config.aws_bedrock_profile_name.is_none()
         {
             result.error = Some("AWS credentials are not set. Set AWS_BEDROCK_ACCESS_KEY_ID and AWS_BEDROCK_SECRET_ACCESS_KEY or AWS_BEDROCK_PROFILE in config.".to_string());
             return Ok(result);
