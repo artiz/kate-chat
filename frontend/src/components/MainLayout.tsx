@@ -75,6 +75,9 @@ export const MainLayout: React.FC = () => {
                 </Text>
               </Tooltip>
             )}
+            <Text size="sm" c="dimmed">
+              v: {process.env.COMMIT_SHA || "dev"}
+            </Text>
           </Group>
 
           <Group>

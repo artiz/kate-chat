@@ -48,6 +48,7 @@ esbuild
       "process.env.APP_API_URL": JSON.stringify(process.env.APP_API_URL),
       "process.env.APP_WS_URL": JSON.stringify(process.env.APP_WS_URL),
       "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
+      "process.env.COMMIT_SHA": JSON.stringify(process.env.COMMIT_SHA),
     },
     metafile: true,
   })
@@ -58,6 +59,13 @@ esbuild
     // Copy index.html to dist
     fs.copyFileSync("./src/index.html", "./dist/index.html");
     fs.copyFileSync("./src/favicon.ico", "./dist/favicon.ico");
+
+    // replace index.js url in index.html to index.js?v=${process.env.COMMIT_SHA || "latest"}`;
+    const indexPath = path.resolve("./dist/index.html");
+    let indexContent = fs.readFileSync(indexPath, "utf8");
+    indexContent = indexContent.replace(/"\/index\.js"/gi, `"/index.js?v=${process.env.COMMIT_SHA || "latest"}"`);
+    console.log(`🔗 Updated index.js URL in index.html to: index.js?v=${process.env.COMMIT_SHA || "latest"}`);
+    fs.writeFileSync(indexPath, indexContent);
 
     // Output bundle size analysis
     const outputSize = Object.entries(result.metafile.outputs).reduce((total, [name, data]) => {

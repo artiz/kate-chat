@@ -12,6 +12,42 @@ resource "aws_ecr_repository" "backend" {
   }
 }
 
+# ECR Lifecycle Policy for Backend Repository
+resource "aws_ecr_lifecycle_policy" "backend" {
+  repository = aws_ecr_repository.backend.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Delete untagged images after 3 days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 3
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep only 15 most recent tagged images"
+        selection = {
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = 15
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
 # TODO: Uncomment and configure the Rust backend repository if needed
 # resource "aws_ecr_repository" "backend_rust" {
 #   name                 = "${var.project_name}-backend-rust"
@@ -37,6 +73,42 @@ resource "aws_ecr_repository" "frontend" {
   tags = {
     Name = "${var.project_name}-frontend-ecr"
   }
+}
+
+# ECR Lifecycle Policy for Frontend Repository
+resource "aws_ecr_lifecycle_policy" "frontend" {
+  repository = aws_ecr_repository.frontend.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Delete untagged images after 3 days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 3
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep only 15 most recent tagged images"
+        selection = {
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = 15
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
 }
 
 # ECS Cluster

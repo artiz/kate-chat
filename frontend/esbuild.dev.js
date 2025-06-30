@@ -39,6 +39,7 @@ const context = await esbuild.context({
     "process.env.APP_API_URL": JSON.stringify(process.env.APP_API_URL),
     "process.env.APP_WS_URL": JSON.stringify(process.env.APP_WS_URL),
     "process.env.RECAPTCHA_SITE_KEY": JSON.stringify(process.env.RECAPTCHA_SITE_KEY),
+    "process.env.COMMIT_SHA": JSON.stringify(process.env.COMMIT_SHA || "dev"),
   },
   plugins: [
     clean({ patterns: ["./dist/*.js"] }),
