@@ -62,14 +62,18 @@ resource "aws_ecs_task_definition" "backend" {
           name  = "REDIS_URL"
           value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.port}"
         },
-        # {
-        #   name  = "S3_REGION"
-        #   value = var.aws_region
-        # },
-        # {
-        #   name  = "S3_FILES_BUCKET_NAME"
-        #   value = aws_s3_bucket.files.bucket
-        # },
+        {
+          name  = "S3_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "S3_FILES_BUCKET_NAME"
+          value = aws_s3_bucket.files.bucket
+        },
+        {
+          name  = "S3_AWS_PROFILE"
+          value = "default"
+        },
         {
           name  = "CALLBACK_URL_BASE"
           value = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"

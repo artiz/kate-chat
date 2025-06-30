@@ -279,6 +279,7 @@ input S3Settings {
   s3AccessKeyId: String
   s3Endpoint: String
   s3FilesBucketName: String
+  s3Profile: String
   s3Region: String
   s3SecretAccessKey: String
 }
@@ -342,6 +343,7 @@ type UserSettings {
   s3AccessKeyId: String
   s3Endpoint: String
   s3FilesBucketName: String
+  s3Profile: String
   s3Region: String
   s3SecretAccessKey: String
 }

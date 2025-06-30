@@ -110,7 +110,7 @@ export class AIService {
     return response;
   }
 
-  streamCompletion(
+  async streamCompletion(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
     request: InvokeModelParamsRequest,
@@ -118,7 +118,7 @@ export class AIService {
     callback: (content: string, completed?: boolean, error?: Error, metadata?: ModelResponseMetadata) => void
   ) {
     // Stream the completion in background
-    this.invokeModelAsync(
+    return this.invokeModelAsync(
       apiProvider,
       connection,
       {

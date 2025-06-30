@@ -196,6 +196,32 @@ resource "aws_iam_role_policy" "ecs_execution_secrets_policy" {
   })
 }
 
+# Additional CloudWatch Logs permissions for the execution role
+resource "aws_iam_role_policy" "ecs_execution_logs_policy" {
+  name = "${var.project_name}-${var.environment}-ecs-execution-logs-policy"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          aws_cloudwatch_log_group.backend.arn,
+          aws_cloudwatch_log_group.frontend.arn,
+          "${aws_cloudwatch_log_group.backend.arn}:*",
+          "${aws_cloudwatch_log_group.frontend.arn}:*"
+        ]
+      }
+    ]
+  })
+}
+
 # ECS Task Role
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.project_name}-${var.environment}-ecs-task-role"
@@ -228,6 +254,7 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
           "s3:GetObject",
           "s3:PutObject",
           "s3:DeleteObject",
+          "s3:HeadObject",
           "s3:ListBucket"
         ]
         Resource = [

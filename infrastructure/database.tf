@@ -105,3 +105,16 @@ resource "aws_s3_bucket_public_access_block" "files" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+# CORS configuration for S3 bucket to allow web access
+resource "aws_s3_bucket_cors_configuration" "files" {
+  bucket = aws_s3_bucket.files.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}

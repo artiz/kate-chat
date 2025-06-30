@@ -24,10 +24,11 @@ export class S3Service {
   constructor(token?: TokenPayload) {
     const envSettings: S3Settings = {
       s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME,
-      s3Endpoint: process.env.S3_ENDPOINT || DEFAULT_REGION,
+      s3Endpoint: process.env.S3_ENDPOINT,
       s3Region: process.env.S3_REGION,
       s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
       s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+      s3Profile: process.env.S3_AWS_PROFILE,
     };
 
     const init = (settings: S3Settings) => {
@@ -35,6 +36,7 @@ export class S3Service {
 
       const clientOptions: S3ClientConfig = {
         region: settings.s3Region || DEFAULT_REGION,
+        profile: settings.s3Profile || undefined,
         credentials:
           settings.s3AccessKeyId && settings.s3SecretAccessKey
             ? {
@@ -60,7 +62,9 @@ export class S3Service {
 
     this.userRepository = getRepository(User);
 
-    if (!envSettings.s3FilesBucketName || !envSettings.s3AccessKeyId || !envSettings.s3SecretAccessKey) {
+    const credsSetup = (envSettings.s3AccessKeyId && envSettings.s3SecretAccessKey) || !!envSettings.s3Profile;
+
+    if (!envSettings.s3FilesBucketName || !credsSetup) {
       if (token) {
         const cached = ConnectionSettingsCache.get(token.userId);
         if (cached) {
@@ -90,7 +94,9 @@ export class S3Service {
             logger.error(error, "Failed to load user settings for S3 initialization");
           });
       } else {
-        logger.debug("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are not provided in env/user setings parameters");
+        logger.debug(
+          "S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY or S3_AWS_PROFILE are not provided in env/user setings parameters"
+        );
       }
     } else {
       try {

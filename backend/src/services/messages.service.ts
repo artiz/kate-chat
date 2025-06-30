@@ -482,7 +482,16 @@ export class MessagesService {
       }
     };
 
-    this.aiService.streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming);
+    this.aiService
+      .streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
+      .catch((error: unknown) => {
+        logger.error(error, "Error streaming AI response");
+        return completeRequest({
+          ...assistantMessage,
+          content: getErrorMessage(error),
+          role: MessageRole.ERROR,
+        }).catch(err => logger.error(err, "Error sending AI response"));
+      });
   }
 
   protected async removeFiles(

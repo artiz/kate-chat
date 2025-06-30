@@ -27,6 +27,8 @@ export class S3Settings {
   s3SecretAccessKey?: string;
   @Field({ nullable: true })
   s3FilesBucketName?: string;
+  @Field({ nullable: true })
+  s3Profile?: string;
 }
 
 @ObjectType()
