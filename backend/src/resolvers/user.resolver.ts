@@ -29,11 +29,15 @@ export class UserResolver extends BaseResolver {
       s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME || "",
       s3AccessKeyId: process.env.S3_ACCESS_KEY_ID || "",
       s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+      s3Profile: process.env.S3_AWS_PROFILE || "",
     };
 
     return {
       demoMode: !!DEMO_MODE,
-      s3Connected: !!(s3settings.s3FilesBucketName && s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey),
+      s3Connected: !!(
+        s3settings.s3FilesBucketName &&
+        ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
+      ),
       maxChats: DEMO_MODE ? 50 : -1,
       maxChatMessages: DEMO_MODE ? 50 : -1,
       maxImages: DEMO_MODE ? 25 : -1,
