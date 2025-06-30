@@ -34,9 +34,9 @@ export class UserResolver extends BaseResolver {
     return {
       demoMode: !!DEMO_MODE,
       s3Connected: !!(s3settings.s3FilesBucketName && s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey),
-      maxChats: DEMO_MODE ? 5 : -1,
-      maxChatMessages: DEMO_MODE ? 75 : -1,
-      maxImages: DEMO_MODE ? 10 : -1,
+      maxChats: DEMO_MODE ? 50 : -1,
+      maxChatMessages: DEMO_MODE ? 50 : -1,
+      maxImages: DEMO_MODE ? 25 : -1,
     };
   }
 

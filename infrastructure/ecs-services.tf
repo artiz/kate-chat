@@ -209,8 +209,8 @@ resource "aws_ecs_service" "backend" {
 
   network_configuration {
     security_groups  = [aws_security_group.ecs.id]
-    subnets          = aws_subnet.private[*].id
-    assign_public_ip = false
+    subnets          = var.use_private_networks ? aws_subnet.private[*].id : aws_subnet.public[*].id
+    assign_public_ip = var.use_private_networks ? false : true
   }
 
   load_balancer {
@@ -247,8 +247,8 @@ resource "aws_ecs_service" "frontend" {
 
   network_configuration {
     security_groups  = [aws_security_group.ecs.id]
-    subnets          = aws_subnet.private[*].id
-    assign_public_ip = false
+    subnets          = var.use_private_networks ? aws_subnet.private[*].id : aws_subnet.public[*].id
+    assign_public_ip = var.use_private_networks ? false : true
   }
 
   load_balancer {

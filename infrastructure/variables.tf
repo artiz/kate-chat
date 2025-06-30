@@ -93,7 +93,14 @@ variable "frontend_desired_count" {
 variable "backend_desired_count" {
   description = "Desired number of backend tasks"
   type        = number
-  default     = 2
+  default     = 3
+}
+
+# Network configuration
+variable "use_private_networks" {
+  description = "Use private subnets and NAT gateways (true) or public subnets (false). Private is more secure but costs more due to NAT gateway."
+  type        = bool
+  default     = false
 }
 
 # Redis configuration

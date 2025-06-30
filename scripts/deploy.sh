@@ -126,13 +126,15 @@ display_deployment_info() {
     
     if [ -f .terraform/terraform.tfstate ]; then
         local alb_dns=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
+        local domain_name=$(terraform output -raw custom_domain_name 2>/dev/null || echo "Not available")
         local ecr_urls=$(terraform output -json ecr_repository_urls 2>/dev/null || echo "{}")
         
         echo
         print_success "=== Deployment Information ==="
         echo "Environment: $env"
         echo "Load Balancer DNS: $alb_dns"
-        echo "Application URL: http://$alb_dns"
+        echo "LB Application URL: http://$alb_dns"
+        echo "Public Application URL: https://$domain_name"
         echo
         echo "ECR Repository URLs:"
         echo "$ecr_urls" | jq -r 'to_entries[] | "  \(.key): \(.value)"' 2>/dev/null || echo "  Not available"

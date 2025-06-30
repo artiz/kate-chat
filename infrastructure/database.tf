@@ -44,7 +44,7 @@ resource "aws_db_instance" "main" {
 # ElastiCache Subnet Group
 resource "aws_elasticache_subnet_group" "main" {
   name       = "${var.project_name}-${var.environment}-redis-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  subnet_ids = var.use_private_networks ? aws_subnet.private[*].id : aws_subnet.public[*].id
 
   tags = {
     Name = "${var.project_name}-${var.environment}-redis-subnet-group"

@@ -388,9 +388,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
       </Group>
 
       <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
-        <IconRobot size={20} />
-        <Text fw={500} size="sm">
-          Model:
+        <Text fw={500} size="sm" visibleFrom="sm">
+          <IconRobot size={20} /> Model:
         </Text>
         <Select
           data={models.map(model => ({
@@ -401,8 +400,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
           value={selectedModel?.modelId || ""}
           onChange={handleModelChange}
           placeholder="Select a model"
-          style={{ minWidth: 180 }}
+          size="sm"
           clearable={false}
+          style={{ maxWidth: "50%" }}
           disabled={sending || messagesLoading}
         />
         {selectedModel && (
