@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   OneToMany,
 } from "typeorm";
-import { AuthProvider } from "../types/ai.types";
+import { AuthProvider, UserRole } from "../types/ai.types";
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
 import { JSONTransformer } from "@/utils/db";
@@ -56,6 +56,10 @@ export class User {
   @Column()
   lastName: string;
 
+  @Field(() => String)
+  @Column({ type: "varchar", default: UserRole.USER })
+  role: UserRole;
+
   @Field({ nullable: true })
   @Column({ nullable: true })
   defaultModelId?: string;
@@ -97,6 +101,10 @@ export class User {
   settings?: UserSettings;
 
   toToken(): TokenPayload {
-    return { userId: this.id, email: this.email };
+    return {
+      userId: this.id,
+      email: this.email,
+      roles: [this.role],
+    };
   }
 }

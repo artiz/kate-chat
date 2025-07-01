@@ -3,6 +3,9 @@ import passport from "passport";
 import { generateToken } from "../utils/jwt";
 import { User } from "../entities/User";
 import { FRONTEND_URL } from "@/config/application";
+import { createLogger } from "@/utils/logger";
+
+const logger = createLogger(__filename);
 
 // Create a router for auth routes
 const router = Router();
@@ -17,12 +20,12 @@ const handleAuthResponse = (req: Request, res: Response) => {
   const user = req.user as User;
 
   // Generate JWT token
+  logger.debug({ email: user.email, role: user.role }, "OAuth User authenticated successfully");
   const token = generateToken({
     userId: user.id,
     email: user.email,
+    roles: [user.role],
   });
-
-  // Determine the frontend URL (development or production)
 
   // Redirect to the frontend with the token
   res.redirect(`${FRONTEND_URL}/oauth-callback?token=${token}`);

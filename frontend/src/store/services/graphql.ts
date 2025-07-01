@@ -34,6 +34,7 @@ export const BASE_USER_FRAGMENT = `
       googleId
       githubId
       avatarUrl
+      role
       settings {
         s3Endpoint
         s3Region

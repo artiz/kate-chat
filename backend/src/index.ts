@@ -17,6 +17,7 @@ import { ChatResolver } from "./resolvers/chat.resolver";
 import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
 import { UserResolver } from "./resolvers/user.resolver";
 import { ModelResolver } from "./resolvers/model.resolver";
+import { AdminResolver } from "./resolvers/admin.resolver";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 import { execute, GraphQLError, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
@@ -54,7 +55,7 @@ async function bootstrap() {
 
   // Build GraphQL schema
   const schema = await buildSchema({
-    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver],
+    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver],
     validate: false,
     emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
     pubSub: schemaPubSub,

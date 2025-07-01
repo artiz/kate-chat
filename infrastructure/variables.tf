@@ -23,23 +23,18 @@ variable "project_name" {
 variable "domain_name" {
   description = "Domain name for the application"
   type        = string
-  default     = "katechat.tech"
 }
 
 
 variable "certificate_arn" {
   description = "ARN of the SSL certificate"
   type        = string
-  default     = "arn:aws:acm:eu-central-1:508414931829:certificate/70c77f1e-3a3f-4530-b393-48bedf6fed60"
 }
 
 variable "aws_route53_record_zone_id" {
   description = "Route 53 hosted zone ID"
   type        = string
-  default     = "Z08280421TLAENXYORVOR"
 }
-
-
 
 # Database configuration
 variable "db_instance_class" {
@@ -115,3 +110,10 @@ variable "redis_num_cache_nodes" {
   type        = number
   default     = 1
 }
+
+variable "default_admin_emails" {
+  description = "Comma separated list of default admin email addresses"
+  type        = string
+  default     = "artem.kustikov@gmail.com"
+}
+

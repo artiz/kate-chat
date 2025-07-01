@@ -14,6 +14,11 @@ export enum AuthProvider {
   MICROSOFT = "microsoft",
 }
 
+export enum UserRole {
+  USER = "user",
+  ADMIN = "admin",
+}
+
 export enum MessageRole {
   USER = "user",
   ASSISTANT = "assistant",

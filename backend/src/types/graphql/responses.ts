@@ -232,3 +232,27 @@ export class GqlImagesList {
   @Field({ nullable: true })
   nextPage?: number;
 }
+
+@ObjectType()
+export class AdminStatsResponse {
+  @Field()
+  usersCount: number;
+
+  @Field()
+  chatsCount: number;
+
+  @Field()
+  modelsCount: number;
+}
+
+@ObjectType()
+export class AdminUsersResponse {
+  @Field(() => [User])
+  users: User[];
+
+  @Field()
+  total: number;
+
+  @Field()
+  hasMore: boolean;
+}

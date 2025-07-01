@@ -10,17 +10,24 @@ export interface UserSettings {
   s3FilesBucketName?: string;
 }
 
+export enum UserRole {
+  USER = "user",
+  ADMIN = "admin",
+}
+
 export interface User {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
+  role: UserRole;
   defaultModelId?: string;
   defaultSystemPrompt?: string;
   githubId?: string;
   googleId?: string;
   avatarUrl?: string;
   settings?: UserSettings;
+  createdAt?: string;
 }
 
 interface UserState {

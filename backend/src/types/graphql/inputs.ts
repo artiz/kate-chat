@@ -214,3 +214,15 @@ export class GetImagesInput {
   @Field({ nullable: true, defaultValue: 20 })
   limit?: number;
 }
+
+@InputType()
+export class GetUsersInput {
+  @Field({ nullable: true, defaultValue: 0 })
+  offset?: number;
+
+  @Field({ nullable: true, defaultValue: 20 })
+  limit?: number;
+
+  @Field({ nullable: true })
+  searchTerm?: string;
+}

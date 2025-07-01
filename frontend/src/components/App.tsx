@@ -22,14 +22,32 @@ import { CreateChat } from "@/pages/CreateChat";
 import { Models } from "@/pages/Models";
 import { Settings } from "@/pages/Settings";
 import { Library } from "@/pages/Library";
+import { Admin } from "@/pages/Admin";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
+import { UserRole } from "@/store/slices/userSlice";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
   return isAuthenticated ? element : <Navigate to="/login" replace />;
+};
+
+// AdminRoute component for admin-only routes
+const AdminRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
+  const { isAuthenticated } = useAppSelector(state => state.auth);
+  const { currentUser } = useAppSelector(state => state.user);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (currentUser?.role !== UserRole.ADMIN) {
+    return <Navigate to="/chat" replace />;
+  }
+
+  return element;
 };
 
 const AppContent: React.FC = () => {
@@ -128,6 +146,12 @@ const AppContent: React.FC = () => {
               <Route path="models" element={<Models />} />
               <Route path="settings" element={<Settings onReloadAppData={refetchInitialData} />} />
               <Route path="library" element={<Library />} />
+              <Route path="admin" element={<AdminRoute element={<Admin />} />} />
+            </Route>
+
+            {/* Admin routes */}
+            <Route path="/" element={<AdminRoute element={<MainLayout />} />}>
+              <Route path="admin" element={<Admin />} />
             </Route>
 
             {/* Fallback route */}

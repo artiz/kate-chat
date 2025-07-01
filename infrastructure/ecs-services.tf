@@ -101,6 +101,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "ENABLED_API_PROVIDERS",
           value = "aws_bedrock,open_ai,yandex_fm"
+        },
+        {
+          name  = "ENABLED_API_PROVIDERS",
+          value = "aws_bedrock,open_ai,yandex_fm"
+        },
+        {
+          name  = "DEFAULT_ADMIN_EMAILS"
+          value = var.default_admin_emails,
         }
       ]
 

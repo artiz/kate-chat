@@ -50,7 +50,8 @@ export const graphQlAuthChecker = ({ context }: { context: GraphQLContext }, rol
   if (!user) return false;
   if (roles.length === 0) return true;
 
-  return false;
+  // Check if user has any of the required roles
+  return roles.some(role => user.roles?.includes(role));
 };
 
 // Export the middleware

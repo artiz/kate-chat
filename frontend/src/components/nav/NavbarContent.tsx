@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Stack, Button, NavLink, Divider, ScrollArea } from "@mantine/core";
-import { IconPlus, IconSettings, IconRobot, IconPhoto } from "@tabler/icons-react";
+import { IconPlus, IconSettings, IconRobot, IconPhoto, IconShield } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
+import { UserRole } from "@/store/slices/userSlice";
 
 interface IProps {
   navbarToggle?: () => void;
@@ -16,7 +17,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   // Get chats from Redux store
   const { chats } = useAppSelector(state => state.chats);
   const { providers } = useAppSelector(state => state.models);
-  const { appConfig } = useAppSelector(state => state.user);
+  const { appConfig, currentUser } = useAppSelector(state => state.user);
 
   const noActiveProviders = useMemo(() => {
     return providers.length === 0 || !providers.some(provider => provider.isConnected);
@@ -36,6 +37,12 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   const handleModelsClick = () => {
     navbarToggle?.();
     navigate("/models");
+  };
+
+  // Handle navigation to admin page
+  const handleAdminClick = () => {
+    navbarToggle?.();
+    navigate("/admin");
   };
 
   return (
@@ -75,6 +82,14 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
               navigate("/library");
             }}
           />
+          {currentUser?.role === UserRole.ADMIN && (
+            <NavLink
+              label="Admin"
+              leftSection={<IconShield size={16} />}
+              active={location.pathname === "/admin"}
+              onClick={handleAdminClick}
+            />
+          )}
         </Stack>
         <Divider my="xs" />
 

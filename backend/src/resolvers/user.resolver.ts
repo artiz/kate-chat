@@ -10,10 +10,10 @@ import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
-import { AuthProvider } from "../types/ai.types";
+import { AuthProvider, UserRole } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from "@/middleware/auth.middleware";
-import { DEMO_MODE } from "@/config/application";
+import { DEMO_MODE, DEFAULT_ADMIN_EMAILS } from "@/config/application";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -71,6 +71,9 @@ export class UserResolver extends BaseResolver {
     // Hash password for local users
     const hashedPassword = authProvider ? "" : await bcrypt.hash(password, 12);
 
+    // Determine user role
+    const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
+
     // Create new user
     const user = this.userRepository.create({
       email,
@@ -78,6 +81,7 @@ export class UserResolver extends BaseResolver {
       firstName,
       lastName,
       avatarUrl,
+      role,
       defaultSystemPrompt: DEFAULT_PROMPT,
       authProvider: authProvider || AuthProvider.LOCAL,
     });
@@ -88,6 +92,7 @@ export class UserResolver extends BaseResolver {
     const token = generateToken({
       userId: savedUser.id,
       email: savedUser.email,
+      roles: [savedUser.role],
     });
 
     return {
@@ -141,10 +146,17 @@ export class UserResolver extends BaseResolver {
       throw new Error("Invalid email or password");
     }
 
+    // Update user role if they are in admin emails list
+    if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+      user.role = UserRole.ADMIN;
+      await this.userRepository.save(user);
+    }
+
     // Generate JWT token
     const token = generateToken({
       userId: user.id,
       email: user.email,
+      roles: [user.role],
     });
 
     return {
@@ -162,6 +174,7 @@ export class UserResolver extends BaseResolver {
     const token = generateToken({
       userId: user.id,
       email: user.email,
+      roles: [user.role],
     });
 
     return {

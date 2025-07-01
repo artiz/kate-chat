@@ -1,6 +1,9 @@
 export const MAX_INPUT_JSON = process.env.MAX_INPUT_JSON || "5mb";
 export const DEMO_MODE = ["1", "true", "y", "yes"].includes(process.env.DEMO_MODE?.toLowerCase() || "");
 
+// Admin configuration
+export const DEFAULT_ADMIN_EMAILS = process.env.DEFAULT_ADMIN_EMAILS?.split(",").map(email => email.trim()) || [];
+
 // Google reCAPTCHA configuration
 export const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe"; // Test secret key for development
 export const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";

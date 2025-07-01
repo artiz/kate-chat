@@ -47,7 +47,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Add user role support, introduce Admin role, put DEFAULT_ADMIN_EMAIL to env var at deployment and setup admin role at login. Create admin page with registered users and basic statistics (models count, chats count)
 * Add support for more Google LLM provider
 * Add support for more Azure LLM provider
 * Add images generation (DALL-E) support in Rust backend
@@ -236,7 +235,6 @@ npm run build
 docker build -t katechat-backend ./ -f backend/Dockerfile  
 docker run --env-file=./backend/.env  -p4000:4000 katechat-backend 
 ```
-
 ```
 docker build -t katechat-frontend --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f frontend/Dockerfile  
 docker run -p3000:80 katechat-frontend
@@ -283,3 +281,35 @@ Authentication is handled via JWT tokens. When a user logs in or registers, they
 3. Commit your changes: `git commit -am 'Add some feature'`
 4. Push to the branch: `git push origin feature/my-new-feature`
 5. Submit a pull request
+
+## Admin Dashboard
+
+KateChat includes an admin dashboard for managing users and viewing system statistics. Admin access is controlled by email addresses specified in the `DEFAULT_ADMIN_EMAILS` environment variable.
+
+### Admin Features
+
+- **User Management**: View all registered users with pagination and search
+- **System Statistics**: Monitor total users, chats, and models
+- **Role-based Access**: Automatic admin role assignment for specified email addresses
+
+### Configuring Admin Access
+
+1. Set the `DEFAULT_ADMIN_EMAILS` environment variable in your `.env` file:
+   ```
+   DEFAULT_ADMIN_EMAILS=admin@example.com,another-admin@example.com
+   ```
+
+2. Users with these email addresses will automatically receive admin privileges upon:
+   - Registration
+   - Login (existing users)
+   - OAuth authentication (Google/GitHub)
+
+3. Admin users can access the dashboard at `/admin` in the web interface
+
+### Admin Dashboard Sections
+
+- **Statistics Cards**: Real-time counts of users, chats, and available models
+- **User Management Table**: Searchable list of all users with role indicators
+- **Pagination**: Efficient browsing of large user lists
+
+Note: Only users with the `ADMIN` role can access the admin dashboard. Regular users will be redirected to the chat interface.

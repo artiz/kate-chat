@@ -3,6 +3,18 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type AdminStatsResponse {
+  chatsCount: Float!
+  modelsCount: Float!
+  usersCount: Float!
+}
+
+type AdminUsersResponse {
+  hasMore: Boolean!
+  total: Float!
+  users: [User!]!
+}
+
 type ApplicationConfig {
   demoMode: Boolean!
   maxChatMessages: Float
@@ -78,6 +90,12 @@ input GetMessagesInput {
   chatId: String!
   limit: Float = 20
   offset: Float = 0
+}
+
+input GetUsersInput {
+  limit: Float = 20
+  offset: Float = 0
+  searchTerm: String
 }
 
 type GqlAmount {
@@ -255,6 +273,7 @@ type Query {
   appConfig: ApplicationConfig
   currentUser: User
   getActiveModels: [GqlModel!]!
+  getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!
   getChatById(id: ID!): Chat
   getChatMessages(input: GetMessagesInput!): GqlMessagesList!
@@ -262,6 +281,7 @@ type Query {
   getCosts(input: GetCostsInput!): GqlCostsInfo!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
+  getUsers(input: GetUsersInput): AdminUsersResponse!
   refreshToken: AuthResponse!
 }
 
@@ -335,6 +355,7 @@ type User {
   id: ID!
   lastName: String!
   models: [Model!]
+  role: String!
   settings: UserSettings
   updatedAt: DateTimeISO!
 }
