@@ -47,9 +47,16 @@ export interface OpenAICost {
 
 export type OpenAIList<T> = {
   object: string;
-  has_more: boolean;
+  has_more?: boolean;
   next_page?: string;
   data: T[];
+};
+
+export type OpenAIModel = {
+  id: string;
+  object: string;
+  created: number;
+  owned_by?: string;
 };
 
 type OpenAiMessageRole = "developer" | "user" | "assistant";
@@ -126,17 +133,8 @@ export class OpenAIService extends BaseProviderService {
     return result;
   }
 
-  async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
-    if (!this.openAiApiKey) {
-      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-    }
-
+  formatModelRequest(inputRequest: InvokeModelParamsRequest): Record<string, any> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
-
-    // Determine if this is an image generation request
-    if (modelId.startsWith("dall-e")) {
-      return this.generateImage(messages, modelId);
-    }
 
     const params: Record<string, any> = {
       model: modelId,
@@ -145,7 +143,31 @@ export class OpenAIService extends BaseProviderService {
       max_tokens: maxTokens,
     };
 
-    logger.debug(params, "Invoking OpenAI model");
+    if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
+      params.max_completion_tokens = maxTokens; // O1 models use max_completion_tokens
+      params.max_tokens = undefined;
+      params.temperature = undefined;
+    } else if (modelId.startsWith("gpt-4o")) {
+      params.temperature = undefined; // GPT-4o models do not support temperature
+    }
+
+    return params;
+  }
+
+  async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
+    if (!this.openAiApiKey) {
+      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+    }
+
+    const { modelId, messages = [] } = inputRequest;
+
+    // Determine if this is an image generation request
+    if (modelId.startsWith("dall-e")) {
+      return this.generateImage(messages, modelId);
+    }
+
+    const params = this.formatModelRequest(inputRequest);
+    logger.debug({ ...params, messages: [] }, "Invoking OpenAI model");
 
     try {
       const response = await axios.post(`${this.baseUrl}/chat/completions`, params, {
@@ -175,7 +197,7 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
+    const { messages = [], modelId } = inputRequest;
 
     callbacks.onStart?.();
 
@@ -190,18 +212,8 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    const requestMessages = this.formatMessages(messages, systemPrompt);
-    const params = {
-      model: modelId,
-      messages: requestMessages,
-      temperature,
-      max_tokens: maxTokens,
-      stream: true,
-    };
-
-    if (modelId.startsWith("gpt-4o")) {
-      params.temperature = undefined; // GPT-4o models do not support temperature
-    }
+    const params = this.formatModelRequest(inputRequest);
+    params.stream = true;
 
     logger.debug({ ...params, messages: [] }, "Invoking OpenAI model streaming");
 
@@ -464,7 +476,7 @@ export class OpenAIService extends BaseProviderService {
 
     try {
       // Fetch models from OpenAI API
-      const response = await axios.get(`${this.baseUrl}/models`, {
+      const response = await axios.get<OpenAIList<OpenAIModel>>(`${this.baseUrl}/models`, {
         headers: this.getHeaders(),
         fetchOptions,
       });
