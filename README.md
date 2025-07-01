@@ -47,6 +47,8 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
+* Add optional API Providers connection settings store in DB (toogle with appropriate remark)
+* Complete usage statistics (inputTokens, outputTokens) load for all the LLMs
 * Add support for more Google LLM provider
 * Add support for more Azure LLM provider
 * Add images generation (DALL-E) support in Rust backend
