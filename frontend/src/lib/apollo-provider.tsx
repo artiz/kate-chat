@@ -29,7 +29,7 @@ import {
 } from "@/store/slices/authSlice";
 import { APP_API_URL, APP_WS_URL } from "@/utils/config";
 import { createFragmentRegistry } from "@apollo/client/cache";
-import { BASE_MODEL_FRAGMENT, BASE_USER_FRAGMENT } from "@/store/services/graphql";
+import { BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "@/store/services/graphql";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
@@ -47,14 +47,12 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       uri: apiUrl,
       headers: {
         "Accept-Encoding": "br, gzip", // Use Brotli and gzip compression
-        "x-openai-api-key": localStorage.getItem(STORAGE_OPENAI_API_KEY) || "",
-        "x-openai-api-admin-key": localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "",
-
         "x-aws-region": localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || "",
         "x-aws-profile": localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || "",
         "x-aws-access-key-id": localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || "",
         "x-aws-secret-access-key": localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || "",
-
+        "x-openai-api-key": localStorage.getItem(STORAGE_OPENAI_API_KEY) || "",
+        "x-openai-api-admin-key": localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "",
         "x-yandex-api-key": localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "",
         "x-yandex-api-folder-id": localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "",
       },
@@ -156,7 +154,7 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       cache: new InMemoryCache({
         fragments: createFragmentRegistry(gql`
           ${BASE_MODEL_FRAGMENT}
-          ${BASE_USER_FRAGMENT}
+          ${FULL_USER_FRAGMENT}
         `),
       }),
       defaultOptions: {

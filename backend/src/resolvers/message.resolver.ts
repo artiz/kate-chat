@@ -150,7 +150,7 @@ export class MessageResolver extends BaseResolver {
   @Mutation(() => Message)
   async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
     const user = await this.validateContextUser(context);
-    return await this.messageService.createMessage(input, context.connectionParams, user);
+    return await this.messageService.createMessage(input, this.loadConnectionParams(context, user), user);
   }
 
   @Subscription(() => GqlMessage, {
@@ -193,7 +193,7 @@ export class MessageResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<string[]> {
     const user = await this.validateContextUser(context);
-    return await this.messageService.deleteMessage(context.connectionParams, id, deleteFollowing, user);
+    return await this.messageService.deleteMessage(this.loadConnectionParams(context, user), id, deleteFollowing, user);
   }
 
   @Mutation(() => SwitchModelResponse)
@@ -204,7 +204,12 @@ export class MessageResolver extends BaseResolver {
   ): Promise<SwitchModelResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.switchMessageModel(messageId, modelId, context.connectionParams, user);
+      const message = await this.messageService.switchMessageModel(
+        messageId,
+        modelId,
+        this.loadConnectionParams(context, user),
+        user
+      );
       return { message };
     } catch (error) {
       logger.error(error, "Error switching model");

@@ -47,7 +47,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Add optional API Providers connection settings store in DB (toogle with appropriate remark)
 * Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Image resolution/count 

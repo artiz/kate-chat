@@ -51,7 +51,7 @@ export class MessagesService {
 
   public connectClient(socket: WebSocket, request: IncomingMessage, chatId: string) {
     const clientIp = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
-    logger.info({ chatId, clientIp }, "Client connected");
+    logger.debug({ chatId, clientIp }, "Client connected");
 
     MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
@@ -232,6 +232,7 @@ export class MessagesService {
               chatId,
               createdAt: MoreThanOrEqual(message.createdAt),
             },
+            order: { createdAt: "ASC" },
           })
         : [
             message.role === MessageRole.USER
@@ -239,7 +240,7 @@ export class MessagesService {
                 await this.messageRepository.findOne({
                   where: {
                     chatId,
-                    createdAt: MoreThan(message.createdAt),
+                    createdAt: MoreThanOrEqual(message.createdAt),
                     role: In([MessageRole.SYSTEM, MessageRole.ERROR]),
                   },
                   order: { createdAt: "ASC" },

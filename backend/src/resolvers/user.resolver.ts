@@ -1,11 +1,11 @@
-import { Resolver, Query, Mutation, Arg, Ctx } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
 import { Repository } from "typeorm";
 import { User } from "../entities/User";
 import { getRepository } from "../config/database";
 import { generateToken, TokenPayload } from "../utils/jwt";
 import bcrypt from "bcryptjs";
 import { ObjectId } from "mongodb";
-import { RegisterInput, LoginInput, UpdateUserInput } from "../types/graphql/inputs";
+import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
 import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
 import { verifyRecaptchaToken } from "../utils/recaptcha";
@@ -181,5 +181,23 @@ export class UserResolver extends BaseResolver {
       token,
       user,
     };
+  }
+
+  @Mutation(() => ID)
+  async changePassword(@Arg("input") input: ChangePasswordInput, @Ctx() context: GraphQLContext): Promise<string> {
+    const user = await this.validateContextUser(context);
+    if (!user) throw new Error("User not found");
+
+    // Check if the old password is correct
+    const passwordIsValid = await bcrypt.compare(input.currentPassword, user.password);
+    if (!passwordIsValid) throw new Error("Invalid old password");
+
+    // Hash the new password
+    const newHashedPassword = await bcrypt.hash(input.newPassword, 12);
+    user.password = newHashedPassword;
+
+    await this.userRepository.save(user);
+
+    return user.id;
   }
 }

@@ -45,15 +45,6 @@ export class BedrockService extends BaseProviderService {
       return;
     }
 
-    logger.debug(
-      {
-        region: connection.AWS_BEDROCK_REGION,
-        profile: connection.AWS_BEDROCK_PROFILE,
-        accessKeyId: connection.AWS_BEDROCK_ACCESS_KEY_ID?.substring(0, 6) || "N/A",
-      },
-      "Initializing AWS Bedrock client"
-    );
-
     const config = connection.AWS_BEDROCK_PROFILE
       ? {
           region: connection.AWS_BEDROCK_REGION,

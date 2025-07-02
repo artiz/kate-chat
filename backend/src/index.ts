@@ -1,3 +1,5 @@
+process.setMaxListeners(0); // Disable max listeners limit for the process
+
 import "reflect-metadata";
 import express, { NextFunction, Request, Response } from "express";
 import cookieParser from "cookie-parser";
@@ -30,8 +32,6 @@ import { HttpError } from "./types/exceptions";
 
 // Load environment variables
 config();
-
-process.setMaxListeners(0); // Disable max listeners limit for the process
 
 const logger = createLogger("server");
 

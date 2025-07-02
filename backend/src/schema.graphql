@@ -28,6 +28,11 @@ type AuthResponse {
   user: User!
 }
 
+input ChangePasswordInput {
+  currentPassword: String!
+  newPassword: String!
+}
+
 type Chat {
   createdAt: DateTimeISO!
   description: String!
@@ -251,6 +256,7 @@ type ModelResponseUsage {
 }
 
 type Mutation {
+  changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
@@ -296,15 +302,6 @@ input RegisterInput {
   recaptchaToken: String
 }
 
-input S3Settings {
-  s3AccessKeyId: String
-  s3Endpoint: String
-  s3FilesBucketName: String
-  s3Profile: String
-  s3Region: String
-  s3SecretAccessKey: String
-}
-
 type Subscription {
   newMessage(chatId: String!): GqlMessage!
 }
@@ -340,7 +337,7 @@ input UpdateUserInput {
   email: String
   firstName: String
   lastName: String
-  settings: S3Settings
+  settings: UserSettingsInput
 }
 
 type User {
@@ -362,10 +359,35 @@ type User {
 }
 
 type UserSettings {
+  awsBedrockAccessKeyId: String
+  awsBedrockProfile: String
+  awsBedrockRegion: String
+  awsBedrockSecretAccessKey: String
+  openaiApiAdminKey: String
+  openaiApiKey: String
   s3AccessKeyId: String
   s3Endpoint: String
   s3FilesBucketName: String
   s3Profile: String
   s3Region: String
   s3SecretAccessKey: String
+  yandexFmApiFolderId: String
+  yandexFmApiKey: String
+}
+
+input UserSettingsInput {
+  awsBedrockAccessKeyId: String
+  awsBedrockProfile: String
+  awsBedrockRegion: String
+  awsBedrockSecretAccessKey: String
+  openaiApiAdminKey: String
+  openaiApiKey: String
+  s3AccessKeyId: String
+  s3Endpoint: String
+  s3FilesBucketName: String
+  s3Profile: String
+  s3Region: String
+  s3SecretAccessKey: String
+  yandexFmApiFolderId: String
+  yandexFmApiKey: String
 }

@@ -14,9 +14,9 @@ import { Model } from "./Model";
 import { JSONTransformer } from "@/utils/db";
 import { TokenPayload } from "@/utils/jwt";
 
-@ObjectType()
-@InputType()
-export class S3Settings {
+@ObjectType("UserSettings")
+@InputType("UserSettingsInput")
+export class UserSettings {
   @Field({ nullable: true })
   s3Endpoint?: string;
   @Field({ nullable: true })
@@ -29,10 +29,26 @@ export class S3Settings {
   s3FilesBucketName?: string;
   @Field({ nullable: true })
   s3Profile?: string;
-}
 
-@ObjectType()
-export class UserSettings extends S3Settings {}
+  @Field({ nullable: true })
+  awsBedrockRegion?: string;
+  @Field({ nullable: true })
+  awsBedrockProfile?: string;
+  @Field({ nullable: true })
+  awsBedrockAccessKeyId?: string;
+  @Field({ nullable: true })
+  awsBedrockSecretAccessKey?: string;
+
+  @Field({ nullable: true })
+  openaiApiKey?: string;
+  @Field({ nullable: true })
+  openaiApiAdminKey?: string;
+
+  @Field({ nullable: true })
+  yandexFmApiKey?: string;
+  @Field({ nullable: true })
+  yandexFmApiFolderId?: string;
+}
 
 @ObjectType()
 @Entity("users")

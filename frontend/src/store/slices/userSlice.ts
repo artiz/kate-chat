@@ -8,6 +8,15 @@ export interface UserSettings {
   s3AccessKeyId?: string;
   s3SecretAccessKey?: string;
   s3FilesBucketName?: string;
+
+  awsBedrockRegion?: string;
+  awsBedrockProfile?: string;
+  awsBedrockAccessKeyId?: string;
+  awsBedrockSecretAccessKey?: string;
+  openaiApiKey?: string;
+  openaiApiAdminKey?: string;
+  yandexFmApiKey?: string;
+  yandexFmApiFolderId?: string;
 }
 
 export enum UserRole {
@@ -28,6 +37,15 @@ export interface User {
   avatarUrl?: string;
   settings?: UserSettings;
   createdAt?: string;
+}
+
+export interface UpdateUserInput {
+  defaultModelId?: string;
+  defaultSystemPrompt?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  settings?: UserSettings;
 }
 
 interface UserState {
@@ -63,7 +81,7 @@ const userSlice = createSlice({
     setAppConfig(state, action: PayloadAction<ApplicationConfig>) {
       state.appConfig = {
         ...action.payload,
-        lastUpdate: action.payload.lastUpdate ? new Date(action.payload.lastUpdate) : new Date(),
+        lastUpdate: action.payload.lastUpdate ? action.payload.lastUpdate : Date.now(),
       };
     },
   },

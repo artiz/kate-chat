@@ -2,8 +2,7 @@ import { Repository } from "typeorm";
 import * as path from "path";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
-import { ConnectionParams } from "@/middleware/auth.middleware";
-import { S3Settings, UserSettings } from "@/entities";
+import { UserSettings } from "@/entities";
 import { getRepository } from "@/config/database";
 import { User } from "@/entities";
 import { TokenPayload } from "@/utils/jwt";
@@ -13,7 +12,7 @@ const logger = createLogger(__filename);
 
 const DEFAULT_REGION = "eu-central-1";
 
-const ConnectionSettingsCache: Map<string, S3Settings> = new Map();
+const ConnectionSettingsCache: Map<string, UserSettings> = new Map();
 
 export class S3Service {
   private s3client: S3Client;
@@ -22,7 +21,7 @@ export class S3Service {
   private userRepository: Repository<User>;
 
   constructor(token?: TokenPayload) {
-    const envSettings: S3Settings = {
+    const envSettings: UserSettings = {
       s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME,
       s3Endpoint: process.env.S3_ENDPOINT,
       s3Region: process.env.S3_REGION,
@@ -31,7 +30,7 @@ export class S3Service {
       s3Profile: process.env.S3_AWS_PROFILE,
     };
 
-    const init = (settings: S3Settings) => {
+    const init = (settings: UserSettings) => {
       ok(settings.s3FilesBucketName, "S3 bucket name is required");
 
       const clientOptions: S3ClientConfig = {
@@ -79,7 +78,7 @@ export class S3Service {
           })
           .then(user => {
             if (user && user.settings) {
-              const settings: S3Settings = {
+              const settings: UserSettings = {
                 ...envSettings,
                 ...(user.settings || {}),
               };

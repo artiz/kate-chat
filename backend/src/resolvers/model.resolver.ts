@@ -54,8 +54,8 @@ export class ModelResolver extends BaseResolver {
   }
 
   private async refreshModels(context: GraphQLContext): Promise<GqlModelsList> {
-    const user = await this.validateContextToken(context);
-    const { connectionParams } = context;
+    const user = await this.validateContextUser(context);
+    const connectionParams = this.loadConnectionParams(context, user);
     try {
       // Get the repository
       const modelRepository = getRepository(Model);
@@ -64,7 +64,7 @@ export class ModelResolver extends BaseResolver {
       const models = await this.aiService.getModels(connectionParams);
 
       const dbModels = await modelRepository.find({
-        where: { user: { id: user.userId } },
+        where: { user: { id: user.id } },
       });
       const enabledMap = dbModels.reduce(
         (map: Record<string, boolean>, m: Model) => {
@@ -74,11 +74,16 @@ export class ModelResolver extends BaseResolver {
         {} as Record<string, boolean>
       );
 
+      logger.debug(
+        { disabled: [...Object.entries(enabledMap).filter(([_, isActive]) => !isActive)].map(([id]) => id) },
+        "Refreshing models"
+      );
+
       // Clear existing models
       if (Object.keys(models).length) {
         await modelRepository.delete({
           isCustom: false,
-          user: { id: user.userId },
+          user,
         });
       }
 
@@ -88,7 +93,7 @@ export class ModelResolver extends BaseResolver {
         // Create new model
         const model = modelRepository.create({
           ...info,
-          user: { id: user.userId },
+          user,
           modelId: modelId,
           description: info.description || `${info.name} by ${info.provider}`,
           isActive: modelId in enabledMap ? enabledMap[modelId] : true,
@@ -114,6 +119,8 @@ export class ModelResolver extends BaseResolver {
   @Authorized()
   async getModels(@Ctx() context: GraphQLContext): Promise<GqlModelsList> {
     const user = await this.validateContextUser(context);
+    const connectionParams = this.loadConnectionParams(context, user);
+
     try {
       // Get models from the database
       const modelRepository = getRepository(Model);
@@ -123,7 +130,7 @@ export class ModelResolver extends BaseResolver {
       });
 
       // Get provider information
-      const providers = await this.getProviderInfo(context.connectionParams);
+      const providers = await this.getProviderInfo(connectionParams);
 
       if (models.length) {
         return { models, providers, total: models.length };
@@ -192,7 +199,8 @@ export class ModelResolver extends BaseResolver {
   @Mutation(() => Message)
   @Authorized()
   async testModel(@Arg("input") input: TestModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
-    const user = await this.validateContextToken(context);
+    const user = await this.validateContextUser(context);
+    const connectionParams = this.loadConnectionParams(context, user);
 
     try {
       const { id, text } = input;
@@ -202,7 +210,7 @@ export class ModelResolver extends BaseResolver {
 
       // Find the model by ID
       const model = await modelRepository.findOne({
-        where: { id, user: { id: user.userId } },
+        where: { id, user: { id: user.id } },
       });
 
       if (!model) throw new Error("Model not found");
@@ -218,12 +226,12 @@ export class ModelResolver extends BaseResolver {
       };
 
       // Generate a response using the AI service
-      const response = await this.aiService.invokeModel(model.apiProvider, context.connectionParams, {
+      const response = await this.aiService.invokeModel(model.apiProvider, connectionParams, {
         modelId: model.modelId,
         messages: [message],
       });
 
-      logger.debug({ message, response }, "Test model inference");
+      logger.trace({ message, response }, "Test model inference");
 
       return {
         id: "00000000-0000-0000-0000-000000000000",
@@ -245,9 +253,11 @@ export class ModelResolver extends BaseResolver {
   async getCosts(@Arg("input") input: GetCostsInput, @Ctx() context: GraphQLContext): Promise<GqlCostsInfo> {
     try {
       const { apiProvider, startTime, endTime } = input;
+      const user = await this.validateContextUser(context);
+      const connectionParams = this.loadConnectionParams(context, user);
 
       // Get costs based on provider
-      const usageCosts = await this.aiService.getCosts(apiProvider, context.connectionParams, startTime, endTime);
+      const usageCosts = await this.aiService.getCosts(apiProvider, connectionParams, startTime, endTime);
       // Map to GraphQL type
       return {
         start: usageCosts.start,

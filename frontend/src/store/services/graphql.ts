@@ -22,8 +22,8 @@ export const BASE_MODEL_FRAGMENT = `
     }
 `;
 
-export const BASE_USER_FRAGMENT = `
-    fragment BaseUser on User {
+export const FULL_USER_FRAGMENT = `
+    fragment FullUser on User {
       id
       email
       firstName
@@ -41,6 +41,15 @@ export const BASE_USER_FRAGMENT = `
         s3AccessKeyId
         s3SecretAccessKey
         s3FilesBucketName
+
+        awsBedrockAccessKeyId
+        awsBedrockProfile
+        awsBedrockRegion
+        awsBedrockSecretAccessKey
+        openaiApiAdminKey
+        openaiApiKey
+        yandexFmApiFolderId
+        yandexFmApiKey
       }
     }
 `;
@@ -50,7 +59,7 @@ export const REGISTER_MUTATION = gql`
     register(input: $input) {
       token
       user {
-        ...BaseUser
+        ...FullUser
       }
     }
   }
@@ -61,7 +70,7 @@ export const LOGIN_MUTATION = gql`
     login(input: $input) {
       token
       user {
-        ...BaseUser
+        ...FullUser
       }
     }
   }
@@ -70,7 +79,7 @@ export const LOGIN_MUTATION = gql`
 export const UPDATE_USER_MUTATION = gql`
   mutation UpdateUser($input: UpdateUserInput!) {
     updateUser(input: $input) {
-      ...BaseUser
+      ...FullUser
     }
   }
 `;
@@ -354,7 +363,7 @@ export interface ApplicationConfig {
   maxChats?: number;
   maxChatMessages?: number;
   maxImages?: number;
-  lastUpdate?: Date;
+  lastUpdate?: number;
 }
 
 export interface GetInitialDataResponse {
@@ -417,7 +426,7 @@ export const graphqlApi = api.injectEndpoints({
           query: `
             query CurrentUser {
               currentUser {
-                ...BaseUser
+                ...FullUser
               }
             }
           `,
@@ -520,7 +529,7 @@ export const graphqlApi = api.injectEndpoints({
           query: `
             query GetInitialData {
               currentUser {
-                ...BaseUser
+                ...FullUser
               }
               getModels {
                 models {
@@ -562,7 +571,7 @@ export const graphqlApi = api.injectEndpoints({
               }
             }
 
-            ${BASE_USER_FRAGMENT}
+            ${FULL_USER_FRAGMENT}
             ${BASE_MODEL_FRAGMENT}
           `,
         },

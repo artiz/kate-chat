@@ -39,6 +39,10 @@ resource "aws_ecs_task_definition" "backend" {
           value = "8080"
         },
         {
+          name  = "LOG_LEVEL"
+          value = "info"
+        },
+        {
           name  = "DEMO_MODE"
           value = "true"
         },
