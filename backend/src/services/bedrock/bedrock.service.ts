@@ -182,6 +182,16 @@ export class BedrockService extends BaseProviderService {
             } else {
               logger.warn(`Unsupported model provider: ${provider}. Cannot process streaming response.`);
             }
+            if (chunkData.type === "message_stop" && !metadata && chunkData["amazon-bedrock-invocationMetrics"]) {
+              const usage = chunkData["amazon-bedrock-invocationMetrics"];
+              metadata = {
+                usage: {
+                  inputTokens: usage.inputTokenCount,
+                  outputTokens: usage.outputTokenCount,
+                  invocationLatency: usage.invocationLatency,
+                },
+              };
+            }
 
             if (token) {
               fullResponse += token;

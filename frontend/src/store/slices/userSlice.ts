@@ -61,7 +61,10 @@ const userSlice = createSlice({
       state.currentUser = null;
     },
     setAppConfig(state, action: PayloadAction<ApplicationConfig>) {
-      state.appConfig = action.payload;
+      state.appConfig = {
+        ...action.payload,
+        lastUpdate: action.payload.lastUpdate ? new Date(action.payload.lastUpdate) : new Date(),
+      };
     },
   },
 });

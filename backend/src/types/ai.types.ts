@@ -97,6 +97,9 @@ export class ModelResponseUsage {
 
   @Field({ nullable: true })
   cacheWriteInputTokens?: number;
+
+  @Field({ nullable: true })
+  invocationLatency?: number;
 }
 
 @ObjectType()

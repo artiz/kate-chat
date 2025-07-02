@@ -8,7 +8,6 @@ import { GET_CHAT_MESSAGES, GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from
 import { debounce, pick } from "lodash";
 
 type HookResult = {
-  chat: Chat | undefined;
   messages: Message[] | undefined;
   messagesLoading: boolean;
   loadCompleted: boolean;
@@ -245,7 +244,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   };
 
   return {
-    chat,
     messages,
     messagesLoading,
     loadCompleted,

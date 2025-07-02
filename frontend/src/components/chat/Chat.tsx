@@ -41,6 +41,8 @@ import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@
 import classes from "./Chat.module.scss";
 import { ImageInput } from "@/store/services/graphql";
 import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
+import { Message } from "@/store/slices/chatSlice";
+import { ok } from "@/utils/assert";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -53,8 +55,12 @@ const CREATE_MESSAGE = gql`
   }
 `;
 
+interface CreateMessageResponse {
+  createMessage: Message;
+}
+
 interface IProps {
-  chatId: string | undefined;
+  chatId: string;
 }
 
 export const ChatComponent = ({ chatId }: IProps) => {
@@ -68,7 +74,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
-
+  const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
 
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
@@ -76,7 +82,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   const {
-    chat,
     messages,
     messagesLoading,
     loadCompleted,
@@ -88,6 +93,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
   } = useChatMessages({
     chatId,
   });
+
+  const chat = useMemo(() => {
+    if (!chatId) return;
+    return chats.find(c => c.id === chatId);
+  }, [chats, chatId]);
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
@@ -153,7 +163,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   // #endregion
 
   // #region Send message
-  const [createMessage] = useMutation(CREATE_MESSAGE, {
+  const [createMessage] = useMutation<CreateMessageResponse>(CREATE_MESSAGE, {
     onCompleted: data => {
       if (data.createMessage) {
         addChatMessage(data.createMessage);
@@ -201,11 +211,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const handleSendMessage = async () => {
     if ((!userMessage?.trim() && !selectedImages.length) || !chatId) return;
+    ok(chatId, "Chat is required to send a message");
     setSending(true);
 
     try {
       // Convert images to base64
-
       await createMessage({
         variables: {
           input: {

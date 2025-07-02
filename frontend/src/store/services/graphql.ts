@@ -354,6 +354,7 @@ export interface ApplicationConfig {
   maxChats?: number;
   maxChatMessages?: number;
   maxImages?: number;
+  lastUpdate?: Date;
 }
 
 export interface GetInitialDataResponse {

@@ -10,12 +10,14 @@ import {
   UsageCostInfo,
   ServiceCostInfo,
   InvokeModelParamsRequest,
+  ModelResponseMetadata,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -69,6 +71,40 @@ type OpenAiRequestMessagePart =
 export type OpenAiRequestMessage = {
   role: OpenAiMessageRole;
   content: OpenAiRequestMessagePart[] | string;
+};
+
+type OpenAiCompletionResponse = {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    index: number;
+    message: {
+      role: OpenAiMessageRole;
+      content: string;
+      refusal: null;
+      annotations: string[];
+    };
+    finish_reason?: string;
+  }[];
+
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    prompt_tokens_details: {
+      cached_tokens: number;
+      audio_tokens: number;
+    };
+    completion_tokens_details: {
+      reasoning_tokens: number;
+      audio_tokens: number;
+      accepted_prediction_tokens: number;
+      rejected_prediction_tokens: number;
+    };
+  };
+  service_tier: string;
 };
 
 export class OpenAIService extends BaseProviderService {
@@ -170,16 +206,24 @@ export class OpenAIService extends BaseProviderService {
     logger.debug({ ...params, messages: [] }, "Invoking OpenAI model");
 
     try {
-      const response = await axios.post(`${this.baseUrl}/chat/completions`, params, {
+      const response = await axios.post<OpenAiCompletionResponse>(`${this.baseUrl}/chat/completions`, params, {
         headers: this.getHeaders(),
         fetchOptions,
       });
 
       const content = response.data.choices[0]?.message?.content || "";
+      const usage = response.data.usage || {};
 
       return {
         type: "text",
         content,
+        metadata: {
+          usage: {
+            inputTokens: usage.prompt_tokens,
+            outputTokens: usage.completion_tokens,
+            cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
+          },
+        },
       };
     } catch (error: unknown) {
       logger.error(error, "Error calling OpenAI API");
@@ -214,6 +258,7 @@ export class OpenAIService extends BaseProviderService {
 
     const params = this.formatModelRequest(inputRequest);
     params.stream = true;
+    params.stream_options = { include_usage: true };
 
     logger.debug({ ...params, messages: [] }, "Invoking OpenAI model streaming");
 
@@ -225,17 +270,32 @@ export class OpenAIService extends BaseProviderService {
       });
 
       let fullResponse = "";
+      let meta: ModelResponseMetadata | undefined = undefined;
 
       response.data.on("data", (chunk: Buffer) => {
         const data = chunk.toString("utf8")?.trim();
-
-        try {
-          const result = JSON.parse(data);
+        const processDelta = (result: any) => {
           const token = result.choices[0]?.delta?.content || "";
           if (token) {
             fullResponse += token;
             callbacks.onToken?.(token);
           }
+
+          const usage = result.usage || {};
+          if (usage.prompt_tokens || usage.completion_tokens) {
+            meta = {
+              usage: {
+                inputTokens: usage.prompt_tokens || 0,
+                outputTokens: usage.completion_tokens || 0,
+                cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
+              },
+            };
+          }
+        };
+
+        try {
+          const result = JSON.parse(data);
+          processDelta(result);
         } catch (error: unknown) {
           if (error instanceof SyntaxError) {
             // extract valid JSON in case of rare formatting issues
@@ -244,18 +304,26 @@ export class OpenAIService extends BaseProviderService {
               .split("\n")
               .map(line => line.trim())
               .filter(l => l && l.includes("{"))
-              .map(line => line.replace(/^[^\{]*\{/m, "{").replace(/\}[^\}]*/m, "}"));
+              .map(line =>
+                line
+                  .replace(/^[^\{]*\{/m, "{")
+                  .replace(/\}[^\}]*/m, "}")
+                  .trim()
+              );
 
             for (const json of jsons) {
               try {
-                const result = JSON.parse(json);
-                const token = result.choices[0]?.delta?.content || "";
-                if (token) {
-                  fullResponse += token;
-                  callbacks.onToken?.(token);
-                }
+                processDelta(JSON.parse(json));
               } catch (jsonError) {
-                logger.error(jsonError, "Failed to parse JSON chunk: " + json);
+                if (error instanceof SyntaxError && json.includes(`"usage"`)) {
+                  try {
+                    processDelta(JSON.parse(json.replace(/\}\}\}\}+$/m, "}}}")));
+                  } catch (jsonError2) {
+                    logger.error(jsonError2, "Failed to parse usage JSON chunk: " + json);
+                  }
+                } else {
+                  logger.error(jsonError, "Failed to parse JSON chunk: " + json);
+                }
               }
             }
           } else {
@@ -265,7 +333,7 @@ export class OpenAIService extends BaseProviderService {
       });
 
       response.data.on("end", () => {
-        callbacks.onComplete?.(fullResponse);
+        callbacks.onComplete?.(fullResponse, meta);
       });
 
       response.data.on("error", (error: Error) => {

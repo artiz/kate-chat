@@ -68,7 +68,7 @@ const AppContent: React.FC = () => {
   } = useGetInitialDataQuery(undefined, {
     skip: !isAuthenticated,
     refetchOnMountOrArgChange: true,
-    pollingInterval: 600_000, // Poll
+    pollingInterval: 900_000, // Poll
   });
 
   useEffect(() => {

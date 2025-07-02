@@ -246,6 +246,7 @@ type ModelResponseUsage {
   cacheReadInputTokens: Float
   cacheWriteInputTokens: Float
   inputTokens: Float
+  invocationLatency: Float
   outputTokens: Float
 }
 

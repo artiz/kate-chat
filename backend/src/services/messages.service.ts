@@ -78,7 +78,7 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    const { chatId, images, modelId } = input;
+    const { chatId, modelId } = input;
     if (!chatId) throw new Error("Chat ID is required");
     if (!modelId) throw new Error("Model ID is required");
     const chat = await this.chatRepository.findOne({
