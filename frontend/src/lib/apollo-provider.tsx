@@ -24,12 +24,12 @@ import {
   STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
   STORAGE_OPENAI_API_ADMIN_KEY,
   STORAGE_OPENAI_API_KEY,
-  STORAGE_YANDEX_FM_API_FOLDER_ID,
+  STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { APP_API_URL, APP_WS_URL } from "@/utils/config";
 import { createFragmentRegistry } from "@apollo/client/cache";
-import { BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "@/store/services/graphql";
+import { BASE_MESSAGE_FRAGMENT, BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "@/store/services/graphql";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
@@ -54,7 +54,7 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         "x-openai-api-key": localStorage.getItem(STORAGE_OPENAI_API_KEY) || "",
         "x-openai-api-admin-key": localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "",
         "x-yandex-api-key": localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "",
-        "x-yandex-api-folder-id": localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "",
+        "x-yandex-api-folder": localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER) || "",
       },
     });
 
@@ -155,6 +155,7 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         fragments: createFragmentRegistry(gql`
           ${BASE_MODEL_FRAGMENT}
           ${FULL_USER_FRAGMENT}
+          ${BASE_MESSAGE_FRAGMENT}
         `),
       }),
       defaultOptions: {

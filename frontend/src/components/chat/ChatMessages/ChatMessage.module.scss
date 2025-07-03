@@ -1,12 +1,23 @@
 .messageContainer {
   width: 100%;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+
+  .main,
+  .linked {
+    flex: 1;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .message {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   padding: var(--mb-padding, var(--mantine-spacing-sm));
   border-radius: var(--mantine-radius-md);
 
@@ -15,7 +26,6 @@
   .htmlBlock {
     display: flex;
     flex-direction: column;
-    align-self: stretch;
   }
 
   :global p {
@@ -99,7 +109,6 @@
   }
 
   :global .code-header {
-    align-self: stretch;
     font-size: 0.875rem;
     margin-top: 0.5rem;
     padding: 0.25rem 1rem 0.25rem 0.5rem;
@@ -218,7 +227,6 @@
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
-  align-self: stretch;
   padding: 0.5rem 0 0.25rem;
   opacity: 0.5;
   transition: opacity var(--theme-default-time) ease;

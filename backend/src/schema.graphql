@@ -28,6 +28,16 @@ type AuthResponse {
   user: User!
 }
 
+input CallOtherInput {
+  messageId: String!
+  modelId: String!
+}
+
+type CallOtherResponse {
+  error: String
+  message: Message
+}
+
 input ChangePasswordInput {
   currentPassword: String!
   newPassword: String!
@@ -64,7 +74,6 @@ input CreateMessageInput {
   images: [ImageInput!]
   maxTokens: Float
   modelId: String
-  role: String! = "user"
   temperature: Float
   topP: Float
 }
@@ -73,6 +82,15 @@ input CreateMessageInput {
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
 """
 scalar DateTimeISO
+
+type DeleteMessageResponse {
+  messages: [DeleteMessageResult!]!
+}
+
+type DeleteMessageResult {
+  id: String!
+  linkedToMessageId: String
+}
 
 input GetChatsInput {
   limit: Float = 20
@@ -214,12 +232,16 @@ type Message {
   content: String!
   createdAt: DateTimeISO!
   id: ID!
+  linkedMessages: [Message!]
+  linkedToMessage: Message!
+  linkedToMessageId: String
   metadata: ModelResponseMetadata
   modelId: String!
   modelName: String
   role: String!
   updatedAt: DateTimeISO!
   user: User
+  userId: String
 }
 
 type Model {
@@ -256,11 +278,12 @@ type ModelResponseUsage {
 }
 
 type Mutation {
+  callOther(input: CallOtherInput!): CallOtherResponse!
   changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
-  deleteMessage(deleteFollowing: Boolean, id: ID!): [ID!]!
+  deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
   reloadModels: GqlModelsList!

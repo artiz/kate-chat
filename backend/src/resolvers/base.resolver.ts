@@ -75,7 +75,7 @@ export class BaseResolver {
       params.OPENAI_API_KEY = user.settings.openaiApiKey || params.OPENAI_API_KEY;
       params.OPENAI_API_ADMIN_KEY = user.settings.openaiApiAdminKey || params.OPENAI_API_ADMIN_KEY;
       params.YANDEX_FM_API_KEY = user.settings.yandexFmApiKey || params.YANDEX_FM_API_KEY;
-      params.YANDEX_FM_API_FOLDER_ID = user.settings.yandexFmApiFolderId || params.YANDEX_FM_API_FOLDER_ID;
+      params.YANDEX_FM_API_FOLDER = user.settings.yandexFmApiFolderId || params.YANDEX_FM_API_FOLDER;
     }
     return params;
   }

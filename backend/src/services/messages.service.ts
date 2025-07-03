@@ -26,6 +26,7 @@ import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./s3.service";
+import { DeleteMessageResponse } from "@/types/graphql/responses";
 
 const logger = createLogger(__filename);
 
@@ -181,13 +182,10 @@ export class MessagesService {
       chatId,
       content: "",
       modelId: model.modelId,
-      role: MessageRole.ASSISTANT,
       temperature: chat.temperature,
       maxTokens: chat.maxTokens,
       topP: chat.topP,
     };
-
-    const s3Service = new S3Service(user.toToken());
 
     // Call publishAssistantMessage to generate new response
     await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, originalMessage);
@@ -195,12 +193,87 @@ export class MessagesService {
     return originalMessage;
   }
 
+  public async callOtherModel(
+    messageId: string,
+    modelId: string,
+    connection: ConnectionParams,
+    user: User
+  ): Promise<Message> {
+    // Find the original message
+    const originalMessage = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ["chat", "chat.user", "user"],
+    });
+
+    if (!originalMessage) throw new Error("Message not found");
+    if (!originalMessage.chat) throw new Error("Chat not found for this message");
+    if (originalMessage.role === MessageRole.USER) throw new Error("User messages cannot be used for calling others");
+
+    const chat = originalMessage.chat;
+    const chatId = originalMessage.chatId || originalMessage.chat.id;
+
+    // Get previous messages for context (up to the original message)
+    const contextMessages = await this.messageRepository
+      .createQueryBuilder("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.createdAt <= :createdAt", { createdAt: originalMessage.createdAt })
+      .andWhere("message.id <> :id", { id: originalMessage.id })
+      .andWhere("message.linkedToMessageId IS NULL") // Only include main messages, not linked ones
+      .orderBy("message.createdAt", "ASC")
+      .getMany();
+
+    // Get valid models for the user
+    const model = await this.modelRepository.findOne({
+      where: {
+        modelId,
+        user: { id: user.id }, // Ensure the model belongs to the user
+      },
+    });
+    if (!model) throw new Error("Model not found");
+
+    let linkedMessage = await this.messageRepository
+      .save({
+        content: "",
+        role: MessageRole.ASSISTANT,
+        modelId: model.modelId,
+        modelName: model.name,
+        chatId: chat.id,
+        linkedToMessageId: originalMessage.id, // Link to the original message
+        user,
+        chat,
+      })
+      .catch(err => {
+        this.queueService.publishError(chat.id, getErrorMessage(err));
+        throw err;
+      });
+
+    const input: CreateMessageInput = {
+      chatId,
+      content: "",
+      modelId: model.modelId,
+      temperature: chat.temperature,
+      maxTokens: chat.maxTokens,
+      topP: chat.topP,
+    };
+
+    await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, linkedMessage);
+    return linkedMessage;
+  }
+
+  /**
+   * Delete message from chat
+   * @param connection Connection parameters
+   * @param id Message ID to delete
+   * @param deleteFollowing Whether to delete following messages
+   * @param user User requesting the deletion
+   * @returns Array of deleted message IDs
+   */
   public async deleteMessage(
     connection: ConnectionParams,
     id: string,
     deleteFollowing: boolean = false,
     user: User
-  ): Promise<string[]> {
+  ): Promise<DeleteMessageResponse> {
     const message = await this.messageRepository.findOne({
       where: { id },
       relations: ["chat"],
@@ -249,7 +322,15 @@ export class MessagesService {
           ]
     ).filter(notEmpty);
 
-    const result: string[] = [message.id]; // Start with the original message ID
+    const result: DeleteMessageResponse = {
+      messages: [
+        {
+          id: message.id,
+          linkedToMessageId: message.linkedToMessageId,
+        },
+      ],
+    }; // Start with the original message ID
+
     if (messagesToDelete.length) {
       // Process each message to find image files
       for (const msg of messagesToDelete) {
@@ -264,7 +345,9 @@ export class MessagesService {
         // Delete the following message
         if (msg.id !== id) {
           // Skip the original message, we'll delete it separately
-          result.push(msg.id);
+          result.messages.push({
+            id: msg.id,
+          });
           await this.messageRepository.remove(msg);
         }
       }
@@ -309,13 +392,13 @@ export class MessagesService {
     model: Model,
     connection: ConnectionParams
   ): Promise<Message> {
-    const { images, role = MessageRole.USER } = input;
+    const { images } = input;
     let { content = "" } = input;
 
     let userMessage = await this.messageRepository
       .save({
         content,
-        role,
+        role: MessageRole.USER,
         modelId: model.modelId, // real model used
         modelName: model.name,
         chatId: chat.id,

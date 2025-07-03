@@ -20,6 +20,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Rich markdown formatting: code blocks, images, MatJAX formulas etc.
 - Multiple chats creation with pristine chat functionality
 - Chat message "Switch model" logic for the previous messages with another model
+- Parallel call for assistant message against other models to [compare results](#screenshots)
 - On-the-fly model switching
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Responsive UI with Mantine
@@ -47,7 +48,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Add parallel call for 2-3 models, link parallel messages with linkedToMessageId
 * Add more UI stuff like:
   * Image resolution/count 
   * Chat message editing
@@ -271,8 +271,15 @@ Authentication is handled via JWT tokens. When a user logs in or registers, they
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/6bd059dd-2102-4f49-bdde-3bd4b9a7fa82)
-![image](https://github.com/user-attachments/assets/abf403da-d63d-430f-81ad-e1ebbc7fce3d)
+### Rich Formatting
+![image](docs/screenshots/chat.png)
+
+### Images Generation
+![image](docs/screenshots/generated-image.png)
+
+### Call Other Model
+![image](docs/screenshots/call-other.png)
+
 
 ## Contributing
 

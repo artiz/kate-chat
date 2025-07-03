@@ -114,7 +114,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     <Code block mt="xs">
                       YANDEX_FM_API_KEY=your_yandex_api_key
                       <br />
-                      YANDEX_FM_API_FOLDER_ID=your_yandex_folder_id
+                      YANDEX_FM_API_FOLDER=your_yandex_folder_id
                     </Code>
                   </Alert>
                 )}

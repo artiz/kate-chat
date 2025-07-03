@@ -54,6 +54,28 @@ export const FULL_USER_FRAGMENT = `
     }
 `;
 
+export const BASE_MESSAGE_FRAGMENT = `
+    fragment BaseMessage on Message {
+      id
+      content
+      role
+      createdAt
+      modelId
+      modelName
+      user {
+        lastName
+        firstName
+      }
+      linkedToMessageId
+      metadata {
+        usage {
+          inputTokens
+          outputTokens
+        }
+      }
+    }
+`;
+
 export const REGISTER_MUTATION = gql`
   mutation Register($input: RegisterInput!) {
     register(input: $input) {
@@ -109,7 +131,12 @@ export const DELETE_CHAT_MUTATION = gql`
 
 export const DELETE_MESSAGE_MUTATION = gql`
   mutation DeleteMessage($id: ID!, $deleteFollowing: Boolean) {
-    deleteMessage(id: $id, deleteFollowing: $deleteFollowing)
+    deleteMessage(id: $id, deleteFollowing: $deleteFollowing) {
+      messages {
+        id
+        linkedToMessageId
+      }
+    }
   }
 `;
 
@@ -123,6 +150,27 @@ export const SWITCH_MODEL_MUTATION = gql`
         createdAt
         modelId
         modelName
+        user {
+          lastName
+          firstName
+        }
+      }
+      error
+    }
+  }
+`;
+
+export const CALL_OTHERS_MUTATION = gql`
+  mutation CallOther($input: CallOtherInput!) {
+    callOther(input: $input) {
+      message {
+        id
+        content
+        role
+        createdAt
+        modelId
+        modelName
+        linkedToMessageId
         user {
           lastName
           firstName
@@ -224,21 +272,9 @@ export const GET_CHAT_MESSAGES = gql`
   query GetChatMessages($input: GetMessagesInput!) {
     getChatMessages(input: $input) {
       messages {
-        id
-        content
-        role
-        createdAt
-        modelId
-        modelName
-        user {
-          lastName
-          firstName
-        }
-        metadata {
-          usage {
-            inputTokens
-            outputTokens
-          }
+        ...BaseMessage
+        linkedMessages {
+          ...BaseMessage
         }
       }
       total
@@ -404,12 +440,26 @@ export interface GqlCostsInfo {
 }
 
 export interface DeleteMessageResponse {
-  deleteMessage: string[];
+  deleteMessage: {
+    messages: Message[];
+  };
 }
 
 export interface SwitchModelResponse {
   switchModel: {
     message: Message;
+    error?: string;
+  };
+}
+
+export interface CallOthersInput {
+  messageId: string;
+  modelIds: string[];
+}
+
+export interface CallOthersResponse {
+  callOther: {
+    message?: Message;
     error?: string;
   };
 }

@@ -66,7 +66,7 @@ export class YandexService extends BaseProviderService {
   constructor(connection: ConnectionParams) {
     super(connection);
     this.apiKey = connection.YANDEX_FM_API_KEY || "";
-    this.folderId = connection.YANDEX_FM_API_FOLDER_ID || "";
+    this.folderId = connection.YANDEX_FM_API_FOLDER || "";
   }
 
   // Convert messages to Yandex format
@@ -102,9 +102,7 @@ export class YandexService extends BaseProviderService {
   // Invoke Yandex model for text generation
   async invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse> {
     if (!this.apiKey) {
-      throw new Error(
-        "Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER_ID in connection seettings."
-      );
+      throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection seettings.");
     }
 
     const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
@@ -162,7 +160,7 @@ export class YandexService extends BaseProviderService {
   async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
     if (!this.apiKey || !this.folderId) {
       callbacks.onError?.(
-        new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER_ID in environment variables.")
+        new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in environment variables.")
       );
       return;
     }

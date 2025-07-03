@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { Message, MessageType, MessageRole } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
+import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql";
 
 const THROTTLE_TIMEOUT = 60; // ms throttle timeout
 
@@ -11,23 +12,14 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
     newMessage(chatId: $chatId) {
       type
       message {
-        id
-        content
-        role
-        createdAt
-        modelId
-        modelName
-        metadata {
-          usage {
-            inputTokens
-            outputTokens
-          }
-        }
+        ...BaseMessage
       }
       error
       streaming
     }
   }
+
+  ${BASE_MESSAGE_FRAGMENT}
 `;
 
 type SubscriptionResult = {

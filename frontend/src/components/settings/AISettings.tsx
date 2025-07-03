@@ -27,7 +27,7 @@ import {
   STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
   STORAGE_OPENAI_API_ADMIN_KEY,
   STORAGE_OPENAI_API_KEY,
-  STORAGE_YANDEX_FM_API_FOLDER_ID,
+  STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { ApiProvider } from "@/types/ai";
@@ -105,7 +105,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     }
     if (enabledApiProviders.has("yandex_fm")) {
       setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || settings.yandexFmApiKey || "");
-      setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || settings.yandexFmApiFolderId || "");
+      setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER) || settings.yandexFmApiFolderId || "");
 
       setYandexFmServerSave(Boolean(settings.yandexFmApiKey || settings.yandexFmApiFolderId));
     }
@@ -157,7 +157,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     localStorage.setItem(STORAGE_OPENAI_API_KEY, openaiApiKey || "");
     localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
     localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
-    localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER_ID, yandexApiFolderId || "");
+    localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER, yandexApiFolderId || "");
 
     const settings: UserSettings = {
       s3Endpoint: s3Endpoint || "",
@@ -246,7 +246,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                     placeholder="us-east-1"
                   />
                   <TextInput
-                    label="AWS profile"
+                    label="AWS profile (useful on local dev env)"
                     autoComplete="off"
                     value={awsProfile}
                     onChange={e => setAwsProfile(e.target.value)}

@@ -222,7 +222,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
             chatId,
             content: userMessage,
             images: selectedImages,
-            role: "user",
             modelId: selectedModel?.modelId,
             temperature: chat?.temperature,
             maxTokens: chat?.maxTokens,
@@ -509,6 +508,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               selectedModelName={selectedModel?.name}
               onMessageDeleted={removeMessages} // Reload messages after deletion
               onMessageModelSwitch={addChatMessage}
+              onCallOther={addChatMessage}
             />
           )}
         </div>
@@ -565,7 +565,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             maxRows={5}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
-            disabled={sending || messagesLoading || messagesLimitReached}
+            disabled={messagesLoading || messagesLimitReached}
           />
           <Button onClick={handleSendMessage} disabled={sendMessageAllowed}>
             <IconSend size={16} /> Send

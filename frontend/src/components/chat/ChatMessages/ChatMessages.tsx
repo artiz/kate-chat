@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Paper, Text, Stack, Group, Avatar, Loader, Box } from "@mantine/core";
 import { IconRobot } from "@tabler/icons-react";
 import { Message } from "@/store/slices/chatSlice";
+import { Model } from "@/store/slices/modelSlice";
 import { gql, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import {
@@ -9,6 +10,8 @@ import {
   DeleteMessageResponse,
   SWITCH_MODEL_MUTATION,
   SwitchModelResponse,
+  CALL_OTHERS_MUTATION as CALL_OTHER_MUTATION,
+  CallOthersResponse,
 } from "@/store/services/graphql";
 
 import { ok } from "@/utils/assert";
@@ -20,8 +23,9 @@ interface ChatMessagesProps {
   messages: Message[];
   sending: boolean;
   selectedModelName?: string;
-  onMessageDeleted?: (ids: string[]) => void;
+  onMessageDeleted?: (res: DeleteMessageResponse) => void;
   onMessageModelSwitch?: (message: Message) => void;
+  onCallOther?: (message: Message) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -30,11 +34,13 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   selectedModelName,
   onMessageDeleted,
   onMessageModelSwitch,
+  onCallOther,
 }) => {
   const componentRef = useRef<HTMLDivElement>(null);
 
   // State for delete confirmation modal
   const [messageToDelete, setMessageToDelete] = useState<string | undefined>();
+  const [isLinkedMessage, setIsLinkedMessage] = useState<boolean>(false);
   const [imageToShow, setImageToShow] = useState<string | undefined>();
   const [imageFileName, setImageFileName] = useState<string | undefined>();
 
@@ -52,7 +58,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         color: "green",
       });
 
-      onMessageDeleted?.(res.deleteMessage);
+      onMessageDeleted?.(res);
     },
     onError: error => {
       notifications.show({
@@ -78,7 +84,29 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     onError: error => {
       notifications.show({
         title: "Error",
-        message: error.message || "Failed to delete message",
+        message: error.message || "Failed to switch model",
+        color: "red",
+      });
+    },
+  });
+
+  // Call Others mutation
+  const [callOther, { loading: callingOthers }] = useMutation<CallOthersResponse>(CALL_OTHER_MUTATION, {
+    onCompleted: res => {
+      if (res.callOther.error) {
+        return notifications.show({
+          title: "Error",
+          message: res.callOther.error,
+          color: "red",
+        });
+      }
+      ok(res.callOther.message, "Call Other response should contain a message");
+      onCallOther?.(res.callOther.message);
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to call other models",
         color: "red",
       });
     },
@@ -93,6 +121,20 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     });
   }, []);
 
+  const handleCallOther = useCallback(
+    (messageId: string, modelId: string) => {
+      callOther({
+        variables: {
+          input: {
+            messageId,
+            modelId,
+          },
+        },
+      });
+    },
+    [callOther]
+  );
+
   // common messages interaction logic
   const handleMessageClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -105,6 +147,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         "delete-message-btn",
         "message-image",
         "switch-model-btn",
+        "call-other-btn",
       ];
 
       let el: HTMLElement = e.target as HTMLElement;
@@ -172,7 +215,12 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       else if (target.classList.contains("copy-message-btn")) {
         if (target.dataset["messageId"]) {
           const index = target.dataset["messageIndex"];
-          const msg = messages[Number(index)];
+          const linkedIndex = target.dataset["messageLinkedIndex"];
+
+          let msg: Message | undefined = messages[Number(index)];
+          if (linkedIndex != undefined) {
+            msg = msg.linkedMessages?.[Number(linkedIndex)];
+          }
           ok(msg, "Message should exist to copy");
           const content = (msg.content || "").trim();
           navigator.clipboard.writeText(content);
@@ -192,7 +240,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       else if (target.classList.contains("delete-message-btn")) {
         if (target.dataset["messageId"]) {
           const messageId = target.dataset["messageId"];
+          const isLinked = target.dataset["messageIsLinked"];
+
           setMessageToDelete(messageId);
+          setIsLinkedMessage(!!isLinked);
         }
       }
       // code toggle btn
@@ -208,6 +259,12 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         ok(messageId, "Message ID should be defined for switch model");
         ok(modelId, "Model ID should be defined for switch model");
         handleSwitchModel(messageId, modelId);
+      } else if (target.classList.contains("call-other-btn")) {
+        const messageId = target.dataset["messageId"];
+        const modelId = target.dataset["modelId"];
+        ok(messageId, "Message ID should be defined for call others");
+        ok(modelId, "Model IDs should be defined for call others");
+        handleCallOther(messageId, modelId);
       }
     },
     [messages]
@@ -224,6 +281,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       },
     });
     setMessageToDelete(undefined);
+    setIsLinkedMessage(false);
   }, [messageToDelete, deleteMessage]);
 
   // Handle delete message and following
@@ -237,6 +295,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       },
     });
     setMessageToDelete(undefined);
+    setIsLinkedMessage(false);
   }, [messageToDelete, deleteMessage]);
 
   return (
@@ -244,7 +303,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       <Stack gap="md" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
           <Group key={msg.id} align="flex-start" gap="xs">
-            <ChatMessage message={msg} index={index} disabled={deletingMessage || switchingModel} />
+            <ChatMessage message={msg} index={index} disabled={deletingMessage || switchingModel || callingOthers} />
           </Group>
         ))}
 
@@ -273,7 +332,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         isOpen={!!messageToDelete}
         onClose={() => setMessageToDelete(undefined)}
         onDeleteSingle={handleDeleteSingleMessage}
-        onDeleteWithFollowing={handleDeleteMessageAndFollowing}
+        onDeleteWithFollowing={isLinkedMessage ? undefined : handleDeleteMessageAndFollowing}
       />
 
       {/* Image Preview Modal */}

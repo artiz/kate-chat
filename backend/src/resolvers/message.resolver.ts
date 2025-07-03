@@ -1,11 +1,25 @@
-import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID } from "type-graphql";
-import { Repository } from "typeorm";
+import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
+import { Repository, IsNull } from "typeorm";
 import { Message } from "@/entities/Message";
 import { Chat, Model } from "@/entities";
-import { CreateMessageInput, GetMessagesInput, SwitchModelInput, GetImagesInput } from "@/types/graphql/inputs";
+import {
+  CreateMessageInput,
+  GetMessagesInput,
+  SwitchModelInput,
+  GetImagesInput,
+  CallOtherInput,
+} from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from "@/middleware/auth.middleware";
-import { GqlMessage, GqlMessagesList, SwitchModelResponse, GqlImagesList, GqlImage } from "@/types/graphql/responses";
+import {
+  GqlMessage,
+  GqlMessagesList,
+  SwitchModelResponse,
+  GqlImagesList,
+  GqlImage,
+  CallOtherResponse,
+  DeleteMessageResponse,
+} from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { MessagesService } from "@/services/messages.service";
 import { BaseResolver } from "./base.resolver";
@@ -49,15 +63,15 @@ export class MessageResolver extends BaseResolver {
 
     if (!chat) throw new Error("Chat not found");
 
-    // Get messages for the chat
-    const where = { chatId };
+    // Get messages for the chat (excluding linked messages)
+    const where = { chatId, linkedToMessageId: IsNull() };
     const messages = await this.messageRepository
       .find({
         where,
         skip,
         take,
         order: { createdAt: "DESC", role: "ASC" },
-        relations: ["user"],
+        relations: ["user", "linkedMessages"],
       })
       .then(messages => messages.reverse());
 
@@ -81,7 +95,7 @@ export class MessageResolver extends BaseResolver {
       where: {
         id,
       },
-      relations: ["chat"],
+      relations: ["chat", "linkedMessages"],
     });
 
     if (!message) return null;
@@ -186,12 +200,12 @@ export class MessageResolver extends BaseResolver {
     };
   }
 
-  @Mutation(() => [ID])
+  @Mutation(() => DeleteMessageResponse)
   async deleteMessage(
     @Arg("id", () => ID) id: string,
     @Arg("deleteFollowing", { nullable: true }) deleteFollowing: boolean = false,
     @Ctx() context: GraphQLContext
-  ): Promise<string[]> {
+  ): Promise<DeleteMessageResponse> {
     const user = await this.validateContextUser(context);
     return await this.messageService.deleteMessage(this.loadConnectionParams(context, user), id, deleteFollowing, user);
   }
@@ -215,5 +229,34 @@ export class MessageResolver extends BaseResolver {
       logger.error(error, "Error switching model");
       return { error: `Failed to switch model: ${error instanceof Error ? error.message : String(error)}` };
     }
+  }
+
+  @Mutation(() => CallOtherResponse)
+  async callOther(@Arg("input") input: CallOtherInput, @Ctx() context: GraphQLContext): Promise<CallOtherResponse> {
+    try {
+      const user = await this.validateContextUser(context);
+      const message = await this.messageService.callOtherModel(
+        input.messageId,
+        input.modelId,
+        this.loadConnectionParams(context, user),
+        user
+      );
+
+      return { message };
+    } catch (error) {
+      logger.error(error, "Error calling other models");
+      return { error: `Failed to call other models: ${error instanceof Error ? error.message : String(error)}` };
+    }
+  }
+
+  @FieldResolver(() => [Message])
+  async linkedMessages(@Root() message: Message): Promise<Message[]> {
+    if (!message.id) return [];
+
+    return await this.messageRepository.find({
+      where: { linkedToMessageId: message.id },
+      order: { createdAt: "ASC" },
+      relations: ["user"],
+    });
   }
 }

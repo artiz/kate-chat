@@ -4,7 +4,12 @@ import { Message, MessageType, MessageRole, Chat, updateChat as updateChatInStat
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
-import { GET_CHAT_MESSAGES, GetChatMessagesResponse, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
+import {
+  DeleteMessageResponse,
+  GET_CHAT_MESSAGES,
+  GetChatMessagesResponse,
+  UPDATE_CHAT_MUTATION,
+} from "@/store/services/graphql";
 import { debounce, pick } from "lodash";
 
 type HookResult = {
@@ -13,7 +18,7 @@ type HookResult = {
   loadCompleted: boolean;
   streaming: boolean;
   addChatMessage: (msg: Message) => void;
-  removeMessages: (messageIds: string[]) => void;
+  removeMessages: (result: DeleteMessageResponse) => void;
   loadMoreMessages: () => void;
   updateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
 };
@@ -128,27 +133,42 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     };
   }, [chatId]);
 
-  const removeMessages = (messageIds: string[]) => {
-    if (!chatId || !messageIds.length) return;
+  const removeMessages = (result: DeleteMessageResponse) => {
+    if (!chatId || !result.deleteMessage.messages.length) return;
+    const deletedMessages = result.deleteMessage.messages;
     setMessages(prev => {
       if (!prev) return []; // If no messages yet, return empty array
+      const messageIds = new Set(deletedMessages.map(m => m.id));
 
-      // Filter out messages that match the IDs to be removed
-      const updatedMessages = prev.filter(msg => !messageIds.includes(msg.id));
-      if (updatedMessages.length === prev.length) {
-        return prev; // No changes made, return original array
-      }
-
-      // If the last message was removed, reset the lastBotMessage in chat
-      if (chat && messageIds.includes(chat.lastBotMessageId || "")) {
-        updateChat(chatId, {
-          ...chat,
-          lastBotMessage: "...",
-          lastBotMessageHtml: undefined,
+      // linked one delete
+      const linkedMessages = new Set(deletedMessages.filter(m => m.linkedToMessageId).map(m => m.linkedToMessageId));
+      if (linkedMessages.size) {
+        return prev.map(msg => {
+          if (linkedMessages.has(msg.id)) {
+            return { ...msg, linkedMessages: msg.linkedMessages?.filter(lm => !messageIds.has(lm.id)) };
+          }
+          return msg;
         });
-      }
+      } else {
+        // Filter out messages that match the IDs to be removed
+        const updatedMessages = prev.filter(msg => !messageIds.has(msg.id));
+        if (updatedMessages.length === prev.length) {
+          return prev; // No changes made, return original array
+        }
 
-      return updatedMessages;
+        // If the last message was removed, reset the lastBotMessage in chat
+        if (chat && messageIds.has(chat.lastBotMessageId || "")) {
+          const lastMsgNdx = updatedMessages.findLastIndex(m => m.role === MessageRole.ASSISTANT);
+          const lastMsg = lastMsgNdx != -1 ? updatedMessages[lastMsgNdx] : undefined;
+          updateChat(chatId, {
+            ...chat,
+            lastBotMessage: lastMsg?.content || "...",
+            lastBotMessageHtml: lastMsg?.html || undefined,
+          });
+        }
+
+        return updatedMessages;
+      }
     });
   };
 
@@ -205,17 +225,43 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       setMessages(prev => {
         if (!prev) return [message]; // If no messages yet, start with this one
 
-        const existingNdx = prev.findLastIndex(m => m.id === message.id);
-        // If the last message is from the same user and has the same content, skip adding
-        if (existingNdx !== -1) {
-          prev[existingNdx] = { ...message }; // Update the last message instead
+        if (message.linkedToMessageId) {
+          const parentNdx = prev.findLastIndex(m => m.id === message.linkedToMessageId);
+          if (parentNdx === -1) {
+            notifications.show({
+              title: "Error",
+              message: `Parent message with ID ${message.linkedToMessageId} not found`,
+              color: "red",
+            });
+
+            return prev; // If parent not found, do not add this message
+          }
+
+          const linkedMessages = [...(prev[parentNdx].linkedMessages || [])];
+          const existingNdx = linkedMessages.findLastIndex(m => m.id === message.id);
+          if (existingNdx !== -1) {
+            linkedMessages[existingNdx] = { ...message };
+          } else {
+            linkedMessages.push(message);
+          }
+          prev[parentNdx] = {
+            ...prev[parentNdx],
+            linkedMessages,
+          };
           return [...prev];
         } else {
-          return [...prev, message];
+          const existingNdx = prev.findLastIndex(m => m.id === message.id);
+          // If the last message is from the same user and has the same content, skip adding
+          if (existingNdx !== -1) {
+            prev[existingNdx] = { ...message }; // Update the last message instead
+            return [...prev];
+          } else {
+            return [...prev, message];
+          }
         }
       });
 
-      if (chat && message.role === MessageRole.ASSISTANT) {
+      if (chat && message.role === MessageRole.ASSISTANT && !message.linkedToMessageId) {
         const update = {
           ...chat,
           lastBotMessage: message.content,

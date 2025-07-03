@@ -23,6 +23,8 @@ export interface Message {
   user?: User;
   createdAt: string;
   streaming?: boolean;
+  linkedToMessageId?: string;
+  linkedMessages?: Message[];
   metadata?: {
     usage?: {
       inputTokens?: number;

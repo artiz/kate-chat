@@ -130,9 +130,6 @@ export class CreateMessageInput {
   @Field({ nullable: true })
   modelId: string;
 
-  @Field(() => String, { defaultValue: MessageRole.USER })
-  role: MessageRole;
-
   @Field({ nullable: true })
   temperature?: number;
 
@@ -208,6 +205,15 @@ export class GetCostsInput {
 
 @InputType()
 export class SwitchModelInput {
+  @Field()
+  messageId: string;
+
+  @Field()
+  modelId: string;
+}
+
+@InputType()
+export class CallOtherInput {
   @Field()
   messageId: string;
 

@@ -5,7 +5,7 @@ interface DeleteMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDeleteSingle: () => void;
-  onDeleteWithFollowing: () => void;
+  onDeleteWithFollowing?: () => void;
 }
 
 export const DeleteMessageModal: React.FC<DeleteMessageModalProps> = ({
@@ -21,11 +21,13 @@ export const DeleteMessageModal: React.FC<DeleteMessageModalProps> = ({
 
         <Group mt="md">
           <Button variant="outline" color="red" onClick={onDeleteSingle}>
-            Only this message
+            {onDeleteWithFollowing ? "Only this message" : "Delete Message"}
           </Button>
-          <Button color="red" onClick={onDeleteWithFollowing}>
-            This one and all following
-          </Button>
+          {onDeleteWithFollowing && (
+            <Button color="red" onClick={onDeleteWithFollowing}>
+              This one and all following
+            </Button>
+          )}
           <Button ms="4" variant="outline" onClick={onClose}>
             Cancel
           </Button>

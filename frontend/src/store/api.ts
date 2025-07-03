@@ -7,7 +7,7 @@ import {
   STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
   STORAGE_OPENAI_API_ADMIN_KEY,
   STORAGE_OPENAI_API_KEY,
-  STORAGE_YANDEX_FM_API_FOLDER_ID,
+  STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "./slices/authSlice";
 import { APP_API_URL } from "@/utils/config";
@@ -51,7 +51,7 @@ export const api = createApi({
       headers.set("x-aws-access-key-id", localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || "");
       headers.set("x-aws-secret-access-key", localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || "");
       headers.set("x-yandex-api-key", localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "");
-      headers.set("x-yandex-api-folder-id", localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER_ID) || "");
+      headers.set("x-yandex-api-folder", localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER) || "");
 
       return headers;
     },

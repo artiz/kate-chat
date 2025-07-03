@@ -192,6 +192,30 @@ export class SwitchModelResponse {
 }
 
 @ObjectType()
+export class DeleteMessageResult {
+  @Field()
+  id: string;
+
+  @Field({ nullable: true })
+  linkedToMessageId?: string;
+}
+
+@ObjectType()
+export class DeleteMessageResponse {
+  @Field(() => [DeleteMessageResult])
+  messages: DeleteMessageResult[];
+}
+
+@ObjectType()
+export class CallOtherResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => Message, { nullable: true })
+  message?: Message;
+}
+
+@ObjectType()
 export class GqlImage {
   @Field(() => ID)
   id: string;

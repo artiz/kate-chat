@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Paper, Text, Group, Avatar, ActionIcon, Tooltip, Menu } from "@mantine/core";
-import { IconCopy, IconCopyCheck, IconRobot, IconUser, IconTrash, IconRefresh } from "@tabler/icons-react";
+import { Carousel } from "@mantine/carousel";
+import { IconCopy, IconCopyCheck, IconRobot, IconUser, IconTrash, IconRefresh, IconUsers } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import classes from "./ChatMessage.module.scss";
 import { debounce } from "lodash";
-import { useSelector } from "react-redux";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 
@@ -15,10 +15,23 @@ interface ChatMessageProps {
   disabled?: boolean;
 }
 
+// TODO: split that into smaller components
 export const ChatMessage = (props: ChatMessageProps) => {
   const { message, index, disabled = false } = props;
-  const { role, id, modelName, content, html, createdAt, user, streaming = false, metadata } = message;
-  const { models } = useAppSelector(state => state.models);
+  const {
+    role,
+    id,
+    modelName,
+    modelId,
+    content,
+    html,
+    createdAt,
+    user,
+    streaming = false,
+    metadata,
+    linkedMessages,
+  } = message;
+  const { models: allModels } = useAppSelector(state => state.models);
   const componentRef = useRef<HTMLDivElement>(null);
 
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
@@ -110,7 +123,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   const actions = useMemo(() => {
     return (
-      <div className={classes.messageFooter}>
+      <>
         <Tooltip label="Copy message" position="top" withArrow>
           <ActionIcon
             className="copy-message-btn"
@@ -151,19 +164,50 @@ export const ChatMessage = (props: ChatMessageProps) => {
             </Menu.Target>
 
             <Menu.Dropdown className={classes.switchModelDropdown}>
-              {models.map(model => (
-                <Menu.Item
-                  key={model.id}
-                  data-message-id={id}
-                  data-model-id={model.modelId}
-                  className="switch-model-btn"
-                  leftSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
-                >
-                  {model.name}
-                </Menu.Item>
-              ))}
+              {allModels
+                .filter(m => m.modelId != modelId)
+                .map(model => (
+                  <Menu.Item
+                    key={model.id}
+                    data-message-id={id}
+                    data-model-id={model.modelId}
+                    className="switch-model-btn"
+                    leftSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
+                  >
+                    {model.name}
+                  </Menu.Item>
+                ))}
 
               {/* <Menu.Divider /> */}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+
+        {/* Call Others button - only show on parent Assistant messages */}
+        {role === MessageRole.ASSISTANT && !message.linkedToMessageId && (
+          <Menu shadow="md" width={200}>
+            <Menu.Target>
+              <ActionIcon size="sm" color="gray" variant="transparent" disabled={disableActions}>
+                <Tooltip label="Call other model" position="top" withArrow>
+                  <IconUsers />
+                </Tooltip>
+              </ActionIcon>
+            </Menu.Target>
+
+            <Menu.Dropdown className={classes.switchModelDropdown}>
+              {allModels
+                .filter(m => m.modelId != modelId)
+                .map(model => (
+                  <Menu.Item
+                    key={model.id}
+                    data-message-id={id}
+                    data-model-id={model.modelId}
+                    className="call-other-btn"
+                    leftSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
+                  >
+                    {model.name}
+                  </Menu.Item>
+                ))}
             </Menu.Dropdown>
           </Menu>
         )}
@@ -180,9 +224,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
             </Text>
           </Tooltip>
         )}
-      </div>
+      </>
     );
-  }, [id, index, role, modelName, disableActions, models, metadata]);
+  }, [id, index, role, modelName, modelId, disableActions, metadata]);
 
   const cmp = useMemo(() => {
     const isUserMessage = role === MessageRole.USER;
@@ -194,36 +238,107 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
     return (
       <div className={classes.messageContainer}>
-        <Group align="center">
-          <Avatar radius="xl" size="md">
-            {isUserMessage ? <IconUser /> : <IconRobot />}
-          </Avatar>
-          <Group gap="xs">
-            <Text size="sm" fw={500} c={isUserMessage ? "blue" : "dark"}>
-              {username}
-            </Text>
-            <Text size="xs" c="dimmed">
-              {timestamp}
-            </Text>
+        <div className={classes.main}>
+          <Group align="center">
+            <Avatar radius="xl" size="md">
+              {isUserMessage ? <IconUser /> : <IconRobot />}
+            </Avatar>
+            <Group gap="xs">
+              <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
+                {username}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {timestamp}
+              </Text>
+            </Group>
           </Group>
-        </Group>
-        <div
-          className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}
-          ref={componentRef}
-        >
-          {html ? (
-            html.map((part, index) => (
-              <div className={classes.htmlBlock} key={index} dangerouslySetInnerHTML={{ __html: part }} />
-            ))
-          ) : (
-            <div className={classes.htmlBlock}>{content}</div>
-          )}
-
-          {actions}
+          <div
+            className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}
+            ref={componentRef}
+          >
+            {html ? (
+              html.map((part, index) => (
+                <div className={classes.htmlBlock} key={index} dangerouslySetInnerHTML={{ __html: part }} />
+              ))
+            ) : (
+              <div className={classes.htmlBlock}>{content}</div>
+            )}
+            <div className={classes.messageFooter}>{actions}</div>
+          </div>
         </div>
+
+        {linkedMessages && linkedMessages.length > 0 && (
+          <div className={classes.linked}>
+            <Carousel withIndicators emblaOptions={{ align: "center", loop: true }} slideGap="0">
+              {linkedMessages.map((linkedMsg, linkedIndex) => (
+                <Carousel.Slide key={linkedMsg.id}>
+                  <Group align="center">
+                    <Avatar radius="xl" size="md">
+                      <IconRobot />
+                    </Avatar>
+                    <Group gap="xs">
+                      <Text size="xs" fw={500} c="teal">
+                        {linkedMsg.modelName}
+                      </Text>
+                      {linkedMsg.metadata?.usage && (
+                        <Text size="xs" c="dimmed">
+                          OUT: {linkedMsg.metadata.usage.outputTokens || "N/A"}
+                        </Text>
+                      )}
+                    </Group>
+                  </Group>
+
+                  <div className={classes.message}>
+                    {linkedMsg.html ? (
+                      linkedMsg.html.map((part, index) => (
+                        <div key={index} dangerouslySetInnerHTML={{ __html: part }} />
+                      ))
+                    ) : (
+                      <div>{linkedMsg.content}</div>
+                    )}
+
+                    <div className={classes.messageFooter}>
+                      <Tooltip label="Copy message" position="top" withArrow>
+                        <ActionIcon
+                          className="copy-message-btn"
+                          data-message-id={linkedMsg.id}
+                          data-message-index={index}
+                          data-message-linked-index={linkedIndex}
+                          size="sm"
+                          color="gray"
+                          variant="transparent"
+                          disabled={disableActions}
+                        >
+                          <IconCopy />
+                        </ActionIcon>
+                      </Tooltip>
+                      <ActionIcon disabled size="sm" className="check-icon">
+                        <IconCopyCheck />
+                      </ActionIcon>
+
+                      <Tooltip label="Delete message" position="top" withArrow>
+                        <ActionIcon
+                          className="delete-message-btn"
+                          data-message-id={linkedMsg.id}
+                          data-message-is-linked="true"
+                          size="sm"
+                          color="red.4"
+                          variant="transparent"
+                          disabled={disableActions}
+                        >
+                          <IconTrash />
+                        </ActionIcon>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </Carousel.Slide>
+              ))}
+            </Carousel>
+          </div>
+        )}
       </div>
     );
-  }, [role, id, user, modelName, content, html, createdAt, streaming, actions]);
+  }, [role, id, user, modelName, content, html, createdAt, streaming, actions, linkedMessages]);
 
   return cmp;
 };
