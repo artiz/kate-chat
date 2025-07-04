@@ -173,9 +173,10 @@ export const ChatMessage = (props: ChatMessageProps) => {
         {linkedMessages && linkedMessages.length > 0 && (
           <div className={classes.linked}>
             <Carousel
-              withIndicators
+              withIndicators={linkedMessages.length > 1}
               emblaOptions={{ align: "center", loop: true }}
               slideGap="0"
+              withControls={linkedMessages.length > 1}
               initialSlide={linkedMessages.findIndex(m => m.streaming)}
             >
               {linkedMessages.map((linkedMsg, linkedIndex) => (

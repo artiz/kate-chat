@@ -76,8 +76,31 @@ export async function parseChatMessages(messages: Message[] = []): Promise<Messa
       message.role === MessageRole.ASSISTANT || message.role === MessageRole.USER
         ? await parseMarkdown(message.content)
         : [escapeHtml(message.content) || ""];
+
+    let linkedMessages = message.linkedMessages;
+    if (linkedMessages) {
+      const linkedMessagesParsed = Array<Message>(linkedMessages.length);
+      for (let ndx = 0; ndx < linkedMessages.length; ndx++) {
+        const linkedMessage = linkedMessages[ndx];
+        if (linkedMessage.role === MessageRole.ASSISTANT || linkedMessage.role === MessageRole.USER) {
+          linkedMessagesParsed[ndx] = {
+            ...linkedMessage,
+            html: await parseMarkdown(linkedMessage.content),
+          };
+        } else {
+          linkedMessagesParsed[ndx] = {
+            ...linkedMessage,
+            html: [escapeHtml(linkedMessage.content) || ""],
+          };
+        }
+      }
+
+      linkedMessages = linkedMessagesParsed;
+    }
+
     parsedMessages[i] = {
       ...message,
+      linkedMessages,
       html,
     };
   }
