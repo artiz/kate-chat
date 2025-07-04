@@ -359,7 +359,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                       <br />
                       2. Create or select a folder in your cloud
                       <br />
-                      3. Go to Service accounts and create a new service account
+                      3. Go to Identity and Access Management/Service accounts and create a new service account
                       <br />
                       4. Assign the "ai.models.user" role to the service account
                       <br />

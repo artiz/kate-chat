@@ -78,44 +78,75 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
 
                 {provider.id === "aws_bedrock" && !provider.isConnected && (
                   <Alert color="yellow" title="AWS Bedrock Configuration">
-                    <Text size="sm">
-                      AWS Bedrock requires AWS credentials. Set the following environment variables:
-                    </Text>
-                    <Code block mt="xs">
-                      AWS_BEDROCK_REGION=us-west-2
-                      <br />
-                      and
-                      <br />
-                      AWS_BEDROCK_PROFILE=your_profile
-                      <br />
-                      or
-                      <br />
-                      AWS_BEDROCK_ACCESS_KEY_ID=your_access_key
-                      <br />
-                      AWS_BEDROCK_SECRET_ACCESS_KEY=your_secret_key
-                    </Code>
+                    {process.env.NODE_ENV === "development" && (
+                      <>
+                        <Text size="sm">
+                          AWS Bedrock requires AWS credentials. Set the following environment variables:
+                        </Text>
+
+                        <Code block mt="xs">
+                          <p>
+                            AWS_BEDROCK_REGION=us-west-2
+                            <br />
+                            AWS_BEDROCK_PROFILE=your_profile
+                          </p>
+                          <p>or</p>
+                          <p>
+                            AWS_BEDROCK_ACCESS_KEY_ID=your_access_key
+                            <br />
+                            AWS_BEDROCK_SECRET_ACCESS_KEY=your_secret_key
+                          </p>
+                        </Code>
+                      </>
+                    )}
+                    {process.env.NODE_ENV !== "development" && (
+                      <Text size="sm">
+                        AWS Bedrock requires AWS credentials. Please setup connection credentials on{" "}
+                        <Link to="/settings">settings</Link> page.
+                      </Text>
+                    )}
                   </Alert>
                 )}
 
                 {provider.id === "open_ai" && !provider.isConnected && (
                   <Alert color="yellow" title="OpenAI Configuration">
-                    <Text size="sm">OpenAI requires an API key. Set the following environment variable:</Text>
-                    <Code block mt="xs">
-                      OPENAI_API_KEY=your_openai_key
-                      <br />
-                      OPENAI_API_ADMIN_KEY=your_openai_admin_key
-                    </Code>
+                    {process.env.NODE_ENV === "development" && (
+                      <>
+                        <Text size="sm">OpenAI requires an API key. Set the following environment variable:</Text>
+                        <Code block mt="xs">
+                          OPENAI_API_KEY=your_openai_key
+                          <br />
+                          OPENAI_API_ADMIN_KEY=your_openai_admin_key
+                        </Code>
+                      </>
+                    )}
+                    {process.env.NODE_ENV !== "development" && (
+                      <Text size="sm">
+                        OpenAI requires an API key. Please setup connection credentials on{" "}
+                        <Link to="/settings">settings</Link> page.
+                      </Text>
+                    )}
                   </Alert>
                 )}
 
                 {provider.id === "yandex_fm" && !provider.isConnected && (
                   <Alert color="yellow" title="Yandex Configuration">
-                    <Text size="sm">Yandex requires an API key. Set the following environment variable:</Text>
-                    <Code block mt="xs">
-                      YANDEX_FM_API_KEY=your_yandex_api_key
-                      <br />
-                      YANDEX_FM_API_FOLDER=your_yandex_folder_id
-                    </Code>
+                    {process.env.NODE_ENV === "development" && (
+                      <>
+                        <Text size="sm">Yandex requires an API key. Set the following environment variable:</Text>
+                        <Code block mt="xs">
+                          YANDEX_FM_API_KEY=your_yandex_api_key
+                          <br />
+                          YANDEX_FM_API_FOLDER=your_yandex_folder_id
+                        </Code>
+                      </>
+                    )}
+                    {process.env.NODE_ENV !== "development" && (
+                      <Text size="sm">
+                        Yandex requires an API key. Please setup connection credentials on{" "}
+                        <Link to="/settings">settings</Link> page.
+                      </Text>
+                    )}
                   </Alert>
                 )}
               </Stack>
