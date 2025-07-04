@@ -140,6 +140,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "GITHUB_CLIENT_SECRET"
           valueFrom = aws_secretsmanager_secret.github_client_secret.arn
+        },
+        {
+          name      = "YANDEX_FM_API_KEY"
+          valueFrom = aws_secretsmanager_secret.yandex_fm_api_key.arn
+        },
+        {
+          name      = "YANDEX_FM_API_FOLDER"
+          valueFrom = aws_secretsmanager_secret.yandex_fm_api_folder.arn
         }
       ]
 
