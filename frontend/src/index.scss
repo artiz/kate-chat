@@ -39,11 +39,7 @@
 /* Global CSS */
 body {
   margin: 0;
-  --font-family: "Fira Code", "Consolas", "Segoe UI", system-ui;
-
-  font-family: var(--font-family);
-  --mantine-font-family-headings: var(--font-family);
-  --input-font-family: var(--font-family);
+  --monospace-font-family: "Fira Code", "Consolas", monospace;
 }
 
 html,
