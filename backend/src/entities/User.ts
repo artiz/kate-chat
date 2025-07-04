@@ -112,6 +112,14 @@ export class User {
   @OneToMany(() => Model, m => m.user, { cascade: true, onDelete: "CASCADE" })
   models: Model[];
 
+  @Field({ nullable: true, defaultValue: 0 })
+  @Column({
+    nullable: true,
+    select: false,
+    name: "modelsCount",
+  })
+  modelsCount?: number;
+
   @Field(() => UserSettings, { nullable: true })
   @Column({ type: "json", nullable: true, transformer: JSONTransformer<UserSettings>() })
   settings?: UserSettings;

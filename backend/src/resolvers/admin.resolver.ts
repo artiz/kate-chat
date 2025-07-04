@@ -44,7 +44,9 @@ export class AdminResolver extends BaseResolver {
 
     const { offset = 0, limit = 20, searchTerm } = input;
 
-    let query = this.userRepository.createQueryBuilder("user");
+    let query = this.userRepository.createQueryBuilder("user").addSelect(sq => {
+      return sq.select("COUNT(*)").from(Model, "m").where("m.userId = user.id");
+    }, "user_modelsCount");
 
     if (searchTerm) {
       query = query.where(
@@ -54,7 +56,6 @@ export class AdminResolver extends BaseResolver {
     }
 
     query = query.orderBy("user.createdAt", "DESC").skip(offset).take(limit);
-
     const [users, total] = await query.getManyAndCount();
 
     return {

@@ -17,6 +17,7 @@ import {
   Tooltip,
   Pagination,
   Select,
+  Avatar,
 } from "@mantine/core";
 import {
   IconUser,
@@ -53,6 +54,7 @@ const GET_USERS = gql`
         role
         createdAt
         avatarUrl
+        modelsCount
       }
       total
       hasMore
@@ -72,6 +74,7 @@ interface AdminUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  modelsCount?: number;
   createdAt: string;
   avatarUrl?: string;
 }
@@ -262,6 +265,7 @@ export const AdminDashboard: React.FC = () => {
                     <Table.Th>User</Table.Th>
                     <Table.Th>Email</Table.Th>
                     <Table.Th>Role</Table.Th>
+                    <Table.Th>Models</Table.Th>
                     <Table.Th>Joined</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -270,14 +274,10 @@ export const AdminDashboard: React.FC = () => {
                     <Table.Tr key={user.id}>
                       <Table.Td>
                         <Group>
-                          <div>
-                            <Text fw={500}>
-                              {user.firstName} {user.lastName}
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              ID: {user.id.slice(0, 8)}...
-                            </Text>
-                          </div>
+                          <Avatar color="gray" radius="xl" src={user.avatarUrl} />
+                          <Text fw={500}>
+                            {user.firstName} {user.lastName}
+                          </Text>
                         </Group>
                       </Table.Td>
                       <Table.Td>
@@ -293,6 +293,9 @@ export const AdminDashboard: React.FC = () => {
                         >
                           {user.role}
                         </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text>{user.modelsCount || 0}</Text>
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm">{new Date(user.createdAt).toLocaleDateString()}</Text>

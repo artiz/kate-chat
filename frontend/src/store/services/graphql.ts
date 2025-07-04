@@ -65,6 +65,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       user {
         lastName
         firstName
+        avatarUrl
       }
       linkedToMessageId
       metadata {

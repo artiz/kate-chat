@@ -132,7 +132,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
       <div className={classes.messageContainer}>
         <div className={classes.main}>
           <Group align="center">
-            <Avatar radius="xl" size="md">
+            <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
               {isUserMessage ? <IconUser /> : <IconRobot />}
             </Avatar>
             <Group gap="xs">

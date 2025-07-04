@@ -38,6 +38,10 @@ export class Model {
 
   @Field({ nullable: true })
   @Column({ nullable: true })
+  userId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
   provider: string; // e.g., 'OpenAI', 'Anthropic', 'Amazon'
 
   @Field()
