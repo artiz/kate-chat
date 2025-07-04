@@ -129,7 +129,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     const timestamp = new Date(createdAt).toLocaleString();
 
     return (
-      <div className={classes.messageContainer}>
+      <div className={classes.messageContainer} ref={componentRef}>
         <div className={classes.main}>
           <Group align="center">
             <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
@@ -144,10 +144,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
               </Text>
             </Group>
           </Group>
-          <div
-            className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}
-            ref={componentRef}
-          >
+          <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>
             {html ? (
               html.map((part, index) => (
                 <div className={classes.htmlBlock} key={index} dangerouslySetInnerHTML={{ __html: part }} />

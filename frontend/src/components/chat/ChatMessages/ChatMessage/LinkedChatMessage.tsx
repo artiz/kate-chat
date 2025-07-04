@@ -14,7 +14,7 @@ interface IProps {
 }
 
 export const LinkedChatMessage = ({ message, parentIndex, index, disableActions }: IProps) => (
-  <Carousel.Slide key={message.id}>
+  <Carousel.Slide key={message.id} className={classes.linkedMessageContainer}>
     <Group align="center">
       <Avatar radius="xl" size="md">
         <IconRobot />
