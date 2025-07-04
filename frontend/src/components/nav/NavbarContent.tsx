@@ -1,7 +1,15 @@
 import React, { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Divider, ScrollArea } from "@mantine/core";
-import { IconPlus, IconSettings, IconRobot, IconPhoto, IconShield } from "@tabler/icons-react";
+import { Stack, Button, NavLink, Divider, ScrollArea, AppShell } from "@mantine/core";
+import {
+  IconPlus,
+  IconSettings,
+  IconRobot,
+  IconPhoto,
+  IconShield,
+  IconBrandGit,
+  IconBrandGithub,
+} from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
 import { UserRole } from "@/store/slices/userSlice";
@@ -46,58 +54,72 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   };
 
   return (
-    <Stack h="100%" justify="space-between" gap="0">
-      <Stack gap="0">
-        <Button
-          leftSection={<IconPlus size={16} />}
-          disabled={newChatDisabled}
-          variant="light"
-          onClick={handleNewChat}
-          fullWidth
-        >
-          New Chat
-        </Button>
+    <>
+      <AppShell.Section>
+        <Stack h="100%" justify="space-between" gap="0">
+          <Stack p="md">
+            <Button
+              leftSection={<IconPlus size={16} />}
+              disabled={newChatDisabled}
+              variant="light"
+              onClick={handleNewChat}
+              fullWidth
+            >
+              New Chat
+            </Button>
+          </Stack>
 
-        <Divider my="xs" />
+          <Divider mt="xs" mb="xs" />
 
-        <Stack gap="0">
-          <NavLink
-            label="Models"
-            leftSection={<IconRobot size={16} />}
-            active={location.pathname === "/models"}
-            onClick={handleModelsClick}
-          />
-          <NavLink
-            label="Settings"
-            leftSection={<IconSettings size={16} />}
-            active={location.pathname === "/settings"}
-            onClick={() => navigate("/settings")}
-          />
-          <NavLink
-            label="Library"
-            leftSection={<IconPhoto size={16} />}
-            active={location.pathname === "/library"}
-            onClick={() => {
-              navbarToggle?.();
-              navigate("/library");
-            }}
-          />
-          {currentUser?.role === UserRole.ADMIN && (
+          <Stack gap="0">
             <NavLink
-              label="Admin"
-              leftSection={<IconShield size={16} />}
-              active={location.pathname === "/admin"}
-              onClick={handleAdminClick}
+              label="Models"
+              leftSection={<IconRobot size={16} />}
+              active={location.pathname === "/models"}
+              onClick={handleModelsClick}
             />
-          )}
+            <NavLink
+              label="Settings"
+              leftSection={<IconSettings size={16} />}
+              active={location.pathname === "/settings"}
+              onClick={() => navigate("/settings")}
+            />
+            <NavLink
+              label="Library"
+              leftSection={<IconPhoto size={16} />}
+              active={location.pathname === "/library"}
+              onClick={() => {
+                navbarToggle?.();
+                navigate("/library");
+              }}
+            />
+            {currentUser?.role === UserRole.ADMIN && (
+              <NavLink
+                label="Admin"
+                leftSection={<IconShield size={16} />}
+                active={location.pathname === "/admin"}
+                onClick={handleAdminClick}
+              />
+            )}
+          </Stack>
+          <Divider my="xs" />
         </Stack>
-        <Divider my="xs" />
-
-        <ScrollArea h="calc(100vh - 280px)" type="auto">
-          <ChatsNavSection />
-        </ScrollArea>
-      </Stack>
-    </Stack>
+      </AppShell.Section>
+      <AppShell.Section grow component={ScrollArea}>
+        <ChatsNavSection />
+      </AppShell.Section>
+      <AppShell.Section p="sm">
+        <Button
+          component="a"
+          variant="transparent"
+          href="https://github.com/artiz/kate-chat"
+          target="_blank"
+          title="GitHub Repository"
+        >
+          <IconBrandGithub size={24} />
+        </Button>
+      </AppShell.Section>
+    </>
   );
 };
 

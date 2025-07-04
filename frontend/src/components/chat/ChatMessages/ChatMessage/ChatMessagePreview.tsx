@@ -1,9 +1,7 @@
-import React, { useMemo } from "react";
-import { Paper, Text, Stack, Group, Avatar, Loader, Box, ScrollArea } from "@mantine/core";
-import { IconRobot, IconUser } from "@tabler/icons-react";
-import { Message, MessageRole } from "@/store/slices/chatSlice";
+import React from "react";
+import { ScrollArea } from "@mantine/core";
 
-import classes from "./ChatMessage.module.scss";
+import classes from "../ChatMessage.module.scss";
 
 export const ChatMessagePreview: React.FC<{ html?: string[]; text?: string }> = ({ html, text }) => {
   return (

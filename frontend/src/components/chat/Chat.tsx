@@ -337,7 +337,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   );
 
   return (
-    <Container size="md" py="md" className={classes.container}>
+    <Container size="xl" py="md" className={classes.container}>
       <Group justify="space-between" mb="sm" className={classes.titleRow}>
         <Group>
           {isEditingTitle ? (

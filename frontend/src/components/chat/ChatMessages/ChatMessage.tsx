@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Paper, Text, Group, Avatar, ActionIcon, Tooltip, Menu } from "@mantine/core";
+import { Text, Group, Avatar, ActionIcon, Tooltip, Menu } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { IconCopy, IconCopyCheck, IconRobot, IconUser, IconTrash, IconRefresh, IconUsers } from "@tabler/icons-react";
+import { IconRobot, IconUser } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import classes from "./ChatMessage.module.scss";
 import { debounce } from "lodash";
-import { useAppSelector } from "@/store";
-import { ProviderIcon } from "@/components/icons/ProviderIcon";
+import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
+import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
 
 interface ChatMessageProps {
   message: Message;
@@ -15,7 +15,6 @@ interface ChatMessageProps {
   disabled?: boolean;
 }
 
-// TODO: split that into smaller components
 export const ChatMessage = (props: ChatMessageProps) => {
   const { message, index, disabled = false } = props;
   const {
@@ -23,17 +22,17 @@ export const ChatMessage = (props: ChatMessageProps) => {
     id,
     modelName,
     modelId,
+    metadata,
+    linkedToMessageId,
     content,
     html,
     createdAt,
     user,
     streaming = false,
-    metadata,
     linkedMessages,
   } = message;
-  const { models: allModels } = useAppSelector(state => state.models);
-  const componentRef = useRef<HTMLDivElement>(null);
 
+  const componentRef = useRef<HTMLDivElement>(null);
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
 
   const codeHeaderTemplate = `
@@ -121,113 +120,6 @@ export const ChatMessage = (props: ChatMessageProps) => {
     }
   }, [role, streaming]);
 
-  const actions = useMemo(() => {
-    return (
-      <>
-        <Tooltip label="Copy message" position="top" withArrow>
-          <ActionIcon
-            className="copy-message-btn"
-            data-message-id={id}
-            data-message-index={index}
-            size="sm"
-            color="gray"
-            variant="transparent"
-            disabled={disableActions}
-          >
-            <IconCopy />
-          </ActionIcon>
-        </Tooltip>
-        <ActionIcon disabled size="sm" className="check-icon">
-          <IconCopyCheck />
-        </ActionIcon>
-        <Tooltip label="Delete message" position="top" withArrow>
-          <ActionIcon
-            className="delete-message-btn"
-            data-message-id={id}
-            size="sm"
-            color="red.4"
-            variant="transparent"
-            disabled={disableActions}
-          >
-            <IconTrash />
-          </ActionIcon>
-        </Tooltip>
-
-        {(role === MessageRole.ASSISTANT || role === MessageRole.ERROR) && (
-          <Menu shadow="md" width={200}>
-            <Menu.Target>
-              <ActionIcon size="sm" color="gray" variant="transparent" disabled={disableActions}>
-                <Tooltip label={`Switch model: ${modelName}`} position="top" withArrow>
-                  <IconRefresh />
-                </Tooltip>
-              </ActionIcon>
-            </Menu.Target>
-
-            <Menu.Dropdown className={classes.switchModelDropdown}>
-              {allModels
-                .filter(m => m.modelId != modelId)
-                .map(model => (
-                  <Menu.Item
-                    key={model.id}
-                    data-message-id={id}
-                    data-model-id={model.modelId}
-                    className="switch-model-btn"
-                    leftSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
-                  >
-                    {model.name}
-                  </Menu.Item>
-                ))}
-
-              {/* <Menu.Divider /> */}
-            </Menu.Dropdown>
-          </Menu>
-        )}
-
-        {/* Call Others button - only show on parent Assistant messages */}
-        {role === MessageRole.ASSISTANT && !message.linkedToMessageId && (
-          <Menu shadow="md" width={200}>
-            <Menu.Target>
-              <ActionIcon size="sm" color="gray" variant="transparent" disabled={disableActions}>
-                <Tooltip label="Call other model" position="top" withArrow>
-                  <IconUsers />
-                </Tooltip>
-              </ActionIcon>
-            </Menu.Target>
-
-            <Menu.Dropdown className={classes.switchModelDropdown}>
-              {allModels
-                .filter(m => m.modelId != modelId)
-                .map(model => (
-                  <Menu.Item
-                    key={model.id}
-                    data-message-id={id}
-                    data-model-id={model.modelId}
-                    className="call-other-btn"
-                    leftSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
-                  >
-                    {model.name}
-                  </Menu.Item>
-                ))}
-            </Menu.Dropdown>
-          </Menu>
-        )}
-
-        {/* Token usage display */}
-        {metadata?.usage && (metadata.usage.inputTokens || metadata.usage.outputTokens) && (
-          <Tooltip
-            label={`Input tokens: ${metadata.usage.inputTokens || "N/A"}, Output tokens: ${metadata.usage.outputTokens || "N/A"}`}
-            position="top"
-            withArrow
-          >
-            <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
-              IN: {metadata.usage.inputTokens || "N/A"}, OUT: {metadata.usage.outputTokens || "N/A"}
-            </Text>
-          </Tooltip>
-        )}
-      </>
-    );
-  }, [id, index, role, modelName, modelId, disableActions, metadata]);
-
   const cmp = useMemo(() => {
     const isUserMessage = role === MessageRole.USER;
     const username = isUserMessage
@@ -263,82 +155,44 @@ export const ChatMessage = (props: ChatMessageProps) => {
             ) : (
               <div className={classes.htmlBlock}>{content}</div>
             )}
-            <div className={classes.messageFooter}>{actions}</div>
+            <div className={classes.messageFooter}>
+              <ChatMessageActions
+                id={id}
+                role={role}
+                modelName={modelName}
+                modelId={modelId}
+                metadata={metadata}
+                linkedToMessageId={linkedToMessageId}
+                index={index}
+                disableActions={disableActions}
+              />
+            </div>
           </div>
         </div>
 
         {linkedMessages && linkedMessages.length > 0 && (
           <div className={classes.linked}>
-            <Carousel withIndicators emblaOptions={{ align: "center", loop: true }} slideGap="0">
+            <Carousel
+              withIndicators
+              emblaOptions={{ align: "center", loop: true }}
+              slideGap="0"
+              initialSlide={linkedMessages.findIndex(m => m.streaming)}
+            >
               {linkedMessages.map((linkedMsg, linkedIndex) => (
-                <Carousel.Slide key={linkedMsg.id}>
-                  <Group align="center">
-                    <Avatar radius="xl" size="md">
-                      <IconRobot />
-                    </Avatar>
-                    <Group gap="xs">
-                      <Text size="xs" fw={500} c="teal">
-                        {linkedMsg.modelName}
-                      </Text>
-                      {linkedMsg.metadata?.usage && (
-                        <Text size="xs" c="dimmed">
-                          OUT: {linkedMsg.metadata.usage.outputTokens || "N/A"}
-                        </Text>
-                      )}
-                    </Group>
-                  </Group>
-
-                  <div className={classes.message}>
-                    {linkedMsg.html ? (
-                      linkedMsg.html.map((part, index) => (
-                        <div key={index} dangerouslySetInnerHTML={{ __html: part }} />
-                      ))
-                    ) : (
-                      <div>{linkedMsg.content}</div>
-                    )}
-
-                    <div className={classes.messageFooter}>
-                      <Tooltip label="Copy message" position="top" withArrow>
-                        <ActionIcon
-                          className="copy-message-btn"
-                          data-message-id={linkedMsg.id}
-                          data-message-index={index}
-                          data-message-linked-index={linkedIndex}
-                          size="sm"
-                          color="gray"
-                          variant="transparent"
-                          disabled={disableActions}
-                        >
-                          <IconCopy />
-                        </ActionIcon>
-                      </Tooltip>
-                      <ActionIcon disabled size="sm" className="check-icon">
-                        <IconCopyCheck />
-                      </ActionIcon>
-
-                      <Tooltip label="Delete message" position="top" withArrow>
-                        <ActionIcon
-                          className="delete-message-btn"
-                          data-message-id={linkedMsg.id}
-                          data-message-is-linked="true"
-                          size="sm"
-                          color="red.4"
-                          variant="transparent"
-                          disabled={disableActions}
-                        >
-                          <IconTrash />
-                        </ActionIcon>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </Carousel.Slide>
+                <LinkedChatMessage
+                  key={linkedMsg.id}
+                  message={linkedMsg}
+                  parentIndex={index}
+                  index={linkedIndex}
+                  disableActions={disableActions}
+                />
               ))}
             </Carousel>
           </div>
         )}
       </div>
     );
-  }, [role, id, user, modelName, content, html, createdAt, streaming, actions, linkedMessages]);
+  }, [role, id, user, modelName, modelId, metadata, content, html, createdAt, streaming, linkedMessages]);
 
   return cmp;
 };

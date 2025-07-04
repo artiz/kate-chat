@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
 import { PubSub } from "graphql-subscriptions";
-import { In, MoreThan, MoreThanOrEqual, Repository } from "typeorm";
+import { In, IsNull, MoreThan, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
 import { Message } from "../entities/Message";
@@ -304,6 +304,8 @@ export class MessagesService {
             where: {
               chatId,
               createdAt: MoreThanOrEqual(message.createdAt),
+              id: Not(id), // Exclude the original message itself
+              linkedToMessageId: IsNull(), // Only main messages, not linked ones
             },
             order: { createdAt: "ASC" },
           })
@@ -413,8 +415,10 @@ export class MessagesService {
     // Set chat isPristine to false when adding the first message
     if (chat.isPristine) {
       chat.isPristine = false;
-      await this.chatRepository.save(chat);
     }
+
+    chat.updatedAt = new Date();
+    await this.chatRepository.save(chat);
 
     let jsonContent: ModelMessageContent[] | undefined = undefined;
 

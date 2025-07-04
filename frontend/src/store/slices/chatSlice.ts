@@ -12,6 +12,13 @@ export enum MessageRole {
   ERROR = "error",
 }
 
+export interface MessageMetadata {
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -25,12 +32,7 @@ export interface Message {
   streaming?: boolean;
   linkedToMessageId?: string;
   linkedMessages?: Message[];
-  metadata?: {
-    usage?: {
-      inputTokens?: number;
-      outputTokens?: number;
-    };
-  };
+  metadata?: MessageMetadata;
 }
 
 export interface Chat {

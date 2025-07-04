@@ -54,7 +54,8 @@ export const MainLayout: React.FC = () => {
         breakpoint: "sm",
         collapsed: { mobile: !opened },
       }}
-      padding="md"
+      padding="0"
+      withBorder
     >
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
@@ -125,7 +126,7 @@ export const MainLayout: React.FC = () => {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p="0">
         <NavbarContent navbarToggle={isMobile ? toggle : undefined} />
       </AppShell.Navbar>
 

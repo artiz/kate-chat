@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Title, Text, Grid, Card, Button, Group, Stack, Divider, Alert } from "@mantine/core";
 import { IconPlus, IconMessage } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
-import { ChatMessagePreview } from "@/components/chat/ChatMessages/ChatMessagePreview";
+import { ChatMessagePreview } from "@/components/chat/ChatMessages/ChatMessage/ChatMessagePreview";
 
 export const ChatList: React.FC = () => {
   const navigate = useNavigate();
