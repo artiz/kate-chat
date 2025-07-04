@@ -189,7 +189,9 @@ resource "aws_iam_role_policy" "ecs_execution_secrets_policy" {
           aws_secretsmanager_secret.google_client_id.arn,
           aws_secretsmanager_secret.google_client_secret.arn,
           aws_secretsmanager_secret.github_client_id.arn,
-          aws_secretsmanager_secret.github_client_secret.arn
+          aws_secretsmanager_secret.github_client_secret.arn,
+          aws_secretsmanager_secret.yandex_fm_api_key.arn,
+          aws_secretsmanager_secret.yandex_fm_api_folder.arn
         ]
       }
     ]
