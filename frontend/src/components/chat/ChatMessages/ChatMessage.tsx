@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, Group, Avatar, ActionIcon, Tooltip, Menu } from "@mantine/core";
+import { Text, Group, Avatar, Switch } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconRobot, IconUser } from "@tabler/icons-react";
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
-import classes from "./ChatMessage.module.scss";
 import { debounce } from "lodash";
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
 import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
+
+import classes from "./ChatMessage.module.scss";
+import carouselClasses from "./ChatMessage.Carousel.module.scss";
 
 interface ChatMessageProps {
   message: Message;
@@ -17,13 +19,13 @@ interface ChatMessageProps {
 
 export const ChatMessage = (props: ChatMessageProps) => {
   const { message, index, disabled = false } = props;
+
   const {
     role,
     id,
     modelName,
     modelId,
     metadata,
-    linkedToMessageId,
     content,
     html,
     createdAt,
@@ -120,78 +122,102 @@ export const ChatMessage = (props: ChatMessageProps) => {
     }
   }, [role, streaming]);
 
-  const cmp = useMemo(() => {
-    const isUserMessage = role === MessageRole.USER;
-    const username = isUserMessage
-      ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
-      : modelName || "AI";
+  const [showMainMessage, setShowMainMessage] = React.useState(true);
 
-    const timestamp = new Date(createdAt).toLocaleString();
+  const isUserMessage = role === MessageRole.USER;
+  const username = isUserMessage
+    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
+    : modelName || "AI";
 
-    return (
-      <div className={classes.messageContainer} ref={componentRef}>
-        <div className={classes.main}>
-          <Group align="center">
-            <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
-              {isUserMessage ? <IconUser /> : <IconRobot />}
-            </Avatar>
-            <Group gap="xs">
-              <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
-                {username}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {timestamp}
-              </Text>
-            </Group>
+  const timestamp = new Date(createdAt).toLocaleString();
+
+  const mainMessage = useMemo(
+    () => (
+      <>
+        <Group align="center">
+          <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
+            {isUserMessage ? <IconUser /> : <IconRobot />}
+          </Avatar>
+          <Group gap="xs">
+            <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
+              {username}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {timestamp}
+            </Text>
           </Group>
-          <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>
-            {html ? (
-              html.map((part, index) => (
-                <div className={classes.htmlBlock} key={index} dangerouslySetInnerHTML={{ __html: part }} />
-              ))
-            ) : (
-              <div className={classes.htmlBlock}>{content}</div>
-            )}
-            <div className={classes.messageFooter}>
-              <ChatMessageActions
-                id={id}
-                role={role}
-                modelName={modelName}
-                modelId={modelId}
-                metadata={metadata}
-                linkedToMessageId={linkedToMessageId}
-                index={index}
-                disableActions={disableActions}
-              />
-            </div>
+        </Group>
+        <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>
+          {html ? (
+            html.map((part, index) => (
+              <div className={classes.htmlBlock} key={index} dangerouslySetInnerHTML={{ __html: part }} />
+            ))
+          ) : (
+            <div className={classes.htmlBlock}>{content}</div>
+          )}
+          <div className={classes.messageFooter}>
+            <ChatMessageActions
+              id={id}
+              role={role}
+              modelName={modelName}
+              modelId={modelId}
+              metadata={metadata}
+              index={index}
+              disableActions={disableActions}
+            />
           </div>
         </div>
+      </>
+    ),
+    [role, username, timestamp, content, html, id, modelName, modelId, metadata, index, disableActions]
+  );
 
-        {linkedMessages && linkedMessages.length > 0 && (
-          <div className={classes.linked}>
-            <Carousel
-              withIndicators={linkedMessages.length > 1}
-              emblaOptions={{ align: "center", loop: true }}
-              slideGap="0"
-              withControls={linkedMessages.length > 1}
-              initialSlide={linkedMessages.findIndex(m => m.streaming)}
-            >
-              {linkedMessages.map((linkedMsg, linkedIndex) => (
-                <LinkedChatMessage
-                  key={linkedMsg.id}
-                  message={linkedMsg}
-                  parentIndex={index}
-                  index={linkedIndex}
-                  disableActions={disableActions}
-                />
-              ))}
-            </Carousel>
-          </div>
-        )}
+  const linkedMessagesCmp = useMemo(() => {
+    if (!linkedMessages || linkedMessages.length === 0) return null;
+
+    return (
+      <Carousel
+        withIndicators={linkedMessages.length > 1}
+        emblaOptions={{ align: "center", loop: true }}
+        slideGap="0"
+        withControls={linkedMessages.length > 1}
+        initialSlide={linkedMessages.findIndex(m => m.streaming)}
+        classNames={carouselClasses}
+      >
+        {linkedMessages.map((linkedMsg, linkedIndex) => (
+          <LinkedChatMessage
+            key={linkedMsg.id}
+            message={linkedMsg}
+            parentIndex={index}
+            index={linkedIndex}
+            disableActions={disableActions}
+          />
+        ))}
+      </Carousel>
+    );
+  }, [linkedMessages, index, disableActions]);
+
+  if (!linkedMessagesCmp) {
+    return (
+      <div className={classes.messageContainer} ref={componentRef}>
+        <div className={classes.main}>{mainMessage}</div>
       </div>
     );
-  }, [role, id, user, modelName, modelId, metadata, content, html, createdAt, streaming, linkedMessages]);
+  }
 
-  return cmp;
+  return (
+    <div className={classes.messageContainer} ref={componentRef}>
+      <div className={classes.linkedToggle}>
+        <Switch
+          checked={showMainMessage}
+          onChange={event => setShowMainMessage(event.currentTarget.checked)}
+          label={showMainMessage ? "Main" : "Others"}
+          size="sm"
+        />
+      </div>
+      <div className={[classes.main, showMainMessage ? "" : classes.hidden].join(" ")}>{mainMessage}</div>
+      <div className={[classes.linked, showMainMessage ? classes.hidden : ""].join(" ")}>{linkedMessagesCmp}</div>
+    </div>
+  );
 };
 ChatMessage.displayName = "ChatMessage";

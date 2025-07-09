@@ -22,13 +22,12 @@ interface IProps {
   modelName?: string;
   modelId?: string;
   metadata?: MessageMetadata;
-  linkedToMessageId?: string;
   index: number;
   disableActions?: boolean;
 }
 
 export const ChatMessageActions = (props: IProps) => {
-  const { id, role, modelName, modelId, metadata, linkedToMessageId, index, disableActions = false } = props;
+  const { id, role, modelName, modelId, metadata, index, disableActions = false } = props;
   const { models } = useAppSelector(state => state.models);
 
   const actions = useMemo(() => {
@@ -94,7 +93,7 @@ export const ChatMessageActions = (props: IProps) => {
         )}
 
         {/* Call Others button - only show on parent Assistant messages */}
-        {role === MessageRole.ASSISTANT && !linkedToMessageId && (
+        {role === MessageRole.ASSISTANT && (
           <Menu shadow="md" width={200}>
             <Menu.Target>
               <ActionIcon size="sm" color="gray" variant="transparent" disabled={disableActions}>

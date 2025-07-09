@@ -113,7 +113,7 @@
 .anchorContainer {
   position: absolute;
   width: 40px;
-  left: 50%;
+  left: calc(50% - 40px);
   bottom: 0;
   top: -4em;
   height: 40px;

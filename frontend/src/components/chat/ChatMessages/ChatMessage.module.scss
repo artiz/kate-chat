@@ -3,14 +3,43 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: row;
-  gap: 0.5rem;
 
   .main,
   .linked {
+    padding: var(--mb-padding, var(--mantine-spacing-md));
     flex: 1;
     width: 50%;
     display: flex;
     flex-direction: column;
+    border-radius: var(--mantine-radius-md);
+  }
+
+  .linkedToggle {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .messageContainer {
+    flex-direction: column;
+    position: relative;
+
+    .linkedToggle {
+      position: absolute;
+      right: 0.5rem;
+      top: 0.5rem;
+      display: flex;
+      z-index: 5;
+    }
+
+    .main,
+    .linked {
+      width: 100%;
+    }
+
+    .hidden {
+      display: none;
+    }
   }
 }
 
@@ -263,6 +292,10 @@
     }
 
     .message.user {
+      background-color: var(--mantine-color-dark-9);
+    }
+
+    .linked {
       background-color: var(--mantine-color-dark-8);
     }
   }
@@ -284,6 +317,9 @@
 
     .message.user {
       background-color: var(--mantine-color-blue-0);
+    }
+    .linked {
+      background-color: var(--mantine-color-gray-3);
     }
   }
 }
