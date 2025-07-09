@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:21-alpine AS builder
 
 WORKDIR /app
 
@@ -10,5 +10,12 @@ RUN npm run install:backend
 COPY ./backend ./backend
 RUN npm run build:backend
 
-WORKDIR /app/backend/dist
-CMD ["npm", "run", "start"]
+
+FROM node:21-alpine
+WORKDIR /app
+COPY --from=builder /app/node_modules/ ./node_modules
+COPY --from=builder /app/backend/node_modules/ ./node_modules
+COPY --from=builder /app/backend/dist ./
+
+ENTRYPOINT ["node", "./index.js"]
+CMD ["--production"]

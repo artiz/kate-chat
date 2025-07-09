@@ -1,0 +1,12 @@
+.git
+.vscode
+.github
+.husky
+
+**/.gitignore
+**/.env
+**/.env.example
+**/.prettierrc
+**/*.sqlite
+node_modules
+**/node_modules
