@@ -80,11 +80,16 @@ impl BedrockService {
 
     pub(crate) async fn build_aws_config(&self) -> Result<aws_config::SdkConfig, AppError> {
         let mut config_builder = aws_config::defaults(BehaviorVersion::v2025_01_17());
+        let region = self
+            .config
+            .aws_bedrock_region
+            .clone()
+            .unwrap_or_else(|| "eu-central-1".to_string());
 
-        if let Some(region) = &self.config.aws_bedrock_region {
+        if let Some(profile) = &self.config.aws_bedrock_profile_name {
             config_builder = config_builder
                 .region(Region::new(region.clone()))
-                .profile_name(&self.config.aws_bedrock_profile_name);
+                .profile_name(profile.clone());
         }
 
         if let (Some(access_key), Some(secret_key)) = (
@@ -98,7 +103,9 @@ impl BedrockService {
                 None,
                 "kate-chat",
             );
-            config_builder = config_builder.credentials_provider(credentials);
+            config_builder = config_builder
+                .region(Region::new(region.clone()))
+                .credentials_provider(credentials);
         }
 
         Ok(config_builder.load().await)

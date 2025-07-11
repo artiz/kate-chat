@@ -7,10 +7,10 @@ use tracing::{error, info, instrument, warn};
 use crate::graphql::GraphQLContext;
 use crate::log_user_action;
 use crate::models::{
-    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, GqlChat,
-    GqlMessage, GqlModel, GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message,
-    MessageRole, Model, NewChat, NewUser, ProviderDetail, RegisterInput, TestModelInput,
-    UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
+    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput,
+    EditMessageResponse, GqlChat, GqlMessage, GqlModel, GqlModelsList, GqlNewMessage,
+    GqlProviderInfo, LoginInput, Message, MessageRole, Model, NewChat, NewUser, ProviderDetail,
+    RegisterInput, TestModelInput, UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
 };
 use crate::schema::{chats, messages, models, users};
 use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
@@ -559,24 +559,24 @@ impl Mutation {
         let mut deleted_ids = vec![id.clone()];
 
         if delete_following.unwrap_or(false) {
-            // Delete all messages after this one in the same chat
-            let following_messages: Vec<Message> = messages::table
+            let filter = messages::table
                 .filter(messages::chat_id.eq(&message.chat_id))
-                .filter(messages::created_at.gt(&message.created_at))
+                .filter(messages::created_at.ge(&message.created_at));
+
+            // Delete all messages after this one in the same chat
+            let following_messages: Vec<Message> = filter
+                .clone()
+                .order(messages::created_at.asc())
                 .load(&mut conn)
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
-            for msg in following_messages {
-                deleted_ids.push(msg.id);
+            for msg in following_messages.iter() {
+                deleted_ids.push(msg.id.clone());
             }
 
-            diesel::delete(
-                messages::table
-                    .filter(messages::chat_id.eq(&message.chat_id))
-                    .filter(messages::created_at.ge(&message.created_at)),
-            )
-            .execute(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            diesel::delete(filter)
+                .execute(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
         } else {
             diesel::delete(messages::table.filter(messages::id.eq(&id)))
                 .execute(&mut conn)
@@ -584,6 +584,78 @@ impl Mutation {
         }
 
         Ok(deleted_ids)
+    }
+
+    /// Edit a message and regenerate following messages
+    #[instrument(skip(self, ctx), fields(message_id = %message_id, user_id = tracing::field::Empty))]
+    async fn edit_message(
+        &self,
+        ctx: &Context<'_>,
+        message_id: String,
+        content: String,
+    ) -> Result<EditMessageResponse> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        tracing::Span::current().record("user_id", &user.id);
+        info!("Editing message {} for user {}", message_id, user.id);
+
+        // Get the message to edit
+        let message: Message = messages::table
+            .filter(messages::id.eq(&message_id))
+            .filter(
+                messages::user_id
+                    .eq(&user.id)
+                    .or(messages::user_id.is_null()),
+            )
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Message not found"))?;
+
+        // Only user messages can be edited
+        if message.role != String::from(MessageRole::User) {
+            return Ok(EditMessageResponse {
+                message: None,
+                error: Some("Only user messages can be edited".to_string()),
+            });
+        }
+
+        // Delete all messages after this one in the same chat
+        let deleted_count = diesel::delete(
+            messages::table
+                .filter(messages::chat_id.eq(&message.chat_id))
+                .filter(messages::created_at.gt(&message.created_at)),
+        )
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        info!("Deleted {} following messages", deleted_count);
+
+        // Update the message content
+        let updated_message = diesel::update(messages::table.filter(messages::id.eq(&message_id)))
+            .set((
+                messages::content.eq(content.trim()),
+                messages::updated_at.eq(Utc::now().naive_utc()),
+            ))
+            .get_result::<Message>(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // TODO: Generate new assistant response here
+        // For now, we'll just return the updated message
+        // In a full implementation, you'd want to:
+        // 1. Get the chat and user's default model
+        // 2. Create a new assistant message
+        // 3. Generate the AI response
+
+        let gql_message = GqlMessage::from(updated_message);
+
+        Ok(EditMessageResponse {
+            message: Some(gql_message),
+            error: None,
+        })
     }
 
     /// Test a model

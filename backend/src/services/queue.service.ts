@@ -38,12 +38,12 @@ export class QueueService {
         url: REDIS_URL,
         socket: {
           reconnectStrategy: (retries: number) => {
-            if (retries > 10) {
+            if (retries > 5) {
               logger.warn("Redis connection refused - multi-instance support disabled");
-              return false; // Stop reconnecting after 10 retries
+              return false; // Stop reconnecting after 5 retries
             }
-            // Exponential backoff with a maximum delay of 5 seconds
-            const delay = Math.min(Math.pow(2, retries) * 100, 5000);
+            // Exponential backoff with a maximum delay of 3 seconds
+            const delay = Math.min(Math.pow(2, retries) * 100, 3000);
             return delay;
           },
         },

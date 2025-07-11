@@ -12,11 +12,14 @@ import {
   SwitchModelResponse,
   CALL_OTHERS_MUTATION as CALL_OTHER_MUTATION,
   CallOthersResponse,
+  EDIT_MESSAGE_MUTATION,
+  EditMessageResponse,
 } from "@/store/services/graphql";
 
 import { ok } from "@/utils/assert";
 import { ChatMessage } from "./ChatMessage";
 import { DeleteMessageModal } from "./DeleteMessageModal";
+import { EditMessageModal } from "./EditMessageModal";
 import { ImageModal } from "@/components/modal/ImagePopup";
 
 interface ChatMessagesProps {
@@ -26,6 +29,7 @@ interface ChatMessagesProps {
   onMessageDeleted?: (res: DeleteMessageResponse) => void;
   onMessageModelSwitch?: (message: Message) => void;
   onCallOther?: (message: Message) => void;
+  onMessageEdit?: (message: Message) => void;
 }
 
 export const ChatMessages: React.FC<ChatMessagesProps> = ({
@@ -35,6 +39,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   onMessageDeleted,
   onMessageModelSwitch,
   onCallOther,
+  onMessageEdit,
 }) => {
   const componentRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +48,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   const [isLinkedMessage, setIsLinkedMessage] = useState<boolean>(false);
   const [imageToShow, setImageToShow] = useState<string | undefined>();
   const [imageFileName, setImageFileName] = useState<string | undefined>();
+
+  // State for edit message modal
+  const [messageToEdit, setMessageToEdit] = useState<string | undefined>();
+  const [editedContent, setEditedContent] = useState<string>("");
 
   const resetSelectedImage = () => {
     setImageToShow(undefined);
@@ -112,6 +121,37 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     },
   });
 
+  // Edit message mutation
+  const [editMessage, { loading: editingMessage }] = useMutation<EditMessageResponse>(EDIT_MESSAGE_MUTATION, {
+    onCompleted: res => {
+      if (res.editMessage.error) {
+        return notifications.show({
+          title: "Error",
+          message: res.editMessage.error,
+          color: "red",
+        });
+      }
+      setMessageToEdit(undefined);
+      setEditedContent("");
+
+      notifications.show({
+        title: "Message Edited",
+        message: "Message has been edited and following messages regenerated",
+        color: "green",
+      });
+
+      ok(res.editMessage.message, "Edit Message response should contain a message");
+      onMessageEdit?.(res.editMessage.message);
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to edit message",
+        color: "red",
+      });
+    },
+  });
+
   const handleSwitchModel = useCallback((messageId: string, modelId: string) => {
     switchModel({
       variables: {
@@ -135,6 +175,28 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     [callOther]
   );
 
+  const handleEditMessage = useCallback(
+    (messageId: string) => {
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        setMessageToEdit(messageId);
+        setEditedContent(message.content || "");
+      }
+    },
+    [messages]
+  );
+
+  const handleSaveEditedMessage = useCallback(() => {
+    if (!messageToEdit || !editedContent.trim()) return;
+
+    editMessage({
+      variables: {
+        messageId: messageToEdit,
+        content: editedContent.trim(),
+      },
+    });
+  }, [messageToEdit, editedContent, editMessage]);
+
   // common messages interaction logic
   const handleMessageClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -145,6 +207,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         "code-toggle-all",
         "copy-message-btn",
         "delete-message-btn",
+        "edit-message-btn",
         "message-image",
         "switch-model-btn",
         "call-other-btn",
@@ -246,6 +309,13 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
           setIsLinkedMessage(!!isLinked);
         }
       }
+      // edit message
+      else if (target.classList.contains("edit-message-btn")) {
+        if (target.dataset["messageId"]) {
+          const messageId = target.dataset["messageId"];
+          handleEditMessage(messageId);
+        }
+      }
       // code toggle btn
       else if (target.classList.contains("message-image")) {
         const fileName = target.dataset["fileName"];
@@ -267,7 +337,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         handleCallOther(messageId, modelId);
       }
     },
-    [messages]
+    [messages, handleEditMessage, handleSwitchModel, handleCallOther]
   );
 
   // Handle delete single message
@@ -303,7 +373,11 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       <Stack gap="md" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
           <Group key={msg.id} align="flex-start" gap="xs">
-            <ChatMessage message={msg} index={index} disabled={deletingMessage || switchingModel || callingOthers} />
+            <ChatMessage
+              message={msg}
+              index={index}
+              disabled={deletingMessage || switchingModel || callingOthers || editingMessage}
+            />
           </Group>
         ))}
 
@@ -333,6 +407,19 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         onClose={() => setMessageToDelete(undefined)}
         onDeleteSingle={handleDeleteSingleMessage}
         onDeleteWithFollowing={isLinkedMessage ? undefined : handleDeleteMessageAndFollowing}
+      />
+
+      {/* Edit message modal */}
+      <EditMessageModal
+        isOpen={!!messageToEdit}
+        content={editedContent}
+        onContentChange={setEditedContent}
+        onClose={() => {
+          setMessageToEdit(undefined);
+          setEditedContent("");
+        }}
+        onSave={handleSaveEditedMessage}
+        loading={editingMessage}
       />
 
       {/* Image Preview Modal */}

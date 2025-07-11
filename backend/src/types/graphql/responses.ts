@@ -192,6 +192,15 @@ export class SwitchModelResponse {
 }
 
 @ObjectType()
+export class EditMessageResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => Message, { nullable: true })
+  message?: Message;
+}
+
+@ObjectType()
 export class DeleteMessageResult {
   @Field()
   id: string;

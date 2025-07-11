@@ -10,14 +10,17 @@ import { ok } from "assert";
 import { BaseResolver } from "./base.resolver";
 import { S3Service } from "@/services/s3.service";
 import { MessageRole } from "@/types/ai.types";
+import { MessagesService } from "@/services/messages.service";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
   private chatRepository: Repository<Chat>;
+  private messageService: MessagesService;
 
   constructor() {
     super();
     this.chatRepository = getRepository(Chat);
+    this.messageService = new MessagesService();
   }
 
   @Query(() => GqlChatsList)
@@ -122,7 +125,7 @@ export class ChatResolver extends BaseResolver {
 
   @Mutation(() => Boolean)
   async deleteChat(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<boolean> {
-    await this.validateContextToken(context);
+    const user = await this.validateContextUser(context);
 
     const chat = await this.chatRepository.findOne({
       where: {
@@ -131,21 +134,8 @@ export class ChatResolver extends BaseResolver {
     });
 
     if (!chat) throw new Error("Chat not found");
-
     if (chat.files?.length) {
-      const s3Service = new S3Service(context.tokenPayload);
-      const queue = [...chat.files];
-
-      // TODO: move this to background task
-      await Promise.all(
-        Array.from({ length: 5 }, async () => {
-          while (queue.length) {
-            const fileName = queue.pop();
-            ok(fileName);
-            await s3Service.deleteFile(fileName);
-          }
-        })
-      );
+      this.messageService.removeFiles(chat.files, user);
     }
 
     await this.chatRepository.delete({ id });

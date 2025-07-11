@@ -9,6 +9,7 @@ import {
   IconRefresh,
   IconUsers,
   IconMoodPlus,
+  IconEdit,
 } from "@tabler/icons-react";
 import { MessageMetadata, MessageRole } from "@/store/slices/chatSlice";
 
@@ -61,6 +62,21 @@ export const ChatMessageActions = (props: IProps) => {
             <IconTrash />
           </ActionIcon>
         </Tooltip>
+
+        {role === MessageRole.USER && (
+          <Tooltip label="Edit message" position="top" withArrow>
+            <ActionIcon
+              className="edit-message-btn"
+              data-message-id={id}
+              size="sm"
+              color="blue.4"
+              variant="transparent"
+              disabled={disableActions}
+            >
+              <IconEdit />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
         {(role === MessageRole.ASSISTANT || role === MessageRole.ERROR) && (
           <Menu shadow="md" width={200}>

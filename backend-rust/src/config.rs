@@ -11,7 +11,7 @@ pub struct AppConfig {
 
     // AWS Configuration
     pub aws_bedrock_region: Option<String>,
-    pub aws_bedrock_profile_name: String,
+    pub aws_bedrock_profile_name: Option<String>,
     pub aws_bedrock_access_key_id: Option<String>,
     pub aws_bedrock_secret_access_key: Option<String>,
 
@@ -63,8 +63,7 @@ impl AppConfig {
 
             // AWS Bedrock
             aws_bedrock_region: env::var("AWS_BEDROCK_REGION").ok(),
-            aws_bedrock_profile_name: env::var("AWS_BEDROCK_PROFILE")
-                .unwrap_or_else(|_| "default".to_string()),
+            aws_bedrock_profile_name: env::var("AWS_BEDROCK_PROFILE").ok(),
             aws_bedrock_access_key_id: env::var("AWS_BEDROCK_ACCESS_KEY_ID").ok(),
             aws_bedrock_secret_access_key: env::var("AWS_BEDROCK_SECRET_ACCESS_KEY").ok(),
 

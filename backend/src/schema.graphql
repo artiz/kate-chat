@@ -92,6 +92,11 @@ type DeleteMessageResult {
   linkedToMessageId: String
 }
 
+type EditMessageResponse {
+  error: String
+  message: Message
+}
+
 input GetChatsInput {
   limit: Float = 20
   offset: Float = 0
@@ -286,6 +291,7 @@ type Mutation {
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
+  editMessage(content: String!, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!
   register(input: RegisterInput!): AuthResponse!
   reloadModels: GqlModelsList!

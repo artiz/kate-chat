@@ -182,6 +182,26 @@ export const CALL_OTHERS_MUTATION = gql`
   }
 `;
 
+export const EDIT_MESSAGE_MUTATION = gql`
+  mutation EditMessage($messageId: ID!, $content: String!) {
+    editMessage(messageId: $messageId, content: $content) {
+      message {
+        id
+        content
+        role
+        createdAt
+        modelId
+        modelName
+        user {
+          lastName
+          firstName
+        }
+      }
+      error
+    }
+  }
+`;
+
 export const CREATE_CHAT_MUTATION = gql`
   mutation CreateChat($input: CreateChatInput!) {
     createChat(input: $input) {
@@ -449,6 +469,13 @@ export interface DeleteMessageResponse {
 export interface SwitchModelResponse {
   switchModel: {
     message: Message;
+    error?: string;
+  };
+}
+
+export interface EditMessageResponse {
+  editMessage: {
+    message?: Message;
     error?: string;
   };
 }

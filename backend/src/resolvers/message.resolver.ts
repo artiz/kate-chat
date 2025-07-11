@@ -15,6 +15,7 @@ import {
   GqlMessage,
   GqlMessagesList,
   SwitchModelResponse,
+  EditMessageResponse,
   GqlImagesList,
   GqlImage,
   CallOtherResponse,
@@ -246,6 +247,27 @@ export class MessageResolver extends BaseResolver {
     } catch (error) {
       logger.error(error, "Error calling other models");
       return { error: `Failed to call other models: ${error instanceof Error ? error.message : String(error)}` };
+    }
+  }
+
+  @Mutation(() => EditMessageResponse)
+  async editMessage(
+    @Arg("messageId", () => ID) messageId: string,
+    @Arg("content") content: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<EditMessageResponse> {
+    try {
+      const user = await this.validateContextUser(context);
+      const message = await this.messageService.editMessage(
+        messageId,
+        content,
+        this.loadConnectionParams(context, user),
+        user
+      );
+      return { message };
+    } catch (error) {
+      logger.error(error, "Error editing message");
+      return { error: `Failed to edit message: ${error instanceof Error ? error.message : String(error)}` };
     }
   }
 

@@ -87,6 +87,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     loadCompleted,
     removeMessages,
     addChatMessage,
+    clearMessagesAfter,
     loadMoreMessages,
     updateChat,
     streaming,
@@ -241,6 +242,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
       setSending(false);
     }
   };
+
+  const handleEditMessage = async (message: Message) => {
+    clearMessagesAfter(message);
+    addChatMessage(message);
+  };
+
   // #endregion
 
   const models = useMemo(() => {
@@ -471,7 +478,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       {/* Messages */}
       <Paper
         withBorder
-        p="md"
+        p="0"
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className={[
@@ -509,6 +516,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               onMessageDeleted={removeMessages} // Reload messages after deletion
               onMessageModelSwitch={addChatMessage}
               onCallOther={addChatMessage}
+              onMessageEdit={handleEditMessage}
             />
           )}
         </div>

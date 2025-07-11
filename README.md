@@ -16,12 +16,11 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
   - OpenAI
   - Yandex Foundation Models
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
-- Chat history storage and management, messages deletion
-- Rich markdown formatting: code blocks, images, MatJAX formulas etc.
 - Multiple chats creation with pristine chat functionality
-- Chat message "Switch model" logic for the previous messages with another model
+- Chat history storage and management, messages editing/deletion
+- Rich markdown formatting: code blocks, images, MatJAX formulas etc.
+- "Switch model"/"Call other model" logic to process current chat messages with another model
 - Parallel call for assistant message against other models to [compare results](#screenshots)
-- On-the-fly model switching
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Responsive UI with Mantine
 
@@ -50,13 +49,12 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 * Add more UI stuff like:
   * Image resolution/count 
-  * Chat message editing
 * Add support for more Google Vertex AI provider
 * Rust: add images generation (DALL-E) support, Library
 * Rust: add admin API
 * Python backend (FastAPI)
 * Open AI code interpreter support  
-* Finish custom models support (enter ARN for Bedrock models)
+* Finish custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API)
 
 ## Tech Stack
 

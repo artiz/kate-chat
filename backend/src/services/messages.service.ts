@@ -1,8 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
-import { randomUUID } from "crypto";
 import { PubSub } from "graphql-subscriptions";
-import { In, IsNull, MoreThan, MoreThanOrEqual, Not, Repository } from "typeorm";
+import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
 import { Message } from "../entities/Message";
@@ -21,7 +18,7 @@ import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
-import { getRepository } from "@/config/database";
+import { formatDate, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -96,15 +93,10 @@ export class MessagesService {
     if (!model) throw new Error("Model not found");
 
     // Get previous messages for context
-    const previousMessages = await this.messageRepository.find({
-      where: { chatId },
-      order: { createdAt: "DESC" },
-      take: CONTEXT_MESSAGES_LIMIT,
-    });
+    const inputMessages = await this.getContextMessages(chatId);
 
     // Save user message
     const userMessage = await this.publishUserMessage(input, user, chat, model, connection);
-    const inputMessages = previousMessages.reverse();
     inputMessages.push(userMessage);
 
     // Generate AI response
@@ -121,7 +113,6 @@ export class MessagesService {
     );
 
     await this.publishAssistantMessage(input, connection, user, model, chat, inputMessages, assistantMessage);
-
     return userMessage;
   }
 
@@ -154,24 +145,16 @@ export class MessagesService {
     });
 
     if (!model) throw new Error("Model not found or not accessible");
+    const chatId = chat.id;
 
-    // Get previous messages for context (up to the original message)
-    const chatId = originalMessage.chatId || originalMessage.chat.id;
-    const contextMessages = await this.messageRepository
-      .createQueryBuilder("message")
-      .where("message.chatId = :chatId", { chatId })
-      .andWhere("message.createdAt <= :createdAt", { createdAt: originalMessage.createdAt })
-      .andWhere("message.id <> :id", { id: originalMessage.id })
-      .orderBy("message.createdAt", "ASC")
-      .getMany();
-
+    const contextMessages = await this.getContextMessages(chatId, originalMessage);
     const files =
       originalMessage?.jsonContent
         ?.filter(content => content.fileName)
         .map(content => content.fileName)
         .filter(notEmpty) || [];
 
-    await this.removeFiles(connection, files, chat, user);
+    await this.removeFiles(files, user, chat);
 
     originalMessage.content = ""; // Clear content to indicate it's being regenerated
     originalMessage.modelId = model.modelId; // Update to the new model
@@ -189,6 +172,102 @@ export class MessagesService {
 
     // Call publishAssistantMessage to generate new response
     await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, originalMessage);
+
+    return originalMessage;
+  }
+
+  public async editMessage(
+    messageId: string,
+    newContent: string,
+    connection: ConnectionParams,
+    user: User
+  ): Promise<Message> {
+    // Find the original message
+    let originalMessage = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ["chat", "chat.user", "user"],
+    });
+
+    if (!originalMessage) throw new Error("Message not found");
+    if (!originalMessage.chat) throw new Error("Chat not found for this message");
+    if (originalMessage.role !== MessageRole.USER) throw new Error("Only user messages can be edited");
+    // Verify the message belongs to the current user's chat
+    if (originalMessage.user?.id !== user.id) throw new Error("Unauthorized access to this message");
+    const chat = originalMessage.chat;
+    const chatId = chat.id;
+
+    // Delete all messages after this one in the chat
+    const messagesToDelete = await this.messageRepository.findBy({
+      chatId,
+      createdAt: MoreThanOrEqual(formatDate(originalMessage.createdAt)),
+      id: Not(originalMessage.id),
+    });
+
+    // Remove any files from following messages before deleting them
+    const deletedImageFiles: string[] = [];
+    for (const msg of messagesToDelete) {
+      if (msg.jsonContent?.length) {
+        for (const content of msg.jsonContent) {
+          if (content.contentType === "image" && content.fileName) {
+            deletedImageFiles.push(content.fileName);
+          }
+        }
+      }
+      await this.messageRepository.remove(msg);
+    }
+
+    // Remove image files if any
+    if (deletedImageFiles.length > 0) {
+      await this.removeFiles(deletedImageFiles, user, chat);
+    }
+
+    // Update the original message with new content
+    originalMessage.content = newContent.trim();
+    originalMessage.jsonContent = undefined; // Clear jsonContent to regenerate it
+    originalMessage = await this.messageRepository.save(originalMessage);
+
+    // Find the model for the chat
+    const model = await this.modelRepository.findOne({
+      where: {
+        modelId: chat.modelId || user.defaultModelId,
+        user: { id: user.id },
+      },
+    });
+
+    if (!model) throw new Error("Model not found for this chat");
+
+    // Get context messages (up to the edited message, excluding it)
+    const contextMessages = await this.getContextMessages(chatId, originalMessage);
+
+    // Create new assistant message
+    const assistantMessage = await this.messageRepository
+      .save({
+        content: "",
+        role: MessageRole.ASSISTANT,
+        modelId: model.modelId,
+        modelName: model.name,
+        chatId,
+        chat,
+      })
+      .catch(err => {
+        this.queueService.publishError(chat.id, getErrorMessage(err));
+        throw err;
+      });
+
+    const input: CreateMessageInput = {
+      chatId,
+      content: "",
+      modelId: model.modelId,
+      temperature: chat.temperature,
+      maxTokens: chat.maxTokens,
+      topP: chat.topP,
+    };
+
+    // Add the edited user message to context
+    contextMessages.push(originalMessage);
+
+    // Generate new assistant response
+    await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, assistantMessage);
 
     return originalMessage;
   }
@@ -212,16 +291,6 @@ export class MessagesService {
     const chat = originalMessage.chat;
     const chatId = originalMessage.chatId || originalMessage.chat.id;
 
-    // Get previous messages for context (up to the original message)
-    const contextMessages = await this.messageRepository
-      .createQueryBuilder("message")
-      .where("message.chatId = :chatId", { chatId })
-      .andWhere("message.createdAt <= :createdAt", { createdAt: originalMessage.createdAt })
-      .andWhere("message.id <> :id", { id: originalMessage.id })
-      .andWhere("message.linkedToMessageId IS NULL") // Only include main messages, not linked ones
-      .orderBy("message.createdAt", "ASC")
-      .getMany();
-
     // Get valid models for the user
     const model = await this.modelRepository.findOne({
       where: {
@@ -230,6 +299,16 @@ export class MessagesService {
       },
     });
     if (!model) throw new Error("Model not found");
+
+    // Get previous messages for context (up to the original message)
+    const contextMessages = await this.messageRepository
+      .createQueryBuilder("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.createdAt <= :createdAt", { createdAt: formatDate(originalMessage.createdAt) })
+      .andWhere("message.id <> :id", { id: originalMessage.id })
+      .andWhere("message.linkedToMessageId IS NULL") // Only include main messages, not linked ones
+      .orderBy("message.createdAt", "ASC")
+      .getMany();
 
     let linkedMessage = await this.messageRepository
       .save({
@@ -303,7 +382,7 @@ export class MessagesService {
         ? await this.messageRepository.find({
             where: {
               chatId,
-              createdAt: MoreThanOrEqual(message.createdAt),
+              createdAt: MoreThanOrEqual(formatDate(message.createdAt)),
               id: Not(id), // Exclude the original message itself
               linkedToMessageId: IsNull(), // Only main messages, not linked ones
             },
@@ -315,7 +394,7 @@ export class MessagesService {
                 await this.messageRepository.findOne({
                   where: {
                     chatId,
-                    createdAt: MoreThanOrEqual(message.createdAt),
+                    createdAt: MoreThanOrEqual(formatDate(message.createdAt)),
                     role: In([MessageRole.SYSTEM, MessageRole.ERROR]),
                   },
                   order: { createdAt: "ASC" },
@@ -347,9 +426,7 @@ export class MessagesService {
         // Delete the following message
         if (msg.id !== id) {
           // Skip the original message, we'll delete it separately
-          result.messages.push({
-            id: msg.id,
-          });
+          result.messages.push({ id: msg.id });
           await this.messageRepository.remove(msg);
         }
       }
@@ -360,7 +437,7 @@ export class MessagesService {
 
     // Remove image files from disk and update chat.files
     if (deletedImageFiles.length > 0) {
-      await this.removeFiles(connection, deletedImageFiles, chat, user);
+      await this.removeFiles(deletedImageFiles, user, chat);
     }
 
     return result; // Return all deleted message IDs including the original
@@ -582,32 +659,56 @@ export class MessagesService {
       });
   }
 
-  protected async removeFiles(
-    connection: ConnectionParams,
-    deletedImageFiles: string[],
-    chat: Chat,
-    user: User
-  ): Promise<void> {
+  public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {
     if (!deletedImageFiles || deletedImageFiles.length === 0) return;
 
     let s3Service = new S3Service(user.toToken());
 
     // Remove the files from the chat.files array
-    if (chat.files?.length) {
+    if (chat?.files?.length) {
       chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
       await this.chatRepository.save(chat);
     }
 
     // Delete the files from S3
-    // TODO: move this to a background job
-    await Promise.all(
-      deletedImageFiles.map(async fileName => {
-        try {
-          await s3Service.deleteFile(fileName);
-        } catch (error) {
-          logger.error(`Failed to delete file ${fileName}: ${error}`);
+    // TODO: move this to background task
+    const batches = deletedImageFiles.reduce(
+      (acc: string[][], file: string) => {
+        const batch = acc[acc.length - 1];
+        if (batch.length < 5) {
+          batch.push(file);
+        } else {
+          acc.push([file]);
         }
-      })
+
+        return acc;
+      },
+      [[]]
     );
+
+    const promises = batches.map(batch => {
+      return Promise.allSettled(
+        batch.map(file => {
+          return s3Service.deleteFile(file).catch(error => {
+            logger.error(`Failed to delete file ${file}: ${error}`);
+          });
+        })
+      );
+    });
+
+    return Promise.all(promises).then(() => void 0);
+  }
+
+  protected async getContextMessages(chatId: string, currentMessage?: Message) {
+    // Get previous messages for context (up to the original message)
+    let query = this.messageRepository.createQueryBuilder("message").where("message.chatId = :chatId", { chatId });
+
+    if (currentMessage) {
+      query = query
+        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDate(currentMessage.createdAt) })
+        .andWhere("message.id <> :id", { id: currentMessage.id });
+    }
+
+    return await query.orderBy("message.createdAt", "DESC").take(CONTEXT_MESSAGES_LIMIT).getMany();
   }
 }

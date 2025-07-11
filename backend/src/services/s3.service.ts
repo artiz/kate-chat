@@ -170,18 +170,13 @@ export class S3Service {
       throw new Error("S3 client is not configured");
     }
 
-    try {
-      const params = {
-        Bucket: this.bucketName,
-        Key: key,
-      };
+    const params = {
+      Bucket: this.bucketName,
+      Key: key,
+    };
 
-      logger.debug({ key }, "Deleting file from S3");
-      await client.send(new DeleteObjectCommand(params));
-    } catch (error) {
-      logger.error(error, "Failed to delete file from S3");
-      throw error;
-    }
+    logger.debug({ key }, "Deleting file from S3");
+    await client.send(new DeleteObjectCommand(params));
   }
 
   /**

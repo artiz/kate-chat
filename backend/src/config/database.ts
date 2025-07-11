@@ -90,3 +90,12 @@ export async function initializeDatabase() {
     return false;
   }
 }
+
+export const formatDate =
+  dbOptions.type === "sqlite"
+    ? (date: Date) => {
+        const d = new Date(date);
+        d.setMilliseconds(d.getMilliseconds() - 5); // SQLite requires a small adjustment to avoid precision issues
+        return d;
+      }
+    : (date: Date) => date;

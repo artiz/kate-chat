@@ -17,7 +17,8 @@ type HookResult = {
   messagesLoading: boolean;
   loadCompleted: boolean;
   streaming: boolean;
-  addChatMessage: (msg: Message) => void;
+  addChatMessage: (message: Message) => void;
+  clearMessagesAfter: (message: Message) => void;
   removeMessages: (result: DeleteMessageResponse) => void;
   loadMoreMessages: () => void;
   updateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
@@ -117,6 +118,19 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     if (!chatId || messagesLoading) return;
     if (!hasMoreMessages) return; // No more messages to load
     loadMessages(messages?.length);
+  };
+
+  const clearMessagesAfter = (message: Message) => {
+    setMessages(
+      prev =>
+        prev?.filter(msg => {
+          if (msg.createdAt >= message.createdAt && msg.id !== message.id) {
+            return false; // Remove messages after the specified message
+          }
+
+          return true;
+        }) || []
+    );
   };
 
   useEffect(() => {
@@ -296,6 +310,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     streaming,
     removeMessages,
     addChatMessage,
+    clearMessagesAfter,
     loadMoreMessages,
     updateChat,
   };

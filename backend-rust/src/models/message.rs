@@ -196,6 +196,12 @@ impl From<String> for MessageType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct EditMessageResponse {
+    pub message: Option<GqlMessage>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct GqlNewMessage {
     pub message: Option<GqlMessage>,
     pub error: Option<String>,
