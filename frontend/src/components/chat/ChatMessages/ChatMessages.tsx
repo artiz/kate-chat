@@ -382,7 +382,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         ))}
 
         {sending && (
-          <Group align="flex-start" gap="xs">
+          <Group align="flex-start" gap="xs" pl="md" pr="md">
             <Avatar color="gray" radius="xl">
               <IconRobot />
             </Avatar>

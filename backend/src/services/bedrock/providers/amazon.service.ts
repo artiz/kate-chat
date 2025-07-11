@@ -140,19 +140,22 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
         .map(m => {
           if (m.contentType === "image" || m.contentType === "video") {
             // input format "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABv..."
-            //
+            let base64Data = m.content;
+            let mediaType = m.mimeType?.split("/")[1];
+            let format = m.mimeType?.split("/")[0]; // "image" or "video"
+
             const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)/);
-            if (!parts || parts.length < 3) {
+            if ((!parts || parts.length < 3) && !mediaType) {
               logger.error({ content: m.content.substring(0, 256) }, "Invalid image format");
               throw new Error(
                 "Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,...',"
               );
+            } else if (parts) {
+              // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data
+              base64Data = parts[3]; // e.g., "iVBORw0KGgoAAAANSUhEUgAA..."
+              mediaType = parts[2]; // e.g., "jpeg", "png"
+              format = parts[1]; // e.g., "image", "video"
             }
-
-            // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data
-            const base64Data = parts[3]; // e.g., "iVBORw0KGgoAAAANSUhEUgAA..."
-            const mediaType = parts[2]; // e.g., "jpeg", "png"
-            const format = parts[1]; // e.g., "image", "video"
 
             if (format === "image") {
               const image: AmazonRequestMessagePart = {

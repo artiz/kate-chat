@@ -63,10 +63,12 @@ async function bootstrap() {
   });
 
   // Create Express application
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim());
+
   const app = express();
   app.use(
     cors({
-      origin: (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()) || true,
+      origin: allowedOrigins.length > 0 ? allowedOrigins : true,
       credentials: true,
       maxAge: 86_400, // 24 hours in seconds without subsequent OPTIONS requests
     })
@@ -186,7 +188,7 @@ async function bootstrap() {
   // Start the server
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`);
+    logger.info(`Server running on port ${PORT}, origins: ${allowedOrigins.join(", ")}`);
     logger.info(`GraphQL endpoint: http://localhost:${PORT}/graphql`);
     logger.info(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
   });
