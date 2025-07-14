@@ -28,6 +28,8 @@ diesel::table! {
         model_name -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        jsonContent -> Nullable<Text>,
+        metadata -> Nullable<Text>,
     }
 }
 
@@ -69,6 +71,8 @@ diesel::table! {
         auth_provider -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        role -> Text,
+        settings -> Text,
     }
 }
 message
@@ -77,4 +81,9 @@ diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(messages -> users (user_id));
 diesel::joinable!(models -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(chats, messages, models, users,);
+diesel::allow_tables_to_appear_in_same_query!(
+    chats,
+    messages,
+    models,
+    users,
+);

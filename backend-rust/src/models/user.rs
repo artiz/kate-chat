@@ -54,6 +54,8 @@ pub struct User {
     pub auth_provider: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub role: Option<String>,
+    pub settings: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Insertable)]
@@ -72,6 +74,8 @@ pub struct NewUser {
     pub auth_provider: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub role: Option<String>,
+    pub settings: Option<String>,
 }
 
 impl NewUser {
