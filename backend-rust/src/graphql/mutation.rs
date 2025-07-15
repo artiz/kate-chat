@@ -7,10 +7,7 @@ use tracing::{error, info, instrument, warn};
 use crate::graphql::GraphQLContext;
 use crate::log_user_action;
 use crate::models::{
-    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput,
-    EditMessageResponse, GqlChat, GqlMessage, GqlModel, GqlModelsList, GqlNewMessage,
-    GqlProviderInfo, LoginInput, Message, MessageRole, Model, NewChat, NewUser, ProviderDetail,
-    RegisterInput, TestModelInput, UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
+    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput, EditMessageResponse, GqlChat, GqlMessage, GqlModel, GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message, MessageRole, Model, NewChat, NewUser, ProviderDetail, RegisterInput, TestModelInput, UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User, ROLE_ADMIN, ROLE_USER
 };
 use crate::schema::{chats, messages, models, users};
 use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
@@ -55,6 +52,12 @@ impl Mutation {
         let hashed_password =
             bcrypt::hash(&input.password, bcrypt::DEFAULT_COST).map_err(AppError::from)?;
 
+        let user_role_str = if gql_ctx.config.default_admin_emails.contains(&input.email) {
+            ROLE_ADMIN
+        } else {
+            ROLE_USER
+        };
+
         let new_user = NewUser::new(
             input.email,
             Some(hashed_password),
@@ -64,6 +67,7 @@ impl Mutation {
             None,                                  // GitHub ID not provided
             Some(AuthProvider::Local.to_string()), // Auth provider
             None,
+            user_role_str.to_string(),
         );
 
         let user = diesel::insert_into(users::table)
@@ -731,6 +735,8 @@ impl Mutation {
                     model_name: Some(model.name.clone()),
                     created_at: timestamp,
                     updated_at: timestamp,
+                    json_content: None,
+                    metadata: None,
                 })
             }
             Err(e) => {

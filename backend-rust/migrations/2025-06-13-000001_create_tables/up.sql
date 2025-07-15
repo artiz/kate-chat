@@ -19,7 +19,7 @@ CREATE TABLE users (
 CREATE TABLE chats (
     id VARCHAR(64) PRIMARY KEY NOT NULL,
     title TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
+    "description" TEXT NOT NULL DEFAULT '',
     user_id VARCHAR(64),
     files TEXT,
     model_id VARCHAR(64),
@@ -38,7 +38,7 @@ CREATE TABLE messages (
     chat_id VARCHAR(64) NOT NULL,
     user_id VARCHAR(64),
     content TEXT NOT NULL,
-    role TEXT NOT NULL,
+    "role" TEXT NOT NULL,
     model_id VARCHAR(64) NOT NULL,
     model_name TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

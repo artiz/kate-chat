@@ -199,6 +199,13 @@ pub async fn google_callback(
         .map(|parts| parts.join(" "))
         .unwrap_or_default();
 
+        let user_role: &str = if config.default_admin_emails.contains(&user_info.email) {
+            ROLE_ADMIN
+        } else {
+            ROLE_USER
+        };
+
+
     let db_user = if let Some(user) = existing_user {
         // Update existing user
         diesel::update(users::table.filter(users::id.eq(&user.id)))
@@ -210,6 +217,7 @@ pub async fn google_callback(
                 users::google_id.eq(&user_info.id),
                 users::updated_at.eq(Utc::now().naive_utc()),
                 users::avatar_url.eq(&user_info.picture),
+                users::role.eq(user_role.to_string()),
             ))
             .execute(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
@@ -230,6 +238,7 @@ pub async fn google_callback(
             None,                                   // GitHub ID not provided
             Some(AuthProvider::Google.to_string()), // Auth provider
             user_info.picture.clone(),              // Avatar URL
+            user_role.to_string(),                  // User role
         );
 
         let created_user: User = diesel::insert_into(users::table)
@@ -417,6 +426,12 @@ pub async fn github_callback(
         .map(|parts| parts.join(" "))
         .unwrap_or_default();
 
+    let user_role: &str = if config.default_admin_emails.contains(&email) {
+            ROLE_ADMIN
+        } else {
+            ROLE_USER
+        };
+
     let db_user = if let Some(user) = existing_user_by_github {
         // Update existing user with GitHub ID
         diesel::update(users::table.filter(users::id.eq(&user.id)))
@@ -428,6 +443,7 @@ pub async fn github_callback(
                 users::github_id.eq(&user_info.id.to_string()),
                 users::updated_at.eq(Utc::now().naive_utc()),
                 users::avatar_url.eq(&user_info.avatar_url),
+                users::role.eq(user_role.to_string()),
             ))
             .execute(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
@@ -437,6 +453,7 @@ pub async fn github_callback(
             .filter(users::id.eq(&user.id))
             .first(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?
+    
     } else if let Some(user) = existing_user_by_email {
         // Link existing user with GitHub ID
         diesel::update(users::table.filter(users::id.eq(&user.id)))
@@ -448,6 +465,7 @@ pub async fn github_callback(
                 users::github_id.eq(&user_info.id.to_string()),
                 users::updated_at.eq(Utc::now().naive_utc()),
                 users::avatar_url.eq(&user_info.avatar_url),
+                users::role.eq(user_role.to_string()),
             ))
             .execute(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
@@ -460,6 +478,7 @@ pub async fn github_callback(
             .first(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?
     } else {
+        
         // Create new user
         let new_user = NewUser::new(
             email.clone(),
@@ -470,6 +489,7 @@ pub async fn github_callback(
             Some(user_info.id.to_string()),         // GitHub ID
             Some(AuthProvider::GitHub.to_string()), // Auth provider
             user_info.avatar_url.clone(),           // Avatar URL
+            user_role.to_string(),                  // User role
         );
 
         let created_user: User = diesel::insert_into(users::table)
