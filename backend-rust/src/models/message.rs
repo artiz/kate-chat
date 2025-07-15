@@ -60,7 +60,7 @@ pub struct Message {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub jsonContent: Option<String>,
+    pub json_content: Option<String>,
     pub metadata: Option<String>,
 }
 
@@ -94,6 +94,8 @@ impl Message {
             model_name,
             created_at: now,
             updated_at: now,
+            json_content: None,
+            metadata: None,
         }
     }
 }
@@ -110,7 +112,7 @@ pub struct GqlMessage {
     pub model_name: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub jsonContent: Option<ModelMessageContent[]>,
+    pub json_content: Option<Vec<ModelMessageContent>>,
     pub metadata: Option<MessageMetadata>,
 }
 
@@ -149,9 +151,9 @@ pub struct MessageMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct ModelMessageContent {
     pub content: String,
-    pub contentType: Option<String>,
-    pub fileName: Option<String>,
-    pub mimeType: Option<String>,
+    pub content_type: Option<String>,
+    pub file_name: Option<String>,
+    pub mime_type: Option<String>,
 }
 
 impl From<Message> for GqlMessage {
@@ -167,6 +169,7 @@ impl From<Message> for GqlMessage {
             model_name: message.model_name,
             created_at: message.created_at,
             updated_at: message.updated_at,
+            json_content: None,
             metadata: None,
         }
     }

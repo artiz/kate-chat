@@ -28,7 +28,7 @@ diesel::table! {
         model_name -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
-        jsonContent -> Nullable<Text>,
+        json_content -> Nullable<Text>,
         metadata -> Nullable<Text>,
     }
 }
@@ -72,7 +72,7 @@ diesel::table! {
         created_at -> Timestamp,
         updated_at -> Timestamp,
         role -> Text,
-        settings -> Text,
+        settings -> Nullable<Text>,
     }
 }
 message
