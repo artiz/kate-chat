@@ -100,7 +100,6 @@ export const formatDateFloor =
       }
     : (date: Date) => date;
 
-
 export const formatDateCeil =
   dbOptions.type === "sqlite"
     ? (date: Date) => {

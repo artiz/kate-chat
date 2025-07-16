@@ -170,10 +170,12 @@ async function bootstrap() {
         return {
           message: error.message,
           name: error.name || "InternalServerError",
-          locations: error.stack ? error.stack.split("\n").map(line => {
-            const match = line.match(/at (.+):(\d+):(\d+)/);
-            return match ? { line: parseInt(match[2], 10), column: parseInt(match[3], 10) } : undefined;
-          }) : undefined,
+          locations: error.stack
+            ? error.stack.split("\n").map(line => {
+                const match = line.match(/at (.+):(\d+):(\d+)/);
+                return match ? { line: parseInt(match[2], 10), column: parseInt(match[3], 10) } : undefined;
+              })
+            : undefined,
         };
       },
     })
