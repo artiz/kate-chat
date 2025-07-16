@@ -209,14 +209,17 @@ npm run dev
 
 #### Rust backend
 
-First terminal:
+1. Server
+```
+cd backend-rust
+diesel migration run
+cargo build
+cargo run
+```
+
+2. Client
 ```
 APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:frontend
-```
-Second terminal:
-```
-cd backent-rust
-cargo run
 ```
 
 

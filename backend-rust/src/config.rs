@@ -8,6 +8,7 @@ pub struct AppConfig {
     pub session_secret: String,
     pub port: u16,
     pub allowed_origins: Option<String>,
+    pub default_admin_emails: Vec<String>,
 
     // AWS Configuration
     pub aws_bedrock_region: Option<String>,
@@ -98,6 +99,14 @@ impl AppConfig {
 
             // Enabled API providers
             enabled_api_providers: Self::parse_enabled_providers(),
+
+            // Default admin emails
+            default_admin_emails: match env::var("DEFAULT_ADMIN_EMAILS") {
+                Ok(value) => value.split(',').map(|s| s.trim().to_string()).collect(),
+                Err(_) => {
+                    vec![]
+                }
+            },
         }
     }
 
