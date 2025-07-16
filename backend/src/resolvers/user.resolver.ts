@@ -136,7 +136,7 @@ export class UserResolver extends BaseResolver {
 
     // Find user by email
     const user = await this.userRepository.findOne({ where: { email } });
-    if (!user) {
+    if (!user || !user.password) {
       throw new Error("Invalid email or password");
     }
 

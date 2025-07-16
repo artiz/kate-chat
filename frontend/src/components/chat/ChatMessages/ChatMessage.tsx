@@ -10,6 +10,8 @@ import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
 
 import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
+import { ProviderIcon } from "@/components/icons/ProviderIcon";
+import { useAppSelector } from "@/store";
 
 interface ChatMessageProps {
   message: Message;
@@ -36,6 +38,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   const componentRef = useRef<HTMLDivElement>(null);
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
+  const { models } = useAppSelector(state => state.models);
 
   const codeHeaderTemplate = `
                 <span class="title">
@@ -132,11 +135,14 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const timestamp = new Date(createdAt).toLocaleString();
 
   const mainMessage = useMemo(
-    () => (
-      <>
+    () => {
+      const model = models.find(m => m.modelId === modelId);
+
+      return (<>
         <Group align="center">
           <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
-            {isUserMessage ? <IconUser /> : <IconRobot />}
+            {isUserMessage ? <IconUser /> : 
+              (model ? <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} /> : <IconRobot />) }
           </Avatar>
           <Group gap="xs">
             <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
@@ -167,9 +173,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
             />
           </div>
         </div>
-      </>
-    ),
-    [role, username, timestamp, content, html, id, modelName, modelId, metadata, index, disableActions]
+      </>);
+    },
+    [role, username, timestamp, content, html, id, modelName, modelId, models, metadata, index, disableActions]
   );
 
   const linkedMessagesCmp = useMemo(() => {

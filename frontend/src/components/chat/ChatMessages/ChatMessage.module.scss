@@ -69,6 +69,13 @@
     margin-block-end: 0;
   }
 
+  :global hr {
+    width: 100%;
+    margin: 0.5rem 0 0.25rem;
+    border: none;
+    border-top: 1px solid var(--mantine-color-default-border);
+  }
+
   :global img {
     max-width: 256px;
     max-height: 256px;

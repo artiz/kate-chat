@@ -71,7 +71,7 @@ diesel::table! {
         updated_at -> Timestamp,
     }
 }
-
+message
 diesel::joinable!(chats -> users (user_id));
 diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(messages -> users (user_id));

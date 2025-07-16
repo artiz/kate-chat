@@ -91,11 +91,21 @@ export async function initializeDatabase() {
   }
 }
 
-export const formatDate =
+export const formatDateFloor =
   dbOptions.type === "sqlite"
     ? (date: Date) => {
         const d = new Date(date);
-        d.setMilliseconds(d.getMilliseconds() - 5); // SQLite requires a small adjustment to avoid precision issues
+        d.setMilliseconds(d.getMilliseconds() - 1); // SQLite requires a small adjustment to avoid precision issues
+        return d;
+      }
+    : (date: Date) => date;
+
+
+export const formatDateCeil =
+  dbOptions.type === "sqlite"
+    ? (date: Date) => {
+        const d = new Date(date);
+        d.setMilliseconds(d.getMilliseconds() + 1); // SQLite requires a small adjustment to avoid precision issues
         return d;
       }
     : (date: Date) => date;

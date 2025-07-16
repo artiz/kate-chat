@@ -5,6 +5,8 @@ import { IconCopy, IconCopyCheck, IconRobot, IconTrash } from "@tabler/icons-rea
 import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import classes from "../ChatMessage.module.scss";
+import { useAppSelector } from "@/store";
+import { ProviderIcon } from "@/components/icons/ProviderIcon";
 
 interface IProps {
   message: Message;
@@ -13,11 +15,14 @@ interface IProps {
   disableActions?: boolean;
 }
 
-export const LinkedChatMessage = ({ message, parentIndex, index, disableActions }: IProps) => (
-  <Carousel.Slide key={message.id} className={classes.linkedMessageContainer}>
+export const LinkedChatMessage = ({ message, parentIndex, index, disableActions }: IProps) => {
+  const { models } = useAppSelector(state => state.models);
+  var model = models.find(m => m.modelId === message.modelId);
+
+  return <Carousel.Slide key={message.id} className={classes.linkedMessageContainer}>
     <Group align="center">
       <Avatar radius="xl" size="md">
-        <IconRobot />
+        {model ? <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} /> : <IconRobot />}
       </Avatar>
       <Group gap="xs">
         <Text size="xs" fw={500} c="teal">
@@ -72,7 +77,9 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
         </Tooltip>
       </div>
     </div>
-  </Carousel.Slide>
-);
+  </Carousel.Slide>;
+
+
+};
 
 LinkedChatMessage.displayName = "LinkedChatMessage";

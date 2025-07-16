@@ -319,9 +319,9 @@ export class OpenAIService extends BaseProviderService {
                   try {
                     processDelta(JSON.parse(json.replace(/\}\}\}\}+$/m, "}}}")));
                   } catch (jsonError2) {
-                    logger.error(jsonError2, "Failed to parse usage JSON chunk: " + json);
+                    logger.warn(jsonError2, "Failed to parse usage JSON chunk: " + json);
                   }
-                } else {
+                } else if (!(error instanceof SyntaxError)) {
                   logger.error(jsonError, "Failed to parse JSON chunk: " + json);
                 }
               }

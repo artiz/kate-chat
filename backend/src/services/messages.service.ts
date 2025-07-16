@@ -18,7 +18,7 @@ import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
-import { formatDate, getRepository } from "@/config/database";
+import { formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -199,7 +199,7 @@ export class MessagesService {
     // Delete all messages after this one in the chat
     const messagesToDelete = await this.messageRepository.findBy({
       chatId,
-      createdAt: MoreThanOrEqual(formatDate(originalMessage.createdAt)),
+      createdAt: MoreThanOrEqual(formatDateFloor(originalMessage.createdAt)),
       id: Not(originalMessage.id),
     });
 
@@ -304,7 +304,7 @@ export class MessagesService {
     const contextMessages = await this.messageRepository
       .createQueryBuilder("message")
       .where("message.chatId = :chatId", { chatId })
-      .andWhere("message.createdAt <= :createdAt", { createdAt: formatDate(originalMessage.createdAt) })
+      .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateFloor(originalMessage.createdAt) })
       .andWhere("message.id <> :id", { id: originalMessage.id })
       .andWhere("message.linkedToMessageId IS NULL") // Only include main messages, not linked ones
       .orderBy("message.createdAt", "ASC")
@@ -382,7 +382,7 @@ export class MessagesService {
         ? await this.messageRepository.find({
             where: {
               chatId,
-              createdAt: MoreThanOrEqual(formatDate(message.createdAt)),
+              createdAt: MoreThanOrEqual(formatDateFloor(message.createdAt)),
               id: Not(id), // Exclude the original message itself
               linkedToMessageId: IsNull(), // Only main messages, not linked ones
             },
@@ -394,7 +394,7 @@ export class MessagesService {
                 await this.messageRepository.findOne({
                   where: {
                     chatId,
-                    createdAt: MoreThanOrEqual(formatDate(message.createdAt)),
+                    createdAt: MoreThanOrEqual(formatDateFloor(message.createdAt)),
                     role: In([MessageRole.SYSTEM, MessageRole.ERROR]),
                   },
                   order: { createdAt: "ASC" },
@@ -705,7 +705,7 @@ export class MessagesService {
 
     if (currentMessage) {
       query = query
-        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDate(currentMessage.createdAt) })
+        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateFloor(currentMessage.createdAt) })
         .andWhere("message.id <> :id", { id: currentMessage.id });
     }
 

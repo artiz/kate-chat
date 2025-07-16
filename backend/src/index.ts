@@ -161,6 +161,21 @@ async function bootstrap() {
           connectionParams: req.raw.connectionParams || {},
         };
       },
+      formatError: (error: GraphQLError | Error) => {
+        // logger.error(error, "GraphQL error");
+        if (error instanceof GraphQLError) {
+          return error;
+        }
+
+        return {
+          message: error.message,
+          name: error.name || "InternalServerError",
+          locations: error.stack ? error.stack.split("\n").map(line => {
+            const match = line.match(/at (.+):(\d+):(\d+)/);
+            return match ? { line: parseInt(match[2], 10), column: parseInt(match[3], 10) } : undefined;
+          }) : undefined,
+        };
+      },
     })
   );
 
