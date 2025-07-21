@@ -13,8 +13,7 @@
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
     "test": "cd backend && npm run test && cd ../frontend && npm run test",
-    "format": "cd frontend && npm run format && cd ../backend && npm run format",
-    "prepare": "lint-staged"
+    "format": "cd frontend && npm run format && cd ../backend && npm run format"
   },
   "author": "",
   "license": "ISC",
