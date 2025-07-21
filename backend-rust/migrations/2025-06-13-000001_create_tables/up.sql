@@ -11,6 +11,8 @@ CREATE TABLE users (
     google_id VARCHAR(255),
     github_id VARCHAR(255),
     auth_provider TEXT,
+    "role" TEXT not null default 'user',
+    settings TEXT null,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -41,12 +43,20 @@ CREATE TABLE messages (
     "role" TEXT NOT NULL,
     model_id VARCHAR(64) NOT NULL,
     model_name TEXT,
+    json_content TEXT null,
+    metadata TEXT null,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE
-    SET
-        NULL
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+-- Create linked_messages table
+CREATE TABLE linked_messages (
+    message_id VARCHAR(64) NOT NULL,
+    linked_to_message_id VARCHAR(64) NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES messages (id) ON DELETE CASCADE,
+    FOREIGN KEY (linked_to_message_id) REFERENCES messages (id) ON DELETE CASCADE
 );
 
 -- Create models table

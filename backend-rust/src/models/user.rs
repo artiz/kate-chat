@@ -1,10 +1,10 @@
 use async_graphql::{InputObject, SimpleObject};
 use chrono::{NaiveDateTime, Utc};
+use diesel::deserialize::{self, FromSql};
 use diesel::prelude::*;
+use diesel::serialize::{self, IsNull, Output, ToSql};
 use diesel::sql_types::Text;
 use diesel::sqlite::Sqlite;
-use diesel::deserialize::{self, FromSql};
-use diesel::serialize::{self, IsNull, Output, ToSql};
 use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -12,12 +12,13 @@ use uuid::Uuid;
 
 use crate::schema::users::{self};
 
-
 // JSON wrapper for settings field that handles serialization/deserialization with Diesel
-#[derive(Debug, Clone, Serialize, Deserialize, AsExpression, FromSqlRow, SimpleObject, InputObject)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, AsExpression, FromSqlRow, SimpleObject, InputObject,
+)]
 #[diesel(sql_type = Text)]
 #[graphql(input_name = "UserSettingsInput")]
-pub struct JsonUserSettings{
+pub struct JsonUserSettings {
     s3_endpoint: Option<String>,
     s3_region: Option<String>,
     s3_access_key_id: Option<String>,
@@ -38,7 +39,9 @@ pub struct JsonUserSettings{
 }
 
 impl FromSql<Text, Sqlite> for JsonUserSettings {
-    fn from_sql(bytes: <Sqlite as diesel::backend::Backend>::RawValue<'_>) -> deserialize::Result<Self> {
+    fn from_sql(
+        bytes: <Sqlite as diesel::backend::Backend>::RawValue<'_>,
+    ) -> deserialize::Result<Self> {
         let json_str = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
         let settings: JsonUserSettings = serde_json::from_str(&json_str)
             .map_err(|e| format!("Failed to deserialize user settings: {}", e))?;
@@ -54,7 +57,6 @@ impl ToSql<Text, Sqlite> for JsonUserSettings {
         Ok(IsNull::No)
     }
 }
-
 
 pub const ROLE_USER: &str = "user";
 pub const ROLE_ADMIN: &str = "admin";
@@ -103,12 +105,11 @@ pub struct User {
     pub google_id: Option<String>,
     pub github_id: Option<String>,
     pub auth_provider: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
     pub role: String,
     pub settings: Option<JsonUserSettings>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Insertable)]
 #[diesel(table_name = users)]
@@ -163,7 +164,6 @@ impl NewUser {
         }
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct RegisterInput {

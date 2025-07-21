@@ -48,7 +48,7 @@ impl From<MessageRole> for String {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, SimpleObject)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
 #[diesel(table_name = messages)]
 pub struct Message {
     pub id: String,
@@ -58,10 +58,10 @@ pub struct Message {
     pub role: String,
     pub model_id: String,
     pub model_name: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
     pub json_content: Option<String>,
     pub metadata: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 impl Message {
@@ -101,6 +101,7 @@ impl Message {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+#[graphql(name = "Message")]
 pub struct GqlMessage {
     pub id: String,
     pub chat_id: String,
@@ -110,10 +111,12 @@ pub struct GqlMessage {
     pub role: String,
     pub model_id: String,
     pub model_name: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
     pub json_content: Option<Vec<ModelMessageContent>>,
     pub metadata: Option<MessageMetadata>,
+    pub linked_to_message_id: Option<String>,
+    pub linked_messages: Option<Vec<GqlMessage>>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
@@ -169,8 +172,14 @@ impl From<Message> for GqlMessage {
             model_name: message.model_name,
             created_at: message.created_at,
             updated_at: message.updated_at,
-            json_content: None,
-            metadata: None,
+            json_content: message
+                .json_content
+                .and_then(|json| serde_json::from_str::<Vec<ModelMessageContent>>(&json).ok()),
+            metadata: message
+                .metadata
+                .and_then(|meta| serde_json::from_str::<MessageMetadata>(&meta).ok()),
+            linked_to_message_id: None,
+            linked_messages: None,
         }
     }
 }

@@ -18,6 +18,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    linked_messages (rowid) {
+        rowid -> Integer,
+        message_id -> Text,
+        linked_to_message_id -> Text,
+    }
+}
+
+diesel::table! {
     messages (id) {
         id -> Text,
         chat_id -> Text,
@@ -26,10 +34,10 @@ diesel::table! {
         role -> Text,
         model_id -> Text,
         model_name -> Nullable<Text>,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
         json_content -> Nullable<Text>,
         metadata -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
     }
 }
 
@@ -69,21 +77,16 @@ diesel::table! {
         google_id -> Nullable<Text>,
         github_id -> Nullable<Text>,
         auth_provider -> Nullable<Text>,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
         role -> Text,
         settings -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
     }
 }
-message
+
 diesel::joinable!(chats -> users (user_id));
 diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(messages -> users (user_id));
 diesel::joinable!(models -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    chats,
-    messages,
-    models,
-    users,
-);
+diesel::allow_tables_to_appear_in_same_query!(chats, linked_messages, messages, models, users,);

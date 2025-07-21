@@ -18,7 +18,8 @@ pub fn init_logging() {
         }
     });
 
-    let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production";
+    let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production"
+        || env::var("ENVIRONMENT").unwrap_or_default() == "staging";
 
     // Create env filter
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
