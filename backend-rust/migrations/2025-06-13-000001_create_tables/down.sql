@@ -10,5 +10,6 @@ DROP INDEX IF EXISTS idx_chats_user_id;
 -- Drop tables in reverse order
 DROP TABLE IF EXISTS models;
 DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS linked_messages;
 DROP TABLE IF EXISTS chats;
 DROP TABLE IF EXISTS users;

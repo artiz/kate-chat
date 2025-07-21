@@ -11,6 +11,7 @@ use crate::models::{
     EditMessageResponse, GqlChat, GqlMessage, GqlModel, GqlModelsList, GqlNewMessage,
     GqlProviderInfo, LoginInput, Message, MessageRole, Model, NewChat, NewUser, ProviderDetail,
     RegisterInput, TestModelInput, UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
+    ROLE_ADMIN, ROLE_USER,
 };
 use crate::schema::{chats, messages, models, users};
 use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
@@ -55,6 +56,12 @@ impl Mutation {
         let hashed_password =
             bcrypt::hash(&input.password, bcrypt::DEFAULT_COST).map_err(AppError::from)?;
 
+        let user_role_str = if gql_ctx.config.default_admin_emails.contains(&input.email) {
+            ROLE_ADMIN
+        } else {
+            ROLE_USER
+        };
+
         let new_user = NewUser::new(
             input.email,
             Some(hashed_password),
@@ -64,6 +71,7 @@ impl Mutation {
             None,                                  // GitHub ID not provided
             Some(AuthProvider::Local.to_string()), // Auth provider
             None,
+            user_role_str.to_string(),
         );
 
         let user = diesel::insert_into(users::table)
@@ -251,7 +259,7 @@ impl Mutation {
         &self,
         ctx: &Context<'_>,
         input: CreateMessageInput,
-    ) -> Result<Message> {
+    ) -> Result<GqlMessage> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -528,7 +536,7 @@ impl Mutation {
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
-        Ok(message)
+        Ok(GqlMessage::from(message))
     }
 
     /// Delete message and optionally following messages
@@ -660,7 +668,7 @@ impl Mutation {
 
     /// Test a model
     #[instrument(skip(self, ctx), fields(id = %input.id, user_id = tracing::field::Empty))]
-    async fn test_model(&self, ctx: &Context<'_>, input: TestModelInput) -> Result<Message> {
+    async fn test_model(&self, ctx: &Context<'_>, input: TestModelInput) -> Result<GqlMessage> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -721,16 +729,21 @@ impl Mutation {
                 );
                 log_user_action!(&user.id, "test_model", model_id = %model.model_id, provider = %model.api_provider);
 
-                Ok(Message {
+                Ok(GqlMessage {
                     id: uuid::Uuid::new_v4().to_string(),
                     chat_id: "test".to_string(),
                     user_id: Some(user.id.clone()),
+                    user: Some(user.clone()),
                     content: response.content,
                     role: "assistant".to_string(),
                     model_id: model.model_id.clone(),
                     model_name: Some(model.name.clone()),
                     created_at: timestamp,
                     updated_at: timestamp,
+                    json_content: None,
+                    metadata: None,
+                    linked_to_message_id: None,
+                    linked_messages: None,
                 })
             }
             Err(e) => {

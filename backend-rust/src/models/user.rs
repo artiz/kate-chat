@@ -1,11 +1,65 @@
 use async_graphql::{InputObject, SimpleObject};
 use chrono::{NaiveDateTime, Utc};
+use diesel::deserialize::{self, FromSql};
 use diesel::prelude::*;
+use diesel::serialize::{self, IsNull, Output, ToSql};
+use diesel::sql_types::Text;
+use diesel::sqlite::Sqlite;
+use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
 
 use crate::schema::users::{self};
+
+// JSON wrapper for settings field that handles serialization/deserialization with Diesel
+#[derive(
+    Debug, Clone, Serialize, Deserialize, AsExpression, FromSqlRow, SimpleObject, InputObject,
+)]
+#[diesel(sql_type = Text)]
+#[graphql(input_name = "UserSettingsInput")]
+pub struct JsonUserSettings {
+    s3_endpoint: Option<String>,
+    s3_region: Option<String>,
+    s3_access_key_id: Option<String>,
+    s3_secret_access_key: Option<String>,
+    s3_files_bucket_name: Option<String>,
+    s3_profile: Option<String>,
+
+    aws_bedrock_region: Option<String>,
+    aws_bedrock_profile: Option<String>,
+    aws_bedrock_access_key_id: Option<String>,
+    aws_bedrock_secret_access_key: Option<String>,
+
+    openai_api_key: Option<String>,
+    openai_api_admin_key: Option<String>,
+
+    yandex_fm_api_key: Option<String>,
+    yandex_fm_api_folder_id: Option<String>,
+}
+
+impl FromSql<Text, Sqlite> for JsonUserSettings {
+    fn from_sql(
+        bytes: <Sqlite as diesel::backend::Backend>::RawValue<'_>,
+    ) -> deserialize::Result<Self> {
+        let json_str = <String as FromSql<Text, Sqlite>>::from_sql(bytes)?;
+        let settings: JsonUserSettings = serde_json::from_str(&json_str)
+            .map_err(|e| format!("Failed to deserialize user settings: {}", e))?;
+        Ok(settings)
+    }
+}
+
+impl ToSql<Text, Sqlite> for JsonUserSettings {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> serialize::Result {
+        let json_str = serde_json::to_string(&self)
+            .map_err(|e| format!("Failed to serialize user settings: {}", e))?;
+        out.set_value(json_str);
+        Ok(IsNull::No)
+    }
+}
+
+pub const ROLE_USER: &str = "user";
+pub const ROLE_ADMIN: &str = "admin";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub enum AuthProvider {
@@ -42,7 +96,6 @@ pub struct User {
     pub id: String,
     pub email: String,
     #[serde(skip_serializing)]
-    #[graphql(skip)]
     pub password: Option<String>,
     pub first_name: String,
     pub last_name: String,
@@ -52,6 +105,8 @@ pub struct User {
     pub google_id: Option<String>,
     pub github_id: Option<String>,
     pub auth_provider: Option<String>,
+    pub role: String,
+    pub settings: Option<JsonUserSettings>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -72,6 +127,8 @@ pub struct NewUser {
     pub auth_provider: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub role: String,
+    pub settings: Option<JsonUserSettings>,
 }
 
 impl NewUser {
@@ -85,6 +142,7 @@ impl NewUser {
         github_id: Option<String>,
         auth_provider: Option<String>,
         avatar_url: Option<String>,
+        role: String,
     ) -> Self {
         let now = Utc::now().naive_utc();
         Self {
@@ -101,6 +159,8 @@ impl NewUser {
             auth_provider,
             created_at: now,
             updated_at: now,
+            role,
+            settings: None,
         }
     }
 }
@@ -130,6 +190,7 @@ pub struct UpdateUserInput {
     pub default_model_id: Option<String>,
     pub default_system_prompt: Option<String>,
     pub avatar_url: Option<String>,
+    pub settings: Option<JsonUserSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]

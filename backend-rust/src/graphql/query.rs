@@ -175,7 +175,7 @@ impl Query {
     }
 
     /// Get message by ID
-    async fn get_message_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<Message>> {
+    async fn get_message_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<GqlMessage>> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -190,7 +190,7 @@ impl Query {
             .optional()
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(message_result)
+        Ok(message_result.map(GqlMessage::from))
     }
 
     /// Get all models

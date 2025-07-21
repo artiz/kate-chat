@@ -19,7 +19,7 @@ async-graphql-rocket = "7.0"
 async-graphql-warp = "7.0"
 
 # Database
-diesel = { version = "2.1", features = ["postgres", "sqlite", "uuid", "chrono", "r2d2", "returning_clauses_for_sqlite_3_35"] }
+diesel = { version = "2.2.0", features = ["postgres", "sqlite", "uuid", "chrono", "r2d2", "returning_clauses_for_sqlite_3_35"] }
 libsqlite3-sys = { version = "0.26", features = ["bundled"] }
 diesel_migrations = "2.1"
 

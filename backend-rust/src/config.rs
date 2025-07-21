@@ -8,6 +8,7 @@ pub struct AppConfig {
     pub session_secret: String,
     pub port: u16,
     pub allowed_origins: Option<String>,
+    pub default_admin_emails: Vec<String>,
 
     // AWS Configuration
     pub aws_bedrock_region: Option<String>,
@@ -26,6 +27,9 @@ pub struct AppConfig {
     // S3 Configuration
     pub s3_bucket: Option<String>,
     pub s3_region: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub s3_access_key_id: Option<String>,
+    pub s3_secret_access_key: Option<String>,
 
     // Application limits
     pub demo_max_chat_messages: Option<i32>,
@@ -83,8 +87,11 @@ impl AppConfig {
             frontend_url: env::var("FRONTEND_URL").ok(),
 
             // S3
-            s3_bucket: env::var("S3_BUCKET").ok(),
+            s3_bucket: env::var("S3_FILES_BUCKET_NAME").ok(),
             s3_region: env::var("S3_REGION").ok(),
+            s3_endpoint: env::var("S3_ENDPOINT").ok(),
+            s3_access_key_id: env::var("S3_ACCESS_KEY_ID").ok(),
+            s3_secret_access_key: env::var("S3_SECRET_ACCESS_KEY").ok(),
 
             // Demo mode
             demo_mode: env::var("DEMO_MODE").unwrap_or_else(|_| "false".to_string()) == "true",
@@ -98,6 +105,14 @@ impl AppConfig {
 
             // Enabled API providers
             enabled_api_providers: Self::parse_enabled_providers(),
+
+            // Default admin emails
+            default_admin_emails: match env::var("DEFAULT_ADMIN_EMAILS") {
+                Ok(value) => value.split(',').map(|s| s.trim().to_string()).collect(),
+                Err(_) => {
+                    vec![]
+                }
+            },
         }
     }
 

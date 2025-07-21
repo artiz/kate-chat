@@ -34,8 +34,8 @@ impl S3Service {
         }
 
         if let (Some(access_key), Some(secret_key)) = (
-            &self.config.aws_bedrock_access_key_id,
-            &self.config.aws_bedrock_secret_access_key,
+            &self.config.s3_access_key_id,
+            &self.config.s3_secret_access_key,
         ) {
             let credentials = aws_credential_types::Credentials::new(
                 access_key,
@@ -45,6 +45,10 @@ impl S3Service {
                 "kate-chat",
             );
             config_builder = config_builder.credentials_provider(credentials);
+        }
+
+        if let Some(endpoint) = &self.config.s3_endpoint {
+            config_builder = config_builder.endpoint_url(endpoint.clone());
         }
 
         Ok(config_builder.load().await)

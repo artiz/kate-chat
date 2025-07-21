@@ -48,7 +48,7 @@ impl From<MessageRole> for String {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, SimpleObject)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
 #[diesel(table_name = messages)]
 pub struct Message {
     pub id: String,
@@ -58,6 +58,8 @@ pub struct Message {
     pub role: String,
     pub model_id: String,
     pub model_name: Option<String>,
+    pub json_content: Option<String>,
+    pub metadata: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -92,11 +94,14 @@ impl Message {
             model_name,
             created_at: now,
             updated_at: now,
+            json_content: None,
+            metadata: None,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+#[graphql(name = "Message")]
 pub struct GqlMessage {
     pub id: String,
     pub chat_id: String,
@@ -106,9 +111,12 @@ pub struct GqlMessage {
     pub role: String,
     pub model_id: String,
     pub model_name: Option<String>,
+    pub json_content: Option<Vec<ModelMessageContent>>,
+    pub metadata: Option<MessageMetadata>,
+    pub linked_to_message_id: Option<String>,
+    pub linked_messages: Option<Vec<GqlMessage>>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub metadata: Option<MessageMetadata>,
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
@@ -143,6 +151,14 @@ pub struct MessageMetadata {
     pub usage: MessageUsage,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ModelMessageContent {
+    pub content: String,
+    pub content_type: Option<String>,
+    pub file_name: Option<String>,
+    pub mime_type: Option<String>,
+}
+
 impl From<Message> for GqlMessage {
     fn from(message: Message) -> Self {
         Self {
@@ -156,7 +172,14 @@ impl From<Message> for GqlMessage {
             model_name: message.model_name,
             created_at: message.created_at,
             updated_at: message.updated_at,
-            metadata: None,
+            json_content: message
+                .json_content
+                .and_then(|json| serde_json::from_str::<Vec<ModelMessageContent>>(&json).ok()),
+            metadata: message
+                .metadata
+                .and_then(|meta| serde_json::from_str::<MessageMetadata>(&meta).ok()),
+            linked_to_message_id: None,
+            linked_messages: None,
         }
     }
 }
