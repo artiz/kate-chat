@@ -47,6 +47,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
+* Merge both projects into one final Docker image with nginx (katechat-public with possible SSR in future) to minimise costs and run 2 instances to check multi-node mode
 * Add more UI stuff like:
   * Image resolution/count 
 * Add support for more Google Vertex AI provider
