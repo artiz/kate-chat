@@ -16,11 +16,8 @@ permissions:
 
 env:
   AWS_REGION: eu-central-1
-  ECR_REPOSITORY_BACKEND: katechat-backend
-  ECR_REPOSITORY_FRONTEND: katechat-frontend
-  ECR_REPOSITORY_RUST: katechat-backend-rust
-  ECS_SERVICE_BACKEND: backend-service
-  ECS_SERVICE_FRONTEND: frontend-service
+  ECR_REPOSITORY_APP: katechat-app
+  ECS_SERVICE_APP: app-service
 
 jobs:
   test:
@@ -34,20 +31,20 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: '22.x'
         cache: 'npm'
 
     - name: Install dependencies
       run: npm run install:all
 
-    - name: Run backend tests
+    - name: Run API tests
       run: |
-        cd backend
+        cd api
         npm test
 
     - name: Run frontend tests
       run: |
-        cd frontend
+        cd client
         npm test -- --watchAll=false
    
   lint:
@@ -61,42 +58,41 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
 
     - name: Install dependencies
       run: npm run install:all
 
-    - name: Prettier backend
+    - name: Prettier API
       run: |
-        cd backend
+        cd api
         npx prettier -c .
 
-    - name: Prettier frontend
+    - name: Prettier client
       run: |
-        cd frontend
+        cd client
         npx prettier -c .
 
-    # TODO: Uncomment when Rust backend becomes active
+    # TODO: Uncomment when Rust API becomes active
     # - name: Setup Rust
     #   uses: actions-rust-lang/setup-rust-toolchain@v1
     #   with:
     #     toolchain: stable
     #     components: rustfmt, clippy
-    # - name: Lint/Test Rust backend
+    # - name: Lint/Test Rust API
     #   run: |
-    #     cd backend-rust
+    #     cd api-rust
     #     cargo fmt --check
     #     cargo clippy -- -D warnings
     #     cargo test
     
-
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      backend: ${{ steps.changes.outputs.backend }}
-      frontend: ${{ steps.changes.outputs.frontend }}
+      api: ${{ steps.changes.outputs.api }}
+      client: ${{ steps.changes.outputs.client }}
       docs: ${{ steps.changes.outputs.docs }}
     steps:
     - name: Checkout code
@@ -109,12 +105,12 @@ jobs:
       uses: dorny/paths-filter@v2
       with:
         filters: |
-          backend:
-            - 'backend/**'
+          api:
+            - 'api/**'
             - 'package.json'
             - 'docker-compose.yaml'
-          frontend:
-            - 'frontend/**'
+          client:
+            - 'client/**'
             - 'package.json'
             - 'docker-compose.yaml'
           docs:
@@ -125,12 +121,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, lint, changes]
     # TODO: Remove if when feature branch cleanup be implemented
-    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
-    
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true'
+
     outputs:
-      backend-image: ${{ steps.build-backend.outputs.image }}
-      frontend-image: ${{ steps.build-frontend.outputs.image }}
-      # rust-image: ${{ steps.build-rust.outputs.image }}
+      app-image: ${{ steps.build-app.outputs.image }}
     
     steps:
     - name: Checkout code
@@ -153,58 +147,27 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '22.x'
         cache: 'npm'
-
-    - name: Build and push frontend image
-      id: build-frontend
-      if: needs.changes.outputs.frontend == 'true'
-      env:
-        APP_API_URL: "/"
-        APP_WS_URL: "/"
-        RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        COMMIT_SHA: ${{ github.sha }}
-      run: |
-
-        BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME\
-          --build-arg APP_API_URL=$APP_API_URL\
-          --build-arg APP_WS_URL=$APP_WS_URL\
-          --build-arg RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY\
-          --build-arg COMMIT_SHA=$COMMIT_SHA\
-          ./ -f frontend/Dockerfile
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME" >> $GITHUB_OUTPUT
     
-    # Build and push backend image
-    - name: Build and push backend image
-      id: build-backend
-      if: needs.changes.outputs.backend == 'true'
+    # Build and push app image
+    - name: Build and push app image
+      id: build-app
+      if: needs.changes.outputs.api == 'true'
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME ./ -f backend/Dockerfile
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME" >> $GITHUB_OUTPUT
 
-    # TODO: Uncomment when Rust backend becomes active
-    # - name: Build and push Rust backend image
-    #   id: build-rust
-    #   env:
-    #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-    #     IMAGE_TAG: ${{ github.sha }}
-    #   run: |
-    #     docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG backend-rust/
-    #     docker push $ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG
-    #     echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_RUST:$IMAGE_TAG" >> $GITHUB_OUTPUT
-
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME ./ -f infrastructure/services/katechat-app/Dockerfile
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
+    
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [build, changes]
-    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
+    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true')
 
     steps:
     - name: Checkout code
@@ -222,36 +185,13 @@ jobs:
         # Update ECS service with new images
         aws ecs update-service \
           --cluster katechat-staging-cluster \
-          --service katechat-staging-${{ env.ECS_SERVICE_BACKEND }} \
+          --service katechat-staging-${{ env.ECS_SERVICE_APP }} \
           --force-new-deployment
         
-        aws ecs update-service \
-          --cluster katechat-staging-cluster \
-          --service katechat-staging-${{ env.ECS_SERVICE_FRONTEND }} \
-          --force-new-deployment
-
         # Wait for deployment to complete
         # aws ecs wait services-stable \
         #   --cluster katechat-staging-cluster \
-        #   --services katechat-staging-${{ env.ECS_SERVICE_BACKEND }}
-
-    - name: Get Load Balancer DNS
-      id: get-lb-dns
-      run: |
-        # Get the load balancer DNS name
-        LB_DNS=$(aws elbv2 describe-load-balancers \
-          --names katechat-staging-alb \
-          --query 'LoadBalancers[0].DNSName' \
-          --output text 2>/dev/null || echo "")
-        
-        if [ -n "$LB_DNS" ] && [ "$LB_DNS" != "None" ]; then
-          DEMO_URL="http://$LB_DNS/"
-          echo "demo-url=$DEMO_URL" >> $GITHUB_OUTPUT
-          echo "✅ Found load balancer DNS: $LB_DNS"
-        else
-          echo "⚠️ Could not retrieve load balancer DNS"
-          echo "demo-url=" >> $GITHUB_OUTPUT
-        fi
+        #   --services katechat-staging-${{ env.ECS_SERVICE_APP }}
 
     - name: Deployment Summary
       if: always()
@@ -259,56 +199,16 @@ jobs:
         echo "🚀 Staging Deployment Complete!"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "🔧 Services Updated:"
-        echo "  • Backend: katechat-staging-${{ env.ECS_SERVICE_BACKEND }}"
-        echo "  • Frontend: katechat-staging-${{ env.ECS_SERVICE_FRONTEND }}"
+        echo "🚡 App: katechat-staging-${{ env.ECS_SERVICE_APP }}"
         echo "📦 Commit: ${{ github.sha }}"
         echo "🌿 Branch: ${{ github.ref_name }}"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-  # deploy-production:
-  #   name: Deploy to Production
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   if: github.ref == 'refs/heads/master'
-  #   environment: production
-    
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v4
-
-  #   - name: Configure AWS credentials
-  #     uses: aws-actions/configure-aws-credentials@v4
-  #     with:
-  #       aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #       aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #       aws-region: ${{ env.AWS_REGION }}
-
-  #   - name: Deploy to ECS Production
-  #     run: |
-  #       # Update ECS service with new images
-  #       aws ecs update-service \
-  #         --cluster ${{ env.ECS_CLUSTER }} \
-  #         --service ${{ env.ECS_SERVICE_BACKEND }} \
-  #         --force-new-deployment
-        
-  #       # Wait for deployment to complete
-  #       aws ecs wait services-stable \
-  #         --cluster ${{ env.ECS_CLUSTER }} \
-  #         --services ${{ env.ECS_SERVICE_BACKEND }}
-
-  #   - name: Notify deployment success
-  #     if: success()
-  #     run: |
-  #       echo "✅ Production deployment successful!"
-  #       echo "Backend: ${{ needs.build.outputs.backend-image }}"
-  #       echo "Frontend: ${{ needs.build.outputs.frontend-image }}"
-  #       echo "Rust Backend: ${{ needs.build.outputs.rust-image }}"
 
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: [build, changes]
-    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
+    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true')
     continue-on-error: true
     
     steps:

@@ -3,23 +3,23 @@
   "version": "1.0.0",
   "description": "KateChat - Universal Chat Interface for AI Models",
   "scripts": {
-    "dev": "concurrently 'npm run dev:backend' 'npm run dev:frontend'",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "install:frontend": "npm install && cd frontend && npm install",
-    "install:backend": "npm install && cd backend && npm install",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "build": "cd frontend && npm run build && cd ../backend && npm run build",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
-    "test": "cd backend && npm run test && cd ../frontend && npm run test",
-    "format": "cd frontend && npm run format && cd ../backend && npm run format"
+    "dev": "concurrently 'npm run dev:api' 'npm run dev:client'",
+    "dev:api": "cd api && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:client": "npm install && cd client && npm install",
+    "install:api": "npm install && cd api && npm install",
+    "install:all": "npm install && cd client && npm install && cd ../api && npm install",
+    "build": "cd client && npm run build && cd ../api && npm run build",
+    "build:client": "cd client && npm run build",
+    "build:api": "cd api && npm run build",
+    "test": "cd api && npm run test && cd ../client && npm run test",
+    "format": "cd client && npm run format && cd ../api && npm run format"
   },
   "author": "",
   "license": "ISC",
   "workspaces": [
-    "backend",
-    "frontend"
+    "api",
+    "client"
   ],
   "dependencies": {
     "concurrently": "^9.1.2"

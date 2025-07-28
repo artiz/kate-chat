@@ -4,6 +4,9 @@ on:
     delete:
 env:
   AWS_REGION: eu-central-1
+  ECR_REPOSITORY_APP: katechat-app
+  ECS_SERVICE_APP: app-service
+
 
 jobs:
     handle_branch_deletion:
@@ -42,7 +45,7 @@ jobs:
               if: ${{ steps.encode_branch.outputs.BRANCH_NAME != 'master' && steps.encode_branch.outputs.BRANCH_NAME != '' }}
               run: |
                 BRANCH_NAME=${{ steps.encode_branch.outputs.BRANCH_NAME }}
-                # TODO: remove backend images from ECR
-                # docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$BRANCH_NAME
-                # docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$BRANCH_NAME
+                # remove app image from ECR
+                docker image rm $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
+                
 

@@ -26,9 +26,7 @@ output "alb_zone_id" {
 output "ecr_repository_urls" {
   description = "URLs of the ECR repositories"
   value = {
-    backend = aws_ecr_repository.backend.repository_url
-    # backend_rust = aws_ecr_repository.backend_rust.repository_url
-    frontend = aws_ecr_repository.frontend.repository_url
+    for key, repo in aws_ecr_repository.repositories : key => repo.repository_url
   }
 }
 
@@ -77,8 +75,7 @@ output "secrets_manager_db_password_arn" {
 output "cloudwatch_log_groups" {
   description = "CloudWatch log group names"
   value = {
-    backend  = aws_cloudwatch_log_group.backend.name
-    frontend = aws_cloudwatch_log_group.frontend.name
+    app = aws_cloudwatch_log_group.app.name
   }
 }
 

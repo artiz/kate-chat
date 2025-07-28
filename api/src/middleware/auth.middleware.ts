@@ -40,7 +40,7 @@ export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
   try {
     return verifyToken(token);
   } catch (error) {
-    logger.error({ error }, "Error verifying token");
+    logger.debug({ error }, "Error verifying token");
     return null;
   }
 };
@@ -65,7 +65,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
       if (token) {
         const tokenPayload = verifyToken(token);
         if (!tokenPayload) {
-          logger.warn("Invalid or expired token");
+          logger.debug("Invalid or expired token");
           res.status(403).json({ error: "Forbidden: Invalid or expired token" });
         } else {
           req.tokenPayload = tokenPayload;

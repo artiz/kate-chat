@@ -52,7 +52,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 * Add support for more Google Vertex AI provider
 * Rust: add images generation (DALL-E) support, Library
 * Rust: add admin API
-* Python backend (FastAPI)
+* Python API (FastAPI)
 * Open AI code interpreter support  
 * Finish custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API)
 
@@ -77,8 +77,8 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 ## Project Structure
 
 The project consists of several parts:
-1. Backend - nodejs GraphQL API server. Also there is alternative backend implementation on Rust, Python is in plans.
-2. Frontend - Web interface
+1. API - nodejs GraphQL API server. Also there is alternative backend API implementation on Rust, Python is in plans.
+2. Client - Universal web interface
 3. Database - any TypePRM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
 4. Redis - for message queue and caching (optional, but recommended for production)
 
@@ -122,7 +122,7 @@ The project consists of several parts:
    - **IMPORTANT**: Download the CSV file or copy the "Access key ID" and "Secret access key" values immediately. You won't be able to view the secret key again.
 
 5. **Configure Your Environment**
-   - Open the `.env` file in the backend directory
+   - Open the `.env` file in the `api` directory
    - Add your AWS credentials:
      ```
      AWS_BEDROCK_REGION=us-east-1  # or your preferred region
@@ -150,7 +150,7 @@ The project consists of several parts:
    - Copy the API key immediately - it won't be shown again
 
 3. **Configure Your Environment**
-   - Open the `.env` file in the backend directory
+   - Open the `.env` file in the `api` directory
    - Add your OpenAI API key:
      ```
      OPENAI_API_KEY=your_openai_api_key
@@ -174,9 +174,9 @@ cd kate-chat
 
 2. Set up environment variables
 ```
-cp backend/.env.example backend/.env
-cp backend-rust/.env.example backend-rust/.env
-cp frontend/.env.example frontend/.env
+cp api/.env.example api/.env
+cp api-rust/.env.example api-rust/.env
+cp client/.env.example client/.env
 ```
 Edit the `.env` files with your configuration settings.
 
@@ -191,7 +191,7 @@ Then run the following commands:
 ```
 export COMPOSE_BAKE=true
 npm run install:all
-npm run frontend:build
+npm run client:build
 docker compose up --build
 ```
 
@@ -201,17 +201,17 @@ App will be available at `http://katechat.dev.com`
 
 To run the projects in development mode:
 
-#### Default nodejs backend
+#### Default nodejs API
 ```
 npm run install:all
 npm run dev
 ```
 
-#### Rust backend
+#### Rust API
 
 1. Server
 ```
-cd backend-rust
+cd api-rust
 diesel migration run
 cargo build
 cargo run
@@ -219,7 +219,7 @@ cargo run
 
 2. Client
 ```
-APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:frontend
+APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
 ```
 
 
@@ -233,12 +233,26 @@ npm run build
 ### Docker Build
 
 ```
-docker build -t katechat-backend ./ -f backend/Dockerfile  
-docker run --env-file=./backend/.env  -p4000:4000 katechat-backend 
+docker build -t katechat-api ./ -f api/Dockerfile  
+docker run --env-file=./api/.env  -p4000:4000 katechat-api 
 ```
 ```
-docker build -t katechat-frontend --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f frontend/Dockerfile  
-docker run -p3000:80 katechat-frontend
+docker build -t katechat-client --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f client/Dockerfile  
+docker run -p3000:80 katechat-client
+```
+
+All-in-one service
+```
+docker build -t katechat-app ./ -f infrastructure/services/katechat-app/Dockerfile
+docker run -it --rm --pid=host --env-file=./api/.env \
+ --env PORT=80 \
+ --env NODE_ENV=production \
+ --env ALLOWED_ORIGINS="*" \
+ --env REDIS_URL="redis://host.docker.internal:6379" \
+ --env S3_ENDPOINT="http://host.docker.internal:4566" \
+ --env CALLBACK_URL_BASE="http://localhost" \
+ --env FRONTEND_URL="http://localhost" \
+ -p80:80 katechat-app
 ```
 
 ## API Documentation

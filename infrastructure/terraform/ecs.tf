@@ -1,6 +1,14 @@
+# ECR Repository Names
+locals {
+  ecr_repositories = ["app", "document-processor"]
+}
+
+
 # ECR Repositories
-resource "aws_ecr_repository" "backend" {
-  name                 = "${var.project_name}-backend"
+resource "aws_ecr_repository" "repositories" {
+  for_each = toset(local.ecr_repositories)
+
+  name                 = "${var.project_name}-${each.value}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -8,76 +16,15 @@ resource "aws_ecr_repository" "backend" {
   }
 
   tags = {
-    Name = "${var.project_name}-backend-ecr"
+    Name = "${var.project_name}-${each.value}-ecr"
   }
 }
 
-# ECR Lifecycle Policy for Backend Repository
-resource "aws_ecr_lifecycle_policy" "backend" {
-  repository = aws_ecr_repository.backend.name
+# ECR Lifecycle Policies
+resource "aws_ecr_lifecycle_policy" "repositories" {
+  for_each = aws_ecr_repository.repositories
 
-  policy = jsonencode({
-    rules = [
-      {
-        rulePriority = 1
-        description  = "Delete untagged images after 3 days"
-        selection = {
-          tagStatus   = "untagged"
-          countType   = "sinceImagePushed"
-          countUnit   = "days"
-          countNumber = 3
-        }
-        action = {
-          type = "expire"
-        }
-      },
-      {
-        rulePriority = 2
-        description  = "Keep only 15 most recent tagged images"
-        selection = {
-          tagStatus      = "tagged"
-          tagPatternList = ["*"]
-          countType      = "imageCountMoreThan"
-          countNumber    = 15
-        }
-        action = {
-          type = "expire"
-        }
-      }
-    ]
-  })
-}
-
-# TODO: Uncomment and configure the Rust backend repository if needed
-# resource "aws_ecr_repository" "backend_rust" {
-#   name                 = "${var.project_name}-backend-rust"
-#   image_tag_mutability = "MUTABLE"
-
-#   image_scanning_configuration {
-#     scan_on_push = true
-#   }
-
-#   tags = {
-#     Name = "${var.project_name}-backend-rust-ecr"
-#   }
-# }
-
-resource "aws_ecr_repository" "frontend" {
-  name                 = "${var.project_name}-frontend"
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Name = "${var.project_name}-frontend-ecr"
-  }
-}
-
-# ECR Lifecycle Policy for Frontend Repository
-resource "aws_ecr_lifecycle_policy" "frontend" {
-  repository = aws_ecr_repository.frontend.name
+  repository = each.value.name
 
   policy = jsonencode({
     rules = [
@@ -214,10 +161,8 @@ resource "aws_iam_role_policy" "ecs_execution_logs_policy" {
           "logs:PutLogEvents"
         ]
         Resource = [
-          aws_cloudwatch_log_group.backend.arn,
-          aws_cloudwatch_log_group.frontend.arn,
-          "${aws_cloudwatch_log_group.backend.arn}:*",
-          "${aws_cloudwatch_log_group.frontend.arn}:*"
+          aws_cloudwatch_log_group.app.arn,
+          "${aws_cloudwatch_log_group.app.arn}:*"
         ]
       }
     ]

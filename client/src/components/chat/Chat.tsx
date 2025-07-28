@@ -80,6 +80,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const anchorTimer = useRef<NodeJS.Timeout | null>(null);
 
   const {
     messages,
@@ -128,24 +129,28 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const autoScroll = useCallback(() => {
     if (!showAnchorButton) {
-      setTimeout(scrollToBottom, 150);
+      scrollToBottom();
     }
-  }, [scrollToBottom, showAnchorButton, messagesContainerRef]);
+  }, [scrollToBottom, showAnchorButton]);
 
   useEffect(() => {
     autoScroll();
-  }, [messages, chat?.lastBotMessage, sending]);
+  }, [messages, chat?.lastBotMessage, autoScroll, streaming]);
 
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
+      anchorTimer.current && clearTimeout(anchorTimer.current);
+
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
-      } else if (messages?.length && !streaming) {
-        setShowAnchorButton(true);
+      } else if (messages?.length) {
+        anchorTimer.current = setTimeout(() => {
+          setShowAnchorButton(true);
+        }, 100);
       }
     },
-    [messages?.length, streaming]
+    [messages?.length]
   );
 
   const anchorHandleClick = useCallback(() => {

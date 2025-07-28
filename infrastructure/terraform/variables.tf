@@ -56,36 +56,19 @@ variable "db_engine_version" {
 }
 
 # ECS configuration
-variable "backend_cpu" {
+variable "app_cpu" {
   description = "CPU units for backend service"
   type        = number
   default     = 256
 }
 
-variable "backend_memory" {
+variable "app_memory" {
   description = "Memory (MB) for backend service"
   type        = number
   default     = 512
 }
 
-variable "frontend_cpu" {
-  description = "CPU units for frontend service"
-  type        = number
-  default     = 256
-}
-
-variable "frontend_memory" {
-  description = "Memory (MB) for frontend service"
-  type        = number
-  default     = 512
-}
-
-variable "frontend_desired_count" {
-  description = "Desired number of frontend tasks"
-  type        = number
-  default     = 1
-}
-variable "backend_desired_count" {
+variable "app_desired_count" {
   description = "Desired number of backend tasks"
   type        = number
   default     = 3

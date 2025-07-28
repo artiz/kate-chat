@@ -5,6 +5,7 @@ import express, { NextFunction, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
@@ -100,6 +101,51 @@ async function bootstrap() {
   app.use("/files", filesRoutes);
   app.use("/api/files", filesRoutes);
 
+  /**
+   * Development-time endpoint for esbuild hot reloading to test Docker container locally.
+   * This endpoint is used to enable live updates during development.
+   */
+  function esbuildStub(req: Request, res: Response) {
+    const headers = {
+      "Content-Type": "text/event-stream",
+      Connection: "keep-alive",
+      "Cache-Control": "no-cache",
+    };
+    res.writeHead(200, headers);
+  }
+  app.get("/esbuild", esbuildStub);
+
+  const clientDir = fs.existsSync(path.join(__dirname, "client"))
+    ? path.join(__dirname, "client")
+    : path.join(__dirname, "..", "client");
+  const staticHandler = express.static(clientDir, {
+    index: "index.html",
+    etag: true,
+  });
+  app.use("/", staticHandler);
+  app.use("/*path", staticHandler);
+
+  // last one - error handler
+  const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof HttpError) {
+      logger.error(err, "HTTP error");
+      res.status(err.statusCode).send({
+        status: err.statusCode,
+        message: err.message,
+        details: err.details,
+      });
+    } else {
+      logger.error(err, "Unhandled error in request");
+      res.status(500).send({
+        status: 500,
+        name: err.name || "InternalServerError",
+        message: "Something went wrong",
+      });
+    }
+  };
+
+  app.use(errorHandler);
+
   // Create HTTP server
   const httpServer = createServer(app);
 
@@ -110,7 +156,7 @@ async function bootstrap() {
   });
 
   // Set up GraphQL over WebSocket
-  const serverCleanup = useServer(
+  const wsServerCleanup = useServer(
     {
       schema,
       execute,
@@ -181,27 +227,6 @@ async function bootstrap() {
     })
   );
 
-  // last one - error handler
-  const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-    if (err instanceof HttpError) {
-      logger.error(err, "HTTP error");
-      res.status(err.statusCode).send({
-        status: err.statusCode,
-        message: err.message,
-        details: err.details,
-      });
-    } else {
-      logger.error(err, "Unhandled error in request");
-      res.status(500).send({
-        status: 500,
-        name: err.name || "InternalServerError",
-        message: "Something went wrong",
-      });
-    }
-  };
-
-  app.use(errorHandler);
-
   // Start the server
   const PORT = process.env.PORT || 4000;
   httpServer.listen(PORT, () => {
@@ -210,7 +235,7 @@ async function bootstrap() {
     logger.info(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
   });
 
-  httpServer.on("close", () => serverCleanup.dispose());
+  httpServer.on("close", () => wsServerCleanup.dispose());
 }
 
 // Start the application

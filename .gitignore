@@ -11,12 +11,12 @@ docs/contact.json
 
 
 # data
-backend/*.sqlite
-backend-rust/*.sqlite
+api/*.sqlite
+api*/*.sqlite
 
 # Rust
-backend-rust/target/
+api-rust/target/
 
 # terraform
-infrastructure/.terraform/
-infrastructure/.terraform.lock.hcl
+infrastructure/terraform/.terraform/
+infrastructure/terraform/.terraform.lock.hcl
