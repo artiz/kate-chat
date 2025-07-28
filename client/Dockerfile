@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS build
+FROM node:21-alpine AS build
 
 ARG APP_API_URL="/api"
 ARG APP_WS_URL="/ws"

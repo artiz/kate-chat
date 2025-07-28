@@ -119,10 +119,10 @@ create_ecr_repositories() {
 # Function to display deployment information
 display_deployment_info() {
     local env=$1
+
+    cd infrastructure/terraform
     
     print_status "Getting deployment information for ${env}..."
-    
-    cd infrastructure
     
     if [ -f .terraform/terraform.tfstate ]; then
         local alb_dns=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
@@ -215,7 +215,7 @@ case "${COMMAND:-help}" in
         ;;
     plan)
         check_prerequisites
-        cd infrastructure
+        cd infrastructure/terraform
         terraform init \
             -migrate-state \
             -backend-config="bucket=${TERRAFORM_STATE_BUCKET}-${ENVIRONMENT}" \
@@ -229,7 +229,7 @@ case "${COMMAND:-help}" in
         ;;
     deploy)
         check_prerequisites
-        cd infrastructure
+        cd infrastructure/terraform
         terraform init \
             -backend-config="bucket=${TERRAFORM_STATE_BUCKET}-${ENVIRONMENT}" \
             -backend-config="key=terraform.tfstate" \
@@ -246,7 +246,7 @@ case "${COMMAND:-help}" in
         print_warning "This will destroy all infrastructure for ${ENVIRONMENT}!"
         read -p "Are you sure? (yes/no): " confirmation
         if [[ "$confirmation" == "yes" ]]; then
-            cd infrastructure
+            cd infrastructure/terraform
             terraform destroy \
                 -var="environment=${ENVIRONMENT}" \
                 -var="aws_region=${AWS_REGION}" \

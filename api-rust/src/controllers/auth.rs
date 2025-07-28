@@ -199,12 +199,11 @@ pub async fn google_callback(
         .map(|parts| parts.join(" "))
         .unwrap_or_default();
 
-        let user_role: &str = if config.default_admin_emails.contains(&user_info.email) {
-            ROLE_ADMIN
-        } else {
-            ROLE_USER
-        };
-
+    let user_role: &str = if config.default_admin_emails.contains(&user_info.email) {
+        ROLE_ADMIN
+    } else {
+        ROLE_USER
+    };
 
     let db_user = if let Some(user) = existing_user {
         // Update existing user
@@ -427,10 +426,10 @@ pub async fn github_callback(
         .unwrap_or_default();
 
     let user_role: &str = if config.default_admin_emails.contains(&email) {
-            ROLE_ADMIN
-        } else {
-            ROLE_USER
-        };
+        ROLE_ADMIN
+    } else {
+        ROLE_USER
+    };
 
     let db_user = if let Some(user) = existing_user_by_github {
         // Update existing user with GitHub ID
@@ -453,7 +452,6 @@ pub async fn github_callback(
             .filter(users::id.eq(&user.id))
             .first(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?
-    
     } else if let Some(user) = existing_user_by_email {
         // Link existing user with GitHub ID
         diesel::update(users::table.filter(users::id.eq(&user.id)))
@@ -478,7 +476,6 @@ pub async fn github_callback(
             .first(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?
     } else {
-        
         // Create new user
         let new_user = NewUser::new(
             email.clone(),

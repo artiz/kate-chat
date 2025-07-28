@@ -1,4 +1,11 @@
+# ECR Repository Names
+locals {
+  ecr_repositories = ["app", "document-processor"]
+}
+
+
 # ECR Repositories
+
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.project_name}-backend"
   image_tag_mutability = "MUTABLE"
@@ -78,6 +85,59 @@ resource "aws_ecr_repository" "frontend" {
 # ECR Lifecycle Policy for Frontend Repository
 resource "aws_ecr_lifecycle_policy" "frontend" {
   repository = aws_ecr_repository.frontend.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Delete untagged images after 3 days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 3
+        }
+        action = {
+          type = "expire"
+        }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep only 15 most recent tagged images"
+        selection = {
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = 15
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_ecr_repository" "repositories" {
+  for_each = toset(local.ecr_repositories)
+
+  name                 = "${var.project_name}-${each.value}"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-${each.value}-ecr"
+  }
+}
+
+# ECR Lifecycle Policies
+resource "aws_ecr_lifecycle_policy" "repositories" {
+  for_each = aws_ecr_repository.repositories
+
+  repository = each.value.name
 
   policy = jsonencode({
     rules = [

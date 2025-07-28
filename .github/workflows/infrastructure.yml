@@ -33,7 +33,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: ./infrastructure
+        working-directory: ./infrastructure/terraform
     
     steps:
     - name: Checkout code
