@@ -168,10 +168,10 @@ resource "aws_ecs_task_definition" "app" {
       }
 
       healthCheck = {
-        command  = ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
-        interval = 60
+        command  = ["CMD-SHELL", "wget -q --spider http://localhost/health || exit 1"]
+        interval = 10
         timeout  = 5
-        retries  = 10
+        retries  = 5
       }
     }
   ])
