@@ -39,14 +39,6 @@ resource "aws_security_group" "ecs" {
 
   ingress {
     description     = "HTTP from ALB"
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  ingress {
-    description     = "HTTP from ALB"
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
@@ -116,25 +108,14 @@ resource "aws_security_group" "redis" {
 }
 
 # CloudWatch Log Groups
-resource "aws_cloudwatch_log_group" "backend" {
-  name              = "/ecs/${var.project_name}-${var.environment}-backend"
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${var.project_name}-${var.environment}-app"
   retention_in_days = var.environment == "production" ? 30 : 7
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-backend-logs"
+    Name = "${var.project_name}-${var.environment}-app-logs"
   }
 }
-
-resource "aws_cloudwatch_log_group" "frontend" {
-  name              = "/ecs/${var.project_name}-${var.environment}-frontend"
-  retention_in_days = var.environment == "production" ? 30 : 7
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-frontend-logs"
-  }
-}
-
-
 
 # Application Load Balancer
 resource "aws_lb" "main" {
@@ -152,32 +133,8 @@ resource "aws_lb" "main" {
 }
 
 # Target Groups
-resource "aws_lb_target_group" "backend" {
-  name        = "${var.project_name}-${var.environment}-backend-tg"
-  port        = 8080
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    interval            = 30
-    matcher             = "200"
-    path                = "/graphql"
-    port                = "traffic-port"
-    protocol            = "HTTP"
-    timeout             = 5
-    unhealthy_threshold = 2
-  }
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-backend-tg"
-  }
-}
-
-resource "aws_lb_target_group" "frontend" {
-  name        = "${var.project_name}-${var.environment}-frontend-tg"
+resource "aws_lb_target_group" "app" {
+  name        = "${var.project_name}-${var.environment}-app-tg"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -188,7 +145,7 @@ resource "aws_lb_target_group" "frontend" {
     healthy_threshold   = 2
     interval            = 30
     matcher             = "200"
-    path                = "/"
+    path                = "/health"
     port                = "traffic-port"
     protocol            = "HTTP"
     timeout             = 5
@@ -196,9 +153,10 @@ resource "aws_lb_target_group" "frontend" {
   }
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-frontend-tg"
+    Name = "${var.project_name}-${var.environment}-app-tg"
   }
 }
+
 
 # ALB Listeners
 resource "aws_lb_listener" "main" {
@@ -206,7 +164,7 @@ resource "aws_lb_listener" "main" {
   port              = "80"
   protocol          = "HTTP"
 
-  # Default action forwards to frontend, or redirects to HTTPS if certificate is available
+  # Default action forwards to app, or redirects to HTTPS if certificate is available
   default_action {
     type = var.certificate_arn != "" ? "redirect" : "forward"
 
@@ -219,24 +177,7 @@ resource "aws_lb_listener" "main" {
       }
     }
 
-    target_group_arn = var.certificate_arn != "" ? null : aws_lb_target_group.frontend.arn
-  }
-}
-
-# Listener rule for API routes
-resource "aws_lb_listener_rule" "backend_api" {
-  listener_arn = aws_lb_listener.main.arn
-  priority     = 100
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/graphql*", "/auth/*", "/files/*", "/health"]
-    }
+    target_group_arn = var.certificate_arn != "" ? null : aws_lb_target_group.app.arn
   }
 }
 
@@ -253,25 +194,7 @@ resource "aws_lb_listener" "https" {
   # Default action redirects non-API requests to CloudFront
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
-  }
-}
-
-resource "aws_lb_listener_rule" "backend_api_https" {
-  count = var.certificate_arn != "" ? 1 : 0
-
-  listener_arn = aws_lb_listener.https[0].arn
-  priority     = 100
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/graphql*", "/auth/*", "/files/*", "/health"]
-    }
+    target_group_arn = aws_lb_target_group.app.arn
   }
 }
 

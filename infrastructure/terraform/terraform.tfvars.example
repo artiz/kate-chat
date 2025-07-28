@@ -17,12 +17,9 @@ db_allocated_storage = 20
 db_engine_version = "16.9"
 
 # ECS Configuration
-backend_cpu = 256
-backend_memory = 512
-frontend_cpu = 256
-frontend_memory = 512
-frontend_desired_count = 1
-backend_desired_count = 3
+app_cpu = 256
+app_memory = 512
+app_desired_count = 3
 
 # Redis Configuration
 redis_node_type = "cache.t3.micro"

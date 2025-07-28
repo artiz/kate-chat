@@ -1,30 +1,37 @@
 # Generate secrets and configurations for ECS services
-resource "random_password" "backend_session_secret" {
+resource "random_password" "session_secret" {
   length  = 128
   special = false
+
+  lifecycle {
+    ignore_changes = [
+      length,
+      special,
+    ]
+  }
 }
 
 
-# ECS Task Definition for Backend
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.project_name}-${var.environment}-backend"
+# ECS Task Definition for App
+resource "aws_ecs_task_definition" "app" {
+  family                   = "${var.project_name}-${var.environment}-app"
   network_mode             = "awsvpc"
-  cpu                      = var.backend_cpu
-  memory                   = var.backend_memory
+  cpu                      = var.app_cpu
+  memory                   = var.app_memory
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
   requires_compatibilities = ["FARGATE"]
 
   container_definitions = jsonencode([
     {
-      name  = "backend"
-      image = "${aws_ecr_repository.backend.repository_url}:master"
+      name  = "app"
+      image = "${aws_ecr_repository.repositories["app"].repository_url}:infra-migrate-to-one-service"
 
       essential = true
 
       portMappings = [
         {
-          containerPort = 8080
+          containerPort = 80
           protocol      = "tcp"
         }
       ]
@@ -36,7 +43,7 @@ resource "aws_ecs_task_definition" "backend" {
         },
         {
           name  = "PORT"
-          value = "8080"
+          value = "80"
         },
         {
           name  = "LOG_LEVEL"
@@ -96,11 +103,11 @@ resource "aws_ecs_task_definition" "backend" {
         },
         {
           name  = "JWT_SECRET"
-          value = random_password.backend_session_secret.result
+          value = random_password.session_secret.result
         },
         {
           name  = "SESSION_SECRET"
-          value = random_password.backend_session_secret.result
+          value = random_password.session_secret.result
         },
         {
           name  = "ENABLED_API_PROVIDERS",
@@ -154,14 +161,14 @@ resource "aws_ecs_task_definition" "backend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+          "awslogs-group"         = aws_cloudwatch_log_group.app.name
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }
       }
 
       healthCheck = {
-        command  = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+        command  = ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval = 60
         timeout  = 5
         retries  = 10
@@ -170,62 +177,18 @@ resource "aws_ecs_task_definition" "backend" {
   ])
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-backend-task"
+    Name = "${var.project_name}-${var.environment}-app-task"
   }
 }
 
-# ECS Task Definition for Frontend
-resource "aws_ecs_task_definition" "frontend" {
-  family                   = "${var.project_name}-${var.environment}-frontend"
-  network_mode             = "awsvpc"
-  cpu                      = var.frontend_cpu
-  memory                   = var.frontend_memory
-  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
-  requires_compatibilities = ["FARGATE"]
 
-  container_definitions = jsonencode([
-    {
-      name  = "frontend"
-      image = "${aws_ecr_repository.frontend.repository_url}:master"
-
-      essential = true
-
-      portMappings = [
-        {
-          containerPort = 80
-          protocol      = "tcp"
-        }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.frontend.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "ecs"
-        }
-      }
-
-      healthCheck = {
-        command  = ["CMD-SHELL", "curl -f http://localhost:80 || exit 1"]
-        interval = 30
-        timeout  = 5
-        retries  = 3
-      }
-    }
-  ])
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-frontend-task"
-  }
-}
 
 # ECS Service for Backend
-resource "aws_ecs_service" "backend" {
-  name            = "${var.project_name}-${var.environment}-backend-service"
+resource "aws_ecs_service" "app" {
+  name            = "${var.project_name}-${var.environment}-app-service"
   cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = var.backend_desired_count
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = var.app_desired_count
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
     weight            = 1
@@ -238,46 +201,8 @@ resource "aws_ecs_service" "backend" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 8080
-  }
-
-  depends_on = [aws_lb_listener.main]
-
-  deployment_maximum_percent         = 200
-  deployment_minimum_healthy_percent = 100
-
-  deployment_circuit_breaker {
-    enable   = true
-    rollback = true
-  }
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-backend-service"
-  }
-}
-
-# ECS Service for Frontend
-resource "aws_ecs_service" "frontend" {
-  name            = "${var.project_name}-${var.environment}-frontend-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = var.frontend_desired_count
-  capacity_provider_strategy {
-    capacity_provider = "FARGATE"
-    weight            = 1
-  }
-
-  network_configuration {
-    security_groups  = [aws_security_group.ecs.id]
-    subnets          = var.use_private_networks ? aws_subnet.private[*].id : aws_subnet.public[*].id
-    assign_public_ip = var.use_private_networks ? false : true
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.frontend.arn
-    container_name   = "frontend"
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = "app"
     container_port   = 80
   }
 
@@ -292,6 +217,6 @@ resource "aws_ecs_service" "frontend" {
   }
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-frontend-service"
+    Name = "${var.project_name}-${var.environment}-app-service"
   }
 }

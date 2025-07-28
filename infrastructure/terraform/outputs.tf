@@ -75,8 +75,7 @@ output "secrets_manager_db_password_arn" {
 output "cloudwatch_log_groups" {
   description = "CloudWatch log group names"
   value = {
-    backend  = aws_cloudwatch_log_group.backend.name
-    frontend = aws_cloudwatch_log_group.frontend.name
+    app = aws_cloudwatch_log_group.app.name
   }
 }
 

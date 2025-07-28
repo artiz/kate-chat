@@ -55,20 +55,6 @@ resource "aws_ecr_lifecycle_policy" "backend" {
   })
 }
 
-# TODO: Uncomment and configure the Rust backend repository if needed
-# resource "aws_ecr_repository" "backend_rust" {
-#   name                 = "${var.project_name}-backend-rust"
-#   image_tag_mutability = "MUTABLE"
-
-#   image_scanning_configuration {
-#     scan_on_push = true
-#   }
-
-#   tags = {
-#     Name = "${var.project_name}-backend-rust-ecr"
-#   }
-# }
-
 resource "aws_ecr_repository" "frontend" {
   name                 = "${var.project_name}-frontend"
   image_tag_mutability = "MUTABLE"
@@ -274,10 +260,8 @@ resource "aws_iam_role_policy" "ecs_execution_logs_policy" {
           "logs:PutLogEvents"
         ]
         Resource = [
-          aws_cloudwatch_log_group.backend.arn,
-          aws_cloudwatch_log_group.frontend.arn,
-          "${aws_cloudwatch_log_group.backend.arn}:*",
-          "${aws_cloudwatch_log_group.frontend.arn}:*"
+          aws_cloudwatch_log_group.app.arn,
+          "${aws_cloudwatch_log_group.app.arn}:*"
         ]
       }
     ]
