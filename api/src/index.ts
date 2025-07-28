@@ -101,8 +101,10 @@ async function bootstrap() {
   app.use("/files", filesRoutes);
   app.use("/api/files", filesRoutes);
 
-  // ...
-
+  /**
+   * Development-time endpoint for esbuild hot reloading to test Docker container locally.
+   * This endpoint is used to enable live updates during development.
+   */
   function esbuildStub(req: Request, res: Response) {
     const headers = {
       "Content-Type": "text/event-stream",

@@ -14,7 +14,7 @@ RUN mkdir ./client
 RUN mkdir ./api
 COPY client/package.json ./client
 COPY api/package.json ./api
-RUN npm run install:all
+RUN npm ci
 
 COPY ./client ./client
 COPY ./api ./api
@@ -34,7 +34,6 @@ FROM node:22-alpine
 # copy built api
 WORKDIR /app
 COPY --from=build /app/node_modules/ ./node_modules
-COPY --from=build /app/api/node_modules/ ./node_modules
 COPY --from=build /app/api/dist ./
 
 # copy built frontend client files
