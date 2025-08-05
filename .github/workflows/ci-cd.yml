@@ -155,6 +155,10 @@ jobs:
       id: build-app
       if: needs.changes.outputs.api == 'true'
       env:
+        APP_API_URL: "/"
+        APP_WS_URL: "/"
+        RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+        COMMIT_SHA: ${{ github.sha }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
