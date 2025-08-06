@@ -13,12 +13,8 @@ export const BASE_MODEL_FRAGMENT = `
       provider
       apiProvider
       isActive
-      supportsImageIn
-      supportsTextIn
-      supportsEmbeddingsIn
-      supportsImageOut
-      supportsTextOut
-      supportsEmbeddingsOut
+      type
+      imageInput
     }
 `;
 

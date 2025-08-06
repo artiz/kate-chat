@@ -11,6 +11,9 @@ import {
   ServiceCostInfo,
   InvokeModelParamsRequest,
   ModelResponseMetadata,
+  ModelType,
+  GetEmbeddingsRequest,
+  EmbeddingsResponse,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
@@ -18,8 +21,19 @@ import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Agent } from "undici";
+import { EmbeddingCreateParams } from "openai/resources/embeddings";
 
 const logger = createLogger(__filename);
+
+const NON_CHAT_MODELS = [
+  "gpt-3.5-turbo-instruct",
+  "gpt-4o-audio",
+  "gpt-4o-mini-audio",
+  "gpt-4o-mini-realtime",
+  "gpt-4o-realtime",
+  "o1-pro",
+];
+
 const agent = new Agent({
   keepAliveTimeout: 30_000,
   connections: 100, // pool
@@ -51,6 +65,10 @@ export type OpenAIList<T> = {
   has_more?: boolean;
   next_page?: string;
   data: T[];
+  usage?: {
+    prompt_tokens?: number;
+    total_tokens?: number;
+  };
 };
 
 export class OpenAIService extends BaseProviderService {
@@ -382,21 +400,42 @@ export class OpenAIService extends BaseProviderService {
 
       // Filter and map models
       for (const model of response.data) {
-        // Filter for GPT models and DALL-E
-        const supportsImageOut = model.id.startsWith("dall-e");
-        const supportsImageIn = model.id.startsWith("gpt-4.1") || model.id.startsWith("gpt-4o");
+        const nonChatModel = NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
+        const embeddingModel = model.id.startsWith("text-embedding");
+        const imageGeneration = model.id.startsWith("dall-e");
+        const imageInput = model.id.startsWith("gpt-4.1") || model.id.startsWith("gpt-4o");
+
+        if (nonChatModel && !imageGeneration && !embeddingModel) {
+          continue; // Skip non-chat models that are not image generation or embeddings
+        }
+
+        const type = embeddingModel
+          ? ModelType.EMBEDDING
+          : imageGeneration
+            ? ModelType.IMAGE_GENERATION
+            : ModelType.CHAT;
 
         models[model.id] = {
           apiProvider: ApiProvider.OPEN_AI,
           provider: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
           name: this.getModelName(model.id),
           description: `${model.id} by OpenAI`,
-          supportsStreaming: !supportsImageOut,
-          supportsTextIn: true,
-          supportsTextOut: !supportsImageOut,
-          supportsImageIn,
-          supportsImageOut,
-          supportsEmbeddingsIn: false,
+          type,
+          streaming: type === ModelType.CHAT,
+          imageInput,
+        };
+      }
+
+      // add "text-embedding-3-small" model if not returned by the API
+      if (!models["text-embedding-3-small"]) {
+        models["text-embedding-3-small"] = {
+          apiProvider: ApiProvider.OPEN_AI,
+          provider: "OpenAI",
+          name: "Text Embedding 3 Small",
+          description: "Text Embedding 3 Small by OpenAI",
+          type: ModelType.EMBEDDING,
+          streaming: false,
+          imageInput: false,
         };
       }
 
@@ -407,12 +446,9 @@ export class OpenAIService extends BaseProviderService {
           provider: "OpenAI",
           name: "DALL-E 3",
           description: "DALL-E 3 by OpenAI - Advanced image generation",
-          supportsStreaming: false,
-          supportsTextIn: true,
-          supportsTextOut: false,
-          supportsImageIn: false,
-          supportsImageOut: true,
-          supportsEmbeddingsIn: false,
+          type: ModelType.IMAGE_GENERATION,
+          streaming: false,
+          imageInput: false,
         };
       }
 
@@ -422,12 +458,9 @@ export class OpenAIService extends BaseProviderService {
           provider: "OpenAI",
           name: "DALL-E 2",
           description: "DALL-E 2 by OpenAI - Image generation",
-          supportsStreaming: false,
-          supportsTextIn: true,
-          supportsTextOut: false,
-          supportsImageIn: false,
-          supportsImageOut: true,
-          supportsEmbeddingsIn: false,
+          type: ModelType.IMAGE_GENERATION,
+          streaming: false,
+          imageInput: false,
         };
       }
     } catch (error) {
@@ -437,6 +470,35 @@ export class OpenAIService extends BaseProviderService {
     return models;
   }
 
+  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+    if (!this.openai) {
+      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+    }
+
+    const { modelId, input } = request;
+    const params: EmbeddingCreateParams = {
+      model: modelId,
+      input,
+      encoding_format: "float",
+    };
+
+    try {
+      const response = await this.openai.embeddings.create(params);
+      const embedding = response.data[0]?.embedding;
+      const usage = response.usage || {};
+      return {
+        embedding,
+        metadata: {
+          usage: {
+            inputTokens: usage?.prompt_tokens || 0,
+          },
+        },
+      };
+    } catch (error: unknown) {
+      logger.warn(error, "Error getting embeddings from OpenAI API");
+      throw error;
+    }
+  }
   // Image generation implementation for DALL-E models
   private async generateImages(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
     if (!this.openai.apiKey) {
