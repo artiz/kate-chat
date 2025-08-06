@@ -31,6 +31,7 @@ import {
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { ApiProvider } from "@/types/ai";
+import { ModelType } from "@/store/slices/modelSlice";
 
 interface AISettingsProps {
   user: User;
@@ -182,7 +183,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   };
 
   const modelSelectData = models
-    .filter(model => model.isActive)
+    .filter(model => model.isActive && model.type !== ModelType.EMBEDDING)
     .map(model => ({
       value: model.modelId,
       label: model.name,

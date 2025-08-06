@@ -16,6 +16,7 @@ import { MessageMetadata, MessageRole } from "@/store/slices/chatSlice";
 import classes from "../ChatMessage.module.scss";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
+import { ModelType } from "@/store/slices/modelSlice";
 
 interface IProps {
   id: string;
@@ -29,7 +30,10 @@ interface IProps {
 
 export const ChatMessageActions = (props: IProps) => {
   const { id, role, modelName, modelId, metadata, index, disableActions = false } = props;
-  const { models } = useAppSelector(state => state.models);
+  const { models: allModels } = useAppSelector(state => state.models);
+  const models = useMemo(() => {
+    return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
+  }, [allModels]);
 
   const actions = useMemo(() => {
     return (

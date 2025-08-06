@@ -5,7 +5,7 @@ import { Model } from "../entities/Model";
 import { GqlModelsList, GqlModel, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { MessageRole, ModelMessage } from "../types/ai.types";
+import { MessageRole, ModelMessage, ModelType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
@@ -13,6 +13,7 @@ import { ConnectionParams, GraphQLContext } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
 
 const logger = createLogger(__filename);
+const MAX_TEST_TEXT_LENGTH = 256;
 
 @Resolver()
 export class ModelResolver extends BaseResolver {
@@ -61,7 +62,7 @@ export class ModelResolver extends BaseResolver {
       const modelRepository = getRepository(Model);
 
       // Get the models from AWS Bedrock
-      const models = await this.aiService.getModels(connectionParams);
+      const aiModels = await this.aiService.getModels(connectionParams);
 
       const dbModels = await modelRepository.find({
         where: { user: { id: user.id } },
@@ -80,7 +81,7 @@ export class ModelResolver extends BaseResolver {
       );
 
       // Clear existing models
-      if (Object.keys(models).length) {
+      if (Object.keys(aiModels).length) {
         await modelRepository.delete({
           isCustom: false,
           user,
@@ -89,7 +90,7 @@ export class ModelResolver extends BaseResolver {
 
       // Save models to database
       const outModels: GqlModel[] = [];
-      for (const [modelId, info] of Object.entries(models)) {
+      for (const [modelId, info] of Object.entries(aiModels)) {
         // Create new model
         const model = modelRepository.create({
           ...info,
@@ -107,8 +108,12 @@ export class ModelResolver extends BaseResolver {
 
       // Get provider information
       const providers = await this.getProviderInfo(connectionParams, true);
+      const models = await modelRepository.find({
+        where: { user: { id: user.id } },
+        order: { apiProvider: { direction: "ASC" }, provider: { direction: "ASC" }, name: { direction: "ASC" } },
+      });
 
-      return { models: outModels, providers, total: outModels.length };
+      return { models, providers, total: models.length };
     } catch (error) {
       logger.error(error, "Error refreshing models");
       return { error: "Failed to refresh models" };
@@ -126,7 +131,7 @@ export class ModelResolver extends BaseResolver {
       const modelRepository = getRepository(Model);
       const models = await modelRepository.find({
         where: { user: { id: user.id } },
-        order: { apiProvider: { direction: "ASC" }, provider: { direction: "DESC" }, name: { direction: "ASC" } },
+        order: { apiProvider: { direction: "ASC" }, provider: { direction: "ASC" }, name: { direction: "ASC" } },
       });
 
       // Get provider information
@@ -199,53 +204,69 @@ export class ModelResolver extends BaseResolver {
   @Mutation(() => Message)
   @Authorized()
   async testModel(@Arg("input") input: TestModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
+    const { id, text = "" } = input;
+    if (text.length < 1) throw new Error("Text is required");
+    if (text.length > MAX_TEST_TEXT_LENGTH)
+      throw new Error(`Text must be less than ${MAX_TEST_TEXT_LENGTH} characters`);
+
     const user = await this.validateContextUser(context);
     const connectionParams = this.loadConnectionParams(context, user);
 
-    try {
-      const { id, text } = input;
+    // Get the repository
+    const modelRepository = getRepository(Model);
 
-      // Get the repository
-      const modelRepository = getRepository(Model);
+    // Find the model by ID
+    const model = await modelRepository.findOne({
+      where: { id, user: { id: user.id } },
+    });
 
-      // Find the model by ID
-      const model = await modelRepository.findOne({
-        where: { id, user: { id: user.id } },
-      });
+    if (!model) throw new Error("Model not found");
+    if (!model.isActive) throw new Error("Model is not active");
+    if (model.type === ModelType.IMAGE_GENERATION) throw new Error("Image output is not supported for test model");
 
-      if (!model) throw new Error("Model not found");
-      if (!model.isActive) throw new Error("Model is not active");
+    const timestamp = new Date();
 
-      const timestamp = new Date();
-
-      // Create a message format for the test
-      const message: ModelMessage = {
-        role: MessageRole.USER,
-        body: text,
-        timestamp,
-      };
-
-      // Generate a response using the AI service
-      const response = await this.aiService.invokeModel(model.apiProvider, connectionParams, {
+    if (model.type === ModelType.EMBEDDING) {
+      const result = await this.aiService.getEmbeddings(model.apiProvider, connectionParams, {
         modelId: model.modelId,
-        messages: [message],
+        input: text,
       });
-
-      logger.trace({ message, response }, "Test model inference");
 
       return {
         id: "00000000-0000-0000-0000-000000000000",
-        role: MessageRole.ASSISTANT,
-        content: response.content,
+        role: MessageRole.SYSTEM,
+        content: result.embedding.join(", "),
         modelId: model.modelId,
         modelName: model.name,
         createdAt: timestamp,
         updatedAt: timestamp,
       };
-    } catch (error: unknown) {
-      logger.error(error, "Error testing model");
-      throw new Error(`Failed to test model: ${error || "Unknown error"}`);
     }
+
+    // Create a message format for the test
+    const message: ModelMessage = {
+      role: MessageRole.USER,
+      body: text,
+      timestamp,
+    };
+
+    // Generate a response using the AI service
+    const response = await this.aiService.invokeModel(model.apiProvider, connectionParams, {
+      modelId: model.modelId,
+      messages: [message],
+    });
+
+    logger.trace({ message, response }, "Test model inference");
+
+    return {
+      id: "00000000-0000-0000-0000-000000000000",
+      role: MessageRole.SYSTEM,
+      content: response.content,
+      modelId: model.modelId,
+      modelName: model.name,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
   }
 
   @Query(() => GqlCostsInfo)

@@ -263,12 +263,6 @@ type ModelResponse {
   modelId: String!
   provider: String
   apiProvider: String!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
-  supportsEmbeddingsIn: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
   isActive: Boolean!
   createdAt: DateTimeISO!
   updatedAt: DateTimeISO!

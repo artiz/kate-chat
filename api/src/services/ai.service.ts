@@ -2,6 +2,8 @@ import { Message } from "../entities/Message";
 import {
   AIModelInfo,
   ApiProvider,
+  EmbeddingsResponse,
+  GetEmbeddingsRequest,
   InvokeModelParamsRequest,
   MessageRole,
   ModelMessage,
@@ -80,6 +82,16 @@ export class AIService {
 
     const providerService = this.getApiProvider(apiProvider, connection);
     return providerService.invokeModelAsync(request, callbacks);
+  }
+
+  // Main method to interact with models
+  async getEmbeddings(
+    apiProvider: ApiProvider,
+    connection: ConnectionParams,
+    request: GetEmbeddingsRequest
+  ): Promise<EmbeddingsResponse> {
+    const providerService = this.getApiProvider(apiProvider, connection);
+    return providerService.getEmbeddings(request);
   }
 
   // Format messages for model invocation

@@ -38,11 +38,14 @@ import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
-import classes from "./Chat.module.scss";
 import { ImageInput } from "@/store/services/graphql";
 import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
 import { Message } from "@/store/slices/chatSlice";
 import { ok } from "@/utils/assert";
+import { ModelInfo } from "@/components/models/ModelInfo";
+
+import classes from "./Chat.module.scss";
+import { ModelType } from "@/store/slices/modelSlice";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -60,7 +63,7 @@ interface CreateMessageResponse {
 }
 
 interface IProps {
-  chatId: string;
+  chatId?: string;
 }
 
 export const ChatComponent = ({ chatId }: IProps) => {
@@ -258,7 +261,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   // #endregion
 
   const models = useMemo(() => {
-    return allModels.filter(model => model.isActive);
+    return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
   }, [allModels]);
 
   const selectedModel = useMemo(() => {
@@ -435,43 +438,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           style={{ maxWidth: "50%" }}
           disabled={sending || messagesLoading}
         />
-        {selectedModel && (
-          <Group>
-            {selectedModel.supportsTextIn && (
-              <Tooltip label="Text input">
-                <IconTextScan2 size={24} color="gray" />
-              </Tooltip>
-            )}
-
-            {selectedModel.supportsEmbeddingsIn && (
-              <Tooltip label="Embeddings input">
-                <IconMatrix size={24} color="gray" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsImageIn && (
-              <Tooltip label="Images input">
-                <IconPhotoAi size={24} color="gray" />
-              </Tooltip>
-            )}
-
-            <IconArrowBigRightLinesFilled size={24} color="gray" />
-            {selectedModel.supportsTextOut && (
-              <Tooltip label="Text generation">
-                <IconTextScan2 size={24} color="teal" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsEmbeddingsOut && (
-              <Tooltip label="Embeddings generation">
-                <IconMatrix size={24} color="teal" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsImageOut && (
-              <Tooltip label="Images generation">
-                <IconPhotoAi size={24} color="teal" />
-              </Tooltip>
-            )}
-          </Group>
-        )}
+        {selectedModel && <ModelInfo model={selectedModel} />}
 
         <ChatSettings
           className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
@@ -553,7 +520,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       )}
       {/* Message input */}
       <div className={[classes.chatInputContainer, selectedFiles.length ? classes.columned : ""].join(" ")}>
-        {selectedModel?.supportsImageIn && (
+        {selectedModel?.imageInput && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
             {selectedImages.map(file => (

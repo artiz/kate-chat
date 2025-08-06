@@ -572,7 +572,7 @@ export class MessagesService {
       await this.queueService.publishMessage(chat.id, savedMessage);
     };
 
-    if (!model.supportsStreaming) {
+    if (!model.streaming) {
       // sync call
       try {
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);

@@ -1,16 +1,6 @@
-import {
-  Entity,
-  ObjectIdColumn,
-  ObjectId,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  PrimaryColumn,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-} from "typeorm";
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
-import { ApiProvider } from "../types/ai.types";
+import { ApiProvider, ModelType } from "../types/ai.types";
 import { User } from "./User";
 
 @ObjectType()
@@ -49,32 +39,16 @@ export class Model {
   apiProvider: ApiProvider;
 
   @Field()
-  @Column({ default: false })
-  supportsStreaming: boolean;
-
-  @Field()
-  @Column({ default: true })
-  supportsTextIn: boolean;
-
-  @Field()
-  @Column({ default: true })
-  supportsTextOut: boolean;
+  @Column({ default: ModelType.CHAT })
+  type: ModelType;
 
   @Field()
   @Column({ default: false })
-  supportsEmbeddingsIn: boolean;
+  streaming: boolean;
 
   @Field()
   @Column({ default: false })
-  supportsImageIn: boolean;
-
-  @Field()
-  @Column({ default: false })
-  supportsImageOut: boolean;
-
-  @Field()
-  @Column({ default: false })
-  supportsEmbeddingsOut: boolean;
+  imageInput: boolean;
 
   @Field()
   @Column({ default: true })

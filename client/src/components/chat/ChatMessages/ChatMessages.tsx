@@ -2,8 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Paper, Text, Stack, Group, Avatar, Loader, Box } from "@mantine/core";
 import { IconRobot } from "@tabler/icons-react";
 import { Message } from "@/store/slices/chatSlice";
-import { Model } from "@/store/slices/modelSlice";
-import { gql, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import {
   DELETE_MESSAGE_MUTATION,

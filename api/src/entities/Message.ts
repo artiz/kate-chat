@@ -75,11 +75,11 @@ export class Message {
   @OneToMany(() => Message, m => m.linkedToMessage, { cascade: true, onDelete: "CASCADE" })
   linkedMessages?: Message[]; // Virtual field for GraphQL, populated in resolvers
 
-  @Field()
+  @Field({ nullable: true })
   @CreateDateColumn()
   createdAt: Date;
 
-  @Field()
+  @Field({ nullable: true })
   @UpdateDateColumn()
   updatedAt: Date;
 }

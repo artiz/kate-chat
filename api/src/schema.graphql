@@ -185,18 +185,14 @@ type GqlModel {
   createdAt: DateTimeISO!
   description: String!
   id: ID!
+  imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
   modelId: String!
   name: String!
   provider: String
-  supportsEmbeddingsIn: Boolean!
-  supportsEmbeddingsOut: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
+  streaming: Boolean!
+  type: String!
   updatedAt: DateTimeISO!
   user: User!
   userId: String
@@ -238,7 +234,7 @@ type Message {
   chat: Chat!
   chatId: String
   content: String!
-  createdAt: DateTimeISO!
+  createdAt: DateTimeISO
   id: ID!
   linkedMessages: [Message!]
   linkedToMessage: Message!
@@ -247,7 +243,7 @@ type Message {
   modelId: String!
   modelName: String
   role: String!
-  updatedAt: DateTimeISO!
+  updatedAt: DateTimeISO
   user: User
   userId: String
 }
@@ -257,18 +253,14 @@ type Model {
   createdAt: DateTimeISO!
   description: String!
   id: ID!
+  imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
   modelId: String!
   name: String!
   provider: String
-  supportsEmbeddingsIn: Boolean!
-  supportsEmbeddingsOut: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
+  streaming: Boolean!
+  type: String!
   updatedAt: DateTimeISO!
   user: User!
   userId: String

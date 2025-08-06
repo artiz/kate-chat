@@ -13,6 +13,9 @@ import {
   ServiceCostInfo,
   InvokeModelParamsRequest,
   ModelResponseMetadata,
+  ModelType,
+  GetEmbeddingsRequest,
+  EmbeddingsResponse,
 } from "../../types/ai.types";
 import { ApiProvider } from "../../types/ai.types";
 import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
@@ -167,6 +170,8 @@ export class BedrockService extends BaseProviderService {
             } else if (provider === "mistral") {
               if (chunkData.outputs && chunkData.outputs[0]?.text) {
                 token = chunkData.outputs[0].text;
+              } else if (chunkData.choices && chunkData.choices[0]?.message?.content) {
+                token = chunkData.choices[0].message.content;
               }
             } else {
               logger.warn(`Unsupported model provider: ${provider}. Cannot process streaming response.`);
@@ -319,7 +324,7 @@ export class BedrockService extends BaseProviderService {
     const command = new ListFoundationModelsCommand({});
     const response = await this.bedrockManagementClient.send(command);
 
-    const models: Record<string, any> = {};
+    const models: Record<string, AIModelInfo> = {};
 
     if (!response.modelSummaries || !response.modelSummaries.length) {
       return models;
@@ -343,18 +348,20 @@ export class BedrockService extends BaseProviderService {
           modelId = map[region] || map[modelId] || modelId;
         }
 
+        const type = model.outputModalities?.includes(ModelModality.IMAGE)
+          ? ModelType.IMAGE_GENERATION
+          : model.outputModalities?.includes(ModelModality.EMBEDDING)
+            ? ModelType.EMBEDDING
+            : ModelType.CHAT;
+
         models[modelId] = {
           apiProvider: ApiProvider.AWS_BEDROCK,
           provider: providerName,
           name: model.modelName || modelId.split(".").pop() || modelId,
           description: `${model.modelName || modelId} by ${providerName}`,
-          supportsStreaming: model.responseStreamingSupported || false,
-          supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
-          supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
-          supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
-          supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
-          supportsEmbeddingsOut: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
-          supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
+          type,
+          streaming: model.responseStreamingSupported || false,
+          imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
         };
       }
     }
@@ -549,5 +556,35 @@ export class BedrockService extends BaseProviderService {
       result.error = getErrorMessage(error);
       return result;
     }
+  }
+
+  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-runtime_example_bedrock-runtime_InvokeModelWithResponseStream_TitanTextEmbeddings_section.html
+    if (!this.bedrockClient) {
+      throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
+    }
+
+    const params = {
+      modelId: request.modelId,
+      body: JSON.stringify({
+        inputText: request.input,
+      }),
+    };
+
+    // Send command using Bedrock client
+    const command = new InvokeModelCommand(params);
+    const response = await this.bedrockClient.send(command);
+
+    // Parse the response body
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+
+    return {
+      embedding: responseBody.embedding || [],
+      metadata: {
+        usage: {
+          inputTokens: responseBody.inputTextTokenCount || 0,
+        },
+      },
+    };
   }
 }
