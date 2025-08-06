@@ -163,7 +163,12 @@ jobs:
       run: |
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
 
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME ./ -f infrastructure/services/katechat-app/Dockerfile
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME\
+          --build-arg APP_API_URL=$APP_API_URL\
+          --build-arg APP_WS_URL=$APP_WS_URL\
+          --build-arg RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY\
+          --build-arg COMMIT_SHA=$COMMIT_SHA\
+          ./ -f infrastructure/services/katechat-app/Dockerfile
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
     
