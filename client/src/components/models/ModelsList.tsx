@@ -11,6 +11,7 @@ import {
 import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "../icons/ProviderIcon";
+import { ModelInfo } from "./ModelInfo";
 
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
@@ -171,6 +172,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
 
                 <Group>
                   <Text size="sm">{model.modelId}</Text>
+                  <ModelInfo model={model} size="16" />
                 </Group>
 
                 <Group grow>
