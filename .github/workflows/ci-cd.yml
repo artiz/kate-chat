@@ -153,7 +153,7 @@ jobs:
     # Build and push app image
     - name: Build and push app image
       id: build-app
-      if: needs.changes.outputs.api == 'true'
+      if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true'
       env:
         APP_API_URL: "/"
         APP_WS_URL: "/"
