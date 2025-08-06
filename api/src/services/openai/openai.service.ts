@@ -665,7 +665,7 @@ export class OpenAIService extends BaseProviderService {
 
       const embedding = response.data.data[0]?.embedding;
       const usage = response.data.usage || {};
-      if (!embedding || !Array.isArray(embedding)) {
+      if (!embedding || !Array.isArray(embedding) || embedding.length === 0) {
         throw new Error("Invalid embedding data returned from OpenAI API");
       }
 
