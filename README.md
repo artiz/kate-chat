@@ -49,15 +49,14 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 * Add more UI stuff like:
   * Image resolution/count 
+* Add Qwen3 from YandexFM (https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
 * Add configurable Bedrock/OpenAI retry in case of 429 'Too Many Requests'
-* Check `bedrock-models-config.json` to disable unsupported non-chat models 
-* Extract Embeddings models to use in RAG later, update test logic to check them specifically 
-* Configure OpenAI models to load only chat models
-* Basic RAG implementation with documents (PDF, DOCX, TXT) indexing and pushing embeddings into Amazon DocumentDB/OpenAI vector stores
+* Basic RAG implementation with documents (PDF, DOCX, TXT) indexing and pushing embeddings into Amazon DocumentDB/OpenAI vector stores. 
+  - https://docling-project.github.io/docling/
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Open AI code interpreter support  
-* Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API)
+* Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Rust: add images generation (DALL-E) support, Library
 * Rust: add admin API
 
