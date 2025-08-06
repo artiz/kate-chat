@@ -260,7 +260,7 @@ export class ModelResolver extends BaseResolver {
 
     return {
       id: "00000000-0000-0000-0000-000000000000",
-      role: MessageRole.SYSTEM,
+      role: MessageRole.ASSISTANT,
       content: response.content,
       modelId: model.modelId,
       modelName: model.name,

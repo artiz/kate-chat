@@ -1,4 +1,4 @@
-import React, { use, useMemo } from "react";
+import React, { useMemo } from "react";
 import { Text, Group, Avatar, ActionIcon, Tooltip } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconCopy, IconCopyCheck, IconRobot, IconTrash } from "@tabler/icons-react";
@@ -18,7 +18,7 @@ interface IProps {
 export const LinkedChatMessage = ({ message, parentIndex, index, disableActions }: IProps) => {
   const { models } = useAppSelector(state => state.models);
   var model = useMemo(() => {
-    return models.find(m => m.id === message.modelId);
+    return models.find(m => m.modelId === message.modelId);
   }, [models, message.modelId]);
 
   return (
