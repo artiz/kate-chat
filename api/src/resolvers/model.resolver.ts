@@ -232,10 +232,14 @@ export class ModelResolver extends BaseResolver {
         input: text,
       });
 
+      const previewLength = 10;
+      const preview = result.embedding.slice(0, previewLength).join(", ");
+      const content = `Embedding [${result.embedding.length}]: [${preview}${result.embedding.length > previewLength ? ", ..." : ""}]`;
+
       return {
         id: "00000000-0000-0000-0000-000000000000",
         role: MessageRole.SYSTEM,
-        content: result.embedding.join(", "),
+        content: content,
         modelId: model.modelId,
         modelName: model.name,
         createdAt: timestamp,
