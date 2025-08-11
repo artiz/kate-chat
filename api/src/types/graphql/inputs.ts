@@ -102,6 +102,9 @@ export class UpdateChatInput {
 
   @Field({ nullable: true })
   topP?: number;
+
+  @Field({ nullable: true })
+  imagesCount?: number;
 }
 
 @InputType()
@@ -138,6 +141,9 @@ export class CreateMessageInput {
 
   @Field({ nullable: true })
   topP?: number;
+
+  @Field({ nullable: true })
+  imagesCount?: number;
 }
 
 @InputType()

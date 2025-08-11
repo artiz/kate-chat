@@ -110,9 +110,9 @@ export class ModelResponseMetadata {
 
 export class ModelResponse {
   metadata?: ModelResponseMetadata;
-  // TODO: Add support for > 1 image
   type: ContentType;
   content: string;
+  files?: string[];
 }
 
 export interface StreamCallbacks {
@@ -134,7 +134,7 @@ export type InvokeModelParamsRequest = {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
-  imageBase64?: string;
+  imagesCount?: number;
 };
 
 export interface BedrockModelServiceProvider<T = unknown> {

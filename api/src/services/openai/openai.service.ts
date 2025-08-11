@@ -1,5 +1,5 @@
+import OpenAI from "openai";
 import axios from "axios";
-import { Agent, Dispatcher } from "undici";
 import {
   AIModelInfo,
   ApiProvider,
@@ -17,10 +17,9 @@ import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { log } from "console";
+import { Agent } from "undici";
 
 const logger = createLogger(__filename);
-
 const agent = new Agent({
   keepAliveTimeout: 30_000,
   connections: 100, // pool
@@ -54,110 +53,69 @@ export type OpenAIList<T> = {
   data: T[];
 };
 
-export type OpenAIModel = {
-  id: string;
-  object: string;
-  created: number;
-  owned_by?: string;
-};
-
-type OpenAiMessageRole = "developer" | "user" | "assistant";
-
-type OpenAiRequestMessagePart =
-  | string
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
-
-export type OpenAiRequestMessage = {
-  role: OpenAiMessageRole;
-  content: OpenAiRequestMessagePart[] | string;
-};
-
-type OpenAiCompletionResponse = {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: {
-    index: number;
-    message: {
-      role: OpenAiMessageRole;
-      content: string;
-      refusal: null;
-      annotations: string[];
-    };
-    finish_reason?: string;
-  }[];
-
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-    prompt_tokens_details: {
-      cached_tokens: number;
-      audio_tokens: number;
-    };
-    completion_tokens_details: {
-      reasoning_tokens: number;
-      audio_tokens: number;
-      accepted_prediction_tokens: number;
-      rejected_prediction_tokens: number;
-    };
-  };
-  service_tier: string;
-};
-
 export class OpenAIService extends BaseProviderService {
-  private openAiApiKey: string;
+  private openai: OpenAI;
   private openAiApiAdminKey: string;
   private baseUrl: string;
 
   constructor(connection: ConnectionParams) {
     super(connection);
 
-    this.openAiApiKey = connection.OPENAI_API_KEY || "";
     this.openAiApiAdminKey = connection.OPENAI_API_ADMIN_KEY || "";
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
 
-    if (!this.openAiApiKey) {
+    const openAiApiKey = connection.OPENAI_API_KEY || "";
+    if (!openAiApiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
-  }
 
-  private getHeaders(isAdmin = false): Record<string, string> {
-    return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${isAdmin ? this.openAiApiAdminKey : this.openAiApiKey}`,
-    };
+    this.openai = new OpenAI({
+      apiKey: openAiApiKey,
+      baseURL: this.baseUrl,
+    });
   }
 
   // Text generation with OpenAI models
   // https://platform.openai.com/docs/guides/text?api-mode=chat
-  formatMessages(messages: ModelMessage[], systemPrompt: string | undefined): OpenAiRequestMessage[] {
+  formatMessages(
+    messages: ModelMessage[],
+    systemPrompt: string | undefined
+  ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
     // Format messages for OpenAI API
-    const result: OpenAiRequestMessage[] = messages.map(msg => ({
-      role: this.mapMessageRole(msg.role),
-      content:
-        typeof msg.body === "string"
-          ? msg.body
-          : msg.body
-              .filter(part => part.content)
-              .map(part => {
-                if (part.contentType === "text") {
-                  return { type: "text", text: part.content };
-                } else if (part.contentType === "image") {
-                  return {
-                    type: "image_url",
-                    image_url: {
-                      url: part.content,
-                    },
-                  };
-                } else {
-                  logger.warn({ ...part }, `Unsupported message content type`);
-                  return ""; // Ignore unsupported types
-                }
-              }),
-    }));
+    const result: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => {
+      const role = this.mapMessageRole(msg.role);
+
+      if (typeof msg.body === "string") {
+        return {
+          role,
+          content: msg.body,
+        } as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+      } else {
+        const content = msg.body
+          .filter(part => part.content)
+          .map(part => {
+            if (part.contentType === "text") {
+              return { type: "text" as const, text: part.content };
+            } else if (part.contentType === "image") {
+              return {
+                type: "image_url" as const,
+                image_url: {
+                  url: part.content,
+                },
+              };
+            } else {
+              logger.warn({ ...part }, `Unsupported message content type`);
+              return null;
+            }
+          })
+          .filter(Boolean);
+
+        return {
+          role,
+          content,
+        } as OpenAI.Chat.Completions.ChatCompletionMessageParam;
+      }
+    });
 
     if (systemPrompt) {
       result.unshift({
@@ -169,86 +127,85 @@ export class OpenAIService extends BaseProviderService {
     return result;
   }
 
-  formatModelRequest(inputRequest: InvokeModelParamsRequest): Record<string, any> {
+  formatModelRequest(
+    inputRequest: InvokeModelParamsRequest
+  ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
 
-    const params: Record<string, any> = {
+    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
       messages: this.formatMessages(messages, systemPrompt),
       temperature,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
     };
 
     if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
-      params.max_completion_tokens = maxTokens; // O1 models use max_completion_tokens
-      params.max_tokens = undefined;
-      params.temperature = undefined;
+      delete params.temperature;
     } else if (modelId.startsWith("gpt-4o")) {
-      params.temperature = undefined; // GPT-4o models do not support temperature
+      delete params.temperature; // GPT-4o models do not support temperature
+    } else if (modelId.startsWith("gpt-5")) {
+      params.temperature = 1;
     }
 
     return params;
   }
 
   async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
-    if (!this.openAiApiKey) {
+    if (!this.openai.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
 
-    const { modelId, messages = [] } = inputRequest;
+    const { modelId } = inputRequest;
 
     // Determine if this is an image generation request
     if (modelId.startsWith("dall-e")) {
-      return this.generateImage(messages, modelId);
+      return this.generateImages(inputRequest);
     }
 
     const params = this.formatModelRequest(inputRequest);
     logger.debug({ ...params, messages: [] }, "Invoking OpenAI model");
 
     try {
-      const response = await axios.post<OpenAiCompletionResponse>(`${this.baseUrl}/chat/completions`, params, {
-        headers: this.getHeaders(),
-        fetchOptions,
-      });
+      const response = await this.openai.chat.completions.create(params);
 
-      const content = response.data.choices[0]?.message?.content || "";
-      const usage = response.data.usage || {};
+      const content = response.choices[0]?.message?.content || "";
+      const usage = response.usage;
 
       return {
         type: "text",
         content,
         metadata: {
           usage: {
-            inputTokens: usage.prompt_tokens,
-            outputTokens: usage.completion_tokens,
-            cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
+            inputTokens: usage?.prompt_tokens || 0,
+            outputTokens: usage?.completion_tokens || 0,
+            cacheReadInputTokens: usage?.prompt_tokens_details?.cached_tokens || 0,
           },
         },
       };
     } catch (error: unknown) {
       logger.error(error, "Error calling OpenAI API");
-      if (axios.isAxiosError(error)) {
-        throw new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`);
+      if (error instanceof OpenAI.APIError) {
+        throw new Error(`OpenAI API error: ${error.message}`);
+      } else {
+        throw error instanceof Error ? error : new Error(String(error));
       }
-      throw error;
     }
   }
 
   // Stream response from OpenAI models
   async invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
-    if (!this.openAiApiKey) {
+    if (!this.openai.apiKey) {
       callbacks.onError?.(new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables."));
       return;
     }
 
     const { messages = [], modelId } = inputRequest;
-
     callbacks.onStart?.();
 
     // If this is an image generation model, generate the image non-streaming
     if (modelId === "dall-e-3" || modelId === "dall-e-2") {
       try {
-        const response = await this.generateImage(messages, modelId);
+        const response = await this.generateImages(inputRequest);
         callbacks.onComplete?.(response.content);
       } catch (error) {
         callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
@@ -256,174 +213,52 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    const params = this.formatModelRequest(inputRequest);
-    params.stream = true;
-    params.stream_options = { include_usage: true };
+    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+      ...this.formatModelRequest(inputRequest),
+      stream: true,
+      stream_options: { include_usage: true },
+    };
 
     logger.debug({ ...params, messages: [] }, "Invoking OpenAI model streaming");
 
     try {
-      const response = await axios.post(`${this.baseUrl}/chat/completions`, params, {
-        headers: this.getHeaders(),
-        responseType: "stream",
-        fetchOptions,
-      });
-
+      const stream = await this.openai.chat.completions.create(params);
       let fullResponse = "";
       let meta: ModelResponseMetadata | undefined = undefined;
 
-      response.data.on("data", (chunk: Buffer) => {
-        const data = chunk.toString("utf8")?.trim();
-        const processDelta = (result: any) => {
-          const token = result.choices[0]?.delta?.content || "";
-          if (token) {
-            fullResponse += token;
-            callbacks.onToken?.(token);
-          }
-
-          const usage = result.usage || {};
-          if (usage.prompt_tokens || usage.completion_tokens) {
-            meta = {
-              usage: {
-                inputTokens: usage.prompt_tokens || 0,
-                outputTokens: usage.completion_tokens || 0,
-                cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
-              },
-            };
-          }
-        };
-
-        try {
-          const result = JSON.parse(data);
-          processDelta(result);
-        } catch (error: unknown) {
-          if (error instanceof SyntaxError) {
-            // extract valid JSON in case of rare formatting issues
-            // https://community.openai.com/t/invalid-json-response-when-using-structured-output/1121650/4
-            const jsons = data
-              .split("\n")
-              .map(line => line.trim())
-              .filter(l => l && l.includes("{"))
-              .map(line =>
-                line
-                  .replace(/^[^\{]*\{/m, "{")
-                  .replace(/\}[^\}]*/m, "}")
-                  .trim()
-              );
-
-            for (const json of jsons) {
-              try {
-                processDelta(JSON.parse(json));
-              } catch (jsonError) {
-                if (error instanceof SyntaxError && json.includes(`"usage"`)) {
-                  try {
-                    processDelta(JSON.parse(json.replace(/\}\}\}\}+$/m, "}}}")));
-                  } catch (jsonError2) {
-                    logger.warn(jsonError2, "Failed to parse usage JSON chunk: " + json);
-                  }
-                } else if (!(error instanceof SyntaxError)) {
-                  logger.error(jsonError, "Failed to parse JSON chunk: " + json);
-                }
-              }
-            }
-          } else {
-            logger.error(error, "Failed to parse chunk data: " + data);
-          }
+      for await (const chunk of stream) {
+        const token = chunk.choices[0]?.delta?.content || "";
+        if (token) {
+          fullResponse += token;
+          callbacks.onToken?.(token);
         }
-      });
 
-      response.data.on("end", () => {
-        callbacks.onComplete?.(fullResponse, meta);
-      });
+        const usage = chunk.usage;
+        if (usage) {
+          meta = {
+            usage: {
+              inputTokens: usage.prompt_tokens || 0,
+              outputTokens: usage.completion_tokens || 0,
+              cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
+            },
+          };
+        }
+      }
 
-      response.data.on("error", (error: Error) => {
-        callbacks.onError?.(error);
-      });
+      callbacks.onComplete?.(fullResponse, meta);
     } catch (error) {
-      logger.error(error, "Error streaming from OpenAI API");
-      if (axios.isAxiosError(error)) {
-        callbacks.onError?.(new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`));
+      logger.warn(error, "Error streaming from OpenAI API");
+      if (error instanceof OpenAI.APIError) {
+        callbacks.onError?.(new Error(`OpenAI API error: ${error.message}`));
       } else {
         callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
     }
   }
 
-  // Helper method to map our message roles to OpenAI roles
-  private mapMessageRole(role: MessageRole): OpenAiMessageRole {
-    switch (role) {
-      case MessageRole.USER:
-        return "user";
-      case MessageRole.ASSISTANT:
-      case MessageRole.ERROR:
-        return "assistant";
-      case MessageRole.SYSTEM:
-        return "developer";
-      default:
-        return "user";
-    }
-  }
-
-  // Image generation implementation for DALL-E models
-  private async generateImage(messages: ModelMessage[], modelId: string): Promise<ModelResponse> {
-    if (!this.openAiApiKey) {
-      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-    }
-
-    // Extract the prompt from the last user message
-    const userMessages = messages.filter(msg => msg.role === MessageRole.USER);
-    if (!userMessages.length) {
-      throw new Error("No user prompt provided for image generation");
-    }
-    const lastUserMessage = userMessages[userMessages.length - 1].body;
-    const prompt = Array.isArray(lastUserMessage)
-      ? lastUserMessage
-          .map(part => part.content)
-          .join(" ")
-          .trim()
-      : lastUserMessage;
-
-    if (!prompt) {
-      throw new Error("Empty prompt provided for image generation");
-    }
-
-    const params = {
-      model: modelId,
-      prompt,
-      n: 1,
-      size: "1024x1024",
-      response_format: "b64_json",
-    };
-
-    logger.debug({ params }, "Image generation");
-    try {
-      const response = await axios.post(`${this.baseUrl}/images/generations`, params, {
-        headers: this.getHeaders(),
-        fetchOptions,
-      });
-
-      const imageData = response.data.data[0]?.b64_json || "";
-
-      if (!imageData) {
-        throw new Error("No image URL returned from OpenAI API");
-      }
-
-      return {
-        type: "image",
-        content: imageData,
-      };
-    } catch (error) {
-      logger.error(error, "Error generating image with OpenAI");
-      if (axios.isAxiosError(error)) {
-        throw new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`);
-      }
-      throw error;
-    }
-  }
-
   // Get OpenAI provider information including account details
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
-    const isConnected = !!this.openAiApiKey;
+    const isConnected = !!this.openai.apiKey;
     const details: Record<string, string | number | boolean> = {
       apiUrl: this.baseUrl,
       configured: isConnected,
@@ -433,11 +268,7 @@ export class OpenAIService extends BaseProviderService {
     if (isConnected && checkConnection) {
       try {
         // Fetch models
-        await axios.get(`${this.baseUrl}/models`, {
-          headers: this.getHeaders(),
-          fetchOptions,
-        });
-
+        await this.openai.models.list();
         details.credentialsValid = true;
       } catch (error) {
         logger.warn(error, "Error fetching OpenAI models information");
@@ -465,7 +296,10 @@ export class OpenAIService extends BaseProviderService {
       return result;
     }
 
-    logger.debug({ startTime, endTime }, "Fetching OpenAI usage costs");
+    logger.debug(
+      { start: new Date(startTime * 1000), end: endTime ? new Date(endTime * 1000) : undefined },
+      "Fetching OpenAI usage costs"
+    );
 
     const costsResults: OpenAICostResult[] = [];
     let pagesLimit = 10; // Limit to 10 pages to avoid excessive API calls
@@ -480,7 +314,7 @@ export class OpenAIService extends BaseProviderService {
             limit: 100,
             page,
           },
-          headers: this.getHeaders(true),
+          headers: this.formatRestHeaders(),
           fetchOptions,
         });
 
@@ -535,7 +369,7 @@ export class OpenAIService extends BaseProviderService {
   }
 
   async getModels(): Promise<Record<string, AIModelInfo>> {
-    if (!this.openAiApiKey) {
+    if (!this.openai) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
       return {};
     }
@@ -544,15 +378,10 @@ export class OpenAIService extends BaseProviderService {
 
     try {
       // Fetch models from OpenAI API
-      const response = await axios.get<OpenAIList<OpenAIModel>>(`${this.baseUrl}/models`, {
-        headers: this.getHeaders(),
-        fetchOptions,
-      });
-
-      const openaiModels = response.data.data;
+      const response = await this.openai.models.list();
 
       // Filter and map models
-      for (const model of openaiModels) {
+      for (const model of response.data) {
         // Filter for GPT models and DALL-E
         const supportsImageOut = model.id.startsWith("dall-e");
         const supportsImageIn = model.id.startsWith("gpt-4.1") || model.id.startsWith("gpt-4o");
@@ -560,7 +389,7 @@ export class OpenAIService extends BaseProviderService {
         models[model.id] = {
           apiProvider: ApiProvider.OPEN_AI,
           provider: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
-          name: getModelName(model.id),
+          name: this.getModelName(model.id),
           description: `${model.id} by OpenAI`,
           supportsStreaming: !supportsImageOut,
           supportsTextIn: true,
@@ -607,14 +436,90 @@ export class OpenAIService extends BaseProviderService {
 
     return models;
   }
-}
 
-function getModelName(id: string): string {
-  // for names like gpt-4-turbo return GPT-4 Turbo
-  const name = id
-    .replace("gpt", "GPT")
-    .replace("dall-e", "DALL-E")
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, char => char.toUpperCase());
-  return name;
+  // Image generation implementation for DALL-E models
+  private async generateImages(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
+    if (!this.openai.apiKey) {
+      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+    }
+
+    const { modelId, messages = [], imagesCount } = inputRequest;
+
+    // Extract the prompt from the last user message
+    const userMessages = messages.filter(msg => msg.role === MessageRole.USER);
+    if (!userMessages.length) {
+      throw new Error("No user prompt provided for image generation");
+    }
+    const lastUserMessage = userMessages[userMessages.length - 1].body;
+    const prompt = Array.isArray(lastUserMessage)
+      ? lastUserMessage
+          .map(part => part.content)
+          .join(" ")
+          .trim()
+      : lastUserMessage;
+
+    if (!prompt) {
+      throw new Error("Empty prompt provided for image generation");
+    }
+
+    const params: OpenAI.Images.ImageGenerateParams = {
+      model: modelId,
+      prompt,
+      n: Math.min(imagesCount || 1, 10),
+      size: "1024x1024",
+      response_format: "b64_json",
+    };
+
+    logger.debug({ params }, "Image generation");
+    try {
+      const response = await this.openai.images.generate(params);
+      if (!response.data?.length) {
+        throw new Error("No image data returned from OpenAI API");
+      }
+      if (response.data.some(img => !img.b64_json)) {
+        throw new Error("Invalid image data returned from OpenAI API");
+      }
+
+      return {
+        type: "image",
+        content: "",
+        files: response.data.map(img => img.b64_json!),
+      };
+    } catch (error) {
+      logger.warn(error, "Error generating image with OpenAI");
+      throw error;
+    }
+  }
+
+  // Helper method to map our message roles to OpenAI roles
+  private mapMessageRole(role: MessageRole): "user" | "assistant" | "developer" {
+    switch (role) {
+      case MessageRole.USER:
+        return "user";
+      case MessageRole.ASSISTANT:
+      case MessageRole.ERROR:
+        return "assistant";
+      case MessageRole.SYSTEM:
+        return "developer";
+      default:
+        return "user";
+    }
+  }
+
+  private formatRestHeaders(): Record<string, string> {
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.openAiApiAdminKey}`,
+    };
+  }
+
+  private getModelName(id: string): string {
+    // for names like gpt-4-turbo return GPT-4 Turbo
+    const name = id
+      .replace("gpt", "GPT")
+      .replace("dall-e", "DALL-E")
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, char => char.toUpperCase());
+    return name;
+  }
 }

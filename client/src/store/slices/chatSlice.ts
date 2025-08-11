@@ -50,6 +50,7 @@ export interface Chat {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  imagesCount?: number;
 }
 
 interface ChatsState {

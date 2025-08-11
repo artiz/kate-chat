@@ -118,7 +118,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   useEffect(() => {
     if (loadCompleted) {
       setShowAnchorButton(false);
-      setTimeout(scrollToBottom, 50);
+      setTimeout(scrollToBottom, 200);
     }
   }, [chatId, loadCompleted]);
 
@@ -135,7 +135,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useEffect(() => {
     autoScroll();
-  }, [messages, chat?.lastBotMessage, autoScroll, streaming]);
+  }, [messages, chat?.lastBotMessage, autoScroll]);
 
   const handleScroll = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -221,23 +221,25 @@ export const ChatComponent = ({ chatId }: IProps) => {
     setSending(true);
 
     try {
+      setUserMessage("");
+      setSelectedFiles([]);
+      setSelectedImages([]);
+
       // Convert images to base64
       await createMessage({
         variables: {
           input: {
             chatId,
-            content: userMessage,
+            content: userMessage?.trim() || "",
             images: selectedImages,
             modelId: selectedModel?.modelId,
             temperature: chat?.temperature,
             maxTokens: chat?.maxTokens,
             topP: chat?.topP,
+            imagesCount: chat?.imagesCount,
           },
         },
       });
-      setUserMessage("");
-      setSelectedFiles([]);
-      setSelectedImages([]);
     } catch (error) {
       notifications.show({
         title: "Error",
@@ -269,11 +271,17 @@ export const ChatComponent = ({ chatId }: IProps) => {
     updateChat(chatId, { modelId: model.modelId });
   };
 
-  const handleSettingsChange = (settings: { temperature?: number; maxTokens?: number; topP?: number }) => {
+  const handleSettingsChange = (settings: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    imagesCount?: number;
+  }) => {
     updateChat(chatId, {
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
       topP: settings.topP,
+      imagesCount: settings.imagesCount,
     });
   };
 
@@ -282,6 +290,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       temperature: 0.7,
       maxTokens: 2000,
       topP: 0.9,
+      imagesCount: 1,
     });
   };
 
@@ -469,6 +478,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           temperature={chat?.temperature}
           maxTokens={chat?.maxTokens}
           topP={chat?.topP}
+          imagesCount={chat?.imagesCount}
           onSettingsChange={handleSettingsChange}
           resetToDefaults={resetSettingsToDefaults}
         />

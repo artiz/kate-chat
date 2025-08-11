@@ -119,6 +119,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       temperature
       maxTokens
       topP
+      imagesCount
       updatedAt
     }
   }
@@ -311,6 +312,7 @@ export const GET_CHAT_MESSAGES = gql`
         temperature
         maxTokens
         topP
+        imagesCount
       }
     }
   }

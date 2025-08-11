@@ -558,9 +558,10 @@ export class MessagesService {
     const request: InvokeModelParamsRequest = {
       modelId: model.modelId,
       systemPrompt,
-      temperature: input.temperature,
-      maxTokens: input.maxTokens,
-      topP: input.topP,
+      temperature: input.temperature || chat.temperature,
+      maxTokens: input.maxTokens || chat.maxTokens,
+      topP: input.topP || chat.topP,
+      imagesCount: input.imagesCount || chat.imagesCount,
     };
 
     const completeRequest = async (message: Message) => {
@@ -577,30 +578,41 @@ export class MessagesService {
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
-          const s3Service = new S3Service(user.toToken());
-          // Save base64 image to S3
-          const { fileName, contentType } = await this.saveImageFromBase64(s3Service, aiResponse.content, {
-            chatId: chat.id,
-            messageId: assistantMessage.id,
-          });
+          if (!aiResponse.files) {
+            throw new Error("No image files returned from AI provider");
+          }
 
-          assistantMessage.content = `![Generated Image](${s3Service.getFileUrl(fileName)})`;
-          assistantMessage.jsonContent = [
-            {
-              content: aiResponse.content,
+          const s3Service = new S3Service(user.toToken());
+          const images: ModelMessageContent[] = [];
+
+          for (const file of aiResponse.files) {
+            // Save base64 images to S3
+            const { fileName, contentType } = await this.saveImageFromBase64(s3Service, file, {
+              chatId: chat.id,
+              messageId: assistantMessage.id,
+              index: images.length,
+            });
+
+            images.push({
+              content: file,
               contentType: "image",
               fileName,
               mimeType: contentType,
-            },
-          ];
+            });
+          }
 
-          chat.files = [...(chat.files || []), fileName];
-          await this.chatRepository.save(chat);
+          assistantMessage.jsonContent = images;
+          assistantMessage.content = images
+            .map(img => `![Generated Image](${s3Service.getFileUrl(img.fileName!)})`)
+            .join("   ");
+
+          chat.files = [...(chat.files || []), ...images.map(img => img.fileName!)];
         } else {
           assistantMessage.content = aiResponse.content;
         }
 
         await completeRequest(assistantMessage);
+        await this.chatRepository.save(chat);
       } catch (error: unknown) {
         logger.error(error, "Error generating AI response");
 

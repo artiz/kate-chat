@@ -47,6 +47,7 @@ type Chat {
   createdAt: DateTimeISO!
   description: String!
   id: ID!
+  imagesCount: Float
   isPristine: Boolean!
   lastBotMessage: String
   lastBotMessageId: String
@@ -72,6 +73,7 @@ input CreateMessageInput {
   chatId: String!
   content: String!
   images: [ImageInput!]
+  imagesCount: Float
   maxTokens: Float
   modelId: String
   temperature: Float
@@ -349,6 +351,7 @@ input TestModelInput {
 
 input UpdateChatInput {
   description: String
+  imagesCount: Float
   maxTokens: Float
   modelId: String
   temperature: Float

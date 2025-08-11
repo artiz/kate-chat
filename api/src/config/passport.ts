@@ -106,7 +106,7 @@ export const configurePassport = () => {
 
             done(null, user);
           } catch (error) {
-            logger.error({ error }, "Error during Google OAuth authentication");
+            logger.error(error, "Error during Google OAuth authentication");
             done(error, false);
           }
         }
@@ -187,7 +187,7 @@ export const configurePassport = () => {
 
             done(null, user);
           } catch (error) {
-            logger.error({ error }, "Error during GitHub OAuth authentication");
+            logger.error(error, "Error during GitHub OAuth authentication");
             done(error, false);
           }
         }

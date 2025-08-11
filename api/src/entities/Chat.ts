@@ -1,13 +1,10 @@
 import {
   Entity,
-  ObjectIdColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  PrimaryColumn,
   PrimaryGeneratedColumn,
-  JoinColumn,
   OneToMany,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
@@ -80,6 +77,10 @@ export class Chat {
   @Field({ nullable: true })
   @Column({ nullable: true, type: "float" })
   topP?: number;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, type: "int" })
+  imagesCount?: number;
 
   @Field()
   @Column({ default: false })

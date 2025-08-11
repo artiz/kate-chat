@@ -2,13 +2,7 @@ import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResol
 import { Repository, IsNull } from "typeorm";
 import { Message } from "@/entities/Message";
 import { Chat, Model } from "@/entities";
-import {
-  CreateMessageInput,
-  GetMessagesInput,
-  SwitchModelInput,
-  GetImagesInput,
-  CallOtherInput,
-} from "@/types/graphql/inputs";
+import { CreateMessageInput, GetMessagesInput, GetImagesInput, CallOtherInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from "@/middleware/auth.middleware";
 import {

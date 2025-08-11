@@ -81,32 +81,34 @@ export const ChatList: React.FC = () => {
         </Button>
       </Group>
       <Grid>
-        {chats.map(chat => (
-          <Grid.Col key={chat.id} span={{ base: 12, sm: 6, md: 4 }}>
-            <Card withBorder padding="md" radius="md">
-              <Group
-                m="0"
-                align="center"
-                justify="space-between"
-                onClick={() => handleOpenChat(chat.id)}
-                style={{ cursor: "pointer" }}
-              >
-                <Text fw={500} size="lg" mb="xs" truncate>
-                  {chat.title || "Untitled Chat"}
-                </Text>
-                <Text size="sm" c="dimmed">
-                  {new Date(chat.updatedAt).toLocaleDateString()}
-                </Text>
-                <Text size="sm">
-                  <b>{chat.messagesCount}</b> messages
-                </Text>
-              </Group>
-              <Divider />
+        {chats
+          .filter(c => !c.isPristine)
+          .map(chat => (
+            <Grid.Col key={chat.id} span={{ base: 12, sm: 6, md: 4 }}>
+              <Card withBorder padding="md" radius="md">
+                <Group
+                  m="0"
+                  align="center"
+                  justify="space-between"
+                  onClick={() => handleOpenChat(chat.id)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Text fw={500} size="lg" mb="xs" truncate>
+                    {chat.title || "Untitled Chat"}
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    {new Date(chat.updatedAt).toLocaleDateString()}
+                  </Text>
+                  <Text size="sm">
+                    <b>{chat.messagesCount}</b> messages
+                  </Text>
+                </Group>
+                <Divider />
 
-              <ChatMessagePreview html={chat.lastBotMessageHtml} text={chat.lastBotMessage} />
-            </Card>
-          </Grid.Col>
-        ))}
+                <ChatMessagePreview html={chat.lastBotMessageHtml} text={chat.lastBotMessage} />
+              </Card>
+            </Grid.Col>
+          ))}
       </Grid>
     </>
   );

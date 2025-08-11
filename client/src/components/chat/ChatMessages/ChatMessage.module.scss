@@ -312,13 +312,13 @@
   .messageContainer {
     :global .code-block,
     :global pre {
-      background-color: var(--mantine-color-gray-1);
+      background-color: var(--mantine-color-gray-3);
     }
 
     :global .code-header {
-      background-color: var(--mantine-color-gray-1);
+      background-color: var(--mantine-color-gray-3);
       &:hover {
-        background-color: var(--mantine-color-gray-2);
+        background-color: var(--mantine-color-gray-4);
       }
     }
 
@@ -327,6 +327,14 @@
     }
     .linked {
       background-color: var(--mantine-color-gray-3);
+    }
+
+    tr:nth-child(2n) {
+      background-color: var(--mantine-color-blue-1);
+    }
+
+    thead tr {
+      background-color: var(--mantine-color-blue-1);
     }
   }
 }
