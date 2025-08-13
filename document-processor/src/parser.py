@@ -2,32 +2,42 @@ import os
 import time
 import logging
 import json
-
 from tabulate import tabulate
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Union
 
-from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend, MsWordDocumentBackend
+from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
+from docling.backend.msword_backend import MsWordDocumentBackend
+from docling.backend.html_backend import HTMLDocumentBackend
 from docling.datamodel.base_models import ConversionStatus
 from docling.datamodel.document import ConversionResult
 
+from docling.document_converter import DocumentConverter, FormatOption
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions
+from docling.datamodel.base_models import InputFormat
+from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
+from docling.pipeline.simple_pipeline import SimplePipeline
+from docling.datamodel.base_models import ConversionStatus, DocumentStream
 
-# Basic ideas gto from https://github.com/IlyaRice/RAG-Challenge-2
+# Basic ideas got from https://github.com/IlyaRice/RAG-Challenge-2
 # Kudos to @IlyaRice
 
 _log = logging.getLogger(__name__)
-
 
 
 class PDFParser:
     def __init__(
         self,
         pdf_backend=DoclingParseV2DocumentBackend,
+        msword_backend=MsWordDocumentBackend,
+        html_backend=HTMLDocumentBackend,
         output_dir: Path = Path("./parsed_pdfs"),
         num_threads: int = None,
         csv_metadata_path: Path = None,
     ):
         self.pdf_backend = pdf_backend
+        self.msword_backend = msword_backend
+        self.html_backend = html_backend
         self.output_dir = output_dir
         self.doc_converter = self._create_document_converter()
         self.num_threads = num_threads
@@ -40,29 +50,10 @@ class PDFParser:
         if self.num_threads is not None:
             os.environ["OMP_NUM_THREADS"] = str(self.num_threads)
 
-    @staticmethod
-    def _parse_csv_metadata(csv_path: Path) -> dict:
-        """Parse CSV file and create a lookup dictionary with sha1 as key."""
-        import csv
-        metadata_lookup = {}
-        
-        with open(csv_path, 'r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                # Handle both old and new CSV formats for company name
-                company_name = row.get('company_name', row.get('name', '')).strip('"')
-                metadata_lookup[row['sha1']] = {
-                    'company_name': company_name
-                }
-        return metadata_lookup
-
-    def _create_document_converter(self) -> "DocumentConverter": # type: ignore
+    def _create_document_converter(self) -> "DocumentConverter":
         """Creates and returns a DocumentConverter with default pipeline options."""
-        from docling.document_converter import DocumentConverter, FormatOption
-        from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions
-        from docling.datamodel.base_models import InputFormat
-        from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
         
+        # PDF pipeline options
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
         ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False)
@@ -72,16 +63,27 @@ class PDFParser:
         pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
         
         format_options = {
+            # PDF format
             InputFormat.PDF: FormatOption(
                 pipeline_cls=StandardPdfPipeline,
                 pipeline_options=pipeline_options,
                 backend=self.pdf_backend
+            ),
+            # DOCX format
+            InputFormat.DOCX: FormatOption(
+                pipeline_cls=SimplePipeline,
+                backend=self.msword_backend
+            ),
+            # HTML format
+            InputFormat.HTML: FormatOption(
+                pipeline_cls=SimplePipeline,
+                backend=self.html_backend
             )
         }
         
         return DocumentConverter(format_options=format_options)
 
-    def convert_documents(self, input_doc_paths: List[Path]) -> Iterable[ConversionResult]:
+    def convert_documents(self, input_doc_paths: List[Union[Path, str, DocumentStream]]) -> Iterable[ConversionResult]:
         conv_results = self.doc_converter.convert_all(source=input_doc_paths)
         return conv_results
     
@@ -170,13 +172,13 @@ class JsonReportProcessor:
         self.metadata_lookup = metadata_lookup or {}
         self.debug_data_path = debug_data_path
 
-    def assemble_report(self, conv_result, normalized_data=None):
+    def assemble_report(self, conv_result: ConversionResult, normalized_data=None):
         """Assemble the report using either normalized data or raw conversion result."""
         data = normalized_data if normalized_data is not None else conv_result.document.export_to_dict()
         assembled_report = {}
         assembled_report['metainfo'] = self.assemble_metainfo(data)
         assembled_report['content'] = self.assemble_content(data)
-        assembled_report['tables'] = self.assemble_tables(conv_result.document.tables, data)
+        assembled_report['tables'] = self.assemble_tables(conv_result.document.tables, conv_result.document, data)
         assembled_report['pictures'] = self.assemble_pictures(data)
         self.debug_data(data)
         return assembled_report
@@ -191,11 +193,6 @@ class JsonReportProcessor:
         metainfo['pictures_amount'] = len(data.get('pictures', []))
         metainfo['equations_amount'] = len(data.get('equations', []))
         metainfo['footnotes_amount'] = len([t for t in data.get('texts', []) if t.get('label') == 'footnote'])
-        
-        # Add CSV metadata if available
-        if self.metadata_lookup and sha1_name in self.metadata_lookup:
-            csv_meta = self.metadata_lookup[sha1_name]
-            metainfo['company_name'] = csv_meta['company_name']
             
         return metainfo
 
@@ -271,6 +268,45 @@ class JsonReportProcessor:
             
         return content_item
     
+    def _process_text_children_recursively(self, text_item, data, pages, parent_group_info=None):
+        """Recursively process text item and its children to extract all content."""
+        # Process the current text item
+        ref_num = int(text_item['self_ref'].split('/')[-1])
+        content_item = self._process_text_reference(ref_num, data)
+        
+        # Add group information if available
+        if parent_group_info:
+            content_item.update(parent_group_info)
+        
+        # Get page number from prov, default to page 1 for documents without pages
+        if 'prov' in text_item and text_item['prov']:
+            page_num = text_item['prov'][0]['page_no']
+            page_dimensions = text_item['prov'][0].get('bbox', {})
+        else:
+            page_num = 1  # Default to page 1 for documents without pages
+            page_dimensions = {}
+
+        # Initialize page if not exists
+        if page_num not in pages:
+            pages[page_num] = {
+                'page': page_num,
+                'content': [],
+                'page_dimensions': page_dimensions
+            }
+
+        pages[page_num]['content'].append(content_item)
+        
+        # Recursively process children
+        for child in text_item.get('children', []):
+            if isinstance(child, dict) and '$ref' in child:
+                child_ref = child['$ref']
+                child_ref_type, child_ref_num = child_ref.split('/')[-2:]
+                child_ref_num = int(child_ref_num)
+                
+                if child_ref_type == 'texts':
+                    child_text_item = data['texts'][child_ref_num]
+                    self._process_text_children_recursively(child_text_item, data, pages, parent_group_info)
+    
     def assemble_content(self, data):
         pages = {}
         # Expand body children to include group references
@@ -287,27 +323,18 @@ class JsonReportProcessor:
 
                 if ref_type == 'texts':
                     text_item = data['texts'][ref_num]
-                    content_item = self._process_text_reference(ref_num, data)
-
-                    # Add group information if available
+                    
+                    # Prepare group information if available
+                    group_info = {}
                     if 'group_id' in item:
-                        content_item['group_id'] = item['group_id']
-                        content_item['group_name'] = item['group_name']
-                        content_item['group_label'] = item['group_label']
-
-                    # Get page number from prov
-                    if 'prov' in text_item and text_item['prov']:
-                        page_num = text_item['prov'][0]['page_no']
-
-                        # Initialize page if not exists
-                        if page_num not in pages:
-                            pages[page_num] = {
-                                'page': page_num,
-                                'content': [],
-                                'page_dimensions': text_item['prov'][0].get('bbox', {})
-                            }
-
-                        pages[page_num]['content'].append(content_item)
+                        group_info = {
+                            'group_id': item['group_id'],
+                            'group_name': item['group_name'],
+                            'group_label': item['group_label']
+                        }
+                    
+                    # Process this text item and all its children recursively
+                    self._process_text_children_recursively(text_item, data, pages, group_info)
 
                 elif ref_type == 'tables':
                     table_item = data['tables'][ref_num]
@@ -318,15 +345,19 @@ class JsonReportProcessor:
 
                     if 'prov' in table_item and table_item['prov']:
                         page_num = table_item['prov'][0]['page_no']
+                        page_dimensions = table_item['prov'][0].get('bbox', {})
+                    else:
+                        page_num = 1  # Default to page 1 for documents without pages
+                        page_dimensions = {}
 
-                        if page_num not in pages:
-                            pages[page_num] = {
-                                'page': page_num,
-                                'content': [],
-                                'page_dimensions': table_item['prov'][0].get('bbox', {})
-                            }
+                    if page_num not in pages:
+                        pages[page_num] = {
+                            'page': page_num,
+                            'content': [],
+                            'page_dimensions': page_dimensions
+                        }
 
-                        pages[page_num]['content'].append(content_item)
+                    pages[page_num]['content'].append(content_item)
                 
                 elif ref_type == 'pictures':
                     picture_item = data['pictures'][ref_num]
@@ -337,35 +368,45 @@ class JsonReportProcessor:
                     
                     if 'prov' in picture_item and picture_item['prov']:
                         page_num = picture_item['prov'][0]['page_no']
+                        page_dimensions = picture_item['prov'][0].get('bbox', {})
+                    else:
+                        page_num = 1  # Default to page 1 for documents without pages
+                        page_dimensions = {}
 
-                        if page_num not in pages:
-                            pages[page_num] = {
-                                'page': page_num,
-                                'content': [],
-                                'page_dimensions': picture_item['prov'][0].get('bbox', {})
-                            }
-                        
-                        pages[page_num]['content'].append(content_item)
+                    if page_num not in pages:
+                        pages[page_num] = {
+                            'page': page_num,
+                            'content': [],
+                            'page_dimensions': page_dimensions
+                        }
+                    
+                    pages[page_num]['content'].append(content_item)
 
         sorted_pages = [pages[page_num] for page_num in sorted(pages.keys())]
         return sorted_pages
 
-    def assemble_tables(self, tables, data):
+    def assemble_tables(self, tables, doc, data):
         assembled_tables = []
         for i, table in enumerate(tables):
             table_json_obj = table.model_dump()
             table_md = self._table_to_md(table_json_obj)
-            table_html = table.export_to_html()
+            table_html = table.export_to_html(doc)
             
             table_data = data['tables'][i]
-            table_page_num = table_data['prov'][0]['page_no']
-            table_bbox = table_data['prov'][0]['bbox']
-            table_bbox = [
-                table_bbox['l'],
-                table_bbox['t'], 
-                table_bbox['r'],
-                table_bbox['b']
-            ]
+            
+            # Handle documents without page numbers (like HTML)
+            if 'prov' in table_data and table_data['prov']:
+                table_page_num = table_data['prov'][0]['page_no']
+                table_bbox = table_data['prov'][0]['bbox']
+                table_bbox = [
+                    table_bbox['l'],
+                    table_bbox['t'], 
+                    table_bbox['r'],
+                    table_bbox['b']
+                ]
+            else:
+                table_page_num = 1  # Default to page 1 for documents without pages
+                table_bbox = [0, 0, 0, 0]  # Default bbox
             
             # Get rows and columns from the table data structure
             nrows = table_data['data']['num_rows']
@@ -420,14 +461,19 @@ class JsonReportProcessor:
             ref_num = picture['self_ref'].split('/')[-1]
             ref_num = int(ref_num)
             
-            picture_page_num = picture['prov'][0]['page_no']
-            picture_bbox = picture['prov'][0]['bbox']
-            picture_bbox = [
-                picture_bbox['l'],
-                picture_bbox['t'], 
-                picture_bbox['r'],
-                picture_bbox['b']
-            ]
+            # Handle documents without page numbers (like HTML)
+            if 'prov' in picture and picture['prov']:
+                picture_page_num = picture['prov'][0]['page_no']
+                picture_bbox = picture['prov'][0]['bbox']
+                picture_bbox = [
+                    picture_bbox['l'],
+                    picture_bbox['t'], 
+                    picture_bbox['r'],
+                    picture_bbox['b']
+                ]
+            else:
+                picture_page_num = 1  # Default to page 1 for documents without pages
+                picture_bbox = [0, 0, 0, 0]  # Default bbox
             
             picture_obj = {
                 'picture_id': ref_num,
@@ -453,3 +499,112 @@ class JsonReportProcessor:
                     children_list.append(content_item)
 
         return children_list
+
+
+def main():
+    """Default entry point to parse multiple documents and output results to console."""
+    
+    # Set up logging to see processing information
+    logging.basicConfig(level=logging.INFO)
+    
+    # Define paths to the files to parse
+    data_dir = Path(__file__).parent.parent / "data" / "train"
+    files_to_parse = [
+        data_dir / "dummy_report.pdf",
+        data_dir / "Apple.docx",
+        data_dir / "Austria - Wikipedia.html"
+    ]
+    
+    # Check which files exist
+    
+    print("=" * 60)
+    print(f"Starting to parse {len(files_to_parse)} documents...")
+    print("=" * 60)
+    
+    # Create document parser instance (renamed from PDFParser to reflect multi-format support)
+    parser = PDFParser()
+    
+    try:
+        # Convert all documents
+        conv_results = list(parser.convert_documents(files_to_parse))
+        
+        if not conv_results:
+            print("No conversion results returned")
+            return
+        
+        # Process each document
+        processor = JsonReportProcessor()
+        
+        for i, conv_result in enumerate(conv_results):
+            file_path = files_to_parse[i]
+            print(f"\n{'='*60}")
+            print(f"PROCESSING: {file_path.name}")
+            print(f"{'='*60}")
+            
+            if conv_result.status != ConversionStatus.SUCCESS:
+                print(f"❌ Conversion failed with status: {conv_result.status}")
+                continue
+            
+            print(f"✅ Conversion successful!")
+            
+            # Get the document data
+            data = conv_result.document.export_to_dict()
+            normalized_data = parser._normalize_page_sequence(data)
+            processed_report = processor.assemble_report(conv_result, normalized_data)
+            
+            # Output results to console
+            print(f"\n📊 DOCUMENT METADATA:")
+            print("-" * 40)
+            metainfo = processed_report['metainfo']
+            for key, value in metainfo.items():
+                print(f"  {key}: {value}")
+            
+            print(f"\n📄 PAGE CONTENT:")
+            print("-" * 40)
+            for page in processed_report['content']:
+                print(f"\n  Page {page['page']}:")
+                for content_item in page['content']:
+                    if content_item['type'] == 'table':
+                        print(f"    [TABLE] table_id: {content_item['table_id']}")
+                    elif content_item['type'] == 'picture':
+                        print(f"    [PICTURE] picture_id: {content_item['picture_id']}")
+                    else:
+                        # Text content
+                        text = content_item['text'][:80] + "..." if len(content_item['text']) > 80 else content_item['text']
+                        print(f"    [{content_item['type'].upper()}] {text}")
+            
+            if processed_report['tables']:
+                print(f"\n📋 TABLES FOUND: {len(processed_report['tables'])}")
+                print("-" * 40)
+                for table in processed_report['tables']:
+                    print(f"  Table {table['table_id']} on page {table['page']} ({table['#-rows']}x{table['#-cols']}):")
+                    # Show just first few lines of markdown table to avoid clutter
+                    table_lines = table['markdown'].split('\n')
+                    for line in table_lines[:5]:  # Show first 5 lines
+                        print(f"    {line}")
+                    if len(table_lines) > 5:
+                        print(f"    ... ({len(table_lines)-5} more lines)")
+                    print()
+            
+            if processed_report['pictures']:
+                print(f"\n🖼️ PICTURES FOUND: {len(processed_report['pictures'])}")
+                print("-" * 40)
+                for picture in processed_report['pictures']:
+                    print(f"  Picture {picture['picture_id']} on page {picture['page']}:")
+                    for child in picture['children']:
+                        text = child['text'][:80] + "..." if len(child['text']) > 80 else child['text']
+                        print(f"    {text}")
+                    print()
+        
+        print("=" * 60)
+        print("🎉 All documents processed successfully!")
+        print("=" * 60)
+        
+    except Exception as e:
+        print(f"❌ Error during parsing: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    main()
