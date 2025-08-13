@@ -66,7 +66,7 @@ export class AnthropicService implements BedrockModelServiceProvider<AnthropicRe
         if (typeof msg.body === "string") {
           return [
             {
-              role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+              role: msg.role === MessageRole.USER ? "user" : "assistant",
               content: msg.body,
             } as AnthropicRequestMessage,
           ];

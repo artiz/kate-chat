@@ -18,7 +18,7 @@ import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
-import { formatDateFloor, getRepository } from "@/config/database";
+import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { QueueService } from "./queue.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -717,7 +717,7 @@ export class MessagesService {
 
     if (currentMessage) {
       query = query
-        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateFloor(currentMessage.createdAt) })
+        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateCeil(currentMessage.createdAt) })
         .andWhere("message.id <> :id", { id: currentMessage.id });
     }
 

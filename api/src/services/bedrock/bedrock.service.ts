@@ -22,6 +22,7 @@ import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";
+import { AnthropicService, AmazonService, AI21Service, CohereService, MetaService, MistralService } from "./providers";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
@@ -212,32 +213,26 @@ export class BedrockService extends BaseProviderService {
     let provider = this.getModelProvider(modelId);
 
     if (provider == "anthropic") {
-      const { AnthropicService } = await import("./providers/anthropic.service");
       const anthropicService = new AnthropicService();
       params = await anthropicService.getInvokeModelParams(request);
       service = anthropicService;
     } else if (provider == "amazon") {
-      const { AmazonService } = await import("./providers/amazon.service");
       const amazonService = new AmazonService();
       params = await amazonService.getInvokeModelParams(request);
       service = amazonService;
     } else if (provider == "ai21") {
-      const { AI21Service } = await import("./providers/ai21.service");
       const ai21Service = new AI21Service();
       params = await ai21Service.getInvokeModelParams(request);
       service = ai21Service;
     } else if (provider == "cohere") {
-      const { CohereService } = await import("./providers/cohere.service");
       const cohereService = new CohereService();
       params = await cohereService.getInvokeModelParams(request);
       service = cohereService;
     } else if (provider == "meta") {
-      const { MetaService } = await import("./providers/meta.service");
       const metaService = new MetaService();
       params = await metaService.getInvokeModelParams(request);
       service = metaService;
     } else if (provider == "mistral") {
-      const { MistralService } = await import("./providers/mistral.service");
       const mistralService = new MistralService();
       params = await mistralService.getInvokeModelParams(request);
       service = mistralService;

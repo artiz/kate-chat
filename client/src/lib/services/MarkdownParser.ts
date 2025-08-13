@@ -35,7 +35,7 @@ const marked = new Marked(
     throwOnError: false,
     output: "html",
   }),
-  { async: true, silent: true, breaks: true }
+  { async: true, silent: false, breaks: true, gfm: true }
 );
 
 const customRenderer = new Renderer();

@@ -59,6 +59,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       modelId
       modelName
       user {
+        id
         lastName
         firstName
         avatarUrl

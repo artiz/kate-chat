@@ -40,7 +40,7 @@ export class CohereService implements BedrockModelServiceProvider<CohereResponse
 
       if (msg.role === MessageRole.USER) {
         prompt += `User: ${content}\n`;
-      } else if (msg.role === MessageRole.ASSISTANT) {
+      } else if (msg.role === MessageRole.ASSISTANT || msg.role === MessageRole.ERROR) {
         prompt += `Chatbot: ${content}\n`;
       } else if (msg.role === MessageRole.SYSTEM) {
         // Add as preamble
