@@ -94,7 +94,7 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
 
         if (msg.role === MessageRole.USER) {
           prompt += `Human: ${content}\n`;
-        } else if (msg.role === MessageRole.ASSISTANT) {
+        } else if (msg.role === MessageRole.ASSISTANT || msg.role === MessageRole.ERROR) {
           prompt += `Assistant: ${content}\n`;
         } else if (msg.role === MessageRole.SYSTEM) {
           // Prepend system message

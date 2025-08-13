@@ -46,6 +46,7 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 
 import classes from "./Chat.module.scss";
 import { ModelType } from "@/store/slices/modelSlice";
+import { set } from "lodash";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -148,12 +149,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
       } else if (messages?.length) {
+        if (streaming) {
+          setShowAnchorButton(true);
+        }
+
         anchorTimer.current = setTimeout(() => {
           setShowAnchorButton(true);
         }, 100);
       }
     },
-    [messages?.length]
+    [messages?.length, streaming]
   );
 
   const anchorHandleClick = useCallback(() => {
