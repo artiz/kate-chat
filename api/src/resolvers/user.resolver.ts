@@ -1,10 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
-import { Repository } from "typeorm";
 import { User } from "../entities/User";
-import { getRepository } from "../config/database";
-import { generateToken, TokenPayload } from "../utils/jwt";
+import { generateToken } from "../utils/jwt";
 import bcrypt from "bcryptjs";
-import { ObjectId } from "mongodb";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
 import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";

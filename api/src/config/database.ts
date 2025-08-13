@@ -52,11 +52,6 @@ if (process.env.DB_TYPE === "mysql") {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
   };
-} else if (process.env.DB_TYPE === "mongodb") {
-  dbOptions = {
-    type: "mongodb",
-    url: process.env.DB_URL,
-  };
 } else if (process.env.DB_TYPE && process.env.DB_TYPE !== "sqlite") {
   throw new Error(`Unsupported DB_TYPE: ${process.env.DB_TYPE}`);
 }
