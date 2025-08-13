@@ -14,9 +14,9 @@ export const themeBase: MantineThemeOverride = createTheme({
   // Use the brand color as the primary color
   primaryColor: "brand",
   colors: brandColors,
-  fontFamily: `Roboto, "Segoe UI", system-ui`,
+  fontFamily: `"Noto Sans", "Segoe UI", system-ui`,
   headings: {
-    fontFamily: `Roboto, "Segoe UI", system-ui`,
+    fontFamily: `"Noto Sans", "Segoe UI", system-ui`,
   },
   defaultRadius: "md",
   components: {
