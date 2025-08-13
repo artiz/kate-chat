@@ -22,7 +22,7 @@ interface IProps {
 
 export const ModelInfo: React.FC<IProps> = ({ model, size = 24 }) => {
   return (
-    <Group>
+    <Group gap="xs" wrap="nowrap" align="center">
       <Tooltip label="Text input">
         <IconTextScan2 size={size} color="gray" />
       </Tooltip>
