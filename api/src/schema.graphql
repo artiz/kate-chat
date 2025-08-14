@@ -44,6 +44,7 @@ input ChangePasswordInput {
 }
 
 type Chat {
+  chatDocuments: [ChatDocument!]
   createdAt: DateTimeISO!
   description: String!
   id: ID!
@@ -60,6 +61,14 @@ type Chat {
   topP: Float
   updatedAt: DateTimeISO!
   user: User
+}
+
+type ChatDocument {
+  chat: Chat!
+  chatId: String!
+  document: Document!
+  documentId: String!
+  id: ID!
 }
 
 input CreateChatInput {
@@ -98,14 +107,23 @@ type Document {
   createdAt: DateTimeISO!
   embeddingsModelId: String
   fileName: String!
+  fileSize: Float!
   id: ID!
+  mime: String
   owner: User!
   ownerId: String!
   pagesCount: Float!
+  s3key: String
+  sha256checksum: String!
   status: String!
   statusProgress: Float
   summary: String
   updatedAt: DateTimeISO!
+}
+
+input DocumentUploadInput {
+  chatId: String
+  uploads: [Upload!]!
 }
 
 type EditMessageResponse {
@@ -308,6 +326,7 @@ type Mutation {
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
   updateUser(input: UpdateUserInput!): User!
+  uploadDocuments(input: DocumentUploadInput!): UploadDocumentsResponse!
 }
 
 type ProviderDetail {
@@ -318,6 +337,7 @@ type ProviderDetail {
 type Query {
   appConfig: ApplicationConfig
   currentUser: User
+  documents: [Document!]!
   getActiveModels: [GqlModel!]!
   getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!
@@ -342,6 +362,7 @@ input RegisterInput {
 }
 
 type Subscription {
+  documentsStatus(documentIds: [String!]!): [Document!]!
   newMessage(chatId: String!): GqlMessage!
 }
 
@@ -378,6 +399,15 @@ input UpdateUserInput {
   firstName: String
   lastName: String
   settings: UserSettingsInput
+}
+
+"""
+The `Upload` scalar type represents a file upload.
+"""
+scalar Upload
+
+type UploadDocumentsResponse {
+  documents: [Document!]
 }
 
 type User {

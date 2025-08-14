@@ -9,6 +9,7 @@ import {
   IconShield,
   IconBrandGit,
   IconBrandGithub,
+  IconFile,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -91,6 +92,15 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
               onClick={() => {
                 navbarToggle?.();
                 navigate("/library");
+              }}
+            />
+            <NavLink
+              label="Documents"
+              leftSection={<IconFile size={16} />}
+              active={location.pathname === "/documents"}
+              onClick={() => {
+                navbarToggle?.();
+                navigate("/documents");
               }}
             />
             {currentUser?.role === UserRole.ADMIN && (

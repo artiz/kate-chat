@@ -134,21 +134,18 @@ export class S3Service {
    * @param key Key under which to store the file in S3
    * @param contentType MIME type of the file (optional)
    */
-  public async uploadFile(content: string, key: string, contentType?: string): Promise<string> {
+  public async uploadFile(content: Buffer, key: string, contentType?: string): Promise<string> {
     const client = await this.getClient();
     if (!client) {
       throw new Error("S3 client is not configured");
     }
 
     try {
-      // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-      const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
-
       const params = {
         Bucket: this.bucketName,
         Key: key,
-        Body: Buffer.from(base64Data, "base64"),
-        ContentType: contentType || "image/png",
+        Body: content,
+        ContentType: contentType,
       };
 
       logger.debug({ key }, "Uploading file to S3");

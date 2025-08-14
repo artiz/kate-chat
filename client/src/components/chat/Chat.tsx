@@ -43,6 +43,7 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 import classes from "./Chat.module.scss";
 import { ModelType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
+import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -70,6 +71,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
@@ -95,7 +97,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     chatId,
   });
 
-  const { uploadDocuments } = useDocumentsUpload();
+  const { uploadDocuments, uploadData, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chat = useMemo(() => {
     if (!chatId) return;
@@ -318,7 +320,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       }
 
       let imageFiles = filesToAdd.filter(f => f.type?.startsWith("image/"));
-      const documentFiles = filesToAdd.filter(f => !f.type?.startsWith("image/"));
+      const documents = filesToAdd.filter(f => !f.type?.startsWith("image/"));
 
       // Limit to MAX_IMAGES
       if (imageFiles.length + selectedImages.length > MAX_IMAGES) {
@@ -367,7 +369,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
           });
       }
 
-      uploadDocuments(documentFiles).catch(error => {
+      ok(chatId, "Chat ID is required to upload documents");
+      setUploadProgress(0);
+      uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
         notifications.show({
           title: "Error",
           message: error.message || "Failed to upload documents",
@@ -375,8 +379,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
         });
       });
     },
-    [selectedImages]
+    [selectedImages, chatId]
   );
+
+  const uploadAllowed = useMemo(() => {
+    if (appConfig?.demoMode) {
+      return selectedModel?.imageInput;
+    }
+
+    return appConfig?.s3Connected;
+  }, [selectedModel, appConfig]);
 
   return (
     <Container size="xl" py="md" className={classes.container}>
@@ -538,7 +550,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       )}
       {/* Message input */}
       <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
-        {selectedModel?.imageInput && (
+        {uploadAllowed && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
             {selectedImages.map(file => (
@@ -560,6 +572,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
               </Paper>
             ))}
           </Group>
+        )}
+
+        {uploadError ? (
+          <Text color="red" size="sm">
+            Error uploading documents {uploadError.message}
+          </Text>
+        ) : (
+          <DocumentUploadProgress
+            progress={uploadProgress}
+            loading={uploadLoading}
+            documents={uploadData?.documents || []}
+          />
         )}
 
         <Group align="flex-start" className={classes.chatInputGroup}>

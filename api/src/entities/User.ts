@@ -1,4 +1,4 @@
-import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToMany } from "typeorm";
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToMany, Index } from "typeorm";
 import { AuthProvider, UserRole } from "../types/ai.types";
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
@@ -58,10 +58,12 @@ export class User {
 
   @Field()
   @Column()
+  @Index({ fulltext: true })
   firstName: string;
 
   @Field()
   @Column()
+  @Index({ fulltext: true })
   lastName: string;
 
   @Field(() => String)

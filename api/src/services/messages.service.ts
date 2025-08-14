@@ -36,8 +36,16 @@ export class MessagesService {
   private aiService: AIService;
 
   // one staticGraphQL PubSub instance for subscriptions
-  private static pubSub = new PubSub();
+  private static _pubSub: PubSub;
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
+
+  public static get pubSub(): PubSub {
+    if (!MessagesService._pubSub) {
+      MessagesService._pubSub = new PubSub();
+    }
+
+    return MessagesService._pubSub;
+  }
 
   constructor() {
     this.queueService = new QueueService(MessagesService.pubSub);
@@ -454,8 +462,10 @@ export class MessagesService {
     const fileName = `${chatId}-${messageId}-${index}.${type}`;
     const contentType = `image/${type}`;
 
+    // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+    const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
     // Upload to S3
-    await s3Service.uploadFile(content, fileName, contentType);
+    await s3Service.uploadFile(Buffer.from(base64Data, "base64"), fileName, contentType);
 
     // Return the file key
     return {
