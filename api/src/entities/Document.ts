@@ -1,7 +1,17 @@
-import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
+import {
+  Entity,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  Index,
+  OneToMany,
+} from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { DocumentStatus } from "@/types/ai.types";
+import { ChatDocument } from "./ChatDocument";
 
 @ObjectType()
 @Entity("documents")
@@ -12,8 +22,28 @@ export class Document {
 
   @Field()
   @Column()
+  @Index({ fulltext: true })
   // original file name
   fileName: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  mime?: string;
+
+  @Field()
+  @Column({ type: "unsigned big int", default: 0 })
+  fileSize: number;
+
+  @Field()
+  @Column()
+  @Index()
+  // SHA-256 checksum
+  sha256checksum: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  // S3 key for the uploaded document
+  s3key?: string;
 
   @Field(() => User)
   @ManyToOne(() => User)
@@ -54,4 +84,7 @@ export class Document {
   @Field()
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => ChatDocument, chatDocument => chatDocument.document)
+  chatDocuments: ChatDocument[];
 }

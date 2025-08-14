@@ -1,6 +1,6 @@
 import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Repository, Migration } from "typeorm";
 import path from "path";
-import { Chat, Message, Model, User, Document } from "@/entities";
+import { Chat, Message, Model, User, Document, ChatDocument } from "@/entities";
 import { logger } from "@/utils/logger";
 import { TypeORMPinoLogger } from "@/utils/logger/typeorm.logger";
 
@@ -50,7 +50,7 @@ export const AppDataSource = new DataSource({
   migrationsTableName: "migrations",
   logger: logging ? new TypeORMPinoLogger() : undefined,
   logging,
-  entities: [User, Model, Chat, Message, Document],
+  entities: [User, Model, Chat, Message, Document, ChatDocument],
   migrations: [DB_MIGRATIONS_PATH],
 });
 

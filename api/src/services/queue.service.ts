@@ -8,12 +8,14 @@ import { WebSocket } from "ws";
 import { ok } from "@/utils/assert";
 import { QUEUE_MESSAGE_EXPIRATION_SEC, REDIS_URL } from "@/config/application";
 import { MessageRole } from "@/types/ai.types";
+import { Document } from "@/entities/Document";
 
 const logger = createLogger(__filename);
 
 // PubSub channel for broadcasting messages
 export const CHAT_MESSAGES_CHANNEL = "chat:messages";
 export const CHAT_ERRORS_CHANNEL = "chat:errors";
+export const DOCUMENT_STATUS_CHANNEL = "document:status";
 
 export class QueueService {
   private pubSub: PubSub;
@@ -219,6 +221,29 @@ export class QueueService {
       return await this.pubSub.publish(NEW_MESSAGE, {
         chatId,
         data: { message, streaming },
+      });
+    }
+  }
+
+  async publishDocumentStatus(document: Document): Promise<void> {
+    // Publish directly if Redis is not configured
+    if (!this.redisClient || !this.redisClient.isOpen) {
+      return await this.pubSub.publish(DOCUMENT_STATUS_CHANNEL, {
+        ownerId: document.ownerId,
+        document,
+      });
+    }
+
+    try {
+      // Broadcast message to all clients using Redis PubSub
+      await this.redisClient.publish(DOCUMENT_STATUS_CHANNEL, JSON.stringify(document));
+    } catch (error: unknown) {
+      logger.error(error, `Failed to publish document status for document ${document.id} in Redis`);
+
+      // fallback to publish if Redis fails
+      return await this.pubSub.publish(DOCUMENT_STATUS_CHANNEL, {
+        ownerId: document.ownerId,
+        document,
       });
     }
   }

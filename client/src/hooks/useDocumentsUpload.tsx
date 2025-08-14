@@ -1,22 +1,38 @@
-import React, { createContext, useContext, useEffect } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useLocalStorage } from "@mantine/hooks";
+import { useMutation, gql } from "@apollo/client";
+import { Document } from "@/store/services/graphql";
+
+const UPLOAD_DOCUMENT = gql`
+  mutation UploadDocument($input: DocumentUploadInput!) {
+    uploadDocuments(input: $input) {
+      documents {
+        id
+        fileName
+        fileSize
+        mime
+        status
+        statusProgress
+      }
+    }
+  }
+`;
 
 export const useDocumentsUpload = () => {
-  const uploadDocuments = async (files: File[]) => {
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append("documents", file);
-    }
-
-    const response = await fetch("/api/documents/upload", {
-      method: "POST",
-      body: formData,
+  const [upload, { data, loading, error }] = useMutation<{ documents?: Document[] }>(UPLOAD_DOCUMENT);
+  const uploadDocuments = async (files: File[], chatId: string, onProgress: (progress: number) => void) => {
+    upload({
+      variables: { input: { uploads: files, chatId } },
+      context: {
+        fetchOptions: {
+          onUploadProgress: (evt: any) => {
+            const progress = Math.round(evt.loaded / evt.total);
+            onProgress(progress);
+          },
+        },
+      },
     });
-    if (!response.ok) {
-      throw new Error("Failed to upload documents");
-    }
-    return await response.json();
   };
 
-  return { uploadDocuments };
+  return { uploadDocuments, uploadError: error, uploadLoading: loading, uploadData: data };
 };

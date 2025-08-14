@@ -1,8 +1,5 @@
 import { ObjectType, Field, ID } from "type-graphql";
-import { User } from "../../entities/User";
-import { Chat } from "../../entities/Chat";
-import { Message } from "../../entities/Message";
-import { Model } from "../../entities/Model";
+import { User, Chat, Message, Model, Document } from "../../entities";
 import { MessageRole, MessageType } from "../../types/ai.types";
 
 @ObjectType()
@@ -288,4 +285,10 @@ export class AdminUsersResponse {
 
   @Field()
   hasMore: boolean;
+}
+
+@ObjectType()
+export class UploadDocumentsResponse {
+  @Field(() => [Document], { nullable: true })
+  documents?: Document[];
 }

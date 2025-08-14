@@ -9,6 +9,7 @@ import {
   NormalizedCacheObject,
   gql,
 } from "@apollo/client";
+import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
@@ -43,8 +44,24 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     const wsUrl = APP_WS_URL.replace(/^http/, "ws") + "/graphql/subscriptions";
 
     // Create HTTP link for queries and mutations
-    const httpLink = new HttpLink({
+    // const httpLink = new HttpLink({
+    //   uri: apiUrl,
+    //   headers: {
+    //     "Accept-Encoding": "br, gzip", // Use Brotli and gzip compression
+    //     "x-aws-region": localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || "",
+    //     "x-aws-profile": localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || "",
+    //     "x-aws-access-key-id": localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || "",
+    //     "x-aws-secret-access-key": localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || "",
+    //     "x-openai-api-key": localStorage.getItem(STORAGE_OPENAI_API_KEY) || "",
+    //     "x-openai-api-admin-key": localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || "",
+    //     "x-yandex-api-key": localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || "",
+    //     "x-yandex-api-folder": localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER) || "",
+    //   },
+    // });
+
+    const httpLink = createUploadLink({
       uri: apiUrl,
+      credentials: "include",
       headers: {
         "Accept-Encoding": "br, gzip", // Use Brotli and gzip compression
         "x-aws-region": localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || "",
@@ -151,6 +168,7 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       connectToDevTools: true,
       link: from([errorLink, authLink, splitLink]),
       name: "react-web-client",
+
       cache: new InMemoryCache({
         fragments: createFragmentRegistry(gql`
           ${BASE_MODEL_FRAGMENT}

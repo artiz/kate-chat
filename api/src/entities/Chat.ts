@@ -11,6 +11,7 @@ import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { Message } from "./Message";
 import { JSONTransformer } from "../utils/db";
+import { ChatDocument } from "./ChatDocument";
 
 @ObjectType()
 @Entity("chats")
@@ -30,6 +31,10 @@ export class Chat {
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User)
   user: User;
+
+  @Field(() => [ChatDocument], { nullable: true })
+  @OneToMany(() => ChatDocument, doc => doc.chat)
+  chatDocuments: ChatDocument[];
 
   @Field(() => [Message], { nullable: true })
   @OneToMany(() => Message, m => m.chat, { cascade: true, onDelete: "CASCADE" })

@@ -16,14 +16,18 @@ import authRoutes from "./controllers/auth.controller";
 import healthRoutes from "./controllers/health.controller";
 import filesRoutes from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
-import { ChatResolver } from "./resolvers/chat.resolver";
-import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
-import { UserResolver } from "./resolvers/user.resolver";
-import { ModelResolver } from "./resolvers/model.resolver";
-import { AdminResolver } from "./resolvers/admin.resolver";
+import {
+  ChatResolver,
+  MessageResolver,
+  UserResolver,
+  ModelResolver,
+  AdminResolver,
+  DocumentResolver,
+} from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 import { execute, GraphQLError, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
+import { processRequest } from "graphql-upload-ts";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
@@ -57,7 +61,7 @@ async function bootstrap() {
 
   // Build GraphQL schema
   const schema = await buildSchema({
-    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver],
+    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver, DocumentResolver],
     validate: false,
     emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
     pubSub: schemaPubSub,
@@ -201,6 +205,24 @@ async function bootstrap() {
     "/graphql",
     createHandler({
       schema,
+      async parseRequestParams(req) {
+        const contentTypeHeader = "content-type" in req.headers ? req.headers["content-type"] : "";
+        const contentType = Array.isArray(contentTypeHeader) ? contentTypeHeader[0] : contentTypeHeader;
+        if (contentType && contentType.startsWith("multipart/form-data")) {
+          const params = await processRequest(req.raw, req.context.res);
+          if (Array.isArray(params)) {
+            throw new Error("Batching is not supported");
+          }
+
+          return {
+            ...params,
+            variables: Object(params.variables),
+          };
+        }
+
+        return undefined;
+      },
+
       context: req => {
         // Use the user from the request (set by authMiddleware)
         return {

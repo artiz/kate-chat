@@ -68,6 +68,7 @@ export enum ModelType {
 
 export enum DocumentStatus {
   UPLOAD = "upload",
+  STORAGE_UPLOAD = "storage_upload",
   PARSING = "parsing",
   CHUNKING = "chunking",
   EMBEDDING = "embedding",

@@ -43,6 +43,7 @@
     "graphql": "^16.11.0",
     "graphql-http": "^1.22.0",
     "graphql-subscriptions": "^2.0.0",
+    "graphql-upload-ts": "^2.1.2",
     "graphql-ws": "^5.16.2",
     "jest": "^30.0.0",
     "jsonwebtoken": "^9.0.0",
@@ -71,6 +72,7 @@
   "devDependencies": {
     "@types/cookie-parser": "^1.4.9",
     "@types/express-session": "^1.18.2",
+    "@types/graphql-upload": "^17.0.0",
     "@types/passport": "^1.0.17",
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.16",

@@ -25,6 +25,8 @@
     "@mantine/notifications": "^8.1.2",
     "@reduxjs/toolkit": "^2.5.0",
     "@tabler/icons-react": "^3.1.0",
+    "@types/apollo-upload-client": "^18.0.1",
+    "apollo-upload-client": "^18.0.1",
     "dayjs": "^1.11.10",
     "esbuild-sass-plugin": "^3.3.1",
     "graphql": "^16.8.1",
