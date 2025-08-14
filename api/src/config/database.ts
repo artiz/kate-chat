@@ -1,18 +1,5 @@
-import {
-  AbstractLogger,
-  DataSource,
-  DataSourceOptions,
-  LogLevel,
-  LogMessage,
-  ObjectLiteral,
-  QueryFailedError,
-  QueryRunner,
-  Repository,
-} from "typeorm";
-import { Chat } from "../entities/Chat";
-import { Message } from "../entities/Message";
-import { Model } from "../entities/Model";
-import { User } from "../entities/User";
+import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Repository } from "typeorm";
+import { Chat, Message, Model, User, Document } from "@/entities";
 import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
 
@@ -60,7 +47,7 @@ export const AppDataSource = new DataSource({
   migrationsRun: true,
   logger: logging ? new TypeORMPinoLogger() : undefined,
   logging,
-  entities: [User, Chat, Message, Model],
+  entities: [User, Model, Chat, Message, Document],
 });
 
 // Helper function to get a repository from the data source
