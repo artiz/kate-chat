@@ -66,6 +66,17 @@ export enum ModelType {
   OTHER = "other",
 }
 
+export enum DocumentStatus {
+  UPLOAD = "upload",
+  PARSING = "parsing",
+  CHUNKING = "chunking",
+  EMBEDDING = "embedding",
+  SUMMARIZING = "summarizing",
+  READY = "ready",
+  ERROR = "error",
+  DELETING = "deleting",
+}
+
 export interface AIModelInfo {
   apiProvider: ApiProvider;
   provider: string;

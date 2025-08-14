@@ -1,22 +1,8 @@
-import {
-  AbstractLogger,
-  DataSource,
-  DataSourceOptions,
-  LogLevel,
-  LogMessage,
-  ObjectLiteral,
-  QueryFailedError,
-  QueryRunner,
-  Repository,
-  Migration,
-} from "typeorm";
+import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Repository, Migration } from "typeorm";
 import path from "path";
-import { Chat } from "../entities/Chat";
-import { Message } from "../entities/Message";
-import { Model } from "../entities/Model";
-import { User } from "../entities/User";
-import { logger } from "../utils/logger";
-import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
+import { Chat, Message, Model, User, Document } from "@/entities";
+import { logger } from "@/utils/logger";
+import { TypeORMPinoLogger } from "@/utils/logger/typeorm.logger";
 
 const logging = !!process.env.DB_LOGGING;
 const DB_MIGRATIONS_PATH = process.env.DB_MIGRATIONS_PATH || path.join(__dirname, "../../../db-migrations/*.ts");
@@ -64,7 +50,7 @@ export const AppDataSource = new DataSource({
   migrationsTableName: "migrations",
   logger: logging ? new TypeORMPinoLogger() : undefined,
   logging,
-  entities: [User, Chat, Message, Model],
+  entities: [User, Model, Chat, Message, Document],
   migrations: [DB_MIGRATIONS_PATH],
 });
 

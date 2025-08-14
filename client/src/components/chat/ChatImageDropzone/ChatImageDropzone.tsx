@@ -2,7 +2,8 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Group, Text, Paper, ActionIcon, Tooltip, Box } from "@mantine/core";
 import { IconX, IconFileUpload } from "@tabler/icons-react";
 import classes from "./ChatImageDropzone.module.scss";
-import { notEmpty } from "@/utils/assert";
+import { notEmpty } from "@/lib/assert";
+import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
 interface ChatImageDropzoneProps {
   disabled?: boolean;
@@ -97,14 +98,14 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
         onClick={openFileDialog}
       >
         <Group justify="center" gap="md">
-          <Tooltip label="Click or drop an image here" position="top">
+          <Tooltip label="Click or drop an image/document here" position="top">
             <IconFileUpload size={32} stroke={1.5} />
           </Tooltip>
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*"
+            accept={SUPPORTED_UPLOAD_FORMATS.join(",")}
             onChange={handleFileSelect}
             className={classes.fileInput}
             style={{ display: "none" }}

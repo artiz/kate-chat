@@ -15,7 +15,7 @@ import {
   EditMessageResponse,
 } from "@/store/services/graphql";
 
-import { ok } from "@/utils/assert";
+import { ok } from "@/lib/assert";
 import { ChatMessage } from "./ChatMessage";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 import { EditMessageModal } from "./EditMessageModal";

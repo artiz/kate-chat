@@ -5,7 +5,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 import { GET_ALL_IMAGES, GetAllImagesResponse, LibraryImage, GetImagesInput } from "../../store/services/graphql";
 import { IconExternalLink } from "@tabler/icons-react";
-import { ok } from "@/utils/assert";
+import { ok } from "@/lib/assert";
 
 interface IProps {
   fileName: string;

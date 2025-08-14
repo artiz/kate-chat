@@ -1,16 +1,8 @@
-import {
-  Entity,
-  ObjectIdColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  PrimaryColumn,
-  PrimaryGeneratedColumn,
-  OneToMany,
-} from "typeorm";
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToMany } from "typeorm";
 import { AuthProvider, UserRole } from "../types/ai.types";
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
+import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 
@@ -111,6 +103,10 @@ export class User {
   @Field(() => [Model], { nullable: true })
   @OneToMany(() => Model, m => m.user, { cascade: true, onDelete: "CASCADE" })
   models: Model[];
+
+  @Field(() => [Document], { nullable: true })
+  @OneToMany(() => Document, d => d.owner, { cascade: true, onDelete: "CASCADE" })
+  documents: Document[];
 
   @Field({ nullable: true, defaultValue: 0 })
   @Column({

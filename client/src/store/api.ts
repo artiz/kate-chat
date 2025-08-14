@@ -10,7 +10,7 @@ import {
   STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "./slices/authSlice";
-import { APP_API_URL } from "@/utils/config";
+import { APP_API_URL } from "@/lib/config";
 
 export type GrpahQLErrorResponse = {
   errors: {

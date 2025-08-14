@@ -1,6 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ApplicationConfig } from "../services/graphql";
-import { set } from "lodash";
 
 export interface UserSettings {
   s3Endpoint?: string;

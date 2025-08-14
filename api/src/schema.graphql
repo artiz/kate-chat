@@ -94,6 +94,20 @@ type DeleteMessageResult {
   linkedToMessageId: String
 }
 
+type Document {
+  createdAt: DateTimeISO!
+  embeddingsModelId: String
+  fileName: String!
+  id: ID!
+  owner: User!
+  ownerId: String!
+  pagesCount: Float!
+  status: String!
+  statusProgress: Float
+  summary: String
+  updatedAt: DateTimeISO!
+}
+
 type EditMessageResponse {
   error: String
   message: Message
@@ -372,6 +386,7 @@ type User {
   createdAt: DateTimeISO!
   defaultModelId: String
   defaultSystemPrompt: String
+  documents: [Document!]
   email: String!
   firstName: String!
   githubId: String
