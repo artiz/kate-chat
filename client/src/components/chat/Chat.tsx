@@ -576,7 +576,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
         {uploadError ? (
           <Text color="red" size="sm">
-            Error uploading documents {uploadError.message}
+            Error: {uploadError.message}
           </Text>
         ) : (
           <DocumentUploadProgress
