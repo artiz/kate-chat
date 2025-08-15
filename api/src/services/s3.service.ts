@@ -233,7 +233,7 @@ export class S3Service {
    * @param key S3 key of the file
    * @returns URL to access the file
    */
-  public getFileUrl(key: string): string {
-    return `/files/${key}`;
+  public getFileUrl(key: string, fileName?: string): string {
+    return `/files/${key}${fileName ? `?name=${encodeURIComponent(fileName)}` : ""}`;
   }
 }

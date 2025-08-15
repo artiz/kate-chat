@@ -12,9 +12,9 @@ import { buildSchema } from "type-graphql";
 import passport from "passport";
 import session from "cookie-session";
 import { configurePassport } from "./config/passport";
-import authRoutes from "./controllers/auth.controller";
-import healthRoutes from "./controllers/health.controller";
-import filesRoutes from "./controllers/files.controller";
+import { router as authRoutes } from "./controllers/auth.controller";
+import { router as healthRoutes } from "./controllers/health.controller";
+import { router as filesRoutes } from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
 import {
   ChatResolver,

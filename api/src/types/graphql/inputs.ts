@@ -1,7 +1,6 @@
 import { InputType, Field } from "type-graphql";
 import { ApiProvider, AuthProvider, MessageRole } from "../ai.types";
 import { UserSettings } from "@/entities";
-import { GraphQLUpload, Upload } from "graphql-upload-ts";
 
 @InputType()
 export class UpdateUserInput {
@@ -247,13 +246,4 @@ export class GetUsersInput {
 
   @Field({ nullable: true })
   searchTerm?: string;
-}
-
-@InputType()
-export class DocumentUploadInput {
-  @Field(() => [GraphQLUpload])
-  uploads: [Upload];
-
-  @Field({ nullable: true })
-  chatId?: string;
 }

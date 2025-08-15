@@ -1,21 +1,12 @@
 import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root } from "type-graphql";
-import { GraphQLUpload, FileUpload } from "graphql-upload-ts";
-import { createHash } from "crypto";
 import { getRepository } from "@/config/database";
 
 import { Document } from "@/entities/Document";
-import { ChatDocument } from "@/entities/ChatDocument";
 import { GraphQLContext } from "@/middleware/auth.middleware";
-import { S3Service } from "@/services/s3.service";
-import { DocumentStatus } from "@/types/ai.types";
-import { QueueService, DOCUMENT_STATUS_CHANNEL } from "@/services/queue.service";
+import { DOCUMENT_STATUS_CHANNEL } from "@/services/queue.service";
 import { BaseResolver } from "./base.resolver";
-import { MessagesService } from "@/services/messages.service";
 import { Repository } from "typeorm";
-import { User } from "@/entities";
-import { UploadDocumentsResponse } from "@/types/graphql/responses";
-import { DocumentUploadInput } from "@/types/graphql/inputs";
-import { ok } from "@/utils/assert";
+import { S3Service } from "@/services/s3.service";
 
 @Resolver(Document)
 export class DocumentResolver extends BaseResolver {
@@ -29,7 +20,14 @@ export class DocumentResolver extends BaseResolver {
   @Query(() => [Document])
   async documents(@Ctx() context: GraphQLContext): Promise<Document[]> {
     const user = await this.validateContextUser(context);
-    return this.documentRepo.find({ where: { owner: { id: user.id } } });
+    const s3Service = new S3Service(user.toToken());
+
+    const documents = await this.documentRepo.find({ where: { owner: { id: user.id } } });
+
+    return documents.map(doc => ({
+      ...doc,
+      downloadUrl: doc.s3key ? s3Service.getFileUrl(doc.s3key, doc.fileName) : undefined,
+    }));
   }
 
   @Subscription(() => [Document], {
