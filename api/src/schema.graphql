@@ -44,6 +44,7 @@ input ChangePasswordInput {
 }
 
 type Chat {
+  chatDocuments: [ChatDocument!]
   createdAt: DateTimeISO!
   description: String!
   id: ID!
@@ -60,6 +61,14 @@ type Chat {
   topP: Float
   updatedAt: DateTimeISO!
   user: User
+}
+
+type ChatDocument {
+  chat: Chat!
+  chatId: String!
+  document: Document!
+  documentId: String!
+  id: ID!
 }
 
 input CreateChatInput {
@@ -92,6 +101,25 @@ type DeleteMessageResponse {
 type DeleteMessageResult {
   id: String!
   linkedToMessageId: String
+}
+
+type Document {
+  createdAt: DateTimeISO!
+  downloadUrl: String
+  embeddingsModelId: String
+  fileName: String!
+  fileSize: Float!
+  id: ID!
+  mime: String
+  owner: User!
+  ownerId: String!
+  pagesCount: Float!
+  s3key: String
+  sha256checksum: String!
+  status: String!
+  statusProgress: Float
+  summary: String
+  updatedAt: DateTimeISO!
 }
 
 type EditMessageResponse {
@@ -185,18 +213,14 @@ type GqlModel {
   createdAt: DateTimeISO!
   description: String!
   id: ID!
+  imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
   modelId: String!
   name: String!
   provider: String
-  supportsEmbeddingsIn: Boolean!
-  supportsEmbeddingsOut: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
+  streaming: Boolean!
+  type: String!
   updatedAt: DateTimeISO!
   user: User!
   userId: String
@@ -238,7 +262,7 @@ type Message {
   chat: Chat!
   chatId: String
   content: String!
-  createdAt: DateTimeISO!
+  createdAt: DateTimeISO
   id: ID!
   linkedMessages: [Message!]
   linkedToMessage: Message!
@@ -247,7 +271,7 @@ type Message {
   modelId: String!
   modelName: String
   role: String!
-  updatedAt: DateTimeISO!
+  updatedAt: DateTimeISO
   user: User
   userId: String
 }
@@ -257,18 +281,14 @@ type Model {
   createdAt: DateTimeISO!
   description: String!
   id: ID!
+  imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
   modelId: String!
   name: String!
   provider: String
-  supportsEmbeddingsIn: Boolean!
-  supportsEmbeddingsOut: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
+  streaming: Boolean!
+  type: String!
   updatedAt: DateTimeISO!
   user: User!
   userId: String
@@ -312,6 +332,7 @@ type ProviderDetail {
 type Query {
   appConfig: ApplicationConfig
   currentUser: User
+  documents: [Document!]!
   getActiveModels: [GqlModel!]!
   getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!
@@ -336,6 +357,7 @@ input RegisterInput {
 }
 
 type Subscription {
+  documentsStatus(documentIds: [String!]!): [Document!]!
   newMessage(chatId: String!): GqlMessage!
 }
 
@@ -380,6 +402,7 @@ type User {
   createdAt: DateTimeISO!
   defaultModelId: String
   defaultSystemPrompt: String
+  documents: [Document!]
   email: String!
   firstName: String!
   githubId: String

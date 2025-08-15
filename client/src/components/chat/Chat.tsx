@@ -24,12 +24,8 @@ import {
   IconRobot,
   IconEdit,
   IconCheck,
-  IconPhotoAi,
-  IconTextScan2,
   IconSettings,
   IconCircleChevronDown,
-  IconArrowBigRightLinesFilled,
-  IconMatrix,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
@@ -38,11 +34,16 @@ import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
-import classes from "./Chat.module.scss";
 import { ImageInput } from "@/store/services/graphql";
-import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
+import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { Message } from "@/store/slices/chatSlice";
-import { ok } from "@/utils/assert";
+import { ok } from "@/lib/assert";
+import { ModelInfo } from "@/components/models/ModelInfo";
+
+import classes from "./Chat.module.scss";
+import { ModelType } from "@/store/slices/modelSlice";
+import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
+import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -60,7 +61,7 @@ interface CreateMessageResponse {
 }
 
 interface IProps {
-  chatId: string;
+  chatId?: string;
 }
 
 export const ChatComponent = ({ chatId }: IProps) => {
@@ -70,7 +71,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
@@ -95,6 +96,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   } = useChatMessages({
     chatId,
   });
+
+  const { uploadDocuments, uploadData, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chat = useMemo(() => {
     if (!chatId) return;
@@ -145,12 +148,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
       } else if (messages?.length) {
+        if (streaming) {
+          setShowAnchorButton(true);
+        }
+
         anchorTimer.current = setTimeout(() => {
           setShowAnchorButton(true);
         }, 100);
       }
     },
-    [messages?.length]
+    [messages?.length, streaming]
   );
 
   const anchorHandleClick = useCallback(() => {
@@ -185,36 +192,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
-  useEffect(() => {
-    Promise.all(
-      selectedFiles
-        .filter(f => f.type?.startsWith("image/"))
-        .map(file => {
-          return new Promise<ImageInput>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = e => {
-              if (e.target?.result) {
-                const bytesBase64 = e.target.result as string;
-                resolve({
-                  fileName: file.name,
-                  mimeType: file.type,
-                  bytesBase64,
-                });
-              } else {
-                reject(new Error(`Failed to read file: ${file.name}`));
-              }
-            };
-            reader.onerror = err => {
-              reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
-            };
-            reader.readAsDataURL(file);
-          });
-        })
-    ).then(images => {
-      setSelectedImages(images);
-    });
-  }, [selectedFiles]);
-
   const handleSendMessage = async () => {
     if ((!userMessage?.trim() && !selectedImages.length) || !chatId) return;
     ok(chatId, "Chat is required to send a message");
@@ -222,7 +199,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
     try {
       setUserMessage("");
-      setSelectedFiles([]);
       setSelectedImages([]);
 
       // Convert images to base64
@@ -258,7 +234,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   // #endregion
 
   const models = useMemo(() => {
-    return allModels.filter(model => model.isActive);
+    return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
   }, [allModels]);
 
   const selectedModel = useMemo(() => {
@@ -334,28 +310,85 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const handleAddFiles = useCallback(
     (files: File[]) => {
-      const filesToAdd = files.filter(f => f.size < MAX_IMAGE_SIZE);
+      const filesToAdd = files.filter(f => f.size < MAX_FILE_SIZE);
       if (filesToAdd.length < files.length) {
         notifications.show({
           title: "Warning",
-          message: `Some images were too large and were not added (max size: ${MAX_IMAGE_SIZE / 1024 / 1024} MB)`,
+          message: `Some files are too large and were not added (max size: ${MAX_FILE_SIZE / 1024 / 1024} MB)`,
           color: "yellow",
         });
       }
 
-      const allFiles = [...selectedFiles, ...filesToAdd];
-      if (allFiles.length > MAX_IMAGES) {
+      let imageFiles = filesToAdd.filter(f => f.type?.startsWith("image/"));
+      const documents = filesToAdd.filter(f => !f.type?.startsWith("image/"));
+
+      // Limit to MAX_IMAGES
+      if (imageFiles.length + selectedImages.length > MAX_IMAGES) {
         notifications.show({
           title: "Warning",
           message: `You can only add up to ${MAX_IMAGES} images at a time`,
           color: "yellow",
         });
+
+        imageFiles = imageFiles.slice(0, MAX_IMAGES - selectedImages.length);
       }
-      // Limit to MAX_IMAGES
-      setSelectedFiles(allFiles.slice(0, MAX_IMAGES));
+
+      if (imageFiles.length) {
+        Promise.all(
+          imageFiles.map(file => {
+            return new Promise<ImageInput>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = e => {
+                if (e.target?.result) {
+                  const bytesBase64 = e.target.result as string;
+                  resolve({
+                    fileName: file.name,
+                    mimeType: file.type,
+                    bytesBase64,
+                  });
+                } else {
+                  reject(new Error(`Failed to read file: ${file.name}`));
+                }
+              };
+              reader.onerror = err => {
+                reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
+              };
+              reader.readAsDataURL(file);
+            });
+          })
+        )
+          .then(images => {
+            setSelectedImages(prev => [...prev, ...images]);
+          })
+          .catch(error => {
+            notifications.show({
+              title: "Error",
+              message: error.message || "Failed to read image files",
+              color: "red",
+            });
+          });
+      }
+
+      ok(chatId, "Chat ID is required to upload documents");
+      setUploadProgress(0);
+      uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
+        notifications.show({
+          title: "Error",
+          message: error.message || "Failed to upload documents",
+          color: "red",
+        });
+      });
     },
-    [selectedFiles]
+    [selectedImages, chatId]
   );
+
+  const uploadAllowed = useMemo(() => {
+    if (appConfig?.demoMode) {
+      return selectedModel?.imageInput;
+    }
+
+    return appConfig?.s3Connected;
+  }, [selectedModel, appConfig]);
 
   return (
     <Container size="xl" py="md" className={classes.container}>
@@ -435,43 +468,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           style={{ maxWidth: "50%" }}
           disabled={sending || messagesLoading}
         />
-        {selectedModel && (
-          <Group>
-            {selectedModel.supportsTextIn && (
-              <Tooltip label="Text input">
-                <IconTextScan2 size={24} color="gray" />
-              </Tooltip>
-            )}
-
-            {selectedModel.supportsEmbeddingsIn && (
-              <Tooltip label="Embeddings input">
-                <IconMatrix size={24} color="gray" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsImageIn && (
-              <Tooltip label="Images input">
-                <IconPhotoAi size={24} color="gray" />
-              </Tooltip>
-            )}
-
-            <IconArrowBigRightLinesFilled size={24} color="gray" />
-            {selectedModel.supportsTextOut && (
-              <Tooltip label="Text generation">
-                <IconTextScan2 size={24} color="teal" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsEmbeddingsOut && (
-              <Tooltip label="Embeddings generation">
-                <IconMatrix size={24} color="teal" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsImageOut && (
-              <Tooltip label="Images generation">
-                <IconPhotoAi size={24} color="teal" />
-              </Tooltip>
-            )}
-          </Group>
-        )}
+        {selectedModel && <ModelInfo model={selectedModel} />}
 
         <ChatSettings
           className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
@@ -552,8 +549,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Tooltip>
       )}
       {/* Message input */}
-      <div className={[classes.chatInputContainer, selectedFiles.length ? classes.columned : ""].join(" ")}>
-        {selectedModel?.supportsImageIn && (
+      <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
+        {uploadAllowed && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
             {selectedImages.map(file => (
@@ -566,7 +563,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
                     size="xs"
                     onClick={e => {
                       e.stopPropagation();
-                      setSelectedFiles(prev => prev.filter(f => f.name !== file.fileName));
+                      setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
                     }}
                   >
                     <IconX size={16} />
@@ -575,6 +572,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
               </Paper>
             ))}
           </Group>
+        )}
+
+        {uploadError ? (
+          <Text color="red" size="sm">
+            Error: {uploadError.message}
+          </Text>
+        ) : (
+          <DocumentUploadProgress
+            progress={uploadProgress}
+            loading={uploadLoading}
+            documents={uploadData?.documents || []}
+          />
         )}
 
         <Group align="flex-start" className={classes.chatInputGroup}>

@@ -13,12 +13,8 @@ export const BASE_MODEL_FRAGMENT = `
       provider
       apiProvider
       isActive
-      supportsImageIn
-      supportsTextIn
-      supportsEmbeddingsIn
-      supportsImageOut
-      supportsTextOut
-      supportsEmbeddingsOut
+      type
+      imageInput
     }
 `;
 
@@ -63,6 +59,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       modelId
       modelName
       user {
+        id
         lastName
         firstName
         avatarUrl
@@ -344,6 +341,7 @@ export const GET_ALL_IMAGES = gql`
   }
 `;
 
+// TODO: move to separate file
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;
@@ -492,6 +490,40 @@ export interface CallOthersResponse {
     message?: Message;
     error?: string;
   };
+}
+
+export enum DocumentStatus {
+  UPLOAD = "upload",
+  STORAGE_UPLOAD = "storage_upload",
+  PARSING = "parsing",
+  CHUNKING = "chunking",
+  EMBEDDING = "embedding",
+  SUMMARIZING = "summarizing",
+  READY = "ready",
+  ERROR = "error",
+  DELETING = "deleting",
+}
+
+export interface Document {
+  id: string;
+  fileName?: string;
+  mime?: string;
+  fileSize?: number;
+  sha256checksum?: string;
+  s3key?: string;
+  owner?: User;
+  ownerId?: string;
+  embeddingsModelId?: string;
+  summary?: string;
+  pagesCount?: number;
+  status?: DocumentStatus;
+  statusProgress?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface UploadDocumentsResponse {
+  documents?: Document[];
 }
 
 // Create the API endpoints

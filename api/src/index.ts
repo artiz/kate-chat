@@ -12,15 +12,18 @@ import { buildSchema } from "type-graphql";
 import session from "express-session";
 import passport from "passport";
 import { configurePassport } from "./config/passport";
-import authRoutes from "./controllers/auth.controller";
-import healthRoutes from "./controllers/health.controller";
-import filesRoutes from "./controllers/files.controller";
+import { router as authRoutes } from "./controllers/auth.controller";
+import { router as healthRoutes } from "./controllers/health.controller";
+import { router as filesRoutes } from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
-import { ChatResolver } from "./resolvers/chat.resolver";
-import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
-import { UserResolver } from "./resolvers/user.resolver";
-import { ModelResolver } from "./resolvers/model.resolver";
-import { AdminResolver } from "./resolvers/admin.resolver";
+import {
+  ChatResolver,
+  MessageResolver,
+  UserResolver,
+  ModelResolver,
+  AdminResolver,
+  DocumentResolver,
+} from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 import { execute, GraphQLError, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
@@ -56,7 +59,7 @@ async function bootstrap() {
 
   // Build GraphQL schema
   const schema = await buildSchema({
-    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver],
+    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver, DocumentResolver],
     validate: false,
     emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
     pubSub: schemaPubSub,
@@ -99,7 +102,6 @@ async function bootstrap() {
   app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
   app.use("/files", filesRoutes);
-  app.use("/api/files", filesRoutes);
 
   /**
    * Development-time endpoint for esbuild hot reloading to test Docker container locally.

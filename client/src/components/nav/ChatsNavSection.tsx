@@ -8,7 +8,7 @@ import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { Chat, removeChat, updateChat } from "@/store/slices/chatSlice";
-import { notEmpty } from "@/utils/assert";
+import { notEmpty } from "@/lib/assert";
 
 import classes from "./ChatsNavSection.module.scss";
 
