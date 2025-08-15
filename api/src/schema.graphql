@@ -105,6 +105,7 @@ type DeleteMessageResult {
 
 type Document {
   createdAt: DateTimeISO!
+  downloadUrl: String
   embeddingsModelId: String
   fileName: String!
   fileSize: Float!

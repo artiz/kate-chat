@@ -15,61 +15,7 @@ import { DocumentStatus } from "@/types/ai.types";
 import { TokenPayload } from "@/utils/jwt";
 
 const logger = createLogger(__filename);
-const router = Router();
-
-// Get file from S3
-router.get("/:fileKey", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const fileKey = req.params.fileKey;
-
-    // Create S3 service with connection params from request
-    const s3Service = new S3Service(req.tokenPayload);
-
-    logger.debug({ fileKey }, "Fetching file from S3");
-
-    // Use the internal S3 client of S3Service class
-    // This is a bit of a hack but avoids duplicating S3 client code
-    const s3Client = await s3Service.getClient();
-    const bucketName = s3Service.bucket;
-
-    if (!s3Client) {
-      res.status(501).send("S3 client not configured");
-      return;
-    }
-
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: fileKey,
-    });
-
-    const s3Object = await s3Client.send(command);
-
-    // Set appropriate headers
-    if (s3Object.ContentType) {
-      res.setHeader("Content-Type", s3Object.ContentType);
-    }
-
-    // Set cache control headers
-    res.setHeader("Cache-Control", "max-age=31536000"); // 1 year
-
-    // Stream the file to the response
-    if (s3Object.Body instanceof Readable) {
-      s3Object.Body.pipe(res);
-    } else {
-      const buffer = await s3Object?.Body?.transformToByteArray();
-      res.send(buffer);
-    }
-  } catch (error) {
-    logger.error(error, `Error fetching ${req.params.fileKey} from S3`);
-
-    if ((error as any).name === "NoSuchKey") {
-      res.status(404).send("File not found");
-      return;
-    }
-
-    res.status(500).send("Error fetching file");
-  }
-});
+export const router = Router();
 
 router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, res: Response) => {
   const { chatId } = req.params;
@@ -180,4 +126,64 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
   });
 });
 
-export default router;
+// Get file from S3
+router.get("/*fileKey", authMiddleware, async (req: Request<any, any, any, { name?: string }>, res: Response) => {
+  try {
+    let fileKey = Array.isArray(req.params.fileKey) ? req.params.fileKey.join("/") : req.params.fileKey;
+    const fileName = req.query.name;
+
+    if (fileKey.endsWith("/")) {
+      fileKey = fileKey.substring(0, fileKey.length - 1);
+    }
+
+    // Create S3 service with connection params from request
+    const s3Service = new S3Service(req.tokenPayload);
+
+    logger.debug({ fileKey }, "Fetching file from S3");
+
+    // Use the internal S3 client of S3Service class
+    // This is a bit of a hack but avoids duplicating S3 client code
+    const s3Client = await s3Service.getClient();
+    const bucketName = s3Service.bucket;
+
+    if (!s3Client) {
+      res.status(501).send("S3 client not configured");
+      return;
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: fileKey,
+    });
+
+    const s3Object = await s3Client.send(command);
+
+    // Set appropriate headers
+    if (s3Object.ContentType) {
+      res.setHeader("Content-Type", s3Object.ContentType);
+    }
+    if (fileName) {
+      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    }
+
+    // Set cache control headers
+    res.setHeader("Cache-Control", "max-age=31536000"); // 1 year
+
+    // Stream the file to the response
+    if (s3Object.Body instanceof Readable) {
+      s3Object.Body.pipe(res);
+    } else {
+      const buffer = await s3Object?.Body?.transformToByteArray();
+      res.send(buffer);
+    }
+  } catch (error) {
+    logger.error(error, `Error fetching ${req.params.fileKey} from S3`);
+
+    if ((error as any).name === "NoSuchKey") {
+      res.status(404).send("File not found");
+      return;
+    }
+
+    res.status(500).send("Error fetching file");
+  }
+});

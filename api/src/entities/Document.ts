@@ -87,4 +87,7 @@ export class Document {
 
   @OneToMany(() => ChatDocument, chatDocument => chatDocument.document)
   chatDocuments: ChatDocument[];
+
+  @Field({ nullable: true })
+  downloadUrl?: string;
 }
