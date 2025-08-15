@@ -121,11 +121,6 @@ type Document {
   updatedAt: DateTimeISO!
 }
 
-input DocumentUploadInput {
-  chatId: String
-  uploads: [Upload!]!
-}
-
 type EditMessageResponse {
   error: String
   message: Message
@@ -326,7 +321,6 @@ type Mutation {
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
   updateUser(input: UpdateUserInput!): User!
-  uploadDocuments(input: DocumentUploadInput!): UploadDocumentsResponse!
 }
 
 type ProviderDetail {
@@ -399,15 +393,6 @@ input UpdateUserInput {
   firstName: String
   lastName: String
   settings: UserSettingsInput
-}
-
-"""
-The `Upload` scalar type represents a file upload.
-"""
-scalar Upload
-
-type UploadDocumentsResponse {
-  documents: [Document!]
 }
 
 type User {

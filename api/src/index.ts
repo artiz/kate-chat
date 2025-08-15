@@ -27,7 +27,6 @@ import {
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 import { execute, GraphQLError, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
-import { processRequest } from "graphql-upload-ts";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
@@ -104,7 +103,6 @@ async function bootstrap() {
   app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
   app.use("/files", filesRoutes);
-  app.use("/api/files", filesRoutes);
 
   /**
    * Development-time endpoint for esbuild hot reloading to test Docker container locally.
@@ -205,24 +203,6 @@ async function bootstrap() {
     "/graphql",
     createHandler({
       schema,
-      async parseRequestParams(req) {
-        const contentTypeHeader = "content-type" in req.headers ? req.headers["content-type"] : "";
-        const contentType = Array.isArray(contentTypeHeader) ? contentTypeHeader[0] : contentTypeHeader;
-        if (contentType && contentType.startsWith("multipart/form-data")) {
-          const params = await processRequest(req.raw, req.context.res);
-          if (Array.isArray(params)) {
-            throw new Error("Batching is not supported");
-          }
-
-          return {
-            ...params,
-            variables: Object(params.variables),
-          };
-        }
-
-        return undefined;
-      },
-
       context: req => {
         // Use the user from the request (set by authMiddleware)
         return {

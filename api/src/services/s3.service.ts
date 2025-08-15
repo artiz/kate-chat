@@ -1,6 +1,9 @@
 import { Repository } from "typeorm";
-import * as path from "path";
+import fs from "fs";
+import { PassThrough } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { createLogger } from "@/utils/logger";
 import { UserSettings } from "@/entities";
 import { getRepository } from "@/config/database";
@@ -155,6 +158,32 @@ export class S3Service {
       logger.error(error, "Failed to upload file to S3");
       throw error;
     }
+  }
+
+  /**
+   * Upload a file to S3
+   * @param filePath Path to the file to upload
+   * @param key Key under which to store the file in S3
+   * @param contentType MIME type of the file (optional)
+   */
+  public async upload(filePath: string, key: string, contentType?: string): Promise<string> {
+    const client = await this.getClient();
+    if (!client) {
+      throw new Error("S3 client is not configured");
+    }
+
+    // Parallel upload for large files
+    // https://docs.aws.amazon.com/AmazonS3/latest/API/s3_example_s3_Scenario_UsingLargeFiles_section.html
+
+    // const pass = new PassThrough();
+    const params = { Bucket: this.bucketName, Key: key, Body: fs.createReadStream(filePath), ContentType: contentType };
+    await client.send(new PutObjectCommand(params));
+    // await pipeline(
+    //   fs.createReadStream(filePath),
+    //   pass,
+    // );
+
+    return key;
   }
 
   /**
