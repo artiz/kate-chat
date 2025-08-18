@@ -87,6 +87,10 @@ class PDFParser:
         conv_results = self.doc_converter.convert_all(source=input_doc_paths)
         return conv_results
     
+    def convert_document(self, input_doc: Union[Path, str, DocumentStream]) -> ConversionResult:
+        conv_results = next(self.convert_documents([input_doc]))
+        return conv_results
+    
     def process_documents(self, conv_results: Iterable[ConversionResult]):
         if self.output_dir is not None:
             self.output_dir.mkdir(parents=True, exist_ok=True)

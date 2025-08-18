@@ -43,11 +43,12 @@ services:
     networks:
       - kate-chat-network
     environment:
+      - SERVICES=s3,sns,sqs
       - PERSIST_DEFAULT=0
       - PERSIST_DYNAMODB=1
       - PERSIST_S3=1
     volumes:
-      - ./config/init-s3.py:/etc/localstack/init/ready.d/init-s3.py  # ready hook
+      - ./config/init-localstack.py:/etc/localstack/init/ready.d/init-localstack.py  # ready hook
       - localstack-data:/persisted-data
 
 
@@ -68,6 +69,7 @@ services:
       - DB_TYPE=postgres
       - DB_URL=postgres://katechat:katechat@postgres:5432/katechat
       - REDIS_URL=redis://redis:6379
+      - DOCUMENT_STATUS_CHANNEL="document:status"
       - CALLBACK_URL_BASE=http://katechat.dev.com/api
       - FRONTEND_URL=http://katechat.dev.com
       - ALLOWED_ORIGINS=http://katechat.dev.com
@@ -77,11 +79,34 @@ services:
       - S3_ACCESS_KEY_ID=localstack
       - S3_SECRET_ACCESS_KEY=localstack
       - S3_FILES_BUCKET_NAME=katechatdevfiles
+      - SQS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
 
     networks:
       - kate-chat-network
     env_file:
       - ./api/.env
+
+  document-processor:
+    container_name: kate-chat-document-processor
+    build:
+      context: document-processor
+      dockerfile: Dockerfile
+    tty: true
+    volumes:
+      - ./document-processor:/app/:cached
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DOCUMENT_STATUS_CHANNEL="document:status"
+      - S3_ENDPOINT=http://localstack:4566
+      - S3_REGION=us-east-1
+      - S3_ACCESS_KEY_ID=localstack
+      - S3_SECRET_ACCESS_KEY=localstack
+      - S3_FILES_BUCKET_NAME=katechatdevfiles
+      - SQS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
+      - PORT=8080
+    depends_on:
+      - localstack
+      - redis
 
   api-rust:
     build:
