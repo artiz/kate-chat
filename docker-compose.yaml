@@ -79,7 +79,13 @@ services:
       - S3_ACCESS_KEY_ID=localstack
       - S3_SECRET_ACCESS_KEY=localstack
       - S3_FILES_BUCKET_NAME=katechatdevfiles
+      # SQS
+      - SQS_ENDPOINT=http://localstack:4566
+      - SQS_REGION=us-east-1
+      - SQS_ACCESS_KEY_ID=localstack
+      - SQS_SECRET_ACCESS_KEY=localstack
       - SQS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
+      - SQS_INDEX_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue"
 
     networks:
       - kate-chat-network
@@ -102,7 +108,12 @@ services:
       - S3_ACCESS_KEY_ID=localstack
       - S3_SECRET_ACCESS_KEY=localstack
       - S3_FILES_BUCKET_NAME=katechatdevfiles
-      - SQS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
+      - SQS_ENDPOINT=http://localstack:4566
+      - SQS_REGION=us-east-1
+      - SQS_ACCESS_KEY_ID=localstack
+      - SQS_SECRET_ACCESS_KEY=localstack
+      - SQS_PROCESS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
+      - SQS_INDEX_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue"
       - PORT=8080
     depends_on:
       - localstack

@@ -21,7 +21,6 @@ export class S3Service {
   private s3client: S3Client;
   private connecting: boolean = true;
   private bucketName: string;
-  private userRepository: Repository<User>;
 
   constructor(token?: TokenPayload) {
     const envSettings: UserSettings = {
@@ -62,8 +61,6 @@ export class S3Service {
       this.connecting = false;
     };
 
-    this.userRepository = getRepository(User);
-
     const credsSetup = (envSettings.s3AccessKeyId && envSettings.s3SecretAccessKey) || !!envSettings.s3Profile;
 
     if (!envSettings.s3FilesBucketName || !credsSetup) {
@@ -75,7 +72,8 @@ export class S3Service {
           return;
         }
 
-        this.userRepository
+        const userRepository = getRepository(User);
+        userRepository
           .findOne({
             where: { id: token.userId },
           })

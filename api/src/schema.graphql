@@ -117,8 +117,10 @@ type Document {
   s3key: String
   sha256checksum: String!
   status: String!
+  statusInfo: String
   statusProgress: Float
   summary: String
+  summaryModelId: String
   updatedAt: DateTimeISO!
 }
 
@@ -402,7 +404,9 @@ type User {
   createdAt: DateTimeISO!
   defaultModelId: String
   defaultSystemPrompt: String
+  documentSummarizationModelId: String
   documents: [Document!]
+  documentsEmbeddingsModelId: String
   email: String!
   firstName: String!
   githubId: String

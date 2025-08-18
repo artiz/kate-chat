@@ -3,8 +3,9 @@ import { AuthProvider, UserRole } from "../types/ai.types";
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
 import { Document } from "./Document";
-import { JSONTransformer } from "../utils/db";
-import { TokenPayload } from "../utils/jwt";
+import { JSONTransformer } from "@/utils/db";
+import { TokenPayload } from "@/utils/jwt";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 
 @ObjectType("UserSettings")
 @InputType("UserSettingsInput")
@@ -75,6 +76,12 @@ export class User {
   defaultModelId?: string;
 
   @Field({ nullable: true })
+  documentsEmbeddingsModelId?: string;
+
+  @Field({ nullable: true })
+  documentSummarizationModelId?: string;
+
+  @Field({ nullable: true })
   @Column({ nullable: true })
   defaultSystemPrompt?: string;
 
@@ -127,6 +134,20 @@ export class User {
       userId: this.id,
       email: this.email,
       roles: [this.role],
+    };
+  }
+
+  static getConnectionInfo(user?: User): ConnectionParams {
+    return {
+      AWS_BEDROCK_REGION: user?.settings?.awsBedrockRegion || process.env.AWS_BEDROCK_REGION,
+      AWS_BEDROCK_PROFILE: user?.settings?.awsBedrockProfile || process.env.AWS_BEDROCK_PROFILE,
+      AWS_BEDROCK_ACCESS_KEY_ID: user?.settings?.awsBedrockAccessKeyId || process.env.AWS_BEDROCK_ACCESS_KEY_ID,
+      AWS_BEDROCK_SECRET_ACCESS_KEY:
+        user?.settings?.awsBedrockSecretAccessKey || process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
+      OPENAI_API_KEY: user?.settings?.openaiApiKey || process.env.OPENAI_API_KEY,
+      OPENAI_API_ADMIN_KEY: user?.settings?.openaiApiAdminKey || process.env.OPENAI_API_ADMIN_KEY,
+      YANDEX_FM_API_KEY: user?.settings?.yandexFmApiKey || process.env.YANDEX_FM_API_KEY,
+      YANDEX_FM_API_FOLDER: user?.settings?.yandexFmApiFolderId || process.env.YANDEX_FM_API_FOLDER,
     };
   }
 }

@@ -32,6 +32,7 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
+import { SQSService } from "@/services/sqs.service";
 import { HttpError } from "./types/exceptions";
 
 // Load environment variables
@@ -48,6 +49,9 @@ async function bootstrap() {
   }
 
   const messagesService = new MessagesService();
+  const sqsService = new SQSService();
+
+  await sqsService.startup();
 
   const schemaPubSub = {
     publish: (routingKey: string, ...args: unknown[]) => {
@@ -238,7 +242,10 @@ async function bootstrap() {
     logger.info(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
   });
 
-  httpServer.on("close", () => wsServerCleanup.dispose());
+  httpServer.on("close", async () => {
+    await sqsService.shutdown();
+    wsServerCleanup.dispose();
+  });
 }
 
 // Start the application

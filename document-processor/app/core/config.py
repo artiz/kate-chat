@@ -1,25 +1,33 @@
-import os
 from typing import List, Optional
-from pydantic import AnyHttpUrl, EmailStr, validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pytz import VERSION
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "kate-chat-document-processor"
-    VERSION: str = "0.0.1"
-    LOG_LEVEL: str = "INFO"
+    port: int = 8080
+    version: str = "0.0.1"
     
+    project_name: str = "kate-chat-document-processor"
+    log_level: str = "INFO"
     
-    DOCUMENT_STATUS_CHANNEL: str = "document:status"
-    REDIS_URL: str = "redis://redis:6379"
-    S3_ENDPOINT: str
-    S3_REGION: str
-    S3_ACCESS_KEY_ID: str
-    S3_SECRET_ACCESS_KEY: str
-    S3_FILES_BUCKET_NAME: str = "katechatdevfiles"
-    SQS_DOCUMENTS_QUEUE: Optional[str] = "http://localhost:4566/000000000000/documents-queue"
-    PORT: int = 8080
-    API: str = "/api"
+    workers: int = 1
+    
+    document_status_channel: str = "document:status"
+    redis_url: str = "redis://localhost:6379"
+    
+    s3_endpoint: str
+    s3_region: str
+    s3_access_key_id: str
+    s3_secret_access_key: str
+    s3_files_bucket_name: str = "katechatdevfiles"
+    
+    sqs_endpoint: str = None
+    sqs_region: str
+    sqs_access_key_id: str
+    sqs_secret_access_key: str
+    sqs_documents_queue: str
+    sqs_index_documents_queue: str
+    
+    model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
