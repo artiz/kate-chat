@@ -49,6 +49,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 * Basic RAG implementation with documents (PDF, DOCX, TXT) indexing and pushing embeddings into Amazon DocumentDB/OpenAI vector stores. 
   - https://docling-project.github.io/docling/
+* Add `maxInputTokens` load for each model and use it api/src/services/document-queue.service.ts:207
 * Add Qwen3 from YandexFM (https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)

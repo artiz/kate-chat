@@ -47,6 +47,14 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   const [defaultModelId, setDefaultModelId] = useState(user?.defaultModelId || "");
   const [defaultSystemPrompt, setDefaultSystemPrompt] = useState(user?.defaultSystemPrompt || "");
 
+  // Document processing model settings
+  const [documentsEmbeddingsModelId, setDocumentsEmbeddingsModelId] = useState(
+    user?.settings?.documentsEmbeddingsModelId || ""
+  );
+  const [documentSummarizationModelId, setDocumentSummarizationModelId] = useState(
+    user?.settings?.documentSummarizationModelId || ""
+  );
+
   // local connection settings
   const [awsRegion, setAwsRegion] = useState<string>("");
   const [awsProfile, setAwsProfile] = useState<string>("");
@@ -124,6 +132,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     if (user) {
       setDefaultModelId(user.defaultModelId || "");
       setDefaultSystemPrompt(user.defaultSystemPrompt || "");
+      setDocumentsEmbeddingsModelId(user.settings?.documentsEmbeddingsModelId || "");
+      setDocumentSummarizationModelId(user.settings?.documentSummarizationModelId || "");
     }
   }, [user]);
 
@@ -133,6 +143,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     await updateUser({
       defaultModelId,
       defaultSystemPrompt,
+      documentsEmbeddingsModelId,
+      documentSummarizationModelId,
     });
   };
 
@@ -184,6 +196,13 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
   const modelSelectData = models
     .filter(model => model.isActive && model.type !== ModelType.EMBEDDING)
+    .map(model => ({
+      value: model.modelId,
+      label: model.name,
+    }));
+
+  const embeddingModelSelectData = models
+    .filter(model => model.isActive && model.type === ModelType.EMBEDDING)
     .map(model => ({
       value: model.modelId,
       label: model.name,
@@ -491,6 +510,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
       <Paper withBorder p="xl">
         <form name="user-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
           <Stack gap="md">
+            <Title order={4}>Chat Defaults</Title>
+
             <Select
               label="Default AI Model"
               description="This model will be used by default for new chats"
@@ -511,6 +532,32 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               autosize
               minRows={3}
               maxRows={6}
+            />
+
+            <Divider my="md" />
+
+            <Title order={4}>Document Processing</Title>
+
+            <Select
+              label="Documents Embeddings Model"
+              description="Model used to generate vector embeddings for document chunks"
+              placeholder="Select an embeddings model"
+              value={documentsEmbeddingsModelId}
+              onChange={value => setDocumentsEmbeddingsModelId(value || "")}
+              data={embeddingModelSelectData}
+              searchable
+              clearable
+            />
+
+            <Select
+              label="Document Summarization Model"
+              description="Model used to generate document summaries (up to 1024 words)"
+              placeholder="Select a chat model"
+              value={documentSummarizationModelId}
+              onChange={value => setDocumentSummarizationModelId(value || "")}
+              data={modelSelectData}
+              searchable
+              clearable
             />
 
             <Group justify="right" mt="md">

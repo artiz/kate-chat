@@ -483,6 +483,7 @@ def main():
             data = conv_result.document.export_to_dict()
             normalized_data = parser._normalize_page_sequence(data)
             processed_report = processor.assemble_report(conv_result, normalized_data)
+            
             joined_report = report_preparation.process_report(processed_report)
             splitted_report = splitter.split_json_report(joined_report)
             

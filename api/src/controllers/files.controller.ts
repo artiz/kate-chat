@@ -5,6 +5,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
 import { authMiddleware } from "@/middleware/auth.middleware";
 import { S3Service } from "@/services/s3.service";
+import { SQSService } from "@/services/sqs.service";
 
 import { ok } from "assert";
 import { getRepository } from "@/config/database";
@@ -15,7 +16,10 @@ import { DocumentStatus } from "@/types/ai.types";
 import { TokenPayload } from "@/utils/jwt";
 
 const logger = createLogger(__filename);
+
 export const router = Router();
+
+const queueService = new QueueService(MessagesService.pubSub);
 
 router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, res: Response) => {
   const { chatId } = req.params;
@@ -29,7 +33,6 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
   const s3Service = new S3Service(req.tokenPayload);
   const documentRepo = getRepository(Document);
   const chatDocumentRepo = getRepository(ChatDocument);
-  const queueService = new QueueService(MessagesService.pubSub);
   const s3Client = await s3Service.getClient();
 
   if (!s3Client) {
@@ -59,6 +62,17 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
           await chatDocumentRepo.save(chatDocumentRepo.create(record));
         }
       }
+
+      // Send parse command if document is still in UPLOAD state
+      if (existing.status === DocumentStatus.STORAGE_UPLOAD && existing.s3key) {
+        const sqsService = new SQSService();
+        await sqsService.sendJsonMessage({
+          command: "parse_document",
+          documentId: existing.id,
+          s3key: existing.s3key,
+        });
+      }
+
       return existing;
     }
 
@@ -97,6 +111,15 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
     }
 
     queueService.publishDocumentStatus(document);
+
+    // Send parse_document command for new document
+    const sqsService = new SQSService();
+    await sqsService.sendJsonMessage({
+      command: "parse_document",
+      documentId: document.id,
+      s3key: document.s3key,
+    });
+
     return document;
   };
 

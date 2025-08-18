@@ -31,6 +31,9 @@ export interface User {
   role: UserRole;
   defaultModelId?: string;
   defaultSystemPrompt?: string;
+  documentsEmbeddingsModelId?: string;
+  documentSummarizationModelId?: string;
+
   githubId?: string;
   googleId?: string;
   avatarUrl?: string;
@@ -41,6 +44,8 @@ export interface User {
 export interface UpdateUserInput {
   defaultModelId?: string;
   defaultSystemPrompt?: string;
+  documentsEmbeddingsModelId?: string;
+  documentSummarizationModelId?: string;
   email?: string;
   firstName?: string;
   lastName?: string;

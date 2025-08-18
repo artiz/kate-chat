@@ -56,7 +56,12 @@ export class Document {
   @Field({ nullable: true })
   @Column({ nullable: true })
   // `modelId` from models but not `id`
-  embeddingsModelId: string;
+  embeddingsModelId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  // `modelId` from models but not `id`
+  summaryModelId?: string;
 
   @Field({ nullable: true })
   @Column({ nullable: true })
@@ -71,6 +76,10 @@ export class Document {
   @Field()
   @Column({ default: DocumentStatus.UPLOAD })
   status: DocumentStatus;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  statusInfo?: string;
 
   @Field({ nullable: true })
   @Column({ type: "float" })
