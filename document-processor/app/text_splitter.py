@@ -491,10 +491,7 @@ def main():
             for chunk in splitted_report['chunks']:
                 print(f"Chunk: {chunk['id']}, Page: {chunk['page']}, Tokens: {chunk['length_tokens']}")
                 print(f"Text: {chunk['text'][:120]}...")
-            
-            
-            
-        
+
         print("=" * 60)
         print("🎉 All documents processed successfully!")
         print("=" * 60)

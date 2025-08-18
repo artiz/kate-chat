@@ -13,9 +13,9 @@ import { Document } from "@/entities/Document";
 const logger = createLogger(__filename);
 
 // PubSub channel for broadcasting messages
-export const CHAT_MESSAGES_CHANNEL = "chat:messages";
-export const CHAT_ERRORS_CHANNEL = "chat:errors";
-export const DOCUMENT_STATUS_CHANNEL = "document:status";
+export const CHAT_MESSAGES_CHANNEL = process.env.CHAT_MESSAGES_CHANNEL || "chat:messages";
+export const CHAT_ERRORS_CHANNEL = process.env.CHAT_ERRORS_CHANNEL || "chat:errors";
+export const DOCUMENT_STATUS_CHANNEL = process.env.DOCUMENT_STATUS_CHANNEL || "document:status";
 
 export class QueueService {
   private pubSub: PubSub;
