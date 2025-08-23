@@ -149,12 +149,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
         setShowAnchorButton(false);
       } else if (messages?.length) {
         if (streaming) {
+          anchorTimer.current = setTimeout(() => {
+            setShowAnchorButton(true);
+          }, 100);
+        } else {
           setShowAnchorButton(true);
         }
-
-        anchorTimer.current = setTimeout(() => {
-          setShowAnchorButton(true);
-        }, 100);
       }
     },
     [messages?.length, streaming]

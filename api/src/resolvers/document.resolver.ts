@@ -1,12 +1,14 @@
-import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root } from "type-graphql";
+import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root, ID } from "type-graphql";
 import { getRepository } from "@/config/database";
 
 import { Document } from "@/entities/Document";
-import { GraphQLContext } from "@/middleware/auth.middleware";
-import { DOCUMENT_STATUS_CHANNEL } from "@/services/queue.service";
+import { GraphQLContext } from ".";
+import { DOCUMENT_STATUS_CHANNEL } from "@/services/subscriptions.service";
 import { BaseResolver } from "./base.resolver";
 import { Repository } from "typeorm";
 import { S3Service } from "@/services/s3.service";
+import { SQSService } from "@/services/sqs.service";
+import { DocumentStatusMessage } from "@/types/graphql/responses";
 
 @Resolver(Document)
 export class DocumentResolver extends BaseResolver {
@@ -30,16 +32,55 @@ export class DocumentResolver extends BaseResolver {
     }));
   }
 
-  @Subscription(() => [Document], {
+  @Mutation(() => Document)
+  async processDocument(
+    @Arg("id", () => ID) id: string,
+    @Arg("force", { nullable: true }) force: boolean = false,
+    @Ctx() context: GraphQLContext
+  ): Promise<Document> {
+    await this.validateContextToken(context);
+    const sqsService = this.getSqsService(context);
+
+    const document = await this.documentRepo.findOne({
+      where: { id },
+    });
+
+    if (!document) throw new Error("Document not found");
+    if (!document.s3key) throw new Error("Document was not uploaded yet");
+
+    await sqsService.sendJsonMessage({
+      command: "parse_document",
+      documentId: document.id,
+      s3key: document.s3key,
+    });
+
+    return document;
+  }
+
+  @Subscription(() => [DocumentStatusMessage], {
     topics: DOCUMENT_STATUS_CHANNEL,
     filter: ({ payload, args }) => args.documentIds.includes(payload.documentId),
   })
   async documentsStatus(
-    @Root() { document }: { document: Document },
+    @Root() payload: DocumentStatusMessage,
     @Ctx() context: GraphQLContext,
     @Arg("documentIds", () => [String]) documentIds: string[]
-  ): Promise<Document[]> {
+  ): Promise<DocumentStatusMessage[]> {
     await this.validateContextToken(context);
-    return [document];
+
+    if (payload.sync) {
+      const document = await this.documentRepo.findOne({
+        where: { id: payload.documentId },
+      });
+
+      if (document) {
+        document.status = payload.status;
+        document.statusInfo = payload.statusInfo;
+        document.statusProgress = payload.statusProgress;
+        await this.documentRepo.save(document);
+      }
+    }
+
+    return [payload];
   }
 }

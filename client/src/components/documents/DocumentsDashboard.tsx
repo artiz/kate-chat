@@ -1,45 +1,13 @@
-import React from "react";
+import React, { use, useMemo } from "react";
 import { Title, Paper, Stack, Table, Loader, Text, Group, Badge, Alert, ActionIcon, Tooltip } from "@mantine/core";
 import { IconFile, IconRefresh, IconAlertCircle } from "@tabler/icons-react";
 import { useQuery, useSubscription } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { formatFileSize } from "@/lib";
+import { DOCUMENT_STATUS_SUBSCRIPTION, GET_DOCUMENTS, Document, DocumentStatusMessage } from "@/store/services/graphql";
 
-const GET_DOCUMENTS = gql`
-  query GetDocuments {
-    documents {
-      id
-      fileName
-      fileSize
-      status
-      createdAt
-      downloadUrl
-    }
-  }
-`;
-
-const DOCUMENT_STATUS_SUBSCRIPTION = gql`
-  subscription DocumentStatus($documentIds: [String!]!) {
-    documentsStatus(documentIds: $documentIds) {
-      id
-      status
-      statusProgress
-      downloadUrl
-    }
-  }
-`;
-
-interface Document {
-  id: string;
-  fileName: string;
-  fileSize: number;
-  status: string;
-  createdAt: string;
-  downloadUrl?: string;
-}
-
-const getStatusColor = (status: string): string => {
+const getStatusColor = (status?: string): string => {
   switch (status?.toLowerCase()) {
     case "completed":
     case "processed":
@@ -70,12 +38,30 @@ export const DocumentsDashboard: React.FC = () => {
     },
   });
 
-  const documentIds = data?.documents.map((doc: Document) => doc.id) || [];
+  const documentIds = useMemo(() => data?.documents.map((doc: Document) => doc.id) || [], [data?.documents]);
 
-  const { data: subscriptionData } = useSubscription(DOCUMENT_STATUS_SUBSCRIPTION, {
+  const { data: subscriptionData } = useSubscription<DocumentStatusMessage[]>(DOCUMENT_STATUS_SUBSCRIPTION, {
     variables: { documentIds },
     skip: documentIds.length === 0,
   });
+
+  const documents = useMemo(() => {
+    const statusMap = (subscriptionData || []).reduce(
+      (acc, message: DocumentStatusMessage) => {
+        acc[message.documentId] = message;
+        return acc;
+      },
+      {} as Record<string, DocumentStatusMessage>
+    );
+
+    return (
+      data?.documents ||
+      [].map((doc: Document) => ({
+        ...doc,
+        ...(statusMap[doc.id] || {}),
+      }))
+    );
+  }, [data, subscriptionData]);
 
   const handleRefresh = () => {
     refetch();
@@ -107,7 +93,7 @@ export const DocumentsDashboard: React.FC = () => {
             <Group>
               <IconFile size="1.2rem" />
               <Text size="sm" c="dimmed">
-                {data?.documents.length || 0} documents
+                {documents.length} document(s)
               </Text>
             </Group>
           </Group>
@@ -116,18 +102,19 @@ export const DocumentsDashboard: React.FC = () => {
             <Group justify="center" p="xl">
               <Loader size="lg" />
             </Group>
-          ) : data && data.documents.length > 0 ? (
+          ) : data && documents.length > 0 ? (
             <Table striped highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>File Name</Table.Th>
                   <Table.Th>Size</Table.Th>
                   <Table.Th>Status</Table.Th>
+                  <Table.Th>Summary</Table.Th>
                   <Table.Th>Created At</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {data.documents.map((doc: Document) => (
+                {documents.map((doc: Document) => (
                   <Table.Tr key={doc.id}>
                     <Table.Td>
                       <Group>
@@ -144,15 +131,18 @@ export const DocumentsDashboard: React.FC = () => {
                       </Group>
                     </Table.Td>
                     <Table.Td>
-                      <Text>{formatFileSize(doc.fileSize)}</Text>
+                      <Text>{formatFileSize(doc.fileSize || 0)}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Badge color={getStatusColor(doc.status)} variant="light">
-                        {doc.status}
+                        {doc.status}: {doc.statusProgress ? `${doc.statusProgress * 100}%` : "--"}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{new Date(doc.createdAt).toLocaleDateString()}</Text>
+                      <Text>{doc.summary}</Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">{doc.createdAt && new Date(doc.createdAt).toLocaleDateString()}</Text>
                     </Table.Td>
                   </Table.Tr>
                 ))}

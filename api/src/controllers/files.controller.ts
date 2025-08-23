@@ -5,13 +5,10 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
 import { authMiddleware } from "@/middleware/auth.middleware";
 import { S3Service } from "@/services/s3.service";
-import { SQSService } from "@/services/sqs.service";
 
 import { ok } from "assert";
 import { getRepository } from "@/config/database";
-import { QueueService } from "@/services/queue.service";
 import { ChatDocument, User, Document } from "@/entities";
-import { MessagesService } from "@/services/messages.service";
 import { DocumentStatus } from "@/types/ai.types";
 import { TokenPayload } from "@/utils/jwt";
 
@@ -19,9 +16,7 @@ const logger = createLogger(__filename);
 
 export const router = Router();
 
-const queueService = new QueueService(MessagesService.pubSub);
-
-router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, res: Response) => {
+router.post("/upload", async (req: Request<{ chatId: string }>, res: Response) => {
   const { chatId } = req.params;
   if (!req.tokenPayload) {
     return void res.status(401).json({ error: "Authentication failed" });
@@ -44,6 +39,11 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
     const { hash, filepath, size: fileSize, originalFilename, newFilename, mimetype } = file;
     ok(hash, "File hash is required");
 
+    const subService = req.subscriptionsService;
+    ok(subService, "SubscriptionsService is required in request");
+    const sqsService = req.sqsService;
+    ok(sqsService, "SQSService is required in request");
+
     const existing = await documentRepo.findOne({
       where: {
         sha256checksum: hash,
@@ -65,7 +65,6 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
 
       // Send parse command if document is still in UPLOAD state
       if (existing.status === DocumentStatus.STORAGE_UPLOAD && existing.s3key) {
-        const sqsService = new SQSService();
         await sqsService.sendJsonMessage({
           command: "parse_document",
           documentId: existing.id,
@@ -91,7 +90,7 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
     const fileRe = filepath;
 
     document = await documentRepo.save(document);
-    queueService.publishDocumentStatus(document);
+    subService.publishDocumentStatus(document);
 
     const s3key = `document/${user.userId}/${document.id}`;
     await s3Service.upload(filepath, s3key, mime);
@@ -110,10 +109,9 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
       );
     }
 
-    queueService.publishDocumentStatus(document);
+    subService.publishDocumentStatus(document);
 
     // Send parse_document command for new document
-    const sqsService = new SQSService();
     await sqsService.sendJsonMessage({
       command: "parse_document",
       documentId: document.id,
@@ -150,7 +148,7 @@ router.post("/upload", authMiddleware, async (req: Request<{ chatId: string }>, 
 });
 
 // Get file from S3
-router.get("/*fileKey", authMiddleware, async (req: Request<any, any, any, { name?: string }>, res: Response) => {
+router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, res: Response) => {
   try {
     let fileKey = Array.isArray(req.params.fileKey) ? req.params.fileKey.join("/") : req.params.fileKey;
     const fileName = req.query.name;

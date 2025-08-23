@@ -20,7 +20,7 @@ import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
 import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
-import { QueueService } from "./queue.service";
+import { SubscriptionsService } from "./subscriptions.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./s3.service";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
@@ -28,27 +28,17 @@ import { DeleteMessageResponse } from "@/types/graphql/responses";
 const logger = createLogger(__filename);
 
 export class MessagesService {
+  private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
+
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
   private modelRepository: Repository<Model>;
 
-  private queueService: QueueService;
+  private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
 
-  // one staticGraphQL PubSub instance for subscriptions
-  private static _pubSub: PubSub;
-  private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
-
-  public static get pubSub(): PubSub {
-    if (!MessagesService._pubSub) {
-      MessagesService._pubSub = new PubSub();
-    }
-
-    return MessagesService._pubSub;
-  }
-
-  constructor() {
-    this.queueService = new QueueService(MessagesService.pubSub);
+  constructor(subscriptionsService: SubscriptionsService) {
+    this.subscriptionsService = subscriptionsService;
     this.aiService = new AIService();
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
@@ -61,25 +51,22 @@ export class MessagesService {
 
     MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
-      MessagesService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
+      SubscriptionsService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
     }, 300);
-
-    this.queueService.connectClient(socket, chatId);
   }
 
   public disconnectClient(socket: WebSocket) {
     const chatId = MessagesService.clients.get(socket);
     MessagesService.clients.delete(socket);
-    this.queueService.disconnectClient(socket, chatId);
   }
 
   public publishGraphQL(routingKey: string, payload: unknown) {
-    MessagesService.pubSub.publish(routingKey, payload);
+    SubscriptionsService.pubSub.publish(routingKey, payload);
   }
 
   public subscribeGraphQL(routingKey: string, dynamicId: unknown): AsyncIterable<unknown> {
     return {
-      [Symbol.asyncIterator]: () => MessagesService.pubSub.asyncIterator(routingKey),
+      [Symbol.asyncIterator]: () => SubscriptionsService.pubSub.asyncIterator(routingKey),
     };
   }
 
@@ -258,7 +245,7 @@ export class MessagesService {
         chat,
       })
       .catch(err => {
-        this.queueService.publishError(chat.id, getErrorMessage(err));
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         throw err;
       });
 
@@ -330,7 +317,7 @@ export class MessagesService {
         chat,
       })
       .catch(err => {
-        this.queueService.publishError(chat.id, getErrorMessage(err));
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         throw err;
       });
 
@@ -495,7 +482,7 @@ export class MessagesService {
         chat,
       })
       .catch(err => {
-        this.queueService.publishError(chat.id, getErrorMessage(err));
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         throw err;
       });
 
@@ -545,12 +532,12 @@ export class MessagesService {
     userMessage.jsonContent = jsonContent;
     userMessage.content = content;
     userMessage = await this.messageRepository.save(userMessage).catch(err => {
-      this.queueService.publishError(chat.id, getErrorMessage(err));
+      this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
       throw err;
     });
 
     // Publish message to Queue
-    await this.queueService.publishMessage(chat.id, userMessage);
+    await this.subscriptionsService.publishChatMessage(chat.id, userMessage);
 
     return userMessage;
   }
@@ -579,7 +566,7 @@ export class MessagesService {
       const savedMessage = await this.messageRepository.save(message);
 
       // Publish message to Queue
-      await this.queueService.publishMessage(chat.id, savedMessage);
+      await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
     };
 
     if (!model.streaming) {
@@ -631,7 +618,7 @@ export class MessagesService {
         assistantMessage.role = MessageRole.ERROR;
 
         await completeRequest(assistantMessage).catch(err => {
-          this.queueService.publishError(chat.id, getErrorMessage(err));
+          this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");
         });
       }
@@ -658,14 +645,14 @@ export class MessagesService {
         assistantMessage.metadata = metadata;
 
         completeRequest(assistantMessage).catch(err => {
-          this.queueService.publishError(chat.id, getErrorMessage(err));
+          this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");
         });
 
         // stream token
       } else {
         assistantMessage.content += token;
-        await this.queueService.publishMessage(chat.id, assistantMessage, true);
+        await this.subscriptionsService.publishChatMessage(chat.id, assistantMessage, true);
       }
     };
 

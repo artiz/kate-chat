@@ -14,7 +14,9 @@ import {
   DeleteMessageCommand,
   SendMessageCommand,
   Message,
+  ListQueuesCommand,
 } from "@aws-sdk/client-sqs";
+import { SubscriptionsService } from "./subscriptions.service";
 
 const logger = createLogger(__filename);
 
@@ -26,11 +28,10 @@ export class SQSService {
   private polling = false;
   private pollInterval?: NodeJS.Timeout;
 
-  constructor() {
+  constructor(subscriptionsService: SubscriptionsService) {
     this.outputQueueUrl = SQS_DOCUMENTS_QUEUE || "";
     this.indexQueueUrl = SQS_INDEX_DOCUMENTS_QUEUE || "";
-
-    this.documentQueueService = new DocumentQueueService();
+    this.documentQueueService = new DocumentQueueService(subscriptionsService);
 
     // Initialize SQS client
     this.sqs = new SQSClient({
@@ -56,6 +57,8 @@ export class SQSService {
   }
 
   async shutdown(): Promise<void> {
+    if (!this.polling) return;
+    this.sqs?.destroy();
     this.polling = false;
     if (this.pollInterval) {
       clearTimeout(this.pollInterval);
@@ -121,16 +124,42 @@ export class SQSService {
     if (!this.sqs || !this.polling) return;
 
     const poll = async () => {
+      if (!this.polling) {
+        return;
+      }
+
+      const cmd = new ListQueuesCommand({
+        MaxResults: 100,
+      });
+
+      const response = await this.sqs!.send(cmd);
+      if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
+        logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
+        clearTimeout(this.pollInterval);
+        this.pollInterval = setTimeout(poll, 1000);
+        return;
+      }
+
+      if (!response.QueueUrls?.includes(this.outputQueueUrl)) {
+        logger.info(`SQS processing queue ${this.outputQueueUrl} does not exist or is not accessible`);
+        clearTimeout(this.pollInterval);
+        this.pollInterval = setTimeout(poll, 1000);
+        return;
+      }
+
       try {
         const command = new ReceiveMessageCommand({
           QueueUrl: this.indexQueueUrl,
           MaxNumberOfMessages: 1,
-          WaitTimeSeconds: 20, // Long polling
+          WaitTimeSeconds: 1, // should be same as in setTimeout below
           VisibilityTimeout: 90,
+          AttributeNames: ["All"],
         });
 
         const result = await this.sqs!.send(command);
         const messages = result.Messages || [];
+
+        logger.debug(`Got ${messages.length} messages from SQS`);
 
         for (const message of messages) {
           try {
@@ -150,11 +179,12 @@ export class SQSService {
           }
         }
       } catch (error) {
-        logger.error(error, "Error polling SQS");
+        logger.error(error, `Error polling SQS on ${this.indexQueueUrl}`);
       }
 
       // Schedule next poll
       if (this.polling) {
+        clearTimeout(this.pollInterval);
         this.pollInterval = setTimeout(poll, 1000);
       }
     };

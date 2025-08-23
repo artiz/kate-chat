@@ -76,9 +76,11 @@ export class User {
   defaultModelId?: string;
 
   @Field({ nullable: true })
+  @Column({ nullable: true })
   documentsEmbeddingsModelId?: string;
 
   @Field({ nullable: true })
+  @Column({ nullable: true })
   documentSummarizationModelId?: string;
 
   @Field({ nullable: true })

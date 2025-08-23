@@ -1,6 +1,6 @@
 import { ObjectType, Field, ID } from "type-graphql";
 import { User, Chat, Message, Model, Document } from "../../entities";
-import { MessageRole, MessageType } from "../../types/ai.types";
+import { DocumentStatus, MessageRole, MessageType } from "../../types/ai.types";
 
 @ObjectType()
 export class UserResponse {
@@ -291,4 +291,25 @@ export class AdminUsersResponse {
 export class UploadDocumentsResponse {
   @Field(() => [Document], { nullable: true })
   documents?: Document[];
+}
+
+@ObjectType()
+export class DocumentStatusMessage {
+  @Field(() => ID)
+  documentId: string;
+
+  @Field()
+  status: DocumentStatus;
+
+  @Field({ nullable: true })
+  statusInfo?: string;
+
+  @Field({ nullable: true })
+  statusProgress?: number;
+
+  @Field({ nullable: true })
+  summary?: string;
+
+  @Field({ nullable: true })
+  sync?: boolean;
 }

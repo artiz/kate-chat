@@ -31,7 +31,7 @@ export class Document {
   mime?: string;
 
   @Field()
-  @Column({ type: "unsigned big int", default: 0 })
+  @Column({ type: "bigint", default: 0 })
   fileSize: number;
 
   @Field()

@@ -279,6 +279,7 @@ class PageTextPreparation:
 
             # Handle normal blocks
             if block_type in (
+                "title",
                 "text",
                 "caption",
                 "footnote",

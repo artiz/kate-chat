@@ -9,8 +9,9 @@ import { MessageRole, ModelMessage, ModelType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
-import { ConnectionParams, GraphQLContext } from "@/middleware/auth.middleware";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
+import { GraphQLContext } from ".";
 
 const logger = createLogger(__filename);
 const MAX_TEST_TEXT_LENGTH = 256;

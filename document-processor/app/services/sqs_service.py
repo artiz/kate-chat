@@ -6,10 +6,10 @@ import boto3
 from botocore.exceptions import ClientError
 from app.core.config import settings
 from app.services.document_processor import DocumentProcessor
-            
-            
-logger = logging.getLogger(__name__)
+from app.core import util
 
+
+logger = util.init_logger(__name__)
 
 class SQSService:
     """Service for handling SQS queue operations"""
@@ -23,7 +23,7 @@ class SQSService:
         
     async def startup(self):
         """Initialize SQS client and start polling"""
-        print("startup() called")
+        logger.debug("startup() called")
         try:
             self.sqs_client = boto3.client(
                 'sqs',
@@ -41,28 +41,36 @@ class SQSService:
     
     async def shutdown(self):
         """Stop polling and cleanup resources"""
+        logger.info("SQS Service shutting down...")
         self.running = False
         if self.poll_task:
             self.poll_task.cancel()
             try:
                 await self.poll_task
             except asyncio.CancelledError:
-                pass
+                logger.debug("Poll task cancelled successfully")
+        if self.sqs_client:    
+            self.sqs_client.close()
         logger.info("SQS Service stopped")
     
     async def _poll_messages(self):
         """Poll for messages from SQS queue"""
+        response = self.sqs_client.list_queues(MaxResults=100)
+        logger.debug(f"Found queues: {response}")
+
         while self.running:
             try:
-                # Poll for messages
-                response = self.sqs_client.receive_message(
+                # Use asyncio.to_thread to make the blocking call cancellable
+                # and run it in a thread pool so it doesn't block the event loop
+                response = await asyncio.to_thread(
+                    self.sqs_client.receive_message,
                     QueueUrl=self.queue_url,
                     MaxNumberOfMessages=1,
-                    WaitTimeSeconds=20,  # Long polling
+                    WaitTimeSeconds=2,  # Shorter polling for better shutdown responsiveness
                     VisibilityTimeout=120  # seconds to process
                 )
-                
                 messages = response.get('Messages', [])
+                logger.debug(f"Got messages: {messages}")
                 
                 for message in messages:
                     try:
@@ -70,7 +78,8 @@ class SQSService:
                         await self._handle_message(message)
                         
                         # Delete message after successful processing
-                        self.sqs_client.delete_message(
+                        await asyncio.to_thread(
+                            self.sqs_client.delete_message,
                             QueueUrl=self.queue_url,
                             ReceiptHandle=message['ReceiptHandle']
                         )
@@ -79,6 +88,9 @@ class SQSService:
                         logger.error(f"Error processing message: {e}")
                         # Message will become visible again after timeout
                         
+            except asyncio.CancelledError:
+                logger.info("Polling cancelled, shutting down")
+                break
             except Exception as e:
                 logger.error(f"Error polling SQS: {e}")
                 await asyncio.sleep(5)  # Wait before retrying
@@ -98,14 +110,14 @@ class SQSService:
         finally:
             await processor.close()
     
-    def send_message(self, is_processing: bool, command: Dict[str, Any], delay_seconds: int = 0):
+    async def send_message(self, is_processing: bool, command: Dict[str, Any], delay_seconds: int = 0):
         """Send a message to the SQS queue"""
         try:
-            self.sqs_client.send_message(
+            await asyncio.to_thread(
+                self.sqs_client.send_message,
                 QueueUrl=self.queue_url if is_processing else self.index_queue_url,
                 MessageBody=json.dumps(command),
                 DelaySeconds=delay_seconds,
-                
             )
             logger.info(f"Sent message to SQS: {command}")
         except Exception as e:
