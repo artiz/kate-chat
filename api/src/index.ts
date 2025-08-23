@@ -34,6 +34,8 @@ import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
 import { SQSService } from "@/services/sqs.service";
 import { HttpError } from "./types/exceptions";
+import { SubscriptionsService } from "./services/subscriptions.service";
+import { servicesMiddleware } from "./middleware/services.middleware";
 
 // Load environment variables
 config();
@@ -41,6 +43,9 @@ config();
 const isProd = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
 const logger = createLogger("server");
 
+let subscriptionsService: SubscriptionsService | undefined;
+let sqsService: SQSService | undefined;
+let messagesService: MessagesService | undefined;
 async function bootstrap() {
   // Initialize database connection
   const dbConnected = await initializeDatabase();
@@ -48,17 +53,17 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const messagesService = new MessagesService();
-  const sqsService = new SQSService();
-
+  subscriptionsService = new SubscriptionsService();
+  messagesService = new MessagesService(subscriptionsService);
+  sqsService = new SQSService(subscriptionsService);
   await sqsService.startup();
 
   const schemaPubSub = {
     publish: (routingKey: string, ...args: unknown[]) => {
-      messagesService.publishGraphQL(routingKey, args?.length === 1 ? args[0] : args);
+      messagesService!.publishGraphQL(routingKey, args?.length === 1 ? args[0] : args);
     },
     subscribe: (routingKey: string, dynamicId?: unknown): AsyncIterable<unknown> => {
-      return messagesService.subscribeGraphQL(routingKey, dynamicId);
+      return messagesService!.subscribeGraphQL(routingKey, dynamicId);
     },
   };
 
@@ -102,6 +107,7 @@ async function bootstrap() {
 
   // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
+  app.use(servicesMiddleware(subscriptionsService, sqsService));
 
   // Set up routes
   app.use("/health", healthRoutes);
@@ -189,11 +195,11 @@ async function bootstrap() {
       onSubscribe: (ctx, msg) => {
         const chatId = msg.payload?.variables?.chatId;
         if (chatId) {
-          messagesService.connectClient(ctx.extra.socket, ctx.extra.request, chatId as string);
+          messagesService!.connectClient(ctx.extra.socket, ctx.extra.request, chatId as string);
         }
       },
-      onClose: ctx => {
-        messagesService.disconnectClient(ctx.extra.socket);
+      onClose: async ctx => {
+        messagesService!.disconnectClient(ctx.extra.socket);
       },
       onError: (ctx, error) => {
         logger.error({ ctx, error }, "GraphQL subscription error");
@@ -212,6 +218,9 @@ async function bootstrap() {
         return {
           tokenPayload: req.raw.tokenPayload,
           connectionParams: req.raw.connectionParams || {},
+          subscriptionsService,
+          sqsService,
+          messagesService,
         };
       },
       formatError: (error: GraphQLError | Error) => {
@@ -243,13 +252,31 @@ async function bootstrap() {
   });
 
   httpServer.on("close", async () => {
-    await sqsService.shutdown();
+    logger.info("Shutting down server...");
     wsServerCleanup.dispose();
   });
 }
 
+process.on("SIGINT", async () => {
+  console.log("Gracefully shutting down from SIGINT (Ctrl-C)...");
+  if (sqsService) {
+    await sqsService.shutdown();
+  }
+  if (subscriptionsService) {
+    await subscriptionsService.shutdown();
+  }
+
+  return process.exit(0);
+});
+
 // Start the application
-bootstrap().catch(error => {
+bootstrap().catch(async error => {
   logger.error(error, "Error starting server");
+  if (sqsService) {
+    await sqsService.shutdown();
+  }
+  if (subscriptionsService) {
+    await subscriptionsService.shutdown();
+  }
   process.exit(1);
 });

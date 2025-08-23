@@ -76,7 +76,7 @@ class DocumentProcessor:
             # Check if parsing is already in progress or completed
             existing_progress = await self.redis.get(progress_key)
             if existing_progress is not None:
-                progress = float(existing_progress)
+                progress = int(existing_progress)
                 
                 # Check if output files exist
                 if await self._s3_object_exists(s3, parsed_json_key):
@@ -85,51 +85,40 @@ class DocumentProcessor:
                     return
                 
                 # If progress < 1, push back to queue with delay
-                if progress < 1.0:
+                if progress < 1:
                     logger.info(f"Document {document_id} parsing in progress ({progress*100:.1f}%), delaying")
                     await self._send_parse_command_delayed(document_id, s3_key)
                     return
             
             # Start parsing
             await self._set_progress(progress_key, 0.0, document_id, "parsing")
-            
-            # Download document from S3
+
             document_stream = await self._download_s3_stream(s3, s3_key)
-            
-            # Update progress
             await self._set_progress(progress_key, 0.3, document_id, "parsing")
             
             # Parse document
             conv_result = self.parser.convert_document(document_stream)
-            
             if conv_result.status.name != "SUCCESS":
                 raise RuntimeError(f"Document parsing failed with status: {conv_result.status}")
             
             # Update progress
             await self._set_progress(progress_key, 0.6, document_id, "parsing")
-            
-            # Process document data
             data = conv_result.document.export_to_dict()
             normalized_data = self.parser._normalize_page_sequence(data)
             
             processor = JsonReportProcessor()
             processed_report = processor.assemble_report(conv_result, normalized_data)
             
-            # Update progress
+            # Generate reports
             await self._set_progress(progress_key, 0.8, document_id, "parsing")
-            
-            # Generate JSON report
             json_content = json.dumps(processed_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(s3, parsed_json_key, json_content, "application/json")
             
-            # Generate Markdown text
             markdown_content = self._extract_markdown_text(processed_report)
             await self._upload_to_s3(s3, parsed_md_key, markdown_content, "text/markdown")
             
             # Complete parsing
             await self._set_progress(progress_key, 1.0, document_id, "parsing")
-            
-            # Send split command
             await self._send_split_command(document_id, s3_key)
             
             logger.info(f"Successfully parsed document {document_id}")
@@ -151,7 +140,7 @@ class DocumentProcessor:
             # Check if chunking is already in progress or completed
             existing_progress = await self.redis.get(progress_key)
             if existing_progress is not None:
-                progress = float(existing_progress)
+                progress = int(existing_progress)
                 
                 # Check if output file exists
                 if await self._s3_object_exists(s3, chunked_json_key):
@@ -160,41 +149,32 @@ class DocumentProcessor:
                     return
                 
                 # If progress < 1, push back to queue with delay
-                if progress < 1.0:
+                if progress < 1:
                     logger.info(f"Document {document_id} chunking in progress ({progress*100:.1f}%), delaying")
                     await self._send_split_command_delayed(document_id, s3_key)
                     return
             
             # Start chunking
             await self._set_progress( progress_key, 0.0, document_id, "chunking")
-            
-            # Download parsed JSON from S3
             parsed_content = await self._download_s3_content(s3, parsed_json_key)
             parsed_data = json.loads(parsed_content)
             
             # Update progress
             await self._set_progress( progress_key, 0.3, document_id, "chunking")
-            
-            # Process pages and prepare text
             joined_report = self.text_preparation.process_report(parsed_data)
             
-            # Update progress
-            await self._set_progress( progress_key, 0.6, document_id, "chunking")
-            
             # Split into chunks
+            await self._set_progress( progress_key, 0.6, document_id, "chunking")
             chunked_report = self.text_splitter.split_json_report(joined_report)
             
-            # Update progress
+            # Upload chunked JSON to S3
             await self._set_progress( progress_key, 0.8, document_id, "chunking")
             
-            # Upload chunked JSON to S3
             chunked_content = json.dumps(chunked_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(s3, chunked_json_key, chunked_content, "application/json")
             
-            # Complete chunking
-            await self._set_progress( progress_key, 1.0, document_id, "chunking")
-            
             # Send index command
+            await self._set_progress( progress_key, 1.0, document_id, "chunking")
             await self._send_index_command(document_id, s3_key)
             
             logger.info(f"Successfully chunked document {document_id}")
@@ -213,7 +193,8 @@ class DocumentProcessor:
         notification = {
             "documentId": document_id,
             "status": status,
-            "progress": progress
+            "progress": progress,
+            "sync": True,
         }
         await self.redis.publish(settings.document_status_channel, json.dumps(notification))
     
@@ -332,4 +313,4 @@ class DocumentProcessor:
         await self._send_sqs_command(True, command, delay_seconds=180)  # 3 minutes
 
     async def _send_sqs_command(self, is_processing: bool, command: Dict[str, Any], delay_seconds: int = 0):
-        self.send_message(is_processing, command, delay_seconds)
+        await self.send_message(is_processing, command, delay_seconds)

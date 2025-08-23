@@ -9,7 +9,7 @@ import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
 import { AuthProvider, UserRole } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
-import { GraphQLContext } from "@/middleware/auth.middleware";
+import { GraphQLContext } from ".";
 import { DEMO_MODE, DEFAULT_ADMIN_EMAILS } from "@/config/application";
 
 @Resolver(User)
@@ -117,6 +117,9 @@ export class UserResolver extends BaseResolver {
     if (input.avatarUrl) user.avatarUrl = input.avatarUrl;
     if (input.defaultModelId) user.defaultModelId = input.defaultModelId;
     if (input.defaultSystemPrompt) user.defaultSystemPrompt = input.defaultSystemPrompt;
+    if (input.documentsEmbeddingsModelId) user.documentsEmbeddingsModelId = input.documentsEmbeddingsModelId;
+    if (input.documentSummarizationModelId) user.documentSummarizationModelId = input.documentSummarizationModelId;
+
     if (input.settings) {
       user.settings = {
         ...(user.settings || {}),

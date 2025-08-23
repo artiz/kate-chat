@@ -1,6 +1,5 @@
 from fastapi.concurrency import asynccontextmanager
 import uvicorn
-import asyncio
 from fastapi import FastAPI, Depends, Request, WebSocket, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import http_exception_handler
@@ -17,38 +16,38 @@ async def lifespan(app: FastAPI):
     yield
     await app_shutdown()
 
+
+log = util.init_logger("app")
 app = FastAPI(
     title=settings.project_name,
     version=settings.version,
     lifespan=lifespan,
-    debug=True
+    debug=True,
 )
-
-log = util.init_logger("app")
 
 # Global SQS service instance
 sqs_service = None
-startup_task = None
 
 async def app_startup():
-    global sqs_service, startup_task
-    log.info("app startup...")
-    
-    startup_task = asyncio.ensure_future(global_app.startup())
+    global sqs_service
+    log.info("Startup...")
+    await global_app.startup()
     
     # Setup SQS listener
     sqs_service = SQSService()
     log.info(f"SQS listener starting...")
     await sqs_service.startup()
+    log.info(f"app initialized")
     
 
 async def app_shutdown():
-    global sqs_service, startup_task
-    log.info("app shutdown...")
-    startup_task.cancel()
+    global sqs_service
+    log.info("Shutdown...")
+    await global_app.shutdown()
     
     # Disconnect SQS listener
-    await sqs_service.shutdown()
+    if sqs_service:
+        await sqs_service.shutdown()
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -66,7 +65,7 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         log_level="critical",
-        reload=True,
+        reload=settings.reload,
         port=settings.port,
         workers=settings.workers,
     )

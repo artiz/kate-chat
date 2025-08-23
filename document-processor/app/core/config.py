@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     workers: int = 1
+    reload: bool = True
     
     document_status_channel: str = "document:status"
     redis_url: str = "redis://localhost:6379"

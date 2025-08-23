@@ -4,10 +4,10 @@ import { Chat } from "../entities/Chat";
 import { Model } from "../entities/Model";
 import { UserRole } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
-import { GraphQLContext } from "@/middleware/auth.middleware";
 import { AdminStatsResponse, AdminUsersResponse } from "../types/graphql/responses";
 import { GetUsersInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
+import { GraphQLContext } from ".";
 
 @Resolver()
 export class AdminResolver extends BaseResolver {

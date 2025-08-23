@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { verifyToken, TokenPayload } from "../utils/jwt";
 import { logger } from "../utils/logger";
 import { IncomingHttpHeaders } from "http";
+import { GraphQLContext } from "@/resolvers";
 
 export interface ConnectionParams {
   AWS_BEDROCK_REGION?: string;
@@ -22,11 +23,6 @@ declare global {
     }
   }
 }
-
-export type GraphQLContext = {
-  tokenPayload?: TokenPayload;
-  connectionParams: ConnectionParams;
-};
 
 // GraphQL context authentication
 export const getUserFromToken = (authHeader?: string): TokenPayload | null => {

@@ -20,6 +20,12 @@ export class UpdateUserInput {
   defaultModelId?: string;
 
   @Field({ nullable: true })
+  documentsEmbeddingsModelId?: string;
+
+  @Field({ nullable: true })
+  documentSummarizationModelId?: string;
+
+  @Field({ nullable: true })
   defaultSystemPrompt?: string;
 
   @Field(() => UserSettings, { nullable: true })

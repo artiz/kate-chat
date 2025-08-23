@@ -44,16 +44,10 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   const { models, providers } = useAppSelector(state => state.models);
 
   // Default settings form state
-  const [defaultModelId, setDefaultModelId] = useState(user?.defaultModelId || "");
-  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState(user?.defaultSystemPrompt || "");
-
-  // Document processing model settings
-  const [documentsEmbeddingsModelId, setDocumentsEmbeddingsModelId] = useState(
-    user?.settings?.documentsEmbeddingsModelId || ""
-  );
-  const [documentSummarizationModelId, setDocumentSummarizationModelId] = useState(
-    user?.settings?.documentSummarizationModelId || ""
-  );
+  const [defaultModelId, setDefaultModelId] = useState<string>();
+  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState<string>();
+  const [documentsEmbeddingsModelId, setDocumentsEmbeddingsModelId] = useState<string>();
+  const [documentSummarizationModelId, setDocumentSummarizationModelId] = useState<string>();
 
   // local connection settings
   const [awsRegion, setAwsRegion] = useState<string>("");
@@ -86,6 +80,11 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
   useEffect(() => {
     const settings = user?.settings || {};
+    setDefaultModelId(user?.defaultModelId);
+    setDefaultSystemPrompt(user?.defaultSystemPrompt);
+    setDocumentsEmbeddingsModelId(user?.documentsEmbeddingsModelId);
+    setDocumentSummarizationModelId(user?.documentSummarizationModelId);
+
     // Load initial connection settings from localStorage or defaults
     if (enabledApiProviders.has("aws_bedrock")) {
       setAwsRegion(localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || settings.awsBedrockRegion || "");
@@ -126,16 +125,6 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     setS3SecretAccessKey(user?.settings?.s3SecretAccessKey || "");
     setS3FilesBucketName(user?.settings?.s3FilesBucketName || "");
   }, [user, enabledApiProviders]);
-
-  // Update when user changes
-  useEffect(() => {
-    if (user) {
-      setDefaultModelId(user.defaultModelId || "");
-      setDefaultSystemPrompt(user.defaultSystemPrompt || "");
-      setDocumentsEmbeddingsModelId(user.settings?.documentsEmbeddingsModelId || "");
-      setDocumentSummarizationModelId(user.settings?.documentSummarizationModelId || "");
-    }
-  }, [user]);
 
   // Handle default model and system prompt update
   const handleUserDefaultsUpdate = async (e: React.FormEvent) => {
@@ -198,14 +187,14 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     .filter(model => model.isActive && model.type !== ModelType.EMBEDDING)
     .map(model => ({
       value: model.modelId,
-      label: model.name,
+      label: `${model.apiProvider}: ${model.name}`,
     }));
 
   const embeddingModelSelectData = models
     .filter(model => model.isActive && model.type === ModelType.EMBEDDING)
     .map(model => ({
       value: model.modelId,
-      label: model.name,
+      label: `${model.apiProvider}: ${model.name}`,
     }));
 
   if (!user) return null;

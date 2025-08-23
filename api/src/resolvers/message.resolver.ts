@@ -4,7 +4,7 @@ import { Message } from "@/entities/Message";
 import { Chat, Model } from "@/entities";
 import { CreateMessageInput, GetMessagesInput, GetImagesInput, CallOtherInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
-import { GraphQLContext } from "@/middleware/auth.middleware";
+import { GraphQLContext } from ".";
 import {
   GqlMessage,
   GqlMessagesList,
@@ -29,13 +29,11 @@ const logger = createLogger(__filename);
 export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
-  private messageService: MessagesService;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
-    this.messageService = new MessagesService();
   }
 
   @Query(() => GqlMessagesList)
@@ -158,8 +156,9 @@ export class MessageResolver extends BaseResolver {
 
   @Mutation(() => Message)
   async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
+    const messageService = this.getMessagesService(context);
     const user = await this.validateContextUser(context);
-    return await this.messageService.createMessage(input, this.loadConnectionParams(context, user), user);
+    return await messageService.createMessage(input, this.loadConnectionParams(context, user), user);
   }
 
   @Subscription(() => GqlMessage, {
@@ -202,7 +201,8 @@ export class MessageResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<DeleteMessageResponse> {
     const user = await this.validateContextUser(context);
-    return await this.messageService.deleteMessage(this.loadConnectionParams(context, user), id, deleteFollowing, user);
+    const messageService = this.getMessagesService(context);
+    return await messageService.deleteMessage(this.loadConnectionParams(context, user), id, deleteFollowing, user);
   }
 
   @Mutation(() => SwitchModelResponse)
@@ -213,7 +213,8 @@ export class MessageResolver extends BaseResolver {
   ): Promise<SwitchModelResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.switchMessageModel(
+      const messageService = this.getMessagesService(context);
+      const message = await messageService.switchMessageModel(
         messageId,
         modelId,
         this.loadConnectionParams(context, user),
@@ -230,7 +231,8 @@ export class MessageResolver extends BaseResolver {
   async callOther(@Arg("input") input: CallOtherInput, @Ctx() context: GraphQLContext): Promise<CallOtherResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.callOtherModel(
+      const messageService = this.getMessagesService(context);
+      const message = await messageService.callOtherModel(
         input.messageId,
         input.modelId,
         this.loadConnectionParams(context, user),
@@ -252,7 +254,8 @@ export class MessageResolver extends BaseResolver {
   ): Promise<EditMessageResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.editMessage(
+      const messageService = this.getMessagesService(context);
+      const message = await messageService.editMessage(
         messageId,
         content,
         this.loadConnectionParams(context, user),

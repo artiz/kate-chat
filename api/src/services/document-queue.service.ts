@@ -1,5 +1,5 @@
 import { createLogger } from "@/utils/logger";
-import { QueueService } from "./queue.service";
+import { SubscriptionsService } from "./subscriptions.service";
 import { AIService } from "./ai.service";
 import { getRepository } from "@/config/database";
 import { Document, Model, User } from "@/entities";
@@ -9,18 +9,19 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { MessagesService } from "./messages.service";
 import { Repository } from "typeorm";
+import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai.prompts";
 
 const logger = createLogger(__filename);
 
 export class DocumentQueueService {
-  private queueService: QueueService;
+  private subService: SubscriptionsService;
   private aiService: AIService;
   private modelRepo: Repository<Model>;
   private documentRepo: Repository<Document>;
   private userRepo: Repository<User>;
 
-  constructor() {
-    this.queueService = new QueueService(MessagesService.pubSub);
+  constructor(subService: SubscriptionsService) {
+    this.subService = subService;
     this.aiService = new AIService();
     this.modelRepo = getRepository(Model);
     this.documentRepo = getRepository(Document);
@@ -54,7 +55,7 @@ export class DocumentQueueService {
       document.status = DocumentStatus.EMBEDDING;
       document.statusProgress = 0;
       await this.documentRepo.save(document);
-      this.queueService.publishDocumentStatus(document);
+      this.subService.publishDocumentStatus(document);
 
       // Create connection params for AI service
       const connection = User.getConnectionInfo(document.owner);
@@ -77,7 +78,7 @@ export class DocumentQueueService {
       document.status = DocumentStatus.SUMMARIZING;
       document.statusProgress = 0.5;
       await this.documentRepo.save(document);
-      this.queueService.publishDocumentStatus(document);
+      this.subService.publishDocumentStatus(document);
 
       // Generate summary if model is configured
       if (summarizationModelId) {
@@ -91,7 +92,7 @@ export class DocumentQueueService {
       document.summaryModelId = summarizationModelId;
 
       await this.documentRepo.save(document);
-      this.queueService.publishDocumentStatus(document);
+      this.subService.publishDocumentStatus(document);
 
       logger.info(`Successfully indexed document ${documentId}`);
     } catch (error) {
@@ -104,7 +105,7 @@ export class DocumentQueueService {
         document.status = DocumentStatus.ERROR;
         document.statusInfo = error instanceof Error ? error.message : "Unknown error";
         await documentRepo.save(document);
-        this.queueService.publishDocumentStatus(document);
+        this.subService.publishDocumentStatus(document);
       }
 
       throw error;
@@ -147,7 +148,7 @@ export class DocumentQueueService {
       const progress = ((i + 1) / chunks.length) * 0.5; // First half of progress
       document.statusProgress = progress;
       await getRepository(Document).save(document);
-      this.queueService.publishDocumentStatus(document);
+      this.subService.publishDocumentStatus(document);
 
       // TODO: Store chunk with embedding in database
       // This would typically involve:
@@ -202,8 +203,7 @@ export class DocumentQueueService {
         messages: [
           {
             role: MessageRole.USER,
-            body: `Please provide a comprehensive summary of the following document in up to 1024 words. 
-              Focus on the main topics, key findings, and important details:\n\n${contentToSummarize}`,
+            body: PROMPT_DOCUMENT_SUMMARY({ content: contentToSummarize }),
           },
         ],
         maxTokens: 1500,

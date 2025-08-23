@@ -27,6 +27,8 @@ export const FULL_USER_FRAGMENT = `
       createdAt
       defaultModelId
       defaultSystemPrompt
+      documentsEmbeddingsModelId
+      documentSummarizationModelId
       googleId
       githubId
       avatarUrl
@@ -341,6 +343,34 @@ export const GET_ALL_IMAGES = gql`
   }
 `;
 
+export const GET_DOCUMENTS = gql`
+  query GetDocuments {
+    documents {
+      id
+      fileName
+      fileSize
+      status
+      summary
+      statusInfo
+      statusProgress
+      createdAt
+      downloadUrl
+    }
+  }
+`;
+
+export const DOCUMENT_STATUS_SUBSCRIPTION = gql`
+  subscription DocumentStatus($documentIds: [String!]!) {
+    documentsStatus(documentIds: $documentIds) {
+      documentId
+      status
+      statusProgress
+      statusInfo
+      summary
+    }
+  }
+`;
+
 // TODO: move to separate file
 // Define GraphQL types
 interface CurrentUserResponse {
@@ -514,12 +544,23 @@ export interface Document {
   owner?: User;
   ownerId?: string;
   embeddingsModelId?: string;
+  documentSummarizationModelId?: string;
   summary?: string;
   pagesCount?: number;
   status?: DocumentStatus;
+  statusInfo?: string;
   statusProgress?: number;
   createdAt?: Date;
   updatedAt?: Date;
+  downloadUrl?: string;
+}
+
+export interface DocumentStatusMessage {
+  documentId: string;
+  status?: DocumentStatus;
+  statusInfo?: string;
+  statusProgress?: number;
+  summary?: string;
 }
 
 export interface UploadDocumentsResponse {
