@@ -1,10 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
-import { Repository } from "typeorm";
 import { User } from "../entities/User";
-import { getRepository } from "../config/database";
-import { generateToken, TokenPayload } from "../utils/jwt";
+import { generateToken } from "../utils/jwt";
 import bcrypt from "bcryptjs";
-import { ObjectId } from "mongodb";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
 import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
@@ -12,7 +9,7 @@ import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
 import { AuthProvider, UserRole } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
-import { GraphQLContext } from "@/middleware/auth.middleware";
+import { GraphQLContext } from ".";
 import { DEMO_MODE, DEFAULT_ADMIN_EMAILS } from "@/config/application";
 
 @Resolver(User)
@@ -120,6 +117,9 @@ export class UserResolver extends BaseResolver {
     if (input.avatarUrl) user.avatarUrl = input.avatarUrl;
     if (input.defaultModelId) user.defaultModelId = input.defaultModelId;
     if (input.defaultSystemPrompt) user.defaultSystemPrompt = input.defaultSystemPrompt;
+    if (input.documentsEmbeddingsModelId) user.documentsEmbeddingsModelId = input.documentsEmbeddingsModelId;
+    if (input.documentSummarizationModelId) user.documentSummarizationModelId = input.documentSummarizationModelId;
+
     if (input.settings) {
       user.settings = {
         ...(user.settings || {}),

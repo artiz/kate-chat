@@ -1,6 +1,9 @@
 import { Repository } from "typeorm";
-import * as path from "path";
+import fs from "fs";
+import { PassThrough } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { createLogger } from "@/utils/logger";
 import { UserSettings } from "@/entities";
 import { getRepository } from "@/config/database";
@@ -18,7 +21,6 @@ export class S3Service {
   private s3client: S3Client;
   private connecting: boolean = true;
   private bucketName: string;
-  private userRepository: Repository<User>;
 
   constructor(token?: TokenPayload) {
     const envSettings: UserSettings = {
@@ -59,8 +61,6 @@ export class S3Service {
       this.connecting = false;
     };
 
-    this.userRepository = getRepository(User);
-
     const credsSetup = (envSettings.s3AccessKeyId && envSettings.s3SecretAccessKey) || !!envSettings.s3Profile;
 
     if (!envSettings.s3FilesBucketName || !credsSetup) {
@@ -72,7 +72,8 @@ export class S3Service {
           return;
         }
 
-        this.userRepository
+        const userRepository = getRepository(User);
+        userRepository
           .findOne({
             where: { id: token.userId },
           })
@@ -134,21 +135,18 @@ export class S3Service {
    * @param key Key under which to store the file in S3
    * @param contentType MIME type of the file (optional)
    */
-  public async uploadFile(content: string, key: string, contentType?: string): Promise<string> {
+  public async uploadFile(content: Buffer, key: string, contentType?: string): Promise<string> {
     const client = await this.getClient();
     if (!client) {
       throw new Error("S3 client is not configured");
     }
 
     try {
-      // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-      const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
-
       const params = {
         Bucket: this.bucketName,
         Key: key,
-        Body: Buffer.from(base64Data, "base64"),
-        ContentType: contentType || "image/png",
+        Body: content,
+        ContentType: contentType,
       };
 
       logger.debug({ key }, "Uploading file to S3");
@@ -158,6 +156,32 @@ export class S3Service {
       logger.error(error, "Failed to upload file to S3");
       throw error;
     }
+  }
+
+  /**
+   * Upload a file to S3
+   * @param filePath Path to the file to upload
+   * @param key Key under which to store the file in S3
+   * @param contentType MIME type of the file (optional)
+   */
+  public async upload(filePath: string, key: string, contentType?: string): Promise<string> {
+    const client = await this.getClient();
+    if (!client) {
+      throw new Error("S3 client is not configured");
+    }
+
+    // Parallel upload for large files
+    // https://docs.aws.amazon.com/AmazonS3/latest/API/s3_example_s3_Scenario_UsingLargeFiles_section.html
+
+    // const pass = new PassThrough();
+    const params = { Bucket: this.bucketName, Key: key, Body: fs.createReadStream(filePath), ContentType: contentType };
+    await client.send(new PutObjectCommand(params));
+    // await pipeline(
+    //   fs.createReadStream(filePath),
+    //   pass,
+    // );
+
+    return key;
   }
 
   /**
@@ -207,7 +231,7 @@ export class S3Service {
    * @param key S3 key of the file
    * @returns URL to access the file
    */
-  public getFileUrl(key: string): string {
-    return `/files/${key}`;
+  public getFileUrl(key: string, fileName?: string): string {
+    return `/files/${key}${fileName ? `?name=${encodeURIComponent(fileName)}` : ""}`;
   }
 }

@@ -9,6 +9,7 @@ export const DEFAULT_MAX_TOKENS = 2048;
 export const DEFAULT_TOP_P = 0.9;
 
 export const CONTEXT_MESSAGES_LIMIT = 100;
+export const EMBEDDINGS_DIMENSIONS = 3072;
 
 export const ENABLED_API_PROVIDERS: ApiProvider[] = (() => {
   const allIds: ApiProvider[] = Object.values(ApiProvider);

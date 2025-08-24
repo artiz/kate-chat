@@ -13,12 +13,8 @@ export const BASE_MODEL_FRAGMENT = `
       provider
       apiProvider
       isActive
-      supportsImageIn
-      supportsTextIn
-      supportsEmbeddingsIn
-      supportsImageOut
-      supportsTextOut
-      supportsEmbeddingsOut
+      type
+      imageInput
     }
 `;
 
@@ -31,6 +27,8 @@ export const FULL_USER_FRAGMENT = `
       createdAt
       defaultModelId
       defaultSystemPrompt
+      documentsEmbeddingsModelId
+      documentSummarizationModelId
       googleId
       githubId
       avatarUrl
@@ -63,6 +61,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       modelId
       modelName
       user {
+        id
         lastName
         firstName
         avatarUrl
@@ -344,6 +343,35 @@ export const GET_ALL_IMAGES = gql`
   }
 `;
 
+export const GET_DOCUMENTS = gql`
+  query GetDocuments {
+    documents {
+      id
+      fileName
+      fileSize
+      status
+      summary
+      statusInfo
+      statusProgress
+      createdAt
+      downloadUrl
+    }
+  }
+`;
+
+export const DOCUMENT_STATUS_SUBSCRIPTION = gql`
+  subscription DocumentStatus($documentIds: [String!]!) {
+    documentsStatus(documentIds: $documentIds) {
+      documentId
+      status
+      statusProgress
+      statusInfo
+      summary
+    }
+  }
+`;
+
+// TODO: move to separate file
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;
@@ -492,6 +520,51 @@ export interface CallOthersResponse {
     message?: Message;
     error?: string;
   };
+}
+
+export enum DocumentStatus {
+  UPLOAD = "upload",
+  STORAGE_UPLOAD = "storage_upload",
+  PARSING = "parsing",
+  CHUNKING = "chunking",
+  EMBEDDING = "embedding",
+  SUMMARIZING = "summarizing",
+  READY = "ready",
+  ERROR = "error",
+  DELETING = "deleting",
+}
+
+export interface Document {
+  id: string;
+  fileName?: string;
+  mime?: string;
+  fileSize?: number;
+  sha256checksum?: string;
+  s3key?: string;
+  owner?: User;
+  ownerId?: string;
+  embeddingsModelId?: string;
+  documentSummarizationModelId?: string;
+  summary?: string;
+  pagesCount?: number;
+  status?: DocumentStatus;
+  statusInfo?: string;
+  statusProgress?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  downloadUrl?: string;
+}
+
+export interface DocumentStatusMessage {
+  documentId: string;
+  status?: DocumentStatus;
+  statusInfo?: string;
+  statusProgress?: number;
+  summary?: string;
+}
+
+export interface UploadDocumentsResponse {
+  documents?: Document[];
 }
 
 // Create the API endpoints

@@ -58,17 +58,34 @@ export interface UsageCostInfo {
   costs: ServiceCostInfo[];
 }
 
+export enum ModelType {
+  CHAT = "chat",
+  EMBEDDING = "embedding",
+  IMAGE_GENERATION = "image_generation",
+  AUDIO_GENERATION = "audio_generation",
+  OTHER = "other",
+}
+
+export enum DocumentStatus {
+  UPLOAD = "upload",
+  STORAGE_UPLOAD = "storage_upload",
+  PARSING = "parsing",
+  CHUNKING = "chunking",
+  EMBEDDING = "embedding",
+  SUMMARIZING = "summarizing",
+  READY = "ready",
+  ERROR = "error",
+  DELETING = "deleting",
+}
+
 export interface AIModelInfo {
   apiProvider: ApiProvider;
   provider: string;
   name: string;
-  description: string;
-  supportsStreaming: boolean;
-  supportsTextIn: boolean;
-  supportsTextOut: boolean;
-  supportsImageIn: boolean;
-  supportsImageOut: boolean;
-  supportsEmbeddingsIn: boolean;
+  description?: string;
+  type: ModelType;
+  streaming?: boolean;
+  imageInput?: boolean;
 }
 
 export interface ModelMessageContent {
@@ -115,6 +132,11 @@ export class ModelResponse {
   files?: string[];
 }
 
+export class EmbeddingsResponse {
+  metadata?: ModelResponseMetadata;
+  embedding: number[];
+}
+
 export interface StreamCallbacks {
   onStart?: () => void;
   onToken?: (token: string) => void;
@@ -135,6 +157,11 @@ export type InvokeModelParamsRequest = {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+};
+
+export type GetEmbeddingsRequest = {
+  modelId: string;
+  input: string;
 };
 
 export interface BedrockModelServiceProvider<T = unknown> {

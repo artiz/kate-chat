@@ -8,6 +8,9 @@ import {
   AIModelInfo,
   UsageCostInfo,
   ModelMessage,
+  ModelType,
+  EmbeddingsResponse,
+  GetEmbeddingsRequest,
 } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
@@ -262,12 +265,8 @@ export class YandexService extends BaseProviderService {
           provider: BaseProviderService.getApiProviderName(ApiProvider.YANDEX_FM),
           name: model.name,
           description: model.description || "",
-          supportsStreaming: true,
-          supportsTextIn: true,
-          supportsTextOut: true,
-          supportsImageIn: false, // Yandex models do not support image input
-          supportsImageOut: false, // Yandex models do not support image output
-          supportsEmbeddingsIn: false, // Yandex does not support embeddings
+          type: ModelType.CHAT,
+          streaming: true,
         };
 
         return map;
@@ -284,5 +283,9 @@ export class YandexService extends BaseProviderService {
       error: "Cost information is not available from Yandex API",
       costs: [],
     };
+  }
+
+  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+    throw new Error("Embeddings loading is not implemented.");
   }
 }

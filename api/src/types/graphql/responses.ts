@@ -1,9 +1,6 @@
 import { ObjectType, Field, ID } from "type-graphql";
-import { User } from "../../entities/User";
-import { Chat } from "../../entities/Chat";
-import { Message } from "../../entities/Message";
-import { Model } from "../../entities/Model";
-import { MessageRole, MessageType } from "../../types/ai.types";
+import { User, Chat, Message, Model, Document } from "../../entities";
+import { DocumentStatus, MessageRole, MessageType } from "../../types/ai.types";
 
 @ObjectType()
 export class UserResponse {
@@ -288,4 +285,31 @@ export class AdminUsersResponse {
 
   @Field()
   hasMore: boolean;
+}
+
+@ObjectType()
+export class UploadDocumentsResponse {
+  @Field(() => [Document], { nullable: true })
+  documents?: Document[];
+}
+
+@ObjectType()
+export class DocumentStatusMessage {
+  @Field(() => ID)
+  documentId: string;
+
+  @Field()
+  status: DocumentStatus;
+
+  @Field({ nullable: true })
+  statusInfo?: string;
+
+  @Field({ nullable: true })
+  statusProgress?: number;
+
+  @Field({ nullable: true })
+  summary?: string;
+
+  @Field({ nullable: true })
+  sync?: boolean;
 }

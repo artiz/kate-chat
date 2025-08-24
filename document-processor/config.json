@@ -1,0 +1,16 @@
+{
+  "listeners": {
+    "*:8080": {
+      "pass": "applications/fastapi"
+    }
+  },
+  "applications": {
+    "fastapi": {
+      "type": "python 3.10",
+      "path": "/app/app",
+      "module": "app.main",
+      "callable": "app",
+      "protocol": "asgi"
+    }
+  }
+}

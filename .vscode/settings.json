@@ -6,5 +6,7 @@
   },
   "search.exclude": {
     "**/.next": true
-  }
+  },
+  "python-envs.pythonProjects": [],
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }

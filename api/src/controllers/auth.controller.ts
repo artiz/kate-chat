@@ -8,7 +8,7 @@ import { createLogger } from "@/utils/logger";
 const logger = createLogger(__filename);
 
 // Create a router for auth routes
-const router = Router();
+export const router = Router();
 
 // Helper function to handle authentication and token generation
 const handleAuthResponse = (req: Request, res: Response) => {
@@ -48,5 +48,3 @@ router.get(
   passport.authenticate("github", { failureRedirect: "/login", session: false }),
   handleAuthResponse
 );
-
-export default router;

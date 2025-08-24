@@ -3,8 +3,11 @@ import { Repository } from "typeorm";
 
 import { getRepository } from "@/config/database";
 import { User } from "@/entities";
-import { ConnectionParams, GraphQLContext } from "@/middleware/auth.middleware";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 import { TokenPayload } from "@/utils/jwt";
+import { GraphQLContext } from ".";
+import { MessagesService } from "@/services/messages.service";
+import { SQSService } from "@/services/sqs.service";
 
 export class BaseResolver {
   protected userRepository: Repository<User>;
@@ -78,5 +81,29 @@ export class BaseResolver {
       params.YANDEX_FM_API_FOLDER = user.settings.yandexFmApiFolderId || params.YANDEX_FM_API_FOLDER;
     }
     return params;
+  }
+
+  protected getMessagesService(context: GraphQLContext): MessagesService {
+    const messagesService = context.messagesService;
+    if (!messagesService) {
+      throw new GraphQLError("MessagesService not available in context", {
+        extensions: {
+          code: 500,
+        },
+      });
+    }
+    return messagesService;
+  }
+
+  protected getSqsService(context: GraphQLContext): SQSService {
+    const sqsService = context.sqsService;
+    if (!sqsService) {
+      throw new GraphQLError("SqsService not available in context", {
+        extensions: {
+          code: 500,
+        },
+      });
+    }
+    return sqsService;
   }
 }

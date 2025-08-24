@@ -12,15 +12,18 @@ import { buildSchema } from "type-graphql";
 import session from "express-session";
 import passport from "passport";
 import { configurePassport } from "./config/passport";
-import authRoutes from "./controllers/auth.controller";
-import healthRoutes from "./controllers/health.controller";
-import filesRoutes from "./controllers/files.controller";
+import { router as authRoutes } from "./controllers/auth.controller";
+import { router as healthRoutes } from "./controllers/health.controller";
+import { router as filesRoutes } from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
-import { ChatResolver } from "./resolvers/chat.resolver";
-import { MessageResolver, NEW_MESSAGE } from "./resolvers/message.resolver";
-import { UserResolver } from "./resolvers/user.resolver";
-import { ModelResolver } from "./resolvers/model.resolver";
-import { AdminResolver } from "./resolvers/admin.resolver";
+import {
+  ChatResolver,
+  MessageResolver,
+  UserResolver,
+  ModelResolver,
+  AdminResolver,
+  DocumentResolver,
+} from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 import { execute, GraphQLError, subscribe } from "graphql";
 import { createHandler } from "graphql-http/lib/use/express";
@@ -29,13 +32,19 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
+import { SQSService } from "@/services/sqs.service";
 import { HttpError } from "./types/exceptions";
+import { SubscriptionsService } from "./services/subscriptions.service";
+import { servicesMiddleware } from "./middleware/services.middleware";
 
 // Load environment variables
 config();
 
 const logger = createLogger("server");
 
+let subscriptionsService: SubscriptionsService | undefined;
+let sqsService: SQSService | undefined;
+let messagesService: MessagesService | undefined;
 async function bootstrap() {
   // Initialize database connection
   const dbConnected = await initializeDatabase();
@@ -43,20 +52,23 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const messagesService = new MessagesService();
+  subscriptionsService = new SubscriptionsService();
+  messagesService = new MessagesService(subscriptionsService);
+  sqsService = new SQSService(subscriptionsService);
+  await sqsService.startup();
 
   const schemaPubSub = {
     publish: (routingKey: string, ...args: unknown[]) => {
-      messagesService.publishGraphQL(routingKey, args?.length === 1 ? args[0] : args);
+      messagesService!.publishGraphQL(routingKey, args?.length === 1 ? args[0] : args);
     },
     subscribe: (routingKey: string, dynamicId?: unknown): AsyncIterable<unknown> => {
-      return messagesService.subscribeGraphQL(routingKey, dynamicId);
+      return messagesService!.subscribeGraphQL(routingKey, dynamicId);
     },
   };
 
   // Build GraphQL schema
   const schema = await buildSchema({
-    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver],
+    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver, DocumentResolver],
     validate: false,
     emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
     pubSub: schemaPubSub,
@@ -94,12 +106,12 @@ async function bootstrap() {
 
   // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
+  app.use(servicesMiddleware(subscriptionsService, sqsService));
 
   // Set up routes
   app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
   app.use("/files", filesRoutes);
-  app.use("/api/files", filesRoutes);
 
   /**
    * Development-time endpoint for esbuild hot reloading to test Docker container locally.
@@ -182,11 +194,11 @@ async function bootstrap() {
       onSubscribe: (ctx, msg) => {
         const chatId = msg.payload?.variables?.chatId;
         if (chatId) {
-          messagesService.connectClient(ctx.extra.socket, ctx.extra.request, chatId as string);
+          messagesService!.connectClient(ctx.extra.socket, ctx.extra.request, chatId as string);
         }
       },
-      onClose: ctx => {
-        messagesService.disconnectClient(ctx.extra.socket);
+      onClose: async ctx => {
+        messagesService!.disconnectClient(ctx.extra.socket);
       },
       onError: (ctx, error) => {
         logger.error({ ctx, error }, "GraphQL subscription error");
@@ -205,6 +217,9 @@ async function bootstrap() {
         return {
           tokenPayload: req.raw.tokenPayload,
           connectionParams: req.raw.connectionParams || {},
+          subscriptionsService,
+          sqsService,
+          messagesService,
         };
       },
       formatError: (error: GraphQLError | Error) => {
@@ -235,11 +250,32 @@ async function bootstrap() {
     logger.info(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
   });
 
-  httpServer.on("close", () => wsServerCleanup.dispose());
+  httpServer.on("close", async () => {
+    logger.info("Shutting down server...");
+    wsServerCleanup.dispose();
+  });
 }
 
+process.on("SIGINT", async () => {
+  console.log("Gracefully shutting down from SIGINT (Ctrl-C)...");
+  if (sqsService) {
+    await sqsService.shutdown();
+  }
+  if (subscriptionsService) {
+    await subscriptionsService.shutdown();
+  }
+
+  return process.exit(0);
+});
+
 // Start the application
-bootstrap().catch(error => {
+bootstrap().catch(async error => {
   logger.error(error, "Error starting server");
+  if (sqsService) {
+    await sqsService.shutdown();
+  }
+  if (subscriptionsService) {
+    await subscriptionsService.shutdown();
+  }
   process.exit(1);
 });
