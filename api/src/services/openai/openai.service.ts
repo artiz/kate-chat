@@ -22,6 +22,7 @@ import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Agent } from "undici";
 import { EmbeddingCreateParams } from "openai/resources/embeddings";
+import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
 
 const logger = createLogger(__filename);
 
@@ -480,6 +481,7 @@ export class OpenAIService extends BaseProviderService {
       model: modelId,
       input,
       encoding_format: "float",
+      dimensions: EMBEDDINGS_DIMENSIONS,
     };
 
     try {

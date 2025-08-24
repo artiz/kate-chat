@@ -54,6 +54,7 @@
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.0",
+    "pgvector": "^0.2.1",
     "pino": "^9.7.0",
     "pino-pretty": "^13.0.0",
     "prettier": "^3.2.5",

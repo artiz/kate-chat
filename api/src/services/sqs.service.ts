@@ -136,14 +136,13 @@ export class SQSService {
       if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
         logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
         clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 1000);
+        this.pollInterval = setTimeout(poll, 3000);
         return;
       }
-
       if (!response.QueueUrls?.includes(this.outputQueueUrl)) {
         logger.info(`SQS processing queue ${this.outputQueueUrl} does not exist or is not accessible`);
         clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 1000);
+        this.pollInterval = setTimeout(poll, 3000);
         return;
       }
 
@@ -151,7 +150,7 @@ export class SQSService {
         const command = new ReceiveMessageCommand({
           QueueUrl: this.indexQueueUrl,
           MaxNumberOfMessages: 1,
-          WaitTimeSeconds: 1, // should be same as in setTimeout below
+          WaitTimeSeconds: 15,
           VisibilityTimeout: 90,
           AttributeNames: ["All"],
         });
@@ -185,7 +184,7 @@ export class SQSService {
       // Schedule next poll
       if (this.polling) {
         clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 1000);
+        this.pollInterval = setTimeout(poll, 100);
       }
     };
 

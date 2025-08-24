@@ -9,10 +9,10 @@ tsconfig.tsbuildinfo
 **/.claude/settings.local.json
 docs/contact.json
 
-
 # data
 api/*.sqlite
 api*/*.sqlite
+api/*.sqlite.bk
 db-migrations/*.js
 
 # Rust
