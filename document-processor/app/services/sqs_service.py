@@ -66,7 +66,7 @@ class SQSService:
                     self.sqs_client.receive_message,
                     QueueUrl=self.queue_url,
                     MaxNumberOfMessages=1,
-                    WaitTimeSeconds=2,  # Shorter polling for better shutdown responsiveness
+                    WaitTimeSeconds=5,  # Shorter polling for better shutdown responsiveness
                     VisibilityTimeout=120  # seconds to process
                 )
                 messages = response.get('Messages', [])

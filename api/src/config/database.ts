@@ -2,6 +2,7 @@ import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Reposit
 import { Chat, Message, Model, User, Document, ChatDocument } from "@/entities";
 import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
+import pgvector from "pgvector";
 
 const logging = !!process.env.DB_LOGGING;
 
@@ -90,3 +91,19 @@ export const formatDateCeil =
         return d;
       }
     : (date: Date) => date;
+
+export function EmbeddingTransformer() {
+  if (process.env.DB_TYPE === "postgres") {
+    return {
+      to: (value: number[]) => pgvector.toSql(value),
+      from: (value: string | null | undefined) =>
+        typeof value === "string" ? (pgvector.fromSql(value) as number[]) : value,
+    };
+  }
+
+  return {
+    to: (value: number[]) => value?.join(","),
+    from: (value: string | null | undefined) =>
+      typeof value === "string" ? (value.split(",").map(Number) as number[]) : undefined,
+  };
+}

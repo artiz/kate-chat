@@ -13,6 +13,7 @@ docs/contact.json
 # data
 api/*.sqlite
 api*/*.sqlite
+api/*.sqlite.bk
 
 # Rust
 api-rust/target/
