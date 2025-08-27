@@ -18,6 +18,7 @@ RUN npm ci
 
 COPY ./client ./client
 COPY ./api ./api
+COPY ./db-migrations ./db-migrations
 
 ENV APP_API_URL=$APP_API_URL
 ENV APP_WS_URL=$APP_WS_URL
@@ -27,6 +28,7 @@ ENV NODE_ENV=production
 
 RUN npm run build:client
 RUN npm run build:api
+RUN npm run build:migrations
 
 # production stage
 FROM node:22-alpine
@@ -35,6 +37,7 @@ FROM node:22-alpine
 WORKDIR /app
 COPY --from=build /app/node_modules/ ./node_modules
 COPY --from=build /app/api/dist ./
+COPY --from=build /app/db-migrations ./db-migrations
 
 # copy built frontend client files
 COPY --from=build /app/client/dist ./client

@@ -10,7 +10,7 @@ import {
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { Message } from "./Message";
-import { JSONTransformer } from "@/utils/db";
+import { JSONTransformer } from "../utils/db";
 
 @ObjectType()
 @Entity("chats")
@@ -43,6 +43,7 @@ export class Chat {
     nullable: true,
     select: false,
     name: "lastBotMessage",
+    insert: false,
   })
   lastBotMessage?: string;
 
@@ -51,6 +52,7 @@ export class Chat {
     nullable: true,
     select: false,
     name: "lastBotMessageId",
+    insert: false,
   })
   lastBotMessageId?: string;
 
@@ -59,6 +61,7 @@ export class Chat {
     nullable: true,
     select: false,
     name: "messagesCount",
+    insert: false,
   })
   messagesCount?: number;
 

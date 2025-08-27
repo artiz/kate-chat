@@ -70,6 +70,10 @@ resource "aws_ecs_task_definition" "app" {
           value = aws_db_instance.main.username
         },
         {
+          name  = "DB_MIGRATIONS_PATH"
+          value = "./db-migrations/*.js"
+        },
+        {
           name  = "REDIS_URL"
           value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.port}"
         },

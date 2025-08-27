@@ -13,6 +13,7 @@ docs/contact.json
 # data
 api/*.sqlite
 api*/*.sqlite
+db-migrations/*.js
 
 # Rust
 api-rust/target/
@@ -20,3 +21,8 @@ api-rust/target/
 # terraform
 infrastructure/terraform/.terraform/
 infrastructure/terraform/.terraform.lock.hcl
+
+# Python
+.venv
+__pycache__/
+*.py[cod]

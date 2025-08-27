@@ -8,7 +8,9 @@ import {
   QueryFailedError,
   QueryRunner,
   Repository,
+  Migration,
 } from "typeorm";
+import path from "path";
 import { Chat } from "../entities/Chat";
 import { Message } from "../entities/Message";
 import { Model } from "../entities/Model";
@@ -17,6 +19,7 @@ import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
 
 const logging = !!process.env.DB_LOGGING;
+const DB_MIGRATIONS_PATH = process.env.DB_MIGRATIONS_PATH || path.join(__dirname, "../../../db-migrations/*.ts");
 
 let dbOptions: DataSourceOptions = {
   type: "sqlite",
@@ -61,11 +64,13 @@ if (process.env.DB_TYPE === "mysql") {
 // Create TypeORM data source
 export const AppDataSource = new DataSource({
   ...dbOptions,
-  synchronize: true,
+  synchronize: false,
   migrationsRun: true,
+  migrationsTableName: "migrations",
   logger: logging ? new TypeORMPinoLogger() : undefined,
   logging,
   entities: [User, Chat, Message, Model],
+  migrations: [DB_MIGRATIONS_PATH],
 });
 
 // Helper function to get a repository from the data source
@@ -77,11 +82,21 @@ export function getRepository<T extends ObjectLiteral>(entityClass: new () => T)
 export async function initializeDatabase() {
   try {
     await AppDataSource.initialize();
-    logger.info({ logging }, "Database connection established");
+
+    let migrations = "";
+    try {
+      const migrationsData = (await AppDataSource.query("SELECT * FROM migrations")) as Migration[];
+      migrations = migrationsData.map(m => m.name).join(", ");
+    } catch (err) {
+      logger.warn("Migrations table does not exist yet. Skipping migrations list.");
+    }
+    logger.info({ logging, migrations, DB_MIGRATIONS_PATH }, "Database connection established");
+
     return true;
   } catch (error) {
     // retry in case of parallel run
     if (error instanceof QueryFailedError) {
+      logger.error(error, "Error initializing database connection, retrying in 3s...");
       await new Promise(resolve => setTimeout(resolve, 3000));
       return initializeDatabase();
     }

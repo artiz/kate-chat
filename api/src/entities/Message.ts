@@ -10,8 +10,8 @@ import {
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
-import { MessageRole, ModelMessageContent, ModelResponse, ModelResponseMetadata } from "@/types/ai.types";
-import { JSONTransformer } from "@/utils/db";
+import { MessageRole, ModelMessageContent, ModelResponse, ModelResponseMetadata } from "../types/ai.types";
+import { JSONTransformer } from "../utils/db";
 
 @ObjectType()
 @Entity("messages")

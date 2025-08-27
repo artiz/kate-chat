@@ -12,6 +12,7 @@
     "build": "cd client && npm run build && cd ../api && npm run build",
     "build:client": "cd client && npm run build",
     "build:api": "cd api && npm run build",
+    "build:migrations": "npx tsc  -p ./db-migrations/tsconfig.json",
     "test": "cd api && npm run test && cd ../client && npm run test",
     "format": "cd client && npm run format && cd ../api && npm run format"
   },
