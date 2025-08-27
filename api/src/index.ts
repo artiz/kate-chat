@@ -9,8 +9,8 @@ import fs from "fs";
 import cors from "cors";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
-import session from "express-session";
 import passport from "passport";
+import session from "cookie-session";
 import { configurePassport } from "./config/passport";
 import authRoutes from "./controllers/auth.controller";
 import healthRoutes from "./controllers/health.controller";
@@ -34,6 +34,7 @@ import { HttpError } from "./types/exceptions";
 // Load environment variables
 config();
 
+const isProd = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
 const logger = createLogger("server");
 
 async function bootstrap() {
@@ -81,9 +82,8 @@ async function bootstrap() {
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "katechat-secret",
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: process.env.NODE_ENV === "production" },
+      httpOnly: isProd,
+      name: "user-session",
     })
   );
 

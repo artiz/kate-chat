@@ -228,6 +228,13 @@ cargo run
 APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
 ```
 
+### DB Migrations
+
+Create initial migration (done already)
+```
+cd api
+npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/init  
+```
 
 ### Production Build
 
@@ -242,10 +249,12 @@ npm run build
 docker build -t katechat-api ./ -f api/Dockerfile  
 docker run --env-file=./api/.env  -p4000:4000 katechat-api 
 ```
+
 ```
 docker build -t katechat-client --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f client/Dockerfile  
 docker run -p3000:80 katechat-client
 ```
+
 
 All-in-one service
 ```
@@ -258,6 +267,7 @@ docker run -it --rm --pid=host --env-file=./api/.env \
  --env S3_ENDPOINT="http://host.docker.internal:4566" \
  --env CALLBACK_URL_BASE="http://localhost" \
  --env FRONTEND_URL="http://localhost" \
+ --env DB_MIGRATIONS_PATH="./db-migrations/*.js" \
  -p80:80 katechat-app
 ```
 
