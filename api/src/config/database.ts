@@ -82,10 +82,10 @@ export function getRepository<T extends ObjectLiteral>(entityClass: new () => T)
 export async function initializeDatabase() {
   try {
     await AppDataSource.initialize();
-    let migrationsData: Migration[] = [];
+
     let migrations = "";
     try {
-      migrationsData = (await AppDataSource.query("SELECT * FROM migrations")) as Migration[];
+      const migrationsData = (await AppDataSource.query("SELECT * FROM migrations")) as Migration[];
       migrations = migrationsData.map(m => m.name).join(", ");
     } catch (err) {
       logger.warn("Migrations table does not exist yet. Skipping migrations list.");

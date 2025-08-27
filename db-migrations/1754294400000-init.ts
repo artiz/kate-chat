@@ -44,23 +44,6 @@ export class Init_1754294400000 implements MigrationInterface {
             "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
             CONSTRAINT "FK_model_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`);
 
-    await queryRunner.query(`CREATE TABLE IF NOT EXISTS "messages" (
-            "id" varchar PRIMARY KEY NOT NULL,
-            "role" varchar CHECK( "role" IN ('user','assistant','error','system') ) NOT NULL DEFAULT ('user'),
-            "content" varchar NOT NULL,
-            "jsonContent" json,
-            "metadata" json,
-            "modelId" varchar NOT NULL,
-            "modelName" varchar,
-            "chatId" varchar,
-            "userId" varchar,
-            "linkedToMessageId" varchar,
-            "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
-            "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
-            CONSTRAINT "FK_messages_chat" FOREIGN KEY ("chatId") REFERENCES "chats" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
-            CONSTRAINT "FK_message_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
-            CONSTRAINT "FK_linked_message" FOREIGN KEY ("linkedToMessageId") REFERENCES "messages" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`);
-
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "chats" (
             "id" varchar PRIMARY KEY NOT NULL,
             "title" varchar NOT NULL,
@@ -79,6 +62,22 @@ export class Init_1754294400000 implements MigrationInterface {
             "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
             "userId" varchar,
             CONSTRAINT "FK_chat_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`);
+    await queryRunner.query(`CREATE TABLE IF NOT EXISTS "messages" (
+            "id" varchar PRIMARY KEY NOT NULL,
+            "role" varchar CHECK( "role" IN ('user','assistant','error','system') ) NOT NULL DEFAULT ('user'),
+            "content" varchar NOT NULL,
+            "jsonContent" json,
+            "metadata" json,
+            "modelId" varchar NOT NULL,
+            "modelName" varchar,
+            "chatId" varchar,
+            "userId" varchar,
+            "linkedToMessageId" varchar,
+            "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
+            "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
+            CONSTRAINT "FK_messages_chat" FOREIGN KEY ("chatId") REFERENCES "chats" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
+            CONSTRAINT "FK_message_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
+            CONSTRAINT "FK_linked_message" FOREIGN KEY ("linkedToMessageId") REFERENCES "messages" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
