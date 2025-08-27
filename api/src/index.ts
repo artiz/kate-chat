@@ -82,7 +82,8 @@ async function bootstrap() {
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "katechat-secret",
-      httpOnly: isProd,
+      httpOnly: true,
+      secure: isProd,
       name: "user-session",
     })
   );
