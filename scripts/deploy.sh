@@ -154,6 +154,7 @@ show_usage() {
     echo "  setup-backend     Setup Terraform backend S3 bucket"
     echo "  create-ecr        Create ECR repositories"
     echo "  plan              Run Terraform plan"
+    echo "  format            Format Terraform files"
     echo "  deploy            Deploy infrastructure"
     echo "  destroy           Destroy infrastructure"
     echo "  info              Display deployment information"
@@ -185,7 +186,7 @@ while [[ $# -gt 0 ]]; do
             PROJECT_NAME="$2"
             shift 2
             ;;
-        setup-backend|create-ecr|plan|deploy|destroy|info|help)
+        setup-backend|create-ecr|plan|format|deploy|destroy|info|help)
             COMMAND="$1"
             shift
             ;;
@@ -225,6 +226,13 @@ case "${COMMAND:-help}" in
             -var="environment=${ENVIRONMENT}" \
             -var="aws_region=${AWS_REGION}" \
             -var="project_name=${PROJECT_NAME}"
+        cd ..
+        ;;
+    format)
+        check_prerequisites
+        cd infrastructure/terraform
+        terraform validate
+        terraform fmt -check
         cd ..
         ;;
     deploy)
