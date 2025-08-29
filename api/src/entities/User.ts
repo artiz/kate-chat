@@ -3,9 +3,9 @@ import { AuthProvider, UserRole } from "../types/ai.types";
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
 import { Document } from "./Document";
-import { JSONTransformer } from "@/utils/db";
-import { TokenPayload } from "@/utils/jwt";
-import { ConnectionParams } from "@/middleware/auth.middleware";
+import { JSONTransformer } from "../utils/db";
+import { TokenPayload } from "../utils/jwt";
+import { ConnectionParams } from "../middleware/auth.middleware";
 
 @ObjectType("UserSettings")
 @InputType("UserSettingsInput")

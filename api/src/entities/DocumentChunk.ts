@@ -1,6 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, Index, JoinColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
-import { EmbeddingTransformer } from "@/config/database";
+import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
 
 @ObjectType()
@@ -33,6 +33,6 @@ export class DocumentChunk {
   content: string;
 
   @Field()
-  @Column({ type: "string", nullable: true, transformer: EmbeddingTransformer() })
+  @Column({ type: "text", nullable: true, transformer: EmbeddingTransformer() })
   embedding: string;
 }

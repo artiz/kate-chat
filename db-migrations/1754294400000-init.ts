@@ -1,3 +1,4 @@
+import { BOOLEAN_FALSE, BOOLEAN_TRUE, TIMESTAMP, ID, ID_REF } from "./common";
 import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class Init_1754294400000 implements MigrationInterface {
@@ -5,7 +6,7 @@ export class Init_1754294400000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "users" (
-            "id" varchar PRIMARY KEY NOT NULL,
+            ${ID},
             "email" varchar NOT NULL,
             "password" varchar,
             "firstName" varchar NOT NULL,
@@ -17,35 +18,42 @@ export class Init_1754294400000 implements MigrationInterface {
             "googleId" varchar,
             "githubId" varchar,
             "authProvider" varchar,
-            "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
-            "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
+            "createdAt" ${TIMESTAMP},
+            "updatedAt" ${TIMESTAMP},
             "modelsCount" integer,
             "settings" json,
             CONSTRAINT "UQ_users_email" UNIQUE ("email"))`);
 
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_users_firstName" ON "users" ("firstName") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_users_lastName" ON "users" ("lastName") `,
+    );
+
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "models" (
-            "id" varchar PRIMARY KEY NOT NULL,
+            ${ID},
             "name" varchar NOT NULL,
             "modelId" varchar NOT NULL,
             "description" varchar NOT NULL,
-            "userId" varchar,
+            "userId" ${ID_REF},
             "provider" varchar,
             "apiProvider" varchar NOT NULL DEFAULT ('aws_bedrock'),
-            "supportsStreaming" boolean NOT NULL DEFAULT (0),
-            "supportsTextIn" boolean NOT NULL DEFAULT (1),
-            "supportsTextOut" boolean NOT NULL DEFAULT (1),
-            "supportsEmbeddingsIn" boolean NOT NULL DEFAULT (0),
-            "supportsImageIn" boolean NOT NULL DEFAULT (0),
-            "supportsImageOut" boolean NOT NULL DEFAULT (0),
-            "supportsEmbeddingsOut" boolean NOT NULL DEFAULT (0),
-            "isActive" boolean NOT NULL DEFAULT (1),
-            "isCustom" boolean NOT NULL DEFAULT (0),
-            "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
-            "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
+            "supportsStreaming" boolean NOT NULL DEFAULT ${BOOLEAN_TRUE},
+            "supportsTextIn" boolean NOT NULL DEFAULT ${BOOLEAN_TRUE},
+            "supportsTextOut" boolean NOT NULL DEFAULT ${BOOLEAN_TRUE},
+            "supportsEmbeddingsIn" boolean NOT NULL DEFAULT ${BOOLEAN_FALSE},
+            "supportsImageIn" boolean NOT NULL DEFAULT ${BOOLEAN_FALSE},
+            "supportsImageOut" boolean NOT NULL DEFAULT ${BOOLEAN_FALSE},
+            "supportsEmbeddingsOut" boolean NOT NULL DEFAULT ${BOOLEAN_FALSE},
+            "isActive" boolean NOT NULL DEFAULT ${BOOLEAN_TRUE},
+            "isCustom" boolean NOT NULL DEFAULT ${BOOLEAN_FALSE},
+            "createdAt" ${TIMESTAMP},
+            "updatedAt" ${TIMESTAMP},
             CONSTRAINT "FK_model_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "chats" (
-            "id" varchar PRIMARY KEY NOT NULL,
+            ${ID},
             "title" varchar NOT NULL,
             "description" varchar NOT NULL DEFAULT (''),
             "files" json,
@@ -57,24 +65,25 @@ export class Init_1754294400000 implements MigrationInterface {
             "maxTokens" integer,
             "topP" float,
             "imagesCount" integer,
-            "isPristine" boolean NOT NULL DEFAULT (0),
-            "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
-            "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
-            "userId" varchar,
+            "isPristine" boolean NOT NULL DEFAULT ${BOOLEAN_FALSE},
+            "createdAt" ${TIMESTAMP},
+            "updatedAt" ${TIMESTAMP},
+            "userId" ${ID_REF},
             CONSTRAINT "FK_chat_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`);
+
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "messages" (
-            "id" varchar PRIMARY KEY NOT NULL,
+            ${ID},
             "role" varchar CHECK( "role" IN ('user','assistant','error','system') ) NOT NULL DEFAULT ('user'),
             "content" varchar NOT NULL,
             "jsonContent" json,
             "metadata" json,
             "modelId" varchar NOT NULL,
             "modelName" varchar,
-            "chatId" varchar,
-            "userId" varchar,
-            "linkedToMessageId" varchar,
-            "createdAt" datetime NOT NULL DEFAULT (datetime('now')),
-            "updatedAt" datetime NOT NULL DEFAULT (datetime('now')),
+            "chatId" ${ID_REF},
+            "userId" ${ID_REF},
+            "linkedToMessageId" ${ID_REF},
+            "createdAt" ${TIMESTAMP},
+            "updatedAt" ${TIMESTAMP},
             CONSTRAINT "FK_messages_chat" FOREIGN KEY ("chatId") REFERENCES "chats" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
             CONSTRAINT "FK_message_user" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE NO ACTION,
             CONSTRAINT "FK_linked_message" FOREIGN KEY ("linkedToMessageId") REFERENCES "messages" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`);

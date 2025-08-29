@@ -120,7 +120,6 @@ jobs:
     name: Build and Push Images
     runs-on: ubuntu-latest
     needs: [test, lint, changes]
-    # TODO: Remove if when feature branch cleanup be implemented
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true'
 
     outputs:

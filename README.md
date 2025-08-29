@@ -233,6 +233,13 @@ cd api
 npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/init  
 ```
 
+Create new migration
+```
+cd api
+npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/<migration name>  
+```
+
+
 ### Production Build
 
 ```
@@ -264,7 +271,7 @@ docker run -it --rm --pid=host --env-file=./api/.env \
  --env S3_ENDPOINT="http://host.docker.internal:4566" \
  --env CALLBACK_URL_BASE="http://localhost" \
  --env FRONTEND_URL="http://localhost" \
- --env DB_MIGRATIONS_PATH="./db-migrations/*.js" \
+ --env DB_MIGRATIONS_PATH="./db-migrations/*-*.js" \
  -p80:80 katechat-app
 ```
 

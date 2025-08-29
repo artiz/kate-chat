@@ -481,7 +481,7 @@ export class OpenAIService extends BaseProviderService {
       model: modelId,
       input,
       encoding_format: "float",
-      dimensions: EMBEDDINGS_DIMENSIONS,
+      dimensions: modelId == "text-embedding-3-large" ? EMBEDDINGS_DIMENSIONS : undefined,
     };
 
     try {

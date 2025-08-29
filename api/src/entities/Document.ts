@@ -10,7 +10,7 @@ import {
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
-import { DocumentStatus } from "@/types/ai.types";
+import { DocumentStatus } from "../types/ai.types";
 import { ChatDocument } from "./ChatDocument";
 
 @ObjectType()

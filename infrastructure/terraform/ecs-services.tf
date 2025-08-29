@@ -71,7 +71,7 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "DB_MIGRATIONS_PATH"
-          value = "./db-migrations/*.js"
+          value = "./db-migrations/*-*.js"
         },
         {
           name  = "REDIS_URL"
