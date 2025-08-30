@@ -69,9 +69,15 @@ export class SQSService {
   /**
    * Send an arbitrary JSON string message to the SQS queue
    */
-  async sendMessage(messageBody: string, delaySeconds: number = 0): Promise<string | undefined> {
-    if (!this.outputQueueUrl) {
-      logger.warn("SQS_DOCUMENTS_QUEUE not configured, message not sent");
+  async sendMessage(
+    messageBody: string,
+    delaySeconds: number = 0,
+    indexQueue: boolean = false
+  ): Promise<string | undefined> {
+    const queueUrl = indexQueue ? this.indexQueueUrl : this.outputQueueUrl;
+
+    if (!queueUrl) {
+      logger.warn(`SQS queue ${queueUrl} not configured, message not sent`);
       return;
     }
     if (!this.sqs) {
@@ -80,7 +86,7 @@ export class SQSService {
 
     try {
       const command = new SendMessageCommand({
-        QueueUrl: this.outputQueueUrl,
+        QueueUrl: queueUrl,
         MessageBody: messageBody,
         DelaySeconds: delaySeconds || undefined,
       });
@@ -107,9 +113,13 @@ export class SQSService {
   /**
    * Send a JSON object as a message to the SQS queue
    */
-  async sendJsonMessage(message: any, delaySeconds: number = 0): Promise<string | undefined> {
+  async sendJsonMessage(
+    message: any,
+    delaySeconds: number = 0,
+    indexQueue: boolean = false
+  ): Promise<string | undefined> {
     const messageBody = JSON.stringify(message);
-    return this.sendMessage(messageBody, delaySeconds);
+    return this.sendMessage(messageBody, delaySeconds, indexQueue);
   }
 
   /**

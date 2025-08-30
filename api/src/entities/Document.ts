@@ -50,7 +50,7 @@ export class Document {
   owner: User;
 
   @Field()
-  @Column()
+  @Column({ foreignKeyConstraintName: "FK_documents_owner" })
   ownerId: string;
 
   @Field({ nullable: true })

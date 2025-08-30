@@ -2,7 +2,6 @@ import { gql } from "@apollo/client";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
-import { Chat, Message, MessageRole } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
 
 export const BASE_MODEL_FRAGMENT = `
@@ -257,6 +256,19 @@ export const TEST_MODEL_MUTATION = gql`
   }
 `;
 
+export const REINDEX_DOCUMENT_MUTATION = gql`
+  mutation ReindexDocument($id: ID!) {
+    reindexDocument(id: $id) {
+      id
+      status
+      fileName
+      summary
+      s3key
+      createdAt
+    }
+  }
+`;
+
 // Query to find a pristine chat
 export const FIND_PRISTINE_CHAT = gql`
   query FindPristineChat {
@@ -312,6 +324,13 @@ export const GET_CHAT_MESSAGES = gql`
         maxTokens
         topP
         imagesCount
+        chatDocuments {
+          document {
+            id
+            fileName
+            status
+          }
+        }
       }
     }
   }
@@ -355,6 +374,8 @@ export const GET_DOCUMENTS = gql`
       statusProgress
       createdAt
       downloadUrl
+      embeddingsModelId
+      summaryModelId
     }
   }
 `;
@@ -522,6 +543,61 @@ export interface CallOthersResponse {
   };
 }
 
+export enum MessageType {
+  MESSAGE = "message",
+  SYSTEM = "system",
+}
+
+export enum MessageRole {
+  USER = "user",
+  ASSISTANT = "assistant",
+  ERROR = "error",
+}
+
+export interface MessageMetadata {
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
+}
+
+export interface Message {
+  id: string;
+  chatId: string;
+  content: string;
+  html?: string[];
+  role: MessageRole;
+  modelId?: string;
+  modelName?: string;
+  user?: User;
+  createdAt: string;
+  streaming?: boolean;
+  linkedToMessageId?: string;
+  linkedMessages?: Message[];
+  metadata?: MessageMetadata;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  description: string;
+  updatedAt: string;
+  modelId?: string;
+  isPristine?: boolean;
+  isPinned?: boolean;
+  messagesCount: number;
+  lastBotMessage?: string;
+  lastBotMessageId?: string;
+  lastBotMessageHtml?: string[];
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  imagesCount?: number;
+  chatDocuments?: {
+    document: Document;
+  }[];
+}
+
 export enum DocumentStatus {
   UPLOAD = "upload",
   STORAGE_UPLOAD = "storage_upload",
@@ -544,7 +620,7 @@ export interface Document {
   owner?: User;
   ownerId?: string;
   embeddingsModelId?: string;
-  documentSummarizationModelId?: string;
+  summaryModelId?: string;
   summary?: string;
   pagesCount?: number;
   status?: DocumentStatus;

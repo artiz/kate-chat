@@ -389,12 +389,12 @@ class TextSplitter():
     def _split_report(self, file_content: Dict[str, any]) -> Dict[str, any]:
         """Split report into chunks, preserving markdown tables in content and optionally including serialized tables."""
         chunks = []
-        chunk_id = 0
         
         tables_by_page = {}
         
         for page in file_content['pages']:
             page_chunks = self._split_page(page)
+            chunk_id = 0
             for chunk in page_chunks:
                 chunk['id'] = chunk_id
                 chunk['type'] = 'content'

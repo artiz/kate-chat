@@ -13,6 +13,7 @@ from app.dependencies.common import get_redis
 from app.parser import PDFParser, JsonReportProcessor
 from app.text_splitter import TextSplitter, PageTextPreparation
 from docling.datamodel.base_models import DocumentStream
+from docling.datamodel.base_models import ConversionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ class DocumentProcessor:
             
             # Parse document
             conv_result = self.parser.convert_document(document_stream)
-            if conv_result.status.name != "SUCCESS":
+            if conv_result.status != ConversionStatus.SUCCESS:
                 raise RuntimeError(f"Document parsing failed with status: {conv_result.status}")
             
             # Update progress

@@ -1,18 +1,26 @@
 import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Repository, Migration } from "typeorm";
 import path from "path";
+import pgvector from "pgvector";
+import { load as sqliteVecLoad } from "sqlite-vec";
 import { Chat, Message, Model, User, Document, ChatDocument, DocumentChunk } from "../entities";
 import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
-import pgvector from "pgvector";
 
 const logging = !!process.env.DB_LOGGING;
-const DB_MIGRATIONS_PATH = process.env.DB_MIGRATIONS_PATH || path.join(__dirname, "../../../db-migrations/*-*.ts");
-const DB_TYPE = process.env.DB_TYPE === "sqlite" || !process.env.DB_TYPE ? "better-sqlite3" : process.env.DB_TYPE;
+
+export const DB_MIGRATIONS_PATH =
+  process.env.DB_MIGRATIONS_PATH || path.join(__dirname, "../../../db-migrations/*-*.ts");
+export const DB_TYPE =
+  process.env.DB_TYPE === "sqlite" || process.env.DB_TYPE === "better-sqlite3" || !process.env.DB_TYPE
+    ? "sqlite"
+    : process.env.DB_TYPE;
 
 let dbOptions: DataSourceOptions = {
   type: "better-sqlite3",
   database: process.env.DB_NAME || "katechat.sqlite",
+  prepareDatabase: db => sqliteVecLoad(db),
 };
+
 // TODO: check migrations against "mysql"
 if (DB_TYPE === "mysql") {
   dbOptions = {
@@ -40,7 +48,7 @@ if (DB_TYPE === "mysql") {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
   };
-} else if (DB_TYPE && DB_TYPE !== "better-sqlite3") {
+} else if (DB_TYPE && DB_TYPE !== "sqlite") {
   throw new Error(`Unsupported DB_TYPE: ${DB_TYPE}`);
 }
 
@@ -93,7 +101,7 @@ export async function initializeDatabase() {
 }
 
 export const formatDateFloor =
-  DB_TYPE === "better-sqlite3"
+  DB_TYPE === "sqlite"
     ? (date: Date) => {
         const d = new Date(date);
         d.setMilliseconds(d.getMilliseconds() - 1); // SQLite requires a small adjustment to avoid precision issues
@@ -102,7 +110,7 @@ export const formatDateFloor =
     : (date: Date) => date;
 
 export const formatDateCeil =
-  DB_TYPE === "better-sqlite3"
+  DB_TYPE === "sqlite"
     ? (date: Date) => {
         const d = new Date(date);
         d.setMilliseconds(d.getMilliseconds() + 1); // SQLite requires a small adjustment to avoid precision issues
@@ -110,10 +118,11 @@ export const formatDateCeil =
       }
     : (date: Date) => date;
 
-export function EmbeddingTransformer() {
+export function EmbeddingTransformer(dimensions: number) {
   if (process.env.DB_TYPE === "postgres") {
     return {
-      to: (value: number[]) => pgvector.toSql(value),
+      to: (value: number[]) =>
+        pgvector.toSql(value.length === dimensions ? value : value.concat(Array(dimensions - value.length).fill(0))),
       from: (value: string | null | undefined) =>
         typeof value === "string" ? (pgvector.fromSql(value) as number[]) : value,
     };

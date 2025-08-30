@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApolloClient, useMutation } from "@apollo/client";
-import { Message, MessageRole, updateChat as updateChatInState } from "@/store/slices/chatSlice";
+import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
@@ -8,6 +8,8 @@ import {
   DeleteMessageResponse,
   GET_CHAT_MESSAGES,
   GetChatMessagesResponse,
+  Message,
+  MessageRole,
   UPDATE_CHAT_MUTATION,
 } from "@/store/services/graphql";
 import { debounce, pick } from "lodash";

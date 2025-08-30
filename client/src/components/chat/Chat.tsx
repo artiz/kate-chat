@@ -37,8 +37,10 @@ import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@
 import { ImageInput } from "@/store/services/graphql";
 import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { Message } from "@/store/slices/chatSlice";
-import { ok } from "@/lib/assert";
+import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
+
+import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 
 import classes from "./Chat.module.scss";
 import { ModelType } from "@/store/slices/modelSlice";
@@ -82,6 +84,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const anchorTimer = useRef<NodeJS.Timeout | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   const {
     messages,
@@ -97,7 +100,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     chatId,
   });
 
-  const { uploadDocuments, uploadData, uploadLoading, uploadError } = useDocumentsUpload();
+  const { uploadDocuments, uploadedDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chat = useMemo(() => {
     if (!chatId) return;
@@ -213,6 +216,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             maxTokens: chat?.maxTokens,
             topP: chat?.topP,
             imagesCount: chat?.imagesCount,
+            documentIds: selectedDocIds,
           },
         },
       });
@@ -390,6 +394,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.s3Connected;
   }, [selectedModel, appConfig]);
 
+  const chatDocuments = useMemo(() => {
+    return (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
+  }, [chat?.chatDocuments]);
+
   return (
     <Container size="xl" py="md" className={classes.container}>
       <Group justify="space-between" mb="sm" className={classes.titleRow}>
@@ -553,6 +561,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
         {uploadAllowed && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
+            {chatDocuments.length ? (
+              <ChatDocumentsSelector
+                selectedDocIds={selectedDocIds}
+                onSelectionChange={setSelectedDocIds}
+                disabled={!appConfig?.s3Connected || sending || messagesLoading}
+                documents={chatDocuments}
+              />
+            ) : null}
             {selectedImages.map(file => (
               <Paper key={file.fileName} className={classes.filesList}>
                 <div className={classes.previewImage}>
@@ -579,11 +595,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             Error: {uploadError.message}
           </Text>
         ) : (
-          <DocumentUploadProgress
-            progress={uploadProgress}
-            loading={uploadLoading}
-            documents={uploadData?.documents || []}
-          />
+          <DocumentUploadProgress progress={uploadProgress} loading={uploadLoading} documents={uploadedDocs || []} />
         )}
 
         <Group align="flex-start" className={classes.chatInputGroup}>

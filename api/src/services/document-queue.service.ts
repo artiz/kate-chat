@@ -2,20 +2,22 @@ import { createLogger } from "@/utils/logger";
 import { SubscriptionsService } from "./subscriptions.service";
 import { AIService } from "./ai.service";
 import { getRepository } from "@/config/database";
-import { Document, Model, User } from "@/entities";
-import { DocumentStatus, ApiProvider, MessageRole } from "@/types/ai.types";
+import { Document, DocumentChunk, Model, User } from "@/entities";
+import { DocumentStatus, MessageRole, ParsedJsonDocument } from "@/types/ai.types";
 import { S3Service } from "./s3.service";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { MessagesService } from "./messages.service";
 import { Repository } from "typeorm";
 import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai.prompts";
+import { EmbeddingsService } from "./embeddings.service";
 
 const logger = createLogger(__filename);
 
 export class DocumentQueueService {
   private subService: SubscriptionsService;
   private aiService: AIService;
+  private embeddingsService: EmbeddingsService;
   private modelRepo: Repository<Model>;
   private documentRepo: Repository<Document>;
   private userRepo: Repository<User>;
@@ -23,6 +25,7 @@ export class DocumentQueueService {
   constructor(subService: SubscriptionsService) {
     this.subService = subService;
     this.aiService = new AIService();
+    this.embeddingsService = new EmbeddingsService();
     this.modelRepo = getRepository(Model);
     this.documentRepo = getRepository(Document);
     this.userRepo = getRepository(User);
@@ -47,15 +50,12 @@ export class DocumentQueueService {
       const embeddingsModelId = document.embeddingsModelId || document.owner?.documentsEmbeddingsModelId;
       const summarizationModelId = document.summaryModelId || document.owner?.documentSummarizationModelId;
 
+      document.embeddingsModelId = embeddingsModelId;
+      document.summaryModelId = summarizationModelId;
+
       if (!embeddingsModelId) {
         logger.warn(`No embeddings model configured for document ${document.id}, skipping embeddings`);
       }
-
-      // Update document status
-      document.status = DocumentStatus.EMBEDDING;
-      document.statusProgress = 0;
-      await this.documentRepo.save(document);
-      this.subService.publishDocumentStatus(document);
 
       // Create connection params for AI service
       const connection = User.getConnectionInfo(document.owner);
@@ -67,6 +67,11 @@ export class DocumentQueueService {
 
       // Process embeddings if model is configured
       if (embeddingsModelId) {
+        document.status = DocumentStatus.EMBEDDING;
+        document.statusProgress = 0;
+        await this.documentRepo.save(document);
+        this.subService.publishDocumentStatus(document);
+
         await this.processEmbeddings(document, chunkedData, embeddingsModelId, connection);
       }
 
@@ -74,22 +79,21 @@ export class DocumentQueueService {
         logger.warn(`No summarization model configured for document ${document.id}, skipping summary`);
       }
 
-      // Update document status for summarization
-      document.status = DocumentStatus.SUMMARIZING;
-      document.statusProgress = 0.5;
-      await this.documentRepo.save(document);
-      this.subService.publishDocumentStatus(document);
-
       // Generate summary if model is configured
       if (summarizationModelId) {
+        // Update document status for summarization
+        document.status = DocumentStatus.SUMMARIZING;
+        document.statusProgress = 0.5;
+        await this.documentRepo.save(document);
+        this.subService.publishDocumentStatus(document);
+
         document.summary = await this.generateSummary(document, s3key, summarizationModelId, s3Service, connection);
       }
 
       // Mark document as ready
       document.status = DocumentStatus.READY;
       document.statusProgress = 1;
-      document.embeddingsModelId = embeddingsModelId;
-      document.summaryModelId = summarizationModelId;
+      document.statusInfo = undefined;
 
       await this.documentRepo.save(document);
       this.subService.publishDocumentStatus(document);
@@ -99,12 +103,11 @@ export class DocumentQueueService {
       logger.error(error, `Failed to index document ${documentId}`);
 
       // Update document status to error
-      const documentRepo = getRepository(Document);
-      const document = await documentRepo.findOne({ where: { id: documentId } });
+      const document = await this.documentRepo.findOne({ where: { id: documentId } });
       if (document) {
         document.status = DocumentStatus.ERROR;
         document.statusInfo = error instanceof Error ? error.message : "Unknown error";
-        await documentRepo.save(document);
+        await this.documentRepo.save(document);
         this.subService.publishDocumentStatus(document);
       }
 
@@ -114,7 +117,7 @@ export class DocumentQueueService {
 
   private async processEmbeddings(
     document: Document,
-    chunkedData: any,
+    chunkedData: ParsedJsonDocument,
     modelId: string,
     connection: ConnectionParams
   ): Promise<void> {
@@ -130,31 +133,16 @@ export class DocumentQueueService {
       return;
     }
 
-    // TODO: This is a simplified version. In a real implementation, you would:
-    // 1. Store chunks in a database with vector embeddings
-    // 2. Use a vector database like pgvector
-    // 3. Batch the embedding requests for efficiency
-
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
 
-      // Get embeddings for chunk text
-      const embeddingResponse = await this.aiService.getEmbeddings(model.apiProvider, connection, {
-        modelId: model.modelId,
-        input: chunk.text,
-      });
+      await this.embeddingsService.generateEmbedding(document, chunk, model, connection);
 
       // Update progress
-      const progress = ((i + 1) / chunks.length) * 0.5; // First half of progress
+      const progress = (i + 1) / chunks.length;
       document.statusProgress = progress;
-      await getRepository(Document).save(document);
+      await this.documentRepo.save(document);
       this.subService.publishDocumentStatus(document);
-
-      // TODO: Store chunk with embedding in database
-      // This would typically involve:
-      // - Creating a DocumentChunk entity
-      // - Storing the chunk text, page, and embedding vector
-      // - Using pgvector for efficient similarity search
 
       logger.debug(`Processed embedding for chunk ${i + 1}/${chunks.length}`);
     }
@@ -169,8 +157,7 @@ export class DocumentQueueService {
   ): Promise<string | undefined> {
     try {
       // Get user for S3 service
-      const userRepo = getRepository(User);
-      const user = await userRepo.findOne({
+      const user = await this.userRepo.findOne({
         where: { id: document.ownerId },
       });
 
@@ -215,7 +202,6 @@ export class DocumentQueueService {
       return summaryResponse.content;
     } catch (error) {
       logger.error(error, `Failed to generate summary for document ${document.id}`);
-      // Don't fail the whole process if summary generation fails
     }
   }
 

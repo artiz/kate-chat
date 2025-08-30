@@ -1,0 +1,25 @@
+.container {
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-gray-0);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0.25rem;
+  min-height: 2rem;
+}
+
+.container:hover {
+  border-color: var(--mantine-color-blue-5);
+  background: var(--mantine-color-blue-0);
+}
+
+.container[data-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--mantine-color-gray-1);
+}
+
+.container[data-disabled="true"]:hover {
+  border-color: var(--mantine-color-gray-3);
+  background: var(--mantine-color-gray-1);
+}

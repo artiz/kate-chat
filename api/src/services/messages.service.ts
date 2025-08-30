@@ -24,6 +24,7 @@ import { SubscriptionsService } from "./subscriptions.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./s3.service";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
+import { EmbeddingsService } from "./embeddings.service";
 
 const logger = createLogger(__filename);
 
@@ -36,10 +37,12 @@ export class MessagesService {
 
   private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
+  private embeddingsService: EmbeddingsService;
 
   constructor(subscriptionsService: SubscriptionsService) {
     this.subscriptionsService = subscriptionsService;
     this.aiService = new AIService();
+    this.embeddingsService = new EmbeddingsService();
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
     this.modelRepository = getRepository(Model);
@@ -71,7 +74,7 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    const { chatId, modelId } = input;
+    const { chatId, modelId, documentIds, content } = input;
     if (!chatId) throw new Error("Chat ID is required");
     if (!modelId) throw new Error("Model ID is required");
     const chat = await this.chatRepository.findOne({
@@ -86,6 +89,14 @@ export class MessagesService {
       },
     });
     if (!model) throw new Error("Model not found");
+
+    if (documentIds && documentIds.length > 0) {
+      try {
+        const chunks = await this.embeddingsService.findChunks(documentIds, content, connection);
+      } catch (err) {
+        logger.error(err, "Error loading  document chunks");
+      }
+    }
 
     // Get previous messages for context
     const inputMessages = await this.getContextMessages(chatId);

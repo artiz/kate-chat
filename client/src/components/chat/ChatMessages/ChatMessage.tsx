@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconRobot, IconUser } from "@tabler/icons-react";
-import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import { debounce } from "lodash";
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
@@ -12,6 +11,7 @@ import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
+import { Message, MessageRole } from "@/store/services/graphql";
 
 interface ChatMessageProps {
   message: Message;

@@ -19,6 +19,31 @@ export class DocumentResolver extends BaseResolver {
     this.documentRepo = getRepository(Document);
   }
 
+  @Mutation(() => Document)
+  async reindexDocument(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Document> {
+    await this.validateContextToken(context);
+    const sqsService = this.getSqsService(context);
+
+    const document = await this.documentRepo.findOne({
+      where: { id },
+    });
+
+    if (!document) throw new Error("Document not found");
+    if (!document.s3key) throw new Error("Document was not uploaded yet");
+
+    await sqsService.sendJsonMessage(
+      {
+        command: "index_document",
+        documentId: document.id,
+        s3key: document.s3key,
+      },
+      0,
+      true
+    );
+
+    return document;
+  }
+
   @Query(() => [Document])
   async documents(@Ctx() context: GraphQLContext): Promise<Document[]> {
     const user = await this.validateContextUser(context);

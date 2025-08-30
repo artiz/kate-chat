@@ -81,6 +81,7 @@ input CreateChatInput {
 input CreateMessageInput {
   chatId: String!
   content: String!
+  documentIds: [String!]
   images: [ImageInput!]
   imagesCount: Float
   maxTokens: Float
@@ -328,6 +329,7 @@ type Mutation {
   login(input: LoginInput!): AuthResponse!
   processDocument(force: Boolean, id: ID!): Document!
   register(input: RegisterInput!): AuthResponse!
+  reindexDocument(id: ID!): Document!
   reloadModels: GqlModelsList!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
   testModel(input: TestModelInput!): Message!

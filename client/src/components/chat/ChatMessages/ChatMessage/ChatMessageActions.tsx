@@ -11,12 +11,12 @@ import {
   IconMoodPlus,
   IconEdit,
 } from "@tabler/icons-react";
-import { MessageMetadata, MessageRole } from "@/store/slices/chatSlice";
 
 import classes from "../ChatMessage.module.scss";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { ModelType } from "@/store/slices/modelSlice";
+import { MessageMetadata, MessageRole } from "@/store/services/graphql";
 
 interface IProps {
   id: string;

@@ -44,13 +44,15 @@ export class MessageResolver extends BaseResolver {
     const token = await this.validateContextToken(context);
     const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
-    // Verify the chat belongs to the user
     const chat = await this.chatRepository
       .createQueryBuilder("chat")
       .addSelect(sq => {
         return sq.select("COUNT(*)").from(Message, "m").where("m.chatId = chat.id");
       }, "chat_messagesCount")
       .leftJoinAndSelect("chat.user", "user")
+      .leftJoinAndSelect("chat.chatDocuments", "chatDocuments")
+      .leftJoinAndSelect("chatDocuments.document", "document")
+
       .where({ id: chatId, user: { id: token.userId } })
       .getOne();
 

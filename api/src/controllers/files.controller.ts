@@ -8,16 +8,29 @@ import { S3Service } from "@/services/s3.service";
 
 import { ok } from "assert";
 import { getRepository } from "@/config/database";
-import { ChatDocument, User, Document } from "@/entities";
+import { ChatDocument, User, Document, Chat } from "@/entities";
 import { DocumentStatus } from "@/types/ai.types";
 import { TokenPayload } from "@/utils/jwt";
+import { SubscriptionsService } from "@/services/subscriptions.service";
+import { SQSService } from "@/services/sqs.service";
+import { MessagesService } from "@/services/messages.service";
+
+declare global {
+  namespace Express {
+    interface Request {
+      subscriptionsService?: SubscriptionsService;
+      sqsService?: SQSService;
+      messagesService?: MessagesService;
+    }
+  }
+}
 
 const logger = createLogger(__filename);
 
 export const router = Router();
 
-router.post("/upload", async (req: Request<{ chatId: string }>, res: Response) => {
-  const { chatId } = req.params;
+router.post("/upload", async (req: Request<any, any, any, { chatId: string }>, res: Response) => {
+  const { chatId } = req.query;
   if (!req.tokenPayload) {
     return void res.status(401).json({ error: "Authentication failed" });
   }
@@ -28,6 +41,7 @@ router.post("/upload", async (req: Request<{ chatId: string }>, res: Response) =
   const s3Service = new S3Service(req.tokenPayload);
   const documentRepo = getRepository(Document);
   const chatDocumentRepo = getRepository(ChatDocument);
+  const chatRepo = getRepository(Chat);
   const s3Client = await s3Service.getClient();
 
   if (!s3Client) {
@@ -54,6 +68,11 @@ router.post("/upload", async (req: Request<{ chatId: string }>, res: Response) =
 
     if (existing) {
       if (chatId) {
+        const chat = await chatRepo.findOne({ where: { id: chatId, user: { id: user.userId } } });
+        if (!chat) {
+          throw new Error(`Chat not found, id: ${chatId}`);
+        }
+
         const record = { chatId, documentId: existing.id };
         const chatDoc = await chatDocumentRepo.findOne({
           where: record,
@@ -61,6 +80,9 @@ router.post("/upload", async (req: Request<{ chatId: string }>, res: Response) =
         if (!chatDoc) {
           await chatDocumentRepo.save(chatDocumentRepo.create(record));
         }
+
+        chat.isPristine = false;
+        await chatRepo.save(chat);
       }
 
       // Send parse command if document is still in UPLOAD state
@@ -101,12 +123,20 @@ router.post("/upload", async (req: Request<{ chatId: string }>, res: Response) =
     document = await documentRepo.save(document);
 
     if (chatId) {
+      const chat = await chatRepo.findOne({ where: { id: chatId, user: { id: user.userId } } });
+      if (!chat) {
+        throw new Error(`Chat not found, id: ${chatId}`);
+      }
+
       await chatDocumentRepo.save(
         chatDocumentRepo.create({
           chatId,
           documentId: document.id,
         })
       );
+
+      chat.isPristine = false;
+      await chatRepo.save(chat);
     }
 
     subService.publishDocumentStatus(document);

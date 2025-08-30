@@ -150,6 +150,9 @@ export class CreateMessageInput {
 
   @Field({ nullable: true })
   imagesCount?: number;
+
+  @Field(() => [String], { nullable: true })
+  documentIds?: string[];
 }
 
 @InputType()

@@ -78,6 +78,24 @@ export enum DocumentStatus {
   DELETING = "deleting",
 }
 
+export interface ParsedDocumentChunk {
+  page: number;
+  length_tokens: number;
+  text: string;
+  id: number; // index on page
+  type: string; // "content" | "serialized_table"
+}
+
+export interface ParsedDocumentPage {
+  page: number;
+  text: string;
+}
+
+export interface ParsedJsonDocument {
+  chunks: ParsedDocumentChunk[];
+  pages: ParsedDocumentPage[];
+}
+
 export interface AIModelInfo {
   apiProvider: ApiProvider;
   provider: string;

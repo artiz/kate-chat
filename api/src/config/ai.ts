@@ -1,4 +1,4 @@
-import { ApiProvider } from "@/types/ai.types";
+import { ApiProvider } from "../types/ai.types";
 
 export const DEFAULT_PROMPT = `You a experienced software developer. 
 Being asked about code examples please always comment tricky moments and generate most effective and secure code.
@@ -10,6 +10,7 @@ export const DEFAULT_TOP_P = 0.9;
 
 export const CONTEXT_MESSAGES_LIMIT = 100;
 export const EMBEDDINGS_DIMENSIONS = 3072;
+export const RAG_QUERY_CHUNKS_LIMIT = 20;
 
 export const ENABLED_API_PROVIDERS: ApiProvider[] = (() => {
   const allIds: ApiProvider[] = Object.values(ApiProvider);

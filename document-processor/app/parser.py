@@ -13,7 +13,7 @@ from docling.datamodel.base_models import ConversionStatus
 from docling.datamodel.document import ConversionResult
 
 from docling.document_converter import DocumentConverter, FormatOption
-from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TableFormerMode, EasyOcrOptions, TesseractCliOcrOptions
 from docling.datamodel.base_models import InputFormat
 from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
 from docling.pipeline.simple_pipeline import SimplePipeline
@@ -40,6 +40,8 @@ class PDFParser:
         self.html_backend = html_backend
         self.output_dir = output_dir
         self.doc_converter = self._create_document_converter()
+        self.ocr_doc_converter = self._create_document_converter(True)
+        
         self.num_threads = num_threads
         self.metadata_lookup = {}
         self.debug_data_path = None
@@ -50,13 +52,13 @@ class PDFParser:
         if self.num_threads is not None:
             os.environ["OMP_NUM_THREADS"] = str(self.num_threads)
 
-    def _create_document_converter(self) -> "DocumentConverter":
+    def _create_document_converter(self, use_full_ocr: bool = False) -> "DocumentConverter":
         """Creates and returns a DocumentConverter with default pipeline options."""
         
         # PDF pipeline options
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
-        ocr_options = EasyOcrOptions(lang=['en'], force_full_page_ocr=False)
+        ocr_options = EasyOcrOptions(force_full_page_ocr=use_full_ocr)
         pipeline_options.ocr_options = ocr_options
         pipeline_options.do_table_structure = True
         pipeline_options.table_structure_options.do_cell_matching = True
@@ -82,14 +84,18 @@ class PDFParser:
         }
         
         return DocumentConverter(format_options=format_options)
+        
 
     def convert_documents(self, input_doc_paths: List[Union[Path, str, DocumentStream]]) -> Iterable[ConversionResult]:
-        conv_results = self.doc_converter.convert_all(source=input_doc_paths)
+        conv_results = self.doc_converter.convert(source=input_doc_paths)
         return conv_results
     
     def convert_document(self, input_doc: Union[Path, str, DocumentStream]) -> ConversionResult:
-        conv_results = next(self.convert_documents([input_doc]))
-        return conv_results
+        res = self.doc_converter.convert(source=input_doc)
+        if res.status == ConversionStatus.SUCCESS and len(res.document.pages) > 1 and not res.document.texts:
+            _log.warning(f"Document {input_doc} was converted but has no text.")
+            res = self.ocr_doc_converter.convert(source=input_doc)
+        return res
     
     def process_documents(self, conv_results: Iterable[ConversionResult]):
         if self.output_dir is not None:
@@ -515,8 +521,9 @@ def main():
     data_dir = Path(__file__).parent.parent / "data" / "train"
     files_to_parse = [
         data_dir / "dummy_report.pdf",
-        data_dir / "Apple.docx",
-        data_dir / "Austria - Wikipedia.html"
+        data_dir / "Artem Kustikov - CV.pdf",
+        data_dir / "Apple.docx"
+        # data_dir / "Austria - Wikipedia.html"
     ]
     
     # Check which files exist
@@ -530,8 +537,8 @@ def main():
     
     try:
         # Convert all documents
-        conv_results = list(parser.convert_documents(files_to_parse))
-        
+        conv_results = [parser.convert_document(file_path) for file_path in files_to_parse]
+
         if not conv_results:
             print("No conversion results returned")
             return
@@ -553,6 +560,8 @@ def main():
             
             # Get the document data
             data = conv_result.document.export_to_dict()
+            print ("export_to_dict", data)
+                
             normalized_data = parser._normalize_page_sequence(data)
             processed_report = processor.assemble_report(conv_result, normalized_data)
             

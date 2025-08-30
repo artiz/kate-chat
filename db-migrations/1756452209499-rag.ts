@@ -58,6 +58,21 @@ export class Rag1756452209499 implements MigrationInterface {
                 "embedding" vector(3072), 
                 CONSTRAINT "FK_document_chunks_document" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION
                 )`);
+    } else if (DB_TYPE === "sqlite") {
+      await queryRunner.query(`CREATE TABLE "document_chunks" (
+                ${ID},
+                "documentId" uuid NOT NULL, 
+                "page" integer NOT NULL DEFAULT (0),
+                "pageIndex" bigint NOT NULL DEFAULT (0),
+                "content" varchar NOT NULL,
+                "embedding" text, 
+                CONSTRAINT "FK_document_chunks_document" FOREIGN KEY ("documentId") REFERENCES "documents"("id") ON DELETE CASCADE ON UPDATE NO ACTION
+                )`);
+
+      await queryRunner.query(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS vss_document_chunks USING vec0(
+          embedding float[3072]
+      )`);
     } else {
       await queryRunner.query(`CREATE TABLE "document_chunks" (
                 ${ID}, 
@@ -149,20 +164,22 @@ export class Rag1756452209499 implements MigrationInterface {
       `ALTER TABLE "models" ADD "supportsStreaming" boolean NOT NULL DEFAULT true`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_eaf9afaf30fb7e2ac25989db51"`,
+      `DROP INDEX IF EXISTS "public"."IDX_eaf9afaf30fb7e2ac25989db51"`,
     );
     await queryRunner.query(`DROP TABLE "document_chunks"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "vss_document_chunks"`);
+
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_edef2e837ed65c05e116250a21"`,
+      `DROP INDEX IF EXISTS "public"."IDX_edef2e837ed65c05e116250a21"`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_95e8f97e178311e7eb65e63289"`,
+      `DROP INDEX IF EXISTS "public"."IDX_95e8f97e178311e7eb65e63289"`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_fee8b0b8a78f1daa22e05ea268"`,
+      `DROP INDEX IF EXISTS "public"."IDX_fee8b0b8a78f1daa22e05ea268"`,
     );
     await queryRunner.query(
-      `DROP INDEX "public"."IDX_0bf6b1e9f455bba598d4c73076"`,
+      `DROP INDEX IF EXISTS "public"."IDX_0bf6b1e9f455bba598d4c73076"`,
     );
     await queryRunner.query(`DROP TABLE "chat_documents"`);
     await queryRunner.query(`DROP TABLE "documents"`);

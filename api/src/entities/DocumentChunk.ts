@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, Index, JoinColumn } 
 import { Field, ID, ObjectType } from "type-graphql";
 import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
+import { EMBEDDINGS_DIMENSIONS } from "../config/ai";
 
 @ObjectType()
 @Entity("document_chunks")
@@ -32,7 +33,7 @@ export class DocumentChunk {
   @Column()
   content: string;
 
-  @Field()
-  @Column({ type: "text", nullable: true, transformer: EmbeddingTransformer() })
-  embedding: string;
+  @Field(() => [Number], { nullable: true })
+  @Column({ type: "text", nullable: true, transformer: EmbeddingTransformer(EMBEDDINGS_DIMENSIONS) })
+  embedding?: number[];
 }

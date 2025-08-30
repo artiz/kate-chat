@@ -1,8 +1,8 @@
-import { Message, MessageRole } from "@/store/slices/chatSlice";
 import hljs from "highlight.js";
 import { Marked, Renderer } from "marked";
 import { markedHighlight } from "marked-highlight";
 import markedKatex from "marked-katex-extension";
+import { Message, MessageRole } from "@/store/services/graphql";
 
 // Template to store original (unformatted) code to copy it
 const CodeDataTemplate = `<span class="code-data" data-code="<CODE>" data-lang="<LANG>"></span>`;

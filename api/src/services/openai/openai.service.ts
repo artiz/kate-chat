@@ -91,6 +91,7 @@ export class OpenAIService extends BaseProviderService {
     this.openai = new OpenAI({
       apiKey: openAiApiKey,
       baseURL: this.baseUrl,
+      maxRetries: 10,
     });
   }
 
