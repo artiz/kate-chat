@@ -269,6 +269,12 @@ export const REINDEX_DOCUMENT_MUTATION = gql`
   }
 `;
 
+export const DELETE_DOCUMENT_MUTATION = gql`
+  mutation DeleteDocument($id: ID!) {
+    deleteDocument(id: $id)
+  }
+`;
+
 // Query to find a pristine chat
 export const FIND_PRISTINE_CHAT = gql`
   query FindPristineChat {

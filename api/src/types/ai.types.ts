@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Field, ObjectType } from "type-graphql";
+import { Field, ID, ObjectType } from "type-graphql";
 
 export enum ApiProvider {
   AWS_BEDROCK = "aws_bedrock",
@@ -138,27 +138,63 @@ export class ModelResponseUsage {
 }
 
 @ObjectType()
-export class ModelResponseMetadata {
+export class MessageRelevantChunk {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  relevance: number;
+
+  @Field()
+  documentId: string;
+
+  @Field()
+  page: number;
+
+  @Field()
+  pageIndex: number;
+
+  @Field()
+  content: string;
+}
+
+@ObjectType()
+export class MessageMetadata {
+  ///////////// assistant message meta
+  // model usage details
   @Field(() => ModelResponseUsage, { nullable: true })
   usage?: ModelResponseUsage;
+
+  // relevant document chunks selected by model sorted by relevance
+  @Field(() => [MessageRelevantChunk], { nullable: true })
+  relevantsChunks?: MessageRelevantChunk[];
+
+  // Step by step analysis
+  @Field(() => String, { nullable: true })
+  analysis?: string;
+
+  ///////////// user message meta
+  // input document IDs
+  @Field(() => [ID], { nullable: true })
+  documentIds?: string[];
 }
 
 export class ModelResponse {
-  metadata?: ModelResponseMetadata;
+  metadata?: MessageMetadata;
   type: ContentType;
   content: string;
   files?: string[];
 }
 
 export class EmbeddingsResponse {
-  metadata?: ModelResponseMetadata;
+  metadata?: MessageMetadata;
   embedding: number[];
 }
 
 export interface StreamCallbacks {
   onStart?: () => void;
   onToken?: (token: string) => void;
-  onComplete?: (content: string, metadata?: ModelResponseMetadata) => void;
+  onComplete?: (content: string, metadata?: MessageMetadata) => void;
   onError?: (error: Error) => void;
 }
 

@@ -82,6 +82,35 @@ export class DocumentResolver extends BaseResolver {
     return document;
   }
 
+  @Mutation(() => Boolean)
+  async deleteDocument(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<boolean> {
+    const user = await this.validateContextUser(context);
+    const s3Service = new S3Service(user.toToken());
+
+    const document = await this.documentRepo.findOne({
+      where: { id, owner: { id: user.id } },
+    });
+
+    if (!document) throw new Error("Document not found");
+
+    // Delete from S3 if exists
+    if (document.s3key) {
+      const exts = ["", ".chunked.json", ".parsed.json", ".parsed.md"];
+      for (const ext of exts) {
+        const key = `${document.s3key}${ext}`;
+        try {
+          await s3Service.deleteFile(key);
+        } catch (error) {
+          console.warn(error, `Failed to delete file from S3: ${key}`);
+        }
+      }
+    }
+
+    // Delete from database
+    await this.documentRepo.remove(document);
+    return true;
+  }
+
   @Subscription(() => [DocumentStatusMessage], {
     topics: DOCUMENT_STATUS_CHANNEL,
     filter: ({ payload, args }) => args.documentIds.includes(payload.documentId),

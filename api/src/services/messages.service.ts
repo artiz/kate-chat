@@ -5,14 +5,14 @@ import type { WebSocket } from "ws";
 import { Message } from "../entities/Message";
 import { AIService } from "./ai.service";
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
-import { Chat, Model, User } from "@/entities";
+import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import {
   InvokeModelParamsRequest,
+  MessageMetadata,
   MessageRole,
   MessageType,
   ModelMessageContent,
-  ModelResponseMetadata,
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
@@ -25,6 +25,8 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./s3.service";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./embeddings.service";
+import { RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -90,34 +92,37 @@ export class MessagesService {
     });
     if (!model) throw new Error("Model not found");
 
+    let assistantMessage = this.messageRepository.create({
+      content: "",
+      role: MessageRole.ASSISTANT,
+      modelId: model.modelId, // real model used
+      modelName: model.name,
+      chatId,
+      user,
+      chat,
+    });
+
     if (documentIds && documentIds.length > 0) {
+      const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
+
       try {
-        const chunks = await this.embeddingsService.findChunks(documentIds, content, connection);
+        const ragMessage = await this.messageRepository.save(assistantMessage);
+        await this.publishRagMessage(input, connection, model, chat, userMessage, ragMessage);
       } catch (err) {
         logger.error(err, "Error loading  document chunks");
       }
+
+      return userMessage;
     }
 
     // Save user message
-    const userMessage = await this.publishUserMessage(input, user, chat, model, connection);
-
+    const userMessage = await this.publishUserMessage(input, user, chat, model);
     // Get previous messages for context
     const inputMessages = await this.getContextMessages(chatId);
     inputMessages.push(userMessage);
 
     // Generate AI response
-    const assistantMessage = await this.messageRepository.save(
-      this.messageRepository.create({
-        content: "",
-        role: MessageRole.ASSISTANT,
-        modelId: model.modelId, // real model used
-        modelName: model.name,
-        chatId,
-        user,
-        chat,
-      })
-    );
-
+    assistantMessage = await this.messageRepository.save(assistantMessage);
     await this.publishAssistantMessage(input, connection, user, model, chat, inputMessages, assistantMessage);
     return userMessage;
   }
@@ -477,7 +482,7 @@ export class MessagesService {
     user: User,
     chat: Chat,
     model: Model,
-    connection: ConnectionParams
+    metadata?: MessageMetadata
   ): Promise<Message> {
     const { images } = input;
     let { content = "" } = input;
@@ -491,6 +496,7 @@ export class MessagesService {
         chatId: chat.id,
         user,
         chat,
+        metadata,
       })
       .catch(err => {
         this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
@@ -575,8 +581,6 @@ export class MessagesService {
     const completeRequest = async (message: Message) => {
       ok(message);
       const savedMessage = await this.messageRepository.save(message);
-
-      // Publish message to Queue
       await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
     };
 
@@ -624,7 +628,6 @@ export class MessagesService {
       } catch (error: unknown) {
         logger.error(error, "Error generating AI response");
 
-        logger.debug(`Publishing AI response event for chat ${chat.id}`);
         assistantMessage.content = getErrorMessage(error);
         assistantMessage.role = MessageRole.ERROR;
 
@@ -637,12 +640,7 @@ export class MessagesService {
       return;
     }
 
-    const handleStreaming = async (
-      token: string,
-      completed?: boolean,
-      error?: Error,
-      metadata?: ModelResponseMetadata
-    ) => {
+    const handleStreaming = async (token: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => {
       if (completed) {
         if (error) {
           return completeRequest({
@@ -677,6 +675,111 @@ export class MessagesService {
           role: MessageRole.ERROR,
         }).catch(err => logger.error(err, "Error sending AI response"));
       });
+  }
+
+  protected async publishRagMessage(
+    input: CreateMessageInput,
+    connection: ConnectionParams,
+    model: Model,
+    chat: Chat,
+    inputMessage: Message,
+    ragMessage: Message
+  ): Promise<void> {
+    const chunks = await this.embeddingsService.findChunks(input.documentIds!, input.content, connection);
+    const { systemPrompt, userInput } = RAG_REQUEST({ chunks, question: input.content });
+
+    logger.trace(
+      {
+        question: input.content,
+        documents: input.documentIds,
+        chunks: chunks.map(chunk => ({
+          id: chunk.id,
+          page: chunk.page,
+          content: chunk.content,
+        })),
+      },
+      "RAG request"
+    );
+    const chunksMap = chunks.reduce(
+      (acc, chunk) => {
+        acc[chunk.id] = chunk;
+        return acc;
+      },
+      {} as Record<string, DocumentChunk>
+    );
+
+    const request: InvokeModelParamsRequest = {
+      modelId: model.modelId,
+      systemPrompt,
+      temperature: input.temperature || chat.temperature,
+      topP: input.topP || chat.topP,
+    };
+
+    const completeRequest = async (message: Message) => {
+      ok(message);
+      const savedMessage = await this.messageRepository.save(message);
+      await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
+    };
+
+    // always sync call
+    try {
+      const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, [
+        {
+          ...inputMessage,
+          jsonContent: undefined,
+          content: userInput, // only user input without images and so on
+        },
+      ]);
+
+      const content = aiResponse.content
+        .trim()
+        .replace(/^\s*```(json)?/, "")
+        .replace(/^[^\{]+/, "")
+        .replace(/```$/, "")
+        .replace(/\n+/g, " ")
+        .trim();
+      logger.debug("RAG response raw: " + content);
+
+      const ragResponse = JSON.parse(content) as RagResponse;
+      logger.debug(ragResponse, "RAG response");
+
+      ragMessage.content = `Answer: ${ragResponse.final_answer || "N/A"}`;
+      if (ragResponse.reasoning_summary) {
+        ragMessage.content += `\n\n> ${ragResponse.reasoning_summary}`;
+      }
+
+      ragMessage.metadata = {
+        analysis: ragResponse.step_by_step_analysis,
+        relevantsChunks:
+          ragResponse.relevant_chunks_ids
+            ?.map((id, ndx) => {
+              const inputChunk = chunksMap[id];
+              if (!inputChunk) return null;
+
+              return {
+                id,
+                relevance: ragResponse.chunks_relevance?.[ndx] || 0,
+                documentId: inputChunk.id,
+                page: inputChunk.page,
+                pageIndex: inputChunk.pageIndex,
+                content: inputChunk.content,
+              };
+            })
+            ?.filter(notEmpty) || [],
+      };
+
+      await completeRequest(ragMessage);
+      await this.chatRepository.save(chat);
+    } catch (error: unknown) {
+      logger.error(error, "Error processing RAG response");
+      ragMessage.content = getErrorMessage(error);
+      ragMessage.role = MessageRole.ERROR;
+
+      await completeRequest(ragMessage).catch(err => {
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
+        logger.error(err, "Error sending RAG response");
+      });
+    }
   }
 
   public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {

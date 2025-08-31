@@ -12,7 +12,7 @@ import {
   UsageCostInfo,
   ServiceCostInfo,
   InvokeModelParamsRequest,
-  ModelResponseMetadata,
+  MessageMetadata,
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
@@ -129,14 +129,21 @@ export class BedrockService extends BaseProviderService {
       const streamResponse = await this.bedrockClient.send(streamCommand);
 
       let fullResponse = "";
-      let metadata: ModelResponseMetadata | undefined = undefined;
+      let metadata: MessageMetadata | undefined = undefined;
 
       // Process the stream
       if (streamResponse.body) {
         for await (const chunk of streamResponse.body) {
           if (chunk.chunk?.bytes) {
             const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
-            const chunkData = JSON.parse(decodedChunk);
+
+            let chunkData: any;
+            try {
+              chunkData = JSON.parse(decodedChunk);
+            } catch (err) {
+              logger.debug(err, `failed to parse chunk: ${decodedChunk}`);
+              continue;
+            }
 
             // Extract the token based on model provider
             let token = "";

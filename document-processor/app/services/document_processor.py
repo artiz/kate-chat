@@ -77,7 +77,7 @@ class DocumentProcessor:
             # Check if parsing is already in progress or completed
             existing_progress = await self.redis.get(progress_key)
             if existing_progress is not None:
-                progress = int(existing_progress)
+                progress = float(existing_progress)
                 
                 # Check if output files exist
                 if await self._s3_object_exists(s3, parsed_json_key):
@@ -126,7 +126,7 @@ class DocumentProcessor:
             
         except Exception as e:
             logger.error(f"Failed to parse document {document_id}: {e}")
-            await self._set_progress( progress_key, -1.0, document_id, "error")
+            await self._set_progress( progress_key, 0, document_id, "error")
             raise
     
     async def _handle_split_document(self, document_id: str, s3_key: str):
@@ -141,7 +141,7 @@ class DocumentProcessor:
             # Check if chunking is already in progress or completed
             existing_progress = await self.redis.get(progress_key)
             if existing_progress is not None:
-                progress = int(existing_progress)
+                progress = float(existing_progress)
                 
                 # Check if output file exists
                 if await self._s3_object_exists(s3, chunked_json_key):
@@ -182,7 +182,7 @@ class DocumentProcessor:
             
         except Exception as e:
             logger.error(f"Failed to chunk document {document_id}: {e}")
-            await self._set_progress( progress_key, -1.0, document_id, "error")
+            await self._set_progress( progress_key, 0, document_id, "error")
             raise
     
     async def _set_progress(self, progress_key: str, progress: float, document_id: str, status: str):

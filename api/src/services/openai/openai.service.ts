@@ -10,7 +10,7 @@ import {
   UsageCostInfo,
   ServiceCostInfo,
   InvokeModelParamsRequest,
-  ModelResponseMetadata,
+  MessageMetadata,
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
@@ -244,7 +244,7 @@ export class OpenAIService extends BaseProviderService {
     try {
       const stream = await this.openai.chat.completions.create(params);
       let fullResponse = "";
-      let meta: ModelResponseMetadata | undefined = undefined;
+      let meta: MessageMetadata | undefined = undefined;
 
       for await (const chunk of stream) {
         const token = chunk.choices[0]?.delta?.content || "";

@@ -85,7 +85,9 @@ class SQSService:
                         )
                         
                     except Exception as e:
-                        logger.error(f"Error processing message: {e}")
+                        logger.error(f"Error processing message: {message}")
+                        logger.exception(e, exc_info=True)
+                        
                         # Message will become visible again after timeout
                         
             except asyncio.CancelledError:

@@ -276,6 +276,12 @@ class PageTextPreparation:
                 group_text = self._render_list_group(group_blocks)
                 final_blocks.append(group_text)
                 continue
+            
+            # Handle headers
+            if block_type == "code":
+                final_blocks.append(f"\n```\n{text}\n```\n")
+                i += 1
+                continue
 
             # Handle normal blocks
             if block_type in (

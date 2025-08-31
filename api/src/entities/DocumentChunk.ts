@@ -21,6 +21,7 @@ export class DocumentChunk {
   @Index()
   documentId: string;
 
+  // 0 - document without pages
   @Field()
   @Column({ type: "int", default: 0 })
   page: number;

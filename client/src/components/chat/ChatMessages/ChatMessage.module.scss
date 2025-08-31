@@ -69,6 +69,12 @@
     margin-block-end: 0;
   }
 
+  :global blockquote {
+    padding: 0 var(--mb-padding, var(--mantine-spacing-sm));
+    border-left: 0.5rem solid var(--mantine-color-default-border);
+    margin: 0.25rem 0;
+  }
+
   :global hr {
     width: 100%;
     margin: 0.5rem 0 0.25rem;

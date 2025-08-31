@@ -6,7 +6,7 @@ import { AppDataSource, DB_TYPE, getRepository } from "@/config/database";
 import { Document, DocumentChunk, Model, User } from "@/entities";
 import { ParsedDocumentChunk } from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { In, Repository } from "typeorm";
+import { In, Not, Repository } from "typeorm";
 import { run } from "node:test";
 import { ok } from "assert";
 import { EMBEDDINGS_DIMENSIONS, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
@@ -92,7 +92,6 @@ export class EmbeddingsService {
     // generate query embedding by doc.embeddingModelId
     // find 20 most similar chunks
 
-    const results: DocumentChunk[] = [];
     const documents = await this.documentRepo.findBy({
       id: In([...new Set(documentIds)]),
     });
@@ -111,7 +110,11 @@ export class EmbeddingsService {
       {} as Record<string, Model>
     );
 
+    const results: DocumentChunk[] = [];
+
     for (const document of documents) {
+      const documentChunks: DocumentChunk[] = [];
+
       if (!document.embeddingsModelId) {
         logger.warn(`Document ${document.id} has no embeddings model setup`);
         continue;
@@ -129,13 +132,17 @@ export class EmbeddingsService {
       if (DB_TYPE === "sqlite") {
         const runner = AppDataSource.createQueryRunner();
         try {
-          const chunks = await runner.manager.query<DocumentChunk & { rowid: number; distance: number }[]>(
+          const chunks = await runner.manager.query<(DocumentChunk & { rowid: number; distance: number })[]>(
             `SELECT vdc.rowid, vdc.distance, dc.*
                 FROM vss_document_chunks vdc
                 LEFT JOIN document_chunks dc ON vdc.rowid = dc.rowid
-                WHERE vdc.embedding MATCH ? AND vdc.k = ? ORDER BY vdc.distance`,
-            [JSON.stringify(queryEmbedding), RAG_QUERY_CHUNKS_LIMIT]
+                WHERE 
+                dc.documentId = ? AND
+                vdc.embedding MATCH ? AND vdc.k = ? ORDER BY vdc.distance`,
+            [document.id, JSON.stringify(queryEmbedding), RAG_QUERY_CHUNKS_LIMIT]
           );
+
+          documentChunks.push(...chunks);
         } catch (err) {
           logger.error(err, `Failed to query document ${document.id} chunks`);
         } finally {
@@ -144,15 +151,30 @@ export class EmbeddingsService {
       } else if (DB_TYPE === "postgres") {
         const chunks = await this.documentChunksRepo
           .createQueryBuilder("document_chunks")
+          .where("document_chunks.documentId = :documentId", { documentId: document.id })
           .orderBy("embedding <-> :embedding")
           .setParameters({ embedding: pgvector.toSql(queryEmbedding) })
           .limit(RAG_QUERY_CHUNKS_LIMIT)
           .getMany();
 
-        results.push(...chunks);
+        documentChunks.push(...chunks);
       } else {
         logger.warn(`Unsupported embeddings database type: ${DB_TYPE}`);
       }
+
+      const chunkPages = new Set(documentChunks.map(c => c.page).filter(p => p > 0));
+      if (chunkPages.size) {
+        const chunks = await this.documentChunksRepo.find({
+          where: {
+            page: In([...chunkPages]),
+            documentId: document.id,
+            id: Not(In(documentChunks.map(c => c.id))),
+          },
+        });
+        documentChunks.push(...chunks);
+      }
+
+      results.push(...documentChunks);
     }
 
     return results;

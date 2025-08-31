@@ -281,13 +281,29 @@ type Message {
   linkedMessages: [Message!]
   linkedToMessage: Message!
   linkedToMessageId: String
-  metadata: ModelResponseMetadata
+  metadata: MessageMetadata
   modelId: String!
   modelName: String
   role: String!
   updatedAt: DateTimeISO
   user: User
   userId: String
+}
+
+type MessageMetadata {
+  analysis: String
+  documentIds: [ID!]
+  relevantsChunks: [MessageRelevantChunk!]
+  usage: ModelResponseUsage
+}
+
+type MessageRelevantChunk {
+  content: String!
+  documentId: String!
+  id: ID!
+  page: Float!
+  pageIndex: Float!
+  relevance: Float!
 }
 
 type Model {
@@ -308,10 +324,6 @@ type Model {
   userId: String
 }
 
-type ModelResponseMetadata {
-  usage: ModelResponseUsage
-}
-
 type ModelResponseUsage {
   cacheReadInputTokens: Float
   cacheWriteInputTokens: Float
@@ -326,6 +338,7 @@ type Mutation {
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
+  deleteDocument(id: ID!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
   editMessage(content: String!, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!

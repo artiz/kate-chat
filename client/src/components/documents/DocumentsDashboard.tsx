@@ -14,17 +14,19 @@ import {
   Modal,
   Button,
 } from "@mantine/core";
-import { IconFile, IconRefresh, IconAlertCircle, IconRotateClockwise } from "@tabler/icons-react";
+import { IconFile, IconRefresh, IconAlertCircle, IconRotateClockwise, IconTrash } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { gql } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { formatFileSize } from "@/lib";
+import { DeleteConfirmationModal } from "@/components/modal";
 import {
   DOCUMENT_STATUS_SUBSCRIPTION,
   GET_DOCUMENTS,
   Document,
   DocumentStatusMessage,
   REINDEX_DOCUMENT_MUTATION,
+  DELETE_DOCUMENT_MUTATION,
   DocumentStatus,
 } from "@/store/services/graphql";
 
@@ -102,10 +104,40 @@ export const DocumentsDashboard: React.FC = () => {
     },
   });
 
+  const [deleteDocument, { loading: deleteLoading }] = useMutation(DELETE_DOCUMENT_MUTATION, {
+    onCompleted: () => {
+      notifications.show({
+        title: "Document Deleted",
+        message: "Document has been successfully deleted.",
+        color: "green",
+      });
+      refetch();
+    },
+    onError: error => {
+      notifications.show({
+        title: "Delete Error",
+        message: error.message || "Failed to delete document",
+        color: "red",
+      });
+    },
+  });
+
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | undefined>(undefined);
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleDeleteDocument = (doc: Document) => {
+    setDocumentToDelete(doc);
+  };
+
+  const confirmDeleteDocument = () => {
+    if (documentToDelete) {
+      deleteDocument({ variables: { id: documentToDelete.id } });
+      setDocumentToDelete(undefined);
+    }
   };
 
   if (error) {
@@ -145,6 +177,16 @@ export const DocumentsDashboard: React.FC = () => {
             </Group>
           ) : data && documents.length > 0 ? (
             <>
+              <DeleteConfirmationModal
+                isOpen={!!documentToDelete}
+                onClose={() => setDocumentToDelete(undefined)}
+                onConfirm={confirmDeleteDocument}
+                title="Delete Document"
+                message={`Are you sure you want to delete "${documentToDelete?.fileName}"? This action cannot be undone and will remove the document and all its associated data.`}
+                confirmLabel="Delete Document"
+                isLoading={deleteLoading}
+              />
+
               <Modal
                 opened={!!summaryDocument}
                 onClose={() => setSummaryDocument(undefined)}
@@ -166,12 +208,12 @@ export const DocumentsDashboard: React.FC = () => {
               <Table striped highlightOnHover withTableBorder style={{ tableLayout: "fixed", width: "100%" }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th style={{ width: "22%" }}>File Name</Table.Th>
-                    <Table.Th style={{ width: "10%" }}>Size</Table.Th>
-                    <Table.Th style={{ width: "13%" }}>Status</Table.Th>
-                    <Table.Th style={{ width: "12%" }}>Actions</Table.Th>
-                    <Table.Th style={{ width: "28%" }}>Summary</Table.Th>
-                    <Table.Th style={{ width: "15%" }}>Created At</Table.Th>
+                    <Table.Th style={{ width: "60%" }}>File Name</Table.Th>
+                    <Table.Th style={{ width: "8rem" }}>Size</Table.Th>
+                    <Table.Th style={{ width: "12rem" }}>Status</Table.Th>
+                    <Table.Th style={{ width: "8rem" }}>Actions</Table.Th>
+                    <Table.Th style={{ width: "20%" }}>Summary</Table.Th>
+                    <Table.Th style={{ width: "20%" }}>Created At</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -196,7 +238,7 @@ export const DocumentsDashboard: React.FC = () => {
                       </Table.Td>
                       <Table.Td>
                         <Badge color={getStatusColor(doc.status)} variant="light">
-                          {doc.status}: {doc.statusProgress ? `${doc.statusProgress * 100}%` : "--"}
+                          {doc.status}: {doc.statusProgress ? `${(doc.statusProgress * 100).toFixed(2)}%` : "--"}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -213,6 +255,20 @@ export const DocumentsDashboard: React.FC = () => {
                               loading={reindexLoading}
                             >
                               <IconRotateClockwise size="1.2rem" />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+
+                        {(doc.status === DocumentStatus.READY || doc.status === DocumentStatus.ERROR) && (
+                          <Tooltip label="Delete document">
+                            <ActionIcon
+                              variant="light"
+                              color="red"
+                              size="lg"
+                              onClick={() => handleDeleteDocument(doc)}
+                              disabled={deleteLoading}
+                            >
+                              <IconTrash size="1.2rem" />
                             </ActionIcon>
                           </Tooltip>
                         )}
