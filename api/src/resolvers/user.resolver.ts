@@ -14,11 +14,6 @@ import { DEMO_MODE, DEFAULT_ADMIN_EMAILS } from "@/config/application";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
-  @Query(() => User, { nullable: true })
-  async currentUser(@Ctx() context: GraphQLContext): Promise<User | null> {
-    return await this.loadUserFromContext(context);
-  }
-
   @Query(() => ApplicationConfig, { nullable: true })
   async appConfig(@Ctx() context: GraphQLContext): Promise<ApplicationConfig> {
     const user = await this.loadUserFromContext(context);
@@ -30,7 +25,18 @@ export class UserResolver extends BaseResolver {
       s3Profile: process.env.S3_AWS_PROFILE || "",
     };
 
+    // Generate JWT token
+    const token = user
+      ? generateToken({
+          userId: user.id,
+          email: user.email,
+          roles: [user.role],
+        })
+      : undefined;
+
     return {
+      currentUser: user || undefined,
+      token,
       demoMode: !!DEMO_MODE,
       s3Connected: !!(
         s3settings.s3FilesBucketName &&

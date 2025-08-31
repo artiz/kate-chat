@@ -1,3 +1,4 @@
+import { User } from "@/entities";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { MessagesService } from "@/services/messages.service";
 import { SQSService } from "@/services/sqs.service";

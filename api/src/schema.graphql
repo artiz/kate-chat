@@ -16,11 +16,13 @@ type AdminUsersResponse {
 }
 
 type ApplicationConfig {
+  currentUser: User
   demoMode: Boolean!
   maxChatMessages: Float
   maxChats: Float
   maxImages: Float
   s3Connected: Boolean
+  token: String
 }
 
 type AuthResponse {
@@ -345,7 +347,6 @@ type ProviderDetail {
 
 type Query {
   appConfig: ApplicationConfig
-  currentUser: User
   documents: [Document!]!
   getActiveModels: [GqlModel!]!
   getAdminStats: AdminStatsResponse!

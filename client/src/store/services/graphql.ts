@@ -466,6 +466,8 @@ export interface CreateChatInput {
 }
 
 export interface ApplicationConfig {
+  currentUser: User;
+  token: string;
   demoMode: boolean;
   s3Connected: boolean;
   maxChats?: number;
@@ -476,7 +478,6 @@ export interface ApplicationConfig {
 
 export interface GetInitialDataResponse {
   data: {
-    currentUser: User;
     getModels: {
       models: Model[];
       providers?: ProviderInfo[];
@@ -485,9 +486,6 @@ export interface GetInitialDataResponse {
       chats: Chat[];
       total: number;
       hasMore: boolean;
-    };
-    refreshToken: {
-      token: string;
     };
     appConfig: ApplicationConfig;
   };
@@ -738,7 +736,7 @@ export const graphqlApi = api.injectEndpoints({
     // Initial data load - combines user, models, and chats
     getInitialData: builder.query<
       {
-        user: User;
+        appConfig: ApplicationConfig;
         models: Model[];
         providers: ProviderInfo[];
         chats: {
@@ -747,7 +745,6 @@ export const graphqlApi = api.injectEndpoints({
           hasMore: boolean;
         };
         refreshToken: { token: string };
-        appConfig: ApplicationConfig;
       },
       void
     >({
@@ -757,9 +754,6 @@ export const graphqlApi = api.injectEndpoints({
         body: {
           query: `
             query GetInitialData {
-              currentUser {
-                ...FullUser
-              }
               getModels {
                 models {
                     ...BaseModel
@@ -788,10 +782,11 @@ export const graphqlApi = api.injectEndpoints({
                 total
                 hasMore
               }
-              refreshToken {
-                token
-              }
               appConfig {
+                currentUser {
+                  ...FullUser
+                }
+                token
                 demoMode
                 s3Connected
                 maxChats

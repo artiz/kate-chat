@@ -75,11 +75,12 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
-      dispatch(setUser(initData.user));
+      dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
       dispatch(setChats(initData.chats));
-      dispatch(loginSuccess(initData.refreshToken?.token));
+
+      dispatch(loginSuccess(initData.appConfig.token));
     }
   }, [isAuthenticated, initData, dispatch]);
 

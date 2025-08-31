@@ -72,7 +72,6 @@ export class Message {
   linkedToMessageId?: string; // Links this message to a parent message for parallel model calls
 
   @Field(() => [Message], { nullable: true })
-  @OneToMany(() => Message, m => m.linkedToMessage, { lazy: true, cascade: true, onDelete: "CASCADE" })
   linkedMessages?: Message[]; // Virtual field for GraphQL, populated in resolvers
 
   @Field({ nullable: true })

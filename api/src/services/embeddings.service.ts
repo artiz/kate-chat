@@ -136,7 +136,6 @@ export class EmbeddingsService {
                 WHERE vdc.embedding MATCH ? AND vdc.k = ? ORDER BY vdc.distance`,
             [JSON.stringify(queryEmbedding), RAG_QUERY_CHUNKS_LIMIT]
           );
-          logger.debug({ query, chunks }, `SQLite found ${chunks.length} chunks for document ${document.id}`);
         } catch (err) {
           logger.error(err, `Failed to query document ${document.id} chunks`);
         } finally {

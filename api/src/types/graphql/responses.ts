@@ -163,6 +163,12 @@ export class GqlCostsInfo {
 
 @ObjectType()
 export class ApplicationConfig {
+  @Field({ nullable: true })
+  currentUser?: User;
+
+  @Field({ nullable: true })
+  token?: string;
+
   @Field()
   demoMode: boolean;
 

@@ -1,5 +1,5 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
-import { Repository, IsNull } from "typeorm";
+import { Repository, IsNull, In } from "typeorm";
 import { Message } from "@/entities/Message";
 import { Chat, Model } from "@/entities";
 import { CreateMessageInput, GetMessagesInput, GetImagesInput, CallOtherInput } from "@/types/graphql/inputs";
@@ -16,9 +16,10 @@ import {
   DeleteMessageResponse,
 } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
-import { MessagesService } from "@/services/messages.service";
 import { BaseResolver } from "./base.resolver";
 import { MessageType } from "@/types/ai.types";
+import { notEmpty } from "@/utils/assert";
+import { ok } from "assert";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -66,13 +67,30 @@ export class MessageResolver extends BaseResolver {
         skip,
         take,
         order: { createdAt: "DESC", role: "ASC" },
-        relations: ["user", "linkedMessages"],
+        relations: ["user"],
       })
       .then(messages => messages.reverse());
 
-    const total = await this.messageRepository.count({
-      where,
-    });
+    // load linked messages
+    const ids = messages.map(m => m.id).filter(notEmpty);
+    const linkedMessages = (
+      await this.messageRepository.find({
+        where: { linkedToMessageId: In(ids) },
+        order: { linkedToMessageId: "ASC", createdAt: "DESC", role: "ASC" },
+        relations: ["user"],
+      })
+    ).reduce(
+      (acc, msg) => {
+        ok(msg.linkedToMessageId);
+        acc[msg.linkedToMessageId] = acc[msg.linkedToMessageId] || [];
+        acc[msg.linkedToMessageId].push(msg);
+        return acc;
+      },
+      {} as Record<string, Message[]>
+    );
+    messages.forEach(m => (m.linkedMessages = linkedMessages[m.id]));
+
+    const total = await this.messageRepository.count({ where });
 
     return {
       messages,
@@ -87,14 +105,11 @@ export class MessageResolver extends BaseResolver {
     await this.validateContextToken(context);
 
     const message = await this.messageRepository.findOne({
-      where: {
-        id,
-      },
-      relations: ["chat", "linkedMessages"],
+      where: { id },
+      relations: ["chat"],
     });
 
     if (!message) return null;
-
     // Verify the message belongs to an active chat
     if (!message.chat) return null;
 
@@ -270,14 +285,14 @@ export class MessageResolver extends BaseResolver {
     }
   }
 
-  @FieldResolver(() => [Message])
-  async linkedMessages(@Root() message: Message): Promise<Message[]> {
-    if (!message.id) return [];
+  // @FieldResolver(() => [Message])
+  // async linkedMessages(@Root() message: Message): Promise<Message[]> {
+  //   if (!message.id) return [];
 
-    return await this.messageRepository.find({
-      where: { linkedToMessageId: message.id },
-      order: { createdAt: "ASC" },
-      relations: ["user"],
-    });
-  }
+  //   return await this.messageRepository.find({
+  //     where: { linkedToMessageId: message.id },
+  //     order: { createdAt: "ASC" },
+  //     relations: ["user"],
+  //   });
+  // }
 }

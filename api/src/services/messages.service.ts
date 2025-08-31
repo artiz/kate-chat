@@ -98,11 +98,11 @@ export class MessagesService {
       }
     }
 
-    // Get previous messages for context
-    const inputMessages = await this.getContextMessages(chatId);
-
     // Save user message
     const userMessage = await this.publishUserMessage(input, user, chat, model, connection);
+
+    // Get previous messages for context
+    const inputMessages = await this.getContextMessages(chatId);
     inputMessages.push(userMessage);
 
     // Generate AI response
