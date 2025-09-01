@@ -52,7 +52,7 @@ export class Message {
   chat?: Chat;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, foreignKeyConstraintName: "FK_messages_chat" })
   chatId?: string;
 
   @Field(() => User, { nullable: true })
@@ -60,7 +60,7 @@ export class Message {
   user?: User;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, foreignKeyConstraintName: "FK_messages_user" })
   userId?: string;
 
   @Field(() => Message)
@@ -68,7 +68,7 @@ export class Message {
   linkedToMessage?: Message;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, foreignKeyConstraintName: "FK_linked_message" })
   linkedToMessageId?: string; // Links this message to a parent message for parallel model calls
 
   @Field(() => [Message], { nullable: true })

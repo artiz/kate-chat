@@ -118,11 +118,6 @@ export class Rag1756452209499 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "models" ADD "imageInput" boolean NOT NULL DEFAULT false`,
     );
-    if (DB_TYPE === "postgres") {
-      await queryRunner.query(
-        `ALTER TABLE "messages" ADD CONSTRAINT "messages_role_check" CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'assistant'::character varying, 'error'::character varying, 'system'::character varying])::text[])))`,
-      );
-    }
     await queryRunner.query(
       `ALTER TABLE "users" ADD "documentsEmbeddingsModelId" character varying`,
     );
@@ -183,10 +178,5 @@ export class Rag1756452209499 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TABLE "chat_documents"`);
     await queryRunner.query(`DROP TABLE "documents"`);
-    if (DB_TYPE === "postgres") {
-      await queryRunner.query(
-        `ALTER TABLE "messages" DROP CONSTRAINT "messages_role_check"`,
-      );
-    }
   }
 }

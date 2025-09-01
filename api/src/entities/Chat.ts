@@ -30,7 +30,11 @@ export class Chat {
 
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User)
-  user: User;
+  user?: User;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, foreignKeyConstraintName: "FK_chat_user" })
+  userId?: string;
 
   @Field(() => [ChatDocument], { nullable: true })
   @OneToMany(() => ChatDocument, doc => doc.chat)

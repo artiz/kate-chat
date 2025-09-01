@@ -16,7 +16,7 @@ export class ChatDocument {
   chat: Chat;
 
   @Field()
-  @Column()
+  @Column({ foreignKeyConstraintName: "FK_chat_documents_chat" })
   @Index()
   chatId: string;
 
@@ -26,7 +26,7 @@ export class ChatDocument {
   document: Document;
 
   @Field()
-  @Column()
+  @Column({ foreignKeyConstraintName: "FK_chat_documents_document" })
   @Index()
   documentId: string;
 }
