@@ -11,7 +11,8 @@ import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
-import { Message, MessageRole } from "@/store/services/graphql";
+import { Message } from "@/store/services/graphql";
+import { MessageRole } from "@/types/ai";
 
 interface ChatMessageProps {
   message: Message;

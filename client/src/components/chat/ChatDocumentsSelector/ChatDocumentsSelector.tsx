@@ -15,10 +15,10 @@ import {
   Badge,
 } from "@mantine/core";
 import { IconFile, IconChevronDown, IconCheck, IconX } from "@tabler/icons-react";
-import { Document, DocumentStatus } from "@/store/services/graphql";
-import { notifications } from "@mantine/notifications";
+import { Document } from "@/store/services/graphql";
 
 import classes from "./ChatDocumentsSelector.module.scss";
+import { DocumentStatus } from "@/types/ai";
 
 interface ChatDocumentsSelectorProps {
   selectedDocIds: string[];

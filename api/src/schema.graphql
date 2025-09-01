@@ -63,6 +63,7 @@ type Chat {
   topP: Float
   updatedAt: DateTimeISO!
   user: User
+  userId: String
 }
 
 type ChatDocument {

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "KateChat - Universal Chat Interface for AI Models",
   "scripts": {
-    "dev": "concurrently 'npm run dev:api' 'npm run dev:client' 'npm run dev:document_processor'",
+    "dev": "concurrently 'npm run dev:api' 'npm run dev:client'",
     "dev:api": "cd api && npm run dev",
     "dev:client": "cd client && npm run dev",
     "dev:document_processor": "cd document-processor && uvicorn --reload  --port 8080 'app.main:app'",

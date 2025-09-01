@@ -105,12 +105,8 @@ export class MessagesService {
     if (documentIds && documentIds.length > 0) {
       const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
 
-      try {
-        const ragMessage = await this.messageRepository.save(assistantMessage);
-        await this.publishRagMessage(input, connection, model, chat, userMessage, ragMessage);
-      } catch (err) {
-        logger.error(err, "Error loading  document chunks");
-      }
+      const ragMessage = await this.messageRepository.save(assistantMessage);
+      await this.publishRagMessage(input, connection, model, chat, userMessage, ragMessage);
 
       return userMessage;
     }

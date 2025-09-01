@@ -9,10 +9,10 @@ import {
   GET_CHAT_MESSAGES,
   GetChatMessagesResponse,
   Message,
-  MessageRole,
   UPDATE_CHAT_MUTATION,
 } from "@/store/services/graphql";
-import { debounce, pick } from "lodash";
+import { pick } from "lodash";
+import { MessageRole } from "@/types/ai";
 
 type HookResult = {
   messages: Message[] | undefined;

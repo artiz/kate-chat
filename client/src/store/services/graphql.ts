@@ -3,6 +3,7 @@ import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
+import { DocumentStatus, MessageRole } from "@/types/ai";
 
 export const BASE_MODEL_FRAGMENT = `
     fragment BaseModel on GqlModel {
@@ -547,17 +548,6 @@ export interface CallOthersResponse {
   };
 }
 
-export enum MessageType {
-  MESSAGE = "message",
-  SYSTEM = "system",
-}
-
-export enum MessageRole {
-  USER = "user",
-  ASSISTANT = "assistant",
-  ERROR = "error",
-}
-
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -600,18 +590,6 @@ export interface Chat {
   chatDocuments?: {
     document: Document;
   }[];
-}
-
-export enum DocumentStatus {
-  UPLOAD = "upload",
-  STORAGE_UPLOAD = "storage_upload",
-  PARSING = "parsing",
-  CHUNKING = "chunking",
-  EMBEDDING = "embedding",
-  SUMMARIZING = "summarizing",
-  READY = "ready",
-  ERROR = "error",
-  DELETING = "deleting",
 }
 
 export interface Document {
@@ -750,7 +728,6 @@ export const graphqlApi = api.injectEndpoints({
           total: number;
           hasMore: boolean;
         };
-        refreshToken: { token: string };
       },
       void
     >({
@@ -808,7 +785,7 @@ export const graphqlApi = api.injectEndpoints({
       }),
 
       transformResponse: async (response: GetInitialDataResponse) => {
-        const { currentUser, getModels, getChats, refreshToken, appConfig } = response.data || {};
+        const { getModels, getChats, appConfig } = response.data || {};
         const chats = getChats || {
           chats: [],
           total: 0,
@@ -822,11 +799,9 @@ export const graphqlApi = api.injectEndpoints({
         }
 
         return {
-          user: currentUser,
           models: getModels?.models || [],
           providers: getModels?.providers || [],
           chats,
-          refreshToken,
           appConfig,
         };
       },

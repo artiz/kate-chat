@@ -100,7 +100,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     chatId,
   });
 
-  const { uploadDocuments, uploadedDocs, uploadLoading, uploadError } = useDocumentsUpload();
+  const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chat = useMemo(() => {
     if (!chatId) return;
@@ -396,7 +396,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const chatDocuments = useMemo(() => {
     return (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
-  }, [chat?.chatDocuments]);
+  }, [chat?.chatDocuments, uploadingDocs]);
 
   return (
     <Container size="xl" py="md" className={classes.container}>
@@ -541,13 +541,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
           )}
         </div>
       </Paper>
-      <Box style={{ position: "relative" }}>
+      <div style={{ position: "relative" }}>
         <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
           <div className={classes.anchor}>
             <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
           </div>
         </div>
-      </Box>
+      </div>
 
       {messagesLimitReached && (
         <Tooltip label={`You have reached the limit of ${appConfig?.maxChatMessages} messages in this chat`}>
@@ -556,6 +556,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </Text>
         </Tooltip>
       )}
+
+      <DocumentUploadProgress
+        error={uploadError}
+        progress={uploadProgress}
+        loading={uploadLoading}
+        documents={uploadingDocs || []}
+      />
+
       {/* Message input */}
       <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
         {uploadAllowed && (
@@ -590,14 +598,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </Group>
         )}
 
-        {uploadError ? (
-          <Text color="red" size="sm">
-            Error: {uploadError.message}
-          </Text>
-        ) : (
-          <DocumentUploadProgress progress={uploadProgress} loading={uploadLoading} documents={uploadedDocs || []} />
-        )}
-
         <Group align="flex-start" className={classes.chatInputGroup}>
           <Textarea
             ref={chatInputRef}
@@ -606,7 +606,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             value={userMessage}
             autosize
             minRows={1}
-            maxRows={5}
+            maxRows={7}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
             disabled={messagesLoading || messagesLimitReached}

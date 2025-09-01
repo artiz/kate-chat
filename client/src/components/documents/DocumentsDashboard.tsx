@@ -1,4 +1,4 @@
-import React, { use, useMemo, useState } from "react";
+import React, { use, useEffect, useMemo, useState } from "react";
 import {
   Title,
   Paper,
@@ -16,7 +16,6 @@ import {
 } from "@mantine/core";
 import { IconFile, IconRefresh, IconAlertCircle, IconRotateClockwise, IconTrash } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
-import { gql } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { formatFileSize } from "@/lib";
 import { DeleteConfirmationModal } from "@/components/modal";
@@ -27,27 +26,10 @@ import {
   DocumentStatusMessage,
   REINDEX_DOCUMENT_MUTATION,
   DELETE_DOCUMENT_MUTATION,
-  DocumentStatus,
 } from "@/store/services/graphql";
-
-const getStatusColor = (status?: string): string => {
-  switch (status?.toLowerCase()) {
-    case "completed":
-    case "processed":
-      return "green";
-    case "processing":
-    case "uploading":
-      return "blue";
-    case "failed":
-    case "error":
-      return "red";
-    case "pending":
-    case "queued":
-      return "yellow";
-    default:
-      return "gray";
-  }
-};
+import { DocumentStatus, getStatusColor } from "@/types/ai";
+import { set } from "lodash";
+import { parseMarkdown } from "@/lib/services/MarkdownParser";
 
 export const DocumentsDashboard: React.FC = () => {
   const { loading, error, data, refetch } = useQuery<{ documents: Document[] }>(GET_DOCUMENTS, {
@@ -123,6 +105,8 @@ export const DocumentsDashboard: React.FC = () => {
   });
 
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
+  const [processedSummary, setProcessedSummary] = useState<string>("");
+
   const [documentToDelete, setDocumentToDelete] = useState<Document | undefined>(undefined);
 
   const handleRefresh = () => {
@@ -139,6 +123,19 @@ export const DocumentsDashboard: React.FC = () => {
       setDocumentToDelete(undefined);
     }
   };
+
+  useEffect(() => {
+    if (!summaryDocument?.summary) {
+      setProcessedSummary("");
+    } else {
+      parseMarkdown(summaryDocument?.summary || "")
+        .then(res => setProcessedSummary(res.join("\n")))
+        .catch(err => {
+          console.error("Error processing markdown", err);
+          setProcessedSummary("Error processing summary: " + err.message);
+        });
+    }
+  }, [summaryDocument?.summary]);
 
   if (error) {
     return (
@@ -192,6 +189,7 @@ export const DocumentsDashboard: React.FC = () => {
                 onClose={() => setSummaryDocument(undefined)}
                 title="Document Summary"
                 centered
+                size="xl"
               >
                 <Alert p="xs" mb="sm" title="Summarization Model" color="blue">
                   {summaryDocument?.summaryModelId}
@@ -199,7 +197,10 @@ export const DocumentsDashboard: React.FC = () => {
                 <Alert p="xs" mb="sm" title="Embeddings Model" color="green">
                   {summaryDocument?.embeddingsModelId}
                 </Alert>
-                <Text>{summaryDocument?.summary}</Text>
+                <Text size="sm">
+                  <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
+                </Text>
+
                 <Group mt="md" justify="flex-end">
                   <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
                 </Group>

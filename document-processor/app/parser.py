@@ -24,6 +24,7 @@ from docling.datamodel.base_models import ConversionStatus, DocumentStream
 
 _log = logging.getLogger(__name__)
 
+NOTDEF = '/.notdef'
 
 class PDFParser:
     def __init__(
@@ -247,6 +248,9 @@ class JsonReportProcessor:
 
         return expanded_children
     
+    def _normalize_pdf_text(self, text: str) -> str:
+        return text.replace(NOTDEF, ' ') if text else ''
+        
     def _process_text_reference(self, ref_num, data):
         """Helper method to process text references and create content items.
         
@@ -259,8 +263,10 @@ class JsonReportProcessor:
         """
         text_item = data['texts'][ref_num]
         item_type = text_item['label']
+        text = self._normalize_pdf_text(text_item.get('text', ''))
+        
         content_item = {
-            'text': text_item.get('text', ''),
+            'text': text,
             'type': item_type,
             'text_id': ref_num
         }
@@ -442,7 +448,7 @@ class JsonReportProcessor:
         # Extract text from grid cells
         table_data = []
         for row in table['data']['grid']:
-            table_row = [cell['text'] for cell in row]
+            table_row = [self._normalize_pdf_text(cell['text']) for cell in row]
             table_data.append(table_row)
         
         # Check if the table has headers
@@ -521,7 +527,7 @@ def main():
     data_dir = Path(__file__).parent.parent / "data" / "train"
     files_to_parse = [
         data_dir / "dummy_report.pdf",
-        data_dir / "Artem Kustikov - CV.pdf",
+        data_dir / "DDD Quickly (Avram, Marinesku).pdf",
         data_dir / "Apple.docx"
         # data_dir / "Austria - Wikipedia.html"
     ]
@@ -560,7 +566,6 @@ def main():
             
             # Get the document data
             data = conv_result.document.export_to_dict()
-            print ("export_to_dict", data)
                 
             normalized_data = parser._normalize_page_sequence(data)
             processed_report = processor.assemble_report(conv_result, normalized_data)

@@ -23,7 +23,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   isLoading = false,
 }) => {
   return (
-    <Modal opened={isOpen} onClose={onClose} title={title} centered>
+    <Modal opened={isOpen} onClose={onClose} title={title} centered size="xl">
       <Stack>
         <Text>{message}</Text>
 
