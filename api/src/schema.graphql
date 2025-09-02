@@ -301,6 +301,7 @@ type MessageMetadata {
 type MessageRelevantChunk {
   content: String!
   documentId: String!
+  documentName: String
   id: ID!
   page: Float!
   pageIndex: Float!

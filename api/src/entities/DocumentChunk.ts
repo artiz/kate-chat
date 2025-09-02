@@ -21,6 +21,13 @@ export class DocumentChunk {
   @Index()
   documentId: string;
 
+  @Field()
+  @Column()
+  modelId: string; // AI model ID, that was used to generate embeddings
+
+  @Field({ nullable: true })
+  documentName?: string;
+
   // 0 - document without pages
   @Field()
   @Column({ type: "int", default: 0 })

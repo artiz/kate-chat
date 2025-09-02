@@ -18,7 +18,7 @@ import { IconFile, IconChevronDown, IconCheck, IconX } from "@tabler/icons-react
 import { Document } from "@/store/services/graphql";
 
 import classes from "./ChatDocumentsSelector.module.scss";
-import { DocumentStatus } from "@/types/ai";
+import { DocumentStatus, getStatusColor } from "@/types/ai";
 
 interface ChatDocumentsSelectorProps {
   selectedDocIds: string[];
@@ -30,22 +30,27 @@ interface ChatDocumentsSelectorProps {
 export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   selectedDocIds,
   onSelectionChange,
-  documents,
+  documents = [],
   disabled = false,
 }) => {
   const [opened, setOpened] = useState(false);
 
   // Filter documents that are ready for RAG search
   const availableDocuments = useMemo(() => {
-    if (!documents) return [];
     return documents.filter(doc => doc.status === DocumentStatus.READY || doc.status === DocumentStatus.SUMMARIZING);
   }, [documents]);
+
+  const availableDocumentsIds = useMemo(() => {
+    return new Set(availableDocuments.map(doc => doc.id));
+  }, [availableDocuments]);
 
   const selectedDocuments = useMemo(() => {
     return availableDocuments.filter(doc => selectedDocIds.includes(doc.id));
   }, [availableDocuments, selectedDocIds]);
 
   const handleDocumentToggle = (docId: string) => {
+    if (!availableDocumentsIds.has(docId)) return;
+
     const newSelection = selectedDocIds.includes(docId)
       ? selectedDocIds.filter(id => id !== docId)
       : [...selectedDocIds, docId];
@@ -53,7 +58,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   };
 
   const handleSelectAll = () => {
-    onSelectionChange(availableDocuments.map(doc => doc.id));
+    onSelectionChange([...availableDocumentsIds]);
   };
 
   const handleUnselectAll = () => {
@@ -61,7 +66,6 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   };
 
   const isAllSelected = availableDocuments.length > 0 && selectedDocIds.length === availableDocuments.length;
-  const isPartiallySelected = selectedDocIds.length > 0 && selectedDocIds.length < availableDocuments.length;
 
   return (
     <Popover position="bottom-start" withArrow shadow="md" opened={opened} onChange={setOpened}>
@@ -75,7 +79,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
             <Group gap="xs">
               <IconFile size={16} />
               <div>
-                Documents
+                RAG
                 {selectedDocuments.length > 0 && (
                   <Badge size="sm" variant="light" color="blue" ml="xs">
                     {selectedDocuments.length} selected
@@ -132,26 +136,17 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                     checked={selectedDocIds.includes(doc.id)}
                     onChange={() => handleDocumentToggle(doc.id)}
                     size="sm"
+                    disabled={!availableDocumentsIds.has(doc.id)}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Text size="sm" truncate title={doc.fileName}>
                       {doc.fileName}
                     </Text>
                     <Group gap="xs">
-                      <Badge
-                        size="xs"
-                        variant="light"
-                        color={
-                          doc.status === DocumentStatus.READY
-                            ? "green"
-                            : doc.status === DocumentStatus.EMBEDDING
-                              ? "orange"
-                              : "blue"
-                        }
-                      >
+                      <Badge size="xs" variant="light" color={getStatusColor(doc.status)}>
                         {doc.status}
                       </Badge>
-                      {doc.statusProgress !== undefined && doc.statusProgress < 1 && (
+                      {doc.statusProgress !== undefined && (
                         <Text size="xs" c="dimmed">
                           {Math.round(doc.statusProgress * 100)}%
                         </Text>

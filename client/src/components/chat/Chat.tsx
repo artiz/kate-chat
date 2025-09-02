@@ -34,9 +34,8 @@ import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
-import { ImageInput } from "@/store/services/graphql";
+import { ImageInput, Message } from "@/store/services/graphql";
 import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
-import { Message } from "@/store/slices/chatSlice";
 import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
 
@@ -100,12 +99,33 @@ export const ChatComponent = ({ chatId }: IProps) => {
     chatId,
   });
 
-  const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
-
   const chat = useMemo(() => {
     if (!chatId) return;
     return chats.find(c => c.id === chatId);
   }, [chats, chatId]);
+
+  const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
+
+  const chatDocuments = useMemo(() => {
+    let docs = (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
+    if (uploadingDocs) {
+      // If documents are uploading, include them in the list
+      docs = docs.map(d => {
+        const uploadNdx = uploadingDocs.findIndex(ud => ud.id === d.id);
+        if (uploadNdx != -1) {
+          const upload = uploadingDocs[uploadNdx];
+          uploadingDocs.splice(uploadNdx, 1); // Remove from uploadingDocs to avoid duplicates
+          return { ...d, ...upload };
+        }
+
+        return d;
+      });
+
+      // push new ones
+      docs.push(...uploadingDocs);
+    }
+    return docs;
+  }, [chat?.chatDocuments, uploadingDocs]);
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
@@ -394,10 +414,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.s3Connected;
   }, [selectedModel, appConfig]);
 
-  const chatDocuments = useMemo(() => {
-    return (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
-  }, [chat?.chatDocuments, uploadingDocs]);
-
   return (
     <Container size="xl" py="md" className={classes.container}>
       <Group justify="space-between" mb="sm" className={classes.titleRow}>
@@ -533,6 +549,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               messages={messages}
               sending={sending}
               selectedModelName={selectedModel?.name}
+              onSending={() => setSending(true)}
               onMessageDeleted={removeMessages} // Reload messages after deletion
               onMessageModelSwitch={addChatMessage}
               onCallOther={addChatMessage}

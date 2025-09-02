@@ -23,9 +23,9 @@ interface RagResponseChunk {
 export interface RagResponse {
   step_by_step_analysis?: string;
   reasoning_summary?: string;
-  final_answer: string;
-  relevant_chunks_ids: string[];
-  chunks_relevance: number[];
+  final_answer?: string;
+  relevant_chunks_ids?: string[];
+  chunks_relevance?: number[];
 }
 
 // some info here: https://platform.openai.com/docs/guides/structured-outputs?type-restrictions=string-restrictions#examples

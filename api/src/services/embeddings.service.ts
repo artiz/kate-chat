@@ -9,7 +9,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { In, Not, Repository } from "typeorm";
 import { run } from "node:test";
 import { ok } from "assert";
-import { EMBEDDINGS_DIMENSIONS, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
+import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
 import { notEmpty } from "@/utils/assert";
 
 const logger = createLogger(__filename);
@@ -86,7 +86,8 @@ export class EmbeddingsService {
   public async findChunks(
     documentIds: string[],
     query: string,
-    connection: ConnectionParams
+    connection: ConnectionParams,
+    { limit = 5, loadFullPage = false }: { limit: number; loadFullPage: boolean }
   ): Promise<DocumentChunk[]> {
     // TODO: for each doc:
     // generate query embedding by doc.embeddingModelId
@@ -111,6 +112,8 @@ export class EmbeddingsService {
     );
 
     const results: DocumentChunk[] = [];
+
+    // TODO: make one call if all docs use same embeddings model
 
     for (const document of documents) {
       const documentChunks: DocumentChunk[] = [];
@@ -139,7 +142,7 @@ export class EmbeddingsService {
                 WHERE 
                 dc.documentId = ? AND
                 vdc.embedding MATCH ? AND vdc.k = ? ORDER BY vdc.distance`,
-            [document.id, JSON.stringify(queryEmbedding), RAG_QUERY_CHUNKS_LIMIT]
+            [document.id, JSON.stringify(queryEmbedding), limit]
           );
 
           documentChunks.push(...chunks);
@@ -154,7 +157,7 @@ export class EmbeddingsService {
           .where("document_chunks.documentId = :documentId", { documentId: document.id })
           .orderBy("embedding <-> :embedding")
           .setParameters({ embedding: pgvector.toSql(queryEmbedding) })
-          .limit(RAG_QUERY_CHUNKS_LIMIT)
+          .limit(limit)
           .getMany();
 
         documentChunks.push(...chunks);
@@ -162,19 +165,21 @@ export class EmbeddingsService {
         logger.warn(`Unsupported embeddings database type: ${DB_TYPE}`);
       }
 
-      const chunkPages = new Set(documentChunks.map(c => c.page).filter(p => p > 0));
-      if (chunkPages.size) {
-        const chunks = await this.documentChunksRepo.find({
-          where: {
-            page: In([...chunkPages]),
-            documentId: document.id,
-            id: Not(In(documentChunks.map(c => c.id))),
-          },
-        });
-        documentChunks.push(...chunks);
+      if (loadFullPage) {
+        const chunkPages = new Set(documentChunks.map(c => c.page).filter(p => p > 0));
+        if (chunkPages.size) {
+          const chunks = await this.documentChunksRepo.find({
+            where: {
+              page: In([...chunkPages]),
+              documentId: document.id,
+              id: Not(In(documentChunks.map(c => c.id))),
+            },
+          });
+          documentChunks.push(...chunks);
+        }
       }
 
-      results.push(...documentChunks);
+      results.push(...documentChunks.map(c => ({ ...c, documentName: document.fileName })));
     }
 
     return results;

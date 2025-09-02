@@ -98,6 +98,7 @@ export class OpenAIService extends BaseProviderService {
   // Text generation with OpenAI models
   // https://platform.openai.com/docs/guides/text?api-mode=chat
   formatMessages(
+    modelId: string,
     messages: ModelMessage[],
     systemPrompt: string | undefined
   ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
@@ -137,9 +138,14 @@ export class OpenAIService extends BaseProviderService {
       }
     });
 
+    let systemRole: "system" | "developer" = "system";
+    if (modelId.startsWith("o1") || modelId.startsWith("o4") || modelId.startsWith("gpt-5")) {
+      systemRole = "developer";
+    }
+
     if (systemPrompt) {
       result.unshift({
-        role: "developer",
+        role: systemRole,
         content: systemPrompt,
       });
     }
@@ -154,7 +160,7 @@ export class OpenAIService extends BaseProviderService {
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
-      messages: this.formatMessages(messages, systemPrompt),
+      messages: this.formatMessages(modelId, messages, systemPrompt),
       temperature,
       max_completion_tokens: maxTokens,
     };
@@ -187,6 +193,8 @@ export class OpenAIService extends BaseProviderService {
 
     try {
       const response = await this.openai.chat.completions.create(params);
+
+      logger.debug(response, "OpenAI model response");
 
       const content = response.choices[0]?.message?.content || "";
       const usage = response.usage;

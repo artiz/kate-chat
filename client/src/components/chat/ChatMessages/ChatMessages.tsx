@@ -26,6 +26,7 @@ interface ChatMessagesProps {
   sending: boolean;
   selectedModelName?: string;
   onMessageDeleted?: (res: DeleteMessageResponse) => void;
+  onSending?: () => void;
   onMessageModelSwitch?: (message: Message) => void;
   onCallOther?: (message: Message) => void;
   onMessageEdit?: (message: Message) => void;
@@ -36,6 +37,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   sending,
   selectedModelName,
   onMessageDeleted,
+  onSending,
   onMessageModelSwitch,
   onCallOther,
   onMessageEdit,
@@ -151,17 +153,22 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     },
   });
 
-  const handleSwitchModel = useCallback((messageId: string, modelId: string) => {
-    switchModel({
-      variables: {
-        messageId,
-        modelId,
-      },
-    });
-  }, []);
+  const handleSwitchModel = useCallback(
+    (messageId: string, modelId: string) => {
+      onSending?.();
+      switchModel({
+        variables: {
+          messageId,
+          modelId,
+        },
+      });
+    },
+    [switchModel, onSending]
+  );
 
   const handleCallOther = useCallback(
     (messageId: string, modelId: string) => {
+      onSending?.();
       callOther({
         variables: {
           input: {
@@ -171,7 +178,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         },
       });
     },
-    [callOther]
+    [callOther, onSending]
   );
 
   const handleEditMessage = useCallback(

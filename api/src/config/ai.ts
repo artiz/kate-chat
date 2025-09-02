@@ -10,7 +10,13 @@ export const DEFAULT_TOP_P = 0.9;
 
 export const CONTEXT_MESSAGES_LIMIT = 100;
 export const EMBEDDINGS_DIMENSIONS = 3072;
-export const RAG_QUERY_CHUNKS_LIMIT = 20;
+
+export const RAG_QUERY_CHUNKS_LIMIT = process.env.RAG_QUERY_CHUNKS_LIMIT
+  ? parseInt(process.env.RAG_QUERY_CHUNKS_LIMIT, 10)
+  : 10;
+export const RAG_LOAD_FULL_PAGES = ["1", "true", "y", "yes"].includes(
+  (process.env.RAG_LOAD_FULL_PAGES || "yes").toLowerCase()
+);
 
 export const ENABLED_API_PROVIDERS: ApiProvider[] = (() => {
   const allIds: ApiProvider[] = Object.values(ApiProvider);

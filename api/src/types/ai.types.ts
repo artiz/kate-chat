@@ -148,6 +148,9 @@ export class MessageRelevantChunk {
   @Field()
   documentId: string;
 
+  @Field({ nullable: true })
+  documentName?: string;
+
   @Field()
   page: number;
 

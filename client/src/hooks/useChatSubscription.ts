@@ -106,7 +106,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
           // If it's an assistant message after we sent something, clear loading state
           if (
             response.error ||
-            response.message?.role === MessageRole.ASSISTANT ||
+            (response.message?.role === MessageRole.ASSISTANT && response.message?.content) ||
             response.message?.role === MessageRole.ERROR
           ) {
             resetSending();

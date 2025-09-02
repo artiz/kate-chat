@@ -72,6 +72,13 @@ export const BASE_MESSAGE_FRAGMENT = `
           inputTokens
           outputTokens
         }
+        relevantsChunks {
+          id
+          documentId
+          documentName
+          page
+          content
+        }
       }
     }
 `;
