@@ -9,18 +9,20 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # Reused code from https://github.com/IlyaRice/RAG-Challenge-2
 # Kudos to @IlyaRice
 
+
 class PageTextPreparation:
     """
-    Cleans and formats page blocks according to rules, handling consecutive 
+    Cleans and formats page blocks according to rules, handling consecutive
     groups for tables, lists, and footnotes.
     """
 
-        
-    def process_report(self, report_data: dict) -> dict:
+    def __init__(self, report_data: dict):
+        self.report_data = report_data
+
+    def process_report(self) -> dict:
         """
         Process a single report, returning a list of processed pages and printing a message if corrections were made.
         """
-        self.report_data = report_data
         processed_pages = []
         total_corrections = 0
         corrections_list = []
@@ -31,24 +33,18 @@ class PageTextPreparation:
             cleaned_text, corrections_count, corrections = self._clean_text(page_text)
             total_corrections += corrections_count
             corrections_list.extend(corrections)
-            page_data = {
-                "page": page_number,
-                "text": cleaned_text
-            }
+            page_data = {"page": page_number, "text": cleaned_text}
             processed_pages.append(page_data)
-        
+
         if total_corrections > 0:
             print(
                 f"Fixed {total_corrections} occurrences in the file "
                 f"{self.report_data['metainfo']['sha1_name']}"
             )
             print(corrections_list[:30])
-        
-        processed_report = {
-            "chunks": None,
-            "pages": processed_pages
-        }
-        
+
+        processed_report = {"chunks": None, "pages": processed_pages}
+
         return processed_report
 
     def prepare_page_text(self, page_number):
@@ -86,44 +82,44 @@ class PageTextPreparation:
                 continue
             filtered_blocks.append(block)
         return filtered_blocks
-    
+
     def _clean_text(self, text):
         """Clean text using regex substitutions and count corrections."""
         command_mapping = {
-            'zero': '0',
-            'one': '1', 
-            'two': '2',
-            'three': '3',
-            'four': '4',
-            'five': '5',
-            'six': '6',
-            'seven': '7',
-            'eight': '8',
-            'nine': '9',
-            'period': '.',
-            'comma': ',',
-            'colon': ":",
-            'hyphen': "-",
-            'percent': '%',
-            'dollar': '$',
-            'space': ' ',
-            'plus': '+',
-            'minus': '-',
-            'slash': '/',
-            'asterisk': '*',
-            'lparen': '(',
-            'rparen': ')',
-            'parenright': ')',
-            'parenleft': '(',
-            'wedge.1_E': '',
+            "zero": "0",
+            "one": "1",
+            "two": "2",
+            "three": "3",
+            "four": "4",
+            "five": "5",
+            "six": "6",
+            "seven": "7",
+            "eight": "8",
+            "nine": "9",
+            "period": ".",
+            "comma": ",",
+            "colon": ":",
+            "hyphen": "-",
+            "percent": "%",
+            "dollar": "$",
+            "space": " ",
+            "plus": "+",
+            "minus": "-",
+            "slash": "/",
+            "asterisk": "*",
+            "lparen": "(",
+            "rparen": ")",
+            "parenright": ")",
+            "parenleft": "(",
+            "wedge.1_E": "",
         }
 
         recognized_commands = "|".join(command_mapping.keys())
         slash_command_pattern = rf"/({recognized_commands})(\.pl\.tnum|\.tnum\.pl|\.pl|\.tnum|\.case|\.sups)"
 
         occurrences_amount = len(re.findall(slash_command_pattern, text))
-        occurrences_amount += len(re.findall(r'glyph<[^>]*>', text))
-        occurrences_amount += len(re.findall(r'/([A-Z])\.cap', text))
+        occurrences_amount += len(re.findall(r"glyph<[^>]*>", text))
+        occurrences_amount += len(re.findall(r"/([A-Z])\.cap", text))
 
         corrections = []
 
@@ -135,8 +131,8 @@ class PageTextPreparation:
             return replacement if replacement is not None else match.group(0)
 
         def replace_glyph(match):
-            corrections.append((match.group(0), ''))
-            return ''
+            corrections.append((match.group(0), ""))
+            return ""
 
         def replace_cap(match):
             original = match.group(0)
@@ -145,11 +141,11 @@ class PageTextPreparation:
             return replacement
 
         text = re.sub(slash_command_pattern, replace_command, text)
-        text = re.sub(r'glyph<[^>]*>', replace_glyph, text)
-        text = re.sub(r'/([A-Z])\.cap', replace_cap, text)
+        text = re.sub(r"glyph<[^>]*>", replace_glyph, text)
+        text = re.sub(r"/([A-Z])\.cap", replace_cap, text)
 
         return text, occurrences_amount, corrections
-    
+
     def _block_ends_with_colon(self, block):
         """Check if block text ends with colon for relevant block types."""
         block_type = block.get("type")
@@ -276,7 +272,7 @@ class PageTextPreparation:
                 group_text = self._render_list_group(group_blocks)
                 final_blocks.append(group_text)
                 continue
-            
+
             # Handle headers
             if block_type == "code":
                 final_blocks.append(f"\n```\n{text}\n```\n")
@@ -368,53 +364,53 @@ class PageTextPreparation:
 
     def export_to_markdown(self, reports_dir: Path, output_dir: Path):
         """Export processed reports to markdown files.
-        
+
         Args:
             reports_dir: Directory containing JSON report files
             output_dir: Directory where markdown files will be saved
         """
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         for report_path in reports_dir.glob("*.json"):
-            with open(report_path, 'r', encoding='utf-8') as f:
+            with open(report_path, "r", encoding="utf-8") as f:
                 report_data = json.load(f)
-            
+
             processed_report = self.process_report(report_data)
-            
+
             document_text = ""
-            for page in processed_report['pages']:
+            for page in processed_report["pages"]:
                 document_text += f"\n\n---\n\n# Page {page['page']}\n\n"
-                document_text += page['text']
-            
-            report_name = report_data['metainfo']['sha1_name']
+                document_text += page["text"]
+
+            report_name = report_data["metainfo"]["sha1_name"]
             with open(output_dir / f"{report_name}.md", "w", encoding="utf-8") as f:
                 f.write(document_text)
 
 
-class TextSplitter():
+class TextSplitter:
     def _split_report(self, file_content: Dict[str, any]) -> Dict[str, any]:
         """Split report into chunks, preserving markdown tables in content and optionally including serialized tables."""
         chunks = []
-        
+
         tables_by_page = {}
-        
-        for page in file_content['pages']:
+
+        for page in file_content["pages"]:
             page_chunks = self._split_page(page)
             chunk_id = 0
             for chunk in page_chunks:
-                chunk['id'] = chunk_id
-                chunk['type'] = 'content'
+                chunk["id"] = chunk_id
+                chunk["type"] = "content"
                 chunk_id += 1
                 chunks.append(chunk)
-            
-            if tables_by_page and page['page'] in tables_by_page:
-                for table in tables_by_page[page['page']]:
-                    table['id'] = chunk_id
-                    table['type'] = 'serialized_table'
+
+            if tables_by_page and page["page"] in tables_by_page:
+                for table in tables_by_page[page["page"]]:
+                    table["id"] = chunk_id
+                    table["type"] = "serialized_table"
                     chunk_id += 1
                     chunks.append(table)
-        
-        file_content['chunks'] = chunks
+
+        file_content["chunks"] = chunks
         return file_content
 
     def count_tokens(self, string: str, encoding_name="o200k_base"):
@@ -425,88 +421,94 @@ class TextSplitter():
 
         return token_count
 
-    def _split_page(self, page: Dict[str, any], chunk_size: int = 300, chunk_overlap: int = 50) -> List[Dict[str, any]]:
+    def _split_page(
+        self, page: Dict[str, any], chunk_size: int = 300, chunk_overlap: int = 50
+    ) -> List[Dict[str, any]]:
         """Split page text into chunks. The original text includes markdown tables."""
         text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-            model_name="gpt-4o",
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
+            model_name="gpt-4o", chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
-        chunks = text_splitter.split_text(page['text'])
+        chunks = text_splitter.split_text(page["text"])
         chunks_with_meta = []
         for chunk in chunks:
-            chunks_with_meta.append({
-                "page": page['page'],
-                "length_tokens": self.count_tokens(chunk),
-                "text": chunk
-            })
+            chunks_with_meta.append(
+                {
+                    "page": page["page"],
+                    "length_tokens": self.count_tokens(chunk),
+                    "text": chunk,
+                }
+            )
         return chunks_with_meta
 
     def split_json_report(self, report_data: dict) -> dict:
         return self._split_report(report_data)
 
+
 def main():
     from parser import PDFParser, JsonReportProcessor
     from docling.datamodel.base_models import ConversionStatus
-    
+
     """Default entry point to parse multiple documents and output results to console."""
-    
+
     # Set up logging to see processing information
     logging.basicConfig(level=logging.INFO)
-    
+
     # Define paths to the files to parse
     data_dir = Path(__file__).parent.parent / "data" / "train"
     files_to_parse = [
         data_dir / "dummy_report.pdf",
         data_dir / "Apple.docx",
     ]
-    
+
     # Create document parser instance (renamed from PDFParser to reflect multi-format support)
     parser = PDFParser()
-    report_preparation = PageTextPreparation()
     splitter = TextSplitter()
-        
+
     try:
         # Convert all documents
         conv_results = list(parser.convert_documents(files_to_parse))
         if not conv_results:
             print("No conversion results returned")
             return
-        
+
         # Process each document
         processor = JsonReportProcessor()
-        
+
         for i, conv_result in enumerate(conv_results):
             file_path = files_to_parse[i]
             print(f"\n{'='*60}")
             print(f"PROCESSING: {file_path.name}")
             print(f"{'='*60}")
-            
+
             if conv_result.status != ConversionStatus.SUCCESS:
                 print(f"❌ Conversion failed with status: {conv_result.status}")
                 continue
-            
+
             # Get the document data
             data = conv_result.document.export_to_dict()
             normalized_data = parser._normalize_page_sequence(data)
             processed_report = processor.assemble_report(conv_result, normalized_data)
-            
-            joined_report = report_preparation.process_report(processed_report)
+
+            report_preparation = PageTextPreparation(processed_report)
+            joined_report = report_preparation.process_report()
             splitted_report = splitter.split_json_report(joined_report)
-            
+
             # rt {'chunks': [{'page': 1, 'length_tokens': 248, 'text':
-                
-            for chunk in splitted_report['chunks']:
-                print(f"Chunk: {chunk['id']}, Page: {chunk['page']}, Tokens: {chunk['length_tokens']}")
+
+            for chunk in splitted_report["chunks"]:
+                print(
+                    f"Chunk: {chunk['id']}, Page: {chunk['page']}, Tokens: {chunk['length_tokens']}"
+                )
                 print(f"Text: {chunk['text'][:120]}...")
 
         print("=" * 60)
         print("🎉 All documents processed successfully!")
         print("=" * 60)
-        
+
     except Exception as e:
         print(f"❌ Error during parsing: {str(e)}")
         import traceback
+
         traceback.print_exc()
 
 

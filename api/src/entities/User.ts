@@ -139,6 +139,10 @@ export class User {
     };
   }
 
+  isAdmin(): boolean {
+    return this.role === UserRole.ADMIN;
+  }
+
   static getConnectionInfo(user?: User): ConnectionParams {
     return {
       AWS_BEDROCK_REGION: user?.settings?.awsBedrockRegion || process.env.AWS_BEDROCK_REGION,

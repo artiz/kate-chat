@@ -41,7 +41,9 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
 
       <div className={classes.message}>
         {message.html ? (
-          message.html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)
+          message.html.map((part: string, index: number) => (
+            <div key={index} dangerouslySetInnerHTML={{ __html: part }} />
+          ))
         ) : (
           <div>{message.content}</div>
         )}

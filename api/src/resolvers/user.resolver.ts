@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
+import bcrypt from "bcryptjs";
 import { User } from "../entities/User";
 import { generateToken } from "../utils/jwt";
-import bcrypt from "bcryptjs";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
 import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
@@ -10,7 +10,14 @@ import { logger } from "../utils/logger";
 import { AuthProvider, UserRole } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
-import { DEMO_MODE, DEFAULT_ADMIN_EMAILS } from "@/config/application";
+import {
+  DEMO_MODE,
+  DEFAULT_ADMIN_EMAILS,
+  DEMO_MAX_CHATS,
+  DEMO_MAX_CHAT_MESSAGES,
+  DEMO_MAX_IMAGES,
+} from "@/config/application";
+import { AppDataSource } from "@/config/database";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -34,17 +41,21 @@ export class UserResolver extends BaseResolver {
         })
       : undefined;
 
+    const demoMode = user?.isAdmin() ? false : DEMO_MODE;
+    const ragEnabled = !demoMode && ["sqlite", "postgres"].includes(AppDataSource.options.type);
+
     return {
       currentUser: user || undefined,
       token,
-      demoMode: !!DEMO_MODE,
+      demoMode,
       s3Connected: !!(
         s3settings.s3FilesBucketName &&
         ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
       ),
-      maxChats: DEMO_MODE ? 50 : -1,
-      maxChatMessages: DEMO_MODE ? 50 : -1,
-      maxImages: DEMO_MODE ? 25 : -1,
+      ragEnabled,
+      maxChats: demoMode ? DEMO_MAX_CHATS : -1,
+      maxChatMessages: demoMode ? DEMO_MAX_CHAT_MESSAGES : -1,
+      maxImages: demoMode ? DEMO_MAX_IMAGES : -1,
     };
   }
 

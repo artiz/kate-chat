@@ -1,5 +1,8 @@
 export const MAX_INPUT_JSON = process.env.MAX_INPUT_JSON || "5mb";
 export const DEMO_MODE = ["1", "true", "y", "yes"].includes(process.env.DEMO_MODE?.toLowerCase() || "");
+export const DEMO_MAX_CHAT_MESSAGES = +(process.env.DEMO_MAX_CHAT_MESSAGES || 100);
+export const DEMO_MAX_CHATS = +(process.env.DEMO_MAX_CHATS || 50);
+export const DEMO_MAX_IMAGES = +(process.env.DEMO_MAX_IMAGES || 10);
 
 // Admin configuration
 export const DEFAULT_ADMIN_EMAILS = process.env.DEFAULT_ADMIN_EMAILS?.split(",").map(email => email.trim()) || [];

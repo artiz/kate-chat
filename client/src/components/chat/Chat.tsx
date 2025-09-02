@@ -452,14 +452,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Group>
 
         <Group>
-          <Box
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              opacity: 0.7,
-            }}
-          >
+          <Box className={classes.wsStatus}>
             <Box className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
             <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
           </Box>
@@ -473,27 +466,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </ActionIcon>
         </Group>
       </Group>
-
-      <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
-        <Text fw={500} size="sm" visibleFrom="sm">
-          <IconRobot size={20} /> Model:
-        </Text>
-        <Select
-          data={models.map(model => ({
-            value: model.modelId,
-            label: `${model.provider}: ${model.name}`,
-          }))}
-          searchable
-          value={selectedModel?.modelId || ""}
-          onChange={handleModelChange}
-          placeholder="Select a model"
-          size="sm"
-          clearable={false}
-          style={{ maxWidth: "50%" }}
-          disabled={sending || messagesLoading}
-        />
-        {selectedModel && <ModelInfo model={selectedModel} />}
-
+      <div style={{ position: "relative" }}>
         <ChatSettings
           className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
           temperature={chat?.temperature}
@@ -503,18 +476,23 @@ export const ChatComponent = ({ chatId }: IProps) => {
           onSettingsChange={handleSettingsChange}
           resetToDefaults={resetSettingsToDefaults}
         />
+      </div>
+
+      <Group mb="sm">
+        {!appConfig?.s3Connected && (
+          <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
+        )}
+
+        <DocumentUploadProgress
+          error={uploadError}
+          progress={uploadProgress}
+          loading={uploadLoading}
+          documents={uploadingDocs || []}
+        />
       </Group>
 
-      {!appConfig?.s3Connected && (
-        <Group mb="sm">
-          <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
-        </Group>
-      )}
-
       {/* Messages */}
-      <Paper
-        withBorder
-        p="0"
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className={[
@@ -523,16 +501,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
           streaming ? classes.streaming : "",
         ].join(" ")}
       >
-        <div ref={firstMessageRef}>
-          {messagesLoading && (
-            <Group justify="center" py="xl">
-              <Loader />
-            </Group>
-          )}
-        </div>
+        <div ref={firstMessageRef} />
+        {messagesLoading && (
+          <Group justify="center" align="center" py="xl">
+            <Loader />
+          </Group>
+        )}
 
         {messages && messages.length === 0 ? (
-          <Stack align="center" justify="center" h="100%" gap="md">
+          <Stack align="center" justify="center" flex="1" gap="md">
             <IconRobot size={48} opacity={0.5} />
             <Text size="lg" ta="center">
               No messages yet
@@ -557,7 +534,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
             />
           )}
         </div>
-      </Paper>
+      </div>
+
       <div style={{ position: "relative" }}>
         <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
           <div className={classes.anchor}>
@@ -574,19 +552,32 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Tooltip>
       )}
 
-      <DocumentUploadProgress
-        error={uploadError}
-        progress={uploadProgress}
-        loading={uploadLoading}
-        documents={uploadingDocs || []}
-      />
+      <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
+        <IconRobot size={20} />
+        <Select
+          data={models.map(model => ({
+            value: model.modelId,
+            label: `${model.provider}: ${model.name}`,
+          }))}
+          searchable
+          value={selectedModel?.modelId || ""}
+          onChange={handleModelChange}
+          placeholder="Select a model"
+          size="sm"
+          clearable={false}
+          style={{ maxWidth: "50%" }}
+          disabled={sending || messagesLoading}
+        />
+        {selectedModel && <ModelInfo model={selectedModel} />}
+      </Group>
 
       {/* Message input */}
+
       <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
         {uploadAllowed && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
-            {chatDocuments.length ? (
+            {appConfig?.ragEnabled && chatDocuments.length ? (
               <ChatDocumentsSelector
                 selectedDocIds={selectedDocIds}
                 onSelectionChange={setSelectedDocIds}

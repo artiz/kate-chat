@@ -13,6 +13,7 @@ import {
   Tooltip,
   Modal,
   Button,
+  Box,
 } from "@mantine/core";
 import { IconFile, IconRefresh, IconAlertCircle, IconRotateClockwise, IconTrash } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
@@ -197,9 +198,9 @@ export const DocumentsDashboard: React.FC = () => {
                 <Alert p="xs" mb="sm" title="Embeddings Model" color="green">
                   {summaryDocument?.embeddingsModelId}
                 </Alert>
-                <Text size="sm">
+                <Box size="sm" fz="12">
                   <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
-                </Text>
+                </Box>
 
                 <Group mt="md" justify="flex-end">
                   <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>

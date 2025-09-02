@@ -30,7 +30,7 @@ export const DocumentUploadProgress: React.FC<DocumentUploadProgressProps> = ({
   }
 
   return (
-    <Alert icon={<IconUpload size="1rem" />} title="Documents upload" variant="light" mb="sm" pb="md">
+    <Alert icon={<IconUpload size="1rem" />} title="Documents upload" variant="light" mb="sm" pb="md" h="fit-content">
       {loading && <p>Uploading... {(progress * 100).toFixed(2)}%</p>}
       {documents.map(doc => (
         <Box key={doc.id}>

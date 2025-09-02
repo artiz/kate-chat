@@ -176,6 +176,9 @@ export class ApplicationConfig {
   s3Connected: boolean;
 
   @Field({ nullable: true })
+  ragEnabled: boolean;
+
+  @Field({ nullable: true })
   maxChats?: number;
 
   @Field({ nullable: true })
