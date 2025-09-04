@@ -1,17 +1,11 @@
-import {
-  Entity,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  OneToMany,
-} from "typeorm";
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
 import { MessageRole, ModelMessageContent, MessageMetadata } from "../types/ai.types";
 import { JSONTransformer } from "../utils/db";
+
+const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()
 @Entity("messages")
@@ -29,13 +23,13 @@ export class Message {
   role: MessageRole;
 
   @Field()
-  @Column()
+  @Column({ type: "text" })
   content: string;
 
-  @Column({ type: "json", nullable: true, transformer: JSONTransformer<ModelMessageContent[]>() })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ModelMessageContent[]>() })
   jsonContent?: ModelMessageContent[];
 
-  @Column({ type: "json", nullable: true, transformer: JSONTransformer<MessageMetadata>(), default: null })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<MessageMetadata>(), default: null })
   @Field(() => MessageMetadata, { nullable: true })
   metadata?: MessageMetadata;
 
@@ -52,7 +46,7 @@ export class Message {
   chat?: Chat;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, foreignKeyConstraintName: "FK_messages_chat" })
+  @Column({ nullable: true })
   chatId?: string;
 
   @Field(() => User, { nullable: true })
@@ -60,15 +54,15 @@ export class Message {
   user?: User;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, foreignKeyConstraintName: "FK_messages_user" })
+  @Column({ nullable: true })
   userId?: string;
 
   @Field(() => Message)
-  @ManyToOne(() => Message, { onDelete: "CASCADE", lazy: true })
+  @ManyToOne(() => Message, { onDelete: process.env.DB_TYPE == "mssql" ? undefined : "CASCADE", lazy: true })
   linkedToMessage?: Message;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, foreignKeyConstraintName: "FK_linked_message" })
+  @Column({ nullable: true })
   linkedToMessageId?: string; // Links this message to a parent message for parallel model calls
 
   @Field(() => [Message], { nullable: true })

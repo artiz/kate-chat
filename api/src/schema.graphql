@@ -49,7 +49,7 @@ input ChangePasswordInput {
 type Chat {
   chatDocuments: [ChatDocument!]
   createdAt: DateTimeISO!
-  description: String!
+  description: String
   id: ID!
   imagesCount: Float
   isPristine: Boolean!

@@ -20,6 +20,22 @@ services:
       timeout: 5s
       retries: 5
 
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: kate-chat-mssql
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Katechat@!
+      - MSSQL_PID=Express
+      - MSSQL_TCP_PORT=1433
+      - MSSQL_DB=katechat
+    networks:
+      - kate-chat-network
+  
   redis:
     image: valkey/valkey
     container_name: kate-chat-redis
@@ -155,5 +171,6 @@ networks:
 
 volumes:
   postgres-data: {}
+  mssql-data: {}
   redis-data: {}
   localstack-data: {}

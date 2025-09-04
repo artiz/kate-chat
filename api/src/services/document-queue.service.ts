@@ -44,7 +44,8 @@ export class DocumentQueueService {
       });
 
       if (!document) {
-        throw new Error(`Document ${documentId} not found`);
+        logger.warn(command, `Document ${documentId} not found`);
+        return;
       }
 
       const embeddingsModelId = document.embeddingsModelId || document.owner?.documentsEmbeddingsModelId;
@@ -52,6 +53,7 @@ export class DocumentQueueService {
 
       document.embeddingsModelId = embeddingsModelId;
       document.summaryModelId = summarizationModelId;
+      document.statusInfo = undefined;
 
       if (!embeddingsModelId) {
         logger.warn(`No embeddings model configured for document ${document.id}, skipping embeddings`);
@@ -93,7 +95,6 @@ export class DocumentQueueService {
       // Mark document as ready
       document.status = DocumentStatus.READY;
       document.statusProgress = 1;
-      document.statusInfo = undefined;
 
       await this.documentRepo.save(document);
       this.subService.publishDocumentStatus(document);

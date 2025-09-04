@@ -27,7 +27,7 @@ export class Model {
   user: User;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, foreignKeyConstraintName: "FK_model_user" })
+  @Column({ nullable: true })
   userId?: string;
 
   @Field({ nullable: true })

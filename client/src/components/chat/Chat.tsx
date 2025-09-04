@@ -1,5 +1,5 @@
 import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import {
   Container,
@@ -17,6 +17,7 @@ import {
   Loader,
   Stack,
   Alert,
+  Popover,
 } from "@mantine/core";
 import {
   IconSend,
@@ -71,7 +72,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
@@ -316,10 +316,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     setUserMessage(event.currentTarget.value);
   }, []);
 
-  const toggleChatSettings = useCallback(() => {
-    setSettingsOpen(!settingsOpen);
-  }, [settingsOpen]);
-
   const handleTitleUpdate = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -393,15 +389,25 @@ export const ChatComponent = ({ chatId }: IProps) => {
           });
       }
 
-      ok(chatId, "Chat ID is required to upload documents");
-      setUploadProgress(0);
-      uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
-        notifications.show({
-          title: "Error",
-          message: error.message || "Failed to upload documents",
-          color: "red",
+      if (documents.length) {
+        if (!appConfig?.ragEnabled) {
+          return notifications.show({
+            title: "Warning",
+            message: "RAG is not enabled. Documents will not be processed.",
+            color: "yellow",
+          });
+        }
+
+        ok(chatId, "Chat ID is required to upload documents");
+        setUploadProgress(0);
+        uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
+          notifications.show({
+            title: "Error",
+            message: error.message || "Failed to upload documents",
+            color: "red",
+          });
         });
-      });
+      }
     },
     [selectedImages, chatId]
   );
@@ -456,31 +462,24 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <Box className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
             <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
           </Box>
-          <Tooltip label="Chat Settings">
-            <ActionIcon onClick={toggleChatSettings}>
-              <IconSettings size={18} />
-            </ActionIcon>
-          </Tooltip>
           <ActionIcon onClick={() => navigate("/chat")}>
             <IconX size={18} />
           </ActionIcon>
         </Group>
       </Group>
-      <div style={{ position: "relative" }}>
-        <ChatSettings
-          className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
-          temperature={chat?.temperature}
-          maxTokens={chat?.maxTokens}
-          topP={chat?.topP}
-          imagesCount={chat?.imagesCount}
-          onSettingsChange={handleSettingsChange}
-          resetToDefaults={resetSettingsToDefaults}
-        />
-      </div>
 
       <Group mb="sm">
         {!appConfig?.s3Connected && (
           <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
+        )}
+
+        {!appConfig?.demoMode && appConfig?.s3Connected && !appConfig?.ragEnabled && (
+          <Alert color="yellow">
+            RAG is supported (DB is PostgreSQL/MSSQL/SQLite) but processing models are not setup. However, the
+            processing models required for full functionality are not yet configured. As a result, document uploads are
+            not possible at this time. To enable this feature, please select the appropriate{" "}
+            <Link to="/settings#document_processing">processing models</Link>.
+          </Alert>
         )}
 
         <DocumentUploadProgress
@@ -569,6 +568,26 @@ export const ChatComponent = ({ chatId }: IProps) => {
           disabled={sending || messagesLoading}
         />
         {selectedModel && <ModelInfo model={selectedModel} />}
+
+        <Popover width={300} position="top" withArrow shadow="md">
+          <Popover.Target>
+            <Tooltip label="Chat Settings">
+              <ActionIcon>
+                <IconSettings size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <ChatSettings
+              temperature={chat?.temperature}
+              maxTokens={chat?.maxTokens}
+              topP={chat?.topP}
+              imagesCount={chat?.imagesCount}
+              onSettingsChange={handleSettingsChange}
+              resetToDefaults={resetSettingsToDefaults}
+            />
+          </Popover.Dropdown>
+        </Popover>
       </Group>
 
       {/* Message input */}

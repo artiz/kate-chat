@@ -38,9 +38,10 @@ export class DocumentChunk {
   pageIndex: number;
 
   @Field()
-  @Column()
+  @Column({ type: "text" })
   content: string;
 
+  // TODO: use postgres "vector" type when https://github.com/typeorm/typeorm/pull/11437 be merged
   @Field(() => [Number], { nullable: true })
   @Column({ type: "text", nullable: true, transformer: EmbeddingTransformer(EMBEDDINGS_DIMENSIONS) })
   embedding?: number[];

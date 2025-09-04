@@ -58,6 +58,7 @@ export class EmbeddingsService {
     }
     entity.content = chunk.text;
     entity.embedding = embedding;
+    entity.modelId = model.modelId;
     entity = await this.documentChunksRepo.save(entity);
 
     // SQLite specific
@@ -161,6 +162,24 @@ export class EmbeddingsService {
           .getMany();
 
         documentChunks.push(...chunks);
+      } else if (DB_TYPE === "mssql") {
+        const runner = AppDataSource.createQueryRunner();
+        try {
+          const chunks = await runner.manager.query<(DocumentChunk & { distance: number })[]>(
+            `
+            DECLARE @question AS VECTOR (${EMBEDDINGS_DIMENSIONS}) = '${JSON.stringify(queryEmbedding)}';
+            SELECT TOP (${limit}) *, VECTOR_DISTANCE('cosine', @question, embedding) AS distance
+              FROM document_chunks dc
+              WHERE documentId = '${document.id}'
+              ORDER BY VECTOR_DISTANCE('cosine', @question, embedding)`
+          );
+
+          documentChunks.push(...chunks);
+        } catch (err) {
+          logger.error(err, `Failed to query document ${document.id} chunks`);
+        } finally {
+          runner.release();
+        }
       } else {
         logger.warn(`Unsupported embeddings database type: ${DB_TYPE}`);
       }

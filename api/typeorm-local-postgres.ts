@@ -1,7 +1,8 @@
-import { DataSource } from "typeorm";
-import { User, Model, Chat, Message, Document, ChatDocument, DocumentChunk } from "./src/entities";
 // TypeORM data source
 process.env.DB_TYPE = "postgres";
+
+import { DataSource } from "typeorm";
+import { ENTITIES } from "./src/entities";
 
 export default new DataSource({
   type: "postgres",
@@ -10,6 +11,6 @@ export default new DataSource({
   password: "katechat",
   migrationsRun: true,
   synchronize: false,
-  entities: [User, Model, Chat, Message, Document, ChatDocument, DocumentChunk],
-  migrations: ["../db-migrations/*-*.ts"],
+  entities: ENTITIES,
+  migrations: ["../db-migrations/postgres/*-*.ts"],
 });

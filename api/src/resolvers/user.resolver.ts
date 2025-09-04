@@ -42,16 +42,24 @@ export class UserResolver extends BaseResolver {
       : undefined;
 
     const demoMode = user?.isAdmin() ? false : DEMO_MODE;
-    const ragEnabled = !demoMode && ["sqlite", "postgres"].includes(AppDataSource.options.type);
+    const s3Connected = Boolean(
+      s3settings.s3FilesBucketName &&
+        ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
+    );
+    const ragEnabled = Boolean(
+      !demoMode &&
+        s3Connected &&
+        ["sqlite", "postgres", "mssql"].includes(AppDataSource.options.type) &&
+        user &&
+        user.documentsEmbeddingsModelId &&
+        user.documentSummarizationModelId
+    );
 
     return {
       currentUser: user || undefined,
       token,
       demoMode,
-      s3Connected: !!(
-        s3settings.s3FilesBucketName &&
-        ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
-      ),
+      s3Connected,
       ragEnabled,
       maxChats: demoMode ? DEMO_MAX_CHATS : -1,
       maxChatMessages: demoMode ? DEMO_MAX_CHAT_MESSAGES : -1,

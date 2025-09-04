@@ -230,13 +230,13 @@ APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:
 Create initial migration (done already)
 ```
 cd api
-npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/init  
+npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/init  
 ```
 
 Create new migration
 ```
 cd api
-npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/<migration name>  
+npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/<migration name>  
 ```
 
 

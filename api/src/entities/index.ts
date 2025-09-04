@@ -1,7 +1,11 @@
-export * from "./Chat";
-export * from "./Message";
-export * from "./Model";
-export * from "./User";
-export * from "./Document";
-export * from "./DocumentChunk";
-export * from "./ChatDocument";
+import { Chat } from "./Chat";
+import { ChatDocument } from "./ChatDocument";
+import { Document } from "./Document";
+import { DocumentChunk } from "./DocumentChunk";
+import { Message } from "./Message";
+import { Model } from "./Model";
+import { User, UserSettings } from "./User";
+
+export { User, UserSettings, Model, Chat, Message, Document, ChatDocument, DocumentChunk };
+
+export const ENTITIES = [User, Model, Chat, Message, Document, ChatDocument, DocumentChunk];

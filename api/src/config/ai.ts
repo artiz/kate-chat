@@ -9,7 +9,7 @@ export const DEFAULT_MAX_TOKENS = 2048;
 export const DEFAULT_TOP_P = 0.9;
 
 export const CONTEXT_MESSAGES_LIMIT = 100;
-export const EMBEDDINGS_DIMENSIONS = 3072;
+export const EMBEDDINGS_DIMENSIONS = process.env.DB_TYPE === "mssql" ? 1998 : 3072;
 
 export const RAG_QUERY_CHUNKS_LIMIT = process.env.RAG_QUERY_CHUNKS_LIMIT
   ? parseInt(process.env.RAG_QUERY_CHUNKS_LIMIT, 10)

@@ -7,6 +7,8 @@ import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { ConnectionParams } from "../middleware/auth.middleware";
 
+const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
+
 @ObjectType("UserSettings")
 @InputType("UserSettingsInput")
 export class UserSettings {
@@ -128,7 +130,7 @@ export class User {
   modelsCount?: number;
 
   @Field(() => UserSettings, { nullable: true })
-  @Column({ type: "json", nullable: true, transformer: JSONTransformer<UserSettings>() })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<UserSettings>() })
   settings?: UserSettings;
 
   toToken(): TokenPayload {

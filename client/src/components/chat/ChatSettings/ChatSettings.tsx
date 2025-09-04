@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Paper, Title, Slider, Text, NumberInput, Stack, Group, Tooltip, ActionIcon } from "@mantine/core";
+import { Paper, Title, Slider, Text, NumberInput, Stack, Group, Tooltip, ActionIcon, Box } from "@mantine/core";
 import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import classes from "./ChatSettings.module.scss";
 
 interface ChatSettingsProps {
-  className?: string;
   temperature?: number;
   maxTokens?: number;
   topP?: number;
@@ -23,7 +22,6 @@ export function ChatSettings({
   maxTokens = 2048,
   topP = 0.9,
   imagesCount = 1,
-  className = "",
   onSettingsChange,
   resetToDefaults,
 }: ChatSettingsProps) {
@@ -78,7 +76,7 @@ export function ChatSettings({
   };
 
   return (
-    <Paper withBorder className={`${classes.settingsPanel} ${className}`}>
+    <Box className={classes.settingsPanel}>
       <Group p="apart" mb="md">
         <Title order={4}>Chat Settings</Title>
         <Tooltip label="Reset to defaults">
@@ -203,6 +201,6 @@ export function ChatSettings({
           />
         </div>
       </Stack>
-    </Paper>
+    </Box>
   );
 }

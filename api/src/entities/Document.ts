@@ -21,7 +21,7 @@ export class Document {
   id: string;
 
   @Field()
-  @Column()
+  @Column({ length: 4000 })
   @Index({ fulltext: true })
   // original file name
   fileName: string;
@@ -41,7 +41,7 @@ export class Document {
   sha256checksum: string;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, length: 4000 })
   // S3 key for the uploaded document
   s3key?: string;
 
@@ -50,7 +50,7 @@ export class Document {
   owner: User;
 
   @Field()
-  @Column({ foreignKeyConstraintName: "FK_documents_owner" })
+  @Column()
   ownerId: string;
 
   @Field({ nullable: true })
@@ -64,7 +64,7 @@ export class Document {
   summaryModelId?: string;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ type: "text", nullable: true })
   // generated summary
   summary?: string;
 
@@ -78,7 +78,7 @@ export class Document {
   status: DocumentStatus;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ type: "text", nullable: true })
   statusInfo?: string;
 
   @Field({ nullable: true })

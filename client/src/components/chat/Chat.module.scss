@@ -148,17 +148,3 @@
     width: 32px;
   }
 }
-
-.chatSettings {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 300px;
-  display: flex !important;
-  z-index: 5;
-}
-
-.chatSettingsHidden {
-  display: none !important;
-  /* Hidden by default */
-}

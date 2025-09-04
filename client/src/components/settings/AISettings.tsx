@@ -525,7 +525,9 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
             <Divider my="md" />
 
-            <Title order={4}>Document Processing</Title>
+            <Title order={4}>
+              <a id="document_processing">Document Processing</a>
+            </Title>
 
             <Select
               label="Documents Embeddings Model"
