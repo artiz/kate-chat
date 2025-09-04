@@ -17,7 +17,7 @@ import {
   DEMO_MAX_CHAT_MESSAGES,
   DEMO_MAX_IMAGES,
 } from "@/config/application";
-import { AppDataSource } from "@/config/database";
+import { AppDataSource, DB_TYPE } from "@/config/database";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -49,7 +49,7 @@ export class UserResolver extends BaseResolver {
     const ragEnabled = Boolean(
       !demoMode &&
         s3Connected &&
-        ["sqlite", "postgres", "mssql"].includes(AppDataSource.options.type) &&
+        ["sqlite", "postgres", "mssql"].includes(DB_TYPE) &&
         user &&
         user.documentsEmbeddingsModelId &&
         user.documentSummarizationModelId

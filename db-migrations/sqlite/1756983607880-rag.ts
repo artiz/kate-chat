@@ -43,6 +43,11 @@ export class Rag1756983607880 implements MigrationInterface {
     await queryRunner.query(
       `CREATE TABLE "document_chunks" ("id" varchar PRIMARY KEY NOT NULL, "documentId" varchar NOT NULL, "modelId" varchar NOT NULL, "page" integer NOT NULL DEFAULT (0), "pageIndex" bigint NOT NULL DEFAULT (0), "content" text NOT NULL, "embedding" text)`,
     );
+    await queryRunner.query(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS vss_document_chunks USING vec0(
+          embedding float[3072]
+      )`);
+
     await queryRunner.query(
       `CREATE INDEX "IDX_eaf9afaf30fb7e2ac25989db51" ON "document_chunks" ("documentId") `,
     );
@@ -215,7 +220,7 @@ export class Rag1756983607880 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "IDX_5372672fbfd1677205e0ce3ece"`);
     await queryRunner.query(`ALTER TABLE "chats" RENAME TO "temporary_chats"`);
     await queryRunner.query(
-      `CREATE TABLE "chats" ("id" varchar PRIMARY KEY NOT NULL, "title" varchar NOT NULL, "description" varchar NOT NULL DEFAULT (''), "files" json, "lastBotMessage" varchar, "lastBotMessageId" varchar, "messagesCount" integer, "modelId" varchar, "temperature" float, "maxTokens" integer, "topP" float, "imagesCount" integer, "isPristine" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" varchar, CONSTRAINT "FK_ae8951c0a763a060593606b7e2d" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+      `CREATE TABLE "chats" ("id" varchar PRIMARY KEY NOT NULL, "title" varchar NOT NULL, "description" varchar, "files" json, "lastBotMessage" varchar, "lastBotMessageId" varchar, "messagesCount" integer, "modelId" varchar, "temperature" float, "maxTokens" integer, "topP" float, "imagesCount" integer, "isPristine" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" varchar, CONSTRAINT "FK_ae8951c0a763a060593606b7e2d" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
     );
     await queryRunner.query(
       `INSERT INTO "chats"("id", "title", "description", "files", "lastBotMessage", "lastBotMessageId", "messagesCount", "modelId", "temperature", "maxTokens", "topP", "imagesCount", "isPristine", "createdAt", "updatedAt", "userId") SELECT "id", "title", "description", "files", "lastBotMessage", "lastBotMessageId", "messagesCount", "modelId", "temperature", "maxTokens", "topP", "imagesCount", "isPristine", "createdAt", "updatedAt", "userId" FROM "temporary_chats"`,
@@ -233,7 +238,7 @@ export class Rag1756983607880 implements MigrationInterface {
       `ALTER TABLE "models" RENAME TO "temporary_models"`,
     );
     await queryRunner.query(
-      `CREATE TABLE "models" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar NOT NULL, "modelId" varchar NOT NULL, "description" varchar NOT NULL, "userId" varchar, "provider" varchar, "apiProvider" varchar NOT NULL DEFAULT ('aws_bedrock'), "isActive" boolean NOT NULL DEFAULT (1), "isCustom" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "FK_bd0eee09c3dde57cc3b9ac1512a" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+      `CREATE TABLE "models" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar NOT NULL, "modelId" varchar NOT NULL, "description" varchar, "userId" varchar, "provider" varchar, "apiProvider" varchar NOT NULL DEFAULT ('aws_bedrock'), "isActive" boolean NOT NULL DEFAULT (1), "isCustom" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "FK_bd0eee09c3dde57cc3b9ac1512a" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
     );
     await queryRunner.query(
       `INSERT INTO "models"("id", "name", "modelId", "description", "userId", "provider", "apiProvider", "isActive", "isCustom", "createdAt", "updatedAt") SELECT "id", "name", "modelId", "description", "userId", "provider", "apiProvider", "isActive", "isCustom", "createdAt", "updatedAt" FROM "temporary_models"`,
@@ -243,7 +248,7 @@ export class Rag1756983607880 implements MigrationInterface {
       `ALTER TABLE "models" RENAME TO "temporary_models"`,
     );
     await queryRunner.query(
-      `CREATE TABLE "models" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar NOT NULL, "modelId" varchar NOT NULL, "description" varchar NOT NULL, "userId" varchar, "provider" varchar, "apiProvider" varchar NOT NULL DEFAULT ('aws_bedrock'), "supportsStreaming" boolean NOT NULL DEFAULT (0), "supportsTextIn" boolean NOT NULL DEFAULT (1), "supportsTextOut" boolean NOT NULL DEFAULT (1), "supportsEmbeddingsIn" boolean NOT NULL DEFAULT (0), "supportsImageIn" boolean NOT NULL DEFAULT (0), "supportsImageOut" boolean NOT NULL DEFAULT (0), "supportsEmbeddingsOut" boolean NOT NULL DEFAULT (0), "isActive" boolean NOT NULL DEFAULT (1), "isCustom" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "FK_bd0eee09c3dde57cc3b9ac1512a" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+      `CREATE TABLE "models" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar NOT NULL, "modelId" varchar NOT NULL, "description" varchar, "userId" varchar, "provider" varchar, "apiProvider" varchar NOT NULL DEFAULT ('aws_bedrock'), "supportsStreaming" boolean NOT NULL DEFAULT (0), "supportsTextIn" boolean NOT NULL DEFAULT (1), "supportsTextOut" boolean NOT NULL DEFAULT (1), "supportsEmbeddingsIn" boolean NOT NULL DEFAULT (0), "supportsImageIn" boolean NOT NULL DEFAULT (0), "supportsImageOut" boolean NOT NULL DEFAULT (0), "supportsEmbeddingsOut" boolean NOT NULL DEFAULT (0), "isActive" boolean NOT NULL DEFAULT (1), "isCustom" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "FK_bd0eee09c3dde57cc3b9ac1512a" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
     );
     await queryRunner.query(
       `INSERT INTO "models"("id", "name", "modelId", "description", "userId", "provider", "apiProvider", "isActive", "isCustom", "createdAt", "updatedAt") SELECT "id", "name", "modelId", "description", "userId", "provider", "apiProvider", "isActive", "isCustom", "createdAt", "updatedAt" FROM "temporary_models"`,
@@ -251,6 +256,7 @@ export class Rag1756983607880 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "temporary_models"`);
     await queryRunner.query(`DROP INDEX "IDX_eaf9afaf30fb7e2ac25989db51"`);
     await queryRunner.query(`DROP TABLE "document_chunks"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "vss_document_chunks"`);
     await queryRunner.query(`DROP INDEX "IDX_edef2e837ed65c05e116250a21"`);
     await queryRunner.query(`DROP INDEX "IDX_95e8f97e178311e7eb65e63289"`);
     await queryRunner.query(`DROP TABLE "documents"`);
@@ -259,7 +265,7 @@ export class Rag1756983607880 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "chat_documents"`);
     await queryRunner.query(`ALTER TABLE "chats" RENAME TO "temporary_chats"`);
     await queryRunner.query(
-      `CREATE TABLE "chats" ("id" varchar PRIMARY KEY NOT NULL, "title" varchar NOT NULL, "description" varchar NOT NULL DEFAULT (''), "files" json, "lastBotMessage" varchar, "lastBotMessageId" varchar, "messagesCount" integer, "modelId" varchar, "temperature" float, "maxTokens" integer, "topP" float, "imagesCount" integer, "isPristine" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" varchar, CONSTRAINT "FK_ae8951c0a763a060593606b7e2d" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+      `CREATE TABLE "chats" ("id" varchar PRIMARY KEY NOT NULL, "title" varchar NOT NULL, "description" varchar, "files" json, "lastBotMessage" varchar, "lastBotMessageId" varchar, "messagesCount" integer, "modelId" varchar, "temperature" float, "maxTokens" integer, "topP" float, "imagesCount" integer, "isPristine" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" varchar, CONSTRAINT "FK_ae8951c0a763a060593606b7e2d" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
     );
     await queryRunner.query(
       `INSERT INTO "chats"("id", "title", "description", "files", "lastBotMessage", "lastBotMessageId", "messagesCount", "modelId", "temperature", "maxTokens", "topP", "imagesCount", "isPristine", "createdAt", "updatedAt", "userId") SELECT "id", "title", "description", "files", "lastBotMessage", "lastBotMessageId", "messagesCount", "modelId", "temperature", "maxTokens", "topP", "imagesCount", "isPristine", "createdAt", "updatedAt", "userId" FROM "temporary_chats"`,

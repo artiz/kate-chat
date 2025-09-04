@@ -190,7 +190,7 @@ router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, r
     // Create S3 service with connection params from request
     const s3Service = new S3Service(req.tokenPayload);
 
-    logger.debug({ fileKey }, "Fetching file from S3");
+    logger.debug({ fileKey, ...req.tokenPayload }, "Fetching file from S3");
 
     // Use the internal S3 client of S3Service class
     // This is a bit of a hack but avoids duplicating S3 client code

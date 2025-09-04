@@ -227,7 +227,7 @@ type GqlMessagesList {
 type GqlModel {
   apiProvider: String!
   createdAt: DateTimeISO!
-  description: String!
+  description: String
   id: ID!
   imageInput: Boolean!
   isActive: Boolean!
@@ -238,7 +238,7 @@ type GqlModel {
   streaming: Boolean!
   type: String!
   updatedAt: DateTimeISO!
-  user: User!
+  user: User
   userId: String
 }
 
@@ -312,7 +312,7 @@ type MessageRelevantChunk {
 type Model {
   apiProvider: String!
   createdAt: DateTimeISO!
-  description: String!
+  description: String
   id: ID!
   imageInput: Boolean!
   isActive: Boolean!
@@ -323,7 +323,7 @@ type Model {
   streaming: Boolean!
   type: String!
   updatedAt: DateTimeISO!
-  user: User!
+  user: User
   userId: String
 }
 

@@ -78,6 +78,7 @@ export const BASE_MESSAGE_FRAGMENT = `
           documentName
           page
           content
+          relevance
         }
       }
     }
@@ -556,11 +557,23 @@ export interface CallOthersResponse {
   };
 }
 
+export interface MessageRelevantChunk {
+  id: string;
+  relevance: number;
+  documentId: string;
+  documentName?: string;
+  page: number;
+  pageIndex: number;
+  content: string;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
   };
+
+  relevantsChunks?: MessageRelevantChunk[];
 }
 
 export interface Message {

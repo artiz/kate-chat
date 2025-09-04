@@ -102,6 +102,13 @@
     }
   }
 
+  .detailsBlock {
+    padding-left: var(--mb-padding, var(--mantine-spacing-md));
+    border-left: 1px solid var(--mantine-color-default-border);
+    margin-left: 1rem;
+    margin-top: 0.5rem;
+  }
+
   :global table {
     margin-top: var(--mantine-spacing-md);
     margin-bottom: var(--mantine-spacing-md);

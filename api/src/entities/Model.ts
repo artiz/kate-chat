@@ -18,12 +18,12 @@ export class Model {
   @Column()
   modelId: string;
 
-  @Field()
-  @Column()
-  description: string;
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  description?: string;
 
-  @Field(() => User)
-  @ManyToOne(() => User)
+  @Field(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true })
   user: User;
 
   @Field({ nullable: true })

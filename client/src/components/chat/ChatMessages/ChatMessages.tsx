@@ -53,6 +53,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   // State for edit message modal
   const [messageToEdit, setMessageToEdit] = useState<string | undefined>();
   const [editedContent, setEditedContent] = useState<string>("");
+  const [updatedMessageId, setUpdatedMessageId] = useState<string | undefined>();
 
   const resetSelectedImage = () => {
     setImageToShow(undefined);
@@ -90,8 +91,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         });
       }
       onMessageModelSwitch?.(res.switchModel.message);
+      setUpdatedMessageId(undefined);
     },
     onError: error => {
+      setUpdatedMessageId(undefined);
       notifications.show({
         title: "Error",
         message: error.message || "Failed to switch model",
@@ -112,8 +115,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       }
       ok(res.callOther.message, "Call Other response should contain a message");
       onCallOther?.(res.callOther.message);
+      setUpdatedMessageId(undefined);
     },
     onError: error => {
+      setUpdatedMessageId(undefined);
       notifications.show({
         title: "Error",
         message: error.message || "Failed to call other models",
@@ -155,7 +160,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   const handleSwitchModel = useCallback(
     (messageId: string, modelId: string) => {
-      onSending?.();
+      setUpdatedMessageId(messageId);
       switchModel({
         variables: {
           messageId,
@@ -168,7 +173,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   const handleCallOther = useCallback(
     (messageId: string, modelId: string) => {
-      onSending?.();
+      setUpdatedMessageId(messageId);
       callOther({
         variables: {
           input: {
@@ -383,11 +388,12 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               message={msg}
               index={index}
               disabled={deletingMessage || switchingModel || callingOthers || editingMessage}
+              loading={msg.id === updatedMessageId}
             />
           </Group>
         ))}
 
-        {sending && (
+        {sending && !switchingModel && !callingOthers && (
           <Group align="flex-start" gap="xs" pl="md" pr="md">
             <Avatar color="gray" radius="xl">
               <IconRobot />
