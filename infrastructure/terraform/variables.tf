@@ -87,6 +87,12 @@ variable "document_processor_memory" {
   default     = 1024
 }
 
+variable "document_processor_storage_gib" {
+  description = "Ephemeral storage (GiB) for document processor service"
+  type        = number
+  default     = 64
+}
+
 variable "document_processor_desired_count" {
   description = "Desired number of document processor tasks"
   type        = number

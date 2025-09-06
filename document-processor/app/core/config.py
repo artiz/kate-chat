@@ -15,17 +15,17 @@ class Settings(BaseSettings):
     
     document_status_channel: str = "document:status"
     redis_url: str = "redis://localhost:6379"
-    
-    s3_endpoint: str
+
+    s3_endpoint: str | None = None
     s3_region: str
-    s3_access_key_id: str
-    s3_secret_access_key: str
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
     s3_files_bucket_name: str = "katechatdevfiles"
     
-    sqs_endpoint: str = None
+    sqs_endpoint: str | None = None
     sqs_region: str
-    sqs_access_key_id: str
-    sqs_secret_access_key: str
+    sqs_access_key_id: str | None = None
+    sqs_secret_access_key: str | None = None
     sqs_documents_queue: str
     sqs_index_documents_queue: str
     

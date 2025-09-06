@@ -22,6 +22,10 @@ app_cpu           = 256
 app_memory        = 512
 app_desired_count = 2
 
+document_processor_cpu           = 512
+document_processor_memory        = 1024
+document_processor_desired_count = 1
+
 # Redis Configuration
 redis_node_type       = "cache.t2.micro"
 redis_num_cache_nodes = 1
