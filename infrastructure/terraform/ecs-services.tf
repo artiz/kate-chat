@@ -304,12 +304,20 @@ resource "aws_ecs_task_definition" "document_processor" {
           value = "8080"
         },
         {
+          name  = "ENVIRONMENT"
+          value = "production"
+        },
+        {
           name  = "LOG_LEVEL"
-          value = "info"
+          value = "DEBUG"
         },
         {
           name  = "SQS_REGION"
           value = var.aws_region
+        },
+        {
+          name  = "SQS_ENDPOINT"
+          value = "https://sqs.eu-central-1.api.aws"
         },
         {
           name  = "SQS_DOCUMENTS_QUEUE"
@@ -346,8 +354,8 @@ resource "aws_ecs_task_definition" "document_processor" {
         command     = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
         interval    = 30
         timeout     = 5
-        retries     = 3
-        startPeriod = 60
+        retries     = 5
+        startPeriod = 180
       }
     }
   ])

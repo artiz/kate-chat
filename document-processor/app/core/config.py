@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     port: int = 8080
     version: str = "0.0.1"
     commit_sha: str = "---"
+    environment: str = "development"
     
     project_name: str = "kate-chat-document-processor"
     log_level: str = "INFO"
