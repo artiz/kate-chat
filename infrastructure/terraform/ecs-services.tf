@@ -294,7 +294,7 @@ resource "aws_ecs_task_definition" "document_processor" {
   container_definitions = jsonencode([
     {
       name  = "document-processor"
-      image = "${aws_ecr_repository.repositories["document-processor"].repository_url}:feat-embeddings-support" # TODO: change tag to master after merge
+      image = "${aws_ecr_repository.repositories["document-processor"].repository_url}:master"
 
       essential = true
 
@@ -309,15 +309,11 @@ resource "aws_ecs_task_definition" "document_processor" {
         },
         {
           name  = "LOG_LEVEL"
-          value = "DEBUG"
+          value = "INFO"
         },
         {
           name  = "SQS_REGION"
           value = var.aws_region
-        },
-        {
-          name  = "SQS_ENDPOINT"
-          value = "https://sqs.eu-central-1.api.aws"
         },
         {
           name  = "SQS_DOCUMENTS_QUEUE"
@@ -355,7 +351,7 @@ resource "aws_ecs_task_definition" "document_processor" {
         interval    = 30
         timeout     = 5
         retries     = 5
-        startPeriod = 180
+        startPeriod = 120
       }
     }
   ])

@@ -79,6 +79,13 @@ resource "aws_iam_policy" "sqs_access" {
           aws_sqs_queue.documents_dlq.arn,
           aws_sqs_queue.index_documents_dlq.arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ListQueues"
+        ]
+        Resource = "*"
       }
     ]
   })

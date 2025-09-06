@@ -17,16 +17,3 @@ db_instance_class    = "db.t3.micro"
 db_allocated_storage = 10
 db_engine_version    = "16.9"
 
-# ECS Configuration - Optimized for cost
-app_cpu           = 256
-app_memory        = 512
-app_desired_count = 2
-
-document_processor_cpu           = 512
-document_processor_memory        = 1024
-document_processor_desired_count = 1
-
-# Redis Configuration
-redis_node_type       = "cache.t2.micro"
-redis_num_cache_nodes = 1
-
