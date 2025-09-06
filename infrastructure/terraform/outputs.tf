@@ -75,8 +75,20 @@ output "secrets_manager_db_password_arn" {
 output "cloudwatch_log_groups" {
   description = "CloudWatch log group names"
   value = {
-    app = aws_cloudwatch_log_group.app.name
+    app                = aws_cloudwatch_log_group.app.name
+    document_processor = aws_cloudwatch_log_group.document_processor.name
   }
+}
+
+# SQS Queue outputs
+output "sqs_documents_queue_url" {
+  description = "URL of the SQS documents queue"
+  value       = aws_sqs_queue.documents_queue.url
+}
+
+output "sqs_index_documents_queue_url" {
+  description = "URL of the SQS index documents queue"
+  value       = aws_sqs_queue.index_documents_queue.url
 }
 
 # Domain and DNS outputs

@@ -532,9 +532,9 @@ def main():
     data_dir = Path(__file__).parent.parent / "data" / "train"
     files_to_parse = [
         data_dir / "dummy_report.pdf",
-        data_dir / "DDD Quickly (Avram, Marinesku).pdf",
+        # data_dir / "DDD Quickly (Avram, Marinesku).pdf",
         data_dir / "Apple.docx",
-        # data_dir / "Austria - Wikipedia.html"
+        data_dir / "Austria - Wikipedia.html"
     ]
 
     # Check which files exist

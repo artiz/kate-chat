@@ -263,17 +263,34 @@ docker run -p3000:80 katechat-client
 All-in-one service
 ```
 docker build -t katechat-app ./ -f infrastructure/services/katechat-app/Dockerfile
+
 docker run -it --rm --pid=host --env-file=./api/.env \
  --env PORT=80 \
  --env NODE_ENV=production \
  --env ALLOWED_ORIGINS="*" \
  --env REDIS_URL="redis://host.docker.internal:6379" \
  --env S3_ENDPOINT="http://host.docker.internal:4566" \
+ --env SQS_ENDPOINT="http://host.docker.internal:4566" \
  --env CALLBACK_URL_BASE="http://localhost" \
  --env FRONTEND_URL="http://localhost" \
  --env DB_MIGRATIONS_PATH="./db-migrations/*-*.js" \
  -p80:80 katechat-app
 ```
+
+Document processor
+```
+DOCKER_BUILDKIT=1 docker build -t katechat-document-processor ./ -f infrastructure/services/katechat-document-processor/Dockerfile
+
+docker run -it --rm --pid=host --env-file=./document-processor/.env \
+ --env PORT=8080 \
+ --env NODE_ENV=production \
+ --env REDIS_URL="redis://host.docker.internal:6379" \
+ --env S3_ENDPOINT="http://host.docker.internal:4566" \
+ --env SQS_ENDPOINT="http://host.docker.internal:4566" \
+ -p8080:8080 katechat-document-processor
+```
+
+
 
 ## API Documentation
 

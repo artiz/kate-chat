@@ -74,6 +74,25 @@ variable "app_desired_count" {
   default     = 3
 }
 
+# Document processor ECS configuration
+variable "document_processor_cpu" {
+  description = "CPU units for document processor service"
+  type        = number
+  default     = 512
+}
+
+variable "document_processor_memory" {
+  description = "Memory (MB) for document processor service"
+  type        = number
+  default     = 1024
+}
+
+variable "document_processor_desired_count" {
+  description = "Desired number of document processor tasks"
+  type        = number
+  default     = 1
+}
+
 # Network configuration
 variable "use_private_networks" {
   description = "Use private subnets and NAT gateways (true) or public subnets (false). Private is more secure but costs more due to NAT gateway."

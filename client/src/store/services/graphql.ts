@@ -485,6 +485,7 @@ export interface ApplicationConfig {
   token: string;
   demoMode: boolean;
   s3Connected: boolean;
+  ragSupported: boolean;
   ragEnabled: boolean;
   maxChats?: number;
   maxChatMessages?: number;
@@ -793,6 +794,7 @@ export const graphqlApi = api.injectEndpoints({
                 token
                 demoMode
                 s3Connected
+                ragSupported
                 ragEnabled
                 maxChats
                 maxChatMessages

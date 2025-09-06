@@ -23,14 +23,13 @@ class SQSService:
         
     async def startup(self):
         """Initialize SQS client and start polling"""
-        logger.debug("startup() called")
         try:
             self.sqs_client = boto3.client(
                 'sqs',
-                endpoint_url=settings.sqs_endpoint,
+                endpoint_url=settings.sqs_endpoint or None,
                 region_name=settings.sqs_region,
-                aws_access_key_id=settings.sqs_access_key_id,
-                aws_secret_access_key=settings.sqs_secret_access_key,
+                aws_access_key_id=settings.sqs_access_key_id or None,
+                aws_secret_access_key=settings.sqs_secret_access_key or None,
             )
             self.running = True
             self.poll_task = asyncio.create_task(self._poll_messages())

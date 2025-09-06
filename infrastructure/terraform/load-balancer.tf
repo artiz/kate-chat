@@ -117,6 +117,15 @@ resource "aws_cloudwatch_log_group" "app" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "document_processor" {
+  name              = "/ecs/${var.project_name}-${var.environment}-document-processor"
+  retention_in_days = var.environment == "production" ? 30 : 7
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-document-processor-logs"
+  }
+}
+
 # Application Load Balancer
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"

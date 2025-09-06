@@ -124,6 +124,14 @@ resource "aws_ecs_task_definition" "app" {
         {
           name  = "DEFAULT_ADMIN_EMAILS"
           value = var.default_admin_emails,
+        },
+        {
+          name  = "SQS_DOCUMENTS_QUEUE"
+          value = aws_sqs_queue.documents_queue.url
+        },
+        {
+          name  = "SQS_INDEX_DOCUMENTS_QUEUE"
+          value = aws_sqs_queue.index_documents_queue.url
         }
       ]
 
@@ -222,5 +230,111 @@ resource "aws_ecs_service" "app" {
 
   tags = {
     Name = "${var.project_name}-${var.environment}-app-service"
+  }
+}
+
+# ECS Task Definition for Document Processor
+resource "aws_ecs_task_definition" "document_processor" {
+  family                   = "${var.project_name}-${var.environment}-document-processor"
+  network_mode             = "awsvpc"
+  cpu                      = var.document_processor_cpu
+  memory                   = var.document_processor_memory
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+  requires_compatibilities = ["FARGATE"]
+
+  container_definitions = jsonencode([
+    {
+      name  = "document-processor"
+      image = "${aws_ecr_repository.repositories["document-processor"].repository_url}:master"
+
+      essential = true
+
+      environment = [
+        {
+          name  = "PORT"
+          value = "8080"
+        },
+        {
+          name  = "LOG_LEVEL"
+          value = "info"
+        },
+        {
+          name  = "SQS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "SQS_DOCUMENTS_QUEUE"
+          value = aws_sqs_queue.documents_queue.url
+        },
+        {
+          name  = "SQS_INDEX_DOCUMENTS_QUEUE"
+          value = aws_sqs_queue.index_documents_queue.url
+        },
+        {
+          name  = "S3_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "S3_FILES_BUCKET_NAME"
+          value = aws_s3_bucket.files.bucket
+        },
+        {
+          name  = "REDIS_URL"
+          value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.port}"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.document_processor.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-document-processor-task"
+  }
+}
+
+# ECS Service for Document Processor
+resource "aws_ecs_service" "document_processor" {
+  name            = "${var.project_name}-${var.environment}-document-processor-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.document_processor.arn
+  desired_count   = var.document_processor_desired_count
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs.id]
+    subnets          = var.use_private_networks ? aws_subnet.private[*].id : aws_subnet.public[*].id
+    assign_public_ip = var.use_private_networks ? false : true
+  }
+
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 50
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-document-processor-service"
   }
 }

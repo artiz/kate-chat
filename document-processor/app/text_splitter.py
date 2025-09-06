@@ -466,7 +466,10 @@ def main():
 
     try:
         # Convert all documents
-        conv_results = list(parser.convert_documents(files_to_parse))
+        conv_results = [
+            parser.convert_document(file_path) for file_path in files_to_parse
+        ]
+        
         if not conv_results:
             print("No conversion results returned")
             return

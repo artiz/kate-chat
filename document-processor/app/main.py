@@ -1,14 +1,16 @@
+from pathlib import Path
 from fastapi.concurrency import asynccontextmanager
 import uvicorn
-from fastapi import FastAPI, Depends, Request, WebSocket, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request,HTTPException, status
 from fastapi.exception_handlers import http_exception_handler
 from starlette.responses import JSONResponse
 
+from app.parser import PDFParser
 from app.core.config import settings
 from app.core import global_app, util
 from app.services.sqs_service import SQSService
 
+assets_dir = Path(__file__).parent / "assets"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,6 +34,10 @@ async def app_startup():
     global sqs_service
     log.info("Startup...")
     await global_app.startup()
+    
+    log.info(f"Load Docling models...")
+    parser = PDFParser()
+    parser.convert_document(assets_dir /  "dummy_report.pdf")
     
     # Setup SQS listener
     sqs_service = SQSService()

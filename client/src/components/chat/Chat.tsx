@@ -473,17 +473,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
           <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
         )}
 
-        {!appConfig?.demoMode &&
-          appConfig?.s3Connected &&
-          !appConfig?.ragEnabled &&
-          !currentUser?.documentsEmbeddingsModelId && (
-            <Alert color="yellow">
-              RAG is supported (DB is PostgreSQL/MSSQL/SQLite) but processing models are not setup. However, the
-              processing models required for full functionality are not yet configured. As a result, document uploads
-              are not possible at this time. To enable this feature, please select the appropriate{" "}
-              <Link to="/settings#document_processing">processing models</Link>.
-            </Alert>
-          )}
+        {!appConfig?.demoMode && appConfig?.ragSupported && !appConfig?.ragEnabled && (
+          <Alert color="yellow">
+            RAG is supported (DB is PostgreSQL/MSSQL/SQLite) but processing models are not setup. However, the
+            processing models required for full functionality are not yet configured. As a result, document uploads are
+            not possible at this time. To enable this feature, please select the appropriate{" "}
+            <Link to="/settings#document_processing">processing models</Link>.
+          </Alert>
+        )}
 
         <DocumentUploadProgress
           error={uploadError}

@@ -46,13 +46,10 @@ export class UserResolver extends BaseResolver {
       s3settings.s3FilesBucketName &&
         ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
     );
+    const ragSupported = Boolean(!demoMode && s3Connected && ["sqlite", "postgres", "mssql"].includes(DB_TYPE));
+
     const ragEnabled = Boolean(
-      !demoMode &&
-        s3Connected &&
-        ["sqlite", "postgres", "mssql"].includes(DB_TYPE) &&
-        user &&
-        user.documentsEmbeddingsModelId &&
-        user.documentSummarizationModelId
+      ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
     );
 
     return {
@@ -60,6 +57,7 @@ export class UserResolver extends BaseResolver {
       token,
       demoMode,
       s3Connected,
+      ragSupported,
       ragEnabled,
       maxChats: demoMode ? DEMO_MAX_CHATS : -1,
       maxChatMessages: demoMode ? DEMO_MAX_CHAT_MESSAGES : -1,
