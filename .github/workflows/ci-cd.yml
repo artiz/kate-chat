@@ -111,6 +111,7 @@ jobs:
             - 'api/**'
             - 'package.json'
             - 'docker-compose.yaml'
+            - 'infrastructure/services/katechat-app/**'
           client:
             - 'client/**'
             - 'package.json'

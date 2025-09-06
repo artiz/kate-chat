@@ -1,4 +1,5 @@
 FROM unit:python3.12
+ARG COMMIT_SHA=""
 
 WORKDIR /home
 
@@ -15,6 +16,8 @@ WORKDIR /app/
 
 # Python configuration
 ENV PYTHONUNBUFFERED=1
+
+ENV COMMIT_SHA=$COMMIT_SHA
 
 # Copy application code
 COPY document-processor/ ./

@@ -10,7 +10,10 @@ from app.core.config import settings
 from app.core import global_app, util
 from app.services.sqs_service import SQSService
 
+log = util.init_logger("app")
 assets_dir = Path(__file__).parent / "assets"
+
+log.info(f"App version: {settings.version}, commit: {settings.commit_sha}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,7 +22,7 @@ async def lifespan(app: FastAPI):
     await app_shutdown()
 
 
-log = util.init_logger("app")
+
 app = FastAPI(
     title=settings.project_name,
     version=settings.version,
