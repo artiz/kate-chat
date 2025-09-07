@@ -9,14 +9,14 @@ export class TuneTypes1757012213090 implements MigrationInterface {
     );
     await queryRunner.query(`ALTER TABLE "messages" DROP COLUMN "content"`);
     await queryRunner.query(
-      `ALTER TABLE "messages" ADD "content" text NOT NULL`,
+      `ALTER TABLE "messages" ADD "content" text NOT NULL DEFAULT ''`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "messages" DROP COLUMN "content"`);
     await queryRunner.query(
-      `ALTER TABLE "messages" ADD "content" character varying NOT NULL`,
+      `ALTER TABLE "messages" ADD "content" character varying NOT NULL DEFAULT ''`,
     );
     await queryRunner.query(
       `ALTER TABLE "models" ALTER COLUMN "description" SET NOT NULL`,

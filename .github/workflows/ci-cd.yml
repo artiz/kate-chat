@@ -19,6 +19,7 @@ env:
   ECR_REPOSITORY_APP: katechat-app
   ECR_REPOSITORY_DOCUMENT_PROCESSOR: katechat-document-processor
   ECS_SERVICE_APP: app-service
+  ECS_SERVICE_DOCUMENT_PROCESSOR: document-processor-service
 
 jobs:
   test:
@@ -112,6 +113,7 @@ jobs:
             - 'package.json'
             - 'docker-compose.yaml'
             - 'infrastructure/services/katechat-app/**'
+            - 'db-migrations/**'
           client:
             - 'client/**'
             - 'package.json'
@@ -223,7 +225,7 @@ jobs:
         if [ "${{ needs.changes.outputs.document_processor }}" = "true" ]; then
           aws ecs update-service \
             --cluster katechat-staging-cluster \
-            --service katechat-staging-document-processor-service \
+            --service katechat-staging-${{ env.ECS_SERVICE_DOCUMENT_PROCESSOR }} \
             --force-new-deployment
         fi
         
