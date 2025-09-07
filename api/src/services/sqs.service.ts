@@ -34,13 +34,17 @@ export class SQSService {
     this.documentQueueService = new DocumentQueueService(subscriptionsService);
 
     // Initialize SQS client
+    logger.info({ SQS_ENDPOINT, SQS_ACCESS_KEY_ID, SQS_REGION }, "Initializing SQS client");
     this.sqs = new SQSClient({
       endpoint: SQS_ENDPOINT || undefined,
       region: SQS_REGION || "us-east-1",
-      credentials: {
-        accessKeyId: SQS_ACCESS_KEY_ID || "",
-        secretAccessKey: SQS_SECRET_ACCESS_KEY || "",
-      },
+      credentials:
+        SQS_ACCESS_KEY_ID && SQS_SECRET_ACCESS_KEY
+          ? {
+              accessKeyId: SQS_ACCESS_KEY_ID,
+              secretAccessKey: SQS_SECRET_ACCESS_KEY,
+            }
+          : undefined,
     });
   }
 

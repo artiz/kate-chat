@@ -52,6 +52,10 @@ locals {
       value = "default"
     },
     {
+      name  = "SQS_REGION"
+      value = var.aws_region
+    },
+    {
       name  = "JWT_EXPIRATION"
       value = "86400"
     },
@@ -229,11 +233,6 @@ resource "aws_ecs_task_definition" "app" {
 
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [
-      # Ignore changes to container_definitions when they're just 
-      # dynamic infrastructure reference changes that don't affect the actual application
-      container_definitions,
-    ]
   }
 }
 
