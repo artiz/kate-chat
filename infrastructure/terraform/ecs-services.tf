@@ -80,16 +80,8 @@ locals {
   # Dynamic environment variables that can change
   dynamic_environment_vars = [
     {
-      name  = "DB_HOST"
-      value = aws_db_instance.main.address
-    },
-    {
-      name  = "DB_PORT"
-      value = tostring(aws_db_instance.main.port)
-    },
-    {
-      name  = "DB_NAME"
-      value = aws_db_instance.main.db_name
+      name  = "DB_URL"
+      value = "postgres://${aws_db_instance.main.username}:${urlencode(aws_secretsmanager_secret_version.db_password.secret_string)}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}"
     },
     {
       name  = "DB_USERNAME"
