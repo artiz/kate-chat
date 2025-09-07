@@ -22,6 +22,7 @@ type ApplicationConfig {
   maxChats: Float
   maxImages: Float
   ragEnabled: Boolean
+  ragSupported: Boolean
   s3Connected: Boolean
   token: String
 }

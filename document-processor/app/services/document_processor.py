@@ -23,15 +23,13 @@ class DocumentProcessor:
 
     def __init__(self, send_message: Callable[[bool, Dict[str, Any], int], None]):
         self.s3_client = None
-        self.redis = Redis(connection_pool=redis_connection_pool)
         self.send_message = send_message
 
         self.parser = PDFParser()
         self.text_splitter = TextSplitter()
 
     async def close(self):
-        if self.redis:
-            await self.redis.close()
+        pass        
 
     async def _get_s3_client(self):
         """Get or create S3 client"""
@@ -75,9 +73,10 @@ class DocumentProcessor:
 
         try:
             s3 = await self._get_s3_client()
+            redis = Redis(connection_pool=redis_connection_pool)
 
             # Check if parsing is already in progress or completed
-            existing_progress = await self.redis.get(progress_key)
+            existing_progress = await redis.get(progress_key)
             if existing_progress is not None:
                 progress = float(existing_progress)
 
@@ -98,10 +97,10 @@ class DocumentProcessor:
                     return
 
             # Start parsing
-            await self._set_progress(progress_key, 0.0, document_id, "parsing")
+            await self._set_progress(redis, progress_key, 0.0, document_id, "parsing")
 
             document_stream = await self._download_s3_stream(s3, s3_key)
-            await self._set_progress(progress_key, 0.3, document_id, "parsing")
+            await self._set_progress(redis, progress_key, 0.3, document_id, "parsing")
 
             # Parse document
             conv_result = self.parser.convert_document(document_stream)
@@ -111,7 +110,7 @@ class DocumentProcessor:
                 )
 
             # Update progress
-            await self._set_progress(progress_key, 0.6, document_id, "parsing")
+            await self._set_progress(redis, progress_key, 0.6, document_id, "parsing")
             data = conv_result.document.export_to_dict()
             normalized_data = self.parser._normalize_page_sequence(data)
 
@@ -119,7 +118,7 @@ class DocumentProcessor:
             processed_report = processor.assemble_report(conv_result, normalized_data)
 
             # Generate reports
-            await self._set_progress(progress_key, 0.8, document_id, "parsing")
+            await self._set_progress(redis, progress_key, 0.8, document_id, "parsing")
             json_content = json.dumps(processed_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(
                 s3, parsed_json_key, json_content, "application/json"
@@ -131,14 +130,14 @@ class DocumentProcessor:
             )
 
             # Complete parsing
-            await self._set_progress(progress_key, 1.0, document_id, "parsing")
+            await self._set_progress(redis, progress_key, 1.0, document_id, "parsing")
             await self._send_split_command(document_id, s3_key)
 
             logger.info(f"Successfully parsed document {document_id}")
 
         except Exception as e:
             logger.exception(e, f"Failed to parse document {document_id}")
-            await self._set_progress(progress_key, 0, document_id, "error")
+            await self._set_progress(redis, progress_key, 0, document_id, "error")
             raise
 
     async def _handle_split_document(self, document_id: str, s3_key: str):
@@ -149,9 +148,10 @@ class DocumentProcessor:
 
         try:
             s3 = await self._get_s3_client()
+            redis = Redis(connection_pool=redis_connection_pool)
 
             # Check if chunking is already in progress or completed
-            existing_progress = await self.redis.get(progress_key)
+            existing_progress = await redis.get(progress_key)
             if existing_progress is not None:
                 progress = float(existing_progress)
 
@@ -172,21 +172,21 @@ class DocumentProcessor:
                     return
 
             # Start chunking
-            await self._set_progress(progress_key, 0.0, document_id, "chunking")
+            await self._set_progress(redis, progress_key, 0.0, document_id, "chunking")
             parsed_content = await self._download_s3_content(s3, parsed_json_key)
             parsed_data = json.loads(parsed_content)
 
             # Update progress
-            await self._set_progress(progress_key, 0.3, document_id, "chunking")
+            await self._set_progress(redis, progress_key, 0.3, document_id, "chunking")
             text_preparation = PageTextPreparation(parsed_data)
             joined_report = text_preparation.process_report()
 
             # Split into chunks
-            await self._set_progress(progress_key, 0.6, document_id, "chunking")
+            await self._set_progress(redis, progress_key, 0.6, document_id, "chunking")
             chunked_report = self.text_splitter.split_json_report(joined_report)
 
             # Upload chunked JSON to S3
-            await self._set_progress(progress_key, 0.8, document_id, "chunking")
+            await self._set_progress(redis, progress_key, 0.8, document_id, "chunking")
 
             chunked_content = json.dumps(chunked_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(
@@ -194,22 +194,22 @@ class DocumentProcessor:
             )
 
             # Send index command
-            await self._set_progress(progress_key, 1.0, document_id, "chunking")
+            await self._set_progress(redis, progress_key, 1.0, document_id, "chunking")
             await self._send_index_command(document_id, s3_key)
 
             logger.info(f"Successfully chunked document {document_id}")
 
         except Exception as e:
             logger.error(f"Failed to chunk document {document_id}: {e}")
-            await self._set_progress(progress_key, 0, document_id, "error")
+            await self._set_progress(redis, progress_key, 0, document_id, "error")
             raise
 
     async def _set_progress(
-        self, progress_key: str, progress: float, document_id: str, status: str
+        self, redis: Redis, progress_key: str, progress: float, document_id: str, status: str
     ):
         """Set progress in Redis and publish notification"""
         # Set progress with 30 second expiration
-        await self.redis.setex(progress_key, 30, str(progress))
+        await redis.setex(progress_key, 30, str(progress))
 
         # Publish notification
         notification = {
@@ -218,7 +218,7 @@ class DocumentProcessor:
             "progress": progress,
             "sync": True,
         }
-        await self.redis.publish(
+        await redis.publish(
             settings.document_status_channel, json.dumps(notification)
         )
 

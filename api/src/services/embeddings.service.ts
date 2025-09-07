@@ -90,10 +90,6 @@ export class EmbeddingsService {
     connection: ConnectionParams,
     { limit = 5, loadFullPage = false }: { limit: number; loadFullPage: boolean }
   ): Promise<DocumentChunk[]> {
-    // TODO: for each doc:
-    // generate query embedding by doc.embeddingModelId
-    // find 20 most similar chunks
-
     const documents = await this.documentRepo.findBy({
       id: In([...new Set(documentIds)]),
     });
@@ -113,19 +109,20 @@ export class EmbeddingsService {
     );
 
     const results: DocumentChunk[] = [];
+    const documentByModel: Record<string, Document[]> = Object.keys(modelsMap).reduce(
+      (acc, modelId) => {
+        acc[modelId] = documents.filter(doc => doc.embeddingsModelId === modelId);
+        return acc;
+      },
+      {} as Record<string, Document[]>
+    );
 
-    // TODO: make one call if all docs use same embeddings model
+    for (const [modelId, documents] of Object.entries(documentByModel)) {
+      const documentsChunks: DocumentChunk[] = [];
 
-    for (const document of documents) {
-      const documentChunks: DocumentChunk[] = [];
-
-      if (!document.embeddingsModelId) {
-        logger.warn(`Document ${document.id} has no embeddings model setup`);
-        continue;
-      }
-      const model = modelsMap[document.embeddingsModelId];
+      const model = modelsMap[modelId];
       const queryEmbeddingRes = await this.aiService.getEmbeddings(model.apiProvider, connection, {
-        modelId: model.modelId,
+        modelId,
         input: query,
       });
       const queryEmbedding = queryEmbeddingRes.embedding;
@@ -133,50 +130,55 @@ export class EmbeddingsService {
         queryEmbedding.push(...Array(EMBEDDINGS_DIMENSIONS - queryEmbedding.length).fill(0));
       }
 
+      const documentIds = documents.map(doc => doc.id);
+
       if (DB_TYPE === "sqlite") {
         const runner = AppDataSource.createQueryRunner();
         try {
           const chunks = await runner.manager.query<(DocumentChunk & { rowid: number; distance: number })[]>(
-            `SELECT vdc.rowid, vdc.distance, dc.*
+            `SELECT vdc.rowid, vdc.distance, dc.*, d.fileName as "documentName"
                 FROM vss_document_chunks vdc
                 LEFT JOIN document_chunks dc ON vdc.rowid = dc.rowid
+                LEFT JOIN documents d ON dc.documentId = d.id
                 WHERE 
-                dc.documentId = ? AND
+                dc.documentId IN (${documentIds.map(s => `'${s}'`).join(", ")}) AND
                 vdc.embedding MATCH ? AND vdc.k = ? ORDER BY vdc.distance`,
-            [document.id, JSON.stringify(queryEmbedding), limit]
+            [JSON.stringify(queryEmbedding), limit]
           );
 
-          documentChunks.push(...chunks);
+          documentsChunks.push(...chunks);
         } catch (err) {
-          logger.error(err, `Failed to query document ${document.id} chunks`);
+          logger.error(err, `Failed to query documents ${documentIds.join(", ")} chunks`);
         } finally {
           runner.release();
         }
       } else if (DB_TYPE === "postgres") {
         const chunks = await this.documentChunksRepo
-          .createQueryBuilder("document_chunks")
-          .where("document_chunks.documentId = :documentId", { documentId: document.id })
+          .createQueryBuilder("document_chunk")
+          .leftJoinAndSelect("document_chunk.document", "document")
+          .where("document_chunk.documentId IN (:...documentIds)", { documentIds })
           .orderBy("embedding <-> :embedding")
           .setParameters({ embedding: pgvector.toSql(queryEmbedding) })
           .limit(limit)
           .getMany();
 
-        documentChunks.push(...chunks);
+        documentsChunks.push(...chunks);
       } else if (DB_TYPE === "mssql") {
         const runner = AppDataSource.createQueryRunner();
         try {
           const chunks = await runner.manager.query<(DocumentChunk & { distance: number })[]>(
             `
             DECLARE @question AS VECTOR (${EMBEDDINGS_DIMENSIONS}) = '${JSON.stringify(queryEmbedding)}';
-            SELECT TOP (${limit}) *, VECTOR_DISTANCE('cosine', @question, embedding) AS distance
+            SELECT TOP (${limit}) *, VECTOR_DISTANCE('cosine', @question, embedding) AS distance, d.fileName as "documentName"
               FROM document_chunks dc
-              WHERE documentId = '${document.id}'
+              LEFT JOIN documents d ON dc.documentId = d.id
+              WHERE documentId IN (${documentIds.map(s => `'${s}'`).join(", ")})
               ORDER BY VECTOR_DISTANCE('cosine', @question, embedding)`
           );
 
-          documentChunks.push(...chunks);
+          documentsChunks.push(...chunks);
         } catch (err) {
-          logger.error(err, `Failed to query document ${document.id} chunks`);
+          logger.error(err, `Failed to query documents ${documentIds.join(", ")} chunks`);
         } finally {
           runner.release();
         }
@@ -184,21 +186,35 @@ export class EmbeddingsService {
         logger.warn(`Unsupported embeddings database type: ${DB_TYPE}`);
       }
 
+      logger.debug(
+        `>>>>>>>>>>>Found ${documentsChunks.length} chunks for documents ${documentIds.join(", ")} using model ${modelId}`
+      );
+
       if (loadFullPage) {
-        const chunkPages = new Set(documentChunks.map(c => c.page).filter(p => p > 0));
-        if (chunkPages.size) {
-          const chunks = await this.documentChunksRepo.find({
-            where: {
-              page: In([...chunkPages]),
-              documentId: document.id,
-              id: Not(In(documentChunks.map(c => c.id))),
-            },
-          });
-          documentChunks.push(...chunks);
+        const loadedChunkIds = new Set(documentsChunks.map(c => c.id));
+        for (var docId of documentIds) {
+          const chunkPages = new Set(
+            documentsChunks
+              .filter(c => c.documentId === docId)
+              .map(c => c.page)
+              .filter(p => p > 0)
+          );
+          if (chunkPages.size) {
+            const chunks = await this.documentChunksRepo.find({
+              where: {
+                page: In([...chunkPages]),
+                documentId: docId,
+              },
+            });
+
+            documentsChunks.push(...chunks.filter(c => !loadedChunkIds.has(c.id)));
+          }
         }
       }
 
-      results.push(...documentChunks.map(c => ({ ...c, documentName: document.fileName })));
+      results.push(
+        ...documentsChunks.map(c => ({ ...c, documentName: c.documentName || c?.document?.fileName || c.documentId }))
+      );
     }
 
     return results;

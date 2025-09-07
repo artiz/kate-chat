@@ -15,6 +15,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - Yandex Foundation Models
+- RAG implementation with documents (PDF, DOCX, TXT) parsing with [Docling](https://docling-project.github.io/docling/) and vestor embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - Multiple chats creation with pristine chat functionality
 - Chat history storage and management, messages editing/deletion
@@ -47,16 +48,13 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Basic RAG implementation with documents (PDF, DOCX, TXT) indexing and pushing embeddings into Amazon DocumentDB/OpenAI vector stores. 
-  - https://docling-project.github.io/docling/
 * Add `maxInputTokens` load for each model and use it api/src/services/document-queue.service.ts:207
 * Add Qwen3 from YandexFM (https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Open AI code interpreter support  
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
-* Rust: add images generation (DALL-E) support, Library
-* Rust: add admin API
+* Rust API sync: add images generation (DALL-E) support, Library, admin API
 
 
 ## Tech Stack
@@ -332,6 +330,8 @@ Authentication is handled via JWT tokens. When a user logs in or registers, they
 ### Call Other Model
 ![image](docs/screenshots/call-other.png)
 
+### RAG (Retrieval-Augmented Generation)
+![image](docs/screenshots/rag.png)
 
 ## Contributing
 

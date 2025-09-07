@@ -159,9 +159,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
                   <Text size="xs" color="dimmed">
                     Relevance: {chunk.relevance || "N/A"}
                   </Text>
-                  <Text size="sm">
+                  <Box fz="12">
                     <pre>{chunk.content}</pre>
-                  </Text>
+                  </Box>
                 </div>
               ))}
             </div>
@@ -237,6 +237,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     modelId,
     models,
     metadata,
+    metadata?.relevantsChunks,
     index,
     disableActions,
     loading,

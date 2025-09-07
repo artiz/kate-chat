@@ -756,7 +756,7 @@ export class MessagesService {
         break;
       } catch (error: unknown) {
         const errorMessage = getErrorMessage(error);
-        if (errorMessage.match(/429\s+request too large/gi)) {
+        if (errorMessage.match(/429\s+request too large/gi) || errorMessage.match(/failed with status code 400/gi)) {
           logger.warn(errorMessage, "RAG request too large, reducing chunks limit");
           chunksLimit = Math.floor(chunksLimit / 2);
           loadFullPage = false;
