@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Text, Group, Avatar, ActionIcon, Tooltip } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconCopy, IconCopyCheck, IconRobot, IconTrash } from "@tabler/icons-react";
@@ -17,7 +17,9 @@ interface IProps {
 
 export const LinkedChatMessage = ({ message, parentIndex, index, disableActions }: IProps) => {
   const { models } = useAppSelector(state => state.models);
-  var model = models.find(m => m.modelId === message.modelId);
+  var model = useMemo(() => {
+    return models.find(m => m.modelId === message.modelId);
+  }, [models, message.modelId]);
 
   return (
     <Carousel.Slide key={message.id} className={classes.linkedMessageContainer}>
@@ -39,7 +41,9 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
 
       <div className={classes.message}>
         {message.html ? (
-          message.html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)
+          message.html.map((part: string, index: number) => (
+            <div key={index} dangerouslySetInnerHTML={{ __html: part }} />
+          ))
         ) : (
           <div>{message.content}</div>
         )}

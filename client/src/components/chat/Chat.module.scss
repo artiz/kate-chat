@@ -1,5 +1,5 @@
 .container {
-  height: calc(100vh - 80px);
+  height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
 
@@ -21,19 +21,24 @@
 }
 
 .titleRow {
+  .wsStatus {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.7;
+  }
+
   .wsStatusIndicator {
     width: 0.5em;
     height: 0.5em;
     border-radius: 50%;
 
     background: gray;
+
     &.connected {
       background: green;
     }
   }
-}
-.modelRow {
-  position: relative;
 }
 
 .messagesContainer {
@@ -41,9 +46,14 @@
   overflow-y: scroll;
   margin-bottom: 1rem;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--input-bd);
+  border-radius: var(--mantine-radius-md);
 
   .messagesList {
     opacity: 0;
+    margin-bottom: 1rem;
   }
 
   &.loadCompleted {
@@ -101,8 +111,10 @@
 
   .chatInputGroup {
     flex-grow: 1;
+
     .chatInput {
       flex-grow: 1;
+
       :global(textarea) {
         border: none !important;
       }
@@ -135,17 +147,4 @@
     height: 32px;
     width: 32px;
   }
-}
-
-.chatSettings {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 300px;
-  display: flex !important;
-  z-index: 5;
-}
-
-.chatSettingsHidden {
-  display: none !important; /* Hidden by default */
 }

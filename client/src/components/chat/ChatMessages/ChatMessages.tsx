@@ -2,8 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Paper, Text, Stack, Group, Avatar, Loader, Box } from "@mantine/core";
 import { IconRobot } from "@tabler/icons-react";
 import { Message } from "@/store/slices/chatSlice";
-import { Model } from "@/store/slices/modelSlice";
-import { gql, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import {
   DELETE_MESSAGE_MUTATION,
@@ -16,7 +15,7 @@ import {
   EditMessageResponse,
 } from "@/store/services/graphql";
 
-import { ok } from "@/utils/assert";
+import { ok } from "@/lib/assert";
 import { ChatMessage } from "./ChatMessage";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 import { EditMessageModal } from "./EditMessageModal";
@@ -27,6 +26,7 @@ interface ChatMessagesProps {
   sending: boolean;
   selectedModelName?: string;
   onMessageDeleted?: (res: DeleteMessageResponse) => void;
+  onSending?: () => void;
   onMessageModelSwitch?: (message: Message) => void;
   onCallOther?: (message: Message) => void;
   onMessageEdit?: (message: Message) => void;
@@ -37,6 +37,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   sending,
   selectedModelName,
   onMessageDeleted,
+  onSending,
   onMessageModelSwitch,
   onCallOther,
   onMessageEdit,
@@ -52,6 +53,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   // State for edit message modal
   const [messageToEdit, setMessageToEdit] = useState<string | undefined>();
   const [editedContent, setEditedContent] = useState<string>("");
+  const [updatedMessageId, setUpdatedMessageId] = useState<string | undefined>();
 
   const resetSelectedImage = () => {
     setImageToShow(undefined);
@@ -89,8 +91,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         });
       }
       onMessageModelSwitch?.(res.switchModel.message);
+      setUpdatedMessageId(undefined);
     },
     onError: error => {
+      setUpdatedMessageId(undefined);
       notifications.show({
         title: "Error",
         message: error.message || "Failed to switch model",
@@ -111,8 +115,10 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       }
       ok(res.callOther.message, "Call Other response should contain a message");
       onCallOther?.(res.callOther.message);
+      setUpdatedMessageId(undefined);
     },
     onError: error => {
+      setUpdatedMessageId(undefined);
       notifications.show({
         title: "Error",
         message: error.message || "Failed to call other models",
@@ -152,17 +158,22 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     },
   });
 
-  const handleSwitchModel = useCallback((messageId: string, modelId: string) => {
-    switchModel({
-      variables: {
-        messageId,
-        modelId,
-      },
-    });
-  }, []);
+  const handleSwitchModel = useCallback(
+    (messageId: string, modelId: string) => {
+      setUpdatedMessageId(messageId);
+      switchModel({
+        variables: {
+          messageId,
+          modelId,
+        },
+      });
+    },
+    [switchModel, onSending]
+  );
 
   const handleCallOther = useCallback(
     (messageId: string, modelId: string) => {
+      setUpdatedMessageId(messageId);
       callOther({
         variables: {
           input: {
@@ -172,7 +183,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         },
       });
     },
-    [callOther]
+    [callOther, onSending]
   );
 
   const handleEditMessage = useCallback(
@@ -377,11 +388,12 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               message={msg}
               index={index}
               disabled={deletingMessage || switchingModel || callingOthers || editingMessage}
+              loading={msg.id === updatedMessageId}
             />
           </Group>
         ))}
 
-        {sending && (
+        {sending && !switchingModel && !callingOthers && (
           <Group align="flex-start" gap="xs" pl="md" pr="md">
             <Avatar color="gray" radius="xl">
               <IconRobot />

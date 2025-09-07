@@ -1,40 +1,38 @@
-import {
-  AbstractLogger,
-  DataSource,
-  DataSourceOptions,
-  LogLevel,
-  LogMessage,
-  ObjectLiteral,
-  QueryFailedError,
-  QueryRunner,
-  Repository,
-  Migration,
-} from "typeorm";
+import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Repository, Migration } from "typeorm";
 import path from "path";
-import { Chat } from "../entities/Chat";
-import { Message } from "../entities/Message";
-import { Model } from "../entities/Model";
-import { User } from "../entities/User";
+import pgvector from "pgvector";
+import { load as sqliteVecLoad } from "sqlite-vec";
+import { ENTITIES } from "../entities";
 import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
 
 const logging = !!process.env.DB_LOGGING;
-const DB_MIGRATIONS_PATH = process.env.DB_MIGRATIONS_PATH || path.join(__dirname, "../../../db-migrations/*.ts");
+
+export const DB_TYPE =
+  process.env.DB_TYPE === "sqlite" || process.env.DB_TYPE === "better-sqlite3" || !process.env.DB_TYPE
+    ? "sqlite"
+    : process.env.DB_TYPE;
+
+export const DB_MIGRATIONS_PATH =
+  process.env.DB_MIGRATIONS_PATH || path.join(__dirname, `../../../db-migrations/${DB_TYPE}/*-*.ts`);
 
 let dbOptions: DataSourceOptions = {
-  type: "sqlite",
+  type: "better-sqlite3",
   database: process.env.DB_NAME || "katechat.sqlite",
+  prepareDatabase: db => sqliteVecLoad(db),
 };
 
-if (process.env.DB_TYPE === "mysql") {
+// TODO: check migrations against "mysql"
+if (DB_TYPE === "mysql") {
   dbOptions = {
     type: "mysql",
+    charset: "UTF8_GENERAL_CI",
     url: process.env.DB_URL,
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
   };
-} else if (process.env.DB_TYPE === "postgres") {
+} else if (DB_TYPE === "postgres") {
   const ssl = ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || "");
 
   dbOptions = {
@@ -44,22 +42,23 @@ if (process.env.DB_TYPE === "mysql") {
     password: process.env.DB_PASSWORD,
     ssl: ssl ? { rejectUnauthorized: false } : false,
   };
-} else if (process.env.DB_TYPE === "mssql") {
+} else if (DB_TYPE === "mssql") {
   dbOptions = {
     type: "mssql",
-    url: process.env.DB_URL,
+    host: process.env.DB_HOST,
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    options: {
+      encrypt: true,
+      trustServerCertificate: true,
+    },
   };
-} else if (process.env.DB_TYPE === "mongodb") {
-  dbOptions = {
-    type: "mongodb",
-    url: process.env.DB_URL,
-  };
-} else if (process.env.DB_TYPE && process.env.DB_TYPE !== "sqlite") {
-  throw new Error(`Unsupported DB_TYPE: ${process.env.DB_TYPE}`);
+} else if (DB_TYPE && DB_TYPE !== "sqlite") {
+  throw new Error(`Unsupported DB_TYPE: ${DB_TYPE}`);
 }
+
+logger.debug({ ...dbOptions, DB_MIGRATIONS_PATH }, "Database connection options");
 
 // Create TypeORM data source
 export const AppDataSource = new DataSource({
@@ -69,7 +68,7 @@ export const AppDataSource = new DataSource({
   migrationsTableName: "migrations",
   logger: logging ? new TypeORMPinoLogger() : undefined,
   logging,
-  entities: [User, Chat, Message, Model],
+  entities: ENTITIES,
   migrations: [DB_MIGRATIONS_PATH],
 });
 
@@ -82,6 +81,9 @@ export function getRepository<T extends ObjectLiteral>(entityClass: new () => T)
 export async function initializeDatabase() {
   try {
     await AppDataSource.initialize();
+    if (dbOptions.type === "postgres") {
+      await AppDataSource.query("CREATE EXTENSION IF NOT EXISTS vector");
+    }
 
     let migrations = "";
     try {
@@ -102,12 +104,13 @@ export async function initializeDatabase() {
     }
 
     logger.error(error, "Error connecting to database");
+
     return false;
   }
 }
 
 export const formatDateFloor =
-  dbOptions.type === "sqlite"
+  DB_TYPE === "sqlite"
     ? (date: Date) => {
         const d = new Date(date);
         d.setMilliseconds(d.getMilliseconds() - 1); // SQLite requires a small adjustment to avoid precision issues
@@ -116,10 +119,34 @@ export const formatDateFloor =
     : (date: Date) => date;
 
 export const formatDateCeil =
-  dbOptions.type === "sqlite"
+  DB_TYPE === "sqlite"
     ? (date: Date) => {
         const d = new Date(date);
         d.setMilliseconds(d.getMilliseconds() + 1); // SQLite requires a small adjustment to avoid precision issues
         return d;
       }
     : (date: Date) => date;
+
+export function EmbeddingTransformer(dimensions: number) {
+  if (process.env.DB_TYPE === "postgres") {
+    return {
+      to: (value: number[]) =>
+        pgvector.toSql(value.length === dimensions ? value : value.concat(Array(dimensions - value.length).fill(0))),
+      from: (value: string | null | undefined) =>
+        typeof value === "string" ? (pgvector.fromSql(value) as number[]) : value,
+    };
+  }
+
+  if (process.env.DB_TYPE === "mssql") {
+    return {
+      to: (value: number[]) => JSON.stringify(value),
+      from: (value: string | null | undefined) => (typeof value === "string" ? JSON.parse(value) : value),
+    };
+  }
+
+  return {
+    to: (value: number[]) => value?.join(","),
+    from: (value: string | null | undefined) =>
+      typeof value === "string" ? (value.split(",").map(Number) as number[]) : undefined,
+  };
+}

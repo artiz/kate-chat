@@ -5,43 +5,47 @@ import type { WebSocket } from "ws";
 import { Message } from "../entities/Message";
 import { AIService } from "./ai.service";
 import { NEW_MESSAGE } from "@/resolvers/message.resolver";
-import { Chat, Model, User } from "@/entities";
+import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import {
   InvokeModelParamsRequest,
+  MessageMetadata,
   MessageRole,
   MessageType,
   ModelMessageContent,
-  ModelResponseMetadata,
+  ModelResponse,
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
-import { formatDateFloor, getRepository } from "@/config/database";
+import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
-import { QueueService } from "./queue.service";
+import { SubscriptionsService } from "./subscriptions.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./s3.service";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
+import { EmbeddingsService } from "./embeddings.service";
+import { RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
+import { RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
 
 const logger = createLogger(__filename);
 
 export class MessagesService {
+  private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
+
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
   private modelRepository: Repository<Model>;
 
-  private queueService: QueueService;
+  private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
+  private embeddingsService: EmbeddingsService;
 
-  // one staticGraphQL PubSub instance for subscriptions
-  private static pubSub = new PubSub();
-  private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
-
-  constructor() {
-    this.queueService = new QueueService(MessagesService.pubSub);
+  constructor(subscriptionsService: SubscriptionsService) {
+    this.subscriptionsService = subscriptionsService;
     this.aiService = new AIService();
+    this.embeddingsService = new EmbeddingsService();
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
     this.modelRepository = getRepository(Model);
@@ -53,30 +57,27 @@ export class MessagesService {
 
     MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
-      MessagesService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
+      SubscriptionsService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
     }, 300);
-
-    this.queueService.connectClient(socket, chatId);
   }
 
   public disconnectClient(socket: WebSocket) {
     const chatId = MessagesService.clients.get(socket);
     MessagesService.clients.delete(socket);
-    this.queueService.disconnectClient(socket, chatId);
   }
 
   public publishGraphQL(routingKey: string, payload: unknown) {
-    MessagesService.pubSub.publish(routingKey, payload);
+    SubscriptionsService.pubSub.publish(routingKey, payload);
   }
 
   public subscribeGraphQL(routingKey: string, dynamicId: unknown): AsyncIterable<unknown> {
     return {
-      [Symbol.asyncIterator]: () => MessagesService.pubSub.asyncIterator(routingKey),
+      [Symbol.asyncIterator]: () => SubscriptionsService.pubSub.asyncIterator(routingKey),
     };
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    const { chatId, modelId } = input;
+    const { chatId, modelId, documentIds, content } = input;
     if (!chatId) throw new Error("Chat ID is required");
     if (!modelId) throw new Error("Model ID is required");
     const chat = await this.chatRepository.findOne({
@@ -92,26 +93,33 @@ export class MessagesService {
     });
     if (!model) throw new Error("Model not found");
 
-    // Get previous messages for context
-    const inputMessages = await this.getContextMessages(chatId);
+    let assistantMessage = this.messageRepository.create({
+      content: "",
+      role: MessageRole.ASSISTANT,
+      modelId: model.modelId, // real model used
+      modelName: model.name,
+      chatId,
+      user,
+      chat,
+    });
+
+    if (documentIds && documentIds.length > 0) {
+      const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
+
+      const ragMessage = await this.messageRepository.save(assistantMessage);
+      await this.publishRagMessage(input, connection, model, chat, userMessage, ragMessage);
+
+      return userMessage;
+    }
 
     // Save user message
-    const userMessage = await this.publishUserMessage(input, user, chat, model, connection);
+    const userMessage = await this.publishUserMessage(input, user, chat, model);
+    // Get previous messages for context
+    const inputMessages = await this.getContextMessages(chatId);
     inputMessages.push(userMessage);
 
     // Generate AI response
-    const assistantMessage = await this.messageRepository.save(
-      this.messageRepository.create({
-        content: "",
-        role: MessageRole.ASSISTANT,
-        modelId: model.modelId, // real model used
-        modelName: model.name,
-        chatId,
-        user,
-        chat,
-      })
-    );
-
+    assistantMessage = await this.messageRepository.save(assistantMessage);
     await this.publishAssistantMessage(input, connection, user, model, chat, inputMessages, assistantMessage);
     return userMessage;
   }
@@ -156,10 +164,35 @@ export class MessagesService {
 
     await this.removeFiles(files, user, chat);
 
+    originalMessage.role = MessageRole.ASSISTANT;
     originalMessage.content = ""; // Clear content to indicate it's being regenerated
+    originalMessage.jsonContent = undefined;
     originalMessage.modelId = model.modelId; // Update to the new model
     originalMessage.modelName = model.name; // Update model name
     originalMessage = await this.messageRepository.save(originalMessage);
+
+    // Publish message to Queue
+    await this.subscriptionsService.publishChatMessage(chat.id, originalMessage, true);
+
+    const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
+    const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
+    if (documentIds && documentIds.length > 0) {
+      if (!userMessage) throw new Error("Original user message not found in context");
+      await this.publishRagMessage(
+        {
+          content: userMessage.content,
+          documentIds,
+          modelId: userMessage.modelId,
+          chatId: chat.id,
+        },
+        connection,
+        model,
+        chat,
+        userMessage,
+        originalMessage
+      );
+      return originalMessage;
+    }
 
     const input: CreateMessageInput = {
       chatId,
@@ -250,7 +283,7 @@ export class MessagesService {
         chat,
       })
       .catch(err => {
-        this.queueService.publishError(chat.id, getErrorMessage(err));
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         throw err;
       });
 
@@ -301,14 +334,7 @@ export class MessagesService {
     if (!model) throw new Error("Model not found");
 
     // Get previous messages for context (up to the original message)
-    const contextMessages = await this.messageRepository
-      .createQueryBuilder("message")
-      .where("message.chatId = :chatId", { chatId })
-      .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateFloor(originalMessage.createdAt) })
-      .andWhere("message.id <> :id", { id: originalMessage.id })
-      .andWhere("message.linkedToMessageId IS NULL") // Only include main messages, not linked ones
-      .orderBy("message.createdAt", "ASC")
-      .getMany();
+    const contextMessages = await this.getContextMessages(chatId, originalMessage);
 
     let linkedMessage = await this.messageRepository
       .save({
@@ -322,7 +348,7 @@ export class MessagesService {
         chat,
       })
       .catch(err => {
-        this.queueService.publishError(chat.id, getErrorMessage(err));
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         throw err;
       });
 
@@ -454,8 +480,10 @@ export class MessagesService {
     const fileName = `${chatId}-${messageId}-${index}.${type}`;
     const contentType = `image/${type}`;
 
+    // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+    const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
     // Upload to S3
-    await s3Service.uploadFile(content, fileName, contentType);
+    await s3Service.uploadFile(Buffer.from(base64Data, "base64"), fileName, contentType);
 
     // Return the file key
     return {
@@ -469,7 +497,7 @@ export class MessagesService {
     user: User,
     chat: Chat,
     model: Model,
-    connection: ConnectionParams
+    metadata?: MessageMetadata
   ): Promise<Message> {
     const { images } = input;
     let { content = "" } = input;
@@ -483,9 +511,10 @@ export class MessagesService {
         chatId: chat.id,
         user,
         chat,
+        metadata,
       })
       .catch(err => {
-        this.queueService.publishError(chat.id, getErrorMessage(err));
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         throw err;
       });
 
@@ -535,12 +564,12 @@ export class MessagesService {
     userMessage.jsonContent = jsonContent;
     userMessage.content = content;
     userMessage = await this.messageRepository.save(userMessage).catch(err => {
-      this.queueService.publishError(chat.id, getErrorMessage(err));
+      this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
       throw err;
     });
 
     // Publish message to Queue
-    await this.queueService.publishMessage(chat.id, userMessage);
+    await this.subscriptionsService.publishChatMessage(chat.id, userMessage);
 
     return userMessage;
   }
@@ -567,12 +596,10 @@ export class MessagesService {
     const completeRequest = async (message: Message) => {
       ok(message);
       const savedMessage = await this.messageRepository.save(message);
-
-      // Publish message to Queue
-      await this.queueService.publishMessage(chat.id, savedMessage);
+      await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
     };
 
-    if (!model.supportsStreaming) {
+    if (!model.streaming) {
       // sync call
       try {
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
@@ -616,12 +643,11 @@ export class MessagesService {
       } catch (error: unknown) {
         logger.error(error, "Error generating AI response");
 
-        logger.debug(`Publishing AI response event for chat ${chat.id}`);
         assistantMessage.content = getErrorMessage(error);
         assistantMessage.role = MessageRole.ERROR;
 
         await completeRequest(assistantMessage).catch(err => {
-          this.queueService.publishError(chat.id, getErrorMessage(err));
+          this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");
         });
       }
@@ -629,12 +655,7 @@ export class MessagesService {
       return;
     }
 
-    const handleStreaming = async (
-      token: string,
-      completed?: boolean,
-      error?: Error,
-      metadata?: ModelResponseMetadata
-    ) => {
+    const handleStreaming = async (token: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => {
       if (completed) {
         if (error) {
           return completeRequest({
@@ -648,14 +669,14 @@ export class MessagesService {
         assistantMessage.metadata = metadata;
 
         completeRequest(assistantMessage).catch(err => {
-          this.queueService.publishError(chat.id, getErrorMessage(err));
+          this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");
         });
 
         // stream token
       } else {
         assistantMessage.content += token;
-        await this.queueService.publishMessage(chat.id, assistantMessage, true);
+        await this.subscriptionsService.publishChatMessage(chat.id, assistantMessage, true);
       }
     };
 
@@ -669,6 +690,145 @@ export class MessagesService {
           role: MessageRole.ERROR,
         }).catch(err => logger.error(err, "Error sending AI response"));
       });
+  }
+
+  protected async publishRagMessage(
+    input: CreateMessageInput,
+    connection: ConnectionParams,
+    model: Model,
+    chat: Chat,
+    inputMessage: Message,
+    ragMessage: Message
+  ): Promise<void> {
+    let chunksLimit = RAG_QUERY_CHUNKS_LIMIT;
+    let loadFullPage = RAG_LOAD_FULL_PAGES;
+    let aiResponse: ModelResponse | undefined = undefined;
+    let chunks: DocumentChunk[] = [];
+
+    const completeRequest = async (message: Message) => {
+      ok(message);
+      try {
+        const savedMessage = await this.messageRepository.save(message);
+        await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
+      } catch (err) {
+        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
+        logger.error(err, "Error sending RAG response");
+      }
+    };
+
+    do {
+      try {
+        chunks = await this.embeddingsService.findChunks(input.documentIds!, input.content, connection, {
+          limit: chunksLimit,
+          loadFullPage,
+        });
+        const { systemPrompt, userInput } = RAG_REQUEST({ chunks, question: input.content });
+
+        logger.trace(
+          {
+            question: input.content,
+            documents: input.documentIds,
+            chunks: chunks.map(chunk => ({
+              id: chunk.id,
+              page: chunk.page,
+              content: chunk.content,
+            })),
+          },
+          "RAG request"
+        );
+
+        const request: InvokeModelParamsRequest = {
+          modelId: model.modelId,
+          systemPrompt,
+          temperature: input.temperature || chat.temperature,
+          topP: input.topP || chat.topP,
+        };
+
+        // always sync call
+        aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, [
+          {
+            ...inputMessage,
+            jsonContent: undefined,
+            content: userInput, // only user input without images and so on
+          },
+        ]);
+
+        break;
+      } catch (error: unknown) {
+        const errorMessage = getErrorMessage(error);
+        if (errorMessage.match(/429\s+request too large/gi)) {
+          logger.warn(errorMessage, "RAG request too large, reducing chunks limit");
+          chunksLimit = Math.floor(chunksLimit / 2);
+          loadFullPage = false;
+        } else {
+          logger.error(error, "Error processing RAG response");
+          ragMessage.content = errorMessage;
+          ragMessage.role = MessageRole.ERROR;
+          return await completeRequest(ragMessage);
+        }
+      }
+    } while (chunksLimit > 1);
+
+    ok(aiResponse);
+
+    const chunksMap = chunks.reduce(
+      (acc, chunk) => {
+        acc[chunk.id] = chunk;
+        return acc;
+      },
+      {} as Record<string, DocumentChunk>
+    );
+
+    try {
+      const content = aiResponse.content
+        .trim()
+        .replace(/^\s*```(json)?/, "")
+        .replace(/^[^\{]+/, "")
+        .replace(/```$/, "")
+        .replace(/\n+/g, " ")
+        .trim();
+
+      logger.trace("RAG response raw: " + content);
+
+      const ragResponse = content ? (JSON.parse(content) as RagResponse) : {};
+      logger.debug(ragResponse, "RAG response");
+
+      ragMessage.content = ragResponse.final_answer || "N/A";
+      if (ragResponse.reasoning_summary) {
+        ragMessage.content += `\n\n> ${ragResponse.reasoning_summary}`;
+      }
+
+      ragMessage.metadata = {
+        ...aiResponse.metadata,
+        documentIds: input.documentIds,
+        analysis: ragResponse.step_by_step_analysis,
+        relevantsChunks:
+          ragResponse.relevant_chunks_ids
+            ?.map((id, ndx) => {
+              const inputChunk = chunksMap[id];
+              if (!inputChunk) return null;
+
+              return {
+                id,
+                relevance: ragResponse.chunks_relevance?.[ndx] || 0,
+                documentId: inputChunk.id,
+                documentName: inputChunk.documentName,
+                page: inputChunk.page,
+                pageIndex: inputChunk.pageIndex,
+                content: inputChunk.content,
+              };
+            })
+            ?.filter(notEmpty) || [],
+      };
+
+      await completeRequest(ragMessage);
+      await this.chatRepository.save(chat);
+    } catch (error: unknown) {
+      logger.error(error, "Error processing RAG response");
+      ragMessage.content = getErrorMessage(error);
+      ragMessage.role = MessageRole.ERROR;
+      await completeRequest(ragMessage);
+    }
   }
 
   public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {
@@ -713,14 +873,18 @@ export class MessagesService {
 
   protected async getContextMessages(chatId: string, currentMessage?: Message) {
     // Get previous messages for context (up to the original message)
-    let query = this.messageRepository.createQueryBuilder("message").where("message.chatId = :chatId", { chatId });
+    let query = this.messageRepository
+      .createQueryBuilder("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.linkedToMessageId IS NULL");
 
     if (currentMessage) {
       query = query
-        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateFloor(currentMessage.createdAt) })
+        .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateCeil(currentMessage.createdAt) })
         .andWhere("message.id <> :id", { id: currentMessage.id });
     }
 
-    return await query.orderBy("message.createdAt", "DESC").take(CONTEXT_MESSAGES_LIMIT).getMany();
+    const messages = await query.orderBy("message.createdAt", "DESC").take(CONTEXT_MESSAGES_LIMIT).getMany();
+    return messages.reverse();
   }
 }

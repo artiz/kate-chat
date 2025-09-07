@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, Group, Avatar, Switch } from "@mantine/core";
+import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconRobot, IconUser } from "@tabler/icons-react";
-import { Message, MessageRole } from "@/store/slices/chatSlice";
 
 import { debounce } from "lodash";
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
@@ -12,15 +11,18 @@ import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
+import { Message } from "@/store/services/graphql";
+import { MessageRole } from "@/types/ai";
 
 interface ChatMessageProps {
   message: Message;
   index: number;
   disabled?: boolean;
+  loading?: boolean;
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index, disabled = false } = props;
+  const { message, index, disabled = false, loading = false } = props;
 
   const {
     role,
@@ -39,6 +41,15 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const componentRef = useRef<HTMLDivElement>(null);
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
   const { models } = useAppSelector(state => state.models);
+  const [details, setDetails] = React.useState<React.ReactNode>(null);
+  const [showMainMessage, setShowMainMessage] = React.useState(true);
+  const [showDetails, setShowDetails] = React.useState(false);
+
+  const timestamp = new Date(createdAt).toLocaleString();
+  const isUserMessage = role === MessageRole.USER;
+  const username = isUserMessage
+    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
+    : modelName || "AI";
 
   const codeHeaderTemplate = `
                 <span class="title">
@@ -125,14 +136,44 @@ export const ChatMessage = (props: ChatMessageProps) => {
     }
   }, [role, streaming]);
 
-  const [showMainMessage, setShowMainMessage] = React.useState(true);
+  const toggleDetails = () => setShowDetails(s => !s);
 
-  const isUserMessage = role === MessageRole.USER;
-  const username = isUserMessage
-    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
-    : modelName || "AI";
+  useEffect(() => {
+    const relevantsChunks = message?.metadata?.relevantsChunks || [];
+    if (relevantsChunks.length) {
+      const cmp = (
+        <Box mt="md">
+          <Group mb={5}>
+            <Button onClick={toggleDetails} p="xs" variant="light" size="xs">
+              Details
+            </Button>
+          </Group>
 
-  const timestamp = new Date(createdAt).toLocaleString();
+          <Collapse in={showDetails}>
+            <div className={classes.detailsBlock}>
+              {relevantsChunks.map((chunk, idx) => (
+                <div key={idx}>
+                  <Text size="xs" color="dimmed">
+                    {chunk.documentName || chunk.id} (Page {chunk.page})
+                  </Text>
+                  <Text size="xs" color="dimmed">
+                    Relevance: {chunk.relevance || "N/A"}
+                  </Text>
+                  <Text size="sm">
+                    <pre>{chunk.content}</pre>
+                  </Text>
+                </div>
+              ))}
+            </div>
+          </Collapse>
+        </Box>
+      );
+
+      setDetails(cmp);
+    } else {
+      setDetails(null);
+    }
+  }, [message?.metadata?.relevantsChunks, showDetails]);
 
   const mainMessage = useMemo(() => {
     const model = models.find(m => m.modelId === modelId);
@@ -166,6 +207,11 @@ export const ChatMessage = (props: ChatMessageProps) => {
           ) : (
             <div className={classes.htmlBlock}>{content}</div>
           )}
+
+          {details}
+
+          {loading && <Loader size="md" mb="md" />}
+
           <div className={classes.messageFooter}>
             <ChatMessageActions
               id={id}
@@ -180,7 +226,23 @@ export const ChatMessage = (props: ChatMessageProps) => {
         </div>
       </>
     );
-  }, [role, username, timestamp, content, html, id, modelName, modelId, models, metadata, index, disableActions]);
+  }, [
+    role,
+    username,
+    timestamp,
+    content,
+    html,
+    id,
+    modelName,
+    modelId,
+    models,
+    metadata,
+    index,
+    disableActions,
+    loading,
+    details,
+    streaming,
+  ]);
 
   const linkedMessagesCmp = useMemo(() => {
     if (!linkedMessages || linkedMessages.length === 0) return null;

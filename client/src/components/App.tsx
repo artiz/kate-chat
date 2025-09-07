@@ -27,6 +27,7 @@ import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
+import { Documents } from "@/pages/Documents";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -74,11 +75,12 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
-      dispatch(setUser(initData.user));
+      dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
       dispatch(setChats(initData.chats));
-      dispatch(loginSuccess(initData.refreshToken?.token));
+
+      dispatch(loginSuccess(initData.appConfig.token));
     }
   }, [isAuthenticated, initData, dispatch]);
 
@@ -146,6 +148,7 @@ const AppContent: React.FC = () => {
               <Route path="models" element={<Models />} />
               <Route path="settings" element={<Settings onReloadAppData={refetchInitialData} />} />
               <Route path="library" element={<Library />} />
+              <Route path="documents" element={<Documents />} />
               <Route path="admin" element={<AdminRoute element={<Admin />} />} />
             </Route>
 

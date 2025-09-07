@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
-import { Message, MessageType, MessageRole } from "../store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql";
+import { BASE_MESSAGE_FRAGMENT, Message } from "@/store/services/graphql";
+import { MessageRole, MessageType } from "@/types/ai";
 
 const THROTTLE_TIMEOUT = 60; // ms throttle timeout
 
@@ -106,7 +106,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
           // If it's an assistant message after we sent something, clear loading state
           if (
             response.error ||
-            response.message?.role === MessageRole.ASSISTANT ||
+            (response.message?.role === MessageRole.ASSISTANT && response.message?.content) ||
             response.message?.role === MessageRole.ERROR
           ) {
             resetSending();

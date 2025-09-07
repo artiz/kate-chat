@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Field, ObjectType } from "type-graphql";
+import { Field, ID, ObjectType } from "type-graphql";
 
 export enum ApiProvider {
   AWS_BEDROCK = "aws_bedrock",
@@ -58,17 +58,52 @@ export interface UsageCostInfo {
   costs: ServiceCostInfo[];
 }
 
+export enum ModelType {
+  CHAT = "chat",
+  EMBEDDING = "embedding",
+  IMAGE_GENERATION = "image_generation",
+  AUDIO_GENERATION = "audio_generation",
+  OTHER = "other",
+}
+
+export enum DocumentStatus {
+  UPLOAD = "upload",
+  STORAGE_UPLOAD = "storage_upload",
+  PARSING = "parsing",
+  CHUNKING = "chunking",
+  EMBEDDING = "embedding",
+  SUMMARIZING = "summarizing",
+  READY = "ready",
+  ERROR = "error",
+  DELETING = "deleting",
+}
+
+export interface ParsedDocumentChunk {
+  page: number;
+  length_tokens: number;
+  text: string;
+  id: number; // index on page
+  type: string; // "content" | "serialized_table"
+}
+
+export interface ParsedDocumentPage {
+  page: number;
+  text: string;
+}
+
+export interface ParsedJsonDocument {
+  chunks: ParsedDocumentChunk[];
+  pages: ParsedDocumentPage[];
+}
+
 export interface AIModelInfo {
   apiProvider: ApiProvider;
   provider: string;
   name: string;
-  description: string;
-  supportsStreaming: boolean;
-  supportsTextIn: boolean;
-  supportsTextOut: boolean;
-  supportsImageIn: boolean;
-  supportsImageOut: boolean;
-  supportsEmbeddingsIn: boolean;
+  description?: string;
+  type: ModelType;
+  streaming?: boolean;
+  imageInput?: boolean;
 }
 
 export interface ModelMessageContent {
@@ -103,22 +138,66 @@ export class ModelResponseUsage {
 }
 
 @ObjectType()
-export class ModelResponseMetadata {
+export class MessageRelevantChunk {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  relevance: number;
+
+  @Field()
+  documentId: string;
+
+  @Field({ nullable: true })
+  documentName?: string;
+
+  @Field()
+  page: number;
+
+  @Field()
+  pageIndex: number;
+
+  @Field()
+  content: string;
+}
+
+@ObjectType()
+export class MessageMetadata {
+  ///////////// assistant message meta
+  // model usage details
   @Field(() => ModelResponseUsage, { nullable: true })
   usage?: ModelResponseUsage;
+
+  // relevant document chunks selected by model sorted by relevance
+  @Field(() => [MessageRelevantChunk], { nullable: true })
+  relevantsChunks?: MessageRelevantChunk[];
+
+  // Step by step analysis
+  @Field(() => String, { nullable: true })
+  analysis?: string;
+
+  ///////////// user message meta
+  // input document IDs
+  @Field(() => [ID], { nullable: true })
+  documentIds?: string[];
 }
 
 export class ModelResponse {
-  metadata?: ModelResponseMetadata;
+  metadata?: MessageMetadata;
   type: ContentType;
   content: string;
   files?: string[];
 }
 
+export class EmbeddingsResponse {
+  metadata?: MessageMetadata;
+  embedding: number[];
+}
+
 export interface StreamCallbacks {
   onStart?: () => void;
   onToken?: (token: string) => void;
-  onComplete?: (content: string, metadata?: ModelResponseMetadata) => void;
+  onComplete?: (content: string, metadata?: MessageMetadata) => void;
   onError?: (error: Error) => void;
 }
 
@@ -135,6 +214,11 @@ export type InvokeModelParamsRequest = {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+};
+
+export type GetEmbeddingsRequest = {
+  modelId: string;
+  input: string;
 };
 
 export interface BedrockModelServiceProvider<T = unknown> {

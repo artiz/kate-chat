@@ -1,10 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
-import { Repository } from "typeorm";
-import { User } from "../entities/User";
-import { getRepository } from "../config/database";
-import { generateToken, TokenPayload } from "../utils/jwt";
 import bcrypt from "bcryptjs";
-import { ObjectId } from "mongodb";
+import { User } from "../entities/User";
+import { generateToken } from "../utils/jwt";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
 import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
 import { DEFAULT_PROMPT } from "@/config/ai";
@@ -12,16 +9,18 @@ import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
 import { AuthProvider, UserRole } from "../types/ai.types";
 import { BaseResolver } from "./base.resolver";
-import { GraphQLContext } from "@/middleware/auth.middleware";
-import { DEMO_MODE, DEFAULT_ADMIN_EMAILS } from "@/config/application";
+import { GraphQLContext } from ".";
+import {
+  DEMO_MODE,
+  DEFAULT_ADMIN_EMAILS,
+  DEMO_MAX_CHATS,
+  DEMO_MAX_CHAT_MESSAGES,
+  DEMO_MAX_IMAGES,
+} from "@/config/application";
+import { AppDataSource, DB_TYPE } from "@/config/database";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
-  @Query(() => User, { nullable: true })
-  async currentUser(@Ctx() context: GraphQLContext): Promise<User | null> {
-    return await this.loadUserFromContext(context);
-  }
-
   @Query(() => ApplicationConfig, { nullable: true })
   async appConfig(@Ctx() context: GraphQLContext): Promise<ApplicationConfig> {
     const user = await this.loadUserFromContext(context);
@@ -33,15 +32,36 @@ export class UserResolver extends BaseResolver {
       s3Profile: process.env.S3_AWS_PROFILE || "",
     };
 
-    return {
-      demoMode: !!DEMO_MODE,
-      s3Connected: !!(
-        s3settings.s3FilesBucketName &&
+    // Generate JWT token
+    const token = user
+      ? generateToken({
+          userId: user.id,
+          email: user.email,
+          roles: [user.role],
+        })
+      : undefined;
+
+    const demoMode = user?.isAdmin() ? false : DEMO_MODE;
+    const s3Connected = Boolean(
+      s3settings.s3FilesBucketName &&
         ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
-      ),
-      maxChats: DEMO_MODE ? 50 : -1,
-      maxChatMessages: DEMO_MODE ? 50 : -1,
-      maxImages: DEMO_MODE ? 25 : -1,
+    );
+    const ragSupported = Boolean(!demoMode && s3Connected && ["sqlite", "postgres", "mssql"].includes(DB_TYPE));
+
+    const ragEnabled = Boolean(
+      ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
+    );
+
+    return {
+      currentUser: user || undefined,
+      token,
+      demoMode,
+      s3Connected,
+      ragSupported,
+      ragEnabled,
+      maxChats: demoMode ? DEMO_MAX_CHATS : -1,
+      maxChatMessages: demoMode ? DEMO_MAX_CHAT_MESSAGES : -1,
+      maxImages: demoMode ? DEMO_MAX_IMAGES : -1,
     };
   }
 
@@ -120,6 +140,9 @@ export class UserResolver extends BaseResolver {
     if (input.avatarUrl) user.avatarUrl = input.avatarUrl;
     if (input.defaultModelId) user.defaultModelId = input.defaultModelId;
     if (input.defaultSystemPrompt) user.defaultSystemPrompt = input.defaultSystemPrompt;
+    if (input.documentsEmbeddingsModelId) user.documentsEmbeddingsModelId = input.documentsEmbeddingsModelId;
+    if (input.documentSummarizationModelId) user.documentSummarizationModelId = input.documentSummarizationModelId;
+
     if (input.settings) {
       user.settings = {
         ...(user.settings || {}),

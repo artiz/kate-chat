@@ -32,19 +32,23 @@ export interface UsageCostsInfo {
   costs: ServiceCostInfo[];
 }
 
+export enum ModelType {
+  CHAT = "chat",
+  EMBEDDING = "embedding",
+  IMAGE_GENERATION = "image_generation",
+  AUDIO_GENERATION = "audio_generation",
+  OTHER = "other",
+}
+
 export interface Model {
   id: string;
   name: string;
   modelId: string;
   apiProvider: ApiProvider;
+  type: ModelType;
   provider: string;
   isActive: boolean;
-  supportsImageIn?: boolean;
-  supportsTextIn?: boolean;
-  supportsEmbeddingsIn?: boolean;
-  supportsImageOut?: boolean;
-  supportsTextOut?: boolean;
-  supportsEmbeddingsOut?: boolean;
+  imageInput?: boolean;
 }
 
 interface ModelState {

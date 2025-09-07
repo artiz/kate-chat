@@ -1,10 +1,10 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
-import { Repository, IsNull } from "typeorm";
+import { Repository, IsNull, In } from "typeorm";
 import { Message } from "@/entities/Message";
 import { Chat, Model } from "@/entities";
 import { CreateMessageInput, GetMessagesInput, GetImagesInput, CallOtherInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
-import { GraphQLContext } from "@/middleware/auth.middleware";
+import { GraphQLContext } from ".";
 import {
   GqlMessage,
   GqlMessagesList,
@@ -16,9 +16,10 @@ import {
   DeleteMessageResponse,
 } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
-import { MessagesService } from "@/services/messages.service";
 import { BaseResolver } from "./base.resolver";
 import { MessageType } from "@/types/ai.types";
+import { notEmpty } from "@/utils/assert";
+import { ok } from "assert";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -29,13 +30,11 @@ const logger = createLogger(__filename);
 export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
-  private messageService: MessagesService;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
-    this.messageService = new MessagesService();
   }
 
   @Query(() => GqlMessagesList)
@@ -46,13 +45,15 @@ export class MessageResolver extends BaseResolver {
     const token = await this.validateContextToken(context);
     const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
-    // Verify the chat belongs to the user
     const chat = await this.chatRepository
       .createQueryBuilder("chat")
       .addSelect(sq => {
         return sq.select("COUNT(*)").from(Message, "m").where("m.chatId = chat.id");
       }, "chat_messagesCount")
       .leftJoinAndSelect("chat.user", "user")
+      .leftJoinAndSelect("chat.chatDocuments", "chatDocuments")
+      .leftJoinAndSelect("chatDocuments.document", "document")
+
       .where({ id: chatId, user: { id: token.userId } })
       .getOne();
 
@@ -66,13 +67,30 @@ export class MessageResolver extends BaseResolver {
         skip,
         take,
         order: { createdAt: "DESC", role: "ASC" },
-        relations: ["user", "linkedMessages"],
+        relations: ["user"],
       })
       .then(messages => messages.reverse());
 
-    const total = await this.messageRepository.count({
-      where,
-    });
+    // load linked messages
+    const ids = messages.map(m => m.id).filter(notEmpty);
+    const linkedMessages = (
+      await this.messageRepository.find({
+        where: { linkedToMessageId: In(ids) },
+        order: { linkedToMessageId: "ASC", createdAt: "DESC", role: "ASC" },
+        relations: ["user"],
+      })
+    ).reduce(
+      (acc, msg) => {
+        ok(msg.linkedToMessageId);
+        acc[msg.linkedToMessageId] = acc[msg.linkedToMessageId] || [];
+        acc[msg.linkedToMessageId].push(msg);
+        return acc;
+      },
+      {} as Record<string, Message[]>
+    );
+    messages.forEach(m => (m.linkedMessages = linkedMessages[m.id]));
+
+    const total = await this.messageRepository.count({ where });
 
     return {
       messages,
@@ -87,14 +105,11 @@ export class MessageResolver extends BaseResolver {
     await this.validateContextToken(context);
 
     const message = await this.messageRepository.findOne({
-      where: {
-        id,
-      },
-      relations: ["chat", "linkedMessages"],
+      where: { id },
+      relations: ["chat"],
     });
 
     if (!message) return null;
-
     // Verify the message belongs to an active chat
     if (!message.chat) return null;
 
@@ -158,8 +173,9 @@ export class MessageResolver extends BaseResolver {
 
   @Mutation(() => Message)
   async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
+    const messageService = this.getMessagesService(context);
     const user = await this.validateContextUser(context);
-    return await this.messageService.createMessage(input, this.loadConnectionParams(context, user), user);
+    return await messageService.createMessage(input, this.loadConnectionParams(context, user), user);
   }
 
   @Subscription(() => GqlMessage, {
@@ -202,7 +218,8 @@ export class MessageResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<DeleteMessageResponse> {
     const user = await this.validateContextUser(context);
-    return await this.messageService.deleteMessage(this.loadConnectionParams(context, user), id, deleteFollowing, user);
+    const messageService = this.getMessagesService(context);
+    return await messageService.deleteMessage(this.loadConnectionParams(context, user), id, deleteFollowing, user);
   }
 
   @Mutation(() => SwitchModelResponse)
@@ -213,7 +230,8 @@ export class MessageResolver extends BaseResolver {
   ): Promise<SwitchModelResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.switchMessageModel(
+      const messageService = this.getMessagesService(context);
+      const message = await messageService.switchMessageModel(
         messageId,
         modelId,
         this.loadConnectionParams(context, user),
@@ -230,7 +248,8 @@ export class MessageResolver extends BaseResolver {
   async callOther(@Arg("input") input: CallOtherInput, @Ctx() context: GraphQLContext): Promise<CallOtherResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.callOtherModel(
+      const messageService = this.getMessagesService(context);
+      const message = await messageService.callOtherModel(
         input.messageId,
         input.modelId,
         this.loadConnectionParams(context, user),
@@ -252,7 +271,8 @@ export class MessageResolver extends BaseResolver {
   ): Promise<EditMessageResponse> {
     try {
       const user = await this.validateContextUser(context);
-      const message = await this.messageService.editMessage(
+      const messageService = this.getMessagesService(context);
+      const message = await messageService.editMessage(
         messageId,
         content,
         this.loadConnectionParams(context, user),
@@ -265,14 +285,14 @@ export class MessageResolver extends BaseResolver {
     }
   }
 
-  @FieldResolver(() => [Message])
-  async linkedMessages(@Root() message: Message): Promise<Message[]> {
-    if (!message.id) return [];
+  // @FieldResolver(() => [Message])
+  // async linkedMessages(@Root() message: Message): Promise<Message[]> {
+  //   if (!message.id) return [];
 
-    return await this.messageRepository.find({
-      where: { linkedToMessageId: message.id },
-      order: { createdAt: "ASC" },
-      relations: ["user"],
-    });
-  }
+  //   return await this.messageRepository.find({
+  //     where: { linkedToMessageId: message.id },
+  //     order: { createdAt: "ASC" },
+  //     relations: ["user"],
+  //   });
+  // }
 }

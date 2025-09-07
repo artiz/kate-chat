@@ -3,7 +3,7 @@ import { Repository } from "typeorm";
 import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { GraphQLContext } from "../middleware/auth.middleware";
+import { GraphQLContext } from ".";
 import { GqlChatsList } from "../types/graphql/responses";
 import { Message } from "@/entities/Message";
 import { ok } from "assert";
@@ -15,12 +15,10 @@ import { MessagesService } from "@/services/messages.service";
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
   private chatRepository: Repository<Chat>;
-  private messageService: MessagesService;
 
   constructor() {
     super();
     this.chatRepository = getRepository(Chat);
-    this.messageService = new MessagesService();
   }
 
   @Query(() => GqlChatsList)
@@ -126,6 +124,7 @@ export class ChatResolver extends BaseResolver {
   @Mutation(() => Boolean)
   async deleteChat(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<boolean> {
     const user = await this.validateContextUser(context);
+    const messageService = this.getMessagesService(context);
 
     const chat = await this.chatRepository.findOne({
       where: {
@@ -135,7 +134,7 @@ export class ChatResolver extends BaseResolver {
 
     if (!chat) throw new Error("Chat not found");
     if (chat.files?.length) {
-      this.messageService.removeFiles(chat.files, user);
+      messageService.removeFiles(chat.files, user);
     }
 
     await this.chatRepository.delete({ id });

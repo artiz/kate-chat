@@ -162,7 +162,9 @@ resource "aws_iam_role_policy" "ecs_execution_logs_policy" {
         ]
         Resource = [
           aws_cloudwatch_log_group.app.arn,
-          "${aws_cloudwatch_log_group.app.arn}:*"
+          "${aws_cloudwatch_log_group.app.arn}:*",
+          aws_cloudwatch_log_group.document_processor.arn,
+          "${aws_cloudwatch_log_group.document_processor.arn}:*"
         ]
       }
     ]

@@ -53,9 +53,13 @@ export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
   }
 
   parseResponse(responseBody: MetaResponse, request: InvokeModelParamsRequest): ModelResponse {
+    const content = (responseBody.generation || "")
+      .replace("<|start_header_id|>assistant<|end_header_id|>", "\n")
+      .trim();
+
     return {
       type: "text",
-      content: responseBody.generation || "",
+      content,
     };
   }
 }

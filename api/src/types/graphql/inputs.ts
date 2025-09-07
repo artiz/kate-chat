@@ -20,6 +20,12 @@ export class UpdateUserInput {
   defaultModelId?: string;
 
   @Field({ nullable: true })
+  documentsEmbeddingsModelId?: string;
+
+  @Field({ nullable: true })
+  documentSummarizationModelId?: string;
+
+  @Field({ nullable: true })
   defaultSystemPrompt?: string;
 
   @Field(() => UserSettings, { nullable: true })
@@ -144,6 +150,9 @@ export class CreateMessageInput {
 
   @Field({ nullable: true })
   imagesCount?: number;
+
+  @Field(() => [String], { nullable: true })
+  documentIds?: string[];
 }
 
 @InputType()

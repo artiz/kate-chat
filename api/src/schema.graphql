@@ -16,11 +16,14 @@ type AdminUsersResponse {
 }
 
 type ApplicationConfig {
+  currentUser: User
   demoMode: Boolean!
   maxChatMessages: Float
   maxChats: Float
   maxImages: Float
+  ragEnabled: Boolean
   s3Connected: Boolean
+  token: String
 }
 
 type AuthResponse {
@@ -44,8 +47,9 @@ input ChangePasswordInput {
 }
 
 type Chat {
+  chatDocuments: [ChatDocument!]
   createdAt: DateTimeISO!
-  description: String!
+  description: String
   id: ID!
   imagesCount: Float
   isPristine: Boolean!
@@ -60,6 +64,15 @@ type Chat {
   topP: Float
   updatedAt: DateTimeISO!
   user: User
+  userId: String
+}
+
+type ChatDocument {
+  chat: Chat!
+  chatId: String!
+  document: Document!
+  documentId: String!
+  id: ID!
 }
 
 input CreateChatInput {
@@ -72,6 +85,7 @@ input CreateChatInput {
 input CreateMessageInput {
   chatId: String!
   content: String!
+  documentIds: [String!]
   images: [ImageInput!]
   imagesCount: Float
   maxTokens: Float
@@ -92,6 +106,36 @@ type DeleteMessageResponse {
 type DeleteMessageResult {
   id: String!
   linkedToMessageId: String
+}
+
+type Document {
+  createdAt: DateTimeISO!
+  downloadUrl: String
+  embeddingsModelId: String
+  fileName: String!
+  fileSize: Float!
+  id: ID!
+  mime: String
+  owner: User!
+  ownerId: String!
+  pagesCount: Float!
+  s3key: String
+  sha256checksum: String!
+  status: String!
+  statusInfo: String
+  statusProgress: Float
+  summary: String
+  summaryModelId: String
+  updatedAt: DateTimeISO!
+}
+
+type DocumentStatusMessage {
+  documentId: ID!
+  status: String!
+  statusInfo: String
+  statusProgress: Float
+  summary: String
+  sync: Boolean
 }
 
 type EditMessageResponse {
@@ -183,22 +227,18 @@ type GqlMessagesList {
 type GqlModel {
   apiProvider: String!
   createdAt: DateTimeISO!
-  description: String!
+  description: String
   id: ID!
+  imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
   modelId: String!
   name: String!
   provider: String
-  supportsEmbeddingsIn: Boolean!
-  supportsEmbeddingsOut: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
+  streaming: Boolean!
+  type: String!
   updatedAt: DateTimeISO!
-  user: User!
+  user: User
   userId: String
 }
 
@@ -238,44 +278,53 @@ type Message {
   chat: Chat!
   chatId: String
   content: String!
-  createdAt: DateTimeISO!
+  createdAt: DateTimeISO
   id: ID!
   linkedMessages: [Message!]
   linkedToMessage: Message!
   linkedToMessageId: String
-  metadata: ModelResponseMetadata
+  metadata: MessageMetadata
   modelId: String!
   modelName: String
   role: String!
-  updatedAt: DateTimeISO!
+  updatedAt: DateTimeISO
   user: User
   userId: String
+}
+
+type MessageMetadata {
+  analysis: String
+  documentIds: [ID!]
+  relevantsChunks: [MessageRelevantChunk!]
+  usage: ModelResponseUsage
+}
+
+type MessageRelevantChunk {
+  content: String!
+  documentId: String!
+  documentName: String
+  id: ID!
+  page: Float!
+  pageIndex: Float!
+  relevance: Float!
 }
 
 type Model {
   apiProvider: String!
   createdAt: DateTimeISO!
-  description: String!
+  description: String
   id: ID!
+  imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
   modelId: String!
   name: String!
   provider: String
-  supportsEmbeddingsIn: Boolean!
-  supportsEmbeddingsOut: Boolean!
-  supportsImageIn: Boolean!
-  supportsImageOut: Boolean!
-  supportsStreaming: Boolean!
-  supportsTextIn: Boolean!
-  supportsTextOut: Boolean!
+  streaming: Boolean!
+  type: String!
   updatedAt: DateTimeISO!
-  user: User!
+  user: User
   userId: String
-}
-
-type ModelResponseMetadata {
-  usage: ModelResponseUsage
 }
 
 type ModelResponseUsage {
@@ -292,10 +341,13 @@ type Mutation {
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
+  deleteDocument(id: ID!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
   editMessage(content: String!, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!
+  processDocument(force: Boolean, id: ID!): Document!
   register(input: RegisterInput!): AuthResponse!
+  reindexDocument(id: ID!): Document!
   reloadModels: GqlModelsList!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
   testModel(input: TestModelInput!): Message!
@@ -311,7 +363,7 @@ type ProviderDetail {
 
 type Query {
   appConfig: ApplicationConfig
-  currentUser: User
+  documents: [Document!]!
   getActiveModels: [GqlModel!]!
   getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!
@@ -336,6 +388,7 @@ input RegisterInput {
 }
 
 type Subscription {
+  documentsStatus(documentIds: [String!]!): [DocumentStatusMessage!]!
   newMessage(chatId: String!): GqlMessage!
 }
 
@@ -368,6 +421,8 @@ input UpdateUserInput {
   avatarUrl: String
   defaultModelId: String
   defaultSystemPrompt: String
+  documentSummarizationModelId: String
+  documentsEmbeddingsModelId: String
   email: String
   firstName: String
   lastName: String
@@ -380,6 +435,9 @@ type User {
   createdAt: DateTimeISO!
   defaultModelId: String
   defaultSystemPrompt: String
+  documentSummarizationModelId: String
+  documents: [Document!]
+  documentsEmbeddingsModelId: String
   email: String!
   firstName: String!
   githubId: String

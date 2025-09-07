@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { verifyToken, TokenPayload } from "../utils/jwt";
 import { logger } from "../utils/logger";
 import { IncomingHttpHeaders } from "http";
+import { GraphQLContext } from "@/resolvers";
+import { TokenExpiredError } from "jsonwebtoken";
 
 export interface ConnectionParams {
   AWS_BEDROCK_REGION?: string;
@@ -22,11 +24,6 @@ declare global {
     }
   }
 }
-
-export type GraphQLContext = {
-  tokenPayload?: TokenPayload;
-  connectionParams: ConnectionParams;
-};
 
 // GraphQL context authentication
 export const getUserFromToken = (authHeader?: string): TokenPayload | null => {
@@ -66,17 +63,21 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         const tokenPayload = verifyToken(token);
         if (!tokenPayload) {
           logger.debug("Invalid or expired token");
-          res.status(403).json({ error: "Forbidden: Invalid or expired token" });
+          res.status(403).json({ error: "Forbidden: invalid or expired token" });
         } else {
           req.tokenPayload = tokenPayload;
         }
+      } else {
+        res.status(403).json({ error: "Forbidden: nvalid authorization header" });
       }
     }
 
     req.connectionParams = loadConnectionParams(req.headers);
     next();
   } catch (error) {
-    logger.error(error, "Auth middleware error, path: %s", req.path);
+    if (!(error instanceof TokenExpiredError)) {
+      logger.error(error, "Auth middleware error, path: %s", req.path);
+    }
     next();
   }
 };

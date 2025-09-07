@@ -1,6 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ApplicationConfig } from "../services/graphql";
-import { set } from "lodash";
 
 export interface UserSettings {
   s3Endpoint?: string;
@@ -32,6 +31,9 @@ export interface User {
   role: UserRole;
   defaultModelId?: string;
   defaultSystemPrompt?: string;
+  documentsEmbeddingsModelId?: string;
+  documentSummarizationModelId?: string;
+
   githubId?: string;
   googleId?: string;
   avatarUrl?: string;
@@ -42,6 +44,8 @@ export interface User {
 export interface UpdateUserInput {
   defaultModelId?: string;
   defaultSystemPrompt?: string;
+  documentsEmbeddingsModelId?: string;
+  documentSummarizationModelId?: string;
   email?: string;
   firstName?: string;
   lastName?: string;

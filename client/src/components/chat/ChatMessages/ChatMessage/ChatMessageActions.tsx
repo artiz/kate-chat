@@ -1,21 +1,13 @@
 import React, { useMemo } from "react";
 import { Text, ActionIcon, Tooltip, Menu } from "@mantine/core";
-import {
-  IconCopy,
-  IconCopyCheck,
-  IconRobot,
-  IconUser,
-  IconTrash,
-  IconRefresh,
-  IconUsers,
-  IconMoodPlus,
-  IconEdit,
-} from "@tabler/icons-react";
-import { MessageMetadata, MessageRole } from "@/store/slices/chatSlice";
+import { IconCopy, IconCopyCheck, IconTrash, IconRefresh, IconMoodPlus, IconEdit } from "@tabler/icons-react";
 
 import classes from "../ChatMessage.module.scss";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
+import { ModelType } from "@/store/slices/modelSlice";
+import { MessageMetadata } from "@/store/services/graphql";
+import { MessageRole } from "@/types/ai";
 
 interface IProps {
   id: string;
@@ -29,7 +21,10 @@ interface IProps {
 
 export const ChatMessageActions = (props: IProps) => {
   const { id, role, modelName, modelId, metadata, index, disableActions = false } = props;
-  const { models } = useAppSelector(state => state.models);
+  const { models: allModels } = useAppSelector(state => state.models);
+  const models = useMemo(() => {
+    return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
+  }, [allModels]);
 
   const actions = useMemo(() => {
     return (

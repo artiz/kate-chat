@@ -1,5 +1,5 @@
 import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import {
   Container,
@@ -17,6 +17,7 @@ import {
   Loader,
   Stack,
   Alert,
+  Popover,
 } from "@mantine/core";
 import {
   IconSend,
@@ -24,12 +25,8 @@ import {
   IconRobot,
   IconEdit,
   IconCheck,
-  IconPhotoAi,
-  IconTextScan2,
   IconSettings,
   IconCircleChevronDown,
-  IconArrowBigRightLinesFilled,
-  IconMatrix,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
@@ -38,11 +35,17 @@ import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
+import { ImageInput, Message } from "@/store/services/graphql";
+import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
+import { notEmpty, ok } from "@/lib/assert";
+import { ModelInfo } from "@/components/models/ModelInfo";
+
+import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
+
 import classes from "./Chat.module.scss";
-import { ImageInput } from "@/store/services/graphql";
-import { MAX_IMAGE_SIZE, MAX_IMAGES } from "@/utils/config";
-import { Message } from "@/store/slices/chatSlice";
-import { ok } from "@/utils/assert";
+import { ModelType } from "@/store/slices/modelSlice";
+import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
+import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -60,7 +63,7 @@ interface CreateMessageResponse {
 }
 
 interface IProps {
-  chatId: string;
+  chatId?: string;
 }
 
 export const ChatComponent = ({ chatId }: IProps) => {
@@ -69,18 +72,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
 
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
-  const { appConfig } = useAppSelector(state => state.user);
+  const { appConfig, currentUser } = useAppSelector(state => state.user);
 
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const anchorTimer = useRef<NodeJS.Timeout | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   const {
     messages,
@@ -100,6 +103,29 @@ export const ChatComponent = ({ chatId }: IProps) => {
     if (!chatId) return;
     return chats.find(c => c.id === chatId);
   }, [chats, chatId]);
+
+  const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
+
+  const chatDocuments = useMemo(() => {
+    let docs = (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
+    if (uploadingDocs) {
+      // If documents are uploading, include them in the list
+      docs = docs.map(d => {
+        const uploadNdx = uploadingDocs.findIndex(ud => ud.id === d.id);
+        if (uploadNdx != -1) {
+          const upload = uploadingDocs[uploadNdx];
+          uploadingDocs.splice(uploadNdx, 1); // Remove from uploadingDocs to avoid duplicates
+          return { ...d, ...upload };
+        }
+
+        return d;
+      });
+
+      // push new ones
+      docs.push(...uploadingDocs);
+    }
+    return docs;
+  }, [chat?.chatDocuments, uploadingDocs]);
 
   const { wsConnected } = useChatSubscription({
     id: chatId,
@@ -145,12 +171,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
       if (scrollHeight - scrollTop - clientHeight < 2) {
         setShowAnchorButton(false);
       } else if (messages?.length) {
-        anchorTimer.current = setTimeout(() => {
+        if (streaming) {
+          anchorTimer.current = setTimeout(() => {
+            setShowAnchorButton(true);
+          }, 100);
+        } else {
           setShowAnchorButton(true);
-        }, 100);
+        }
       }
     },
-    [messages?.length]
+    [messages?.length, streaming]
   );
 
   const anchorHandleClick = useCallback(() => {
@@ -185,36 +215,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
-  useEffect(() => {
-    Promise.all(
-      selectedFiles
-        .filter(f => f.type?.startsWith("image/"))
-        .map(file => {
-          return new Promise<ImageInput>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = e => {
-              if (e.target?.result) {
-                const bytesBase64 = e.target.result as string;
-                resolve({
-                  fileName: file.name,
-                  mimeType: file.type,
-                  bytesBase64,
-                });
-              } else {
-                reject(new Error(`Failed to read file: ${file.name}`));
-              }
-            };
-            reader.onerror = err => {
-              reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
-            };
-            reader.readAsDataURL(file);
-          });
-        })
-    ).then(images => {
-      setSelectedImages(images);
-    });
-  }, [selectedFiles]);
-
   const handleSendMessage = async () => {
     if ((!userMessage?.trim() && !selectedImages.length) || !chatId) return;
     ok(chatId, "Chat is required to send a message");
@@ -222,7 +222,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
     try {
       setUserMessage("");
-      setSelectedFiles([]);
       setSelectedImages([]);
 
       // Convert images to base64
@@ -237,6 +236,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             maxTokens: chat?.maxTokens,
             topP: chat?.topP,
             imagesCount: chat?.imagesCount,
+            documentIds: selectedDocIds,
           },
         },
       });
@@ -258,7 +258,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   // #endregion
 
   const models = useMemo(() => {
-    return allModels.filter(model => model.isActive);
+    return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
   }, [allModels]);
 
   const selectedModel = useMemo(() => {
@@ -316,10 +316,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     setUserMessage(event.currentTarget.value);
   }, []);
 
-  const toggleChatSettings = useCallback(() => {
-    setSettingsOpen(!settingsOpen);
-  }, [settingsOpen]);
-
   const handleTitleUpdate = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -334,28 +330,95 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const handleAddFiles = useCallback(
     (files: File[]) => {
-      const filesToAdd = files.filter(f => f.size < MAX_IMAGE_SIZE);
+      const filesToAdd = files.filter(f => f.size < MAX_FILE_SIZE);
       if (filesToAdd.length < files.length) {
         notifications.show({
           title: "Warning",
-          message: `Some images were too large and were not added (max size: ${MAX_IMAGE_SIZE / 1024 / 1024} MB)`,
+          message: `Some files are too large and were not added (max size: ${MAX_FILE_SIZE / 1024 / 1024} MB)`,
           color: "yellow",
         });
       }
 
-      const allFiles = [...selectedFiles, ...filesToAdd];
-      if (allFiles.length > MAX_IMAGES) {
+      let imageFiles = filesToAdd.filter(f => f.type?.startsWith("image/"));
+      const documents = filesToAdd.filter(f => !f.type?.startsWith("image/"));
+
+      // Limit to MAX_IMAGES
+      if (imageFiles.length + selectedImages.length > MAX_IMAGES) {
         notifications.show({
           title: "Warning",
           message: `You can only add up to ${MAX_IMAGES} images at a time`,
           color: "yellow",
         });
+
+        imageFiles = imageFiles.slice(0, MAX_IMAGES - selectedImages.length);
       }
-      // Limit to MAX_IMAGES
-      setSelectedFiles(allFiles.slice(0, MAX_IMAGES));
+
+      if (imageFiles.length) {
+        Promise.all(
+          imageFiles.map(file => {
+            return new Promise<ImageInput>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = e => {
+                if (e.target?.result) {
+                  const bytesBase64 = e.target.result as string;
+                  resolve({
+                    fileName: file.name,
+                    mimeType: file.type,
+                    bytesBase64,
+                  });
+                } else {
+                  reject(new Error(`Failed to read file: ${file.name}`));
+                }
+              };
+              reader.onerror = err => {
+                reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
+              };
+              reader.readAsDataURL(file);
+            });
+          })
+        )
+          .then(images => {
+            setSelectedImages(prev => [...prev, ...images]);
+          })
+          .catch(error => {
+            notifications.show({
+              title: "Error",
+              message: error.message || "Failed to read image files",
+              color: "red",
+            });
+          });
+      }
+
+      if (documents.length) {
+        if (!appConfig?.ragEnabled) {
+          return notifications.show({
+            title: "Warning",
+            message: "RAG is not enabled. Documents will not be processed.",
+            color: "yellow",
+          });
+        }
+
+        ok(chatId, "Chat ID is required to upload documents");
+        setUploadProgress(0);
+        uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
+          notifications.show({
+            title: "Error",
+            message: error.message || "Failed to upload documents",
+            color: "red",
+          });
+        });
+      }
     },
-    [selectedFiles]
+    [selectedImages, chatId]
   );
+
+  const uploadAllowed = useMemo(() => {
+    if (appConfig?.demoMode) {
+      return selectedModel?.imageInput;
+    }
+
+    return appConfig?.s3Connected;
+  }, [selectedModel, appConfig]);
 
   return (
     <Container size="xl" py="md" className={classes.container}>
@@ -395,105 +458,40 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Group>
 
         <Group>
-          <Box
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              opacity: 0.7,
-            }}
-          >
+          <Box className={classes.wsStatus}>
             <Box className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
             <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
           </Box>
-          <Tooltip label="Chat Settings">
-            <ActionIcon onClick={toggleChatSettings}>
-              <IconSettings size={18} />
-            </ActionIcon>
-          </Tooltip>
           <ActionIcon onClick={() => navigate("/chat")}>
             <IconX size={18} />
           </ActionIcon>
         </Group>
       </Group>
 
-      <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
-        <Text fw={500} size="sm" visibleFrom="sm">
-          <IconRobot size={20} /> Model:
-        </Text>
-        <Select
-          data={models.map(model => ({
-            value: model.modelId,
-            label: `${model.provider}: ${model.name}`,
-          }))}
-          searchable
-          value={selectedModel?.modelId || ""}
-          onChange={handleModelChange}
-          placeholder="Select a model"
-          size="sm"
-          clearable={false}
-          style={{ maxWidth: "50%" }}
-          disabled={sending || messagesLoading}
-        />
-        {selectedModel && (
-          <Group>
-            {selectedModel.supportsTextIn && (
-              <Tooltip label="Text input">
-                <IconTextScan2 size={24} color="gray" />
-              </Tooltip>
-            )}
-
-            {selectedModel.supportsEmbeddingsIn && (
-              <Tooltip label="Embeddings input">
-                <IconMatrix size={24} color="gray" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsImageIn && (
-              <Tooltip label="Images input">
-                <IconPhotoAi size={24} color="gray" />
-              </Tooltip>
-            )}
-
-            <IconArrowBigRightLinesFilled size={24} color="gray" />
-            {selectedModel.supportsTextOut && (
-              <Tooltip label="Text generation">
-                <IconTextScan2 size={24} color="teal" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsEmbeddingsOut && (
-              <Tooltip label="Embeddings generation">
-                <IconMatrix size={24} color="teal" />
-              </Tooltip>
-            )}
-            {selectedModel.supportsImageOut && (
-              <Tooltip label="Images generation">
-                <IconPhotoAi size={24} color="teal" />
-              </Tooltip>
-            )}
-          </Group>
+      <Group mb="sm">
+        {!appConfig?.s3Connected && (
+          <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
         )}
 
-        <ChatSettings
-          className={settingsOpen ? classes.chatSettings : classes.chatSettingsHidden}
-          temperature={chat?.temperature}
-          maxTokens={chat?.maxTokens}
-          topP={chat?.topP}
-          imagesCount={chat?.imagesCount}
-          onSettingsChange={handleSettingsChange}
-          resetToDefaults={resetSettingsToDefaults}
+        {!appConfig?.demoMode && appConfig?.ragSupported && !appConfig?.ragEnabled && (
+          <Alert color="yellow">
+            RAG is supported (DB is PostgreSQL/MSSQL/SQLite) but processing models are not setup. However, the
+            processing models required for full functionality are not yet configured. As a result, document uploads are
+            not possible at this time. To enable this feature, please select the appropriate{" "}
+            <Link to="/settings#document_processing">processing models</Link>.
+          </Alert>
+        )}
+
+        <DocumentUploadProgress
+          error={uploadError}
+          progress={uploadProgress}
+          loading={uploadLoading}
+          documents={uploadingDocs || []}
         />
       </Group>
 
-      {!appConfig?.s3Connected && (
-        <Group mb="sm">
-          <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
-        </Group>
-      )}
-
       {/* Messages */}
-      <Paper
-        withBorder
-        p="0"
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className={[
@@ -502,16 +500,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
           streaming ? classes.streaming : "",
         ].join(" ")}
       >
-        <div ref={firstMessageRef}>
-          {messagesLoading && (
-            <Group justify="center" py="xl">
-              <Loader />
-            </Group>
-          )}
-        </div>
+        <div ref={firstMessageRef} />
+        {messagesLoading && (
+          <Group justify="center" align="center" py="xl">
+            <Loader />
+          </Group>
+        )}
 
         {messages && messages.length === 0 ? (
-          <Stack align="center" justify="center" h="100%" gap="md">
+          <Stack align="center" justify="center" flex="1" gap="md">
             <IconRobot size={48} opacity={0.5} />
             <Text size="lg" ta="center">
               No messages yet
@@ -528,6 +525,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               messages={messages}
               sending={sending}
               selectedModelName={selectedModel?.name}
+              onSending={() => setSending(true)}
               onMessageDeleted={removeMessages} // Reload messages after deletion
               onMessageModelSwitch={addChatMessage}
               onCallOther={addChatMessage}
@@ -535,14 +533,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
             />
           )}
         </div>
-      </Paper>
-      <Box style={{ position: "relative" }}>
+      </div>
+
+      <div style={{ position: "relative" }}>
         <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
           <div className={classes.anchor}>
             <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
           </div>
         </div>
-      </Box>
+      </div>
 
       {messagesLimitReached && (
         <Tooltip label={`You have reached the limit of ${appConfig?.maxChatMessages} messages in this chat`}>
@@ -551,11 +550,60 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </Text>
         </Tooltip>
       )}
+
+      <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
+        <IconRobot size={20} />
+        <Select
+          data={models.map(model => ({
+            value: model.modelId,
+            label: `${model.provider}: ${model.name}`,
+          }))}
+          searchable
+          value={selectedModel?.modelId || ""}
+          onChange={handleModelChange}
+          placeholder="Select a model"
+          size="sm"
+          clearable={false}
+          style={{ maxWidth: "50%" }}
+          disabled={sending || messagesLoading}
+        />
+        {selectedModel && <ModelInfo model={selectedModel} />}
+
+        <Popover width={300} position="top" withArrow shadow="md">
+          <Popover.Target>
+            <Tooltip label="Chat Settings">
+              <ActionIcon>
+                <IconSettings size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <ChatSettings
+              temperature={chat?.temperature}
+              maxTokens={chat?.maxTokens}
+              topP={chat?.topP}
+              imagesCount={chat?.imagesCount}
+              onSettingsChange={handleSettingsChange}
+              resetToDefaults={resetSettingsToDefaults}
+            />
+          </Popover.Dropdown>
+        </Popover>
+      </Group>
+
       {/* Message input */}
-      <div className={[classes.chatInputContainer, selectedFiles.length ? classes.columned : ""].join(" ")}>
-        {selectedModel?.supportsImageIn && (
+
+      <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
+        {uploadAllowed && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
+            {appConfig?.ragEnabled && chatDocuments.length ? (
+              <ChatDocumentsSelector
+                selectedDocIds={selectedDocIds}
+                onSelectionChange={setSelectedDocIds}
+                disabled={!appConfig?.s3Connected || sending || messagesLoading}
+                documents={chatDocuments}
+              />
+            ) : null}
             {selectedImages.map(file => (
               <Paper key={file.fileName} className={classes.filesList}>
                 <div className={classes.previewImage}>
@@ -566,7 +614,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
                     size="xs"
                     onClick={e => {
                       e.stopPropagation();
-                      setSelectedFiles(prev => prev.filter(f => f.name !== file.fileName));
+                      setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
                     }}
                   >
                     <IconX size={16} />
@@ -585,7 +633,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             value={userMessage}
             autosize
             minRows={1}
-            maxRows={5}
+            maxRows={7}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
             disabled={messagesLoading || messagesLimitReached}

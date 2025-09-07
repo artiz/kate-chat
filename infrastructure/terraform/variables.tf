@@ -71,7 +71,32 @@ variable "app_memory" {
 variable "app_desired_count" {
   description = "Desired number of backend tasks"
   type        = number
-  default     = 3
+  default     = 2
+}
+
+# Document processor ECS configuration
+variable "document_processor_cpu" {
+  description = "CPU units for document processor service"
+  type        = number
+  default     = 1024
+}
+
+variable "document_processor_memory" {
+  description = "Memory (MB) for document processor service"
+  type        = number
+  default     = 8192
+}
+
+variable "document_processor_storage_gib" {
+  description = "Ephemeral storage (GiB) for document processor service"
+  type        = number
+  default     = 64
+}
+
+variable "document_processor_desired_count" {
+  description = "Desired number of document processor tasks"
+  type        = number
+  default     = 1
 }
 
 # Network configuration
@@ -97,6 +122,5 @@ variable "redis_num_cache_nodes" {
 variable "default_admin_emails" {
   description = "Comma separated list of default admin email addresses"
   type        = string
-  default     = "artem.kustikov@gmail.com"
 }
 

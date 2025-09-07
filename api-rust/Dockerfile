@@ -1,5 +1,5 @@
 # Build stage
-FROM rustlang/rust:nightly as builder
+FROM rustlang/rust:nightly AS builder
 
 WORKDIR /app
 

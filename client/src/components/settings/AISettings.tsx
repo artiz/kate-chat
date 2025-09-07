@@ -31,6 +31,7 @@ import {
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { ApiProvider } from "@/types/ai";
+import { ModelType } from "@/store/slices/modelSlice";
 
 interface AISettingsProps {
   user: User;
@@ -43,8 +44,10 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   const { models, providers } = useAppSelector(state => state.models);
 
   // Default settings form state
-  const [defaultModelId, setDefaultModelId] = useState(user?.defaultModelId || "");
-  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState(user?.defaultSystemPrompt || "");
+  const [defaultModelId, setDefaultModelId] = useState<string>();
+  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState<string>();
+  const [documentsEmbeddingsModelId, setDocumentsEmbeddingsModelId] = useState<string>();
+  const [documentSummarizationModelId, setDocumentSummarizationModelId] = useState<string>();
 
   // local connection settings
   const [awsRegion, setAwsRegion] = useState<string>("");
@@ -77,6 +80,11 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
   useEffect(() => {
     const settings = user?.settings || {};
+    setDefaultModelId(user?.defaultModelId);
+    setDefaultSystemPrompt(user?.defaultSystemPrompt);
+    setDocumentsEmbeddingsModelId(user?.documentsEmbeddingsModelId);
+    setDocumentSummarizationModelId(user?.documentSummarizationModelId);
+
     // Load initial connection settings from localStorage or defaults
     if (enabledApiProviders.has("aws_bedrock")) {
       setAwsRegion(localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || settings.awsBedrockRegion || "");
@@ -118,20 +126,14 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     setS3FilesBucketName(user?.settings?.s3FilesBucketName || "");
   }, [user, enabledApiProviders]);
 
-  // Update when user changes
-  useEffect(() => {
-    if (user) {
-      setDefaultModelId(user.defaultModelId || "");
-      setDefaultSystemPrompt(user.defaultSystemPrompt || "");
-    }
-  }, [user]);
-
   // Handle default model and system prompt update
   const handleUserDefaultsUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateUser({
       defaultModelId,
       defaultSystemPrompt,
+      documentsEmbeddingsModelId,
+      documentSummarizationModelId,
     });
   };
 
@@ -182,10 +184,17 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   };
 
   const modelSelectData = models
-    .filter(model => model.isActive)
+    .filter(model => model.isActive && model.type !== ModelType.EMBEDDING)
     .map(model => ({
       value: model.modelId,
-      label: model.name,
+      label: `${model.apiProvider}: ${model.name}`,
+    }));
+
+  const embeddingModelSelectData = models
+    .filter(model => model.isActive && model.type === ModelType.EMBEDDING)
+    .map(model => ({
+      value: model.modelId,
+      label: `${model.apiProvider}: ${model.name}`,
     }));
 
   if (!user) return null;
@@ -490,6 +499,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
       <Paper withBorder p="xl">
         <form name="user-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
           <Stack gap="md">
+            <Title order={4}>Chat Defaults</Title>
+
             <Select
               label="Default AI Model"
               description="This model will be used by default for new chats"
@@ -510,6 +521,34 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               autosize
               minRows={3}
               maxRows={6}
+            />
+
+            <Divider my="md" />
+
+            <Title order={4}>
+              <a id="document_processing">Document Processing</a>
+            </Title>
+
+            <Select
+              label="Documents Embeddings Model"
+              description="Model used to generate vector embeddings for document chunks"
+              placeholder="Select an embeddings model"
+              value={documentsEmbeddingsModelId}
+              onChange={value => setDocumentsEmbeddingsModelId(value || "")}
+              data={embeddingModelSelectData}
+              searchable
+              clearable
+            />
+
+            <Select
+              label="Document Summarization Model"
+              description="Model used to generate document summaries (up to 1024 words)"
+              placeholder="Select a chat model"
+              value={documentSummarizationModelId}
+              onChange={value => setDocumentSummarizationModelId(value || "")}
+              data={modelSelectData}
+              searchable
+              clearable
             />
 
             <Group justify="right" mt="md">

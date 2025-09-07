@@ -16,8 +16,24 @@ type ModelResponseOutput = {
   stopReason?: string;
 };
 
+type ModelResponseChoice = {
+  index: number;
+  message: {
+    role: string;
+    tool_calls: any[] | null;
+    tool_call_id: string | null;
+    content: string | undefined;
+    audio: string | undefined;
+  };
+  finish_reason: string;
+};
+
 type MistralResponse = {
-  outputs: ModelResponseOutput[];
+  outputs?: ModelResponseOutput[];
+  choices?: ModelResponseChoice[];
+  prompt_tokens?: number;
+  total_tokens?: number;
+  completion_tokens?: number;
 };
 
 export class MistralService implements BedrockModelServiceProvider<MistralResponse> {
@@ -50,7 +66,6 @@ export class MistralService implements BedrockModelServiceProvider<MistralRespon
     }
 
     mistralMessages.push(`[INST]${parseMessageContent(lastUserMessage)}[/INST]`);
-    logger.debug({ modelId }, "Call Mistral model");
 
     return {
       modelId,
@@ -64,9 +79,17 @@ export class MistralService implements BedrockModelServiceProvider<MistralRespon
   }
 
   parseResponse(responseBody: MistralResponse, request: InvokeModelParamsRequest): ModelResponse {
+    const content = responseBody.outputs?.[0]?.text || responseBody.choices?.[0]?.message?.content || "";
+
     return {
       type: "text",
-      content: responseBody.outputs[0]?.text || "",
+      content,
+      metadata: {
+        usage: {
+          inputTokens: responseBody.prompt_tokens,
+          outputTokens: responseBody.completion_tokens,
+        },
+      },
     };
   }
 }

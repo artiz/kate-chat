@@ -2,8 +2,8 @@ import { gql } from "@apollo/client";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
-import { Chat, Message, MessageRole } from "../slices/chatSlice";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
+import { DocumentStatus, MessageRole } from "@/types/ai";
 
 export const BASE_MODEL_FRAGMENT = `
     fragment BaseModel on GqlModel {
@@ -13,12 +13,8 @@ export const BASE_MODEL_FRAGMENT = `
       provider
       apiProvider
       isActive
-      supportsImageIn
-      supportsTextIn
-      supportsEmbeddingsIn
-      supportsImageOut
-      supportsTextOut
-      supportsEmbeddingsOut
+      type
+      imageInput
     }
 `;
 
@@ -31,6 +27,8 @@ export const FULL_USER_FRAGMENT = `
       createdAt
       defaultModelId
       defaultSystemPrompt
+      documentsEmbeddingsModelId
+      documentSummarizationModelId
       googleId
       githubId
       avatarUrl
@@ -63,6 +61,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       modelId
       modelName
       user {
+        id
         lastName
         firstName
         avatarUrl
@@ -72,6 +71,14 @@ export const BASE_MESSAGE_FRAGMENT = `
         usage {
           inputTokens
           outputTokens
+        }
+        relevantsChunks {
+          id
+          documentId
+          documentName
+          page
+          content
+          relevance
         }
       }
     }
@@ -258,6 +265,25 @@ export const TEST_MODEL_MUTATION = gql`
   }
 `;
 
+export const REINDEX_DOCUMENT_MUTATION = gql`
+  mutation ReindexDocument($id: ID!) {
+    reindexDocument(id: $id) {
+      id
+      status
+      fileName
+      summary
+      s3key
+      createdAt
+    }
+  }
+`;
+
+export const DELETE_DOCUMENT_MUTATION = gql`
+  mutation DeleteDocument($id: ID!) {
+    deleteDocument(id: $id)
+  }
+`;
+
 // Query to find a pristine chat
 export const FIND_PRISTINE_CHAT = gql`
   query FindPristineChat {
@@ -313,6 +339,13 @@ export const GET_CHAT_MESSAGES = gql`
         maxTokens
         topP
         imagesCount
+        chatDocuments {
+          document {
+            id
+            fileName
+            status
+          }
+        }
       }
     }
   }
@@ -344,6 +377,37 @@ export const GET_ALL_IMAGES = gql`
   }
 `;
 
+export const GET_DOCUMENTS = gql`
+  query GetDocuments {
+    documents {
+      id
+      fileName
+      fileSize
+      status
+      summary
+      statusInfo
+      statusProgress
+      createdAt
+      downloadUrl
+      embeddingsModelId
+      summaryModelId
+    }
+  }
+`;
+
+export const DOCUMENT_STATUS_SUBSCRIPTION = gql`
+  subscription DocumentStatus($documentIds: [String!]!) {
+    documentsStatus(documentIds: $documentIds) {
+      documentId
+      status
+      statusProgress
+      statusInfo
+      summary
+    }
+  }
+`;
+
+// TODO: move to separate file
 // Define GraphQL types
 interface CurrentUserResponse {
   currentUser: User;
@@ -417,8 +481,12 @@ export interface CreateChatInput {
 }
 
 export interface ApplicationConfig {
+  currentUser: User;
+  token: string;
   demoMode: boolean;
   s3Connected: boolean;
+  ragSupported: boolean;
+  ragEnabled: boolean;
   maxChats?: number;
   maxChatMessages?: number;
   maxImages?: number;
@@ -427,7 +495,6 @@ export interface ApplicationConfig {
 
 export interface GetInitialDataResponse {
   data: {
-    currentUser: User;
     getModels: {
       models: Model[];
       providers?: ProviderInfo[];
@@ -436,9 +503,6 @@ export interface GetInitialDataResponse {
       chats: Chat[];
       total: number;
       hasMore: boolean;
-    };
-    refreshToken: {
-      token: string;
     };
     appConfig: ApplicationConfig;
   };
@@ -492,6 +556,95 @@ export interface CallOthersResponse {
     message?: Message;
     error?: string;
   };
+}
+
+export interface MessageRelevantChunk {
+  id: string;
+  relevance: number;
+  documentId: string;
+  documentName?: string;
+  page: number;
+  pageIndex: number;
+  content: string;
+}
+
+export interface MessageMetadata {
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
+
+  relevantsChunks?: MessageRelevantChunk[];
+}
+
+export interface Message {
+  id: string;
+  chatId: string;
+  content: string;
+  html?: string[];
+  role: MessageRole;
+  modelId?: string;
+  modelName?: string;
+  user?: User;
+  createdAt: string;
+  streaming?: boolean;
+  linkedToMessageId?: string;
+  linkedMessages?: Message[];
+  metadata?: MessageMetadata;
+}
+
+export interface Chat {
+  id: string;
+  title: string;
+  description: string;
+  updatedAt: string;
+  modelId?: string;
+  isPristine?: boolean;
+  isPinned?: boolean;
+  messagesCount: number;
+  lastBotMessage?: string;
+  lastBotMessageId?: string;
+  lastBotMessageHtml?: string[];
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  imagesCount?: number;
+  chatDocuments?: {
+    document: Document;
+  }[];
+}
+
+export interface Document {
+  id: string;
+  fileName?: string;
+  mime?: string;
+  fileSize?: number;
+  sha256checksum?: string;
+  s3key?: string;
+  owner?: User;
+  ownerId?: string;
+  embeddingsModelId?: string;
+  summaryModelId?: string;
+  summary?: string;
+  pagesCount?: number;
+  status?: DocumentStatus;
+  statusInfo?: string;
+  statusProgress?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  downloadUrl?: string;
+}
+
+export interface DocumentStatusMessage {
+  documentId: string;
+  status?: DocumentStatus;
+  statusInfo?: string;
+  statusProgress?: number;
+  summary?: string;
+}
+
+export interface UploadDocumentsResponse {
+  documents?: Document[];
 }
 
 // Create the API endpoints
@@ -589,7 +742,7 @@ export const graphqlApi = api.injectEndpoints({
     // Initial data load - combines user, models, and chats
     getInitialData: builder.query<
       {
-        user: User;
+        appConfig: ApplicationConfig;
         models: Model[];
         providers: ProviderInfo[];
         chats: {
@@ -597,8 +750,6 @@ export const graphqlApi = api.injectEndpoints({
           total: number;
           hasMore: boolean;
         };
-        refreshToken: { token: string };
-        appConfig: ApplicationConfig;
       },
       void
     >({
@@ -608,9 +759,6 @@ export const graphqlApi = api.injectEndpoints({
         body: {
           query: `
             query GetInitialData {
-              currentUser {
-                ...FullUser
-              }
               getModels {
                 models {
                     ...BaseModel
@@ -639,12 +787,15 @@ export const graphqlApi = api.injectEndpoints({
                 total
                 hasMore
               }
-              refreshToken {
-                token
-              }
               appConfig {
+                currentUser {
+                  ...FullUser
+                }
+                token
                 demoMode
                 s3Connected
+                ragSupported
+                ragEnabled
                 maxChats
                 maxChatMessages
                 maxImages
@@ -658,7 +809,7 @@ export const graphqlApi = api.injectEndpoints({
       }),
 
       transformResponse: async (response: GetInitialDataResponse) => {
-        const { currentUser, getModels, getChats, refreshToken, appConfig } = response.data || {};
+        const { getModels, getChats, appConfig } = response.data || {};
         const chats = getChats || {
           chats: [],
           total: 0,
@@ -672,11 +823,9 @@ export const graphqlApi = api.injectEndpoints({
         }
 
         return {
-          user: currentUser,
           models: getModels?.models || [],
           providers: getModels?.providers || [],
           chats,
-          refreshToken,
           appConfig,
         };
       },

@@ -11,6 +11,9 @@ import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { Message } from "./Message";
 import { JSONTransformer } from "../utils/db";
+import { ChatDocument } from "./ChatDocument";
+
+const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()
 @Entity("chats")
@@ -23,19 +26,27 @@ export class Chat {
   @Column()
   title: string;
 
-  @Field()
-  @Column({ default: "" })
-  description: string;
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  description?: string;
 
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User)
-  user: User;
+  user?: User;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  userId?: string;
+
+  @Field(() => [ChatDocument], { nullable: true })
+  @OneToMany(() => ChatDocument, doc => doc.chat)
+  chatDocuments: ChatDocument[];
 
   @Field(() => [Message], { nullable: true })
   @OneToMany(() => Message, m => m.chat, { cascade: true, onDelete: "CASCADE" })
   messages: Message[];
 
-  @Column({ type: "json", nullable: true, transformer: JSONTransformer<string[]>() })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<string[]>() })
   files?: string[];
 
   @Field({ nullable: true })

@@ -2,11 +2,13 @@ import { Message } from "../entities/Message";
 import {
   AIModelInfo,
   ApiProvider,
+  EmbeddingsResponse,
+  GetEmbeddingsRequest,
   InvokeModelParamsRequest,
   MessageRole,
   ModelMessage,
   ModelResponse,
-  ModelResponseMetadata,
+  MessageMetadata,
   ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
@@ -82,6 +84,16 @@ export class AIService {
     return providerService.invokeModelAsync(request, callbacks);
   }
 
+  // Main method to interact with models
+  async getEmbeddings(
+    apiProvider: ApiProvider,
+    connection: ConnectionParams,
+    request: GetEmbeddingsRequest
+  ): Promise<EmbeddingsResponse> {
+    const providerService = this.getApiProvider(apiProvider, connection);
+    return providerService.getEmbeddings(request);
+  }
+
   // Format messages for model invocation
   formatMessages(messages: Message[]): ModelMessage[] {
     return messages.map(msg => ({
@@ -115,7 +127,7 @@ export class AIService {
     connection: ConnectionParams,
     request: InvokeModelParamsRequest,
     messages: Message[],
-    callback: (content: string, completed?: boolean, error?: Error, metadata?: ModelResponseMetadata) => void
+    callback: (content: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => void
   ) {
     // Stream the completion in background
     return this.invokeModelAsync(
@@ -129,7 +141,7 @@ export class AIService {
         onToken: (token: string) => {
           callback(token);
         },
-        onComplete: (response: string, metadata: ModelResponseMetadata | undefined) => {
+        onComplete: (response: string, metadata: MessageMetadata | undefined) => {
           callback(response, true, undefined, metadata);
         },
         onError: (error: Error) => {

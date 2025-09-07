@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { gql, useSubscription, OnDataOptions, useApolloClient, useMutation } from "@apollo/client";
-import { Message, MessageType, MessageRole, Chat, updateChat as updateChatInState } from "@/store/slices/chatSlice";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useApolloClient, useMutation } from "@apollo/client";
+import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
@@ -8,9 +8,11 @@ import {
   DeleteMessageResponse,
   GET_CHAT_MESSAGES,
   GetChatMessagesResponse,
+  Message,
   UPDATE_CHAT_MUTATION,
 } from "@/store/services/graphql";
-import { debounce, pick } from "lodash";
+import { pick } from "lodash";
+import { MessageRole } from "@/types/ai";
 
 type HookResult = {
   messages: Message[] | undefined;

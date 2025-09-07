@@ -1,11 +1,16 @@
+process.env.DB_TYPE = "sqlite";
+
 import { DataSource } from "typeorm";
-import { Chat, Message, Model, User } from "./src/entities";
+import { load, Db } from "sqlite-vec";
+import { ENTITIES } from "./src/entities";
+
 // TypeORM data source
 export default new DataSource({
-  type: "sqlite",
+  type: "better-sqlite3",
   database: "katechat.sqlite",
   migrationsRun: true,
   synchronize: false,
-  entities: [User, Chat, Message, Model],
-  migrations: ["../db-migrations/*.ts"],
+  entities: ENTITIES,
+  migrations: ["../db-migrations/sqlite/*-*.ts"],
+  prepareDatabase: (db: Db) => load(db),
 });

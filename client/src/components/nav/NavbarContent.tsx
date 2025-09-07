@@ -9,10 +9,13 @@ import {
   IconShield,
   IconBrandGit,
   IconBrandGithub,
+  IconFile,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
 import { UserRole } from "@/store/slices/userSlice";
+
+import styles from "./NavbarContent.module.scss";
 
 interface IProps {
   navbarToggle?: () => void;
@@ -57,7 +60,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
     <>
       <AppShell.Section>
         <Stack h="100%" justify="space-between" gap="0">
-          <Stack p="md">
+          <Stack p="sm">
             <Button
               leftSection={<IconPlus size={16} />}
               disabled={newChatDisabled}
@@ -69,9 +72,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
             </Button>
           </Stack>
 
-          <Divider mt="xs" mb="xs" />
+          <Divider mt="xs" mb="0" />
 
-          <Stack gap="0">
+          <Stack gap="0" className={styles.navLinks}>
             <NavLink
               label="Models"
               leftSection={<IconRobot size={16} />}
@@ -88,11 +91,17 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
               label="Library"
               leftSection={<IconPhoto size={16} />}
               active={location.pathname === "/library"}
-              onClick={() => {
-                navbarToggle?.();
-                navigate("/library");
-              }}
+              onClick={() => navigate("/library")}
             />
+            {appConfig?.ragEnabled && (
+              <NavLink
+                label="Documents"
+                leftSection={<IconFile size={16} />}
+                active={location.pathname === "/documents"}
+                color="blue"
+                onClick={() => navigate("/documents")}
+              />
+            )}
             {currentUser?.role === UserRole.ADMIN && (
               <NavLink
                 label="Admin"
@@ -102,7 +111,8 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
               />
             )}
           </Stack>
-          <Divider my="xs" />
+
+          <Divider mb="xs" />
         </Stack>
       </AppShell.Section>
       <AppShell.Section grow component={ScrollArea}>

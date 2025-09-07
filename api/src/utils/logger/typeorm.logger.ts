@@ -53,14 +53,11 @@ export class TypeORMPinoLogger implements Logger {
   // Log general database messages
   log(level: "log" | "info" | "warn", message: unknown, queryRunner?: QueryRunner) {
     switch (level) {
-      case "log":
-        logger.debug({ message }, "TypeORM log");
-        break;
-      case "info":
-        logger.info({ message }, "TypeORM info");
-        break;
       case "warn":
         logger.warn({ message }, "TypeORM warn");
+        break;
+      default:
+        logger.info({ message }, "TypeORM info");
         break;
     }
   }

@@ -11,6 +11,7 @@ import {
 import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "../icons/ProviderIcon";
+import { ModelInfo } from "./ModelInfo";
 
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
@@ -135,21 +136,18 @@ export const ModelsList: React.FC<ModelsListProps> = ({
       <Grid>
         {filteredModels.map(model => (
           <Grid.Col key={model.id} span={{ base: 12, sm: 6, lg: 4 }}>
-            <Card withBorder padding="lg" radius="md">
+            <Card withBorder padding="md" radius="md">
               <Stack gap="xs">
-                <Group justify="space-between">
-                  <Group>
-                    <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
-                    <Text fw={500}>{model.name}</Text>
-                  </Group>
-                  <Group>
-                    <Switch
-                      checked={model.isActive}
-                      onChange={event => onToggleModelStatus(model, event.currentTarget.checked)}
-                      label="Active"
-                      size="md"
-                    />
-                  </Group>
+                <Group align="center" gap="xs" wrap="nowrap">
+                  <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
+                  <Text fw={500} truncate c={model.modelId === user?.defaultModelId ? "green" : undefined}>
+                    {model.name}
+                  </Text>
+                  {model.modelId === user?.defaultModelId && (
+                    <Badge color="green" variant="light" size="xs">
+                      Default
+                    </Badge>
+                  )}
                 </Group>
 
                 <Group justify="space-between">
@@ -161,16 +159,21 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                       {model.apiProvider}
                     </Text>
                   </Group>
-
-                  {model.modelId === user?.defaultModelId && (
-                    <Badge color="green" variant="light">
-                      Default
-                    </Badge>
-                  )}
+                  <Group>
+                    <Switch
+                      checked={model.isActive}
+                      onChange={event => onToggleModelStatus(model, event.currentTarget.checked)}
+                      label="Active"
+                      size="md"
+                    />
+                  </Group>
                 </Group>
 
-                <Group>
-                  <Text size="sm">{model.modelId}</Text>
+                <Group wrap="nowrap" gap="xs" align="center" justify="space-between">
+                  <Text size="sm" truncate>
+                    {model.modelId}
+                  </Text>
+                  <ModelInfo model={model} size="16" />
                 </Group>
 
                 <Group grow>

@@ -1,57 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User } from "./userSlice";
-
-export enum MessageType {
-  MESSAGE = "message",
-  SYSTEM = "system",
-}
-
-export enum MessageRole {
-  USER = "user",
-  ASSISTANT = "assistant",
-  ERROR = "error",
-}
-
-export interface MessageMetadata {
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-  };
-}
-
-export interface Message {
-  id: string;
-  chatId: string;
-  content: string;
-  html?: string[];
-  role: MessageRole;
-  modelId?: string;
-  modelName?: string;
-  user?: User;
-  createdAt: string;
-  streaming?: boolean;
-  linkedToMessageId?: string;
-  linkedMessages?: Message[];
-  metadata?: MessageMetadata;
-}
-
-export interface Chat {
-  id: string;
-  title: string;
-  description: string;
-  updatedAt: string;
-  modelId?: string;
-  isPristine?: boolean;
-  isPinned?: boolean;
-  messagesCount: number;
-  lastBotMessage?: string;
-  lastBotMessageId?: string;
-  lastBotMessageHtml?: string[];
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-}
+import { Chat } from "../services/graphql";
 
 interface ChatsState {
   chats: Chat[];

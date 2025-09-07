@@ -2,6 +2,13 @@
 resource "random_password" "db_password" {
   length  = 32
   special = true
+
+  lifecycle {
+    ignore_changes = [
+      length,
+      special,
+    ]
+  }
 }
 
 # Store database password in AWS Secrets Manager
@@ -18,6 +25,12 @@ resource "aws_secretsmanager_secret" "db_password" {
 resource "aws_secretsmanager_secret_version" "db_password" {
   secret_id     = aws_secretsmanager_secret.db_password.id
   secret_string = random_password.db_password.result
+
+  lifecycle {
+    ignore_changes = [
+      secret_string,
+    ]
+  }
 }
 
 

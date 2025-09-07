@@ -1,6 +1,8 @@
 import {
   AIModelInfo,
   ApiProvider,
+  EmbeddingsResponse,
+  GetEmbeddingsRequest,
   InvokeModelParamsRequest,
   ModelResponse,
   ProviderInfo,
@@ -17,6 +19,8 @@ export abstract class BaseProviderService {
 
   abstract invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse>;
   abstract invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void>;
+  abstract getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse>;
+
   abstract getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo>;
   abstract getModels(): Promise<Record<string, AIModelInfo>>;
   abstract getInfo(checkConnection?: boolean): Promise<ProviderInfo>;

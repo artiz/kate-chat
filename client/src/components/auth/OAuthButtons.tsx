@@ -1,7 +1,7 @@
 import React from "react";
 import { Button, Group, Divider, Text, Stack } from "@mantine/core";
 import { IconBrandGoogle, IconBrandGithub } from "@tabler/icons-react";
-import { APP_API_URL } from "@/utils/config";
+import { APP_API_URL } from "@/lib/config";
 
 interface OAuthButtonsProps {
   variant?: "outline" | "filled" | "light";

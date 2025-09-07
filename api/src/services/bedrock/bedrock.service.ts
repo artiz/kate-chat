@@ -12,13 +12,17 @@ import {
   UsageCostInfo,
   ServiceCostInfo,
   InvokeModelParamsRequest,
-  ModelResponseMetadata,
+  MessageMetadata,
+  ModelType,
+  GetEmbeddingsRequest,
+  EmbeddingsResponse,
 } from "../../types/ai.types";
 import { ApiProvider } from "../../types/ai.types";
 import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";
+import { AnthropicService, AmazonService, AI21Service, CohereService, MetaService, MistralService } from "./providers";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
@@ -125,14 +129,21 @@ export class BedrockService extends BaseProviderService {
       const streamResponse = await this.bedrockClient.send(streamCommand);
 
       let fullResponse = "";
-      let metadata: ModelResponseMetadata | undefined = undefined;
+      let metadata: MessageMetadata | undefined = undefined;
 
       // Process the stream
       if (streamResponse.body) {
         for await (const chunk of streamResponse.body) {
           if (chunk.chunk?.bytes) {
             const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
-            const chunkData = JSON.parse(decodedChunk);
+
+            let chunkData: any;
+            try {
+              chunkData = JSON.parse(decodedChunk);
+            } catch (err) {
+              logger.debug(err, `failed to parse chunk: ${decodedChunk}`);
+              continue;
+            }
 
             // Extract the token based on model provider
             let token = "";
@@ -167,6 +178,8 @@ export class BedrockService extends BaseProviderService {
             } else if (provider === "mistral") {
               if (chunkData.outputs && chunkData.outputs[0]?.text) {
                 token = chunkData.outputs[0].text;
+              } else if (chunkData.choices && chunkData.choices[0]?.message?.content) {
+                token = chunkData.choices[0].message.content;
               }
             } else {
               logger.warn(`Unsupported model provider: ${provider}. Cannot process streaming response.`);
@@ -207,32 +220,26 @@ export class BedrockService extends BaseProviderService {
     let provider = this.getModelProvider(modelId);
 
     if (provider == "anthropic") {
-      const { AnthropicService } = await import("./providers/anthropic.service");
       const anthropicService = new AnthropicService();
       params = await anthropicService.getInvokeModelParams(request);
       service = anthropicService;
     } else if (provider == "amazon") {
-      const { AmazonService } = await import("./providers/amazon.service");
       const amazonService = new AmazonService();
       params = await amazonService.getInvokeModelParams(request);
       service = amazonService;
     } else if (provider == "ai21") {
-      const { AI21Service } = await import("./providers/ai21.service");
       const ai21Service = new AI21Service();
       params = await ai21Service.getInvokeModelParams(request);
       service = ai21Service;
     } else if (provider == "cohere") {
-      const { CohereService } = await import("./providers/cohere.service");
       const cohereService = new CohereService();
       params = await cohereService.getInvokeModelParams(request);
       service = cohereService;
     } else if (provider == "meta") {
-      const { MetaService } = await import("./providers/meta.service");
       const metaService = new MetaService();
       params = await metaService.getInvokeModelParams(request);
       service = metaService;
     } else if (provider == "mistral") {
-      const { MistralService } = await import("./providers/mistral.service");
       const mistralService = new MistralService();
       params = await mistralService.getInvokeModelParams(request);
       service = mistralService;
@@ -319,7 +326,7 @@ export class BedrockService extends BaseProviderService {
     const command = new ListFoundationModelsCommand({});
     const response = await this.bedrockManagementClient.send(command);
 
-    const models: Record<string, any> = {};
+    const models: Record<string, AIModelInfo> = {};
 
     if (!response.modelSummaries || !response.modelSummaries.length) {
       return models;
@@ -343,18 +350,20 @@ export class BedrockService extends BaseProviderService {
           modelId = map[region] || map[modelId] || modelId;
         }
 
+        const type = model.outputModalities?.includes(ModelModality.IMAGE)
+          ? ModelType.IMAGE_GENERATION
+          : model.outputModalities?.includes(ModelModality.EMBEDDING)
+            ? ModelType.EMBEDDING
+            : ModelType.CHAT;
+
         models[modelId] = {
           apiProvider: ApiProvider.AWS_BEDROCK,
           provider: providerName,
           name: model.modelName || modelId.split(".").pop() || modelId,
           description: `${model.modelName || modelId} by ${providerName}`,
-          supportsStreaming: model.responseStreamingSupported || false,
-          supportsTextIn: model.inputModalities?.includes(ModelModality.TEXT) ?? true,
-          supportsTextOut: model.outputModalities?.includes(ModelModality.TEXT) ?? true,
-          supportsImageIn: model.inputModalities?.includes(ModelModality.IMAGE) || false,
-          supportsImageOut: model.outputModalities?.includes(ModelModality.IMAGE) || false,
-          supportsEmbeddingsOut: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
-          supportsEmbeddingsIn: model.outputModalities?.includes(ModelModality.EMBEDDING) || false,
+          type,
+          streaming: model.responseStreamingSupported || false,
+          imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
         };
       }
     }
@@ -549,5 +558,35 @@ export class BedrockService extends BaseProviderService {
       result.error = getErrorMessage(error);
       return result;
     }
+  }
+
+  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+    // https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-runtime_example_bedrock-runtime_InvokeModelWithResponseStream_TitanTextEmbeddings_section.html
+    if (!this.bedrockClient) {
+      throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
+    }
+
+    const params = {
+      modelId: request.modelId,
+      body: JSON.stringify({
+        inputText: request.input,
+      }),
+    };
+
+    // Send command using Bedrock client
+    const command = new InvokeModelCommand(params);
+    const response = await this.bedrockClient.send(command);
+
+    // Parse the response body
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+
+    return {
+      embedding: responseBody.embedding || [],
+      metadata: {
+        usage: {
+          inputTokens: responseBody.inputTextTokenCount || 0,
+        },
+      },
+    };
   }
 }

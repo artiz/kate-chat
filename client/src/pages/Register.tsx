@@ -8,7 +8,7 @@ import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
-import { RECAPTCHA_SITE_KEY } from "../utils/config";
+import { RECAPTCHA_SITE_KEY } from "../lib/config";
 import { OAuthButtons } from "../components/auth";
 import { clearUser, setUser } from "@/store/slices/userSlice";
 
