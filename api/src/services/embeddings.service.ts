@@ -186,10 +186,6 @@ export class EmbeddingsService {
         logger.warn(`Unsupported embeddings database type: ${DB_TYPE}`);
       }
 
-      logger.debug(
-        `>>>>>>>>>>>Found ${documentsChunks.length} chunks for documents ${documentIds.join(", ")} using model ${modelId}`
-      );
-
       if (loadFullPage) {
         const loadedChunkIds = new Set(documentsChunks.map(c => c.id));
         for (var docId of documentIds) {
