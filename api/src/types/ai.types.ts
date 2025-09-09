@@ -219,6 +219,7 @@ export type InvokeModelParamsRequest = {
 export type GetEmbeddingsRequest = {
   modelId: string;
   input: string;
+  dimensions?: number;
 };
 
 export interface BedrockModelServiceProvider<T = unknown> {

@@ -208,7 +208,7 @@ npm run install:all
 npm run dev
 ```
 
-#### Rust API
+#### Rust API (experiment)
 
 1. Server
 ```
@@ -223,7 +223,7 @@ cargo run
 APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
 ```
 
-### DB Migrations
+### Default API DB Migrations
 
 Create initial migration (done already)
 ```
@@ -364,11 +364,3 @@ KateChat includes an admin dashboard for managing users and viewing system stati
    - OAuth authentication (Google/GitHub)
 
 3. Admin users can access the dashboard at `/admin` in the web interface
-
-### Admin Dashboard Sections
-
-- **Statistics Cards**: Real-time counts of users, chats, and available models
-- **User Management Table**: Searchable list of all users with role indicators
-- **Pagination**: Efficient browsing of large user lists
-
-Note: Only users with the `ADMIN` role can access the admin dashboard. Regular users will be redirected to the chat interface.

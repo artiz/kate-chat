@@ -23,6 +23,8 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Agent } from "undici";
 import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
+import { OpenAIProtocol } from "../protocols/openai.protocol";
+import { BaseChatProtocol } from "../protocols/base.protocol";
 
 const logger = createLogger(__filename);
 
@@ -73,114 +75,29 @@ export type OpenAIList<T> = {
 };
 
 export class OpenAIService extends BaseProviderService {
-  private openai: OpenAI;
-  private openAiApiAdminKey: string;
+  private protocol: BaseChatProtocol;
+  private apiKey: string;
+  private adminApiKey: string;
   private baseUrl: string;
 
   constructor(connection: ConnectionParams) {
     super(connection);
 
-    this.openAiApiAdminKey = connection.OPENAI_API_ADMIN_KEY || "";
+    this.adminApiKey = connection.OPENAI_API_ADMIN_KEY || "";
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
 
-    const openAiApiKey = connection.OPENAI_API_KEY || "";
-    if (!openAiApiKey) {
+    this.apiKey = connection.OPENAI_API_KEY || "";
+    if (!this.apiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-    }
-
-    this.openai = new OpenAI({
-      apiKey: openAiApiKey,
-      baseURL: this.baseUrl,
-      maxRetries: 10,
-    });
-  }
-
-  // Text generation with OpenAI models
-  // https://platform.openai.com/docs/guides/text?api-mode=chat
-  formatMessages(
-    modelId: string,
-    messages: ModelMessage[],
-    systemPrompt: string | undefined
-  ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    // Format messages for OpenAI API
-    const result: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => {
-      const role = this.mapMessageRole(msg.role);
-
-      if (typeof msg.body === "string") {
-        return {
-          role,
-          content: msg.body,
-        } as OpenAI.Chat.Completions.ChatCompletionMessageParam;
-      } else {
-        const content = msg.body
-          .filter(part => part.content)
-          .map(part => {
-            if (part.contentType === "text") {
-              return { type: "text" as const, text: part.content };
-            } else if (part.contentType === "image") {
-              return {
-                type: "image_url" as const,
-                image_url: {
-                  url: part.content,
-                },
-              };
-            } else {
-              logger.warn({ ...part }, `Unsupported message content type`);
-              return null;
-            }
-          })
-          .filter(Boolean);
-
-        return {
-          role,
-          content,
-        } as OpenAI.Chat.Completions.ChatCompletionMessageParam;
-      }
-    });
-
-    let systemRole: "system" | "developer" = "system";
-    if (modelId.startsWith("o1") || modelId.startsWith("o4") || modelId.startsWith("gpt-5")) {
-      systemRole = "developer";
-    }
-
-    if (systemPrompt) {
-      result.unshift({
-        role: systemRole,
-        content: systemPrompt,
+    } else {
+      this.protocol = new OpenAIProtocol({
+        baseURL: this.baseUrl,
+        apiKey: this.apiKey,
       });
     }
-
-    return result;
-  }
-
-  formatModelRequest(
-    inputRequest: InvokeModelParamsRequest
-  ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
-
-    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
-      model: modelId,
-      messages: this.formatMessages(modelId, messages, systemPrompt),
-      temperature,
-      max_completion_tokens: maxTokens,
-    };
-
-    if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
-      delete params.temperature;
-    } else if (modelId.startsWith("gpt-4o")) {
-      delete params.temperature; // GPT-4o models do not support temperature
-    } else if (modelId.startsWith("gpt-5")) {
-      params.temperature = 1;
-    }
-
-    return params;
   }
 
   async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
-    if (!this.openai.apiKey) {
-      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-    }
-
     const { modelId } = inputRequest;
 
     // Determine if this is an image generation request
@@ -188,50 +105,16 @@ export class OpenAIService extends BaseProviderService {
       return this.generateImages(inputRequest);
     }
 
-    const params = this.formatModelRequest(inputRequest);
-    logger.debug({ ...params, messages: [] }, "Invoking OpenAI model");
-
-    try {
-      const response = await this.openai.chat.completions.create(params);
-
-      logger.debug(response, "OpenAI model response");
-
-      const content = response.choices[0]?.message?.content || "";
-      const usage = response.usage;
-
-      return {
-        type: "text",
-        content,
-        metadata: {
-          usage: {
-            inputTokens: usage?.prompt_tokens || 0,
-            outputTokens: usage?.completion_tokens || 0,
-            cacheReadInputTokens: usage?.prompt_tokens_details?.cached_tokens || 0,
-          },
-        },
-      };
-    } catch (error: unknown) {
-      logger.error(error, "Error calling OpenAI API");
-      if (error instanceof OpenAI.APIError) {
-        throw new Error(`OpenAI API error: ${error.message}`);
-      } else {
-        throw error instanceof Error ? error : new Error(String(error));
-      }
-    }
+    return this.protocol.invokeModel(inputRequest);
   }
 
   // Stream response from OpenAI models
   async invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
-    if (!this.openai.apiKey) {
-      callbacks.onError?.(new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables."));
-      return;
-    }
-
-    const { messages = [], modelId } = inputRequest;
-    callbacks.onStart?.();
+    const { modelId } = inputRequest;
 
     // If this is an image generation model, generate the image non-streaming
     if (modelId === "dall-e-3" || modelId === "dall-e-2") {
+      callbacks.onStart?.();
       try {
         const response = await this.generateImages(inputRequest);
         callbacks.onComplete?.(response.content);
@@ -241,52 +124,12 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-      ...this.formatModelRequest(inputRequest),
-      stream: true,
-      stream_options: { include_usage: true },
-    };
-
-    logger.debug({ ...params, messages: [] }, "Invoking OpenAI model streaming");
-
-    try {
-      const stream = await this.openai.chat.completions.create(params);
-      let fullResponse = "";
-      let meta: MessageMetadata | undefined = undefined;
-
-      for await (const chunk of stream) {
-        const token = chunk.choices[0]?.delta?.content || "";
-        if (token) {
-          fullResponse += token;
-          callbacks.onToken?.(token);
-        }
-
-        const usage = chunk.usage;
-        if (usage) {
-          meta = {
-            usage: {
-              inputTokens: usage.prompt_tokens || 0,
-              outputTokens: usage.completion_tokens || 0,
-              cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
-            },
-          };
-        }
-      }
-
-      callbacks.onComplete?.(fullResponse, meta);
-    } catch (error) {
-      logger.warn(error, "Error streaming from OpenAI API");
-      if (error instanceof OpenAI.APIError) {
-        callbacks.onError?.(new Error(`OpenAI API error: ${error.message}`));
-      } else {
-        callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
-      }
-    }
+    return this.protocol.invokeModelAsync(inputRequest, callbacks);
   }
 
   // Get OpenAI provider information including account details
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
-    const isConnected = !!this.openai.apiKey;
+    const isConnected = !!this.apiKey;
     const details: Record<string, string | number | boolean> = {
       apiUrl: this.baseUrl,
       configured: isConnected,
@@ -296,7 +139,7 @@ export class OpenAIService extends BaseProviderService {
     if (isConnected && checkConnection) {
       try {
         // Fetch models
-        await this.openai.models.list();
+        await this.protocol.api.models.list();
         details.credentialsValid = true;
       } catch (error) {
         logger.warn(error, "Error fetching OpenAI models information");
@@ -307,7 +150,7 @@ export class OpenAIService extends BaseProviderService {
     return {
       id: ApiProvider.OPEN_AI,
       name: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
-      costsInfoAvailable: !!this.openAiApiAdminKey,
+      costsInfoAvailable: !!this.adminApiKey,
       isConnected,
       details,
     };
@@ -319,7 +162,7 @@ export class OpenAIService extends BaseProviderService {
       end: endTime ? new Date(endTime * 1000) : undefined,
       costs: [],
     };
-    if (!this.openAiApiAdminKey) {
+    if (!this.adminApiKey) {
       result.error = "OpenAI API admin key is not set. Set OPENAI_API_ADMIN_KEY in environment variables.";
       return result;
     }
@@ -397,16 +240,11 @@ export class OpenAIService extends BaseProviderService {
   }
 
   async getModels(): Promise<Record<string, AIModelInfo>> {
-    if (!this.openai) {
-      logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-      return {};
-    }
-
     const models: Record<string, AIModelInfo> = {};
 
     try {
       // Fetch models from OpenAI API
-      const response = await this.openai.models.list();
+      const response = await this.protocol.api.models.list();
 
       // Filter and map models
       for (const model of response.data) {
@@ -481,38 +319,15 @@ export class OpenAIService extends BaseProviderService {
   }
 
   async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
-    if (!this.openai) {
-      throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-    }
-
-    const { modelId, input } = request;
-    const params: EmbeddingCreateParams = {
-      model: modelId,
-      input,
-      encoding_format: "float",
+    const { modelId } = request;
+    return this.protocol.getEmbeddings({
+      ...request,
       dimensions: modelId == "text-embedding-3-large" ? EMBEDDINGS_DIMENSIONS : undefined,
-    };
-
-    try {
-      const response = await this.openai.embeddings.create(params);
-      const embedding = response.data[0]?.embedding;
-      const usage = response.usage || {};
-      return {
-        embedding,
-        metadata: {
-          usage: {
-            inputTokens: usage?.prompt_tokens || 0,
-          },
-        },
-      };
-    } catch (error: unknown) {
-      logger.warn(error, "Error getting embeddings from OpenAI API");
-      throw error;
-    }
+    });
   }
   // Image generation implementation for DALL-E models
   private async generateImages(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
-    if (!this.openai.apiKey) {
+    if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
 
@@ -545,7 +360,7 @@ export class OpenAIService extends BaseProviderService {
 
     logger.debug({ params }, "Image generation");
     try {
-      const response = await this.openai.images.generate(params);
+      const response = await this.protocol.api.images.generate(params);
       if (!response.data?.length) {
         throw new Error("No image data returned from OpenAI API");
       }
@@ -564,25 +379,10 @@ export class OpenAIService extends BaseProviderService {
     }
   }
 
-  // Helper method to map our message roles to OpenAI roles
-  private mapMessageRole(role: MessageRole): "user" | "assistant" | "developer" {
-    switch (role) {
-      case MessageRole.USER:
-        return "user";
-      case MessageRole.ASSISTANT:
-      case MessageRole.ERROR:
-        return "assistant";
-      case MessageRole.SYSTEM:
-        return "developer";
-      default:
-        return "user";
-    }
-  }
-
   private formatRestHeaders(): Record<string, string> {
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this.openAiApiAdminKey}`,
+      Authorization: `Bearer ${this.adminApiKey}`,
     };
   }
 

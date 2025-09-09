@@ -169,6 +169,9 @@ export class MessagesService {
     originalMessage.jsonContent = undefined;
     originalMessage.modelId = model.modelId; // Update to the new model
     originalMessage.modelName = model.name; // Update model name
+    if (originalMessage.metadata) {
+      originalMessage.metadata.usage = undefined;
+    }
     originalMessage = await this.messageRepository.save(originalMessage);
 
     // Publish message to Queue

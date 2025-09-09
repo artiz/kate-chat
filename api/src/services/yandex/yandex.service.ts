@@ -1,4 +1,4 @@
-import { Agent, Dispatcher } from "undici";
+import { Agent } from "undici";
 import {
   ApiProvider,
   InvokeModelParamsRequest,
@@ -12,94 +12,28 @@ import {
   EmbeddingsResponse,
   GetEmbeddingsRequest,
 } from "@/types/ai.types";
-import { createLogger } from "@/utils/logger";
-import { getErrorMessage } from "@/utils/errors";
-import axios from "axios";
-import { MessageRole } from "@/types/ai.types";
-import { YANDEX_FM_API_URL, YANDEX_MODELS } from "@/config/yandex";
+import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS } from "@/config/yandex";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-
-const agent = new Agent({
-  keepAliveTimeout: 30_000,
-  connections: 100, // pool
-});
-
-const logger = createLogger(__filename);
-
-// Type definitions for Yandex API
-export type YandexMessageRole = "user" | "assistant" | "system";
-
-export type YandexMessage = {
-  role: YandexMessageRole;
-  text: string;
-};
-
-export type YandexCompletionRequest = {
-  modelUri: string;
-  messages: YandexMessage[];
-  temperature?: number;
-  maxTokens?: number;
-  stream?: boolean;
-};
-
-export type YandexCompletionResponse = {
-  result: {
-    alternatives: [
-      {
-        message: {
-          role: YandexMessageRole;
-          text: string;
-        };
-        status: string;
-      },
-    ];
-    usage: {
-      inputTextTokens: number;
-      completionTokens: number;
-      totalTokens: number;
-    };
-  };
-};
+import { BaseChatProtocol } from "../protocols/base.protocol";
+import { OpenAIProtocol } from "../protocols/openai.protocol";
 
 export class YandexService extends BaseProviderService {
   private apiKey: string;
   private folderId: string;
+  private protocol: BaseChatProtocol;
 
   constructor(connection: ConnectionParams) {
     super(connection);
     this.apiKey = connection.YANDEX_FM_API_KEY || "";
     this.folderId = connection.YANDEX_FM_API_FOLDER || "";
-  }
 
-  // Convert messages to Yandex format
-  private formatMessages(messages: ModelMessage[], systemPrompt?: string): YandexMessage[] {
-    const yandexMessages: YandexMessage[] = messages.map(msg => {
-      const role: YandexMessageRole = msg.role === MessageRole.ASSISTANT ? "assistant" : "user";
-
-      let text: string;
-      if (typeof msg.body === "string") {
-        text = msg.body;
-      } else {
-        // Handle multipart messages (only use text parts)
-        text = msg.body
-          .filter((m: any) => m.contentType === "text")
-          .map((m: any) => m.content)
-          .join("\n");
-      }
-
-      return { role, text };
-    });
-
-    // Add system prompt if provided
-    if (systemPrompt) {
-      yandexMessages.unshift({
-        role: "system",
-        text: systemPrompt,
+    if (this.apiKey) {
+      this.protocol = new OpenAIProtocol({
+        baseURL: YANDEX_FM_OPENAI_API_URL,
+        apiKey: this.apiKey,
       });
     }
-
-    return yandexMessages;
   }
 
   // Invoke Yandex model for text generation
@@ -108,58 +42,15 @@ export class YandexService extends BaseProviderService {
       throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection seettings.");
     }
 
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
-    const yandexMessages = this.formatMessages(messages, systemPrompt);
-    const modelUri = modelId.replace("{folder}", this.folderId ?? "default");
-
-    const body: YandexCompletionRequest = {
-      modelUri,
-      messages: yandexMessages,
-      temperature,
-      maxTokens,
+    const { modelId } = request;
+    const openAiRequest = {
+      ...request,
+      modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
-    logger.debug({ modelUri, temperature, maxTokens }, "Invoking Yandex model");
-
-    try {
-      // Make API request to Yandex
-      const response = await axios.post<YandexCompletionResponse>(
-        YANDEX_FM_API_URL + "/foundationModels/v1/completion",
-        body,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Api-Key ${this.apiKey}`,
-          },
-          fetchOptions: {
-            dispatcher: agent,
-          },
-        }
-      );
-
-      // Parse response
-      const result = response.data;
-      logger.debug({ result }, "Yandex model response");
-
-      const alternative = result.result.alternatives[0] || {};
-
-      return {
-        type: "text",
-        content: alternative.message?.text || "",
-        metadata: {
-          usage: {
-            inputTokens: result.result?.usage?.inputTextTokens,
-            outputTokens: result.result?.usage?.completionTokens,
-          },
-        },
-      };
-    } catch (error) {
-      logger.error(error, "Error invoking Yandex model");
-      throw new Error(`Error invoking Yandex model: ${getErrorMessage(error)}`);
-    }
+    return this.protocol.invokeModel(openAiRequest);
   }
 
-  // Streaming implementation for Yandex
   async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
     if (!this.apiKey || !this.folderId) {
       callbacks.onError?.(
@@ -168,69 +59,13 @@ export class YandexService extends BaseProviderService {
       return;
     }
 
-    callbacks.onStart?.();
-
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
-    const yandexMessages = this.formatMessages(messages, systemPrompt);
-    const modelUri = modelId.replace("{folder}", this.folderId ?? "default");
-
-    const body: YandexCompletionRequest = {
-      stream: true,
-      modelUri,
-      messages: yandexMessages,
-      temperature,
-      maxTokens,
+    const { modelId } = request;
+    const openAiRequest = {
+      ...request,
+      modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
-    logger.debug({ body, modelUri }, "Invoking Yandex model streaming");
-
-    try {
-      const response = await axios.post(YANDEX_FM_API_URL + "/foundationModels/v1/completion", body, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Api-Key ${this.apiKey}`,
-        },
-        responseType: "stream",
-        fetchOptions: {
-          dispatcher: agent,
-        },
-      });
-
-      let fullResponse = "";
-
-      response.data.on("data", (chunk: Buffer) => {
-        const data = chunk.toString("utf8")?.trim();
-
-        try {
-          logger.debug("Received chunk:" + data);
-
-          const result = JSON.parse(data);
-          const token = result.result.alternatives[0]?.message?.text || "";
-
-          if (token) {
-            fullResponse += token;
-            callbacks.onToken?.(token);
-          }
-        } catch (error: unknown) {
-          logger.error(error, "Failed to parse chunk data: " + data);
-        }
-      });
-
-      response.data.on("end", () => {
-        callbacks.onComplete?.(fullResponse);
-      });
-
-      response.data.on("error", (error: Error) => {
-        callbacks.onError?.(error);
-      });
-    } catch (error) {
-      logger.error(error, "Error streaming from OpenAI API");
-      if (axios.isAxiosError(error)) {
-        callbacks.onError?.(new Error(`OpenAI API error: ${error.response?.data?.error?.message || error.message}`));
-      } else {
-        callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
-      }
-    }
+    return this.protocol.invokeModelAsync(openAiRequest, callbacks);
   }
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
