@@ -14,7 +14,7 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 - Support for various LLM model Providers:
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
-  - Yandex Foundation Models
+  - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - RAG implementation with documents (PDF, DOCX, TXT) parsing with [Docling](https://docling-project.github.io/docling/) and vestor embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - Multiple chats creation with pristine chat functionality
@@ -49,7 +49,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 ## TODO
 
 * Add `maxInputTokens` load for each model and use it api/src/services/document-queue.service.ts:207
-* Add Qwen3 from YandexFM (https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
+* Add LLM tools support
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Open AI code interpreter support  
