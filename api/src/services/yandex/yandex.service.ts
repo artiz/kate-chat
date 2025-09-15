@@ -102,6 +102,7 @@ export class YandexService extends BaseProviderService {
           description: model.description || "",
           type: ModelType.CHAT,
           streaming: true,
+          maxInputTokens: model.maxInputTokens,
         };
 
         return map;

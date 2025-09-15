@@ -233,6 +233,7 @@ type GqlModel {
   imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
+  maxInputTokens: Float
   modelId: String!
   name: String!
   provider: String
@@ -318,6 +319,7 @@ type Model {
   imageInput: Boolean!
   isActive: Boolean!
   isCustom: Boolean!
+  maxInputTokens: Float
   modelId: String!
   name: String!
   provider: String

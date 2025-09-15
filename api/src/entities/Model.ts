@@ -58,6 +58,10 @@ export class Model {
   @Column({ default: false })
   isCustom: boolean;
 
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  maxInputTokens?: number;
+
   @Field()
   @CreateDateColumn()
   createdAt: Date;

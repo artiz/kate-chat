@@ -11,6 +11,7 @@ import { MessagesService } from "./messages.service";
 import { Repository } from "typeorm";
 import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai.prompts";
 import { EmbeddingsService } from "./embeddings.service";
+import { CHARACTERS_PER_TOKEN, SUMMARIZING_OUTPUT_TOKENS, SUMMARIZING_TEMPERATURE } from "@/config/ai";
 
 const logger = createLogger(__filename);
 
@@ -178,12 +179,9 @@ export class DocumentQueueService {
       // Download markdown content
       const markdownContent = await this.downloadS3Content(s3Service, `${s3key}.parsed.md`);
 
-      // TODO: get maxTokens for each model
-      const maxContentLength = 16 * 1024;
+      const maxContentLength = (model.maxInputTokens || 8 * 1024) * CHARACTERS_PER_TOKEN;
       const contentToSummarize =
-        markdownContent.length > maxContentLength
-          ? markdownContent.substring(0, maxContentLength) + "..."
-          : markdownContent;
+        markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
 
       // Generate summary
       const summaryResponse = await this.aiService.invokeModel(model.apiProvider, connection, {
@@ -194,8 +192,8 @@ export class DocumentQueueService {
             body: PROMPT_DOCUMENT_SUMMARY({ content: contentToSummarize }),
           },
         ],
-        maxTokens: 1500,
-        temperature: 0.3,
+        maxTokens: SUMMARIZING_OUTPUT_TOKENS,
+        temperature: SUMMARIZING_TEMPERATURE,
       });
 
       logger.info(`Generated summary for document ${document.id} (${summaryResponse.content.length} characters)`);

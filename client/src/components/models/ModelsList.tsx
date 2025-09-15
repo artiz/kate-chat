@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper } from "@mantine/core";
+import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
 import {
   IconBrandOpenai,
   IconRocket,
@@ -12,6 +12,7 @@ import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "../icons/ProviderIcon";
 import { ModelInfo } from "./ModelInfo";
+import { formatTokensLimit } from "@/lib";
 
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
@@ -138,16 +139,25 @@ export const ModelsList: React.FC<ModelsListProps> = ({
           <Grid.Col key={model.id} span={{ base: 12, sm: 6, lg: 4 }}>
             <Card withBorder padding="md" radius="md">
               <Stack gap="xs">
-                <Group align="center" gap="xs" wrap="nowrap">
-                  <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
-                  <Text fw={500} truncate c={model.modelId === user?.defaultModelId ? "green" : undefined}>
-                    {model.name}
-                  </Text>
-                  {model.modelId === user?.defaultModelId && (
-                    <Badge color="green" variant="light" size="xs">
-                      Default
-                    </Badge>
-                  )}
+                <Group justify="space-between" wrap="nowrap">
+                  <Group align="center" gap="xs" wrap="nowrap">
+                    <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
+                    <Text fw={500} truncate c={model.modelId === user?.defaultModelId ? "green" : undefined}>
+                      {model.name}
+                    </Text>
+                    {model.modelId === user?.defaultModelId && (
+                      <Badge color="green" variant="light" size="xs">
+                        Default
+                      </Badge>
+                    )}
+                  </Group>
+                  <Group>
+                    {model?.maxInputTokens && (
+                      <Tooltip label={`Maximum input tokens limit: ${model.maxInputTokens.toLocaleString()}`} withArrow>
+                        <Text size="xs">&lt;&lt;{formatTokensLimit(model.maxInputTokens)}</Text>
+                      </Tooltip>
+                    )}
+                  </Group>
                 </Group>
 
                 <Group justify="space-between">

@@ -49,6 +49,7 @@ export interface Model {
   provider: string;
   isActive: boolean;
   imageInput?: boolean;
+  maxInputTokens?: number;
 }
 
 interface ModelState {

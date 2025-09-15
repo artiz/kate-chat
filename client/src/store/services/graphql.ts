@@ -22,6 +22,7 @@ export const BASE_MODEL_FRAGMENT = `
       isActive
       type
       imageInput
+      maxInputTokens
     }
 `;
 

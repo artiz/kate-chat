@@ -33,6 +33,7 @@ interface BedrockModelConfigRecord {
   modelIdOverride?: Record<string, string>;
   name: string;
   regions: string[];
+  maxInputTokens?: number;
 }
 
 export class BedrockService extends BaseProviderService {
@@ -312,6 +313,15 @@ export class BedrockService extends BaseProviderService {
       {}
     );
 
+    const modelsInputTokens = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
+      (acc: Record<string, number | undefined>, region) => {
+        const { modelId, maxInputTokens } = region;
+        acc[modelId] = maxInputTokens;
+        return acc;
+      },
+      {}
+    );
+
     const modelIdOverrides = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
       (acc: Record<string, Record<string, string>>, region) => {
         const { modelId, modelIdOverride } = region;
@@ -364,6 +374,7 @@ export class BedrockService extends BaseProviderService {
           type,
           streaming: model.responseStreamingSupported || false,
           imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
+          maxInputTokens: modelsInputTokens[model.modelId],
         };
       }
     }

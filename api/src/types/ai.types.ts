@@ -104,6 +104,7 @@ export interface AIModelInfo {
   type: ModelType;
   streaming?: boolean;
   imageInput?: boolean;
+  maxInputTokens?: number;
 }
 
 export interface ModelMessageContent {

@@ -3,14 +3,12 @@ import axios from "axios";
 import {
   AIModelInfo,
   ApiProvider,
-  ModelMessage,
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
   ServiceCostInfo,
   InvokeModelParamsRequest,
-  MessageMetadata,
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
@@ -21,21 +19,13 @@ import { getErrorMessage } from "@/utils/errors";
 import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Agent } from "undici";
-import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { BaseChatProtocol } from "../protocols/base.protocol";
+import { max } from "class-validator";
+import { OPENAI_MODEL_MAX_INPUT_TOKENS, OPENAI_NON_CHAT_MODELS } from "@/config/openai";
 
 const logger = createLogger(__filename);
-
-const NON_CHAT_MODELS = [
-  "gpt-3.5-turbo-instruct",
-  "gpt-4o-audio",
-  "gpt-4o-mini-audio",
-  "gpt-4o-mini-realtime",
-  "gpt-4o-realtime",
-  "o1-pro",
-];
 
 const agent = new Agent({
   keepAliveTimeout: 30_000,
@@ -248,7 +238,7 @@ export class OpenAIService extends BaseProviderService {
 
       // Filter and map models
       for (const model of response.data) {
-        const nonChatModel = NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
+        const nonChatModel = OPENAI_NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
         const embeddingModel = model.id.startsWith("text-embedding");
         const imageGeneration = model.id.startsWith("dall-e");
         const imageInput = model.id.startsWith("gpt-4.1") || model.id.startsWith("gpt-4o");
@@ -263,6 +253,11 @@ export class OpenAIService extends BaseProviderService {
             ? ModelType.IMAGE_GENERATION
             : ModelType.CHAT;
 
+        const maxInputTokens =
+          OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||
+          Object.entries(OPENAI_MODEL_MAX_INPUT_TOKENS).find(([key]) => model.id.startsWith(key))?.[1] ||
+          undefined;
+
         models[model.id] = {
           apiProvider: ApiProvider.OPEN_AI,
           provider: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
@@ -271,6 +266,7 @@ export class OpenAIService extends BaseProviderService {
           type,
           streaming: type === ModelType.CHAT,
           imageInput,
+          maxInputTokens,
         };
       }
 

@@ -20,13 +20,15 @@
       "eu-west-2",
       "eu-west-3",
       "sa-east-1"
-    ]
+    ],
+    "maxInputTokens": 180000
   },
   {
     "provider": "anthropic",
     "modelId": "anthropic.claude-3-opus-20240229-v1:0",
     "name": "Claude 3 Opus",
-    "regions": ["us-east-1", "us-west-2", "eu-central-1"]
+    "regions": ["us-east-1", "us-west-2", "eu-central-1"],
+    "maxInputTokens": 180000
   },
   {
     "provider": "anthropic",
@@ -42,7 +44,8 @@
       "eu-west-1",
       "eu-west-2",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 180000
   },
   {
     "provider": "anthropic",
@@ -57,7 +60,8 @@
       "eu-central-2",
       "eu-west-1",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 180000
   },
   {
     "provider": "anthropic",
@@ -67,13 +71,15 @@
       "us": "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
     },
     "name": "Claude 3.7 Sonnet",
-    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"]
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
   },
   {
     "provider": "anthropic",
     "modelId": "anthropic.claude-instant-v1",
     "name": "Claude Instant",
-    "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1"]
+    "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1"],
+    "maxInputTokens": 180000
   },
   {
     "provider": "amazon",
@@ -90,7 +96,8 @@
       "eu-west-1",
       "eu-west-2",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
@@ -107,13 +114,15 @@
       "eu-west-1",
       "eu-west-2",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
     "modelId": "amazon.nova-canvas-v1:0",
     "name": "Nova Canvas",
-    "regions": ["us-east-1", "ap-northeast-1", "eu-west-1"]
+    "regions": ["us-east-1", "ap-northeast-1", "eu-west-1"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
@@ -137,7 +146,8 @@
       "eu-north-1",
       "eu-west-1",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 300000
   },
   {
     "provider": "amazon",
@@ -161,13 +171,15 @@
       "eu-north-1",
       "eu-west-1",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 128000
   },
   {
     "provider": "amazon",
     "modelId": "amazon.nova-premier-v1:0",
     "name": "Nova Premier",
-    "regions": ["us-east-1", "us-east-2", "us-west-2"]
+    "regions": ["us-east-1", "us-east-2", "us-west-2"],
+    "maxInputTokens": 1000000
   },
   {
     "provider": "amazon",
@@ -191,31 +203,36 @@
       "eu-north-1",
       "eu-west-1",
       "eu-west-3"
-    ]
+    ],
+    "maxInputTokens": 300000
   },
   {
     "provider": "amazon",
     "modelId": "amazon.nova-reel-v1:0",
     "name": "Nova Reel",
-    "regions": ["us-east-1", "ap-northeast-1", "eu-west-1"]
+    "regions": ["us-east-1", "ap-northeast-1", "eu-west-1"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
     "modelId": "amazon.nova-reel-v1:1",
     "name": "Nova Reel v1:1",
-    "regions": ["us-east-1"]
+    "regions": ["us-east-1"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
     "modelId": "amazon.titan-image-generator-v1",
     "name": "Titan Image Generator G1",
-    "regions": ["us-east-1", "us-west-2", "ap-south-1", "eu-west-1", "eu-west-2"]
+    "regions": ["us-east-1", "us-west-2", "ap-south-1", "eu-west-1", "eu-west-2"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
     "modelId": "amazon.titan-embed-text-v2:0",
     "name": "Titan Text Embeddings V2",
-    "regions": ["us-east-1", "us-east-2", "us-east-3", "eu-west-1", "eu-west-2", "eu-west-3"]
+    "regions": ["us-east-1", "us-east-2", "us-east-3", "eu-west-1", "eu-west-2", "eu-west-3"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
@@ -242,7 +259,8 @@
       "eu-west-3",
       "ca-central-1",
       "eu-central-1"
-    ]
+    ],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
@@ -257,7 +275,8 @@
       "eu-west-3",
       "ca-central-1",
       "eu-central-1"
-    ]
+    ],
+    "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
@@ -282,7 +301,8 @@
       "us": "us.meta.llama3-2-1b-instruct-v1:0"
     },
     "name": "Llama 3.2 1B Instruct",
-    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"]
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 8192
   },
 
   {
@@ -293,26 +313,30 @@
       "us": "us.meta.llama3-2-3b-instruct-v1:0"
     },
     "name": "Llama 3.2 3B Instruct",
-    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"]
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 8192
   },
 
   {
     "provider": "meta",
     "modelId": "meta.llama3-8b-instruct-v1:0",
     "name": "Llama 3 8B Instruct",
-    "regions": ["us-east-1", "us-west-2", "eu-central-1"]
+    "regions": ["us-east-1", "us-west-2", "eu-central-1"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "meta",
     "modelId": "meta.llama3-70b-instruct-v1:0",
     "name": "Llama 3 70B Instruct",
-    "regions": ["us-east-1", "us-west-2", "eu-central-1"]
+    "regions": ["us-east-1", "us-west-2", "eu-central-1"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "meta",
     "modelId": "meta.llama2-13b-chat-v1",
     "name": "Llama 2 13B Chat",
-    "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1"]
+    "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "meta",
@@ -324,20 +348,23 @@
     "provider": "mistral",
     "modelId": "mistral.mistral-7b-instruct-v0:2",
     "name": "Mistral 7B Instruct",
-    "regions": ["us-east-1", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3"]
+    "regions": ["us-east-1", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3"],
+    "maxInputTokens": 8192
   },
   {
     "provider": "mistral",
     "modelId": "mistral.mistral-large-2402-v1:0",
     "name": "Mistral Large (24.02)",
-    "regions": ["us-east-1", "us-west-2", "eu-west-1", "eu-west-2", "eu-west-3"]
+    "regions": ["us-east-1", "us-west-2", "eu-west-1", "eu-west-2", "eu-west-3"],
+    "maxInputTokens": 8192
   },
 
   {
     "provider": "mistral",
     "modelId": "mistral.mixtral-8x7b-instruct-v0:1",
     "name": "Mixtral 8x7B Instruct",
-    "regions": ["us-east-1", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3"]
+    "regions": ["us-east-1", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3"],
+    "maxInputTokens": 8192
   },
 
   {

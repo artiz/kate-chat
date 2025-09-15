@@ -48,10 +48,10 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Add `maxInputTokens` load for each model and use it api/src/services/document-queue.service.ts:207
 * Add LLM tools support
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
+* Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
 * Open AI code interpreter support  
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Rust API sync: add images generation (DALL-E) support, Library, admin API

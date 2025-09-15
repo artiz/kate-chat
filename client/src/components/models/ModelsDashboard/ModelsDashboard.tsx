@@ -40,12 +40,12 @@ import {
   UPDATE_MODEL_STATUS_MUTATION,
   TEST_MODEL_MUTATION,
   GET_COSTS_QUERY,
-  GqlCostsInfo,
 } from "@/store/services/graphql";
 import { notifications } from "@mantine/notifications";
-import { addChat, Message } from "@/store/slices/chatSlice";
+import { addChat } from "@/store/slices/chatSlice";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
+import { GqlCostsInfo, Message } from "@/types/graphql";
 
 // Helper function to get provider icon
 const getProviderIcon = (provider: string | null) => {
@@ -404,14 +404,14 @@ export const ModelsDashboard: React.FC = () => {
               value={costStartDate}
               date={costStartDate}
               highlightToday
-              onChange={(d: string) => d && setCostStartDate(new Date(d))}
+              onChange={(d: string | null) => d && setCostStartDate(new Date(d))}
               onDateChange={(d: DateStringValue) => d && setCostStartDate(new Date(d))}
               maxDate={today}
             />
             <DatePicker
               value={costEndDate}
               highlightToday
-              onChange={(d: string) => d && setCostEndDate(new Date(d))}
+              onChange={(d: string | null) => d && setCostEndDate(new Date(d))}
               maxDate={today}
             />
           </Group>
