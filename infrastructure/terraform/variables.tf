@@ -78,7 +78,7 @@ variable "app_desired_count" {
 variable "document_processor_cpu" {
   description = "CPU units for document processor service"
   type        = number
-  default     = 2048
+  default     = 1024
 }
 
 variable "document_processor_memory" {
