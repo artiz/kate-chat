@@ -1,7 +1,6 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { Repository, IsNull, In } from "typeorm";
-import { Message } from "@/entities/Message";
-import { Chat, Model } from "@/entities";
+import { Chat, Message, Document } from "@/entities";
 import { CreateMessageInput, GetMessagesInput, GetImagesInput, CallOtherInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from ".";
@@ -20,6 +19,7 @@ import { BaseResolver } from "./base.resolver";
 import { MessageType } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
+import { S3Service } from "@/services/s3.service";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";

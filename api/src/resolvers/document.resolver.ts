@@ -1,4 +1,4 @@
-import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root, ID } from "type-graphql";
+import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { getRepository } from "@/config/database";
 
 import { Document } from "@/entities/Document";
@@ -17,6 +17,11 @@ export class DocumentResolver extends BaseResolver {
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.documentRepo = getRepository(Document);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  downloadUrl(@Root() document: Document) {
+    return document.s3key ? S3Service.getFileUrl(document.s3key, document.fileName) : undefined;
   }
 
   @Mutation(() => Document)
@@ -47,14 +52,7 @@ export class DocumentResolver extends BaseResolver {
   @Query(() => [Document])
   async documents(@Ctx() context: GraphQLContext): Promise<Document[]> {
     const user = await this.validateContextUser(context);
-    const s3Service = new S3Service(user.toToken());
-
-    const documents = await this.documentRepo.find({ where: { owner: { id: user.id } } });
-
-    return documents.map(doc => ({
-      ...doc,
-      downloadUrl: doc.s3key ? s3Service.getFileUrl(doc.s3key, doc.fileName) : undefined,
-    }));
+    return await this.documentRepo.find({ where: { owner: { id: user.id } } });
   }
 
   @Mutation(() => Document)

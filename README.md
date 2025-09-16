@@ -48,6 +48,9 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
+* Documents: 
+   - add pagination (https://typegraphql.com/docs/generic-types.html)
+   - add ability to add attach/detach existing documents to chat (show RAG always, replace "Select All"/"Unselect All" buttons with "Manage Documents..." to switch to "chat/:id/documents" page) 
 * Add LLM tools support:
    - OpenAI - add `apiType: "completions" | "responses"` and use ["responses"](https://platform.openai.com/docs/api-reference/responses/create)
    - Bedrock - use [Converse API](https://builder.aws.com/content/2hW5367isgQOkkXLYjp4JB3Pe16/intro-to-tool-use-with-the-amazon-bedrock-converse-api)  

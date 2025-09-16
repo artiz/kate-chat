@@ -11,7 +11,13 @@ export const SUPPORTED_UPLOAD_FORMATS = [
   "image/png",
   "image/webp",
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+  "application/msword", // .doc
+  "application/vnd.ms-excel", // .xls
+  "application/vnd.ms-powerpoint", // .ppt
+  "text/csv",
   "text/html",
   "text/plain",
 ];

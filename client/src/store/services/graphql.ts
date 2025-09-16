@@ -352,6 +352,7 @@ export const GET_CHAT_MESSAGES = gql`
             id
             fileName
             status
+            downloadUrl
           }
         }
       }

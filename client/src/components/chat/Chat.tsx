@@ -596,7 +596,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         {uploadAllowed && (
           <Group align="flex-start">
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
-            {appConfig?.ragEnabled && chatDocuments.length ? (
+            {appConfig?.ragEnabled ? (
               <ChatDocumentsSelector
                 selectedDocIds={selectedDocIds}
                 onSelectionChange={setSelectedDocIds}
