@@ -1,16 +1,12 @@
-import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx, ID, Root, FieldResolver } from "type-graphql";
 import { Repository } from "typeorm";
-import { Chat } from "../entities/Chat";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
 import { GqlChatsList } from "../types/graphql/responses";
-import { Message } from "@/entities/Message";
-import { ok } from "assert";
+import { Message, Document, Chat } from "@/entities";
 import { BaseResolver } from "./base.resolver";
-import { S3Service } from "@/services/s3.service";
 import { MessageRole } from "@/types/ai.types";
-import { MessagesService } from "@/services/messages.service";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {

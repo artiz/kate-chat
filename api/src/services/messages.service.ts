@@ -556,7 +556,7 @@ export class MessagesService {
         });
 
         // For display purposes, append image markdown to the content
-        content += `${content ? "\n\n" : ""}![Uploaded Image](${s3Service.getFileUrl(fileName)})`;
+        content += `${content ? "\n\n" : ""}![Uploaded Image](${S3Service.getFileUrl(fileName)})`;
       }
 
       chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
@@ -633,7 +633,7 @@ export class MessagesService {
 
           assistantMessage.jsonContent = images;
           assistantMessage.content = images
-            .map(img => `![Generated Image](${s3Service.getFileUrl(img.fileName!)})`)
+            .map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName!)})`)
             .join("   ");
 
           chat.files = [...(chat.files || []), ...images.map(img => img.fileName!)];
