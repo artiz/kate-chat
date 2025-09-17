@@ -8,6 +8,7 @@ import { AdminStatsResponse, AdminUsersResponse } from "../types/graphql/respons
 import { GetUsersInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
+import { ILike, Or } from "typeorm";
 
 @Resolver()
 export class AdminResolver extends BaseResolver {
@@ -49,10 +50,11 @@ export class AdminResolver extends BaseResolver {
     }, "user_modelsCount");
 
     if (searchTerm) {
-      query = query.where(
-        "user.email LIKE :searchTerm OR user.firstName LIKE :searchTerm OR user.lastName LIKE :searchTerm",
-        { searchTerm: `%${searchTerm}%` }
-      );
+      query = query.where([
+        { email: ILike(`%${searchTerm}%`) },
+        { firstName: ILike(`%${searchTerm}%`) },
+        { lastName: ILike(`%${searchTerm}%`) },
+      ]);
     }
 
     query = query.orderBy("user.createdAt", "DESC").skip(offset).take(limit);
