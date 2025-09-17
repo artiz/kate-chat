@@ -10,6 +10,7 @@ import {
   IconBrandGit,
   IconBrandGithub,
   IconFile,
+  IconFileCv,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -121,12 +122,26 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
       <AppShell.Section p="sm">
         <Button
           component="a"
-          variant="transparent"
+          variant="subtle"
           href="https://github.com/artiz/kate-chat"
           target="_blank"
-          title="GitHub Repository"
+          color="dark"
+          title="Project GitHub Repository"
+          p="0"
         >
           <IconBrandGithub size={24} />
+        </Button>
+
+        <Button
+          component="a"
+          variant="subtle"
+          href="https://artiz.github.io/"
+          target="_blank"
+          color="indigo"
+          title="Author's CV"
+          p="0"
+        >
+          <IconFileCv size={24} />
         </Button>
       </AppShell.Section>
     </>
