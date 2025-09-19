@@ -76,6 +76,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       }
       linkedToMessageId
       metadata {
+        documentIds
         usage {
           inputTokens
           outputTokens
@@ -352,6 +353,7 @@ export const GET_CHAT_MESSAGES = gql`
             id
             fileName
             status
+            downloadUrl
           }
         }
       }

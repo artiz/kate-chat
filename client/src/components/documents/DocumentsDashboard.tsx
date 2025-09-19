@@ -23,13 +23,10 @@ import { DeleteConfirmationModal } from "@/components/modal";
 import {
   DOCUMENT_STATUS_SUBSCRIPTION,
   GET_DOCUMENTS,
-  Document,
-  DocumentStatusMessage,
   REINDEX_DOCUMENT_MUTATION,
   DELETE_DOCUMENT_MUTATION,
 } from "@/store/services/graphql";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
-import { set } from "lodash";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
 
 export const DocumentsDashboard: React.FC = () => {
