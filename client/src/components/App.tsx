@@ -28,6 +28,7 @@ import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
 import { Documents } from "@/pages/Documents";
+import { ChatDocuments } from "@/pages/ChatDocuments";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -144,6 +145,7 @@ const AppContent: React.FC = () => {
               <Route index element={<Navigate to="/chat" replace />} />
               <Route path="chat" element={<ChatList />} />
               <Route path="chat/:id" element={<Chat />} />
+              <Route path="chat/:id/documents" element={<ChatDocuments />} />
               <Route path="chat/new" element={<CreateChat />} />
               <Route path="models" element={<Models />} />
               <Route path="settings" element={<Settings onReloadAppData={refetchInitialData} />} />

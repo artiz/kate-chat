@@ -76,6 +76,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       }
       linkedToMessageId
       metadata {
+        documentIds
         usage {
           inputTokens
           outputTokens

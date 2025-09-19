@@ -35,7 +35,6 @@ import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
-import { ImageInput, Message } from "@/store/services/graphql";
 import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
@@ -46,6 +45,7 @@ import classes from "./Chat.module.scss";
 import { ModelType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
+import { ImageInput, Message, ChatDocument } from "@/types/graphql";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -107,7 +107,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chatDocuments = useMemo(() => {
-    let docs = (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
+    let docs = (chat?.chatDocuments || []).map((doc: ChatDocument) => doc.document).filter(notEmpty);
     if (uploadingDocs) {
       // If documents are uploading, include them in the list
       docs = docs.map(d => {
@@ -524,6 +524,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <ChatMessages
               messages={messages}
               sending={sending}
+              chatDocuments={chatDocuments}
               selectedModelName={selectedModel?.name}
               onSending={() => setSending(true)}
               onMessageDeleted={removeMessages} // Reload messages after deletion
@@ -598,6 +599,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
             {appConfig?.ragEnabled ? (
               <ChatDocumentsSelector
+                chatId={chatId}
                 selectedDocIds={selectedDocIds}
                 onSelectionChange={setSelectedDocIds}
                 disabled={!appConfig?.s3Connected || sending || messagesLoading}

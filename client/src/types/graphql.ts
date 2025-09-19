@@ -168,6 +168,7 @@ export interface MessageMetadata {
     outputTokens?: number;
   };
 
+  documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
 }
 
@@ -239,4 +240,9 @@ export interface DocumentStatusMessage {
 
 export interface UploadDocumentsResponse {
   documents?: Document[];
+}
+
+export interface ChatDocument {
+  document: Document;
+  chat: Chat;
 }

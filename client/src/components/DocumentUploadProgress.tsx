@@ -1,5 +1,5 @@
 import React, { Fragment, useState } from "react";
-import { Document } from "@/store/services/graphql";
+import { Document } from "@/types/graphql";
 import { Alert, Badge, Text, Box, Group } from "@mantine/core";
 import { IconAlertCircle, IconUpload } from "@tabler/icons-react";
 import { getStatusColor } from "@/types/ai";

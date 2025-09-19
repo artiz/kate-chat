@@ -107,6 +107,14 @@
     border-left: 1px solid var(--mantine-color-default-border);
     margin-left: 1rem;
     margin-top: 0.5rem;
+
+    font-size: 80%;
+
+    :global ol,
+    :global ul {
+      margin: 0.25rem 0;
+      padding: 0 0 0 1rem;
+    }
   }
 
   :global table {
