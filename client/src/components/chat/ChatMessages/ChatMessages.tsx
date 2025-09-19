@@ -1,18 +1,13 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Paper, Text, Stack, Group, Avatar, Loader, Box } from "@mantine/core";
 import { IconRobot } from "@tabler/icons-react";
-import { Message } from "@/store/slices/chatSlice";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import {
   DELETE_MESSAGE_MUTATION,
-  DeleteMessageResponse,
   SWITCH_MODEL_MUTATION,
-  SwitchModelResponse,
   CALL_OTHERS_MUTATION as CALL_OTHER_MUTATION,
-  CallOthersResponse,
   EDIT_MESSAGE_MUTATION,
-  EditMessageResponse,
 } from "@/store/services/graphql";
 
 import { ok } from "@/lib/assert";
@@ -20,11 +15,20 @@ import { ChatMessage } from "./ChatMessage";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 import { EditMessageModal } from "./EditMessageModal";
 import { ImageModal } from "@/components/modal/ImagePopup";
+import {
+  Message,
+  Document,
+  CallOthersResponse,
+  DeleteMessageResponse,
+  EditMessageResponse,
+  SwitchModelResponse,
+} from "@/types/graphql";
 
 interface ChatMessagesProps {
   messages: Message[];
   sending: boolean;
   selectedModelName?: string;
+  chatDocuments?: Document[];
   onMessageDeleted?: (res: DeleteMessageResponse) => void;
   onSending?: () => void;
   onMessageModelSwitch?: (message: Message) => void;
@@ -36,6 +40,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   messages,
   sending,
   selectedModelName,
+  chatDocuments,
   onMessageDeleted,
   onSending,
   onMessageModelSwitch,
@@ -389,6 +394,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               index={index}
               disabled={deletingMessage || switchingModel || callingOthers || editingMessage}
               loading={msg.id === updatedMessageId}
+              chatDocuments={chatDocuments}
             />
           </Group>
         ))}

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { BASE_MESSAGE_FRAGMENT, Message } from "@/store/services/graphql";
+import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql";
 import { MessageRole, MessageType } from "@/types/ai";
+import { Message } from "@/types/graphql";
 
 const THROTTLE_TIMEOUT = 60; // ms throttle timeout
 

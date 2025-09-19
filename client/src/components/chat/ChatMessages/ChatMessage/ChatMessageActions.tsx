@@ -6,8 +6,8 @@ import classes from "../ChatMessage.module.scss";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { ModelType } from "@/store/slices/modelSlice";
-import { MessageMetadata } from "@/store/services/graphql";
 import { MessageRole } from "@/types/ai";
+import { MessageMetadata } from "@/types/graphql";
 
 interface IProps {
   id: string;

@@ -19,8 +19,11 @@ import { Document } from "@/types/graphql";
 
 import classes from "./ChatDocumentsSelector.module.scss";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
+import { useNavigate } from "react-router-dom";
+import { ok } from "@/lib/assert";
 
 interface ChatDocumentsSelectorProps {
+  chatId?: string;
   selectedDocIds: string[];
   onSelectionChange: (selectedIds: string[]) => void;
   disabled?: boolean;
@@ -32,7 +35,9 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   onSelectionChange,
   documents = [],
   disabled = false,
+  chatId,
 }) => {
+  const navigate = useNavigate();
   const [opened, setOpened] = useState(false);
 
   // Filter documents that are ready for RAG search
@@ -63,6 +68,11 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
 
   const handleUnselectAll = () => {
     onSelectionChange([]);
+  };
+
+  const handleOpenDocuments = () => {
+    ok(chatId);
+    navigate(`/chat/${chatId}/documents`);
   };
 
   const isAllSelected = availableDocuments.length > 0 && selectedDocIds.length === availableDocuments.length;
@@ -168,9 +178,9 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
             </Stack>
           </ScrollArea.Autosize>
 
-          <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-gray-3)" }}>
-            <Button size="xs" variant="light">
-              Manage Documents...
+          <Group justify="space-between" pt="sm">
+            <Button size="xs" variant="light" onClick={handleOpenDocuments}>
+              Documents...
             </Button>
           </Group>
         </Stack>

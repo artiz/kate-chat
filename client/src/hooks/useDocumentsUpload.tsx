@@ -1,9 +1,11 @@
-import { useMutation, gql, useSubscription } from "@apollo/client";
-import { Document, DOCUMENT_STATUS_SUBSCRIPTION, DocumentStatusMessage } from "@/store/services/graphql";
+import { useSubscription } from "@apollo/client";
+import { DOCUMENT_STATUS_SUBSCRIPTION } from "@/store/services/graphql";
+import { Document } from "@/types/graphql";
 import { APP_API_URL } from "@/lib/config";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
+import { DocumentStatusMessage } from "@/types/graphql";
 
 export const useDocumentsUpload = () => {
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, File>>({});

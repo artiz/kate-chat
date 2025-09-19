@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { IconRobot, IconUser } from "@tabler/icons-react";
+import { IconFile, IconRobot, IconUser } from "@tabler/icons-react";
 
 import { debounce } from "lodash";
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
@@ -11,18 +11,19 @@ import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
-import { Message } from "@/store/services/graphql";
 import { MessageRole } from "@/types/ai";
+import { Message, Document } from "@/types/graphql";
 
 interface ChatMessageProps {
   message: Message;
   index: number;
   disabled?: boolean;
   loading?: boolean;
+  chatDocuments?: Document[];
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index, disabled = false, loading = false } = props;
+  const { message, index, disabled = false, loading = false, chatDocuments } = props;
 
   const {
     role,
@@ -140,31 +141,84 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   useEffect(() => {
     const relevantsChunks = message?.metadata?.relevantsChunks || [];
+    const documentIds = message?.metadata?.documentIds || [];
+    const detailsNodes: ReactNode[] = [];
+
+    if (documentIds.length && chatDocuments) {
+      const docsMap = chatDocuments.reduce(
+        (acc, doc) => {
+          acc[doc.id] = doc;
+          return acc;
+        },
+        {} as Record<string, Document>
+      );
+
+      const cmp = (
+        <div>
+          <Text w={500} size="sm">
+            Semantic search
+          </Text>
+          <ol>
+            {documentIds.map((docId, idx) => (
+              <li key={idx}>
+                {docsMap[docId] ? (
+                  docsMap[docId].downloadUrl ? (
+                    <a href={docsMap[docId].downloadUrl} target="_blank" rel="noopener noreferrer">
+                      {docsMap[docId].fileName}
+                    </a>
+                  ) : (
+                    docsMap[docId].fileName
+                  )
+                ) : (
+                  docId
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      );
+
+      detailsNodes.push(cmp);
+    }
+
     if (relevantsChunks.length) {
+      const cmp = (
+        <div>
+          <Text w={500} size="sm" mt="lg">
+            Related chunks
+          </Text>
+          {relevantsChunks.map((chunk, idx) => (
+            <div key={idx}>
+              <Text size="xs" c="dimmed">
+                {chunk.documentName || chunk.id} (Page {chunk.page})
+              </Text>
+              <Text size="xs" c="dimmed">
+                Relevance: {chunk.relevance || "N/A"}
+              </Text>
+              <Box fz="12">
+                <pre>{chunk.content}</pre>
+              </Box>
+            </div>
+          ))}
+        </div>
+      );
+
+      detailsNodes.push(cmp);
+    }
+
+    if (detailsNodes.length) {
       const cmp = (
         <Box mt="md">
           <Group mb={5}>
             <Button onClick={toggleDetails} p="xs" variant="light" size="xs">
               Details
             </Button>
+
+            {documentIds?.length && isUserMessage ? <IconFile size={24} /> : null}
           </Group>
 
           <Collapse in={showDetails}>
-            <div className={classes.detailsBlock}>
-              {relevantsChunks.map((chunk, idx) => (
-                <div key={idx}>
-                  <Text size="xs" color="dimmed">
-                    {chunk.documentName || chunk.id} (Page {chunk.page})
-                  </Text>
-                  <Text size="xs" color="dimmed">
-                    Relevance: {chunk.relevance || "N/A"}
-                  </Text>
-                  <Box fz="12">
-                    <pre>{chunk.content}</pre>
-                  </Box>
-                </div>
-              ))}
-            </div>
+            <div className={classes.detailsBlock}>{detailsNodes}</div>
           </Collapse>
         </Box>
       );
@@ -173,7 +227,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     } else {
       setDetails(null);
     }
-  }, [message?.metadata?.relevantsChunks, showDetails]);
+  }, [message?.metadata?.relevantsChunks, message?.metadata?.documentIds, chatDocuments, showDetails, isUserMessage]);
 
   const mainMessage = useMemo(() => {
     const model = models.find(m => m.modelId === modelId);
