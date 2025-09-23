@@ -108,15 +108,12 @@ export class GqlProviderInfo {
 }
 
 @ObjectType()
-export class GqlModel extends Model {}
-
-@ObjectType()
 export class GqlModelsList {
   @Field({ nullable: true })
   error?: string;
 
-  @Field(() => [GqlModel], { nullable: true })
-  models?: GqlModel[];
+  @Field(() => [Model], { nullable: true })
+  models?: Model[];
 
   @Field(() => [GqlProviderInfo], { nullable: true })
   providers?: GqlProviderInfo[];
@@ -324,4 +321,22 @@ export class DocumentStatusMessage {
 
   @Field({ nullable: true })
   sync?: boolean;
+}
+
+@ObjectType()
+export class AddDocumentsToChatResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => Chat, { nullable: true })
+  chat?: Chat;
+}
+
+@ObjectType()
+export class RemoveDocumentsFromChatResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => Chat, { nullable: true })
+  chat?: Chat;
 }

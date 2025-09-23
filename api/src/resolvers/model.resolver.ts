@@ -2,7 +2,7 @@ import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai.service";
 import { Model } from "../entities/Model";
 
-import { GqlModelsList, GqlModel, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
+import { GqlModelsList, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
 import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { MessageRole, ModelMessage, ModelType } from "../types/ai.types";
@@ -90,7 +90,7 @@ export class ModelResolver extends BaseResolver {
       }
 
       // Save models to database
-      const outModels: GqlModel[] = [];
+      const outModels: Model[] = [];
       for (const [modelId, info] of Object.entries(aiModels)) {
         // Create new model
         const model = modelRepository.create({
@@ -103,7 +103,7 @@ export class ModelResolver extends BaseResolver {
         });
 
         // Save the model
-        const savedModel: GqlModel = await modelRepository.save(model);
+        const savedModel: Model = await modelRepository.save(model);
         outModels.push(savedModel);
       }
 
@@ -150,9 +150,9 @@ export class ModelResolver extends BaseResolver {
     }
   }
 
-  @Query(() => [GqlModel])
+  @Query(() => [Model])
   @Authorized()
-  async getActiveModels(@Ctx() context: GraphQLContext): Promise<GqlModel[]> {
+  async getActiveModels(@Ctx() context: GraphQLContext): Promise<Model[]> {
     const user = await this.validateContextToken(context);
     const modelRepository = getRepository(Model);
     const dbModels = await modelRepository.find({
@@ -169,12 +169,9 @@ export class ModelResolver extends BaseResolver {
     return this.refreshModels(context);
   }
 
-  @Mutation(() => GqlModel)
+  @Mutation(() => Model)
   @Authorized()
-  async updateModelStatus(
-    @Arg("input") input: UpdateModelStatusInput,
-    @Ctx() context: GraphQLContext
-  ): Promise<GqlModel> {
+  async updateModelStatus(@Arg("input") input: UpdateModelStatusInput, @Ctx() context: GraphQLContext): Promise<Model> {
     const user = await this.validateContextToken(context);
     try {
       const { modelId, isActive } = input;

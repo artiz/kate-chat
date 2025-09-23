@@ -204,9 +204,7 @@ export interface Chat {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
-  chatDocuments?: {
-    document: Document;
-  }[];
+  chatDocuments?: ChatDocument[];
 }
 
 export interface Document {
@@ -243,6 +241,6 @@ export interface UploadDocumentsResponse {
 }
 
 export interface ChatDocument {
-  document: Document;
   chat: Chat;
+  document: Document;
 }

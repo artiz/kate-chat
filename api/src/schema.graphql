@@ -3,6 +3,11 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type AddDocumentsToChatResponse {
+  chat: Chat
+  error: String
+}
+
 type AdminStatsResponse {
   chatsCount: Float!
   modelsCount: Float!
@@ -225,28 +230,9 @@ type GqlMessagesList {
   total: Float
 }
 
-type GqlModel {
-  apiProvider: String!
-  createdAt: DateTimeISO!
-  description: String
-  id: ID!
-  imageInput: Boolean!
-  isActive: Boolean!
-  isCustom: Boolean!
-  maxInputTokens: Float
-  modelId: String!
-  name: String!
-  provider: String
-  streaming: Boolean!
-  type: String!
-  updatedAt: DateTimeISO!
-  user: User
-  userId: String
-}
-
 type GqlModelsList {
   error: String
-  models: [GqlModel!]
+  models: [Model!]
   providers: [GqlProviderInfo!]
   total: Float
 }
@@ -339,6 +325,7 @@ type ModelResponseUsage {
 }
 
 type Mutation {
+  addDocumentsToChat(chatId: ID!, documentIds: [ID!]!): AddDocumentsToChatResponse!
   callOther(input: CallOtherInput!): CallOtherResponse!
   changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
@@ -352,10 +339,11 @@ type Mutation {
   register(input: RegisterInput!): AuthResponse!
   reindexDocument(id: ID!): Document!
   reloadModels: GqlModelsList!
+  removeDocumentsFromChat(chatId: ID!, documentIds: [ID!]!): RemoveDocumentsFromChatResponse!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
-  updateModelStatus(input: UpdateModelStatusInput!): GqlModel!
+  updateModelStatus(input: UpdateModelStatusInput!): Model!
   updateUser(input: UpdateUserInput!): User!
 }
 
@@ -366,11 +354,11 @@ type ProviderDetail {
 
 type Query {
   appConfig: ApplicationConfig
+  chatById(id: ID!): Chat
   documents: [Document!]!
-  getActiveModels: [GqlModel!]!
+  getActiveModels: [Model!]!
   getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!
-  getChatById(id: ID!): Chat
   getChatMessages(input: GetMessagesInput!): GqlMessagesList!
   getChats(input: GetChatsInput): GqlChatsList!
   getCosts(input: GetCostsInput!): GqlCostsInfo!
@@ -388,6 +376,11 @@ input RegisterInput {
   lastName: String!
   password: String!
   recaptchaToken: String
+}
+
+type RemoveDocumentsFromChatResponse {
+  chat: Chat
+  error: String
 }
 
 type Subscription {

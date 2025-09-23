@@ -13,7 +13,7 @@ import {
 } from "@/types/graphql";
 
 export const BASE_MODEL_FRAGMENT = `
-    fragment BaseModel on GqlModel {
+    fragment BaseModel on Model {
       id
       name
       modelId
@@ -23,6 +23,30 @@ export const BASE_MODEL_FRAGMENT = `
       type
       imageInput
       maxInputTokens
+    }
+`;
+
+export const BASE_CHAT_FRAGMENT = `
+    fragment BaseChat on Chat {
+      id
+        title
+        modelId
+        isPristine
+        messagesCount
+        createdAt
+        updatedAt
+        temperature
+        maxTokens
+        topP
+        imagesCount
+        chatDocuments {
+          document {
+            id
+            fileName
+            status
+            downloadUrl
+          }
+        }
     }
 `;
 
@@ -293,6 +317,28 @@ export const DELETE_DOCUMENT_MUTATION = gql`
   }
 `;
 
+export const ADD_TO_CHAT_MUTATION = gql`
+  mutation AddDocumentsToChat($documentIds: [ID!]!, $chatId: ID!) {
+    addDocumentsToChat(documentIds: $documentIds, chatId: $chatId) {
+      chat {
+        ...BaseChat
+      }
+      error
+    }
+  }
+`;
+
+export const REMOVE_FROM_CHAT_MUTATION = gql`
+  mutation RemoveDocumentsFromChat($documentIds: [ID!]!, $chatId: ID!) {
+    removeDocumentsFromChat(documentIds: $documentIds, chatId: $chatId) {
+      chat {
+        ...BaseChat
+      }
+      error
+    }
+  }
+`;
+
 // Query to find a pristine chat
 export const FIND_PRISTINE_CHAT = gql`
   query FindPristineChat {
@@ -337,26 +383,16 @@ export const GET_CHAT_MESSAGES = gql`
       total
       hasMore
       chat {
-        id
-        title
-        modelId
-        isPristine
-        messagesCount
-        createdAt
-        updatedAt
-        temperature
-        maxTokens
-        topP
-        imagesCount
-        chatDocuments {
-          document {
-            id
-            fileName
-            status
-            downloadUrl
-          }
-        }
+        ...BaseChat
       }
+    }
+  }
+`;
+
+export const GET_CHAT = gql`
+  query GetChat($id: ID!) {
+    getChatById(id: $id) {
+      ...BaseChat
     }
   }
 `;
@@ -389,6 +425,28 @@ export const GET_ALL_IMAGES = gql`
 
 export const GET_DOCUMENTS = gql`
   query GetDocuments {
+    documents {
+      id
+      fileName
+      fileSize
+      status
+      summary
+      statusInfo
+      statusProgress
+      createdAt
+      downloadUrl
+      embeddingsModelId
+      summaryModelId
+    }
+  }
+`;
+
+export const GET_DOCUMENTS_FOR_CHAT = gql`
+  query GetDocumentsForChat($chatId: ID!) {
+    chatById(id: $chatId) {
+      ...BaseChat
+    }
+
     documents {
       id
       fileName

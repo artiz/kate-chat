@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { DocumentStatusMessage } from "@/types/graphql";
+import { DocumentStatus } from "@/types/ai";
 
 export const useDocumentsUpload = () => {
   const [uploadingFiles, setUploadingFiles] = useState<Record<string, File>>({});
@@ -33,11 +34,15 @@ export const useDocumentsUpload = () => {
         {} as Record<string, DocumentStatusMessage>
       );
 
-      setUploadingDocs(prev => prev.map(doc => (docsMap[doc.id] ? { ...doc, ...docsMap[doc.id] } : doc)));
+      setUploadingDocs(prev =>
+        prev
+          .map(doc => (docsMap[doc.id] ? { ...doc, ...docsMap[doc.id] } : doc))
+          .filter(doc => doc.status !== DocumentStatus.READY)
+      );
     }
   }, [subscriptionData]);
 
-  const uploadDocuments = async (files: File[], chatId: string, onProgress: (progress: number) => void) => {
+  const uploadDocuments = async (files: File[], chatId?: string, onProgress?: (progress: number) => void) => {
     const formData = new FormData();
     const filesToUpload = files.filter(
       file => !uploadingFiles[file.name] || uploadingFiles[file.name].size !== file.size
@@ -58,8 +63,8 @@ export const useDocumentsUpload = () => {
     setUploadError(null);
 
     try {
-      onProgress(0);
-      const response = await fetch(`${APP_API_URL}/files/upload?chatId=${encodeURIComponent(chatId)}`, {
+      onProgress?.(0);
+      const response = await fetch(`${APP_API_URL}/files/upload?chatId=${chatId ? encodeURIComponent(chatId) : ""}`, {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -70,7 +75,7 @@ export const useDocumentsUpload = () => {
         // TODO: use axios to get it working
         // onUploadProgress: (evt: any) => {
         //   const progress = Math.round(evt.loaded / evt.total);
-        //   onProgress(progress);
+        //   onProgress?.(progress);
         // },
       });
 
@@ -79,11 +84,11 @@ export const useDocumentsUpload = () => {
       }
 
       const documents = (await response.json()) as Document[];
-      setUploadingDocs(prev => [...prev, ...documents]);
+      setUploadingDocs(prev => [...prev, ...documents.filter(doc => doc.status !== DocumentStatus.READY)]);
     } catch (error: unknown) {
       setUploadError(error instanceof Error ? error : new Error(String(error)));
     } finally {
-      onProgress(1);
+      onProgress?.(1);
       setLoading(false);
     }
   };

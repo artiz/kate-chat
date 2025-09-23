@@ -154,7 +154,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
       );
 
       const cmp = (
-        <div>
+        <div key="rag-search">
           <Text w={500} size="sm">
             Semantic search
           </Text>
@@ -183,7 +183,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
     if (relevantsChunks.length) {
       const cmp = (
-        <div>
+        <div key="rag-chunks">
           <Text w={500} size="sm" mt="lg">
             Related chunks
           </Text>

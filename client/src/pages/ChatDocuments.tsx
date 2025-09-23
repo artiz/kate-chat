@@ -8,7 +8,7 @@ export const ChatDocuments: React.FC = () => {
 
   return (
     <Container size="xl" py="xl">
-      <DocumentsDashboard />
+      <DocumentsDashboard chatId={id} />
     </Container>
   );
 };

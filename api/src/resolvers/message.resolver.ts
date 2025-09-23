@@ -20,6 +20,7 @@ import { MessageType } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
 import { S3Service } from "@/services/s3.service";
+import { ChatsService } from "@/services/chats.service";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -29,12 +30,12 @@ const logger = createLogger(__filename);
 @Resolver(Message)
 export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
-  private chatRepository: Repository<Chat>;
+  private chatsService: ChatsService;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
-    this.chatRepository = getRepository(Chat);
+    this.chatsService = new ChatsService();
   }
 
   @Query(() => GqlMessagesList)
@@ -45,17 +46,7 @@ export class MessageResolver extends BaseResolver {
     const token = await this.validateContextToken(context);
     const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
-    const chat = await this.chatRepository
-      .createQueryBuilder("chat")
-      .addSelect(sq => {
-        return sq.select("COUNT(*)").from(Message, "m").where("m.chatId = chat.id");
-      }, "chat_messagesCount")
-      .leftJoinAndSelect("chat.user", "user")
-      .leftJoinAndSelect("chat.chatDocuments", "chatDocuments")
-      .leftJoinAndSelect("chatDocuments.document", "document")
-
-      .where({ id: chatId, user: { id: token.userId } })
-      .getOne();
+    const chat = await this.chatsService.getChat(chatId, token.userId);
 
     if (!chat) throw new Error("Chat not found");
 

@@ -222,7 +222,7 @@ export const ChatsNavSection = () => {
   useEffect(() => {
     const path = location.pathname;
     if (path.startsWith("/chat/")) {
-      const id = path.split("/").pop();
+      const id = path.split("/")[2];
       if (id && id !== "new") {
         setCurrentChatId(id);
       }

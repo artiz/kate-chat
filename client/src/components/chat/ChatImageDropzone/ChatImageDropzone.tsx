@@ -5,12 +5,12 @@ import classes from "./ChatImageDropzone.module.scss";
 import { notEmpty } from "@/lib/assert";
 import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
-interface ChatImageDropzoneProps {
+interface IProps {
   disabled?: boolean;
   onFilesAdd: (images: File[]) => void;
 }
 
-export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd, disabled }) => {
+export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
