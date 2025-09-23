@@ -7,6 +7,7 @@ export const OPENAI_NON_CHAT_MODELS = [
   "gpt-4o-mini-realtime",
   "gpt-4o-realtime",
   "o1-pro",
+  "tts-1",
 ];
 
 export const OPENAI_MODEL_MAX_INPUT_TOKENS: { [key: string]: number } = {

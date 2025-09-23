@@ -29,18 +29,6 @@ export const YANDEX_MODELS: YandexModel[] = [
     maxInputTokens: 32_000,
   },
   {
-    name: "Llama 8B",
-    provider: "Meta",
-    uri: `gpt://{folder}/llama-lite`,
-    maxInputTokens: 8192,
-  },
-  {
-    name: "Llama 70B",
-    provider: "Meta",
-    uri: `gpt://{folder}/llama`,
-    maxInputTokens: 8192,
-  },
-  {
     name: "Qwen3 235B",
     provider: "Alibaba Cloud",
     uri: `gpt://{folder}/qwen3-235b-a22b-fp8/latest`,
