@@ -142,6 +142,13 @@ type DocumentStatusMessage {
   statusProgress: Float
   summary: String
   sync: Boolean
+  updatedAt: DateTimeISO
+}
+
+type DocumentsResponse {
+  documents: [Document!]!
+  hasMore: Boolean!
+  total: Float!
 }
 
 type EditMessageResponse {
@@ -159,6 +166,12 @@ input GetCostsInput {
   apiProvider: String!
   endTime: Float
   startTime: Float!
+}
+
+input GetDocumentsInput {
+  limit: Float = 20
+  offset: Float = 0
+  searchTerm: String
 }
 
 input GetImagesInput {
@@ -355,13 +368,13 @@ type ProviderDetail {
 type Query {
   appConfig: ApplicationConfig
   chatById(id: ID!): Chat
-  documents: [Document!]!
   getActiveModels: [Model!]!
   getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!
   getChatMessages(input: GetMessagesInput!): GqlMessagesList!
   getChats(input: GetChatsInput): GqlChatsList!
   getCosts(input: GetCostsInput!): GqlCostsInfo!
+  getDocuments(input: GetDocumentsInput): DocumentsResponse!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
   getUsers(input: GetUsersInput): AdminUsersResponse!

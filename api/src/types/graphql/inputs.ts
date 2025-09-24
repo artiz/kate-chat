@@ -256,3 +256,15 @@ export class GetUsersInput {
   @Field({ nullable: true })
   searchTerm?: string;
 }
+
+@InputType()
+export class GetDocumentsInput {
+  @Field({ nullable: true, defaultValue: 0 })
+  offset?: number;
+
+  @Field({ nullable: true, defaultValue: 20 })
+  limit?: number;
+
+  @Field({ nullable: true })
+  searchTerm?: string;
+}

@@ -35,7 +35,7 @@ import { FileDropzone } from "./ChatImageDropzone/ChatImageDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
-import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
+import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
 
@@ -337,11 +337,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const handleAddFiles = useCallback(
     (files: File[]) => {
-      const filesToAdd = files.filter(f => f.size < MAX_FILE_SIZE);
+      const filesToAdd = files.filter(f => f.size < MAX_UPLOAD_FILE_SIZE);
       if (filesToAdd.length < files.length) {
         notifications.show({
           title: "Warning",
-          message: `Some files are too large and were not added (max size: ${MAX_FILE_SIZE / 1024 / 1024} MB)`,
+          message: `Some files are too large and were not added (max size: ${MAX_UPLOAD_FILE_SIZE / 1024 / 1024} MB)`,
           color: "yellow",
         });
       }

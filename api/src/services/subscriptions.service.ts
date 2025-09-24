@@ -205,6 +205,7 @@ export class SubscriptionsService {
       statusInfo: document.statusInfo,
       statusProgress: document.statusProgress,
       summary: document.summary,
+      updatedAt: document.updatedAt,
     };
 
     // Publish directly if Redis is not configured

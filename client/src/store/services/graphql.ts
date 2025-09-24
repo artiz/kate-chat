@@ -50,6 +50,23 @@ export const BASE_CHAT_FRAGMENT = `
     }
 `;
 
+export const BASE_DOCUMENT_FRAGMENT = `
+    fragment BaseDocument on Document {
+      id
+      fileName
+      fileSize
+      status
+      summary
+      statusInfo
+      statusProgress
+      createdAt
+      updatedAt
+      downloadUrl
+      embeddingsModelId
+      summaryModelId
+    }
+`;
+
 export const FULL_USER_FRAGMENT = `
     fragment FullUser on User {
       id
@@ -424,41 +441,33 @@ export const GET_ALL_IMAGES = gql`
 `;
 
 export const GET_DOCUMENTS = gql`
-  query GetDocuments {
-    documents {
-      id
-      fileName
-      fileSize
-      status
-      summary
-      statusInfo
-      statusProgress
-      createdAt
-      downloadUrl
-      embeddingsModelId
-      summaryModelId
+  ${BASE_DOCUMENT_FRAGMENT}
+
+  query GetDocuments($input: GetDocumentsInput) {
+    getDocuments(input: $input) {
+      documents {
+        ...BaseDocument
+      }
+      total
+      hasMore
     }
   }
 `;
 
 export const GET_DOCUMENTS_FOR_CHAT = gql`
-  query GetDocumentsForChat($chatId: ID!) {
+  ${BASE_CHAT_FRAGMENT}
+  ${BASE_DOCUMENT_FRAGMENT}
+  query GetDocumentsForChat($chatId: ID!, $input: GetDocumentsInput) {
     chatById(id: $chatId) {
       ...BaseChat
     }
 
-    documents {
-      id
-      fileName
-      fileSize
-      status
-      summary
-      statusInfo
-      statusProgress
-      createdAt
-      downloadUrl
-      embeddingsModelId
-      summaryModelId
+    getDocuments(input: $input) {
+      documents {
+        ...BaseDocument
+      }
+      total
+      hasMore
     }
   }
 `;
@@ -471,6 +480,7 @@ export const DOCUMENT_STATUS_SUBSCRIPTION = gql`
       statusProgress
       statusInfo
       summary
+      updatedAt
     }
   }
 `;
@@ -663,3 +673,24 @@ export const graphqlApi = api.injectEndpoints({
 });
 
 export const { useGetCurrentUserQuery, useGetModelsQuery, useGetChatsQuery, useGetInitialDataQuery } = graphqlApi;
+
+// Re-export types for other modules
+export type {
+  ApplicationConfig,
+  Chat,
+  Document,
+  DocumentStatusMessage,
+  ChatDocument,
+  GetDocumentsResponse,
+  GetDocumentsForChatResponse,
+  GetDocumentsInput,
+  CurrentUserResponse,
+  GetModelsResponse,
+  GetChatsResponse,
+  GetInitialDataResponse,
+  CreateChatInput,
+  ImageInput,
+  LibraryImage,
+  GetAllImagesResponse,
+  GetImagesInput,
+} from "@/types/graphql";

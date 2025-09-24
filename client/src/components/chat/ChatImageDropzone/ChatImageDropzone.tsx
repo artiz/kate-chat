@@ -7,10 +7,11 @@ import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
 interface IProps {
   disabled?: boolean;
+  active?: boolean;
   onFilesAdd: (images: File[]) => void;
 }
 
-export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
+export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +92,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
     <>
       <Box
         ref={dropzoneRef}
-        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""} ${disabled ? classes.disabled : ""}`}
+        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""} ${active ? classes.activated : ""} ${disabled ? classes.disabled : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

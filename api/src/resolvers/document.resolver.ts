@@ -5,10 +5,11 @@ import { Document } from "@/entities/Document";
 import { GraphQLContext } from ".";
 import { DOCUMENT_STATUS_CHANNEL } from "@/services/subscriptions.service";
 import { BaseResolver } from "./base.resolver";
-import { Repository } from "typeorm";
+import { Repository, ILike } from "typeorm";
 import { S3Service } from "@/services/s3.service";
 import { SQSService } from "@/services/sqs.service";
-import { DocumentStatusMessage } from "@/types/graphql/responses";
+import { DocumentStatusMessage, DocumentsResponse } from "@/types/graphql/responses";
+import { GetDocumentsInput } from "@/types/graphql/inputs";
 
 @Resolver(Document)
 export class DocumentResolver extends BaseResolver {
@@ -49,10 +50,30 @@ export class DocumentResolver extends BaseResolver {
     return document;
   }
 
-  @Query(() => [Document])
-  async documents(@Ctx() context: GraphQLContext): Promise<Document[]> {
+  @Query(() => DocumentsResponse)
+  async getDocuments(
+    @Arg("input", { nullable: true }) input: GetDocumentsInput = {},
+    @Ctx() context: GraphQLContext
+  ): Promise<DocumentsResponse> {
     const user = await this.validateContextUser(context);
-    return await this.documentRepo.find({ where: { owner: { id: user.id } } });
+    const { offset = 0, limit = 20, searchTerm } = input;
+
+    let query = this.documentRepo
+      .createQueryBuilder("document")
+      .where("document.ownerId = :userId", { userId: user.id });
+
+    if (searchTerm) {
+      query = query.where([{ fileName: ILike(`%${searchTerm}%`) }]);
+    }
+
+    query = query.orderBy("document.createdAt", "DESC").skip(offset).take(limit);
+    const [documents, total] = await query.getManyAndCount();
+
+    return {
+      documents,
+      total,
+      hasMore: offset + limit < total,
+    };
   }
 
   @Mutation(() => Document)
@@ -129,7 +150,14 @@ export class DocumentResolver extends BaseResolver {
         document.status = payload.status;
         document.statusInfo = payload.statusInfo;
         document.statusProgress = payload.statusProgress;
-        await this.documentRepo.save(document);
+        const updated = await this.documentRepo.save(document);
+
+        return [
+          {
+            ...updated,
+            documentId: updated.id,
+          },
+        ];
       }
     }
 

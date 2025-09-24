@@ -8,18 +8,18 @@ KateChat is a universal chat bot platform similar to chat.openai.com that can be
 ## Features
 
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
-- Distributed messages processing using external queue (Redis), full-pfledged production-like dev environment with docker-compose
+- Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
 - User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
 - Support for various LLM model Providers:
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
-- RAG implementation with documents (PDF, DOCX, TXT) parsing with [Docling](https://docling-project.github.io/docling/) and vestor embeddings stored in PostgreSQL/Sqlite/MS SQL server
+- RAG implementation with documents (PDF, DOCX, TXT) parsing with [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - Multiple chats creation with pristine chat functionality
 - Chat history storage and management, messages editing/deletion
-- Rich markdown formatting: code blocks, images, MatJAX formulas etc.
+- Rich markdown formatting: code blocks, images, MathJax formulas etc.
 - "Switch model"/"Call other model" logic to process current chat messages with another model
 - Parallel call for assistant message against other models to [compare results](#screenshots)
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
@@ -48,9 +48,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Documents: 
-   - add pagination (https://typegraphql.com/docs/generic-types.html)
-   
 * Add LLM tools support:
    - OpenAI - add `apiType: "completions" | "responses"` and use ["responses"](https://platform.openai.com/docs/api-reference/responses/create)
    - Bedrock - use [Converse API](https://builder.aws.com/content/2hW5367isgQOkkXLYjp4JB3Pe16/intro-to-tool-use-with-the-amazon-bedrock-converse-api)  
@@ -84,9 +81,9 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 ## Project Structure
 
 The project consists of several parts:
-1. API - nodejs GraphQL API server. Also there is alternative backend API implementation on Rust, Python is in plans.
+1. API - Node.js GraphQL API server. Also there is alternative backend API implementation on Rust, Python is in plans.
 2. Client - Universal web interface
-3. Database - any TypePRM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
+3. Database - any TypeORM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
 4. Redis - for message queue and caching (optional, but recommended for production)
 
 ## Getting Started
@@ -131,7 +128,7 @@ The project consists of several parts:
 5. **Configure Your Environment**
    - Open the `.env` file in the `api` directory
    - Add your AWS credentials:
-     ```
+     ```env
      AWS_BEDROCK_REGION=us-east-1  # or your preferred region
      AWS_BEDROCK_ACCESS_KEY_ID=your_access_key_id
      AWS_BEDROCK_SECRET_ACCESS_KEY=your_secret_access_key
@@ -159,7 +156,7 @@ The project consists of several parts:
 3. **Configure Your Environment**
    - Open the `.env` file in the `api` directory
    - Add your OpenAI API key:
-     ```
+     ```env
      OPENAI_API_KEY=your_openai_api_key
      OPENAI_API_URL=https://api.openai.com/v1  # Default OpenAI API URL
      ```
@@ -175,12 +172,12 @@ The project consists of several parts:
 
 1. Clone the repository
 ```
-git clone https://github.com/yourname/kate-chat.git
+git clone https://github.com/artiz/kate-chat.git
 cd kate-chat
 ```
 
 2. Set up environment variables
-```
+```bash
 cp api/.env.example api/.env
 cp api-rust/.env.example api-rust/.env
 cp client/.env.example client/.env
@@ -189,13 +186,13 @@ Edit the `.env` files with your configuration settings.
 
 3. Start the production-like environment using Docker
 
-add the following to your `/etc/hosts` file:
+Add the following to your `/etc/hosts` file:
 ```
 127.0.0.1       katechat.dev.com
 ```
 Then run the following commands:
 
-```
+```bash
 export COMPOSE_BAKE=true
 npm run install:all
 npm run client:build
@@ -208,8 +205,8 @@ App will be available at `http://katechat.dev.com`
 
 To run the projects in development mode:
 
-#### Default nodejs API
-```
+#### Default Node.js API
+```bash
 npm run install:all
 npm run dev
 ```
@@ -217,7 +214,7 @@ npm run dev
 #### Rust API (experiment)
 
 1. Server
-```
+```bash
 cd api-rust
 diesel migration run
 cargo build
@@ -225,20 +222,20 @@ cargo run
 ```
 
 2. Client
-```
+```bash
 APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
 ```
 
 ### Default API DB Migrations
 
 Create initial migration (done already)
-```
+```bash
 cd api
 npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/init  
 ```
 
 Create new migration
-```
+```bash
 cd api
 npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/<migration name>  
 ```
@@ -246,26 +243,26 @@ npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrat
 
 ### Production Build
 
-```
+```bash
 npm run install:all
 npm run build
 ```
 
 ### Docker Build
 
-```
+```bash
 docker build -t katechat-api ./ -f api/Dockerfile  
 docker run --env-file=./api/.env  -p4000:4000 katechat-api 
 ```
 
-```
+```bash
 docker build -t katechat-client --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f client/Dockerfile  
 docker run -p3000:80 katechat-client
 ```
 
 
 All-in-one service
-```
+```bash
 docker build -t katechat-app ./ -f infrastructure/services/katechat-app/Dockerfile
 
 docker run -it --rm --pid=host --env-file=./api/.env \
@@ -282,7 +279,7 @@ docker run -it --rm --pid=host --env-file=./api/.env \
 ```
 
 Document processor
-```
+```bash
 DOCKER_BUILDKIT=1 docker build -t katechat-document-processor ./ -f infrastructure/services/katechat-document-processor/Dockerfile
 
 docker run -it --rm --pid=host --env-file=./document-processor/.env \
@@ -360,7 +357,7 @@ KateChat includes an admin dashboard for managing users and viewing system stati
 ### Configuring Admin Access
 
 1. Set the `DEFAULT_ADMIN_EMAILS` environment variable in your `.env` file:
-   ```
+   ```env
    DEFAULT_ADMIN_EMAILS=admin@example.com,another-admin@example.com
    ```
 

@@ -34,6 +34,7 @@ import {
   BASE_MODEL_FRAGMENT,
   BASE_CHAT_FRAGMENT,
   FULL_USER_FRAGMENT,
+  BASE_DOCUMENT_FRAGMENT,
 } from "@/store/services/graphql";
 
 // Setup the Apollo Client provider with authentication and error handling
@@ -161,8 +162,9 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         fragments: createFragmentRegistry(gql`
           ${BASE_MODEL_FRAGMENT}
           ${BASE_CHAT_FRAGMENT}
-          ${FULL_USER_FRAGMENT}
           ${BASE_MESSAGE_FRAGMENT}
+          ${BASE_DOCUMENT_FRAGMENT}
+          ${FULL_USER_FRAGMENT}
         `),
       }),
       defaultOptions: {

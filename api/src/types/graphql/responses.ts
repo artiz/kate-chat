@@ -320,6 +320,9 @@ export class DocumentStatusMessage {
   summary?: string;
 
   @Field({ nullable: true })
+  updatedAt?: Date;
+
+  @Field({ nullable: true })
   sync?: boolean;
 }
 
@@ -339,4 +342,16 @@ export class RemoveDocumentsFromChatResponse {
 
   @Field(() => Chat, { nullable: true })
   chat?: Chat;
+}
+
+@ObjectType()
+export class DocumentsResponse {
+  @Field(() => [Document])
+  documents: Document[];
+
+  @Field()
+  total: number;
+
+  @Field()
+  hasMore: boolean;
 }

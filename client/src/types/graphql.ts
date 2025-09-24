@@ -61,6 +61,29 @@ export interface GetImagesInput {
   limit?: number;
 }
 
+export interface GetDocumentsInput {
+  offset?: number;
+  limit?: number;
+  searchTerm?: string;
+}
+
+export interface GetDocumentsResponse {
+  getDocuments: {
+    documents: Document[];
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+export interface GetDocumentsForChatResponse {
+  getDocuments: {
+    documents: Document[];
+    total: number;
+    hasMore: boolean;
+  };
+  chatById: Chat | null | undefined;
+}
+
 export interface ImageInput {
   fileName: string;
   mimeType: string;
@@ -234,6 +257,7 @@ export interface DocumentStatusMessage {
   statusInfo?: string;
   statusProgress?: number;
   summary?: string;
+  updatedAt?: Date;
 }
 
 export interface UploadDocumentsResponse {
