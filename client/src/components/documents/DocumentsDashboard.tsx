@@ -41,7 +41,7 @@ import {
   GetDocumentsForChatResponse,
 } from "@/types/graphql";
 import { notEmpty, ok } from "@/lib/assert";
-import { FileDropzone } from "../chat/ChatImageDropzone/ChatImageDropzone";
+import { FileDropzone } from "./FileDropzone/FileDropzone";
 import { MAX_UPLOAD_FILE_SIZE } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "../DocumentUploadProgress";
@@ -346,7 +346,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
           });
       }
     },
-    [chatId]
+    [chatId, appConfig, uploadDocuments, refetch]
   );
 
   const handleDragEnter = (ev: React.DragEvent<HTMLDivElement>) => {

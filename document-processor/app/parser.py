@@ -14,6 +14,7 @@ from docling.datamodel.document import ConversionResult
 from docling.document_converter import DocumentConverter, FormatOption
 from docling.datamodel.pipeline_options import (
     PdfPipelineOptions,
+    AcceleratorOptions,
     TableFormerMode,
     EasyOcrOptions,
     TesseractCliOcrOptions,
@@ -52,6 +53,8 @@ class PDFParser:
         """Creates and returns a DocumentConverter with default pipeline options."""
 
         # PDF pipeline options
+        accelerator_options = AcceleratorOptions()
+        
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
         ocr_options = EasyOcrOptions(force_full_page_ocr=use_full_ocr)
@@ -59,6 +62,7 @@ class PDFParser:
         pipeline_options.do_table_structure = True
         pipeline_options.table_structure_options.do_cell_matching = True
         pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
+        pipeline_options.accelerator_options = accelerator_options
 
         format_options = {
             # PDF format

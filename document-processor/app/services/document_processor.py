@@ -111,7 +111,7 @@ class DocumentProcessor:
 
             # Generate reports
             await self._set_progress(redis, progress_key, 0.8, document_id, "parsing")
-            json_content = await asyncio.to_thread(json.dumps, processed_report,  indent=2, ensure_ascii=False)
+            json_content = await asyncio.to_thread(json.dumps, processed_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(
                 s3, parsed_json_key, json_content, "application/json"
             )
@@ -130,7 +130,6 @@ class DocumentProcessor:
         except Exception as e:
             logger.exception(e, f"Failed to parse document {document_id}")
             await self._set_progress(redis, progress_key, 0, document_id, "error", str(e))
-            raise
         finally:
             await redis.close()
 
@@ -193,7 +192,6 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Failed to chunk document {document_id}: {e}")
             await self._set_progress(redis, progress_key, 0, document_id, "error", str(e))
-            raise
         finally:
             await redis.close()
 

@@ -31,7 +31,7 @@ import {
 import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
-import { FileDropzone } from "./ChatImageDropzone/ChatImageDropzone";
+import { FileDropzone } from "../documents/FileDropzone/FileDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
@@ -84,7 +84,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const anchorTimer = useRef<NodeJS.Timeout | null>(null);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const titleForm = useRef<HTMLFormElement>(null);
 
   const {
     messages,
@@ -328,12 +327,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
     [editedTitle, chatId, updateChat]
   );
 
-  const handleTitleBlur = useCallback((event: React.FocusEvent<HTMLElement>) => {
-    setTimeout(() => {
-      setEditedTitle(chat?.title);
-      setIsEditingTitle(false);
-    }, 100);
-  }, []);
+  const handleTitleBlur = useCallback(
+    (event: React.FocusEvent<HTMLElement>) => {
+      setTimeout(() => {
+        setEditedTitle(chat?.title || "");
+        setIsEditingTitle(false);
+      }, 100);
+    },
+    [chat?.title]
+  );
 
   const handleAddFiles = useCallback(
     (files: File[]) => {

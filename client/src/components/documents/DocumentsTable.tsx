@@ -78,7 +78,8 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
             </Table.Td>
             <Table.Td>
               <Badge color={getStatusColor(doc.status)} variant="light">
-                {doc.status}: {doc.statusProgress ? `${(doc.statusProgress * 100).toFixed(2)}%` : "--"}
+                {doc.status}
+                {doc.status != DocumentStatus.ERROR ? `: ${((doc.statusProgress ?? 0) * 100).toFixed(2)}%` : ""}
               </Badge>
             </Table.Td>
 
@@ -153,7 +154,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   View
                 </Button>
               ) : (
-                <Text>{doc.statusInfo}</Text>
+                <Text size="xs">{doc.statusInfo}</Text>
               )}
             </Table.Td>
             <Table.Td>

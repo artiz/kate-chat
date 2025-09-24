@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Group, Text, Paper, ActionIcon, Tooltip, Box } from "@mantine/core";
-import { IconX, IconFileUpload } from "@tabler/icons-react";
-import classes from "./ChatImageDropzone.module.scss";
+import { Group, Tooltip, Box } from "@mantine/core";
+import { IconFileUpload } from "@tabler/icons-react";
+import classes from "./FileDropzone.module.scss";
 import { notEmpty } from "@/lib/assert";
 import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
@@ -112,8 +112,6 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active })
             style={{ display: "none" }}
             disabled={disabled}
           />
-
-          {/* Docs support: text/csv,application/json,*.doc,*.docx,*.pdf,*.txt    */}
         </Group>
       </Box>
     </>
