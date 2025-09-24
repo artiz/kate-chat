@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import io
@@ -71,39 +72,31 @@ class DocumentProcessor:
         parsed_json_key = f"{s3_key}.parsed.json"
         parsed_md_key = f"{s3_key}.parsed.md"
 
+        redis = Redis(connection_pool=redis_connection_pool)
+        s3 = await self._get_s3_client()
+
         try:
-            s3 = await self._get_s3_client()
-            redis = Redis(connection_pool=redis_connection_pool)
 
             # Check if parsing is already in progress or completed
             existing_progress = await redis.get(progress_key)
             if existing_progress is not None:
                 progress = float(existing_progress)
-
                 # Check if output files exist
                 if await self._s3_object_exists(s3, parsed_json_key):
-                    logger.info(
-                        f"Document {document_id} already parsed, skipping to split"
-                    )
+                    logger.info(f"Document {document_id} already parsed, skipping to split")
                     await self._send_split_command(document_id, s3_key)
-                    return
-
                 # If progress < 1, push back to queue with delay
-                if progress < 1:
-                    logger.info(
-                        f"Document {document_id} parsing in progress ({progress*100:.1f}%), delaying"
-                    )
+                elif progress < 1:
+                    logger.info(f"Document {document_id} parsing in progress ({progress*100:.1f}%), delaying")
                     await self._send_parse_command_delayed(document_id, s3_key)
-                    return
+                return
 
-            # Start parsing
             await self._set_progress(redis, progress_key, 0.0, document_id, "parsing")
-
             document_stream = await self._download_s3_stream(s3, s3_key)
             await self._set_progress(redis, progress_key, 0.3, document_id, "parsing")
 
             # Parse document
-            conv_result = self.parser.convert_document(document_stream)
+            conv_result = await asyncio.to_thread(self.parser.convert_document, document_stream)
             if conv_result.status != ConversionStatus.SUCCESS:
                 raise RuntimeError(
                     f"Document parsing failed with status: {conv_result.status}"
@@ -111,20 +104,19 @@ class DocumentProcessor:
 
             # Update progress
             await self._set_progress(redis, progress_key, 0.6, document_id, "parsing")
-            data = conv_result.document.export_to_dict()
-            normalized_data = self.parser._normalize_page_sequence(data)
-
+            report_data = await asyncio.to_thread(lambda: self.parser._normalize_page_sequence(conv_result.document.export_to_dict()))
+             
             processor = JsonReportProcessor()
-            processed_report = processor.assemble_report(conv_result, normalized_data)
+            processed_report = await asyncio.to_thread(processor.assemble_report, conv_result, report_data)
 
             # Generate reports
             await self._set_progress(redis, progress_key, 0.8, document_id, "parsing")
-            json_content = json.dumps(processed_report, indent=2, ensure_ascii=False)
+            json_content = await asyncio.to_thread(json.dumps, processed_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(
                 s3, parsed_json_key, json_content, "application/json"
             )
 
-            markdown_content = self._extract_markdown_text(processed_report)
+            markdown_content = await asyncio.to_thread(self._extract_markdown_text, processed_report)
             await self._upload_to_s3(
                 s3, parsed_md_key, markdown_content, "text/markdown"
             )
@@ -137,8 +129,9 @@ class DocumentProcessor:
 
         except Exception as e:
             logger.exception(e, f"Failed to parse document {document_id}")
-            await self._set_progress(redis, progress_key, 0, document_id, "error")
-            raise
+            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e))
+        finally:
+            await redis.close()
 
     async def _handle_split_document(self, document_id: str, s3_key: str):
         """Handle split_document command"""
@@ -146,49 +139,46 @@ class DocumentProcessor:
         parsed_json_key = f"{s3_key}.parsed.json"
         chunked_json_key = f"{s3_key}.chunked.json"
 
-        try:
-            s3 = await self._get_s3_client()
-            redis = Redis(connection_pool=redis_connection_pool)
+        s3 = await self._get_s3_client()
+        redis = Redis(connection_pool=redis_connection_pool)
 
+        try:
             # Check if chunking is already in progress or completed
             existing_progress = await redis.get(progress_key)
             if existing_progress is not None:
                 progress = float(existing_progress)
-
                 # Check if output file exists
                 if await self._s3_object_exists(s3, chunked_json_key):
                     logger.info(
                         f"Document {document_id} already chunked, skipping to index"
                     )
                     await self._send_index_command(document_id, s3_key)
-                    return
-
                 # If progress < 1, push back to queue with delay
-                if progress < 1:
+                elif progress < 1:
                     logger.info(
                         f"Document {document_id} chunking in progress ({progress*100:.1f}%), delaying"
                     )
                     await self._send_split_command_delayed(document_id, s3_key)
-                    return
+                return
 
             # Start chunking
             await self._set_progress(redis, progress_key, 0.0, document_id, "chunking")
             parsed_content = await self._download_s3_content(s3, parsed_json_key)
-            parsed_data = json.loads(parsed_content)
+            parsed_data = await asyncio.to_thread(json.loads, parsed_content)
 
             # Update progress
             await self._set_progress(redis, progress_key, 0.3, document_id, "chunking")
             text_preparation = PageTextPreparation(parsed_data)
-            joined_report = text_preparation.process_report()
+            joined_report = await asyncio.to_thread(text_preparation.process_report)
 
             # Split into chunks
             await self._set_progress(redis, progress_key, 0.6, document_id, "chunking")
-            chunked_report = self.text_splitter.split_json_report(joined_report)
+            chunked_report = await asyncio.to_thread(self.text_splitter.split_json_report, joined_report)
 
             # Upload chunked JSON to S3
             await self._set_progress(redis, progress_key, 0.8, document_id, "chunking")
 
-            chunked_content = json.dumps(chunked_report, indent=2, ensure_ascii=False)
+            chunked_content = await asyncio.to_thread(json.dumps, chunked_report, indent=2, ensure_ascii=False)
             await self._upload_to_s3(
                 s3, chunked_json_key, chunked_content, "application/json"
             )
@@ -201,20 +191,24 @@ class DocumentProcessor:
 
         except Exception as e:
             logger.error(f"Failed to chunk document {document_id}: {e}")
-            await self._set_progress(redis, progress_key, 0, document_id, "error")
-            raise
+            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e))
+        finally:
+            await redis.close()
 
     async def _set_progress(
-        self, redis: Redis, progress_key: str, progress: float, document_id: str, status: str
+        self, redis: Redis, progress_key: str, progress: float, document_id: str, status: str, info: Optional[str] = None
     ):
         """Set progress in Redis and publish notification"""
         # Set progress with 30 second expiration
         await redis.setex(progress_key, 30, str(progress))
+        logger.debug(f"Document {document_id} status update: {status} {progress*100:.1f}%")
 
         # Publish notification
         notification = {
             "documentId": document_id,
             "status": status,
+            "statusProgress": progress,
+            "statusInfo": info,
             "progress": progress,
             "sync": True,
         }

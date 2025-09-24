@@ -1,4 +1,4 @@
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+export const MAX_UPLOAD_FILE_SIZE = 64 * 1024 * 1024; // 64 MB
 export const MAX_IMAGES = 5; // Maximum number of images allowed in a single message
 
 export const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
@@ -11,7 +11,13 @@ export const SUPPORTED_UPLOAD_FORMATS = [
   "image/png",
   "image/webp",
   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+  "application/msword", // .doc
+  "application/vnd.ms-excel", // .xls
+  "application/vnd.ms-powerpoint", // .ppt
+  "text/csv",
   "text/html",
   "text/plain",
 ];

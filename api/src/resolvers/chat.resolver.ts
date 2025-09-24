@@ -1,24 +1,25 @@
-import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
-import { Repository } from "typeorm";
-import { Chat } from "../entities/Chat";
+import { Resolver, Query, Mutation, Arg, Ctx, ID, Root, FieldResolver } from "type-graphql";
+import { In, Repository } from "typeorm";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
-import { GqlChatsList } from "../types/graphql/responses";
-import { Message } from "@/entities/Message";
-import { ok } from "assert";
+import { AddDocumentsToChatResponse, GqlChatsList, RemoveDocumentsFromChatResponse } from "../types/graphql/responses";
+import { Message, Document, Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
-import { S3Service } from "@/services/s3.service";
 import { MessageRole } from "@/types/ai.types";
-import { MessagesService } from "@/services/messages.service";
+import { ChatsService } from "@/services/chats.service";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
   private chatRepository: Repository<Chat>;
+  private chatDocumentRepo: Repository<ChatDocument>;
+  private chatService: ChatsService;
 
   constructor() {
     super();
     this.chatRepository = getRepository(Chat);
+    this.chatDocumentRepo = getRepository(ChatDocument);
+    this.chatService = new ChatsService();
   }
 
   @Query(() => GqlChatsList)
@@ -79,16 +80,10 @@ export class ChatResolver extends BaseResolver {
   }
 
   @Query(() => Chat, { nullable: true })
-  async getChatById(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Chat | null> {
+  async chatById(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Chat | null> {
     const user = await this.validateContextToken(context);
 
-    const chat = await this.chatRepository.findOne({
-      where: { id, user: { id: user.userId } },
-      relations: ["user"],
-    });
-
-    if (!chat) return null;
-    return chat;
+    return this.chatService.getChat(id, user.userId);
   }
 
   @Mutation(() => Chat)
@@ -139,5 +134,54 @@ export class ChatResolver extends BaseResolver {
 
     await this.chatRepository.delete({ id });
     return true;
+  }
+
+  @Mutation(() => AddDocumentsToChatResponse)
+  async addDocumentsToChat(
+    @Arg("documentIds", () => [ID]) documentIds: string[],
+    @Arg("chatId", () => ID) chatId: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<AddDocumentsToChatResponse> {
+    const user = await this.validateContextToken(context);
+
+    const alreadyAdded = await this.chatDocumentRepo.find({
+      where: [{ documentId: In(documentIds), chatId }],
+    });
+
+    const idsToAdd = documentIds.filter(id => !alreadyAdded.find(ad => ad.documentId === id && ad.chatId === chatId));
+
+    if (idsToAdd.length === 0) {
+      return { error: "No new documents to add" };
+    }
+
+    const docs = this.chatDocumentRepo.create(idsToAdd.map(documentId => ({ chatId, documentId })));
+    await this.chatDocumentRepo.save(docs);
+
+    const chat = await this.chatService.getChat(chatId, user.userId);
+    if (chat) {
+      chat.isPristine = false;
+      await this.chatRepository.save(chat);
+    }
+    return chat ? { chat } : { error: "Chat not found" };
+  }
+
+  @Mutation(() => RemoveDocumentsFromChatResponse)
+  async removeDocumentsFromChat(
+    @Arg("documentIds", () => [ID]) documentIds: string[],
+    @Arg("chatId", () => ID) chatId: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<RemoveDocumentsFromChatResponse> {
+    const user = await this.validateContextToken(context);
+    const mappings = await this.chatDocumentRepo.find({
+      where: [{ documentId: In(documentIds), chatId }],
+    });
+
+    if (mappings.length === 0) {
+      return { error: "No documents to remove" };
+    }
+
+    await this.chatDocumentRepo.delete(mappings);
+    const chat = await this.chatService.getChat(chatId, user.userId);
+    return chat ? { chat } : { error: "Chat not found" };
   }
 }

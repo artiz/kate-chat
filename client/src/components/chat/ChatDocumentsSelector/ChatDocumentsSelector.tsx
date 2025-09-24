@@ -15,12 +15,15 @@ import {
   Badge,
 } from "@mantine/core";
 import { IconFile, IconChevronDown, IconCheck, IconX } from "@tabler/icons-react";
-import { Document } from "@/store/services/graphql";
+import { Document } from "@/types/graphql";
 
 import classes from "./ChatDocumentsSelector.module.scss";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
+import { useNavigate } from "react-router-dom";
+import { ok } from "@/lib/assert";
 
 interface ChatDocumentsSelectorProps {
+  chatId?: string;
   selectedDocIds: string[];
   onSelectionChange: (selectedIds: string[]) => void;
   disabled?: boolean;
@@ -32,7 +35,9 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   onSelectionChange,
   documents = [],
   disabled = false,
+  chatId,
 }) => {
+  const navigate = useNavigate();
   const [opened, setOpened] = useState(false);
 
   // Filter documents that are ready for RAG search
@@ -65,6 +70,11 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
     onSelectionChange([]);
   };
 
+  const handleOpenDocuments = () => {
+    ok(chatId);
+    navigate(`/chat/${chatId}/documents`);
+  };
+
   const isAllSelected = availableDocuments.length > 0 && selectedDocIds.length === availableDocuments.length;
 
   return (
@@ -73,19 +83,17 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
         <Paper className={classes.container} data-disabled={disabled}>
           <Group
             justify="space-between"
+            gap="xs"
             style={{ cursor: disabled ? "not-allowed" : "pointer" }}
             onClick={() => !disabled && setOpened(!opened)}
           >
             <Group gap="xs">
               <IconFile size={16} />
-              <div>
-                RAG
-                {selectedDocuments.length > 0 && (
-                  <Badge size="sm" variant="light" color="blue" ml="xs">
-                    {selectedDocuments.length} selected
-                  </Badge>
-                )}
-              </div>
+              {selectedDocuments.length > 0 && (
+                <Badge size="sm" variant="light" color="blue">
+                  {selectedDocuments.length} selected
+                </Badge>
+              )}
             </Group>
             <ActionIcon
               size="sm"
@@ -106,11 +114,17 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
         <Stack gap="sm">
           <Group justify="space-between">
             <Text size="sm" fw={500}>
-              Select Documents ({selectedDocuments.length}/{availableDocuments.length})
+              RAG Documents ({selectedDocuments.length}/{availableDocuments.length})
             </Text>
             <Group gap="xs">
               <Tooltip label="Select All">
-                <ActionIcon size="sm" variant="light" color="blue" onClick={handleSelectAll} disabled={isAllSelected}>
+                <ActionIcon
+                  size="sm"
+                  variant="light"
+                  color="blue"
+                  onClick={handleSelectAll}
+                  disabled={isAllSelected || availableDocuments.length === 0}
+                >
                   <IconCheck size={12} />
                 </ActionIcon>
               </Tooltip>
@@ -120,7 +134,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                   variant="light"
                   color="gray"
                   onClick={handleUnselectAll}
-                  disabled={selectedDocIds.length === 0}
+                  disabled={selectedDocIds.length === 0 || availableDocuments.length === 0}
                 >
                   <IconX size={12} />
                 </ActionIcon>
@@ -140,7 +154,13 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Text size="sm" truncate title={doc.fileName}>
-                      {doc.fileName}
+                      {doc.downloadUrl ? (
+                        <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
+                          {doc.fileName}
+                        </a>
+                      ) : (
+                        doc.fileName
+                      )}
                     </Text>
                     <Group gap="xs">
                       <Badge size="xs" variant="light" color={getStatusColor(doc.status)}>
@@ -158,18 +178,9 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
             </Stack>
           </ScrollArea.Autosize>
 
-          <Group justify="space-between" pt="sm" style={{ borderTop: "1px solid var(--mantine-color-gray-3)" }}>
-            <Button size="xs" variant="light" onClick={handleSelectAll} disabled={isAllSelected}>
-              Select All
-            </Button>
-            <Button
-              size="xs"
-              variant="light"
-              color="gray"
-              onClick={handleUnselectAll}
-              disabled={selectedDocIds.length === 0}
-            >
-              Unselect All
+          <Group justify="space-between" pt="sm">
+            <Button size="xs" variant="light" onClick={handleOpenDocuments}>
+              Documents...
             </Button>
           </Group>
         </Stack>

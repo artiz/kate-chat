@@ -31,12 +31,11 @@ import {
 import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
 import { ChatSettings } from "./ChatSettings";
-import { ChatImageDropzone } from "./ChatImageDropzone/ChatImageDropzone";
+import { FileDropzone } from "../documents/FileDropzone/FileDropzone";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
 
-import { ImageInput, Message } from "@/store/services/graphql";
-import { MAX_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
+import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
 
@@ -46,6 +45,7 @@ import classes from "./Chat.module.scss";
 import { ModelType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
+import { ImageInput, Message, ChatDocument } from "@/types/graphql";
 
 const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
@@ -77,7 +77,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
-  const { appConfig, currentUser } = useAppSelector(state => state.user);
+  const { appConfig } = useAppSelector(state => state.user);
 
   const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -107,7 +107,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chatDocuments = useMemo(() => {
-    let docs = (chat?.chatDocuments || []).map(doc => doc.document).filter(notEmpty);
+    let docs = (chat?.chatDocuments || []).map((doc: ChatDocument) => doc.document).filter(notEmpty);
     if (uploadingDocs) {
       // If documents are uploading, include them in the list
       docs = docs.map(d => {
@@ -317,8 +317,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, []);
 
   const handleTitleUpdate = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+    (event: React.MouseEvent<HTMLElement>) => {
       const title = editedTitle?.trim() || "";
       if (title && chatId) {
         updateChat(chatId, { title });
@@ -328,13 +327,23 @@ export const ChatComponent = ({ chatId }: IProps) => {
     [editedTitle, chatId, updateChat]
   );
 
+  const handleTitleBlur = useCallback(
+    (event: React.FocusEvent<HTMLElement>) => {
+      setTimeout(() => {
+        setEditedTitle(chat?.title || "");
+        setIsEditingTitle(false);
+      }, 100);
+    },
+    [chat?.title]
+  );
+
   const handleAddFiles = useCallback(
     (files: File[]) => {
-      const filesToAdd = files.filter(f => f.size < MAX_FILE_SIZE);
+      const filesToAdd = files.filter(f => f.size < MAX_UPLOAD_FILE_SIZE);
       if (filesToAdd.length < files.length) {
         notifications.show({
           title: "Warning",
-          message: `Some files are too large and were not added (max size: ${MAX_FILE_SIZE / 1024 / 1024} MB)`,
+          message: `Some files are too large and were not added (max size: ${MAX_UPLOAD_FILE_SIZE / 1024 / 1024} MB)`,
           color: "yellow",
         });
       }
@@ -425,22 +434,20 @@ export const ChatComponent = ({ chatId }: IProps) => {
       <Group justify="space-between" mb="sm" className={classes.titleRow}>
         <Group>
           {isEditingTitle ? (
-            <form onSubmit={handleTitleUpdate}>
-              <TextInput
-                value={editedTitle}
-                onChange={e => setEditedTitle(e.currentTarget.value)}
-                autoFocus
-                rightSection={
-                  <ActionIcon type="submit" size="sm" color="blue">
-                    <IconCheck size={16} />
-                  </ActionIcon>
-                }
-                onBlur={() => setIsEditingTitle(false)}
-              />
-            </form>
+            <TextInput
+              value={editedTitle}
+              onChange={e => setEditedTitle(e.currentTarget.value)}
+              autoFocus
+              rightSection={
+                <ActionIcon type="submit" size="sm" color="blue" onClick={handleTitleUpdate}>
+                  <IconCheck size={16} />
+                </ActionIcon>
+              }
+              onBlur={handleTitleBlur}
+            />
           ) : (
             <Group gap="xs" className={classes.title}>
-              <Title order={3}>{messagesLoading ? "Loading..." : editedTitle || "Untitled Chat"}</Title>
+              <Title order={3}>{messagesLoading ? "Loading..." : chat.title || "Untitled Chat"}</Title>
 
               <ActionIcon
                 onClick={() => {
@@ -463,7 +470,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
           </Box>
           <ActionIcon onClick={() => navigate("/chat")}>
-            <IconX size={18} />
+            <IconX size="1.2rem" />
           </ActionIcon>
         </Group>
       </Group>
@@ -524,6 +531,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <ChatMessages
               messages={messages}
               sending={sending}
+              chatDocuments={chatDocuments}
               selectedModelName={selectedModel?.name}
               onSending={() => setSending(true)}
               onMessageDeleted={removeMessages} // Reload messages after deletion
@@ -573,7 +581,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           <Popover.Target>
             <Tooltip label="Chat Settings">
               <ActionIcon>
-                <IconSettings size={18} />
+                <IconSettings size="1.2rem" />
               </ActionIcon>
             </Tooltip>
           </Popover.Target>
@@ -595,9 +603,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
       <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
         {uploadAllowed && (
           <Group align="flex-start">
-            <ChatImageDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
-            {appConfig?.ragEnabled && chatDocuments.length ? (
+            <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
+            {appConfig?.ragEnabled ? (
               <ChatDocumentsSelector
+                chatId={chatId}
                 selectedDocIds={selectedDocIds}
                 onSelectionChange={setSelectedDocIds}
                 disabled={!appConfig?.s3Connected || sending || messagesLoading}

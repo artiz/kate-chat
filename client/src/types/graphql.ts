@@ -61,6 +61,29 @@ export interface GetImagesInput {
   limit?: number;
 }
 
+export interface GetDocumentsInput {
+  offset?: number;
+  limit?: number;
+  searchTerm?: string;
+}
+
+export interface GetDocumentsResponse {
+  getDocuments: {
+    documents: Document[];
+    total: number;
+    hasMore: boolean;
+  };
+}
+
+export interface GetDocumentsForChatResponse {
+  getDocuments: {
+    documents: Document[];
+    total: number;
+    hasMore: boolean;
+  };
+  chatById: Chat | null | undefined;
+}
+
 export interface ImageInput {
   fileName: string;
   mimeType: string;
@@ -168,6 +191,7 @@ export interface MessageMetadata {
     outputTokens?: number;
   };
 
+  documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
 }
 
@@ -203,9 +227,7 @@ export interface Chat {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
-  chatDocuments?: {
-    document: Document;
-  }[];
+  chatDocuments?: ChatDocument[];
 }
 
 export interface Document {
@@ -235,8 +257,14 @@ export interface DocumentStatusMessage {
   statusInfo?: string;
   statusProgress?: number;
   summary?: string;
+  updatedAt?: Date;
 }
 
 export interface UploadDocumentsResponse {
   documents?: Document[];
+}
+
+export interface ChatDocument {
+  chat: Chat;
+  document: Document;
 }

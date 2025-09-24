@@ -29,7 +29,13 @@ import {
 } from "@/store/slices/authSlice";
 import { APP_API_URL, APP_WS_URL } from "@/lib/config";
 import { createFragmentRegistry } from "@apollo/client/cache";
-import { BASE_MESSAGE_FRAGMENT, BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "@/store/services/graphql";
+import {
+  BASE_MESSAGE_FRAGMENT,
+  BASE_MODEL_FRAGMENT,
+  BASE_CHAT_FRAGMENT,
+  FULL_USER_FRAGMENT,
+  BASE_DOCUMENT_FRAGMENT,
+} from "@/store/services/graphql";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
@@ -155,8 +161,10 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
       cache: new InMemoryCache({
         fragments: createFragmentRegistry(gql`
           ${BASE_MODEL_FRAGMENT}
-          ${FULL_USER_FRAGMENT}
+          ${BASE_CHAT_FRAGMENT}
           ${BASE_MESSAGE_FRAGMENT}
+          ${BASE_DOCUMENT_FRAGMENT}
+          ${FULL_USER_FRAGMENT}
         `),
       }),
       defaultOptions: {

@@ -1,16 +1,17 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Group, Text, Paper, ActionIcon, Tooltip, Box } from "@mantine/core";
-import { IconX, IconFileUpload } from "@tabler/icons-react";
-import classes from "./ChatImageDropzone.module.scss";
+import { Group, Tooltip, Box } from "@mantine/core";
+import { IconFileUpload } from "@tabler/icons-react";
+import classes from "./FileDropzone.module.scss";
 import { notEmpty } from "@/lib/assert";
 import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
-interface ChatImageDropzoneProps {
+interface IProps {
   disabled?: boolean;
+  active?: boolean;
   onFilesAdd: (images: File[]) => void;
 }
 
-export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd, disabled }) => {
+export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +92,7 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
     <>
       <Box
         ref={dropzoneRef}
-        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""} ${disabled ? classes.disabled : ""}`}
+        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""} ${active ? classes.activated : ""} ${disabled ? classes.disabled : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -111,8 +112,6 @@ export const ChatImageDropzone: React.FC<ChatImageDropzoneProps> = ({ onFilesAdd
             style={{ display: "none" }}
             disabled={disabled}
           />
-
-          {/* Docs support: text/csv,application/json,*.doc,*.docx,*.pdf,*.txt    */}
         </Group>
       </Box>
     </>

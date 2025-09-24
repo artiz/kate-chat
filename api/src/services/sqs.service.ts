@@ -21,7 +21,7 @@ import { SubscriptionsService } from "./subscriptions.service";
 const logger = createLogger(__filename);
 
 export class SQSService {
-  private sqs: SQSClient | null = null;
+  private sqs: SQSClient;
   private outputQueueUrl: string;
   private indexQueueUrl: string;
   private documentQueueService: DocumentQueueService;
@@ -62,7 +62,7 @@ export class SQSService {
 
   async shutdown(): Promise<void> {
     if (!this.polling) return;
-    this.sqs?.destroy();
+    this.sqs.destroy();
     this.polling = false;
     if (this.pollInterval) {
       clearTimeout(this.pollInterval);
@@ -146,7 +146,7 @@ export class SQSService {
         MaxResults: 100,
       });
 
-      const response = await this.sqs!.send(cmd);
+      const response = await this.sqs.send(cmd);
       if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
         logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
         clearTimeout(this.pollInterval);
@@ -180,11 +180,7 @@ export class SQSService {
 
             // Delete message after successful processing
             if (handled) {
-              const deleteCommand = new DeleteMessageCommand({
-                QueueUrl: this.indexQueueUrl,
-                ReceiptHandle: message.ReceiptHandle!,
-              });
-              await this.sqs!.send(deleteCommand);
+              await this.deleteMessage(message);
             }
           } catch (error) {
             logger.error(error, "Error processing message");
@@ -217,8 +213,13 @@ export class SQSService {
       logger.info(`Processing SQS message: ${command.command} for document ${command.documentId}`);
 
       if (command.command === "index_document") {
-        await this.documentQueueService.handleIndexDocumentCommand(command);
-        return true;
+        this.documentQueueService
+          .handleIndexDocumentCommand(command)
+          .then(() => this.deleteMessage(message))
+          .catch(error => {
+            logger.error(error, `Failed to process index_document command for document ${command.documentId}`);
+          });
+        return false;
       }
 
       logger.info(`Skip command: ${command.command}`);
@@ -227,5 +228,13 @@ export class SQSService {
       logger.error(error, "Error handling SQS message");
       throw error;
     }
+  }
+
+  private async deleteMessage(message: Message) {
+    const deleteCommand = new DeleteMessageCommand({
+      QueueUrl: this.indexQueueUrl,
+      ReceiptHandle: message.ReceiptHandle!,
+    });
+    await this.sqs.send(deleteCommand);
   }
 }

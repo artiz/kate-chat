@@ -29,7 +29,7 @@ const logger = createLogger(__filename);
 
 export const router = Router();
 
-router.post("/upload", async (req: Request<any, any, any, { chatId: string }>, res: Response) => {
+router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, res: Response) => {
   const { chatId } = req.query;
   if (!req.tokenPayload) {
     return void res.status(401).json({ error: "Authentication failed" });

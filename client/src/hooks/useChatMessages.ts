@@ -4,15 +4,10 @@ import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
-import {
-  DeleteMessageResponse,
-  GET_CHAT_MESSAGES,
-  GetChatMessagesResponse,
-  Message,
-  UPDATE_CHAT_MUTATION,
-} from "@/store/services/graphql";
+import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
 import { pick } from "lodash";
 import { MessageRole } from "@/types/ai";
+import { Message, DeleteMessageResponse, GetChatMessagesResponse } from "@/types/graphql";
 
 type HookResult = {
   messages: Message[] | undefined;

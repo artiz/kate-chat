@@ -1,14 +1,15 @@
-import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root, ID } from "type-graphql";
+import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { getRepository } from "@/config/database";
 
 import { Document } from "@/entities/Document";
 import { GraphQLContext } from ".";
 import { DOCUMENT_STATUS_CHANNEL } from "@/services/subscriptions.service";
 import { BaseResolver } from "./base.resolver";
-import { Repository } from "typeorm";
+import { Repository, ILike } from "typeorm";
 import { S3Service } from "@/services/s3.service";
 import { SQSService } from "@/services/sqs.service";
-import { DocumentStatusMessage } from "@/types/graphql/responses";
+import { DocumentStatusMessage, DocumentsResponse } from "@/types/graphql/responses";
+import { GetDocumentsInput } from "@/types/graphql/inputs";
 
 @Resolver(Document)
 export class DocumentResolver extends BaseResolver {
@@ -17,6 +18,11 @@ export class DocumentResolver extends BaseResolver {
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.documentRepo = getRepository(Document);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  downloadUrl(@Root() document: Document) {
+    return document.s3key ? S3Service.getFileUrl(document.s3key, document.fileName) : undefined;
   }
 
   @Mutation(() => Document)
@@ -44,17 +50,30 @@ export class DocumentResolver extends BaseResolver {
     return document;
   }
 
-  @Query(() => [Document])
-  async documents(@Ctx() context: GraphQLContext): Promise<Document[]> {
+  @Query(() => DocumentsResponse)
+  async getDocuments(
+    @Arg("input", { nullable: true }) input: GetDocumentsInput = {},
+    @Ctx() context: GraphQLContext
+  ): Promise<DocumentsResponse> {
     const user = await this.validateContextUser(context);
-    const s3Service = new S3Service(user.toToken());
+    const { offset = 0, limit = 20, searchTerm } = input;
 
-    const documents = await this.documentRepo.find({ where: { owner: { id: user.id } } });
+    let query = this.documentRepo
+      .createQueryBuilder("document")
+      .where("document.ownerId = :userId", { userId: user.id });
 
-    return documents.map(doc => ({
-      ...doc,
-      downloadUrl: doc.s3key ? s3Service.getFileUrl(doc.s3key, doc.fileName) : undefined,
-    }));
+    if (searchTerm) {
+      query = query.where([{ fileName: ILike(`%${searchTerm}%`) }]);
+    }
+
+    query = query.orderBy("document.createdAt", "DESC").skip(offset).take(limit);
+    const [documents, total] = await query.getManyAndCount();
+
+    return {
+      documents,
+      total,
+      hasMore: offset + limit < total,
+    };
   }
 
   @Mutation(() => Document)
@@ -131,7 +150,14 @@ export class DocumentResolver extends BaseResolver {
         document.status = payload.status;
         document.statusInfo = payload.statusInfo;
         document.statusProgress = payload.statusProgress;
-        await this.documentRepo.save(document);
+        const updated = await this.documentRepo.save(document);
+
+        return [
+          {
+            ...updated,
+            documentId: updated.id,
+          },
+        ];
       }
     }
 
