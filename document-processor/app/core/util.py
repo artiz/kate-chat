@@ -76,7 +76,7 @@ def init_logger(name: str = "app"):
     if settings.environment == "production":
         fmt = JsonFormatter()
     else:
-        fmt = logging.Formatter("%(levelname)-9s %(process)d %(thread)s [%(name)-24s] %(message)s")
+        fmt = logging.Formatter("[%(process)d-%(thread)s] [%(asctime)s.%(msecs)d] %(levelname)-7s (%(name)-24s) %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     
     handler.setFormatter(fmt)
     l.addHandler(handler)

@@ -203,15 +203,9 @@ export const SWITCH_MODEL_MUTATION = gql`
   mutation SwitchModel($messageId: ID!, $modelId: String!) {
     switchModel(messageId: $messageId, modelId: $modelId) {
       message {
-        id
-        content
-        role
-        createdAt
-        modelId
-        modelName
-        user {
-          lastName
-          firstName
+        ...BaseMessage
+        linkedMessages {
+          ...BaseMessage
         }
       }
       error
@@ -223,16 +217,9 @@ export const CALL_OTHERS_MUTATION = gql`
   mutation CallOther($input: CallOtherInput!) {
     callOther(input: $input) {
       message {
-        id
-        content
-        role
-        createdAt
-        modelId
-        modelName
-        linkedToMessageId
-        user {
-          lastName
-          firstName
+        ...BaseMessage
+        linkedMessages {
+          ...BaseMessage
         }
       }
       error
@@ -244,15 +231,9 @@ export const EDIT_MESSAGE_MUTATION = gql`
   mutation EditMessage($messageId: ID!, $content: String!) {
     editMessage(messageId: $messageId, content: $content) {
       message {
-        id
-        content
-        role
-        createdAt
-        modelId
-        modelName
-        user {
-          lastName
-          firstName
+        ...BaseMessage
+        linkedMessages {
+          ...BaseMessage
         }
       }
       error

@@ -137,8 +137,10 @@ export class SQSService {
   private startPolling(): void {
     if (!this.sqs || !this.polling) return;
 
+    let failedRetries = 0;
+
     const poll = async () => {
-      if (!this.polling) {
+      if (!this.polling || failedRetries > 10) {
         return;
       }
 
@@ -146,21 +148,21 @@ export class SQSService {
         MaxResults: 100,
       });
 
-      const response = await this.sqs.send(cmd);
-      if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
-        logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
-        clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 3000);
-        return;
-      }
-      if (!response.QueueUrls?.includes(this.outputQueueUrl)) {
-        logger.info(`SQS processing queue ${this.outputQueueUrl} does not exist or is not accessible`);
-        clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 3000);
-        return;
-      }
-
       try {
+        const response = await this.sqs.send(cmd);
+        if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
+          logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
+          clearTimeout(this.pollInterval);
+          this.pollInterval = setTimeout(poll, 3000);
+          return;
+        }
+        if (!response.QueueUrls?.includes(this.outputQueueUrl)) {
+          logger.info(`SQS processing queue ${this.outputQueueUrl} does not exist or is not accessible`);
+          clearTimeout(this.pollInterval);
+          this.pollInterval = setTimeout(poll, 3000);
+          return;
+        }
+
         const command = new ReceiveMessageCommand({
           QueueUrl: this.indexQueueUrl,
           MaxNumberOfMessages: 1,
@@ -169,7 +171,7 @@ export class SQSService {
           AttributeNames: ["All"],
         });
 
-        const result = await this.sqs!.send(command);
+        const result = await this.sqs.send(command);
         const messages = result.Messages || [];
 
         logger.debug(`Got ${messages.length} messages from SQS`);
@@ -187,14 +189,17 @@ export class SQSService {
             // Message will become visible again after timeout
           }
         }
+
+        failedRetries = 0; // Reset on success
       } catch (error) {
         logger.error(error, `Error polling SQS on ${this.indexQueueUrl}`);
+        failedRetries++;
       }
 
       // Schedule next poll
       if (this.polling) {
         clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 100);
+        this.pollInterval = setTimeout(poll, 100 * failedRetries);
       }
     };
 
