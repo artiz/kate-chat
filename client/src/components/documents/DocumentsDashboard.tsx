@@ -48,6 +48,7 @@ import { DocumentUploadProgress } from "../DocumentUploadProgress";
 import { useNavigate } from "react-router-dom";
 import { DocumentsTable } from "./DocumentsTable";
 import { onError } from "@apollo/client/link/error";
+import { set } from "lodash";
 
 interface IProps {
   chatId?: string;
@@ -303,6 +304,9 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
   const handleAddFiles = useCallback(
     (files: File[]) => {
+      setIsDragging(false);
+      if (!files.length) return;
+
       const filesToAdd = files.filter(f => f.size < MAX_UPLOAD_FILE_SIZE);
       if (filesToAdd.length < files.length) {
         notifications.show({
@@ -349,11 +353,21 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     [chatId, appConfig, uploadDocuments, refetch]
   );
 
-  const handleDragEnter = (ev: React.DragEvent<HTMLDivElement>) => {
-    ev.preventDefault();
+  const handleDragOver = (ev: React.DragEvent<HTMLDivElement>) => {
     if (ev.dataTransfer.types?.includes("Files") && appConfig?.s3Connected) {
       setIsDragging(true);
     }
+  };
+  const handleDragLeave = (ev: React.DragEvent<HTMLDivElement>) => {
+    if (
+      ev.target === ev.currentTarget ||
+      ("classList" in ev.target && (ev.target as HTMLElement).classList.contains("drop-zone"))
+    ) {
+      setIsDragging(false);
+    }
+  };
+  const handleDrop = (ev: React.DragEvent<HTMLDivElement>) => {
+    setIsDragging(false);
   };
 
   // Calculate pagination
@@ -389,7 +403,13 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
         </Group>
       </Group>
 
-      <Paper withBorder p="lg" onDragEnter={handleDragEnter}>
+      <Paper
+        withBorder
+        p="lg"
+        onDragOverCapture={handleDragOver}
+        onDragLeaveCapture={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Title order={2}>Document Library</Title>

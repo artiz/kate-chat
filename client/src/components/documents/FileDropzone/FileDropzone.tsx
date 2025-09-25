@@ -56,14 +56,14 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active })
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      if (disabled) return;
+      if (disabled) return onFilesAdd([]);
 
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const files = Array.from(e.dataTransfer.files).filter(f => f.size > 0);
-        if (files.length) {
-          onFilesAdd(files);
-        }
-      }
+      const files =
+        e.dataTransfer.files && e.dataTransfer.files.length > 0
+          ? Array.from(e.dataTransfer.files).filter(f => f.size > 0)
+          : [];
+
+      onFilesAdd(files);
     },
     [onFilesAdd]
   );
@@ -92,7 +92,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active })
     <>
       <Box
         ref={dropzoneRef}
-        className={`${classes.dropzone} ${isDragging ? classes.dragging : ""} ${active ? classes.activated : ""} ${disabled ? classes.disabled : ""}`}
+        className={`drop-zone ${classes.dropzone} ${isDragging ? classes.dragging : ""} ${active ? classes.activated : ""} ${disabled ? classes.disabled : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

@@ -154,7 +154,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                   <Group>
                     {model?.maxInputTokens && (
                       <Tooltip label={`Maximum input tokens limit: ${model.maxInputTokens.toLocaleString()}`} withArrow>
-                        <Text size="xs">&lt;&lt;{formatTokensLimit(model.maxInputTokens)}</Text>
+                        <Text size="xs">{formatTokensLimit(model.maxInputTokens)}&nbsp;&gt;&gt;</Text>
                       </Tooltip>
                     )}
                   </Group>
