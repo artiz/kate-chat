@@ -253,7 +253,7 @@ export class ModelResolver extends BaseResolver {
     };
 
     // Generate a response using the AI service
-    const response = await this.aiService.invokeModel(model.apiProvider, connectionParams, {
+    const response = await this.aiService.completeChat(model.apiProvider, connectionParams, {
       modelId: model.modelId,
       messages: [message],
     });

@@ -1,12 +1,6 @@
-import {
-  ModelMessage,
-  ModelResponse,
-  BedrockModelServiceProvider,
-  StreamCallbacks,
-  InvokeModelParamsRequest,
-  InvokeModelParamsResponse,
-} from "@/types/ai.types";
+import { ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
 
 type CohereFinishReason = "COMPLETE | MAX_TOKENS | ERROR | ERROR_TOXIC";
 type CohereGeneration = {
@@ -24,7 +18,7 @@ type CohereResponse = {
   prompt: string;
 };
 export class CohereService implements BedrockModelServiceProvider<CohereResponse> {
-  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+  async getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     // Convert messages to Cohere format
     let prompt = systemPrompt ? `System: ${systemPrompt}\n` : "";
@@ -64,7 +58,7 @@ export class CohereService implements BedrockModelServiceProvider<CohereResponse
     };
   }
 
-  parseResponse(responseBody: CohereResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseModelResponse(responseBody: CohereResponse, request: CompleteChatRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.generations?.[0]?.text || "",

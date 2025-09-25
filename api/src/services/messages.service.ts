@@ -8,7 +8,7 @@ import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import {
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   MessageMetadata,
   MessageRole,
   MessageType,
@@ -587,7 +587,7 @@ export class MessagesService {
     assistantMessage: Message
   ): Promise<void> {
     const systemPrompt = user.defaultSystemPrompt || DEFAULT_PROMPT;
-    const request: InvokeModelParamsRequest = {
+    const request: CompleteChatRequest = {
       modelId: model.modelId,
       systemPrompt,
       temperature: input.temperature || chat.temperature,
@@ -740,7 +740,7 @@ export class MessagesService {
           "RAG request"
         );
 
-        const request: InvokeModelParamsRequest = {
+        const request: CompleteChatRequest = {
           modelId: model.modelId,
           systemPrompt,
           temperature: input.temperature || chat.temperature,

@@ -1,10 +1,6 @@
-import {
-  ModelResponse,
-  BedrockModelServiceProvider,
-  InvokeModelParamsRequest,
-  InvokeModelParamsResponse,
-} from "@/types/ai.types";
+import { ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
 
 type MetaResponse = {
   generation?: string;
@@ -13,7 +9,7 @@ type MetaResponse = {
   stop_reason?: string;
 };
 export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
-  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+  async getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     // Convert messages to Llama chat format
 
@@ -52,7 +48,7 @@ export class MetaService implements BedrockModelServiceProvider<MetaResponse> {
     };
   }
 
-  parseResponse(responseBody: MetaResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseModelResponse(responseBody: MetaResponse, request: CompleteChatRequest): ModelResponse {
     const content = (responseBody.generation || "")
       .replace("<|start_header_id|>assistant<|end_header_id|>", "\n")
       .trim();

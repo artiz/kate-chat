@@ -1,11 +1,7 @@
-import {
-  ModelResponse,
-  BedrockModelServiceProvider,
-  InvokeModelParamsRequest,
-  InvokeModelParamsResponse,
-} from "@/types/ai.types";
+import { ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
 
 const logger = createLogger(__filename);
 
@@ -29,7 +25,7 @@ export type A21InvokeModelResponse = {
 };
 
 export class AI21Service implements BedrockModelServiceProvider<A21InvokeModelResponse> {
-  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+  async getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     let prompt = systemPrompt ? `System: ${systemPrompt}\n` : "";
 
@@ -73,7 +69,7 @@ export class AI21Service implements BedrockModelServiceProvider<A21InvokeModelRe
     return params;
   }
 
-  parseResponse(responseBody: A21InvokeModelResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseModelResponse(responseBody: A21InvokeModelResponse, request: CompleteChatRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.choices?.[0]?.message?.content || "",

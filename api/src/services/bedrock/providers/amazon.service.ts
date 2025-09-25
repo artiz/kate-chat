@@ -1,14 +1,8 @@
-import {
-  ModelMessage,
-  ModelResponse,
-  BedrockModelServiceProvider,
-  StreamCallbacks,
-  InvokeModelParamsRequest,
-  InvokeModelParamsResponse,
-} from "@/types/ai.types";
+import { ModelMessage, ModelResponse, StreamCallbacks, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { logger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
 
 type AmazonMessageRole = "user" | "assistant";
 type AmazonImageFormat = "jpeg" | "png" | "gif" | "webp";
@@ -74,7 +68,7 @@ export type AmazonRequestMessage = {
 };
 
 export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResponse | AmazonTitanResponse> {
-  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+  async getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
 
     // #region Titan models
@@ -216,9 +210,9 @@ export class AmazonService implements BedrockModelServiceProvider<AmazonNovaResp
     };
   }
 
-  parseResponse(
+  parseModelResponse(
     responseBody: AmazonNovaResponse | AmazonTitanResponse,
-    request: InvokeModelParamsRequest
+    request: CompleteChatRequest
   ): ModelResponse {
     logger.debug({ responseBody }, "Amazon model response");
 

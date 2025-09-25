@@ -85,7 +85,7 @@ describe("AIService", () => {
       // Mock the AWS Bedrock client response
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(
+      const response = await aiService.completeChat(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
@@ -119,7 +119,7 @@ describe("AIService", () => {
       // Mock the AWS Bedrock client response
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(
+      const response = await aiService.completeChat(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
@@ -139,7 +139,7 @@ describe("AIService", () => {
       const modelId = "unknown.model-v1";
 
       await expect(
-        aiService.invokeModel(
+        aiService.completeChat(
           ApiProvider.AWS_BEDROCK,
           {
             AWS_BEDROCK_REGION: "aws-region",
@@ -194,7 +194,7 @@ describe("AIService", () => {
 
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
-      await aiService.invokeModelAsync(
+      await aiService.streamChatCompletion(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "us-west-2",
@@ -241,7 +241,7 @@ describe("AIService", () => {
         return {} as any;
       });
 
-      await aiService.invokeModelAsync(
+      await aiService.streamChatCompletion(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
@@ -275,7 +275,7 @@ describe("AIService", () => {
       const mockError = new Error("Stream processing error");
       (bedrockClient.send as jest.Mock).mockRejectedValueOnce(mockError);
 
-      await aiService.invokeModelAsync(
+      await aiService.streamChatCompletion(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",

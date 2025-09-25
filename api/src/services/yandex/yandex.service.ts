@@ -1,7 +1,7 @@
 import { Agent } from "undici";
 import {
   ApiProvider,
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
@@ -37,7 +37,7 @@ export class YandexService extends BaseProviderService {
   }
 
   // Invoke Yandex model for text generation
-  async invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse> {
+  async completeChat(request: CompleteChatRequest): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection seettings.");
     }
@@ -48,10 +48,10 @@ export class YandexService extends BaseProviderService {
       modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
-    return this.protocol.invokeModel(openAiRequest);
+    return this.protocol.completeChat(openAiRequest);
   }
 
-  async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(request: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
     if (!this.apiKey || !this.folderId) {
       callbacks.onError?.(
         new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in environment variables.")
@@ -65,7 +65,7 @@ export class YandexService extends BaseProviderService {
       modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
-    return this.protocol.invokeModelAsync(openAiRequest, callbacks);
+    return this.protocol.streamChatCompletion(openAiRequest, callbacks);
   }
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {

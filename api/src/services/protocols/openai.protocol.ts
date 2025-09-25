@@ -3,7 +3,7 @@ import {
   ModelMessage,
   ModelResponse,
   StreamCallbacks,
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   MessageMetadata,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
@@ -12,17 +12,32 @@ import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { BaseChatProtocol } from "./base.protocol";
+import { response } from "express";
+import { P } from "pino";
+import { notEmpty } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
+export type OpenAIApiType = "completions" | "responses";
+
 export class OpenAIProtocol implements BaseChatProtocol {
   private openai: OpenAI;
+  private apiType: OpenAIApiType;
 
-  constructor({ baseURL, apiKey }: { baseURL: string; apiKey: string }) {
+  constructor({
+    baseURL,
+    apiKey,
+    apiType = "completions",
+  }: {
+    baseURL: string;
+    apiKey: string;
+    apiType?: OpenAIApiType;
+  }) {
     if (!apiKey) {
       logger.warn("API key is not defined.");
     }
 
+    this.apiType = apiType;
     this.openai = new OpenAI({
       apiKey,
       baseURL,
@@ -92,8 +107,8 @@ export class OpenAIProtocol implements BaseChatProtocol {
     return result;
   }
 
-  formatModelRequest(
-    inputRequest: InvokeModelParamsRequest
+  formatCompletionRequest(
+    inputRequest: CompleteChatRequest
   ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
 
@@ -115,28 +130,112 @@ export class OpenAIProtocol implements BaseChatProtocol {
     return params;
   }
 
-  async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
-    const params = this.formatModelRequest(inputRequest);
-    logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
+  formatResponsesInput(messages: ModelMessage[]): OpenAI.Responses.ResponseInput {
+    const result: OpenAI.Responses.ResponseInputItem[] = messages.map(msg => {
+      const role = this.mapMessageRole(msg.role);
 
+      if (typeof msg.body === "string") {
+        return {
+          role,
+          content: msg.body,
+        } as OpenAI.Responses.EasyInputMessage;
+      } else {
+        const content: OpenAI.Responses.ResponseInputContent[] = msg.body
+          .filter(part => part.content)
+          .map(part => {
+            if (part.contentType === "text") {
+              return { type: "input_text" as const, text: part.content };
+            } else if (part.contentType === "image") {
+              return {
+                type: "input_image" as const,
+                image_url: part.content,
+                detail: "auto" as const,
+              };
+            } else {
+              logger.warn({ ...part }, `Unsupported message content type`);
+              return null;
+            }
+          })
+          .filter(notEmpty);
+
+        return {
+          role,
+          content,
+        } as OpenAI.Responses.EasyInputMessage;
+      }
+    });
+
+    return result;
+  }
+
+  async completeChat(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
     try {
-      const response = await this.openai.chat.completions.create(params);
-      logger.debug(response, "chat.completions response");
-
-      const content = response.choices[0]?.message?.content || "";
-      const usage = response.usage;
-
-      return {
+      const response: ModelResponse = {
         type: "text",
-        content,
-        metadata: {
+        content: "",
+      };
+
+      if (this.apiType === "responses") {
+        const { modelId, messages = [], maxTokens, systemPrompt } = inputRequest;
+
+        const params: OpenAI.Responses.ResponseCreateParams = {
+          model: modelId,
+          input: this.formatResponsesInput(messages),
+          max_output_tokens: maxTokens,
+          instructions: systemPrompt,
+        };
+
+        logger.debug({ ...params, messages: [] }, "invoking responses...");
+
+        // TODO: extract to separate method
+        type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
+        const { usage, output } = await this.openai.responses.create(params);
+        const { content, files } = output.reduce(
+          (res, item) => {
+            if (item.type === "message") {
+              res.content += item.content
+                .map((c: ResponseOutputItem) => (c.type === "output_text" ? c.text : c.refusal))
+                .join("\n\n");
+            } else if (item.type === "image_generation_call") {
+              if (item.result) {
+                res.files.push(item.result);
+              } else {
+                res.content += `|Image ${item.id}: ${item.status}|\n\n`;
+              }
+            }
+            return res;
+          },
+          { content: "", files: [] as string[] }
+        );
+
+        response.content = content;
+        response.metadata = {
+          usage: {
+            inputTokens: usage?.input_tokens || 0,
+            outputTokens: usage?.output_tokens || 0,
+            cacheReadInputTokens: usage?.input_tokens_details?.cached_tokens || 0,
+          },
+        };
+      } else {
+        const params = this.formatCompletionRequest(inputRequest);
+        logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
+
+        const completion = await this.openai.chat.completions.create(params);
+        logger.debug(completion, "chat.completions response");
+
+        response.content = completion.choices[0]?.message?.content || "";
+
+        const usage = completion.usage;
+        response.metadata = {
           usage: {
             inputTokens: usage?.prompt_tokens || 0,
             outputTokens: usage?.completion_tokens || 0,
             cacheReadInputTokens: usage?.prompt_tokens_details?.cached_tokens || 0,
           },
-        },
-      };
+        };
+      }
+
+      return response;
     } catch (error: unknown) {
       logger.error(error, "Error calling OpenAI API");
       if (error instanceof OpenAI.APIError) {
@@ -148,11 +247,11 @@ export class OpenAIProtocol implements BaseChatProtocol {
   }
 
   // Stream response from OpenAI models
-  async invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
     callbacks.onStart?.();
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-      ...this.formatModelRequest(inputRequest),
+      ...this.formatCompletionRequest(inputRequest),
       stream: true,
       stream_options: { include_usage: true },
     };

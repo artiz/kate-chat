@@ -11,7 +11,7 @@ import {
   ProviderInfo,
   UsageCostInfo,
   ServiceCostInfo,
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   MessageMetadata,
   ModelType,
   GetEmbeddingsRequest,
@@ -26,6 +26,16 @@ import { AnthropicService, AmazonService, AI21Service, CohereService, MetaServic
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
+
+export type InvokeModelParams = {
+  modelId: string;
+  body: string;
+};
+
+export interface BedrockModelServiceProvider<T = unknown> {
+  getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams>;
+  parseModelResponse(responseBody: T, request?: CompleteChatRequest): ModelResponse;
+}
 
 interface BedrockModelConfigRecord {
   provider: string;
@@ -68,7 +78,7 @@ export class BedrockService extends BaseProviderService {
     this.bedrockManagementClient = new BedrockClient(config);
   }
 
-  async invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse> {
+  async completeChat(request: CompleteChatRequest): Promise<ModelResponse> {
     if (!this.bedrockClient) {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
@@ -82,11 +92,11 @@ export class BedrockService extends BaseProviderService {
 
     // Parse the response body
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    return service.parseResponse(responseBody, request);
+    return service.parseModelResponse(responseBody, request);
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
-  async invokeModelAsync(request: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(request: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
     if (!this.bedrockClient) {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
@@ -102,7 +112,7 @@ export class BedrockService extends BaseProviderService {
     if (!supportsStreaming) {
       try {
         // For models that don't support streaming, use the regular generation and simulate streaming
-        const response = await this.invokeModel(request);
+        const response = await this.completeChat(request);
 
         // Simulate streaming by sending chunks of the response
         const chunks = response.content.split(" ");
@@ -212,7 +222,7 @@ export class BedrockService extends BaseProviderService {
   }
 
   // Get the appropriate service and parameters based on the model ID
-  private async formatProviderParams(request: InvokeModelParamsRequest) {
+  private async formatProviderParams(request: CompleteChatRequest) {
     const { modelId } = request;
 
     let service;

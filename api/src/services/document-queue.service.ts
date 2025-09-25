@@ -184,7 +184,7 @@ export class DocumentQueueService {
         markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
 
       // Generate summary
-      const summaryResponse = await this.aiService.invokeModel(model.apiProvider, connection, {
+      const summaryResponse = await this.aiService.completeChat(model.apiProvider, connection, {
         modelId,
         messages: [
           {

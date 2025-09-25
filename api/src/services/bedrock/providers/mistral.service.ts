@@ -1,13 +1,8 @@
-import {
-  ModelMessage,
-  ModelResponse,
-  BedrockModelServiceProvider,
-  InvokeModelParamsRequest,
-  InvokeModelParamsResponse,
-} from "@/types/ai.types";
+import { ModelMessage, ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { ok } from "assert";
 import { createLogger } from "@/utils/logger";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
 
 const logger = createLogger(__filename);
 
@@ -37,7 +32,7 @@ type MistralResponse = {
 };
 
 export class MistralService implements BedrockModelServiceProvider<MistralResponse> {
-  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+  async getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
     ok(messages.length);
 
@@ -78,7 +73,7 @@ export class MistralService implements BedrockModelServiceProvider<MistralRespon
     };
   }
 
-  parseResponse(responseBody: MistralResponse, request: InvokeModelParamsRequest): ModelResponse {
+  parseModelResponse(responseBody: MistralResponse, request: CompleteChatRequest): ModelResponse {
     const content = responseBody.outputs?.[0]?.text || responseBody.choices?.[0]?.message?.content || "";
 
     return {

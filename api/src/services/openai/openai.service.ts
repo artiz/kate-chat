@@ -8,7 +8,7 @@ import {
   StreamCallbacks,
   UsageCostInfo,
   ServiceCostInfo,
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
@@ -83,11 +83,12 @@ export class OpenAIService extends BaseProviderService {
       this.protocol = new OpenAIProtocol({
         baseURL: this.baseUrl,
         apiKey: this.apiKey,
+        apiType: "responses",
       });
     }
   }
 
-  async invokeModel(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
+  async completeChat(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
     const { modelId } = inputRequest;
 
     // Determine if this is an image generation request
@@ -95,11 +96,11 @@ export class OpenAIService extends BaseProviderService {
       return this.generateImages(inputRequest);
     }
 
-    return this.protocol.invokeModel(inputRequest);
+    return this.protocol.completeChat(inputRequest);
   }
 
   // Stream response from OpenAI models
-  async invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
     const { modelId } = inputRequest;
 
     // If this is an image generation model, generate the image non-streaming
@@ -114,7 +115,7 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    return this.protocol.invokeModelAsync(inputRequest, callbacks);
+    return this.protocol.streamChatCompletion(inputRequest, callbacks);
   }
 
   // Get OpenAI provider information including account details
@@ -322,7 +323,7 @@ export class OpenAIService extends BaseProviderService {
     });
   }
   // Image generation implementation for DALL-E models
-  private async generateImages(inputRequest: InvokeModelParamsRequest): Promise<ModelResponse> {
+  private async generateImages(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }

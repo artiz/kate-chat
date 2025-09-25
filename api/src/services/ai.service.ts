@@ -4,7 +4,7 @@ import {
   ApiProvider,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   MessageRole,
   ModelMessage,
   ModelResponse,
@@ -45,12 +45,12 @@ export class AIService {
   }
 
   // Main method to interact with models
-  async invokeModel(
+  async completeChat(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
-    inputRequest: InvokeModelParamsRequest
+    inputRequest: CompleteChatRequest
   ): Promise<ModelResponse> {
-    const request: InvokeModelParamsRequest = {
+    const request: CompleteChatRequest = {
       ...inputRequest,
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
@@ -60,17 +60,17 @@ export class AIService {
     };
 
     const providerService = this.getApiProvider(apiProvider, connection);
-    return providerService.invokeModel(request);
+    return providerService.completeChat(request);
   }
 
   // Stream response from models
-  async invokeModelAsync(
+  async streamChatCompletion(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
-    inputRequest: InvokeModelParamsRequest,
+    inputRequest: CompleteChatRequest,
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const request: InvokeModelParamsRequest = {
+    const request: CompleteChatRequest = {
       ...inputRequest,
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
@@ -81,7 +81,7 @@ export class AIService {
     };
 
     const providerService = this.getApiProvider(apiProvider, connection);
-    return providerService.invokeModelAsync(request, callbacks);
+    return providerService.streamChatCompletion(request, callbacks);
   }
 
   // Main method to interact with models
@@ -107,14 +107,14 @@ export class AIService {
   async getCompletion(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
-    request: InvokeModelParamsRequest,
+    request: CompleteChatRequest,
     messages: Message[]
   ): Promise<ModelResponse> {
     // Convert DB message objects to ModelMessage structure
     const formattedMessages = this.formatMessages(messages);
 
     // Invoke the model
-    const response = await this.invokeModel(apiProvider, connection, {
+    const response = await this.completeChat(apiProvider, connection, {
       ...request,
       messages: formattedMessages,
     });
@@ -125,12 +125,12 @@ export class AIService {
   async streamCompletion(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
-    request: InvokeModelParamsRequest,
+    request: CompleteChatRequest,
     messages: Message[],
     callback: (content: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => void
   ) {
     // Stream the completion in background
-    return this.invokeModelAsync(
+    return this.streamChatCompletion(
       apiProvider,
       connection,
       {

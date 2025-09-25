@@ -3,7 +3,7 @@ import {
   ApiProvider,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
-  InvokeModelParamsRequest,
+  CompleteChatRequest,
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
@@ -17,8 +17,8 @@ export abstract class BaseProviderService {
     this.connection = connection;
   }
 
-  abstract invokeModel(request: InvokeModelParamsRequest): Promise<ModelResponse>;
-  abstract invokeModelAsync(inputRequest: InvokeModelParamsRequest, callbacks: StreamCallbacks): Promise<void>;
+  abstract completeChat(request: CompleteChatRequest): Promise<ModelResponse>;
+  abstract streamChatCompletion(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void>;
   abstract getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse>;
 
   abstract getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo>;

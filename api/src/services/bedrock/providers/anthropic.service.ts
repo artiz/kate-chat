@@ -1,14 +1,8 @@
-import {
-  InvokeModelParamsResponse,
-  ModelMessage,
-  ModelResponse,
-  BedrockModelServiceProvider,
-  InvokeModelParamsRequest,
-  ModelMessageContent,
-} from "@/types/ai.types";
+import { ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { logger } from "@/utils/logger";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
 
 type AnthropicMessageRole = "user" | "assistant";
 type AnthropicResponseType = "tool_use" | "text" | "image";
@@ -56,7 +50,7 @@ export type AnthropicRequestMessage = {
  * See format info at https://docs.anthropic.com/en/api/messages
  */
 export class AnthropicService implements BedrockModelServiceProvider<AnthropicResponese> {
-  async getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse> {
+  async getInvokeModelParams(request: CompleteChatRequest): Promise<InvokeModelParams> {
     const { systemPrompt, messages = [], modelId, temperature, maxTokens } = request;
 
     // Convert messages to Anthropic format
@@ -160,7 +154,7 @@ export class AnthropicService implements BedrockModelServiceProvider<AnthropicRe
     };
   }
 
-  parseResponse(responseBody: AnthropicResponese, request: InvokeModelParamsRequest): ModelResponse {
+  parseModelResponse(responseBody: AnthropicResponese, request: CompleteChatRequest): ModelResponse {
     return {
       type: "text",
       content: responseBody.content[0].text || "",

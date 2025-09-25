@@ -202,12 +202,7 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
-export type InvokeModelParamsResponse = {
-  modelId: string;
-  body: string;
-};
-
-export type InvokeModelParamsRequest = {
+export type CompleteChatRequest = {
   systemPrompt?: string;
   messages?: ModelMessage[];
   modelId: string;
@@ -222,9 +217,3 @@ export type GetEmbeddingsRequest = {
   input: string;
   dimensions?: number;
 };
-
-export interface BedrockModelServiceProvider<T = unknown> {
-  getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse>;
-
-  parseResponse(responseBody: T, request?: InvokeModelParamsRequest): ModelResponse;
-}
