@@ -264,7 +264,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
           {details}
 
-          {loading && <Loader size="md" mb="md" />}
+          {(loading || (streaming && !content)) && <Loader size="md" mb="md" />}
 
           <div className={classes.messageFooter}>
             <ChatMessageActions

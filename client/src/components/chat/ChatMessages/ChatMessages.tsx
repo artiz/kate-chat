@@ -404,8 +404,8 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             <Avatar color="gray" radius="xl">
               <IconRobot />
             </Avatar>
-            <Box>
-              <Text size="sm" fw={500}>
+            <Stack gap="xs">
+              <Text size="sm" fw={500} c="teal">
                 {selectedModelName || "AI"}
               </Text>
               <Paper p="sm" bg="gray.0" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -414,7 +414,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                 </Text>
                 <Loader size="xs" />
               </Paper>
-            </Box>
+            </Stack>
           </Group>
         )}
       </Stack>

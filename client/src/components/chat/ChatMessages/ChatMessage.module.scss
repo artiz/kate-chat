@@ -322,6 +322,9 @@
     .message.user {
       background-color: var(--mantine-color-dark-9);
     }
+    .message.error {
+      color: var(--mantine-color-yellow-9);
+    }
 
     .linked {
       background-color: var(--mantine-color-dark-8);
@@ -345,6 +348,9 @@
 
     .message.user {
       background-color: var(--mantine-color-blue-0);
+    }
+    .message.error {
+      color: var(--mantine-color-red-5);
     }
     .linked {
       background-color: var(--mantine-color-gray-3);

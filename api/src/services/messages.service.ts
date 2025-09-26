@@ -31,6 +31,8 @@ import { RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
 
 const logger = createLogger(__filename);
 
+const MIN_STREAMING_UPDATE_MS = 50; // Minimum interval between streaming updates
+
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
 
@@ -658,6 +660,8 @@ export class MessagesService {
       return;
     }
 
+    let content = "";
+    let lastPublish: number = 0;
     const handleStreaming = async (token: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => {
       if (completed) {
         if (error) {
@@ -678,8 +682,13 @@ export class MessagesService {
 
         // stream token
       } else {
-        assistantMessage.content += token;
-        await this.subscriptionsService.publishChatMessage(chat.id, assistantMessage, true);
+        content += token;
+        const ts = Date.now();
+        if (ts - lastPublish > MIN_STREAMING_UPDATE_MS) {
+          lastPublish = ts;
+          assistantMessage.content = content;
+          await this.subscriptionsService.publishChatMessage(chat.id, assistantMessage, true);
+        }
       }
     };
 
