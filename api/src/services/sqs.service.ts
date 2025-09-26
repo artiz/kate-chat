@@ -199,7 +199,7 @@ export class SQSService {
       // Schedule next poll
       if (this.polling) {
         clearTimeout(this.pollInterval);
-        this.pollInterval = setTimeout(poll, 100 * failedRetries);
+        this.pollInterval = setTimeout(poll, Math.min(1000, 100 * Math.pow(2, failedRetries)));
       }
     };
 

@@ -7,6 +7,7 @@ import {
   IconMessage2Plus,
   IconMessageMinus,
   IconFileCheckFilled,
+  IconFileStack,
 } from "@tabler/icons-react";
 import { formatFileSize } from "@/lib";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
@@ -43,26 +44,43 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
     );
   }
 
+  function documentCanBeDeleted(doc: Document): boolean | undefined {
+    if (!doc) return false;
+
+    return (
+      doc.status === DocumentStatus.READY ||
+      doc.status === DocumentStatus.ERROR ||
+      (doc.status === DocumentStatus.PARSING && (doc.statusProgress ?? 0) >= 1)
+    );
+  }
+
+  function documentCanBeReindexed(doc: Document): boolean | undefined {
+    return (
+      doc &&
+      (doc.status === DocumentStatus.READY ||
+        doc.status === DocumentStatus.SUMMARIZING ||
+        doc.status === DocumentStatus.ERROR ||
+        (doc.status === DocumentStatus.STORAGE_UPLOAD && doc.statusProgress === 1))
+    );
+  }
+
   return (
     <Table striped highlightOnHover withTableBorder style={{ tableLayout: "fixed", width: "100%" }}>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th style={{ width: "60%" }}>File Name</Table.Th>
-          <Table.Th style={{ width: "8rem" }}>Size</Table.Th>
-          <Table.Th style={{ width: "12rem" }}>Status</Table.Th>
-          <Table.Th style={{ width: "8rem" }}>Actions</Table.Th>
-          <Table.Th style={{ width: "20%" }}>Summary</Table.Th>
-          <Table.Th style={{ width: "20%" }}>Created At</Table.Th>
+          <Table.Th style={{ width: "40%" }}>File Name</Table.Th>
+          <Table.Th visibleFrom="lg">Size</Table.Th>
+          <Table.Th>Status</Table.Th>
+          <Table.Th>Actions</Table.Th>
+          <Table.Th visibleFrom="lg">Created At</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
         {documents.map((doc: Document) => (
           <Table.Tr key={doc.id}>
             <Table.Td>
-              <Group wrap="nowrap">
-                {chatDocumentsMap[doc.id] ? <IconFileCheckFilled size="1rem" /> : <IconFile size="1rem" />}
-
-                <Text fw={500}>
+              <Tooltip label={doc.fileName}>
+                <Text fw={500} truncate>
                   {doc.downloadUrl ? (
                     <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
                       {doc.fileName}
@@ -71,13 +89,17 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     doc.fileName
                   )}
                 </Text>
-              </Group>
+              </Tooltip>
             </Table.Td>
-            <Table.Td>
+            <Table.Td visibleFrom="lg">
               <Text>{formatFileSize(doc.fileSize || 0)}</Text>
             </Table.Td>
             <Table.Td>
-              <Badge color={getStatusColor(doc.status)} variant="light">
+              <Badge
+                color={getStatusColor(doc.status)}
+                variant="light"
+                leftSection={chatDocumentsMap[doc.id] ? <IconFileCheckFilled size="16" /> : <IconFile size="16" />}
+              >
                 {doc.status}
                 {doc.status != DocumentStatus.ERROR ? `: ${((doc.statusProgress ?? 0) * 100).toFixed(2)}%` : ""}
               </Badge>
@@ -90,7 +112,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     <ActionIcon
                       variant="light"
                       color="red"
-                      size="lg"
+                      size="md"
                       onClick={() => onRemoveFromChat(doc)}
                       disabled={disableActions}
                     >
@@ -102,7 +124,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     <ActionIcon
                       variant="light"
                       color="blue"
-                      size="lg"
+                      size="md"
                       onClick={() => onAddToChat(doc)}
                       disabled={
                         disableActions ||
@@ -114,50 +136,38 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </Tooltip>
                 ) : null}
 
-                {(doc.status === DocumentStatus.READY ||
-                  doc.status === DocumentStatus.SUMMARIZING ||
-                  doc.status === DocumentStatus.ERROR ||
-                  (doc.status === DocumentStatus.STORAGE_UPLOAD && doc.statusProgress === 1)) && (
-                  <Tooltip label="Reindex document">
-                    <ActionIcon
-                      variant="light"
-                      color="orange"
-                      size="lg"
-                      onClick={() => onReindexDocument(doc)}
-                      disabled={disableActions}
-                    >
-                      <IconRotateClockwise size="1.2rem" />
-                    </ActionIcon>
-                  </Tooltip>
-                )}
+                <Tooltip label="Reindex document">
+                  <ActionIcon
+                    variant="light"
+                    color="orange"
+                    size="md"
+                    onClick={() => onReindexDocument(doc)}
+                    disabled={disableActions || !documentCanBeReindexed(doc)}
+                  >
+                    <IconRotateClockwise size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
 
-                {(doc.status === DocumentStatus.READY ||
-                  doc.status === DocumentStatus.ERROR ||
-                  (doc.status === DocumentStatus.PARSING && (doc.statusProgress ?? 0) >= 1)) && (
-                  <Tooltip label="Delete document">
-                    <ActionIcon
-                      variant="light"
-                      color="red"
-                      size="lg"
-                      onClick={() => onDeleteDocument(doc)}
-                      disabled={disableActions}
-                    >
-                      <IconTrash size="1.2rem" />
-                    </ActionIcon>
-                  </Tooltip>
-                )}
+                <Tooltip label="Delete document">
+                  <ActionIcon
+                    variant="light"
+                    color="red"
+                    size="md"
+                    onClick={() => onDeleteDocument(doc)}
+                    disabled={disableActions || !documentCanBeDeleted(doc)}
+                  >
+                    <IconTrash size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
+
+                <Tooltip label="View summary">
+                  <ActionIcon variant="light" color="blue" size="md" onClick={() => onViewSummary(doc)}>
+                    <IconFileStack size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
               </ActionIcon.Group>
             </Table.Td>
-            <Table.Td>
-              {doc.summary ? (
-                <Button variant="light" size="xs" onClick={() => onViewSummary(doc)}>
-                  View
-                </Button>
-              ) : (
-                <Text size="xs">{doc.statusInfo}</Text>
-              )}
-            </Table.Td>
-            <Table.Td>
+            <Table.Td visibleFrom="lg">
               <Text size="sm">{doc.createdAt && new Date(doc.createdAt).toLocaleDateString()}</Text>
             </Table.Td>
           </Table.Tr>

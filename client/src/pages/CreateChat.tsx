@@ -106,7 +106,7 @@ export const CreateChat: React.FC = () => {
   };
 
   return (
-    <Center style={{ height: "100vh" }}>
+    <Center flex={1} m="xl">
       <Loader size="lg" />
       <Text ml="md">Creating new chat...</Text>
     </Center>

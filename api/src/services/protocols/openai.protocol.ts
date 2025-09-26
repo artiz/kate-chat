@@ -13,8 +13,6 @@ import { createLogger } from "@/utils/logger";
 import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { BaseChatProtocol } from "./base.protocol";
 import { notEmpty } from "@/utils/assert";
-import e from "express";
-import { log } from "node:console";
 
 const logger = createLogger(__filename);
 

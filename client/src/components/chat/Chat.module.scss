@@ -46,23 +46,42 @@
   overflow-y: scroll;
   margin-bottom: 1rem;
   position: relative;
-  display: flex;
+  display: none;
   flex-direction: column;
   border: 1px solid var(--input-bd);
   border-radius: var(--mantine-radius-md);
+  transition: all 0.5s ease;
+  opacity: 1;
 
   .messagesList {
     opacity: 0;
     margin-bottom: 1rem;
   }
 
+  &.empty {
+    flex-grow: 0;
+    opacity: 0;
+  }
+
   &.loadCompleted {
     scroll-behavior: smooth;
+    display: flex;
 
     .messagesList {
       opacity: 1;
     }
   }
+}
+
+.chatControls {
+  display: flex;
+  &.hidden {
+    display: none;
+  }
+}
+
+.modelRow {
+  padding: 0.5rem;
 }
 
 .chatInputContainer {
@@ -71,7 +90,6 @@
   justify-items: space-between;
   align-items: flex-start;
   padding: 0.5rem;
-  gap: 0.5rem;
   border: 1px solid var(--input-bd);
   border-radius: var(--mantine-radius-default);
   position: relative;

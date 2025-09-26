@@ -112,7 +112,10 @@ export class ChatResolver extends BaseResolver {
 
     if (!chat) throw new Error("Chat not found");
 
-    Object.assign(chat, input);
+    Object.assign(chat, {
+      ...input,
+      isPristine: false,
+    });
     return await this.chatRepository.save(chat);
   }
 

@@ -1,4 +1,5 @@
-import React, { use, useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Title,
   Paper,
@@ -14,6 +15,7 @@ import {
   Box,
   Pagination,
   TextInput,
+  Badge,
 } from "@mantine/core";
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
@@ -30,25 +32,14 @@ import {
   GET_DOCUMENTS_FOR_CHAT,
   REMOVE_FROM_CHAT_MUTATION,
 } from "@/store/services/graphql";
-import { DocumentStatus } from "@/types/ai";
 import { parseMarkdown } from "@/lib/services/MarkdownParser";
-import {
-  Chat,
-  ChatDocument,
-  Document,
-  DocumentStatusMessage,
-  GetDocumentsResponse,
-  GetDocumentsForChatResponse,
-} from "@/types/graphql";
+import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
 import { notEmpty, ok } from "@/lib/assert";
 import { FileDropzone } from "./FileDropzone/FileDropzone";
 import { MAX_UPLOAD_FILE_SIZE } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
-import { DocumentUploadProgress } from "../DocumentUploadProgress";
-import { useNavigate } from "react-router-dom";
 import { DocumentsTable } from "./DocumentsTable";
-import { onError } from "@apollo/client/link/error";
-import { set } from "lodash";
+import { getStatusColor } from "@/types/ai";
 
 interface IProps {
   chatId?: string;
@@ -58,6 +49,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
   const [processedSummary, setProcessedSummary] = useState<string>("");
   const [documentToDelete, setDocumentToDelete] = useState<Document | undefined>(undefined);
+  const [documentToReindex, setDocumentToReindex] = useState<Document | undefined>(undefined);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [chat, setChat] = useState<Chat | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
@@ -273,6 +265,10 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     setDocumentToDelete(doc);
   };
 
+  const handleReindexDocument = (doc: Document) => {
+    setDocumentToReindex(doc);
+  };
+
   const handleSearch = () => {
     setSearchTerm(searchInput);
     setCurrentPage(1);
@@ -286,6 +282,13 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     if (documentToDelete) {
       deleteDocument({ variables: { id: documentToDelete.id } });
       setDocumentToDelete(undefined);
+    }
+  };
+
+  const confirmReindexDocument = () => {
+    if (documentToReindex) {
+      reindexDocument({ variables: { id: documentToReindex.id } });
+      setDocumentToReindex(undefined);
     }
   };
 
@@ -451,22 +454,41 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                 isLoading={deleteLoading}
               />
 
+              <DeleteConfirmationModal
+                isOpen={!!documentToReindex}
+                onClose={() => setDocumentToReindex(undefined)}
+                onConfirm={confirmReindexDocument}
+                title="Reindex Document"
+                message={`Are you sure you want to reindex "${documentToReindex?.fileName}"? This action cannot be undone and will remove all the document embeddings and summary.`}
+                confirmLabel="Reindex Document"
+                isLoading={reindexLoading}
+              />
+
               <Modal
                 opened={!!summaryDocument}
                 onClose={() => setSummaryDocument(undefined)}
-                title="Document Summary"
+                title="Document Info"
                 centered
                 size="xl"
               >
+                <Badge color={getStatusColor(summaryDocument?.status)} p="md" mb="sm">
+                  {summaryDocument?.status}
+                </Badge>
+
+                <Box size="sm" fz="12">
+                  {summaryDocument?.statusInfo}
+                </Box>
+
+                <Box size="sm" fz="12">
+                  <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
+                </Box>
+
                 <Alert p="xs" mb="sm" title="Summarization Model" color="blue">
                   {summaryDocument?.summaryModelId}
                 </Alert>
                 <Alert p="xs" mb="sm" title="Embeddings Model" color="green">
                   {summaryDocument?.embeddingsModelId}
                 </Alert>
-                <Box size="sm" fz="12">
-                  <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
-                </Box>
 
                 <Group mt="md" justify="flex-end">
                   <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
@@ -479,7 +501,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                 chatId={chatId}
                 onAddToChat={handleAddToChat}
                 onRemoveFromChat={handleRemoveFromChat}
-                onReindexDocument={doc => reindexDocument({ variables: { id: doc.id } })}
+                onReindexDocument={handleReindexDocument}
                 onDeleteDocument={handleDeleteDocument}
                 onViewSummary={setSummaryDocument}
                 disableActions={addingToChat || removingFromChat || reindexLoading || deleteLoading}
