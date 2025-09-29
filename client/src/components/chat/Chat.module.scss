@@ -50,7 +50,7 @@
   flex-direction: column;
   border: 1px solid var(--input-bd);
   border-radius: var(--mantine-radius-md);
-  transition: all 0.5s ease;
+  transition: all 0.3s ease;
   opacity: 1;
 
   .messagesList {
@@ -73,15 +73,40 @@
   }
 }
 
-.chatControls {
+[data-mantine-color-scheme="light"] {
+  .chatControlsContainer {
+    .modelRow {
+      background-color: var(--mantine-color-gray-4);
+    }
+  }
+}
+
+.chatControlsContainer {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+
   &.hidden {
     display: none;
+  }
+
+  &.fullHeight {
+    flex-grow: 1;
+    padding-bottom: 15rem;
+  }
+
+  .chatControls {
+    border: 1px solid var(--input-bd);
+    border-radius: var(--mantine-radius-default);
   }
 }
 
 .modelRow {
   padding: 0.5rem;
+  border-top-left-radius: var(--mantine-radius-default);
+  border-top-right-radius: var(--mantine-radius-default);
+  background-color: var(--mantine-color-dark-4);
 }
 
 .chatInputContainer {
@@ -90,8 +115,6 @@
   justify-items: space-between;
   align-items: flex-start;
   padding: 0.5rem;
-  border: 1px solid var(--input-bd);
-  border-radius: var(--mantine-radius-default);
   position: relative;
 
   &.columned {
@@ -105,6 +128,11 @@
   }
 
   .filesList {
+    margin-left: 1rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+
     .previewImage {
       position: relative;
       background-color: var(--input-bg);

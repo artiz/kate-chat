@@ -24,30 +24,30 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24 }) => {
   return (
     <Group gap="xs" wrap="nowrap" align="center">
       <Tooltip label="Text input">
-        <IconTextScan2 size={size} color="gray" />
+        <IconTextScan2 size={size} />
       </Tooltip>
 
       {model.imageInput && (
         <Tooltip label="Images input">
-          <IconPhotoAi size={size} color="gray" />
+          <IconPhotoAi size={size} />
         </Tooltip>
       )}
 
-      <IconArrowBigRightLinesFilled size={size} color="gray" />
+      <IconArrowBigRightLinesFilled size={size} color="teal" />
 
       {model.type === ModelType.CHAT && (
         <Tooltip label="Text generation">
-          <IconTextScan2 size={size} color="teal" />
+          <IconTextScan2 size={size} />
         </Tooltip>
       )}
       {model.type === ModelType.EMBEDDING && (
         <Tooltip label="Embeddings generation">
-          <IconMatrix size={size} color="teal" />
+          <IconMatrix size={size} />
         </Tooltip>
       )}
       {model.type === ModelType.IMAGE_GENERATION && (
         <Tooltip label="Images generation">
-          <IconPhotoAi size={size} color="teal" />
+          <IconPhotoAi size={size} />
         </Tooltip>
       )}
     </Group>

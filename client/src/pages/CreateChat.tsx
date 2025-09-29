@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@apollo/client";
 import { Center, Loader, Text } from "@mantine/core";
@@ -13,7 +13,10 @@ export const CreateChat: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const { models: allModels } = useAppSelector(state => state.models);
+  const {
+    models: { models: allModels },
+    chats: { chats },
+  } = useAppSelector(state => state);
   const user = useAppSelector(state => state.user.currentUser);
   const { updateChat } = useChatMessages();
 
@@ -27,9 +30,21 @@ export const CreateChat: React.FC = () => {
     return userDefaultModel || models[0] || null;
   }, [allModels, user]);
 
+  const pristineChat = useMemo(() => {
+    return chats?.find(chat => chat.isPristine);
+  }, [chats]);
+
+  useEffect(() => {
+    if (pristineChat) {
+      // Navigate to the pristine chat
+      navigate(`/chat/${pristineChat.id}`);
+    }
+  }, [pristineChat]);
+
   // Find pristine chat query
-  const { loading: pristineLoading } = useQuery(FIND_PRISTINE_CHAT, {
+  useQuery(FIND_PRISTINE_CHAT, {
     fetchPolicy: "network-only",
+    skip: !!pristineChat, // Skip if we already have a pristine chat in the store
     onCompleted: data => {
       const pristineChats = data?.getChats?.chats?.filter((chat: Chat) => chat.isPristine) || [];
 

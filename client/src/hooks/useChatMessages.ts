@@ -134,9 +134,10 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
   useEffect(() => {
     if (!chatId) return;
-    setMessages(undefined);
     setHasMoreMessages(false);
+    setMessages(undefined);
     setLoadCompleted(false);
+
     const timeout = setTimeout(() => {
       loadMessages();
     }, 200);
@@ -288,6 +289,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
     setStreaming(msg.streaming || false);
 
+    addMessage(msg);
+
     if (msg.content) {
       parseMarkdown(msg.content)
         .then(html => {
@@ -297,8 +300,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           console.error("Error parsing markdown:", error);
           addMessage({ ...msg });
         });
-    } else {
-      addMessage(msg);
     }
   };
 

@@ -262,7 +262,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, [allModels]);
 
   const selectedModel = useMemo(() => {
-    return models?.find(m => m.modelId === chat?.modelId) || null;
+    return (
+      models?.find(m => m.modelId === chat?.modelId) ||
+      models?.find(m => m.modelId === appConfig?.currentUser?.defaultModelId) ||
+      models?.[0]
+    );
   }, [models, chat]);
 
   const handleModelChange = (modelId: string | null) => {
@@ -562,11 +566,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Tooltip>
       )}
 
-      <Stack
-        className={[classes.chatControls, loadCompleted ? "" : classes.hidden].join(" ")}
-        flex={messages?.length === 0 ? 1 : undefined}
-        justify="center"
-        gap="0"
+      <div
+        className={[
+          classes.chatControlsContainer,
+          messages?.length === 0 ? classes.fullHeight : "",
+          loadCompleted ? "" : classes.hidden,
+        ].join(" ")}
       >
         {messages?.length === 0 ? (
           <Stack align="center" justify="center" gap="md" mb="lg">
@@ -576,103 +581,105 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </Stack>
         ) : null}
 
-        <Group align="center" gap="xs" className={classes.modelRow}>
-          <IconRobot size={20} />
-          <Select
-            data={models.map(model => ({
-              value: model.modelId,
-              label: `${model.provider}: ${model.name}`,
-            }))}
-            searchable
-            value={selectedModel?.modelId || ""}
-            onChange={handleModelChange}
-            placeholder="Select a model"
-            size="xs"
-            clearable={false}
-            style={{ maxWidth: "50%" }}
-            disabled={isExternalChat || sending || messagesLoading}
-          />
-          {selectedModel && <ModelInfo model={selectedModel} size="18" />}
-
-          <Popover width={300} position="top" withArrow shadow="md">
-            <Popover.Target>
-              <Tooltip label="Chat Settings">
-                <ActionIcon>
-                  <IconSettings size="1.2rem" />
-                </ActionIcon>
-              </Tooltip>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <ChatSettings
-                temperature={chat?.temperature}
-                maxTokens={chat?.maxTokens}
-                topP={chat?.topP}
-                imagesCount={chat?.imagesCount}
-                onSettingsChange={handleSettingsChange}
-                resetToDefaults={resetSettingsToDefaults}
-              />
-            </Popover.Dropdown>
-          </Popover>
-        </Group>
-
-        {/* Message input */}
-
-        <Group
-          className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}
-          gap="sm"
-        >
-          {uploadAllowed && (
-            <Group align="flex-start" m="0" gap="0">
-              <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
-              {appConfig?.ragEnabled ? (
-                <ChatDocumentsSelector
-                  chatId={chatId}
-                  selectedDocIds={selectedDocIds}
-                  onSelectionChange={setSelectedDocIds}
-                  disabled={!appConfig?.s3Connected || sending || messagesLoading}
-                  documents={chatDocuments}
-                />
-              ) : null}
-              {selectedImages.map(file => (
-                <Paper key={file.fileName} className={classes.filesList}>
-                  <div className={classes.previewImage}>
-                    <img src={file.bytesBase64} alt={file.fileName} />
-                    <ActionIcon
-                      className={classes.removeButton}
-                      color="red"
-                      size="xs"
-                      onClick={e => {
-                        e.stopPropagation();
-                        setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
-                      }}
-                    >
-                      <IconX size={16} />
-                    </ActionIcon>
-                  </div>
-                </Paper>
-              ))}
-            </Group>
-          )}
-
-          <Group align="flex-start" className={classes.chatInputGroup} m="0" gap="sm">
-            <Textarea
-              ref={chatInputRef}
-              className={classes.chatInput}
-              placeholder="Type your message..."
-              value={userMessage}
-              autosize
-              minRows={1}
-              maxRows={7}
-              onChange={handleInputChange}
-              onKeyDown={handleInputKeyDown}
-              disabled={isExternalChat || messagesLoading || messagesLimitReached}
+        <div className={classes.chatControls}>
+          <Group align="center" gap="xs" className={classes.modelRow}>
+            <IconRobot size={20} />
+            <Select
+              data={models.map(model => ({
+                value: model.modelId,
+                label: `${model.provider}: ${model.name}`,
+              }))}
+              searchable
+              value={selectedModel?.modelId || ""}
+              onChange={handleModelChange}
+              placeholder="Select a model"
+              size="xs"
+              clearable={false}
+              style={{ maxWidth: "50%" }}
+              disabled={isExternalChat || sending || messagesLoading}
             />
-            <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
-              <IconSend size={16} /> Send
-            </Button>
+            {selectedModel && <ModelInfo model={selectedModel} size="18" />}
+
+            <Popover width={300} position="top" withArrow shadow="md">
+              <Popover.Target>
+                <Tooltip label="Chat Settings">
+                  <ActionIcon>
+                    <IconSettings size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <ChatSettings
+                  temperature={chat?.temperature}
+                  maxTokens={chat?.maxTokens}
+                  topP={chat?.topP}
+                  imagesCount={chat?.imagesCount}
+                  onSettingsChange={handleSettingsChange}
+                  resetToDefaults={resetSettingsToDefaults}
+                />
+              </Popover.Dropdown>
+            </Popover>
           </Group>
-        </Group>
-      </Stack>
+
+          {/* Message input */}
+
+          <Group
+            className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}
+            gap="sm"
+          >
+            {uploadAllowed && (
+              <Group align="flex-start" m="0" gap="0">
+                <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
+                {appConfig?.ragEnabled ? (
+                  <ChatDocumentsSelector
+                    chatId={chatId}
+                    selectedDocIds={selectedDocIds}
+                    onSelectionChange={setSelectedDocIds}
+                    disabled={!appConfig?.s3Connected || sending || messagesLoading}
+                    documents={chatDocuments}
+                  />
+                ) : null}
+                <Paper className={classes.filesList}>
+                  {selectedImages.map(file => (
+                    <div key={file.fileName} className={classes.previewImage}>
+                      <img src={file.bytesBase64} alt={file.fileName} />
+                      <ActionIcon
+                        className={classes.removeButton}
+                        color="red"
+                        size="xs"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
+                        }}
+                      >
+                        <IconX size={16} />
+                      </ActionIcon>
+                    </div>
+                  ))}
+                </Paper>
+              </Group>
+            )}
+
+            <Group align="flex-start" className={classes.chatInputGroup} m="0" gap="sm">
+              <Textarea
+                ref={chatInputRef}
+                className={classes.chatInput}
+                placeholder="Type your message..."
+                value={userMessage}
+                autosize
+                minRows={1}
+                maxRows={7}
+                onChange={handleInputChange}
+                onKeyDown={handleInputKeyDown}
+                disabled={messagesLoading || messagesLimitReached}
+              />
+              <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
+                <IconSend size={16} /> Send
+              </Button>
+            </Group>
+          </Group>
+        </div>
+      </div>
     </Container>
   );
 };

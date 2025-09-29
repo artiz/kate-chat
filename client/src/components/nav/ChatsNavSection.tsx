@@ -138,7 +138,6 @@ export const ChatsNavSection = () => {
   const [editedTitle, setEditedTitle] = useState<string>("");
 
   const { chats, loading, error } = useAppSelector(state => state.chats);
-
   const sortedChats = useMemo(() => sortChats(chats), [chats]);
 
   // Mutations
