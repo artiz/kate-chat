@@ -75,7 +75,15 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           },
         })
         .then(response => {
-          const { chat: ch, messages = [], hasMore } = response.data.getChatMessages || {};
+          const { chat: ch, messages = [], hasMore, error } = response.data.getChatMessages || {};
+
+          if (error) {
+            return notifications.show({
+              title: "Error",
+              message: error,
+              color: "red",
+            });
+          }
           // Set chat details from the chat field in getChatMessages
           if (ch) {
             if (ch.id !== chatId) {
@@ -92,13 +100,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
             loadTimeout.current = setTimeout(() => setLoadCompleted(true), 300);
           }
-        })
-        .catch(error => {
-          notifications.show({
-            title: "Error",
-            message: error.message || "Failed to load messages",
-            color: "red",
-          });
         })
         .finally(() => {
           setMessagesLoading(false);

@@ -55,6 +55,7 @@ const GET_USERS = gql`
         createdAt
         avatarUrl
         modelsCount
+        chatsCount
       }
       total
       hasMore
@@ -75,6 +76,7 @@ interface AdminUser {
   lastName: string;
   role: UserRole;
   modelsCount?: number;
+  chatsCount?: number;
   createdAt: string;
   avatarUrl?: string;
 }
@@ -265,7 +267,7 @@ export const AdminDashboard: React.FC = () => {
                     <Table.Th>User</Table.Th>
                     <Table.Th>Email</Table.Th>
                     <Table.Th>Role</Table.Th>
-                    <Table.Th>Models</Table.Th>
+                    <Table.Th>Models/Chats</Table.Th>
                     <Table.Th>Joined</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -295,7 +297,9 @@ export const AdminDashboard: React.FC = () => {
                         </Badge>
                       </Table.Td>
                       <Table.Td>
-                        <Text>{user.modelsCount || 0}</Text>
+                        <Text>
+                          {user.modelsCount || 0}/{user.chatsCount || 0}
+                        </Text>
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm">{new Date(user.createdAt).toLocaleDateString()}</Text>

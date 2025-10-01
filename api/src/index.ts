@@ -232,6 +232,9 @@ async function bootstrap() {
         return {
           message: error.message,
           name: error.name || "InternalServerError",
+          extensions: {
+            cause: error.cause,
+          },
           locations: error.stack
             ? error.stack.split("\n").map(line => {
                 const match = line.match(/at (.+):(\d+):(\d+)/);

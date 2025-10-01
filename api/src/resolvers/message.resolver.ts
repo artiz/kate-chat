@@ -21,6 +21,7 @@ import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
 import { S3Service } from "@/services/s3.service";
 import { ChatsService } from "@/services/chats.service";
+import { isAdmin } from "@/utils/jwt";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -46,9 +47,14 @@ export class MessageResolver extends BaseResolver {
     const token = await this.validateContextToken(context);
     const { chatId, offset: skip = 0, limit: take = 20 } = input;
 
-    const chat = await this.chatsService.getChat(chatId, token.userId);
+    const chat = await this.chatsService.getChat(chatId, isAdmin(token) ? undefined : token.userId);
 
-    if (!chat) throw new Error("Chat not found");
+    if (!chat) {
+      return {
+        error: "Chat not found",
+        messages: [],
+      };
+    }
 
     // Get messages for the chat (excluding linked messages)
     const where = { chatId, linkedToMessageId: IsNull() };

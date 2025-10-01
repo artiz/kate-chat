@@ -39,6 +39,11 @@ export const BASE_CHAT_FRAGMENT = `
         maxTokens
         topP
         imagesCount
+        user {
+          id
+          firstName
+          lastName
+        }
         chatDocuments {
           document {
             id
@@ -372,6 +377,7 @@ export const GET_COSTS_QUERY = gql`
 export const GET_CHAT_MESSAGES = gql`
   query GetChatMessages($input: GetMessagesInput!) {
     getChatMessages(input: $input) {
+      error
       messages {
         ...BaseMessage
         linkedMessages {

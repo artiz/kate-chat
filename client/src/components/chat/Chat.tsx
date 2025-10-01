@@ -298,10 +298,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.demoMode && (chat?.messagesCount ?? 0) >= (appConfig.maxChatMessages || 0);
   }, [chat, appConfig]);
 
-  const sendMessageAllowed = useMemo(() => {
-    return (!userMessage?.trim() && !selectedImages.length) || sending || messagesLoading || messagesLimitReached;
-  }, [userMessage, selectedImages, sending, messagesLoading, messagesLimitReached]);
-
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Enter" && !event.shiftKey) {
@@ -336,6 +332,21 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
     [chat?.title]
   );
+
+  const isExternalChat = useMemo(() => {
+    if (!chat?.user || !appConfig?.currentUser) return false;
+    return chat.user.id && appConfig.currentUser.id !== chat.user.id;
+  }, [chat?.user, appConfig?.currentUser]);
+
+  const sendMessageNotAllowed = useMemo(() => {
+    return (
+      isExternalChat ||
+      sending ||
+      messagesLoading ||
+      messagesLimitReached ||
+      (!userMessage?.trim() && !selectedImages.length)
+    );
+  }, [userMessage, selectedImages, sending, messagesLoading, messagesLimitReached, isExternalChat]);
 
   const handleAddFiles = useCallback(
     (files: File[]) => {
@@ -422,12 +433,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
   );
 
   const uploadAllowed = useMemo(() => {
+    if (!appConfig || !loadCompleted || isExternalChat) return false;
+
     if (appConfig?.demoMode) {
       return selectedModel?.imageInput;
     }
 
     return appConfig?.s3Connected;
-  }, [selectedModel, appConfig]);
+  }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
 
   return (
     <Container size="xl" py="md" className={classes.container}>
@@ -447,8 +460,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             />
           ) : (
             <Group gap="xs" className={classes.title}>
-              <Title order={3}>{messagesLoading ? "Loading..." : chat.title || "Untitled Chat"}</Title>
-
+              <Title order={3}>{messagesLoading ? "Loading..." : chat?.title || "Untitled Chat"}</Title>
               <ActionIcon
                 onClick={() => {
                   setIsEditingTitle(true);
@@ -462,6 +474,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
               </ActionIcon>
             </Group>
           )}
+
+          {isExternalChat && chat?.user ? `Owner: ${chat.user.firstName} ${chat.user.lastName}` : null}
         </Group>
 
         <Group>
@@ -573,7 +587,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           size="sm"
           clearable={false}
           style={{ maxWidth: "50%" }}
-          disabled={sending || messagesLoading}
+          disabled={isExternalChat || sending || messagesLoading}
         />
         {selectedModel && <ModelInfo model={selectedModel} />}
 
@@ -609,7 +623,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
                 chatId={chatId}
                 selectedDocIds={selectedDocIds}
                 onSelectionChange={setSelectedDocIds}
-                disabled={!appConfig?.s3Connected || sending || messagesLoading}
+                disabled={isExternalChat || !appConfig?.s3Connected || sending || messagesLoading}
                 documents={chatDocuments}
               />
             ) : null}
@@ -645,9 +659,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
             maxRows={7}
             onChange={handleInputChange}
             onKeyDown={handleInputKeyDown}
-            disabled={messagesLoading || messagesLimitReached}
+            disabled={isExternalChat || messagesLoading || messagesLimitReached}
           />
-          <Button onClick={handleSendMessage} disabled={sendMessageAllowed}>
+          <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
             <IconSend size={16} /> Send
           </Button>
         </Group>

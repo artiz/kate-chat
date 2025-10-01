@@ -1,4 +1,4 @@
-import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
+import { Brackets, In, IsNull, MoreThanOrEqual, Not, ObjectLiteral, Repository } from "typeorm";
 
 import { Chat, Message } from "@/entities";
 import { createLogger } from "@/utils/logger";
@@ -11,7 +11,12 @@ export class ChatsService {
     this.chatRepository = getRepository(Chat);
   }
 
-  public async getChat(chatId: string, userId: string): Promise<Chat | null> {
+  public async getChat(chatId: string, userId?: string): Promise<Chat | null> {
+    const where: ObjectLiteral = { id: chatId };
+    if (userId) {
+      where.user = { id: userId };
+    }
+
     return await this.chatRepository
       .createQueryBuilder("chat")
       .addSelect(sq => {
@@ -20,8 +25,7 @@ export class ChatsService {
       .leftJoinAndSelect("chat.user", "user")
       .leftJoinAndSelect("chat.chatDocuments", "chatDocuments")
       .leftJoinAndSelect("chatDocuments.document", "document")
-
-      .where({ id: chatId, user: { id: userId } })
+      .where(where)
       .getOne();
   }
 }

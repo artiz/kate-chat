@@ -45,9 +45,14 @@ export class AdminResolver extends BaseResolver {
 
     const { offset = 0, limit = 20, searchTerm } = input;
 
-    let query = this.userRepository.createQueryBuilder("user").addSelect(sq => {
-      return sq.select("COUNT(*)").from(Model, "m").where("m.userId = user.id");
-    }, "user_modelsCount");
+    let query = this.userRepository
+      .createQueryBuilder("user")
+      .addSelect(sq => {
+        return sq.select("COUNT(*)").from(Model, "m").where("m.userId = user.id");
+      }, "user_modelsCount")
+      .addSelect(sq => {
+        return sq.select("COUNT(*)").from(Chat, "c").where("c.userId = user.id");
+      }, "user_chatsCount");
 
     if (searchTerm) {
       query = query.where([

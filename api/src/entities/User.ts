@@ -121,13 +121,21 @@ export class User {
   @OneToMany(() => Document, d => d.owner, { cascade: true, onDelete: "CASCADE" })
   documents: Document[];
 
-  @Field({ nullable: true, defaultValue: 0 })
+  @Field({ nullable: true })
   @Column({
     nullable: true,
     select: false,
     name: "modelsCount",
   })
   modelsCount?: number;
+
+  @Field({ nullable: true })
+  @Column({
+    nullable: true,
+    select: false,
+    name: "chatsCount",
+  })
+  chatsCount?: number;
 
   @Field(() => UserSettings, { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<UserSettings>() })

@@ -1,3 +1,4 @@
+import { UserRole } from "@/types/ai.types";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
@@ -19,4 +20,8 @@ export function generateToken(payload: TokenPayload): string {
 
 export function verifyToken(token: string): TokenPayload | null {
   return jwt.verify(token, JWT_SECRET) as TokenPayload;
+}
+
+export function isAdmin(token?: TokenPayload): boolean {
+  return token?.roles?.includes(UserRole.ADMIN) || false;
 }

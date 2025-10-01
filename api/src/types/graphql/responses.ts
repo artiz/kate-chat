@@ -73,7 +73,7 @@ export class GqlMessagesList {
   @Field({ nullable: true })
   total?: number;
 
-  @Field()
+  @Field({ nullable: true })
   hasMore?: boolean;
 
   @Field(() => Chat, { nullable: true })

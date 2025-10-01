@@ -27,6 +27,7 @@ export interface GetChatMessagesResponse {
     messages: Message[];
     total: number;
     hasMore: boolean;
+    error?: string;
   };
 }
 
@@ -228,6 +229,7 @@ export interface Chat {
   topP?: number;
   imagesCount?: number;
   chatDocuments?: ChatDocument[];
+  user?: User;
 }
 
 export interface Document {

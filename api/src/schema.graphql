@@ -238,7 +238,7 @@ type GqlMessage {
 type GqlMessagesList {
   chat: Chat
   error: String
-  hasMore: Boolean!
+  hasMore: Boolean
   messages: [Message!]
   total: Float
 }
@@ -441,6 +441,7 @@ input UpdateUserInput {
 type User {
   authProvider: String
   avatarUrl: String
+  chatsCount: Float
   createdAt: DateTimeISO!
   defaultModelId: String
   defaultSystemPrompt: String
