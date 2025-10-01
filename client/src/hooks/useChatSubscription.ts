@@ -3,7 +3,9 @@ import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql";
 import { MessageRole, MessageType } from "@/types/ai";
-import { Message } from "@/types/graphql";
+import { Message, MessageChatInfo } from "@/types/graphql";
+import { updateChatInfo } from "@/store/slices/chatSlice";
+import { useAppDispatch } from "@/store";
 
 const THROTTLE_TIMEOUT = 60; // ms throttle timeout
 
@@ -14,6 +16,10 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
       type
       message {
         ...BaseMessage
+      }
+      chat {
+        title
+        modelId
       }
       error
       streaming
@@ -41,6 +47,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
   const [wsConnected, setWsConnected] = useState(false);
   const lastTs = useRef(0);
   const addMessageTs = useRef<NodeJS.Timeout>(null);
+  const dispatch = useAppDispatch();
 
   // Effect to update connection status
   useEffect(() => {
@@ -84,7 +91,13 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     },
     onData: (
       options: OnDataOptions<{
-        newMessage?: { type: MessageType; message: Message; error: string; streaming: boolean };
+        newMessage?: {
+          type: MessageType;
+          message: Message;
+          chat: MessageChatInfo;
+          error: string;
+          streaming: boolean;
+        };
       }>
     ) => {
       const data = options.data?.data || {};
@@ -95,7 +108,28 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 
         if (response.type === MessageType.MESSAGE) {
           if (response.message) {
-            setTimeout(() => addChatMessage({ ...response.message, streaming: response.streaming }), 0);
+            const { message } = response;
+            setTimeout(
+              () =>
+                addChatMessage({
+                  ...message,
+                  streaming: response.streaming,
+                }),
+              0
+            );
+
+            if (!response.streaming && response.chat && message.role === MessageRole.ASSISTANT && id) {
+              // Update chat info in state
+              dispatch(
+                updateChatInfo({
+                  id,
+                  isPristine: false,
+                  lastBotMessage: message.content,
+                  lastBotMessageHtml: message.html,
+                  ...response.chat,
+                })
+              );
+            }
           } else if (response.error) {
             notifications.show({
               title: "Model interaction error",

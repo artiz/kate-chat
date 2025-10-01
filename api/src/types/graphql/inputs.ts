@@ -76,8 +76,8 @@ export class ChangePasswordInput {
 
 @InputType()
 export class CreateChatInput {
-  @Field()
-  title: string;
+  @Field({ nullable: true })
+  title?: string;
 
   @Field({ nullable: true })
   description?: string;

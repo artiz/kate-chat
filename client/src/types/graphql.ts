@@ -92,7 +92,7 @@ export interface ImageInput {
 }
 
 export interface CreateChatInput {
-  title: string;
+  title?: string;
   description?: string;
   modelId?: string;
   systemPrompt?: string;
@@ -210,6 +210,16 @@ export interface Message {
   linkedToMessageId?: string;
   linkedMessages?: Message[];
   metadata?: MessageMetadata;
+}
+
+export interface MessageChatInfo {
+  title?: string;
+  modelId?: string;
+  isPristine?: boolean;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  imagesCount?: number;
 }
 
 export interface Chat {

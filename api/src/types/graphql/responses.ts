@@ -48,6 +48,30 @@ export class GqlChatsList {
 }
 
 @ObjectType()
+export class MessageChatInfo {
+  @Field({ nullable: true })
+  title?: string;
+
+  @Field({ nullable: true })
+  modelId: string;
+
+  @Field({ nullable: true })
+  temperature?: number;
+
+  @Field({ nullable: true })
+  maxTokens?: number;
+
+  @Field({ nullable: true })
+  topP?: number;
+
+  @Field({ nullable: true })
+  imagesCount?: number;
+
+  @Field()
+  isPristine: boolean;
+}
+
+@ObjectType()
 export class GqlMessage {
   @Field()
   type: MessageType;
@@ -60,6 +84,9 @@ export class GqlMessage {
 
   @Field({ nullable: true })
   streaming?: boolean;
+
+  @Field({ nullable: true })
+  chat?: MessageChatInfo;
 }
 
 @ObjectType()

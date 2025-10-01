@@ -85,7 +85,7 @@ input CreateChatInput {
   description: String
   modelId: String
   systemPrompt: String
-  title: String!
+  title: String
 }
 
 input CreateMessageInput {
@@ -229,6 +229,7 @@ type GqlImagesList {
 }
 
 type GqlMessage {
+  chat: MessageChatInfo
   error: String
   message: Message
   streaming: Boolean
@@ -291,6 +292,16 @@ type Message {
   updatedAt: DateTimeISO
   user: User
   userId: String
+}
+
+type MessageChatInfo {
+  imagesCount: Float
+  isPristine: Boolean!
+  maxTokens: Float
+  modelId: String
+  temperature: Float
+  title: String
+  topP: Float
 }
 
 type MessageMetadata {

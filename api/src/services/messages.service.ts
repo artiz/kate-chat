@@ -26,7 +26,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./s3.service";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./embeddings.service";
-import { RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
+import { PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
 import { RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
 
 const logger = createLogger(__filename);
@@ -117,7 +117,7 @@ export class MessagesService {
     // Save user message
     const userMessage = await this.publishUserMessage(input, user, chat, model);
     // Get previous messages for context
-    const inputMessages = await this.getContextMessages(chatId);
+    const inputMessages = await this.getContextMessages(chatId, userMessage);
     inputMessages.push(userMessage);
 
     // Generate AI response
@@ -177,7 +177,7 @@ export class MessagesService {
     originalMessage = await this.messageRepository.save(originalMessage);
 
     // Publish message to Queue
-    await this.subscriptionsService.publishChatMessage(chat.id, originalMessage, true);
+    await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
     const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
     const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
@@ -523,14 +523,6 @@ export class MessagesService {
         throw err;
       });
 
-    // Set chat isPristine to false when adding the first message
-    if (chat.isPristine) {
-      chat.isPristine = false;
-    }
-
-    chat.updatedAt = new Date();
-    await this.chatRepository.save(chat);
-
     let jsonContent: ModelMessageContent[] | undefined = undefined;
 
     // If there's an image, handle it
@@ -574,7 +566,7 @@ export class MessagesService {
     });
 
     // Publish message to Queue
-    await this.subscriptionsService.publishChatMessage(chat.id, userMessage);
+    await this.subscriptionsService.publishChatMessage(chat, userMessage);
 
     return userMessage;
   }
@@ -600,8 +592,14 @@ export class MessagesService {
 
     const completeRequest = async (message: Message) => {
       ok(message);
+      if (!chat.title || chat.isPristine) {
+        chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || "");
+        chat.isPristine = false;
+        await this.chatRepository.save(chat);
+      }
+
       const savedMessage = await this.messageRepository.save(message);
-      await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
+      await this.subscriptionsService.publishChatMessage(chat, savedMessage);
     };
 
     if (!model.streaming) {
@@ -687,7 +685,7 @@ export class MessagesService {
         if (ts - lastPublish > MIN_STREAMING_UPDATE_MS) {
           lastPublish = ts;
           assistantMessage.content = content;
-          await this.subscriptionsService.publishChatMessage(chat.id, assistantMessage, true);
+          await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
         }
       }
     };
@@ -716,12 +714,19 @@ export class MessagesService {
     let loadFullPage = RAG_LOAD_FULL_PAGES;
     let aiResponse: ModelResponse | undefined = undefined;
     let chunks: DocumentChunk[] = [];
+    let ragRequest: string = "";
 
     const completeRequest = async (message: Message) => {
       ok(message);
       try {
+        if (!chat.title || chat.isPristine) {
+          chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || ragRequest);
+          chat.isPristine = false;
+          await this.chatRepository.save(chat);
+        }
+
         const savedMessage = await this.messageRepository.save(message);
-        await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
+        await this.subscriptionsService.publishChatMessage(chat, savedMessage);
       } catch (err) {
         this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         logger.error(err, "Error sending RAG response");
@@ -735,6 +740,7 @@ export class MessagesService {
           loadFullPage,
         });
         const { systemPrompt, userInput } = RAG_REQUEST({ chunks, question: input.content });
+        ragRequest = userInput;
 
         logger.trace(
           {
@@ -842,6 +848,25 @@ export class MessagesService {
       await completeRequest(ragMessage);
     }
   }
+
+  public suggestChatTitle = async (
+    model: Model,
+    connection: ConnectionParams,
+    question: string,
+    answer: string
+  ): Promise<string> => {
+    const res = await this.aiService.completeChat(model.apiProvider, connection, {
+      modelId: model.modelId,
+      messages: [
+        {
+          role: MessageRole.USER,
+          body: PROMPT_CHAT_TITLE({ question, answer }),
+        },
+      ],
+    });
+
+    return res.content || question?.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+  };
 
   public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {
     if (!deletedImageFiles || deletedImageFiles.length === 0) return;

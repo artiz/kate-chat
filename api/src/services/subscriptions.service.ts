@@ -9,9 +9,15 @@ import { ok } from "@/utils/assert";
 import { QUEUE_MESSAGE_EXPIRATION_SEC, REDIS_URL } from "@/config/application";
 import { MessageRole } from "@/types/ai.types";
 import { Document } from "@/entities/Document";
-import { DocumentStatusMessage } from "@/types/graphql/responses";
+import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/responses";
+import { Chat } from "@/entities";
 
 const logger = createLogger(__filename);
+
+interface MessageCacheData {
+  message: Message;
+  chat: MessageChatInfo;
+}
 
 // PubSub channel for broadcasting messages
 export const CHAT_MESSAGES_CHANNEL = process.env.CHAT_MESSAGES_CHANNEL || "chat:messages";
@@ -109,15 +115,16 @@ export class SubscriptionsService {
                   }
 
                   // Get message from Redis
-                  const messageData = await this.getMessage(messageId);
+                  const messageData = await this.getMessageData(messageId);
                   if (messageData) {
+                    const { message, chat } = messageData;
                     // Send to client via GraphQL PubSub
                     await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
                       chatId,
-
                       data: {
-                        error: messageData.role === MessageRole.ERROR ? messageData.content : null,
-                        message: messageData,
+                        error: message.role === MessageRole.ERROR ? message.content : null,
+                        chat,
+                        message,
                         streaming,
                       },
                     });
@@ -166,12 +173,13 @@ export class SubscriptionsService {
     }
   }
 
-  async publishChatMessage(chatId: string, message: Message, streaming = false): Promise<void> {
+  async publishChatMessage(chat: Chat, message: Message, streaming = false): Promise<void> {
+    const chatId = chat.id;
     // Publish directly if Redis is not configured
     if (!this.redisClient || !this.redisClient.isOpen || !this.redisSub) {
       return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
         chatId,
-        data: { message, streaming },
+        data: { message, chat, streaming },
       });
     }
 
@@ -181,7 +189,7 @@ export class SubscriptionsService {
     try {
       await this.redisClient.set(
         `message:${messageId}`,
-        JSON.stringify(message),
+        JSON.stringify({ message, chat }),
         { EX: QUEUE_MESSAGE_EXPIRATION_SEC } // message expiration to prevent stale data
       );
 
@@ -193,7 +201,7 @@ export class SubscriptionsService {
       // fallback to publish if Redis fails
       return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
         chatId,
-        data: { message, streaming },
+        data: { message, chat, streaming },
       });
     }
   }
@@ -225,14 +233,14 @@ export class SubscriptionsService {
   }
 
   // Get message from Redis
-  async getMessage(messageId: string): Promise<Message | null> {
+  async getMessageData(messageId: string): Promise<MessageCacheData | null> {
     ok(this.redisClient);
     ok(this.redisClient.isOpen);
 
     try {
       const data = await this.redisClient.get(`message:${messageId}`);
       if (!data) return null;
-      return JSON.parse(data) as Message;
+      return JSON.parse(data) as MessageCacheData;
     } catch (error) {
       logger.error(error, `Failed to get message ${messageId} from Redis`);
       return null;

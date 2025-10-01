@@ -332,7 +332,6 @@ export const ChatsNavSection = () => {
               ) : (
                 <Group justify="space-between" wrap="nowrap" className={classes.chatItem} gap="0">
                   <NavLink
-                    style={{ flex: 1 }}
                     active={chat.id === currentChatId}
                     label={chat.title || "Untitled Chat"}
                     leftSection={<IconMessage size={16} />}

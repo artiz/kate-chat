@@ -134,8 +134,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   });
 
   useEffect(() => {
-    setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
-  }, [chat]);
+    setEditedTitle(chat?.title || "Untitled Chat");
+  }, [chat?.title]);
 
   useEffect(() => {
     chatInputRef.current?.focus();
@@ -330,7 +330,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const handleTitleBlur = useCallback(
     (event: React.FocusEvent<HTMLElement>) => {
       setTimeout(() => {
-        setEditedTitle(chat?.title || "");
+        setEditedTitle(chat?.title || "Untitled Chat");
         setIsEditingTitle(false);
       }, 100);
     },
@@ -464,7 +464,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             />
           ) : (
             <Group gap="xs" className={classes.title}>
-              <Title order={3}>{chat?.title}</Title>
+              <Title order={3}>{chat?.title || "Untitled Chat"}</Title>
 
               <ActionIcon
                 onClick={() => {

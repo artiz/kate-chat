@@ -3,6 +3,12 @@ export const PROMPT_DOCUMENT_SUMMARY = ({ content }: { content: string }) =>
     Return only summary, without any additional commentaries.
     Focus on the main topics, key findings, and important details:\n\n${content}`;
 
+export const PROMPT_CHAT_TITLE = ({ question, answer }: { question: string; answer: string }) =>
+  `Please provide a short title from 1 to 7 words for a chat based on the following question and answer.
+    Question: ${question}
+    Answer: ${answer}
+    The title should be concise and capture the essence of the conversation and have a maximum of 7 words.`;
+
 interface RagInputChunk {
   id: string;
   page: number;

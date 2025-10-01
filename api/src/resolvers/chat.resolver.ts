@@ -91,6 +91,7 @@ export class ChatResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
     const chat = this.chatRepository.create({
       ...input,
+      title: input.title || "",
       user,
       isPristine: true,
     });

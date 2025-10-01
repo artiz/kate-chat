@@ -13,10 +13,9 @@ export const CreateChat: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const {
-    models: { models: allModels },
-    chats: { chats },
-  } = useAppSelector(state => state);
+  const { models: allModels } = useAppSelector(state => state.models);
+  const { chats } = useAppSelector(state => state.chats);
+
   const user = useAppSelector(state => state.user.currentUser);
   const { updateChat } = useChatMessages();
 
@@ -104,7 +103,6 @@ export const CreateChat: React.FC = () => {
     }
 
     const chatInput: CreateChatInput = {
-      title: "New Chat",
       modelId: modelToUse.modelId,
     };
 

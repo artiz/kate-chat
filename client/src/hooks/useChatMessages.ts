@@ -7,7 +7,8 @@ import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser"
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
 import { pick } from "lodash";
 import { MessageRole } from "@/types/ai";
-import { Message, DeleteMessageResponse, GetChatMessagesResponse } from "@/types/graphql";
+import { Message, DeleteMessageResponse, GetChatMessagesResponse, MessageChatInfo } from "@/types/graphql";
+import { title } from "process";
 
 type HookResult = {
   messages: Message[] | undefined;
@@ -232,7 +233,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
   };
 
-  const addChatMessage = (msg: Message) => {
+  const addChatMessage = (msg: Message, info?: MessageChatInfo) => {
     if (!msg) return;
 
     const addMessage = (message: Message) => {
@@ -274,17 +275,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           }
         }
       });
-
-      if (chat && message.role === MessageRole.ASSISTANT && !message.linkedToMessageId) {
-        const update = {
-          ...chat,
-          lastBotMessage: message.content,
-          lastBotMessageHtml: message.html,
-          isPristine: false,
-        };
-
-        dispatch(updateChatInState(update));
-      }
     };
 
     setStreaming(msg.streaming || false);

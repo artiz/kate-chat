@@ -389,7 +389,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   return (
     <Stack gap="xl">
       <Group justify="space-between" align="center">
-        <Title order={1}>Documents {chat ? `for "${chat.title}"` : ""}</Title>
+        <Title order={1}>Documents {chat ? `for "${chat.title || chat.id}"` : ""}</Title>
         <Group>
           {chatId ? (
             <Tooltip label="Back to chat">

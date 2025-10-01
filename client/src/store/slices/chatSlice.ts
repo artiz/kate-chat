@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User } from "./userSlice";
 import { Chat } from "../services/graphql";
+import { MessageChatInfo } from "@/types/graphql";
 
 interface ChatsState {
   chats: Chat[];
@@ -47,6 +48,24 @@ const chatSlice = createSlice({
         state.total += 1;
       }
     },
+    updateChatInfo(
+      state,
+      action: PayloadAction<
+        MessageChatInfo & {
+          id: string;
+          lastBotMessage?: string;
+          lastBotMessageHtml?: string[];
+        }
+      >
+    ) {
+      state.chats = state.chats.map(chat => {
+        if (chat.id === action.payload.id) {
+          return { ...chat, ...action.payload };
+        }
+        return chat;
+      });
+    },
+
     removeChat(state, action: PayloadAction<string>) {
       state.chats = state.chats.filter(chat => chat.id !== action.payload);
     },
@@ -61,5 +80,6 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setChats, addChat, updateChat, removeChat, setChatLoading, setChatError } = chatSlice.actions;
+export const { setChats, addChat, updateChat, updateChatInfo, removeChat, setChatLoading, setChatError } =
+  chatSlice.actions;
 export default chatSlice.reducer;
