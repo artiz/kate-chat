@@ -40,6 +40,12 @@ export enum ModelType {
   OTHER = "other",
 }
 
+export enum ToolType {
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  MCP = "mcp",
+}
+
 export interface Model {
   id: string;
   name: string;
@@ -50,6 +56,7 @@ export interface Model {
   isActive: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
+  tools?: ToolType[];
 }
 
 interface ModelState {

@@ -1,3 +1,10 @@
+.dropzone {
+  cursor: pointer;
+  &:hover {
+    color: var(--mantine-color-brand-6);
+  }
+}
+
 .dragging {
   background-color: var(--mantine-color-gray-5);
   opacity: 0.8;

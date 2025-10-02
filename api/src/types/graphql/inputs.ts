@@ -1,5 +1,5 @@
 import { InputType, Field } from "type-graphql";
-import { ApiProvider, AuthProvider, MessageRole } from "../ai.types";
+import { ApiProvider, AuthProvider, MessageRole, ChatTool, ToolType, ChatToolOptions } from "../ai.types";
 import { UserSettings } from "@/entities";
 
 @InputType()
@@ -90,6 +90,27 @@ export class CreateChatInput {
 }
 
 @InputType()
+export class ChatToolOptionsInput {
+  @Field()
+  name: string;
+
+  @Field()
+  value: string;
+}
+
+@InputType()
+export class ChatToolInput {
+  @Field(() => String)
+  type: ToolType;
+
+  @Field()
+  name?: string;
+
+  @Field(() => [ChatToolOptionsInput], { nullable: true })
+  options?: ChatToolOptionsInput[];
+}
+
+@InputType()
 export class UpdateChatInput {
   @Field({ nullable: true })
   title?: string;
@@ -111,6 +132,9 @@ export class UpdateChatInput {
 
   @Field({ nullable: true })
   imagesCount?: number;
+
+  @Field(() => [ChatToolInput!], { nullable: true })
+  tools?: ChatToolInput[];
 }
 
 @InputType()

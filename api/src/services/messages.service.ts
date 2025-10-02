@@ -588,6 +588,7 @@ export class MessagesService {
       maxTokens: input.maxTokens || chat.maxTokens,
       topP: input.topP || chat.topP,
       imagesCount: input.imagesCount || chat.imagesCount,
+      tools: chat.tools,
     };
 
     const completeRequest = async (message: Message) => {
@@ -865,7 +866,8 @@ export class MessagesService {
       ],
     });
 
-    return res.content || question?.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+    const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
+    return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
   };
 
   public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {

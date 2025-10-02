@@ -75,8 +75,16 @@
 
 [data-mantine-color-scheme="light"] {
   .chatControlsContainer {
+    .chatControls {
+      border: 1px solid var(--mantine-color-gray-4);
+    }
+
     .modelRow {
       background-color: var(--mantine-color-gray-4);
+    }
+
+    .chatInputGroup .chatInput :global(textarea) {
+      border: 1px solid var(--mantine-color-gray-4);
     }
   }
 }
@@ -97,25 +105,32 @@
   }
 
   .chatControls {
-    border: 1px solid var(--input-bd);
+    border: 1px solid var(--mantine-color-dark-6);
     border-radius: var(--mantine-radius-default);
   }
 }
 
 .modelRow {
-  padding: 0.5rem;
+  padding: 0.33rem;
   border-top-left-radius: var(--mantine-radius-default);
   border-top-right-radius: var(--mantine-radius-default);
-  background-color: var(--mantine-color-dark-4);
+  background-color: var(--mantine-color-dark-6);
 }
 
 .chatInputContainer {
   display: flex;
   flex-direction: row;
-  justify-items: space-between;
   align-items: flex-start;
   padding: 0.5rem;
   position: relative;
+  gap: 0.5rem;
+
+  .documentsInput {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    align-items: stretch;
+  }
 
   &.columned {
     flex-direction: column;
@@ -128,7 +143,6 @@
   }
 
   .filesList {
-    margin-left: 1rem;
     display: flex;
     flex-direction: row;
     gap: 0.5rem;
@@ -157,12 +171,15 @@
 
   .chatInputGroup {
     flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
 
     .chatInput {
       flex-grow: 1;
 
       :global(textarea) {
-        border: none !important;
+        border: 1px solid var(--mantine-color-dark-6);
       }
     }
   }

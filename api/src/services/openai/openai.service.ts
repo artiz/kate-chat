@@ -12,6 +12,7 @@ import {
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
+  ToolType,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
@@ -22,8 +23,8 @@ import { Agent } from "undici";
 import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { BaseChatProtocol } from "../protocols/base.protocol";
-import { max } from "class-validator";
 import { OPENAI_MODEL_MAX_INPUT_TOKENS, OPENAI_NON_CHAT_MODELS } from "@/config/openai";
+import { Tool } from "@aws-sdk/client-bedrock-runtime";
 
 const logger = createLogger(__filename);
 
@@ -248,6 +249,8 @@ export class OpenAIService extends BaseProviderService {
           continue; // Skip non-chat models that are not image generation or embeddings
         }
 
+        const tools = embeddingModel || imageGeneration ? [] : [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER];
+
         const type = embeddingModel
           ? ModelType.EMBEDDING
           : imageGeneration
@@ -268,6 +271,7 @@ export class OpenAIService extends BaseProviderService {
           streaming: type === ModelType.CHAT,
           imageInput,
           maxInputTokens,
+          tools,
         };
       }
 

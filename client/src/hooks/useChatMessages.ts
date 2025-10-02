@@ -34,6 +34,7 @@ export interface UpdateChatInput {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+  tools?: { type: string; name?: string }[];
 
   lastBotMessage?: string;
   lastBotMessageHtml?: string[];
@@ -225,7 +226,16 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       updateChatMutation({
         variables: {
           id,
-          input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP", "imagesCount"]),
+          input: pick(input, [
+            "title",
+            "description",
+            "modelId",
+            "temperature",
+            "maxTokens",
+            "topP",
+            "imagesCount",
+            "tools",
+          ]),
         },
       });
     }, 300);

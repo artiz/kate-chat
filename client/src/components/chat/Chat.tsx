@@ -27,6 +27,8 @@ import {
   IconCheck,
   IconSettings,
   IconCircleChevronDown,
+  IconWorldSearch,
+  IconCloudCode,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
@@ -42,7 +44,7 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 
 import classes from "./Chat.module.scss";
-import { ModelType } from "@/store/slices/modelSlice";
+import { ModelType, ToolType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 import { ImageInput, Message, ChatDocument } from "@/types/graphql";
@@ -84,6 +86,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const anchorTimer = useRef<NodeJS.Timeout | null>(null);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [selectedTools, setSelectedTools] = useState<Set<ToolType>>(new Set());
 
   const {
     messages,
@@ -140,6 +143,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
   useEffect(() => {
     chatInputRef.current?.focus();
   }, [loadCompleted]);
+
+  useEffect(() => {
+    if (chat?.tools) {
+      setSelectedTools(new Set(chat.tools.map(tool => tool.type)));
+    } else {
+      setSelectedTools(new Set());
+    }
+  }, [chat?.tools]);
 
   useEffect(() => {
     if (loadCompleted) {
@@ -296,6 +307,23 @@ export const ChatComponent = ({ chatId }: IProps) => {
       topP: 0.9,
       imagesCount: 1,
     });
+  };
+
+  const handleToolToggle = (toolType: ToolType) => {
+    if (!chatId) return;
+
+    const tools = new Set(selectedTools);
+    if (tools.has(toolType)) {
+      tools.delete(toolType);
+    } else {
+      tools.add(toolType);
+    }
+
+    setSelectedTools(tools);
+
+    // Convert Set to array of objects for persistence
+    const toolsArray = Array.from(tools).map(type => ({ type, name: type }));
+    updateChat(chatId, { tools: toolsArray });
   };
 
   const messagesLimitReached = useMemo(() => {
@@ -619,16 +647,40 @@ export const ChatComponent = ({ chatId }: IProps) => {
                 />
               </Popover.Dropdown>
             </Popover>
+
+            {/* Tool buttons */}
+            {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
+              <Tooltip label="Web Search">
+                <ActionIcon
+                  variant={selectedTools.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
+                  color={selectedTools.has(ToolType.WEB_SEARCH) ? "blue" : undefined}
+                  onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
+                  disabled={isExternalChat || sending || messagesLoading}
+                >
+                  <IconWorldSearch size="1.2rem" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
+            {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
+              <Tooltip label="Code Interpreter">
+                <ActionIcon
+                  variant={selectedTools.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
+                  color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "blue" : undefined}
+                  onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
+                  disabled={isExternalChat || sending || messagesLoading}
+                >
+                  <IconCloudCode size="1.2rem" />
+                </ActionIcon>
+              </Tooltip>
+            )}
           </Group>
 
           {/* Message input */}
 
-          <Group
-            className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}
-            gap="sm"
-          >
+          <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
             {uploadAllowed && (
-              <Group align="flex-start" m="0" gap="0">
+              <div className={classes.documentsInput}>
                 <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
                 {appConfig?.ragEnabled ? (
                   <ChatDocumentsSelector
@@ -639,7 +691,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
                     documents={chatDocuments}
                   />
                 ) : null}
-                <Paper className={classes.filesList}>
+
+                <div className={classes.filesList}>
                   {selectedImages.map(file => (
                     <div key={file.fileName} className={classes.previewImage}>
                       <img src={file.bytesBase64} alt={file.fileName} />
@@ -656,11 +709,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
                       </ActionIcon>
                     </div>
                   ))}
-                </Paper>
-              </Group>
+                </div>
+              </div>
             )}
 
-            <Group align="flex-start" className={classes.chatInputGroup} m="0" gap="sm">
+            <div className={classes.chatInputGroup}>
               <Textarea
                 ref={chatInputRef}
                 className={classes.chatInput}
@@ -676,8 +729,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
               <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
                 <IconSend size={16} /> Send
               </Button>
-            </Group>
-          </Group>
+            </div>
+          </div>
         </div>
       </div>
     </Container>

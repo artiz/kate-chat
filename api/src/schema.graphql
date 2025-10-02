@@ -67,6 +67,7 @@ type Chat {
   modelId: String
   temperature: Float
   title: String!
+  tools: [ChatTool!]
   topP: Float
   updatedAt: DateTimeISO!
   user: User
@@ -79,6 +80,28 @@ type ChatDocument {
   document: Document!
   documentId: String!
   id: ID!
+}
+
+type ChatTool {
+  name: String!
+  options: [ChatToolOptions!]
+  type: String!
+}
+
+input ChatToolInput {
+  name: String!
+  options: [ChatToolOptionsInput!]
+  type: String!
+}
+
+type ChatToolOptions {
+  name: String!
+  value: String!
+}
+
+input ChatToolOptionsInput {
+  name: String!
+  value: String!
 }
 
 input CreateChatInput {
@@ -430,6 +453,7 @@ input UpdateChatInput {
   modelId: String
   temperature: Float
   title: String
+  tools: [ChatToolInput!]
   topP: Float
 }
 

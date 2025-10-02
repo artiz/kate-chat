@@ -7,12 +7,14 @@ import {
   MessageMetadata,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
+  ToolType,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { BaseChatProtocol } from "./base.protocol";
 import { notEmpty } from "@/utils/assert";
+import { Tool } from "openai/resources/responses/responses";
 
 const logger = createLogger(__filename);
 
@@ -238,12 +240,21 @@ export class OpenAIProtocol implements BaseChatProtocol {
       max_output_tokens: maxTokens,
       instructions: systemPrompt,
       temperature,
-
-      // TODO: make web-search configurable
-      // tools: [{
-      //   type: "web_search"
-      // }],
     };
+
+    const tools: Array<Tool> = [];
+
+    if (inputRequest.tools) {
+      if (inputRequest.tools.find(t => t.type === ToolType.WEB_SEARCH)) {
+        tools.push({ type: "web_search_preview" });
+      }
+      if (inputRequest.tools.find(t => t.type === ToolType.CODE_INTERPRETER)) {
+        tools.push({ type: "code_interpreter", container: { type: "auto" } });
+      }
+      if (tools.length) {
+        params.tools = tools;
+      }
+    }
 
     if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
       delete params.temperature;

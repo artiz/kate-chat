@@ -1,5 +1,6 @@
 import "reflect-metadata";
-import { Field, ID, ObjectType } from "type-graphql";
+import { Field, ID, InputType, ObjectType } from "type-graphql";
+import { In } from "typeorm";
 
 export enum ApiProvider {
   AWS_BEDROCK = "aws_bedrock",
@@ -105,6 +106,7 @@ export interface AIModelInfo {
   streaming?: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
+  tools?: ToolType[];
 }
 
 export interface ModelMessageContent {
@@ -210,6 +212,7 @@ export interface CompleteChatRequest {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+  tools?: ChatTool[];
 }
 
 export interface GetEmbeddingsRequest {
@@ -225,13 +228,22 @@ export enum ToolType {
 }
 
 @ObjectType()
+export class ChatToolOptions {
+  @Field()
+  name: string;
+
+  @Field()
+  value: string;
+}
+
+@ObjectType()
 export class ChatTool {
-  @Field(() => ToolType)
+  @Field(() => String)
   type: ToolType;
 
   @Field()
   name?: string;
 
-  @Field(() => Map<string, unknown>, { nullable: true })
-  options?: Map<string, unknown>;
+  @Field(() => [ChatToolOptions], { nullable: true })
+  options?: ChatToolOptions[];
 }

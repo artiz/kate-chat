@@ -1,33 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
-import {
-  IconBrandOpenai,
-  IconRocket,
-  IconBook2,
-  IconBrandAws,
-  IconMessagePlus,
-  IconTestPipe,
-} from "@tabler/icons-react";
+import { IconMessagePlus, IconTestPipe } from "@tabler/icons-react";
 import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "../icons/ProviderIcon";
 import { ModelInfo } from "./ModelInfo";
 import { formatTokensLimit } from "@/lib";
-
-// Helper function to get provider icon
-const getProviderIcon = (provider: string | null) => {
-  switch (provider?.toLowerCase()) {
-    case "open_ai":
-      return <IconBrandOpenai size={24} />;
-    case "anthropic":
-      return <IconBook2 size={24} />;
-    case "aws":
-    case "amazon":
-      return <IconBrandAws size={24} />;
-    default:
-      return <IconRocket size={24} />;
-  }
-};
 
 interface ModelsListProps {
   models: Model[];
@@ -183,7 +161,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                   <Text size="sm" truncate>
                     {model.modelId}
                   </Text>
-                  <ModelInfo model={model} size="16" />
+                  <ModelInfo model={model} size="16" showTools />
                 </Group>
 
                 <Group grow>

@@ -23,6 +23,7 @@ export const BASE_MODEL_FRAGMENT = `
       type
       imageInput
       maxInputTokens
+      tools
     }
 `;
 
@@ -50,6 +51,14 @@ export const BASE_CHAT_FRAGMENT = `
             fileName
             status
             downloadUrl
+          }
+        }
+        tools {
+          type
+          name
+          options { 
+            name
+            value
           }
         }
     }
@@ -182,6 +191,10 @@ export const UPDATE_CHAT_MUTATION = gql`
       maxTokens
       topP
       imagesCount
+      tools {
+        type
+        name
+      }
       updatedAt
     }
   }

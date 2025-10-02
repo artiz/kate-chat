@@ -101,6 +101,7 @@ export class Chat {
   @Column({ default: false })
   isPristine: boolean;
 
+  @Field(() => [ChatTool], { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ChatTool[]>(), default: null })
   tools?: ChatTool[];
 

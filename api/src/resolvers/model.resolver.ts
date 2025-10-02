@@ -100,6 +100,7 @@ export class ModelResolver extends BaseResolver {
           description: info.description || `${info.name} by ${info.provider}`,
           isActive: modelId in enabledMap ? enabledMap[modelId] : true,
           isCustom: false,
+          tools: info.tools,
         });
 
         // Save the model
