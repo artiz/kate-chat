@@ -51,7 +51,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
    - OpenAI - add `apiType: "completions" | "responses"` and use ["responses"](https://platform.openai.com/docs/api-reference/responses/create)
    - Bedrock - use [Converse API](https://builder.aws.com/content/2hW5367isgQOkkXLYjp4JB3Pe16/intro-to-tool-use-with-the-amazon-bedrock-converse-api)  
    - Yandex FM - use tools in "completions" [API](https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
-* Add automatic chat title generation like on chat.openai.com
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG

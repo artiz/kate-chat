@@ -1,9 +1,14 @@
   
-FROM nginx/unit:1.27.0-python3.10
+FROM unit:python3.12
+
+WORKDIR /home
+
+# Copy requirements and install Python dependencies
+COPY document-processor/requirements.txt ./
+RUN pip install -r requirements.txt
 
 RUN mkdir /home/unit
-ENV HOME /home/unit
-RUN apt update && apt --no-install-recommends --no-install-suggests -y install postgresql-client
+ENV HOME=/home/unit
 
 RUN mkdir /app
 WORKDIR /app/
@@ -13,17 +18,14 @@ WORKDIR /app/
 # in real time. Equivalent to python -u: https://docs.python.org/3/using/cmdline.html#cmdoption-u
 ENV PYTHONUNBUFFERED 1
 
-COPY requirements.txt ./
-RUN pip install -r requirements.txt
+COPY document-processor/ ./
 
-COPY . .
-
-# RUN chmod +x app/run.sh
+# Set proper permissions
 RUN chown -R unit:unit /var/lib/unit/
-RUN chown -R unit:unit .
+RUN chown -R unit:unit /app
+RUN chown -R unit:unit /home/unit
 
-COPY config.json /docker-entrypoint.d/config.json
+COPY document-processor/config.json /docker-entrypoint.d/config.json
 
-# run the app (from parent Unit image)
-# ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-# CMD ["unitd", "--no-daemon", "--control", "unix:/var/run/control.unit.sock"]a
+# Expose port 8080 for health checks and API
+EXPOSE 8080

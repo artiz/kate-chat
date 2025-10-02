@@ -150,6 +150,8 @@ export class SQSService {
 
       try {
         const response = await this.sqs.send(cmd);
+        logger.trace({ queues: response.QueueUrls }, "Fetched SQS queue list");
+
         if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
           logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
           clearTimeout(this.pollInterval);
