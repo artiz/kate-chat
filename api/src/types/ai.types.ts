@@ -183,14 +183,14 @@ export class MessageMetadata {
   documentIds?: string[];
 }
 
-export class ModelResponse {
+export interface ModelResponse {
   metadata?: MessageMetadata;
   type: ContentType;
   content: string;
   files?: string[];
 }
 
-export class EmbeddingsResponse {
+export interface EmbeddingsResponse {
   metadata?: MessageMetadata;
   embedding: number[];
 }
@@ -202,7 +202,7 @@ export interface StreamCallbacks {
   onError?: (error: Error) => void;
 }
 
-export type CompleteChatRequest = {
+export interface CompleteChatRequest {
   systemPrompt?: string;
   messages?: ModelMessage[];
   modelId: string;
@@ -210,10 +210,28 @@ export type CompleteChatRequest = {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
-};
+}
 
-export type GetEmbeddingsRequest = {
+export interface GetEmbeddingsRequest {
   modelId: string;
   input: string;
   dimensions?: number;
-};
+}
+
+export enum ToolType {
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  MCP = "mcp",
+}
+
+@ObjectType()
+export class ChatTool {
+  @Field(() => ToolType)
+  type: ToolType;
+
+  @Field()
+  name?: string;
+
+  @Field(() => Map<string, unknown>, { nullable: true })
+  options?: Map<string, unknown>;
+}

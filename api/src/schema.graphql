@@ -334,6 +334,7 @@ type Model {
   name: String!
   provider: String
   streaming: Boolean!
+  tools: [String!]
   type: String!
   updatedAt: DateTimeISO!
   user: User

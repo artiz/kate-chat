@@ -1,7 +1,10 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
-import { ApiProvider, ModelType } from "../types/ai.types";
+import { ApiProvider, ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
+import { JSONTransformer } from "../utils/db";
+
+const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()
 @Entity("models")
@@ -61,6 +64,10 @@ export class Model {
   @Field({ nullable: true })
   @Column({ nullable: true })
   maxInputTokens?: number;
+
+  @Field(() => [String], { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ToolType[]>(), default: null })
+  tools?: ToolType[];
 
   @Field()
   @CreateDateColumn()

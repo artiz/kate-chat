@@ -241,7 +241,7 @@ export class OpenAIProtocol implements BaseChatProtocol {
 
       // TODO: make web-search configurable
       // tools: [{
-      //   type: "web_search_preview"
+      //   type: "web_search"
       // }],
     };
 

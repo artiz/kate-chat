@@ -143,7 +143,7 @@ export class Rag1756981891461 implements MigrationInterface {
       `ALTER TABLE "chats" ADD CONSTRAINT "DF_460ad39b7ce9368acc2f898a4b3" DEFAULT '' FOR "description"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "chats" ALTER COLUMN "description" nvarchar(255) NOT NULL`,
+      `ALTER TABLE "chats" ALTER COLUMN "description" nvarchar(255)`,
     );
     await queryRunner.query(
       `ALTER TABLE "users" DROP COLUMN "documentSummarizationModelId"`,
@@ -162,48 +162,28 @@ export class Rag1756981891461 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "models" DROP CONSTRAINT "DF_8df74483aed9bb6dcc8ff2a886d"`,
     );
+
     await queryRunner.query(`ALTER TABLE "models" DROP COLUMN "type"`);
     await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsStreaming" bit NOT NULL`,
+      `ALTER TABLE "models" ADD "supportsStreaming" bit NOT NULL CONSTRAINT "DF_7a72a8448920cff446e5a375459" DEFAULT 0`,
     );
     await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_7a72a8448920cff446e5a375459" DEFAULT 0 FOR "supportsStreaming"`,
+      `ALTER TABLE "models" ADD "supportsTextIn" bit NOT NULL CONSTRAINT "DF_d3d6facc2a5d04b3b9529fc338c" DEFAULT 1`,
     );
     await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsTextIn" bit NOT NULL`,
+      `ALTER TABLE "models" ADD "supportsTextOut" bit NOT NULL CONSTRAINT "DF_3b116cd9b215008563fcc47e8c0" DEFAULT 1`,
     );
     await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_d3d6facc2a5d04b3b9529fc338c" DEFAULT 1 FOR "supportsTextIn"`,
+      `ALTER TABLE "models" ADD "supportsEmbeddingsIn" bit NOT NULL CONSTRAINT "DF_056fd112d98f67c8b5b097926cf" DEFAULT 0`,
     );
     await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsTextOut" bit NOT NULL`,
+      `ALTER TABLE "models" ADD "supportsImageIn" bit NOT NULL CONSTRAINT "DF_5d1866196b3ba768680f5367e08" DEFAULT 0`,
     );
     await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_3b116cd9b215008563fcc47e8c0" DEFAULT 1 FOR "supportsTextOut"`,
+      `ALTER TABLE "models" ADD "supportsImageOut" bit NOT NULL CONSTRAINT "DF_6443725656366617d0fb104d424" DEFAULT 0 `,
     );
     await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsEmbeddingsIn" bit NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_056fd112d98f67c8b5b097926cf" DEFAULT 0 FOR "supportsEmbeddingsIn"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsImageIn" bit NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_5d1866196b3ba768680f5367e08" DEFAULT 0 FOR "supportsImageIn"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsImageOut" bit NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_6443725656366617d0fb104d424" DEFAULT 0 FOR "supportsImageOut"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD "supportsEmbeddingsOut" bit NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "models" ADD CONSTRAINT "DF_78560f72d2d6c2837dfc88bc06c" DEFAULT 0 FOR "supportsEmbeddingsOut"`,
+      `ALTER TABLE "models" ADD "supportsEmbeddingsOut" bit NOT NULL  CONSTRAINT "DF_78560f72d2d6c2837dfc88bc06c" DEFAULT 0 `,
     );
     await queryRunner.query(
       `DROP INDEX "IDX_eaf9afaf30fb7e2ac25989db51" ON "document_chunks"`,
