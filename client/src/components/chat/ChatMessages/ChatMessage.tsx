@@ -255,11 +255,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
         </Group>
         <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>
           {html ? (
-            html.map((part, index) => (
-              <div className={classes.htmlBlock} key={index} dangerouslySetInnerHTML={{ __html: part }} />
-            ))
+            html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)
           ) : (
-            <div className={classes.htmlBlock}>{content}</div>
+            <div>{content}</div>
           )}
 
           {details}

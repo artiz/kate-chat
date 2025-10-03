@@ -656,7 +656,7 @@ export const graphqlApi = api.injectEndpoints({
 
         for (const chat of chats.chats) {
           if (chat.lastBotMessage) {
-            chat.lastBotMessageHtml = await parseMarkdown(chat.lastBotMessage);
+            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
           }
         }
 

@@ -653,7 +653,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               <Tooltip label="Web Search">
                 <ActionIcon
                   variant={selectedTools.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
-                  color={selectedTools.has(ToolType.WEB_SEARCH) ? "blue" : undefined}
+                  color={selectedTools.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
                   onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
                   disabled={isExternalChat || sending || messagesLoading}
                 >
@@ -666,7 +666,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               <Tooltip label="Code Interpreter">
                 <ActionIcon
                   variant={selectedTools.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
-                  color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "blue" : undefined}
+                  color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
                   onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
                   disabled={isExternalChat || sending || messagesLoading}
                 >

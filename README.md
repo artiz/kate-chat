@@ -47,14 +47,21 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 > 📋 **Note**: API keys are stored locally in your browser and sent securely to our backend. See the [Getting Started](#getting-started) section below for detailed instructions on obtaining API keys.
 
 ## TODO
-* Add LLM tools support:
-   - OpenAI - add `apiType: "completions" | "responses"` and use ["responses"](https://platform.openai.com/docs/api-reference/responses/create)
+* Add LLM tools (Web Search, Code Interpreter) support:
+   - OpenAI - add `apiType: "completions" | "responses"` and use ["responses"](https://platform.openai.com/docs/api-reference/responses/create), [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
    - Bedrock - use [Converse API](https://builder.aws.com/content/2hW5367isgQOkkXLYjp4JB3Pe16/intro-to-tool-use-with-the-amazon-bedrock-converse-api)  
    - Yandex FM - use tools in "completions" [API](https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
+   > stream requst status like Searching, Reasoning, Image Generation 
+   > stream current actions in specific `execution_status` property to do not mix it with content
+* Extract katechat-ui package to have all the Message/Model types defined there. Move chat componmment there, 
+  extract ChatDataProvider interface that should incorporate all REST/WS calls. Implement plugins support (RAG, Tools, ChatSettings)
+  Provide simple demos in `katechat-ui`:
+  - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
+  - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form
+* Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
-* Open AI code interpreter support  
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Rust API sync: add images generation (DALL-E) support, Library, admin API
 

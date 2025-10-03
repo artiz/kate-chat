@@ -48,7 +48,7 @@
   position: relative;
   display: none;
   flex-direction: column;
-  border: 1px solid var(--input-bd);
+  border: 1px solid var(--app-shell-border-color);
   border-radius: var(--mantine-radius-md);
   transition: all 0.3s ease;
   opacity: 1;
@@ -76,7 +76,7 @@
 [data-mantine-color-scheme="light"] {
   .chatControlsContainer {
     .chatControls {
-      border: 1px solid var(--mantine-color-gray-4);
+      border: 1px solid var(--app-shell-border-color);
     }
 
     .modelRow {
@@ -84,7 +84,7 @@
     }
 
     .chatInputGroup .chatInput :global(textarea) {
-      border: 1px solid var(--mantine-color-gray-4);
+      border: 1px solid var(--app-shell-border-color);
     }
   }
 }
@@ -105,7 +105,8 @@
   }
 
   .chatControls {
-    border: 1px solid var(--mantine-color-dark-6);
+    border: 1px solid var(--app-shell-border-color);
+    border-top: none;
     border-radius: var(--mantine-radius-default);
   }
 }
@@ -114,7 +115,7 @@
   padding: 0.33rem;
   border-top-left-radius: var(--mantine-radius-default);
   border-top-right-radius: var(--mantine-radius-default);
-  background-color: var(--mantine-color-dark-6);
+  background-color: var(--app-shell-border-color);
 }
 
 .chatInputContainer {
@@ -179,7 +180,7 @@
       flex-grow: 1;
 
       :global(textarea) {
-        border: 1px solid var(--mantine-color-dark-6);
+        border: 1px solid var(--app-shell-border-color);
       }
     }
   }

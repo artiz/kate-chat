@@ -10,37 +10,11 @@
 @import "@mantine/dates/styles.css";
 @import "@mantine/carousel/styles.css";
 
-[data-mantine-color-scheme="light"] {
-  @include meta.load-css("highlight.js/styles/panda-syntax-light");
-  & {
-    --input-bd: var(--mantine-color-gray-4);
-    --input-bg: var(--mantine-color-white);
-    --input-bd-focus: var(--mantine-primary-color-filled);
-    --theme-default-time: 0.2s;
-  }
-
-  ::selection {
-    background-color: var(--mantine-color-gray-4);
-  }
-}
-[data-mantine-color-scheme="dark"] {
-  @include meta.load-css("highlight.js/styles/a11y-dark");
-  & {
-    --input-bd: var(--mantine-color-dark-4);
-    --input-bg: var(--mantine-color-dark-6);
-    --input-bd-focus: var(--mantine-primary-color-filled);
-    --theme-default-time: 0.2s;
-  }
-
-  ::selection {
-    background-color: var(--mantine-color-brand-9);
-  }
-}
-
 /* Global CSS */
 body {
   margin: 0;
   --monospace-font-family: "Fira Code", "Consolas", monospace;
+  --app-shell-border-color: var(--mantine-color-gray-4);
 }
 
 html,
@@ -51,4 +25,34 @@ body,
 
 * {
   box-sizing: border-box;
+}
+
+[data-mantine-color-scheme="light"] {
+  @include meta.load-css("highlight.js/styles/panda-syntax-light");
+  & {
+    --input-bd: var(--mantine-color-gray-4);
+    --input-bg: var(--mantine-color-gray-7);
+    --app-shell-border-color: var(--mantine-color-gray-4);
+    --input-bd-focus: var(--mantine-primary-color-filled);
+    --theme-default-time: 0.2s;
+  }
+
+  ::selection {
+    background-color: var(--mantine-color-gray-4);
+  }
+}
+
+[data-mantine-color-scheme="dark"] {
+  @include meta.load-css("highlight.js/styles/a11y-dark");
+  & {
+    --input-bd: var(--mantine-color-dark-4);
+    --input-bg: var(--mantine-color-dark-6);
+    --app-shell-border-color: var(--mantine-color-dark-6);
+    --input-bd-focus: var(--mantine-primary-color-filled);
+    --theme-default-time: 0.2s;
+  }
+
+  ::selection {
+    background-color: var(--mantine-color-brand-9);
+  }
 }

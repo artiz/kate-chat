@@ -296,12 +296,13 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     if (!summaryDocument?.summary) {
       setProcessedSummary("");
     } else {
-      parseMarkdown(summaryDocument?.summary || "")
-        .then(res => setProcessedSummary(res.join("\n")))
-        .catch(err => {
-          console.error("Error processing markdown", err);
-          setProcessedSummary("Error processing summary: " + err.message);
-        });
+      try {
+        const summary = parseMarkdown(summaryDocument?.summary || "");
+        setProcessedSummary(summary.join("\n"));
+      } catch (err: unknown) {
+        console.error("Error processing markdown", err);
+        setProcessedSummary("Error processing summary: " + err.message);
+      }
     }
   }, [summaryDocument?.summary]);
 

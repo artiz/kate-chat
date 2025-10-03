@@ -96,9 +96,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
-            parseChatMessages(messages).then(parsedMessages => {
-              setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
-            });
+            const parsedMessages = parseChatMessages(messages);
+            setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
 
             loadTimeout.current = setTimeout(() => setLoadCompleted(true), 300);
           }
@@ -289,17 +288,11 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
     setStreaming(msg.streaming || false);
 
-    addMessage(msg);
-
     if (msg.content) {
-      parseMarkdown(msg.content)
-        .then(html => {
-          addMessage({ ...msg, html });
-        })
-        .catch(error => {
-          console.error("Error parsing markdown:", error);
-          addMessage({ ...msg });
-        });
+      const html = parseMarkdown(msg.content);
+      addMessage({ ...msg, html });
+    } else {
+      addMessage(msg);
     }
   };
 

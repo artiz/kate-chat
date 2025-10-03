@@ -36,13 +36,15 @@ const marked = new Marked(
     throwOnError: false,
     output: "html",
   }),
-  { async: true, silent: false, breaks: true, gfm: true }
+  { silent: false, breaks: true, gfm: true }
 );
 
-const customRenderer = new Renderer();
-customRenderer.html = ({ text }: { text: string }) => {
+const renderer = new Renderer();
+renderer.html = ({ text }: { text: string }) => {
   return escapeHtml(text);
 };
+renderer.link = ({ href, title, text }) =>
+  `<a target="_blank" rel="noopener noreferrer" href="${href}" title="${title || ""}">${text}</a>`;
 
 /**
  * Parse markdown to html blocks
@@ -50,12 +52,12 @@ customRenderer.html = ({ text }: { text: string }) => {
  * @returns Array for formatted HTML blocks to be rendered
  */
 
-export async function parseMarkdown(content?: string | null): Promise<string[]> {
+export function parseMarkdown(content?: string | null): string[] {
   if (!content) return [];
 
   // process complex code blocks, tables as one block
-  if (content.match(/```/) || content.match(/\|-----/)) {
-    return [await marked.parse(content, { async: true, renderer: customRenderer })];
+  if (content.match(/(```)|(\|---)/)) {
+    return [marked.parse(content, { renderer }) as string];
   }
 
   // split large texts
@@ -64,18 +66,16 @@ export async function parseMarkdown(content?: string | null): Promise<string[]> 
     .filter(s => Boolean(s))
     .map(s => s + "\n\n");
 
-  return await Promise.all(
-    parts.map(part => marked.parse(part, { async: true, renderer: customRenderer }) as Promise<string>)
-  );
+  return parts.map(part => marked.parse(part, { renderer }) as string);
 }
 
-export async function parseChatMessages(messages: Message[] = []): Promise<Message[]> {
+export function parseChatMessages(messages: Message[] = []): Message[] {
   const parsedMessages: Message[] = Array<Message>(messages.length);
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
     const html =
       message.role === MessageRole.ASSISTANT || message.role === MessageRole.USER
-        ? await parseMarkdown(message.content)
+        ? parseMarkdown(message.content)
         : [escapeHtml(message.content) || ""];
 
     let linkedMessages = message.linkedMessages;
@@ -86,7 +86,7 @@ export async function parseChatMessages(messages: Message[] = []): Promise<Messa
         if (linkedMessage.role === MessageRole.ASSISTANT || linkedMessage.role === MessageRole.USER) {
           linkedMessagesParsed[ndx] = {
             ...linkedMessage,
-            html: await parseMarkdown(linkedMessage.content),
+            html: parseMarkdown(linkedMessage.content),
           };
         } else {
           linkedMessagesParsed[ndx] = {
@@ -118,15 +118,4 @@ const ESCAPE_HTML_ENTITIES: { [key: string]: string } = {
 export function escapeHtml(text?: string | null): string {
   if (!text) return "";
   return text.replace(/[&<>]/g, match => ESCAPE_HTML_ENTITIES[match] || match);
-}
-
-export function stripHtml(text?: string | null): string {
-  if (!text) return "";
-  return text
-    .replace(/<scr.*?>.*?<\/script>/g, "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .trim();
 }
