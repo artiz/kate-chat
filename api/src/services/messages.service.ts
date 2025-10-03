@@ -606,6 +606,7 @@ export class MessagesService {
     if (!model.streaming) {
       // sync call
       try {
+        await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
@@ -661,6 +662,7 @@ export class MessagesService {
 
     let content = "";
     let lastPublish: number = 0;
+    // TODO: extend this callback current status
     const handleStreaming = async (token: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => {
       if (completed) {
         if (error) {
@@ -691,6 +693,7 @@ export class MessagesService {
       }
     };
 
+    await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
     this.aiService
       .streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
       .catch((error: unknown) => {

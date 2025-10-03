@@ -15,7 +15,7 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
-- RAG implementation with documents (PDF, DOCX, TXT) parsing with [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
+- RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - Multiple chats creation with pristine chat functionality
 - Chat history storage and management, messages editing/deletion
@@ -59,6 +59,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
   - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
   - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
+* Add [MarkItDown](https://github.com/microsoft/markitdown) ([example](https://dev.to/leapcell/deep-dive-into-microsoft-markitdown-4if5)) in document-processor, support both processors and write script to generate Markdown for files from train and compare them.
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG

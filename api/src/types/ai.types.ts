@@ -179,6 +179,8 @@ export class MessageMetadata {
   @Field(() => String, { nullable: true })
   analysis?: string;
 
+  // TODO: Save tool calls made by model
+
   ///////////// user message meta
   // input document IDs
   @Field(() => [ID], { nullable: true })
@@ -243,6 +245,9 @@ export class ChatTool {
 
   @Field()
   name?: string;
+
+  @Field()
+  url?: string;
 
   @Field(() => [ChatToolOptions], { nullable: true })
   options?: ChatToolOptions[];

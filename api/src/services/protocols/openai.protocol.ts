@@ -59,7 +59,7 @@ export class OpenAIProtocol implements BaseChatProtocol {
 
       if (this.apiType === "responses") {
         const params = this.formatResponsesRequest(inputRequest);
-        logger.debug({ ...params, messages: [] }, "invoking responses...");
+        logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
         const { usage, output } = await this.openai.responses.create(params);
 
@@ -269,7 +269,7 @@ export class OpenAIProtocol implements BaseChatProtocol {
 
   private formatResponsesInput(messages: ModelMessage[]): OpenAI.Responses.ResponseInput {
     const result: OpenAI.Responses.ResponseInputItem[] = messages.map(msg => {
-      const role = this.mapMessageRole(msg.role);
+      let role = this.mapMessageRole(msg.role);
 
       if (typeof msg.body === "string") {
         return {
@@ -283,9 +283,16 @@ export class OpenAIProtocol implements BaseChatProtocol {
             if (part.contentType === "text") {
               return { type: "input_text" as const, text: part.content };
             } else if (part.contentType === "image") {
+              // send previous image as user message to give model more context
+              if (role === "assistant") {
+                role = "user";
+              }
+
               return {
                 type: "input_image" as const,
-                image_url: part.content,
+                image_url: part.content.startsWith("data:image")
+                  ? part.content
+                  : `data:image/pnag;base64,${part.content}`,
                 detail: "auto" as const,
               };
             } else {
@@ -349,7 +356,7 @@ export class OpenAIProtocol implements BaseChatProtocol {
       stream: true,
     };
 
-    logger.debug({ ...params, messages: [] }, "invoking streaming responses...");
+    logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking streaming responses...");
 
     const stream = await this.openai.responses.create(params);
     let fullResponse = "";
@@ -442,5 +449,32 @@ export class OpenAIProtocol implements BaseChatProtocol {
       default:
         return "user";
     }
+  }
+
+  debugResponseInput(input: string | OpenAI.Responses.ResponseInput | undefined): any {
+    return Array.isArray(input)
+      ? input?.map(m => {
+          if ("content" in m && Array.isArray(m.content)) {
+            return {
+              ...m,
+              content: m.content.map(c =>
+                typeof c === "string"
+                  ? (c as string).substring(0, 64)
+                  : {
+                      ...c,
+                      input_text:
+                        "input_text" in c && typeof c.input_text === "string"
+                          ? c.input_text.substring(0, 64)
+                          : undefined,
+                      image_url:
+                        "image_url" in c && typeof c.image_url === "string" ? c.image_url.substring(0, 32) : undefined,
+                    }
+              ),
+            };
+          }
+
+          return m;
+        })
+      : [];
   }
 }

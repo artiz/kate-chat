@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "katechat-client",
   "version": "1.0.0",
   "description": "KateChat - Universal AI Chat Interface",
   "private": true,

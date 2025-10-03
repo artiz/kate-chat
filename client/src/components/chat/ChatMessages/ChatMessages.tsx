@@ -398,25 +398,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             />
           </Group>
         ))}
-
-        {sending && !switchingModel && !callingOthers && (
-          <Group align="flex-start" gap="xs" pl="md" pr="md">
-            <Avatar color="gray" radius="xl">
-              <IconRobot />
-            </Avatar>
-            <Stack gap="xs">
-              <Text size="sm" fw={500} c="teal">
-                {selectedModelName || "AI"}
-              </Text>
-              <Paper p="sm" bg="gray.0" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Text size="sm" c="dimmed">
-                  Generating response
-                </Text>
-                <Loader size="xs" />
-              </Paper>
-            </Stack>
-          </Group>
-        )}
       </Stack>
 
       {/* Delete message confirmation modal */}
