@@ -61,6 +61,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 * Add request cancellation to stop reasoning or web search
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add [MarkItDown](https://github.com/microsoft/markitdown) ([example](https://dev.to/leapcell/deep-dive-into-microsoft-markitdown-4if5)) in document-processor, support both processors and write script to generate Markdown for files from train and compare them.
+* Add SerpApi for Web Search (new setting in UI)
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG

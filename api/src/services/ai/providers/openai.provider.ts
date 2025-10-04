@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import axios from "axios";
+import { Agent } from "undici";
 import {
   AIModelInfo,
   ApiProvider,
@@ -17,17 +18,17 @@ import {
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
-import { BaseProviderService } from "../base.provider";
+import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { Agent } from "undici";
-import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
+
+import { EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
-import { BaseChatProtocol } from "../protocols/base.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
   OPENAI_MODELS_SUPPORT_RESPONSES_API,
   OPENAI_NON_CHAT_MODELS,
-} from "@/config/openai";
+} from "@/config/ai/openai";
+import { YandexWebSearch } from "../tools/yandex.web_search";
 
 const logger = createLogger(__filename);
 
@@ -68,8 +69,8 @@ export type OpenAIList<T> = {
   };
 };
 
-export class OpenAIService extends BaseProviderService {
-  private protocol: BaseChatProtocol;
+export class OpenAIApiProvider extends BaseApiProvider {
+  private protocol: OpenAIProtocol;
   private apiKey: string;
   private adminApiKey: string;
   private baseUrl: string;
@@ -143,7 +144,7 @@ export class OpenAIService extends BaseProviderService {
 
     return {
       id: ApiProvider.OPEN_AI,
-      name: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
+      name: BaseApiProvider.getApiProviderName(ApiProvider.OPEN_AI),
       costsInfoAvailable: !!this.adminApiKey,
       isConnected,
       details,
@@ -252,13 +253,14 @@ export class OpenAIService extends BaseProviderService {
         }
 
         const apiType = this.getChatApiType(model.id);
-        const isSearchPreviewModel = model.id.includes("search-preview");
+        const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
+
         const tools =
           embeddingModel || imageGeneration
             ? []
             : apiType === "responses"
               ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER]
-              : isSearchPreviewModel
+              : searchAvailable
                 ? [ToolType.WEB_SEARCH]
                 : [];
 
@@ -275,7 +277,7 @@ export class OpenAIService extends BaseProviderService {
 
         models[model.id] = {
           apiProvider: ApiProvider.OPEN_AI,
-          provider: BaseProviderService.getApiProviderName(ApiProvider.OPEN_AI),
+          provider: BaseApiProvider.getApiProviderName(ApiProvider.OPEN_AI),
           name: this.getModelName(model.id),
           description: `${model.id} by OpenAI`,
           type,

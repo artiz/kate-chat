@@ -8,10 +8,10 @@ import {
   ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
-} from "../types/ai.types";
+} from "../../../types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
-export abstract class BaseProviderService {
+export abstract class BaseApiProvider {
   protected connection: ConnectionParams;
   constructor(connection: ConnectionParams) {
     this.connection = connection;

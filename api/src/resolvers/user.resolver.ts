@@ -4,7 +4,7 @@ import { User } from "../entities/User";
 import { generateToken } from "../utils/jwt";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
 import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
-import { DEFAULT_PROMPT } from "@/config/ai";
+import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
 import { verifyRecaptchaToken } from "../utils/recaptcha";
 import { logger } from "../utils/logger";
 import { AuthProvider, UserRole } from "../types/ai.types";
@@ -102,7 +102,7 @@ export class UserResolver extends BaseResolver {
       lastName,
       avatarUrl,
       role,
-      defaultSystemPrompt: DEFAULT_PROMPT,
+      defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
       authProvider: authProvider || AuthProvider.LOCAL,
     });
 

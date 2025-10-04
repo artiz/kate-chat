@@ -1,3 +1,9 @@
+export const DEFAULT_CHAT_PROMPT = `You a experienced software developer. 
+Being asked about code examples please always comment tricky moments and generate most effective and secure code.
+In case of formulas output always use MatJAX format.`;
+
+export const WEB_SEARCH_TEST_QUERY = "Capital of France";
+
 export const PROMPT_DOCUMENT_SUMMARY = ({ content }: { content: string }) =>
   `Please provide a comprehensive summary of the following document in up to 1024 words. 
     Return only summary, without any additional commentaries.

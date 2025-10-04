@@ -1,4 +1,4 @@
-import { Message } from "../entities/Message";
+import { Message } from "../../entities/Message";
 import {
   AIModelInfo,
   ApiProvider,
@@ -13,14 +13,14 @@ import {
   StreamCallbacks,
   UsageCostInfo,
   ChatResponseStatus,
-} from "../types/ai.types";
-import { BedrockService } from "./bedrock/bedrock.service";
-import { OpenAIService } from "./openai/openai.service";
-import { YandexService } from "./yandex/yandex.service";
-import { logger } from "../utils/logger";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, ENABLED_API_PROVIDERS } from "@/config/ai";
+} from "../../types/ai.types";
+import { BedrockApiProvider } from "./providers/bedrock.provider";
+import { OpenAIApiProvider } from "./providers/openai.provider";
+import { YandexApiProvider } from "./providers/yandex.provider";
+import { logger } from "../../utils/logger";
+import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, ENABLED_API_PROVIDERS } from "@/config/ai/common";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { BaseProviderService } from "./base.provider";
+import { BaseApiProvider } from "./providers/base.provider";
 
 export class AIService {
   /**
@@ -29,17 +29,17 @@ export class AIService {
    * @param connection The connection parameters.
    * @returns The API provider service instance.
    */
-  protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseProviderService {
+  protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseApiProvider {
     if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
       throw new Error(`API provider ${apiProvider} is not enabled`);
     }
 
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return new BedrockService(connection);
+      return new BedrockApiProvider(connection);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return new OpenAIService(connection);
+      return new OpenAIApiProvider(connection);
     } else if (apiProvider === ApiProvider.YANDEX_FM) {
-      return new YandexService(connection);
+      return new YandexApiProvider(connection);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }
@@ -100,7 +100,7 @@ export class AIService {
     return messages.map(msg => ({
       role: msg.role,
       body: msg.jsonContent || msg.content,
-      timestamp: msg.createdAt,
+      timestamp: msg.updatedAt,
     }));
   }
 
@@ -178,7 +178,7 @@ export class AIService {
     );
 
     return models.reduce(
-      (acc, models) => {
+      (acc: Record<string, AIModelInfo>, models: Record<string, AIModelInfo>) => {
         return Object.assign(acc, models);
       },
       {} as Record<string, AIModelInfo>
@@ -196,7 +196,7 @@ export class AIService {
           logger.error(error, `Error getting ${apiProvider} provider info`);
           return {
             id: apiProvider,
-            name: BaseProviderService.getApiProviderName(apiProvider),
+            name: BaseApiProvider.getApiProviderName(apiProvider),
             isConnected: false,
             details: { error: "Failed to get provider info" },
           };

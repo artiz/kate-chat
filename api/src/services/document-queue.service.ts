@@ -1,6 +1,6 @@
 import { createLogger } from "@/utils/logger";
 import { SubscriptionsService } from "./messaging/subscriptions.service";
-import { AIService } from "./ai.service";
+import { AIService } from "./ai/ai.service";
 import { getRepository } from "@/config/database";
 import { Document, Model, User } from "@/entities";
 import { DocumentStatus, MessageRole, ParsedJsonDocument } from "@/types/ai.types";
@@ -9,9 +9,9 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { MessagesService } from "./messages.service";
 import { Repository } from "typeorm";
-import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai.prompts";
-import { EmbeddingsService } from "./embeddings.service";
-import { CHARACTERS_PER_TOKEN, SUMMARIZING_OUTPUT_TOKENS, SUMMARIZING_TEMPERATURE } from "@/config/ai";
+import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai/prompts";
+import { EmbeddingsService } from "./ai/embeddings.service";
+import { CHARACTERS_PER_TOKEN, SUMMARIZING_OUTPUT_TOKENS, SUMMARIZING_TEMPERATURE } from "@/config/ai/common";
 
 const logger = createLogger(__filename);
 

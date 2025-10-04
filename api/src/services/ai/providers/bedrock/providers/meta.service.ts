@@ -1,6 +1,6 @@
 import { ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
-import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../../bedrock.provider";
 
 type MetaResponse = {
   generation?: string;

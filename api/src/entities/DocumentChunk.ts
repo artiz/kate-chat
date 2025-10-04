@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, Index, JoinColumn } 
 import { Field, ID, ObjectType } from "type-graphql";
 import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
-import { EMBEDDINGS_DIMENSIONS } from "../config/ai";
+import { EMBEDDINGS_DIMENSIONS } from "../config/ai/common";
 
 const VECTOR_TYPE = process.env.DB_TYPE === "postgres" ? "vector" : "text";
 const VECTOR_LENGTH = process.env.DB_TYPE === "postgres" ? EMBEDDINGS_DIMENSIONS : undefined;

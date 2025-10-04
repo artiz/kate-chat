@@ -3,7 +3,7 @@ import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
 import { Message } from "../entities/Message";
-import { AIService } from "./ai.service";
+import { AIService } from "./ai/ai.service";
 import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import {
@@ -18,7 +18,6 @@ import {
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
-import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
 import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
@@ -26,9 +25,9 @@ import { NEW_MESSAGE, SubscriptionsService } from "./messaging";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
-import { EmbeddingsService } from "./embeddings.service";
-import { PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
-import { RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
+import { EmbeddingsService } from "./ai/embeddings.service";
+import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
+import { CONTEXT_MESSAGES_LIMIT, RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai/common";
 
 const logger = createLogger(__filename);
 
@@ -581,7 +580,7 @@ export class MessagesService {
     inputMessages: Message[],
     assistantMessage: Message
   ): Promise<void> {
-    const systemPrompt = user.defaultSystemPrompt || DEFAULT_PROMPT;
+    const systemPrompt = user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
     const request: CompleteChatRequest = {
       modelId: model.modelId,
       systemPrompt,

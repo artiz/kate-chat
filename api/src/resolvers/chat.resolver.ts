@@ -8,7 +8,7 @@ import { Message, Document, Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
 import { MessageRole } from "@/types/ai.types";
 import { ChatsService } from "@/services/chats.service";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai";
+import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai/common";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {

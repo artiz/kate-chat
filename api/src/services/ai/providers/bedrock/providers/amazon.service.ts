@@ -2,7 +2,7 @@ import { ModelMessage, ModelResponse, StreamCallbacks, CompleteChatRequest } fro
 import { MessageRole } from "@/types/ai.types";
 import { logger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
-import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../../bedrock.provider";
 
 type AmazonMessageRole = "user" | "assistant";
 type AmazonImageFormat = "jpeg" | "png" | "gif" | "webp";

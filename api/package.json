@@ -43,6 +43,7 @@
     "eventsource-parser": "^3.0.2",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "fast-xml-parser": "^5.3.0",
     "finalhandler": "^2.1.0",
     "formidable": "^3.5.4",
     "graphql": "^16.11.0",

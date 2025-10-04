@@ -6,7 +6,7 @@ import { Repository } from "typeorm";
 import { User } from "../entities/User";
 import { getRepository } from "./database";
 import { AuthProvider, UserRole } from "../types/ai.types";
-import { DEFAULT_PROMPT } from "./ai";
+import { DEFAULT_CHAT_PROMPT } from "./ai/prompts";
 import { logger } from "../utils/logger";
 import {
   CALLBACK_URL_BASE,
@@ -91,7 +91,7 @@ export const configurePassport = () => {
                 avatarUrl,
                 role,
                 authProvider: AuthProvider.GOOGLE,
-                defaultSystemPrompt: DEFAULT_PROMPT,
+                defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
               });
 
               user = await userRepository.save(user);
@@ -172,7 +172,7 @@ export const configurePassport = () => {
                 avatarUrl,
                 role,
                 authProvider: AuthProvider.GITHUB,
-                defaultSystemPrompt: DEFAULT_PROMPT,
+                defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
               });
 
               user = await userRepository.save(user);

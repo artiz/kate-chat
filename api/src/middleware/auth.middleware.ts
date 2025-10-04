@@ -14,6 +14,8 @@ export interface ConnectionParams {
   OPENAI_API_ADMIN_KEY?: string;
   YANDEX_FM_API_KEY?: string;
   YANDEX_FM_API_FOLDER?: string;
+  YANDEX_SEARCH_API_KEY?: string;
+  YANDEX_SEARCH_API_FOLDER?: string;
 }
 
 declare global {
@@ -100,5 +102,11 @@ function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
     OPENAI_API_ADMIN_KEY: getHeader(headers["x-openai-api-admin-key"]) || process.env.OPENAI_API_ADMIN_KEY,
     YANDEX_FM_API_KEY: getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_FM_API_KEY,
     YANDEX_FM_API_FOLDER: getHeader(headers["x-yandex-api-folder"]) || process.env.YANDEX_FM_API_FOLDER,
+    YANDEX_SEARCH_API_KEY:
+      getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_SEARCH_API_KEY || process.env.YANDEX_FM_API_KEY,
+    YANDEX_SEARCH_API_FOLDER:
+      getHeader(headers["x-yandex-api-folder"]) ||
+      process.env.YANDEX_SEARCH_API_FOLDER ||
+      process.env.YANDEX_FM_API_FOLDER,
   };
 }

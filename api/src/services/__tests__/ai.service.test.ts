@@ -1,4 +1,4 @@
-import { AIService } from "../ai.service";
+import { AIService } from "../ai/ai.service";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { ApiProvider, MessageRole, ModelMessage } from "../../types/ai.types";
 import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
@@ -8,7 +8,7 @@ const bedrockClient = {
   send: jest.fn(),
 };
 
-jest.mock("../../config/ai.ts", () => {
+jest.mock("../../config/ai/common.ts", () => {
   return {
     // values from ApiProvider to avoid circular dependency
     ENABLED_API_PROVIDERS: ["aws_bedrock", "yandex_fm"],

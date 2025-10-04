@@ -6,7 +6,7 @@ import { Document, DocumentChunk, Model, User } from "@/entities";
 import { ParsedDocumentChunk } from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { In, Repository } from "typeorm";
-import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
+import { EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { notEmpty, ok } from "@/utils/assert";
 
 const logger = createLogger(__filename);

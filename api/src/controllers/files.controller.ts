@@ -107,7 +107,6 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
       status: DocumentStatus.UPLOAD,
       statusProgress: 1,
     });
-    const fileRe = filepath;
 
     document = await documentRepo.save(document);
     subService.publishDocumentStatus(document);

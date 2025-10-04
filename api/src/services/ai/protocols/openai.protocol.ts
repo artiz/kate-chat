@@ -13,25 +13,49 @@ import {
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { EmbeddingCreateParams } from "openai/resources/embeddings";
-import { BaseChatProtocol } from "./base.protocol";
 import { notEmpty } from "@/utils/assert";
 import { Tool } from "openai/resources/responses/responses";
 import { ChatCompletionTool } from "openai/resources/index";
-import e from "express";
+import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
 
 export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
 
-export class OpenAIProtocol implements BaseChatProtocol {
-  private openai: OpenAI;
+const WEB_SEARCH_TOOL: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "web_search",
+    description: "Search the web for relevant information",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search query",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of search results to return",
+        },
+      },
+      required: ["query"],
+    },
+  },
+};
 
-  constructor({ baseURL, apiKey }: { baseURL: string; apiKey: string }) {
+export class OpenAIProtocol {
+  private openai: OpenAI;
+  private connection?: ConnectionParams;
+
+  constructor({ baseURL, apiKey, connection }: { baseURL: string; apiKey: string; connection?: ConnectionParams }) {
     if (!apiKey) {
       logger.warn("API key is not defined.");
     }
 
+    // be used in tools
+    this.connection = connection;
     this.openai = new OpenAI({
       apiKey,
       baseURL,
@@ -234,8 +258,15 @@ export class OpenAIProtocol implements BaseChatProtocol {
     }
 
     if (inputTools) {
+      const tools: ChatCompletionTool[] = [];
+
+      // custom web search tool
       if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
-        params.web_search_options = {};
+        tools.push(WEB_SEARCH_TOOL);
+      }
+
+      if (tools.length) {
+        params.tools = tools;
       }
     }
 
@@ -339,6 +370,9 @@ export class OpenAIProtocol implements BaseChatProtocol {
     let meta: MessageMetadata | undefined = undefined;
 
     for await (const chunk of stream) {
+      // TODO: handle tool calls
+      // chunk.choices[0].delta.tool_calls
+
       const token = chunk.choices[0]?.delta?.content || "";
       if (token) {
         fullResponse += token;

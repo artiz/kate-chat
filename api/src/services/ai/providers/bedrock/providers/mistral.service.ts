@@ -2,7 +2,7 @@ import { ModelMessage, ModelResponse, CompleteChatRequest } from "@/types/ai.typ
 import { MessageRole } from "@/types/ai.types";
 import { ok } from "assert";
 import { createLogger } from "@/utils/logger";
-import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../../bedrock.provider";
 
 const logger = createLogger(__filename);
 

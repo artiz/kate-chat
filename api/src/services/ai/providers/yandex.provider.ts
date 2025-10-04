@@ -1,4 +1,3 @@
-import { Agent } from "undici";
 import {
   ApiProvider,
   CompleteChatRequest,
@@ -7,21 +6,21 @@ import {
   StreamCallbacks,
   AIModelInfo,
   UsageCostInfo,
-  ModelMessage,
   ModelType,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
+  ToolType,
 } from "@/types/ai.types";
-import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS } from "@/config/yandex";
-import { BaseProviderService } from "../base.provider";
+import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS } from "@/config/ai/yandex";
+import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { BaseChatProtocol } from "../protocols/base.protocol";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
+import { YandexWebSearch } from "../tools/yandex.web_search";
 
-export class YandexService extends BaseProviderService {
+export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
   private folderId: string;
-  private protocol: BaseChatProtocol;
+  private protocol: OpenAIProtocol;
 
   constructor(connection: ConnectionParams) {
     super(connection);
@@ -79,7 +78,7 @@ export class YandexService extends BaseProviderService {
 
     return {
       id: ApiProvider.YANDEX_FM,
-      name: BaseProviderService.getApiProviderName(ApiProvider.YANDEX_FM),
+      name: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_FM),
       isConnected,
       costsInfoAvailable: false, // Yandex doesn't support cost retrieval via API
       details,
@@ -93,16 +92,18 @@ export class YandexService extends BaseProviderService {
       return {};
     }
 
+    const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
     return YANDEX_MODELS.reduce(
       (map, model) => {
         map[model.uri] = {
           apiProvider: ApiProvider.YANDEX_FM,
-          provider: BaseProviderService.getApiProviderName(ApiProvider.YANDEX_FM),
+          provider: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_FM),
           name: model.name,
           description: model.description || "",
           type: ModelType.CHAT,
           streaming: true,
           maxInputTokens: model.maxInputTokens,
+          tools: searchAvailable ? [ToolType.WEB_SEARCH] : [],
         };
 
         return map;

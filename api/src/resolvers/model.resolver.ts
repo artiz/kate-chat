@@ -1,5 +1,5 @@
 import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
-import { AIService } from "../services/ai.service";
+import { AIService } from "../services/ai/ai.service";
 import { Model } from "../entities/Model";
 
 import { GqlModelsList, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";

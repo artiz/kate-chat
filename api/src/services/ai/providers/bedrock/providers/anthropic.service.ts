@@ -2,7 +2,7 @@ import { ModelResponse, CompleteChatRequest } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { logger } from "@/utils/logger";
-import { BedrockModelServiceProvider, InvokeModelParams } from "../bedrock.service";
+import { BedrockModelServiceProvider, InvokeModelParams } from "../../bedrock.provider";
 
 type AnthropicMessageRole = "user" | "assistant";
 type AnthropicResponseType = "tool_use" | "text" | "image";

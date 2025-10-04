@@ -5,6 +5,7 @@ import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedr
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
 
 import {
+  ApiProvider,
   AIModelInfo,
   ModelResponse,
   StreamCallbacks,
@@ -16,13 +17,19 @@ import {
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
-} from "../../types/ai.types";
-import { ApiProvider } from "../../types/ai.types";
-import BedrockModelConfigs from "../../config/data/bedrock-models-config.json";
+} from "@/types/ai.types";
+import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
-import { BaseProviderService } from "../base.provider";
-import { AnthropicService, AmazonService, AI21Service, CohereService, MetaService, MistralService } from "./providers";
+import { BaseApiProvider } from "./base.provider";
+import {
+  AnthropicService,
+  AmazonService,
+  AI21Service,
+  CohereService,
+  MetaService,
+  MistralService,
+} from "./bedrock/providers";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 const logger = createLogger(__filename);
@@ -46,7 +53,7 @@ interface BedrockModelConfigRecord {
   maxInputTokens?: number;
 }
 
-export class BedrockService extends BaseProviderService {
+export class BedrockApiProvider extends BaseApiProvider {
   protected bedrockClient: BedrockRuntimeClient;
   protected bedrockManagementClient: BedrockClient;
 
@@ -299,7 +306,7 @@ export class BedrockService extends BaseProviderService {
 
     return {
       id: ApiProvider.AWS_BEDROCK,
-      name: BaseProviderService.getApiProviderName(ApiProvider.AWS_BEDROCK),
+      name: BaseApiProvider.getApiProviderName(ApiProvider.AWS_BEDROCK),
       costsInfoAvailable: isConnected,
       isConnected,
       details,
