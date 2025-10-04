@@ -313,6 +313,8 @@ type Message {
   modelId: String!
   modelName: String
   role: String!
+  status: String
+  statusInfo: String
   updatedAt: DateTimeISO
   user: User
   userId: String

@@ -32,9 +32,8 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MAX_INPUT_JSON } from "./config/application";
 import { MessagesService } from "@/services/messages.service";
-import { SQSService } from "@/services/sqs.service";
 import { HttpError } from "./types/exceptions";
-import { SubscriptionsService } from "./services/subscriptions.service";
+import { SQSService, SubscriptionsService } from "./services/messaging";
 import { servicesMiddleware } from "./middleware/services.middleware";
 
 // Load environment variables

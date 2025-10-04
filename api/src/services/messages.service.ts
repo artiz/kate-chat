@@ -4,16 +4,17 @@ import type { WebSocket } from "ws";
 
 import { Message } from "../entities/Message";
 import { AIService } from "./ai.service";
-import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import {
+  ChatResponseStatus,
   CompleteChatRequest,
   MessageMetadata,
   MessageRole,
   MessageType,
   ModelMessageContent,
   ModelResponse,
+  ResponseStatus,
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
@@ -21,9 +22,9 @@ import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
 import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
-import { SubscriptionsService } from "./subscriptions.service";
+import { NEW_MESSAGE, SubscriptionsService } from "./messaging";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { S3Service } from "./s3.service";
+import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./embeddings.service";
 import { PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
@@ -31,7 +32,7 @@ import { RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
 
 const logger = createLogger(__filename);
 
-const MIN_STREAMING_UPDATE_MS = 50; // Minimum interval between streaming updates
+const MIN_STREAMING_UPDATE_MS = 30; // Minimum interval between streaming updates
 
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
@@ -599,6 +600,9 @@ export class MessagesService {
         await this.chatRepository.save(chat);
       }
 
+      message.status = undefined;
+      message.statusInfo = undefined;
+
       const savedMessage = await this.messageRepository.save(message);
       await this.subscriptionsService.publishChatMessage(chat, savedMessage);
     };
@@ -663,7 +667,12 @@ export class MessagesService {
     let content = "";
     let lastPublish: number = 0;
     // TODO: extend this callback current status
-    const handleStreaming = async (token: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => {
+    const handleStreaming = async (
+      data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
+      completed?: boolean
+    ) => {
+      const { content: token = "", error, metadata, status } = data;
+
       if (completed) {
         if (error) {
           return completeRequest({
@@ -681,15 +690,19 @@ export class MessagesService {
           logger.error(err, "Error sending AI response");
         });
 
-        // stream token
-      } else {
-        content += token;
-        const ts = Date.now();
-        if (ts - lastPublish > MIN_STREAMING_UPDATE_MS) {
-          lastPublish = ts;
-          assistantMessage.content = content;
-          await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
-        }
+        return;
+      }
+
+      content += token;
+      const now = new Date();
+      if (now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
+        lastPublish = now.getTime();
+        assistantMessage.content = content;
+        assistantMessage.status = status?.status || ResponseStatus.IN_PROGRESS;
+        assistantMessage.statusInfo = this.getStatusInformation(status);
+        assistantMessage.updatedAt = now;
+
+        await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
       }
     };
 
@@ -704,6 +717,20 @@ export class MessagesService {
           role: MessageRole.ERROR,
         }).catch(err => logger.error(err, "Error sending AI response"));
       });
+  }
+
+  protected getStatusInformation(status: ChatResponseStatus | undefined): string | undefined {
+    if (!status) return;
+
+    switch (status.status) {
+      case ResponseStatus.WEB_SEARCH:
+      case ResponseStatus.TOOL_CALL:
+      case ResponseStatus.OUTPUT_ITEM:
+      case ResponseStatus.REASONING:
+        return status.detail || (status.sequence_number == null ? "" : `Step #${status.sequence_number}`);
+      default:
+        return undefined;
+    }
   }
 
   protected async publishRagMessage(

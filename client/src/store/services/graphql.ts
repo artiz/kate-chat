@@ -120,7 +120,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       id
       content
       role
-      createdAt
+      updatedAt
       modelId
       modelName
       user {

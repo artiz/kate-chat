@@ -16,6 +16,8 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
       type
       message {
         ...BaseMessage
+        status
+        statusInfo
       }
       chat {
         title

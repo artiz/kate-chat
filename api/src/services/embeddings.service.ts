@@ -1,16 +1,13 @@
 import pgvector from "pgvector";
 import { createLogger } from "@/utils/logger";
-import { SubscriptionsService } from "./subscriptions.service";
 import { AIService } from "./ai.service";
 import { AppDataSource, DB_TYPE, getRepository } from "@/config/database";
 import { Document, DocumentChunk, Model, User } from "@/entities";
 import { ParsedDocumentChunk } from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { In, Not, Repository } from "typeorm";
-import { run } from "node:test";
-import { ok } from "assert";
+import { In, Repository } from "typeorm";
 import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
-import { notEmpty } from "@/utils/assert";
+import { notEmpty, ok } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 

@@ -19,12 +19,10 @@ import { BaseResolver } from "./base.resolver";
 import { MessageType } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
-import { S3Service } from "@/services/s3.service";
+import { S3Service } from "@/services/data";
 import { ChatsService } from "@/services/chats.service";
 import { isAdmin } from "@/utils/jwt";
-
-// Topics for PubSub
-export const NEW_MESSAGE = "NEW_MESSAGE";
+import { NEW_MESSAGE } from "@/services/messaging";
 
 const logger = createLogger(__filename);
 

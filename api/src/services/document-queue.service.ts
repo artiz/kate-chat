@@ -1,10 +1,10 @@
 import { createLogger } from "@/utils/logger";
-import { SubscriptionsService } from "./subscriptions.service";
+import { SubscriptionsService } from "./messaging/subscriptions.service";
 import { AIService } from "./ai.service";
 import { getRepository } from "@/config/database";
-import { Document, DocumentChunk, Model, User } from "@/entities";
+import { Document, Model, User } from "@/entities";
 import { DocumentStatus, MessageRole, ParsedJsonDocument } from "@/types/ai.types";
-import { S3Service } from "./s3.service";
+import { S3Service } from "./data";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { MessagesService } from "./messages.service";

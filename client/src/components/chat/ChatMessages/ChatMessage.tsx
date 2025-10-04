@@ -1,9 +1,9 @@
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box } from "@mantine/core";
+import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, Badge } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconFile, IconRobot, IconUser } from "@tabler/icons-react";
 
-import { debounce } from "lodash";
+import { debounce, update } from "lodash";
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
 import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
 
@@ -13,6 +13,7 @@ import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
 import { MessageRole } from "@/types/ai";
 import { Message, Document } from "@/types/graphql";
+import { MessageStatus } from "./MessageStatus";
 
 interface ChatMessageProps {
   message: Message;
@@ -33,10 +34,12 @@ export const ChatMessage = (props: ChatMessageProps) => {
     metadata,
     content,
     html,
-    createdAt,
+    updatedAt,
     user,
     streaming = false,
     linkedMessages,
+    status,
+    statusInfo,
   } = message;
 
   const componentRef = useRef<HTMLDivElement>(null);
@@ -46,7 +49,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const [showMainMessage, setShowMainMessage] = React.useState(true);
   const [showDetails, setShowDetails] = React.useState(false);
 
-  const timestamp = new Date(createdAt).toLocaleString();
+  const timestamp = new Date(updatedAt).toLocaleString();
   const isUserMessage = role === MessageRole.USER;
   const username = isUserMessage
     ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
@@ -251,6 +254,14 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <Text size="xs" c="dimmed">
               {timestamp}
             </Text>
+            {status && (
+              <>
+                <MessageStatus status={status} />
+                <Text size="xs" c="dimmed">
+                  {statusInfo}
+                </Text>
+              </>
+            )}
           </Group>
         </Group>
         <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>

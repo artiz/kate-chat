@@ -8,6 +8,7 @@ import {
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   ToolType,
+  ResponseStatus,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
@@ -15,6 +16,8 @@ import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { BaseChatProtocol } from "./base.protocol";
 import { notEmpty } from "@/utils/assert";
 import { Tool } from "openai/resources/responses/responses";
+import { ChatCompletionTool } from "openai/resources/index";
+import e from "express";
 
 const logger = createLogger(__filename);
 
@@ -23,22 +26,12 @@ type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses
 
 export class OpenAIProtocol implements BaseChatProtocol {
   private openai: OpenAI;
-  private apiType: OpenAIApiType;
 
-  constructor({
-    baseURL,
-    apiKey,
-    apiType = "completions",
-  }: {
-    baseURL: string;
-    apiKey: string;
-    apiType?: OpenAIApiType;
-  }) {
+  constructor({ baseURL, apiKey }: { baseURL: string; apiKey: string }) {
     if (!apiKey) {
       logger.warn("API key is not defined.");
     }
 
-    this.apiType = apiType;
     this.openai = new OpenAI({
       apiKey,
       baseURL,
@@ -50,14 +43,17 @@ export class OpenAIProtocol implements BaseChatProtocol {
     return this.openai;
   }
 
-  async completeChat(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
+  async completeChat(
+    inputRequest: CompleteChatRequest,
+    apiType: OpenAIApiType = "completions"
+  ): Promise<ModelResponse> {
     try {
       const response: ModelResponse = {
         type: "text",
         content: "",
       };
 
-      if (this.apiType === "responses") {
+      if (apiType === "responses") {
         const params = this.formatResponsesRequest(inputRequest);
         logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
@@ -105,11 +101,14 @@ export class OpenAIProtocol implements BaseChatProtocol {
   }
 
   // Stream response from OpenAI models
-  async streamChatCompletion(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(
+    inputRequest: CompleteChatRequest,
+    callbacks: StreamCallbacks,
+    apiType: OpenAIApiType = "completions"
+  ): Promise<void> {
     callbacks.onStart?.();
-
     try {
-      if (this.apiType === "responses") {
+      if (apiType === "responses") {
         await this.streamChatResponses(inputRequest, callbacks);
       } else {
         await this.streamChatCompletionLegacy(inputRequest, callbacks);
@@ -209,10 +208,15 @@ export class OpenAIProtocol implements BaseChatProtocol {
     return result;
   }
 
+  /**
+   * Formats the completion request for the OpenAI API.
+   * @param inputRequest The input request containing chat parameters.
+   * @returns The formatted completion request parameters.
+   */
   private formatCompletionRequest(
     inputRequest: CompleteChatRequest
   ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
@@ -227,6 +231,12 @@ export class OpenAIProtocol implements BaseChatProtocol {
       delete params.temperature; // GPT-4o models do not support temperature
     } else if (modelId.startsWith("gpt-5")) {
       params.temperature = 1;
+    }
+
+    if (inputTools) {
+      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
+        params.web_search_options = {};
+      }
     }
 
     return params;
@@ -246,7 +256,7 @@ export class OpenAIProtocol implements BaseChatProtocol {
 
     if (inputRequest.tools) {
       if (inputRequest.tools.find(t => t.type === ToolType.WEB_SEARCH)) {
-        tools.push({ type: "web_search_preview" });
+        tools.push({ type: "web_search" });
       }
       if (inputRequest.tools.find(t => t.type === ToolType.CODE_INTERPRETER)) {
         tools.push({ type: "code_interpreter", container: { type: "auto" } });
@@ -332,7 +342,7 @@ export class OpenAIProtocol implements BaseChatProtocol {
       const token = chunk.choices[0]?.delta?.content || "";
       if (token) {
         fullResponse += token;
-        callbacks.onToken?.(token);
+        callbacks.onProgress?.(token);
       }
 
       const usage = chunk.usage;
@@ -361,10 +371,69 @@ export class OpenAIProtocol implements BaseChatProtocol {
     const stream = await this.openai.responses.create(params);
     let fullResponse = "";
     let meta: MessageMetadata | undefined = undefined;
+    let lastStatus: ResponseStatus | undefined = undefined;
+    let toolCall = "";
 
     for await (const chunk of stream) {
       if (chunk.type == "response.output_text.delta") {
-        callbacks.onToken?.(chunk.delta);
+        callbacks.onProgress?.(chunk.delta);
+      } else if (
+        chunk.type == "response.web_search_call.in_progress" ||
+        chunk.type == "response.web_search_call.searching" ||
+        chunk.type == "response.web_search_call.completed"
+      ) {
+        if (lastStatus !== ResponseStatus.WEB_SEARCH) {
+          lastStatus = ResponseStatus.WEB_SEARCH;
+          callbacks.onProgress?.("", { status: ResponseStatus.WEB_SEARCH });
+        }
+      } else if (chunk.type == "response.code_interpreter_call.in_progress") {
+        if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
+          lastStatus = ResponseStatus.CODE_INTERPRETER;
+          callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
+        }
+      } else if (chunk.type == "response.code_interpreter_call_code.delta") {
+        const delta = toolCall === "" ? "```\n" + chunk.delta : chunk.delta;
+        toolCall += delta;
+
+        callbacks.onProgress?.(delta, { status: ResponseStatus.CODE_INTERPRETER });
+      } else if (chunk.type == "response.code_interpreter_call.interpreting") {
+        toolCall += "\n```";
+        logger.debug({ toolCall }, "code interpreter call");
+
+        toolCall = "";
+        callbacks.onProgress?.("\n```", { status: ResponseStatus.CODE_INTERPRETER });
+      } else if (chunk.type == "response.output_item.done") {
+        let status: ResponseStatus | undefined = undefined;
+        const item = chunk.item;
+        let detail: string | undefined = undefined;
+        if ("action" in item) {
+          if ("query" in item.action) {
+            detail = item.action.query as string;
+          }
+        }
+
+        if (item.type === "web_search_call") {
+          status = ResponseStatus.WEB_SEARCH;
+        } else if (item.type === "code_interpreter_call") {
+          status = ResponseStatus.CODE_INTERPRETER;
+        } else if (item.type === "function_call") {
+          status = ResponseStatus.TOOL_CALL;
+        } else if (item.type === "reasoning") {
+          if (item.content?.length) {
+            status = ResponseStatus.REASONING;
+          } else {
+            status = undefined;
+          }
+        }
+
+        if (status) {
+          lastStatus = status;
+          callbacks.onProgress?.("", {
+            status,
+            sequence_number: chunk.sequence_number,
+            detail,
+          });
+        }
       } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
         const { usage, output } = chunk.response;
 
@@ -380,8 +449,8 @@ export class OpenAIProtocol implements BaseChatProtocol {
             },
           };
         }
-      } else {
-        logger.debug(`Unhandled response chunk type: ${chunk.type}`);
+      } else if (!["response.output_item.added"].includes(chunk.type)) {
+        logger.debug(chunk, `Unhandled response chunk type: ${chunk.type}`);
       }
     }
 

@@ -79,6 +79,17 @@ export enum DocumentStatus {
   DELETING = "deleting",
 }
 
+export enum ResponseStatus {
+  IN_PROGRESS = "in_progress",
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  TOOL_CALL = "tool_call",
+  OUTPUT_ITEM = "output_item",
+  REASONING = "reasoning",
+  COMPLETED = "completed",
+  ERROR = "error",
+}
+
 export interface ParsedDocumentChunk {
   page: number;
   length_tokens: number;
@@ -199,9 +210,15 @@ export interface EmbeddingsResponse {
   embedding: number[];
 }
 
+export interface ChatResponseStatus {
+  status?: ResponseStatus;
+  sequence_number?: number;
+  detail?: string;
+}
+
 export interface StreamCallbacks {
-  onStart?: () => void;
-  onToken?: (token: string) => void;
+  onStart?: (status?: ChatResponseStatus) => void;
+  onProgress?: (token: string, status?: ChatResponseStatus) => void;
   onComplete?: (content: string, metadata?: MessageMetadata) => void;
   onError?: (error: Error) => void;
 }

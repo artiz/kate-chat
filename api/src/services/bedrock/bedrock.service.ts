@@ -117,7 +117,7 @@ export class BedrockService extends BaseProviderService {
         // Simulate streaming by sending chunks of the response
         const chunks = response.content.split(" ");
         for (const chunk of chunks) {
-          callbacks.onToken?.(chunk + " ");
+          callbacks.onProgress?.(chunk + " ");
           // Add a small delay to simulate streaming
           await new Promise(resolve => setTimeout(resolve, 10));
         }
@@ -208,7 +208,7 @@ export class BedrockService extends BaseProviderService {
 
             if (token) {
               fullResponse += token;
-              callbacks.onToken?.(token);
+              callbacks.onProgress?.(token);
             }
           }
         }

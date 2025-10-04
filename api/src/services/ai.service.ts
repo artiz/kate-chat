@@ -12,6 +12,7 @@ import {
   ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
+  ChatResponseStatus,
 } from "../types/ai.types";
 import { BedrockService } from "./bedrock/bedrock.service";
 import { OpenAIService } from "./openai/openai.service";
@@ -127,7 +128,10 @@ export class AIService {
     connection: ConnectionParams,
     request: CompleteChatRequest,
     messages: Message[],
-    callback: (content: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => void
+    callback: (
+      data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
+      completed?: boolean
+    ) => void
   ) {
     // Stream the completion in background
     return this.streamChatCompletion(
@@ -138,14 +142,17 @@ export class AIService {
         messages: this.formatMessages(messages),
       },
       {
-        onToken: (token: string) => {
-          callback(token);
+        onStart: (status?: ChatResponseStatus) => {
+          callback({ status });
+        },
+        onProgress: (token: string, status?: ChatResponseStatus) => {
+          callback({ content: token, status });
         },
         onComplete: (response: string, metadata: MessageMetadata | undefined) => {
-          callback(response, true, undefined, metadata);
+          callback({ content: response, metadata }, true);
         },
         onError: (error: Error) => {
-          callback("", true, error);
+          callback({ error }, true);
         },
       }
     );

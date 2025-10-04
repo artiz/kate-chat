@@ -3,11 +3,10 @@ import { getRepository } from "@/config/database";
 
 import { Document } from "@/entities/Document";
 import { GraphQLContext } from ".";
-import { DOCUMENT_STATUS_CHANNEL } from "@/services/subscriptions.service";
+import { DOCUMENT_STATUS_CHANNEL } from "@/services/messaging";
 import { BaseResolver } from "./base.resolver";
 import { Repository, ILike } from "typeorm";
-import { S3Service } from "@/services/s3.service";
-import { SQSService } from "@/services/sqs.service";
+import { S3Service } from "@/services/data";
 import { DocumentStatusMessage, DocumentsResponse } from "@/types/graphql/responses";
 import { GetDocumentsInput } from "@/types/graphql/inputs";
 

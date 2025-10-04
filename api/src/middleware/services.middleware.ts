@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { SQSService } from "@/services/sqs.service";
-import { SubscriptionsService } from "@/services/subscriptions.service";
+import { SQSService, SubscriptionsService } from "@/services/messaging";
 import { MessagesService } from "@/services/messages.service";
 
 declare global {

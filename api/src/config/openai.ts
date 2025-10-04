@@ -10,6 +10,24 @@ export const OPENAI_NON_CHAT_MODELS = [
   "tts-1",
 ];
 
+export const OPENAI_MODELS_SUPPORT_RESPONSES_API = [
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-5-chat",
+  "gpt-5-codex",
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "gpt-4o",
+  "gpt-4o-mini",
+  "o1",
+  "o3",
+  "o3-mini",
+  "o4-mini",
+  "gpt-image-1",
+];
+
 export const OPENAI_MODEL_MAX_INPUT_TOKENS: { [key: string]: number } = {
   "gpt-5": 400_000,
   "gpt-4": 8192,

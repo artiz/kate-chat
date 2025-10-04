@@ -196,6 +196,16 @@ export interface MessageMetadata {
   relevantsChunks?: MessageRelevantChunk[];
 }
 
+export enum ResponseStatus {
+  IN_PROGRESS = "in_progress",
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  TOOL_CALL = "tool_call",
+  REASONING = "reasoning",
+  COMPLETED = "completed",
+  ERROR = "error",
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -206,10 +216,13 @@ export interface Message {
   modelName?: string;
   user?: User;
   createdAt: string;
+  updatedAt: string;
   streaming?: boolean;
   linkedToMessageId?: string;
   linkedMessages?: Message[];
   metadata?: MessageMetadata;
+  status?: ResponseStatus;
+  statusInfo?: string;
 }
 
 export interface MessageChatInfo {

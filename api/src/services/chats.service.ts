@@ -1,7 +1,6 @@
-import { Brackets, In, IsNull, MoreThanOrEqual, Not, ObjectLiteral, Repository } from "typeorm";
+import { ObjectLiteral, Repository } from "typeorm";
 
 import { Chat, Message } from "@/entities";
-import { createLogger } from "@/utils/logger";
 import { getRepository } from "@/config/database";
 
 export class ChatsService {

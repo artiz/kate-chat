@@ -1,5 +1,5 @@
 import { createLogger } from "@/utils/logger";
-import { DocumentQueueService } from "./document-queue.service";
+import { DocumentQueueService } from "../document-queue.service";
 import {
   SQS_ACCESS_KEY_ID,
   SQS_DOCUMENTS_QUEUE,
@@ -223,7 +223,7 @@ export class SQSService {
         this.documentQueueService
           .handleIndexDocumentCommand(command)
           .then(() => this.deleteMessage(message))
-          .catch(error => {
+          .catch((error: unknown) => {
             logger.error(error, `Failed to process index_document command for document ${command.documentId}`);
           });
         return false;

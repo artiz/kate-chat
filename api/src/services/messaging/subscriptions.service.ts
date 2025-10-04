@@ -1,16 +1,17 @@
 import { PubSub } from "graphql-subscriptions";
 import { createClient, RedisClientType } from "redis";
 
-import { NEW_MESSAGE } from "@/resolvers/message.resolver";
 import { Message } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
-import { WebSocket } from "ws";
 import { ok } from "@/utils/assert";
 import { QUEUE_MESSAGE_EXPIRATION_SEC, REDIS_URL } from "@/config/application";
 import { MessageRole } from "@/types/ai.types";
 import { Document } from "@/entities/Document";
 import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/responses";
 import { Chat } from "@/entities";
+
+// Topics for PubSub
+export const NEW_MESSAGE = "NEW_MESSAGE";
 
 const logger = createLogger(__filename);
 

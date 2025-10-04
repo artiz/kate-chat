@@ -21,10 +21,13 @@ import { BaseProviderService } from "../base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Agent } from "undici";
 import { EMBEDDINGS_DIMENSIONS } from "@/config/ai";
-import { OpenAIProtocol } from "../protocols/openai.protocol";
+import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
 import { BaseChatProtocol } from "../protocols/base.protocol";
-import { OPENAI_MODEL_MAX_INPUT_TOKENS, OPENAI_NON_CHAT_MODELS } from "@/config/openai";
-import { Tool } from "@aws-sdk/client-bedrock-runtime";
+import {
+  OPENAI_MODEL_MAX_INPUT_TOKENS,
+  OPENAI_MODELS_SUPPORT_RESPONSES_API,
+  OPENAI_NON_CHAT_MODELS,
+} from "@/config/openai";
 
 const logger = createLogger(__filename);
 
@@ -84,7 +87,6 @@ export class OpenAIService extends BaseProviderService {
       this.protocol = new OpenAIProtocol({
         baseURL: this.baseUrl,
         apiKey: this.apiKey,
-        apiType: "responses",
       });
     }
   }
@@ -92,12 +94,12 @@ export class OpenAIService extends BaseProviderService {
   async completeChat(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
     const { modelId } = inputRequest;
 
-    // Determine if this is an image generation request
+    // image generation request
     if (modelId.startsWith("dall-e")) {
       return this.generateImages(inputRequest);
     }
 
-    return this.protocol.completeChat(inputRequest);
+    return this.protocol.completeChat(inputRequest, this.getChatApiType(modelId));
   }
 
   // Stream response from OpenAI models
@@ -105,7 +107,7 @@ export class OpenAIService extends BaseProviderService {
     const { modelId } = inputRequest;
 
     // If this is an image generation model, generate the image non-streaming
-    if (modelId === "dall-e-3" || modelId === "dall-e-2") {
+    if (modelId.startsWith("dall-e")) {
       callbacks.onStart?.();
       try {
         const response = await this.generateImages(inputRequest);
@@ -116,7 +118,7 @@ export class OpenAIService extends BaseProviderService {
       return;
     }
 
-    return this.protocol.streamChatCompletion(inputRequest, callbacks);
+    return this.protocol.streamChatCompletion(inputRequest, callbacks, this.getChatApiType(modelId));
   }
 
   // Get OpenAI provider information including account details
@@ -249,7 +251,16 @@ export class OpenAIService extends BaseProviderService {
           continue; // Skip non-chat models that are not image generation or embeddings
         }
 
-        const tools = embeddingModel || imageGeneration ? [] : [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER];
+        const apiType = this.getChatApiType(model.id);
+        const isSearchPreviewModel = model.id.includes("search-preview");
+        const tools =
+          embeddingModel || imageGeneration
+            ? []
+            : apiType === "responses"
+              ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER]
+              : isSearchPreviewModel
+                ? [ToolType.WEB_SEARCH]
+                : [];
 
         const type = embeddingModel
           ? ModelType.EMBEDDING
@@ -395,5 +406,12 @@ export class OpenAIService extends BaseProviderService {
       .replace(/-/g, " ")
       .replace(/\b\w/g, char => char.toUpperCase());
     return name;
+  }
+
+  private getChatApiType(modelId: string): OpenAIApiType {
+    return OPENAI_MODELS_SUPPORT_RESPONSES_API.includes(modelId) ||
+      OPENAI_MODELS_SUPPORT_RESPONSES_API.some((prefix: string) => modelId.startsWith(prefix))
+      ? "responses"
+      : "completions";
   }
 }
