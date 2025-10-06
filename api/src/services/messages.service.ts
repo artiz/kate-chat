@@ -668,7 +668,8 @@ export class MessagesService {
 
     const handleStreaming = async (
       data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
-      completed?: boolean
+      completed?: boolean,
+      forceFlush?: boolean
     ) => {
       const { content: token = "", error, metadata, status } = data;
 
@@ -684,17 +685,15 @@ export class MessagesService {
         assistantMessage.content = token;
         assistantMessage.metadata = metadata;
 
-        completeRequest(assistantMessage).catch(err => {
+        return completeRequest(assistantMessage).catch(err => {
           this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");
         });
-
-        return;
       }
 
       content += token;
       const now = new Date();
-      if (now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
+      if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
         lastPublish = now.getTime();
         assistantMessage.content = content;
         assistantMessage.status = status?.status || ResponseStatus.IN_PROGRESS;

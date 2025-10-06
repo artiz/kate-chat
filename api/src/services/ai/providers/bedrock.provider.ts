@@ -9,6 +9,9 @@ import {
   ImageFormat,
   VideoFormat,
   Message as ConverseMessage,
+  Tool,
+  ToolResultBlock,
+  ToolUseBlock,
 } from "@aws-sdk/client-bedrock-runtime";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
@@ -29,6 +32,7 @@ import {
   MessageRole,
   ResponseStatus,
   ToolType,
+  ChatToolCallResult,
 } from "@/types/ai.types";
 import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
@@ -37,6 +41,8 @@ import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { notEmpty } from "@/utils/assert";
 import { YandexWebSearch } from "../tools/yandex.web_search";
+import { BEDROCK_TOOLS, WEB_SEARCH_TOOL_NAME, parseToolUse, callBedrockTool } from "./bedrock.tools";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -96,11 +102,65 @@ export class BedrockApiProvider extends BaseApiProvider {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
 
-    // Get provider service and parameters
-    const input = this.formatConverseParams(request);
-    const command = new ConverseCommand(input);
-    const response = await this.bedrockClient.send(command);
-    return this.parseConverseResponse(response, request);
+    const conversationMessages: ConverseMessage[] = [];
+    let requestCompleted = false;
+    let finalResponse: ModelResponse | undefined;
+
+    do {
+      // Get provider service and parameters
+      const input = this.formatConverseParams(request);
+      // Append any tool result messages from previous iterations
+      if (input.messages) {
+        input.messages = [...input.messages, ...conversationMessages];
+      }
+
+      const command = new ConverseCommand(input);
+      const response = await this.bedrockClient.send(command);
+      const { modelResponse, stopReason, toolUse = [] } = this.parseConverseResponse(response, request);
+
+      // Check if model wants to use a tool
+      if (stopReason === "tool_use" && toolUse.length > 0) {
+        logger.debug({ toolUse }, "Tool use requested");
+
+        // Add assistant message with tool use to conversation
+        if (response.output?.message) {
+          conversationMessages.push(response.output.message);
+        }
+
+        // Execute tools and collect results
+        const toolResultContent: ContentBlock[] = [];
+        for (const call of toolUse) {
+          const toolCall = parseToolUse(call);
+          if (toolCall.error) {
+            toolResultContent.push({
+              toolResult: {
+                toolUseId: toolCall.toolUseId,
+                content: [{ text: toolCall.error }],
+                status: "error",
+              },
+            });
+          } else {
+            const result = await callBedrockTool(toolCall, this.connection);
+            toolResultContent.push({
+              toolResult: result,
+            });
+          }
+        }
+
+        // Add tool results as user message
+        conversationMessages.push({
+          role: "user",
+          content: toolResultContent,
+        });
+
+        requestCompleted = false;
+      } else {
+        finalResponse = modelResponse;
+        requestCompleted = true;
+      }
+    } while (!requestCompleted);
+
+    return finalResponse || { type: "text", content: "" };
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
@@ -117,65 +177,190 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     callbacks.onStart?.();
 
-    try {
-      const input = this.formatConverseParams(request);
-      const command = new ConverseStreamCommand(input);
-      const streamResponse = await this.bedrockClient.send(command);
+    const conversationMessages: ConverseMessage[] = [];
+    let requestCompleted = false;
+    const input = this.formatConverseParams(request);
 
-      let fullResponse = "";
-      let reasoningContent = "";
-      let metadata: MessageMetadata | undefined = undefined;
+    do {
+      try {
+        // Append any tool result messages from previous iterations
+        input.messages = [...(input.messages || []), ...conversationMessages];
 
-      // Process the stream
-      if (!streamResponse.stream) {
-        callbacks.onComplete?.("_No response_");
-        return;
-      }
+        const command = new ConverseStreamCommand(input);
+        const streamResponse = await this.bedrockClient.send(command);
 
-      for await (const chunk of streamResponse.stream) {
-        if (chunk.metadata?.usage) {
-          const { usage, metrics } = chunk.metadata;
-          metadata = {
-            usage: {
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens,
-              cacheReadInputTokens: usage.cacheReadInputTokens,
-              cacheWriteInputTokens: usage.cacheWriteInputTokens,
-              invocationLatency: metrics?.latencyMs,
-            },
-          };
+        let fullResponse = "";
+        let reasoningContent = "";
+        let metadata: MessageMetadata | undefined = undefined;
+        let streamedToolUse: ToolUseBlock[] = [];
+        let currentToolUse: ToolUseBlock | null = null;
+
+        // Process the stream
+        if (!streamResponse?.stream) {
+          callbacks.onComplete?.("_No response_");
+          requestCompleted = true;
+          break;
         }
 
-        if (chunk.contentBlockDelta?.delta) {
-          const delta = chunk.contentBlockDelta.delta;
-          if (delta.text) {
-            fullResponse += delta.text;
-            callbacks.onProgress?.(delta.text);
-          } else if (delta.reasoningContent) {
-            reasoningContent += delta.reasoningContent;
-            callbacks.onProgress?.("", { status: ResponseStatus.REASONING, detail: reasoningContent });
+        for await (const chunk of streamResponse.stream) {
+          if (chunk.contentBlockDelta?.delta) {
+            const delta = chunk.contentBlockDelta.delta;
+            if (delta.text) {
+              fullResponse += delta.text;
+              callbacks.onProgress?.(delta.text);
+            } else if (delta.reasoningContent) {
+              reasoningContent += delta.reasoningContent;
+              callbacks.onProgress?.("", { status: ResponseStatus.REASONING, detail: reasoningContent });
+            } else if (delta.toolUse && currentToolUse) {
+              currentToolUse.input += delta.toolUse.input || "";
+              const status =
+                currentToolUse.name === WEB_SEARCH_TOOL_NAME ? ResponseStatus.WEB_SEARCH : ResponseStatus.TOOL_CALL;
+              callbacks.onProgress?.("", { status, detail: currentToolUse.input as string }, true);
+            }
+          } else if (chunk.contentBlockStart?.start?.toolUse) {
+            currentToolUse = {
+              toolUseId: chunk.contentBlockStart.start.toolUse.toolUseId,
+              name: chunk.contentBlockStart.start.toolUse.name,
+              input: "",
+            };
+          } else if (chunk.contentBlockStop && currentToolUse) {
+            currentToolUse.input =
+              typeof currentToolUse.input === "string" ? JSON.parse(currentToolUse.input.trim()) : currentToolUse.input;
+            streamedToolUse.push(currentToolUse);
+            currentToolUse = null;
+            reasoningContent = "";
+          } else if (chunk.metadata?.usage) {
+            const { usage, metrics } = chunk.metadata;
+            metadata = {
+              usage: {
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
+                cacheReadInputTokens: usage.cacheReadInputTokens,
+                cacheWriteInputTokens: usage.cacheWriteInputTokens,
+                invocationLatency: metrics?.latencyMs,
+              },
+            };
+          }
+
+          if (chunk.messageStop?.stopReason === "tool_use" && streamedToolUse.length > 0) {
+            // Tool use detected - notify callback
+            const toolCalls = streamedToolUse.map(tu => ({
+              name: tu.name || "unknown",
+              args: typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input || {}),
+            }));
+
+            const status =
+              streamedToolUse.length === 1 && streamedToolUse[0].name === WEB_SEARCH_TOOL_NAME
+                ? ResponseStatus.WEB_SEARCH
+                : ResponseStatus.TOOL_CALL;
+
+            const detail =
+              streamedToolUse.length === 1
+                ? JSON.stringify(streamedToolUse[0].input || {})
+                : `Call tools: ${streamedToolUse.map(t => t.name).join(", ")}`;
+
+            callbacks.onProgress?.("", { status, detail, toolCalls });
+
+            // Build assistant message with tool use for conversation history
+            const assistantContent: ContentBlock[] = [];
+            if (fullResponse) {
+              assistantContent.push({ text: fullResponse });
+            }
+            streamedToolUse.forEach((tu, ndx) => {
+              assistantContent.push({
+                toolUse: {
+                  toolUseId: tu.toolUseId,
+                  name: tu.name,
+                  input: tu.input,
+                },
+              });
+            });
+
+            conversationMessages.push({
+              role: "assistant",
+              content: assistantContent,
+            });
+
+            // Execute tools
+            const toolResultContent: ContentBlock[] = [];
+            const toolResults: ChatToolCallResult[] = [];
+
+            for (const toolUse of streamedToolUse) {
+              const toolCall = parseToolUse(toolUse);
+
+              if (toolCall.error) {
+                toolResultContent.push({
+                  toolResult: {
+                    toolUseId: toolCall.toolUseId,
+                    content: [{ text: toolCall.error }],
+                    status: "error",
+                  },
+                });
+
+                toolResults.push({
+                  name: toolCall.name,
+                  content: toolCall.error,
+                  callId: toolCall.toolUseId,
+                });
+              } else {
+                const result = await callBedrockTool(toolCall, this.connection);
+                toolResultContent.push({
+                  toolResult: result,
+                });
+
+                const content = result.content?.[0] && "text" in result.content[0] ? result.content[0].text || "" : "";
+                toolResults.push({
+                  name: toolCall.name,
+                  content,
+                  callId: toolCall.toolUseId,
+                });
+              }
+            }
+
+            // Add tool results as user message
+            conversationMessages.push({
+              role: "user",
+              content: toolResultContent,
+            });
+            callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools: toolResults });
+
+            if (input.modelId?.includes("amazon.nova") && input.toolConfig) {
+              input.toolConfig.toolChoice = undefined;
+            }
+            // Reset for next iteration
+            fullResponse = "";
+            streamedToolUse = [];
+            requestCompleted = false;
+            break; // Break to restart streaming with tool results
+          }
+
+          if (chunk.internalServerException) {
+            callbacks.onError?.(chunk.internalServerException);
+          } else if (chunk.modelStreamErrorException) {
+            callbacks.onError?.(chunk.modelStreamErrorException);
+          } else if (chunk.validationException) {
+            callbacks.onError?.(chunk.validationException);
+            // TODO: add retry
+          } else if (chunk.throttlingException) {
+            callbacks.onError?.(chunk.throttlingException);
+          } else if (chunk.serviceUnavailableException) {
+            callbacks.onError?.(chunk.serviceUnavailableException);
+          }
+
+          if (chunk.messageStop?.stopReason && chunk.messageStop.stopReason !== "tool_use") {
+            requestCompleted = true;
           }
         }
 
-        if (chunk.internalServerException) {
-          callbacks.onError?.(chunk.internalServerException);
-        } else if (chunk.modelStreamErrorException) {
-          callbacks.onError?.(chunk.modelStreamErrorException);
-        } else if (chunk.validationException) {
-          callbacks.onError?.(chunk.validationException);
-          // TODO: add retry
-        } else if (chunk.throttlingException) {
-          callbacks.onError?.(chunk.throttlingException);
-        } else if (chunk.serviceUnavailableException) {
-          callbacks.onError?.(chunk.serviceUnavailableException);
+        if (requestCompleted) {
+          callbacks.onComplete?.(fullResponse, metadata);
         }
+      } catch (e: unknown) {
+        logger.error(e, "InvokeModelWithResponseStreamCommand failed");
+        callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
+        requestCompleted = true;
       }
-
-      callbacks.onComplete?.(fullResponse, metadata);
-    } catch (e: unknown) {
-      logger.error(e, "InvokeModelWithResponseStreamCommand failed");
-      callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
-    }
+    } while (!requestCompleted);
   }
 
   public async getInfo(checkConnection = false): Promise<ProviderInfo> {
@@ -528,7 +713,7 @@ export class BedrockApiProvider extends BaseApiProvider {
   }
 
   private formatConverseParams(request: CompleteChatRequest): ConverseCommandInput {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP, tools: inputTools } = request;
 
     const requestMessages: ConverseMessage[] = messages.map(msg => {
       if (typeof msg.body === "string") {
@@ -612,25 +797,62 @@ export class BedrockApiProvider extends BaseApiProvider {
       delete command.inferenceConfig?.topP;
     }
 
-    if (systemPrompt) {
+    if (systemPrompt && !modelId.includes("amazon.titan")) {
       command.system = [{ text: systemPrompt }];
+    }
+
+    // Add tool configuration if tools are requested
+    if (inputTools && inputTools.length > 0) {
+      const tools: Tool[] = [];
+
+      // Add web search tool if requested
+      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
+        const webSearchTool = BEDROCK_TOOLS[WEB_SEARCH_TOOL_NAME];
+        if (webSearchTool) {
+          tools.push(webSearchTool);
+        }
+      }
+
+      if (tools.length > 0) {
+        if (modelId?.includes("amazon.nova")) {
+          command.toolConfig = {
+            tools,
+            toolChoice: {
+              tool: { name: tools[0]?.toolSpec?.name || "" },
+            },
+          };
+        } else {
+          command.toolConfig = {
+            tools,
+          };
+        }
+      }
     }
 
     logger.trace(command, "Call Bedrock Converse API");
     return command;
   }
 
-  private parseConverseResponse(response: ConverseCommandOutput, request: CompleteChatRequest): ModelResponse {
+  private parseConverseResponse(
+    response: ConverseCommandOutput,
+    request: CompleteChatRequest
+  ): {
+    modelResponse: ModelResponse;
+    toolUse?: ToolUseBlock[]; // Tool use blocks from the model (Bedrock specific)
+    stopReason?: string; // Stop reason from the model response
+  } {
     logger.trace({ responseBody: response }, "Bedrock Converse response");
 
     if (!response.output?.message?.content) {
       return {
-        type: "text",
-        content: "",
+        modelResponse: {
+          type: "text",
+          content: "",
+        },
       };
     }
 
-    const { content, files } = response.output?.message?.content?.reduce(
+    const { content, files, toolUse } = response.output?.message?.content?.reduce(
       (res, item) => {
         if ("text" in item) {
           res.content += (res.content ? "\n\n" : "") + (item.text || "");
@@ -643,10 +865,12 @@ export class BedrockApiProvider extends BaseApiProvider {
           } else if (item.image.source?.s3Location) {
             res.content += `|Image ${item.image.format}: ${item.image.source?.s3Location}|\n\n`;
           }
+        } else if ("toolUse" in item && item.toolUse) {
+          res.toolUse.push(item.toolUse);
         }
         return res;
       },
-      { content: "", files: [] as string[] }
+      { content: "", files: [] as string[], toolUse: [] as ToolUseBlock[] }
     );
 
     const metadata: MessageMetadata | undefined =
@@ -663,11 +887,15 @@ export class BedrockApiProvider extends BaseApiProvider {
         : undefined;
 
     return {
-      // for now only images are supported
-      type: files.length ? "image" : "text",
-      content,
-      files,
-      metadata,
+      modelResponse: {
+        // for now only images are supported
+        type: files.length ? "image" : "text",
+        content,
+        files,
+        metadata,
+      },
+      toolUse: toolUse.length > 0 ? toolUse : undefined,
+      stopReason: response.stopReason,
     };
   }
 }

@@ -254,7 +254,7 @@ export interface ChatResponseStatus {
 
 export interface StreamCallbacks {
   onStart?: (status?: ChatResponseStatus) => void;
-  onProgress?: (token: string, status?: ChatResponseStatus) => void;
+  onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => void;
   onComplete?: (content: string, metadata?: MessageMetadata) => void;
   onError?: (error: Error) => void;
 }

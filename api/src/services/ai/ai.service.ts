@@ -130,7 +130,8 @@ export class AIService {
     messages: Message[],
     callback: (
       data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
-      completed?: boolean
+      completed?: boolean,
+      force?: boolean
     ) => void
   ) {
     // Stream the completion in background
@@ -145,8 +146,8 @@ export class AIService {
         onStart: (status?: ChatResponseStatus) => {
           callback({ status });
         },
-        onProgress: (token: string, status?: ChatResponseStatus) => {
-          callback({ content: token, status });
+        onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => {
+          callback({ content: token, status }, false, force);
         },
         onComplete: (response: string, metadata: MessageMetadata | undefined) => {
           callback({ content: response, metadata }, true);

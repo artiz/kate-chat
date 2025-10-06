@@ -181,6 +181,7 @@ export const RAG_REQUEST = ({ chunks, question }: { chunks: RagInputChunk[]; que
   };
 };
 
+export const WEB_SEARCH_TOOL_MAX_CONTENT_LENGTH = 1024;
 export const WEB_SEARCH_TOOL_RESULT = (results: SearchResult[]): string => {
   const context = results
     .map(result => {
@@ -192,13 +193,15 @@ export const WEB_SEARCH_TOOL_RESULT = (results: SearchResult[]): string => {
     summary: ${result.summary || "N/A"}
     content: 
     """
-    ${result.content?.replace(/(\n|\r)+/gm, "\n") || "N/A"}
+    ${result.content?.replace(/(\n|\r)+/gm, "\n").substring(0, WEB_SEARCH_TOOL_MAX_CONTENT_LENGTH) || "N/A"}
     """`;
     })
     .join("\n\n---\n\n");
 
   return `
     # Web search results
+    Please use this information to assist with your answer.
+    Alsways include a reference to the source of the information in your answer, using the format [title](url).
 
     ${context}
   `;
