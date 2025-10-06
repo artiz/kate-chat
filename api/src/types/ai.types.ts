@@ -32,7 +32,8 @@ export enum MessageType {
   SYSTEM = "system",
 }
 
-export type ContentType = "text" | "image" | "video" | "audio";
+export type ContentType = "text" | "image" | "video" | "audio" | "mixed";
+
 export interface ProviderInfo {
   id: ApiProvider;
   name: string;

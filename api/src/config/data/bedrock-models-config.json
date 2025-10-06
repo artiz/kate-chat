@@ -76,6 +76,28 @@
   },
   {
     "provider": "anthropic",
+    "modelId": "anthropic.claude-sonnet-4-20250514-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-sonnet-4-20250514-v1:0",
+      "us": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    },
+    "name": "Claude 4 Sonnet",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "us": "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    },
+    "name": "Claude 4.5 Sonnet",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
+  },
+  {
+    "provider": "anthropic",
     "modelId": "anthropic.claude-instant-v1",
     "name": "Claude Instant",
     "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1"],
@@ -239,12 +261,6 @@
     "modelId": "amazon.nova-sonic-v1:0",
     "name": "Nova Sonic",
     "regions": ["us-east-1"]
-  },
-  {
-    "provider": "amazon",
-    "modelId": "amazon.rerank-v1:0",
-    "name": "Amazon Rerank",
-    "regions": ["us-west-2", "ap-northeast-1", "ca-central-1", "eu-central-1"]
   },
   {
     "provider": "amazon",

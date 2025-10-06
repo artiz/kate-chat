@@ -1,7 +1,6 @@
 import { AIService } from "../ai/ai.service";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { ApiProvider, MessageRole, ModelMessage } from "../../types/ai.types";
-import { A21InvokeModelResponse } from "../ai/providers/bedrock/providers";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
@@ -25,6 +24,8 @@ jest.mock("@aws-sdk/client-bedrock", () => {
   return {
     ListFoundationModelsCommand: jest.fn(),
     BedrockClient: jest.fn(),
+    ConverseCommand: jest.fn(),
+    ConverseStreamCommand: jest.fn(),
   };
 });
 
@@ -209,53 +210,6 @@ describe("AIService", () => {
       expect(callbacks.onProgress).toHaveBeenNthCalledWith(1, "Hello");
       expect(callbacks.onProgress).toHaveBeenNthCalledWith(2, ", world!");
       expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!", undefined);
-      expect(callbacks.onError).not.toHaveBeenCalled();
-    });
-
-    it("should simulate streaming for non-streaming models", async () => {
-      const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
-      const modelId = "ai21.j2-ultra-v1"; // Non-streaming model
-
-      const callbacks = {
-        onStart: jest.fn(),
-        onProgress: jest.fn(),
-        onComplete: jest.fn(),
-        onError: jest.fn(),
-      };
-
-      // Mock the AWS Bedrock response for the non-streaming model
-      const response: A21InvokeModelResponse = {
-        choices: [{ message: { role: "assistant", content: "I'm doing well, thanks for asking!" } }],
-      };
-      const mockResponse = {
-        body: Buffer.from(JSON.stringify(response)),
-      };
-
-      // Mock the AWS Bedrock client response
-      (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
-
-      // Mock the setTimeout to execute immediately
-      jest.spyOn(global, "setTimeout").mockImplementation(callback => {
-        callback();
-        return {} as any;
-      });
-
-      await aiService.streamChatCompletion(
-        ApiProvider.AWS_BEDROCK,
-        {
-          AWS_BEDROCK_REGION: "aws-region",
-          AWS_BEDROCK_PROFILE: "default",
-        },
-        { messages, modelId },
-        callbacks
-      );
-
-      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onProgress).toHaveBeenCalled();
-      expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!", {
-        usage: { inputTokens: 0, outputTokens: 0 },
-      });
       expect(callbacks.onError).not.toHaveBeenCalled();
     });
 

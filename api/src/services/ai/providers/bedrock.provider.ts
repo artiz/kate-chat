@@ -1,7 +1,16 @@
-import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
-import { BedrockClient } from "@aws-sdk/client-bedrock";
-import { InvokeModelCommand, InvokeModelWithResponseStreamCommand } from "@aws-sdk/client-bedrock-runtime";
-import { ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
+import {
+  BedrockRuntimeClient,
+  ContentBlock,
+  ConverseCommand,
+  InvokeModelCommand,
+  ConverseCommandInput,
+  ConverseCommandOutput,
+  ConverseStreamCommand,
+  ImageFormat,
+  VideoFormat,
+  Message as ConverseMessage,
+} from "@aws-sdk/client-bedrock-runtime";
+import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
 
 import {
@@ -17,20 +26,17 @@ import {
   ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
+  MessageRole,
+  ResponseStatus,
+  ToolType,
 } from "@/types/ai.types";
 import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
-import {
-  AnthropicService,
-  AmazonService,
-  AI21Service,
-  CohereService,
-  MetaService,
-  MistralService,
-} from "./bedrock/providers";
 import { ConnectionParams } from "@/middleware/auth.middleware";
+import { notEmpty } from "@/utils/assert";
+import { YandexWebSearch } from "../tools/yandex.web_search";
 
 const logger = createLogger(__filename);
 
@@ -91,135 +97,77 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
 
     // Get provider service and parameters
-    const { service, params } = await this.formatProviderParams(request);
-
-    // Send command using Bedrock client
-    const command = new InvokeModelCommand(params);
+    const input = this.formatConverseParams(request);
+    const command = new ConverseCommand(input);
     const response = await this.bedrockClient.send(command);
-
-    // Parse the response body
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    return service.parseModelResponse(responseBody, request);
+    return this.parseConverseResponse(response, request);
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
   async streamChatCompletion(request: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
     if (!this.bedrockClient) {
-      throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
-    }
-
-    const { modelId } = request;
-    callbacks.onStart?.();
-
-    const provider = this.getModelProvider(modelId);
-
-    // Check if modelId supports streaming (Anthropic, Amazon, Mistral)
-    const supportsStreaming = provider === "anthropic" || provider === "amazon" || provider === "mistral";
-
-    if (!supportsStreaming) {
-      try {
-        // For models that don't support streaming, use the regular generation and simulate streaming
-        const response = await this.completeChat(request);
-
-        // Simulate streaming by sending chunks of the response
-        const chunks = response.content.split(" ");
-        for (const chunk of chunks) {
-          callbacks.onProgress?.(chunk + " ");
-          // Add a small delay to simulate streaming
-          await new Promise(resolve => setTimeout(resolve, 10));
-        }
-
-        callbacks.onComplete?.(response.content, response.metadata);
-      } catch (e: unknown) {
-        logger.error(e, "InvokeModel failed");
-        callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
+      const err = new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
+      if (callbacks.onError) {
+        callbacks.onError(err);
+      } else {
+        throw err;
       }
-
       return;
     }
 
-    try {
-      // Get provider service and parameters
-      const { params } = await this.formatProviderParams(request);
+    callbacks.onStart?.();
 
-      // Create a streaming command
-      const streamCommand = new InvokeModelWithResponseStreamCommand(params);
-      const streamResponse = await this.bedrockClient.send(streamCommand);
+    try {
+      const input = this.formatConverseParams(request);
+      const command = new ConverseStreamCommand(input);
+      const streamResponse = await this.bedrockClient.send(command);
 
       let fullResponse = "";
+      let reasoningContent = "";
       let metadata: MessageMetadata | undefined = undefined;
 
       // Process the stream
-      if (streamResponse.body) {
-        for await (const chunk of streamResponse.body) {
-          if (chunk.chunk?.bytes) {
-            const decodedChunk = new TextDecoder().decode(chunk.chunk.bytes);
+      if (!streamResponse.stream) {
+        callbacks.onComplete?.("_No response_");
+        return;
+      }
 
-            let chunkData: any;
-            try {
-              chunkData = JSON.parse(decodedChunk);
-            } catch (err) {
-              logger.debug(err, `failed to parse chunk: ${decodedChunk}`);
-              continue;
-            }
+      for await (const chunk of streamResponse.stream) {
+        if (chunk.metadata?.usage) {
+          const { usage, metrics } = chunk.metadata;
+          metadata = {
+            usage: {
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
+              cacheReadInputTokens: usage.cacheReadInputTokens,
+              cacheWriteInputTokens: usage.cacheWriteInputTokens,
+              invocationLatency: metrics?.latencyMs,
+            },
+          };
+        }
 
-            // Extract the token based on model provider
-            let token = "";
-
-            // Anthropic models
-            if (provider === "anthropic") {
-              if (chunkData.type === "content_block_delta" && chunkData.delta?.text) {
-                token = chunkData.delta.text;
-              }
-              // Amazon models
-            } else if (provider === "amazon") {
-              if (chunkData.outputText) {
-                token = chunkData.outputText;
-              } else if (chunkData.contentBlockDelta?.delta?.text) {
-                token = chunkData.contentBlockDelta.delta.text;
-              }
-
-              if (chunkData.metadata?.usage) {
-                const usage = chunkData.metadata.usage;
-                metadata = {
-                  usage: {
-                    inputTokens: usage.inputTokens || usage.inputTokenCount,
-                    outputTokens: usage.outputTokens || usage.outputTokenCount,
-                    cacheReadInputTokens: usage.cacheReadInputTokenCount,
-                    cacheWriteInputTokens: usage.cacheWriteInputTokenCount,
-                  },
-                };
-              }
-
-              // Mistral models
-            } else if (provider === "mistral") {
-              if (chunkData.outputs && chunkData.outputs[0]?.text) {
-                token = chunkData.outputs[0].text;
-              } else if (chunkData.choices && chunkData.choices[0]?.message?.content) {
-                token = chunkData.choices[0].message.content;
-              }
-            } else {
-              logger.warn(`Unsupported model provider: ${provider}. Cannot process streaming response.`);
-            }
-
-            logger.trace({ chunkData, token }, "Сhunk received");
-
-            if (chunkData.type === "message_stop" && !metadata && chunkData["amazon-bedrock-invocationMetrics"]) {
-              const usage = chunkData["amazon-bedrock-invocationMetrics"];
-              metadata = {
-                usage: {
-                  inputTokens: usage.inputTokenCount,
-                  outputTokens: usage.outputTokenCount,
-                  invocationLatency: usage.invocationLatency,
-                },
-              };
-            }
-
-            if (token) {
-              fullResponse += token;
-              callbacks.onProgress?.(token);
-            }
+        if (chunk.contentBlockDelta?.delta) {
+          const delta = chunk.contentBlockDelta.delta;
+          if (delta.text) {
+            fullResponse += delta.text;
+            callbacks.onProgress?.(delta.text);
+          } else if (delta.reasoningContent) {
+            reasoningContent += delta.reasoningContent;
+            callbacks.onProgress?.("", { status: ResponseStatus.REASONING, detail: reasoningContent });
           }
+        }
+
+        if (chunk.internalServerException) {
+          callbacks.onError?.(chunk.internalServerException);
+        } else if (chunk.modelStreamErrorException) {
+          callbacks.onError?.(chunk.modelStreamErrorException);
+        } else if (chunk.validationException) {
+          callbacks.onError?.(chunk.validationException);
+          // TODO: add retry
+        } else if (chunk.throttlingException) {
+          callbacks.onError?.(chunk.throttlingException);
+        } else if (chunk.serviceUnavailableException) {
+          callbacks.onError?.(chunk.serviceUnavailableException);
         }
       }
 
@@ -230,55 +178,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
   }
 
-  // Get the appropriate service and parameters based on the model ID
-  private async formatProviderParams(request: CompleteChatRequest) {
-    const { modelId } = request;
-
-    let service;
-    let params;
-
-    let provider = this.getModelProvider(modelId);
-
-    if (provider == "anthropic") {
-      const anthropicService = new AnthropicService();
-      params = await anthropicService.getInvokeModelParams(request);
-      service = anthropicService;
-    } else if (provider == "amazon") {
-      const amazonService = new AmazonService();
-      params = await amazonService.getInvokeModelParams(request);
-      service = amazonService;
-    } else if (provider == "ai21") {
-      const ai21Service = new AI21Service();
-      params = await ai21Service.getInvokeModelParams(request);
-      service = ai21Service;
-    } else if (provider == "cohere") {
-      const cohereService = new CohereService();
-      params = await cohereService.getInvokeModelParams(request);
-      service = cohereService;
-    } else if (provider == "meta") {
-      const metaService = new MetaService();
-      params = await metaService.getInvokeModelParams(request);
-      service = metaService;
-    } else if (provider == "mistral") {
-      const mistralService = new MistralService();
-      params = await mistralService.getInvokeModelParams(request);
-      service = mistralService;
-    } else {
-      throw new Error(`Unsupported model provider: ${provider}`);
-    }
-
-    return { service, params };
-  }
-
-  getModelProvider(modelId: string) {
-    if (modelId.startsWith("us.") || modelId.startsWith("eu.") || modelId.startsWith("ap.")) {
-      return modelId.substring(3).split(".")[0];
-    }
-
-    return modelId.split(".")[0];
-  }
-
-  async getInfo(checkConnection = false): Promise<ProviderInfo> {
+  public async getInfo(checkConnection = false): Promise<ProviderInfo> {
     const isConnected = !!this.bedrockClient;
     const region = this.connection.AWS_BEDROCK_REGION;
     const profile = this.connection.AWS_BEDROCK_PROFILE;
@@ -316,7 +216,7 @@ export class BedrockApiProvider extends BaseApiProvider {
   }
 
   // Helper method to get all supported models with their metadata
-  async getModels(): Promise<Record<string, AIModelInfo>> {
+  public async getModels(): Promise<Record<string, AIModelInfo>> {
     // no AWS connection
     if (!this.connection.AWS_BEDROCK_ACCESS_KEY_ID && !this.connection.AWS_BEDROCK_PROFILE) {
       logger.warn("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");
@@ -361,6 +261,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       return models;
     }
 
+    const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
     const bedrockRegion = await this.bedrockClient.config.region();
     for (const model of response.modelSummaries) {
       const regions = modelsRegions[model.modelId || ""];
@@ -394,6 +295,7 @@ export class BedrockApiProvider extends BaseApiProvider {
           streaming: model.responseStreamingSupported || false,
           imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
           maxInputTokens: modelsInputTokens[model.modelId],
+          tools: searchAvailable ? [ToolType.WEB_SEARCH] : undefined,
         };
       }
     }
@@ -401,7 +303,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     return models;
   }
 
-  async getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo> {
+  public async getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo> {
     const result: UsageCostInfo = {
       start: new Date(startTime * 1000),
       end: endTime ? new Date(endTime * 1000) : undefined,
@@ -590,16 +492,21 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
   }
 
-  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+  public async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
     // https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-runtime_example_bedrock-runtime_InvokeModelWithResponseStream_TitanTextEmbeddings_section.html
     if (!this.bedrockClient) {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
 
+    const { modelId } = request;
+    const isV2 = modelId.includes("embed-text-v2");
+
+    // TODO: add cohere.embed-multilingual-v3 support
     const params = {
       modelId: request.modelId,
       body: JSON.stringify({
         inputText: request.input,
+        dimensions: isV2 ? request.dimensions : undefined,
       }),
     };
 
@@ -617,6 +524,150 @@ export class BedrockApiProvider extends BaseApiProvider {
           inputTokens: responseBody.inputTextTokenCount || 0,
         },
       },
+    };
+  }
+
+  private formatConverseParams(request: CompleteChatRequest): ConverseCommandInput {
+    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP } = request;
+
+    const requestMessages: ConverseMessage[] = messages.map(msg => {
+      if (typeof msg.body === "string") {
+        return {
+          role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+          content: [{ text: msg.body }],
+        };
+      }
+
+      const content: ContentBlock[] = msg.body
+        .map(m => {
+          if (m.contentType === "image" || m.contentType === "video") {
+            // input format "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABv..."
+            let base64Data = m.content;
+            let mediaType = m.mimeType?.split("/")[1];
+            let format = m.mimeType?.split("/")[0]; // "image" or "video"
+
+            const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)/);
+            if ((!parts || parts.length < 3) && !mediaType) {
+              logger.error({ content: m.content.substring(0, 256) }, "Invalid image format");
+              throw new Error(
+                "Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,...',"
+              );
+            } else if (parts) {
+              // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data
+              base64Data = parts[3]; // e.g., "iVBORw0KGgoAAAANSUhEUgAA..."
+              mediaType = parts[2]; // e.g., "jpeg", "png"
+              format = parts[1]; // e.g., "image", "video"
+            }
+
+            if (format === "image") {
+              const image: ContentBlock = {
+                image: {
+                  format: mediaType as ImageFormat,
+                  source: {
+                    // get base64Data as Uint8Array
+                    bytes: new Uint8Array(Buffer.from(base64Data, "base64")),
+                  },
+                },
+              };
+              return image;
+            } else {
+              const video: ContentBlock = {
+                video: {
+                  format: mediaType as VideoFormat,
+                  source: {
+                    bytes: new Uint8Array(Buffer.from(base64Data, "base64")),
+                  },
+                },
+              };
+              return video;
+            }
+          } else if (m.contentType === "text") {
+            return {
+              text: m.content,
+            };
+          } else {
+            return undefined; // Ignore unsupported content types
+          }
+        })
+        .filter(notEmpty); // Filter out any null values
+
+      return {
+        role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+        content,
+      };
+    });
+
+    const command: ConverseCommandInput = {
+      modelId,
+      messages: requestMessages,
+      inferenceConfig: {
+        maxTokens,
+        temperature,
+        topP,
+        stopSequences: [],
+      },
+    };
+
+    if (modelId.includes("claude-sonnet-4-5") && temperature != null && topP != null) {
+      delete command.inferenceConfig?.topP;
+    }
+
+    if (systemPrompt) {
+      command.system = [{ text: systemPrompt }];
+    }
+
+    logger.debug(command, "Call Bedrock Converse API");
+    return command;
+  }
+
+  private parseConverseResponse(response: ConverseCommandOutput, request: CompleteChatRequest): ModelResponse {
+    logger.debug({ responseBody: response }, "Bedrock Converse response");
+
+    if (!response.output?.message?.content) {
+      return {
+        type: "text",
+        content: "",
+      };
+    }
+
+    const { content, files } = response.output?.message?.content?.reduce(
+      (res, item) => {
+        if ("text" in item) {
+          res.content += (res.content ? "\n\n" : "") + (item.text || "");
+        } else if ("image" in item && item.image) {
+          if (item.image.source?.bytes) {
+            const imageData =
+              `data:image/${item.image.format || "png"};base64,` +
+              Buffer.from(item.image.source.bytes).toString("base64");
+            res.files.push(imageData);
+          } else if (item.image.source?.s3Location) {
+            res.content += `|Image ${item.image.format}: ${item.image.source?.s3Location}|\n\n`;
+          }
+        }
+        return res;
+      },
+      { content: "", files: [] as string[] }
+    );
+
+    const metadata: MessageMetadata | undefined =
+      response.usage || response.metrics
+        ? {
+            usage: {
+              inputTokens: response.usage?.inputTokens,
+              outputTokens: response.usage?.outputTokens,
+              cacheReadInputTokens: response.usage?.cacheReadInputTokens,
+              cacheWriteInputTokens: response.usage?.cacheWriteInputTokens,
+              invocationLatency: response.metrics?.latencyMs,
+            },
+          }
+        : undefined;
+
+    return {
+      // for now only images are supported
+      type: files.length ? "image" : "text",
+      content,
+      files,
+      metadata,
     };
   }
 }
