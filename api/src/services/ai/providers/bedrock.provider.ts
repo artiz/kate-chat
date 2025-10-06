@@ -346,7 +346,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         ],
       });
 
-      logger.debug({ command }, "Fetching AWS Bedrock costs");
+      logger.trace({ command }, "Fetching AWS Bedrock costs");
 
       // Get cost and usage data from AWS Cost Explorer
       const costData = await costExplorerClient.send(command);
@@ -616,12 +616,12 @@ export class BedrockApiProvider extends BaseApiProvider {
       command.system = [{ text: systemPrompt }];
     }
 
-    logger.debug(command, "Call Bedrock Converse API");
+    logger.trace(command, "Call Bedrock Converse API");
     return command;
   }
 
   private parseConverseResponse(response: ConverseCommandOutput, request: CompleteChatRequest): ModelResponse {
-    logger.debug({ responseBody: response }, "Bedrock Converse response");
+    logger.trace({ responseBody: response }, "Bedrock Converse response");
 
     if (!response.output?.message?.content) {
       return {
