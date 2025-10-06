@@ -1,7 +1,7 @@
 import { AIService } from "../ai/ai.service";
 import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 import { ApiProvider, MessageRole, ModelMessage } from "../../types/ai.types";
-import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
+import { A21InvokeModelResponse } from "../ai/providers/bedrock/providers";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
@@ -31,10 +31,10 @@ jest.mock("@aws-sdk/client-bedrock", () => {
 // Mock BedrockService to use real implementation but with mocked clients
 let mockedBedrockInstance: any;
 
-jest.mock("../bedrock/bedrock.service", () => {
-  const originalModule = jest.requireActual("../bedrock/bedrock.service");
+jest.mock("../ai/providers/bedrock.provider", () => {
+  const originalModule = jest.requireActual("../ai/providers/bedrock.provider");
 
-  class MockedBedrockService extends originalModule.BedrockService {
+  class MockedBedrockProvider extends originalModule.BedrockApiProvider {
     constructor(connection: any) {
       super(connection);
       // Replace the clients with our mocks after construction
@@ -45,7 +45,7 @@ jest.mock("../bedrock/bedrock.service", () => {
   }
 
   return {
-    BedrockService: MockedBedrockService,
+    BedrockApiProvider: MockedBedrockProvider,
   };
 });
 
@@ -159,7 +159,7 @@ describe("AIService", () => {
 
       const callbacks = {
         onStart: jest.fn(),
-        onToken: jest.fn(),
+        onProgress: jest.fn(),
         onComplete: jest.fn(),
         onError: jest.fn(),
       };
@@ -205,9 +205,9 @@ describe("AIService", () => {
       );
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onToken).toHaveBeenCalledTimes(2);
-      expect(callbacks.onToken).toHaveBeenNthCalledWith(1, "Hello");
-      expect(callbacks.onToken).toHaveBeenNthCalledWith(2, ", world!");
+      expect(callbacks.onProgress).toHaveBeenCalledTimes(2);
+      expect(callbacks.onProgress).toHaveBeenNthCalledWith(1, "Hello");
+      expect(callbacks.onProgress).toHaveBeenNthCalledWith(2, ", world!");
       expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!", undefined);
       expect(callbacks.onError).not.toHaveBeenCalled();
     });
@@ -219,7 +219,7 @@ describe("AIService", () => {
 
       const callbacks = {
         onStart: jest.fn(),
-        onToken: jest.fn(),
+        onProgress: jest.fn(),
         onComplete: jest.fn(),
         onError: jest.fn(),
       };
@@ -252,7 +252,7 @@ describe("AIService", () => {
       );
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onToken).toHaveBeenCalled();
+      expect(callbacks.onProgress).toHaveBeenCalled();
       expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!", {
         usage: { inputTokens: 0, outputTokens: 0 },
       });

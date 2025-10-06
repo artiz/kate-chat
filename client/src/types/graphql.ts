@@ -201,6 +201,7 @@ export enum ResponseStatus {
   WEB_SEARCH = "web_search",
   CODE_INTERPRETER = "code_interpreter",
   TOOL_CALL = "tool_call",
+  TOOL_CALL_COMPLETED = "tool_call_completed",
   REASONING = "reasoning",
   COMPLETED = "completed",
   ERROR = "error",

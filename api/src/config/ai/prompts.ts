@@ -1,3 +1,5 @@
+import { SearchResult } from "@/services/ai/tools/web_search";
+
 export const DEFAULT_CHAT_PROMPT = `You a experienced software developer. 
 Being asked about code examples please always comment tricky moments and generate most effective and secure code.
 In case of formulas output always use MatJAX format.`;
@@ -24,12 +26,6 @@ interface RagInputChunk {
 export interface RagRequest {
   systemPrompt: string;
   userInput: string;
-}
-
-interface RagResponseChunk {
-  id: string;
-  page: number;
-  relevance: number;
 }
 
 export interface RagResponse {
@@ -183,4 +179,27 @@ export const RAG_REQUEST = ({ chunks, question }: { chunks: RagInputChunk[]; que
     systemPrompt,
     userInput,
   };
+};
+
+export const WEB_SEARCH_TOOL_RESULT = (results: SearchResult[]): string => {
+  const context = results
+    .map(result => {
+      return `
+    ### Result
+    title: ${result.title}
+    url: ${result.url}
+    domain: ${result.domain}
+    summary: ${result.summary || "N/A"}
+    content: 
+    """
+    ${result.content?.replace(/(\n|\r)+/gm, "\n") || "N/A"}
+    """`;
+    })
+    .join("\n\n---\n\n");
+
+  return `
+    # Web search results
+
+    ${context}
+  `;
 };

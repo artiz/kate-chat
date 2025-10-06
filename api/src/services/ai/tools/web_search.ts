@@ -20,7 +20,7 @@ export interface SearchResult {
   url: string;
   domain: string;
   summary?: string;
-  content?: string | File;
+  content?: string;
 }
 
 export function stripHtml(text?: string | null): string {

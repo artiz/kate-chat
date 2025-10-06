@@ -84,6 +84,7 @@ export enum ResponseStatus {
   WEB_SEARCH = "web_search",
   CODE_INTERPRETER = "code_interpreter",
   TOOL_CALL = "tool_call",
+  TOOL_CALL_COMPLETED = "tool_call_completed",
   OUTPUT_ITEM = "output_item",
   REASONING = "reasoning",
   COMPLETED = "completed",
@@ -130,6 +131,7 @@ export interface ModelMessageContent {
 export interface ModelMessage {
   role: MessageRole;
   body: string | ModelMessageContent[];
+  metadata?: MessageMetadata;
   timestamp?: Date;
 }
 
@@ -190,7 +192,12 @@ export class MessageMetadata {
   @Field(() => String, { nullable: true })
   analysis?: string;
 
-  // TODO: Save tool calls made by model
+  // tool calls
+  @Field(() => [ChatToolCall], { nullable: true })
+  toolCalls?: ChatToolCall[];
+  // tool calls results
+  @Field(() => [ChatToolCallResult], { nullable: true })
+  tools?: ChatToolCallResult[];
 
   ///////////// user message meta
   // input document IDs
@@ -210,10 +217,38 @@ export interface EmbeddingsResponse {
   embedding: number[];
 }
 
+@ObjectType()
+export class ChatToolCall {
+  @Field()
+  name: string;
+  @Field(() => String, { nullable: true })
+  type?: "function" | "custom" | "mcp";
+  @Field({ nullable: true })
+  error?: string;
+  @Field({ nullable: true })
+  args?: string;
+}
+
+@ObjectType()
+export class ChatToolCallResult {
+  @Field()
+  name: string;
+
+  @Field()
+  content: string;
+
+  jsonContent?: ModelMessageContent[];
+
+  @Field({ nullable: true })
+  callId?: string;
+}
+
 export interface ChatResponseStatus {
   status?: ResponseStatus;
   sequence_number?: number;
   detail?: string;
+  tools?: ChatToolCallResult[];
+  toolCalls?: ChatToolCall[];
 }
 
 export interface StreamCallbacks {

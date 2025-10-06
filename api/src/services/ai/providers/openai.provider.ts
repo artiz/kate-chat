@@ -88,6 +88,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       this.protocol = new OpenAIProtocol({
         baseURL: this.baseUrl,
         apiKey: this.apiKey,
+        connection,
       });
     }
   }
@@ -240,6 +241,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     try {
       // Fetch models from OpenAI API
       const response = await this.protocol.api.models.list();
+      const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
 
       // Filter and map models
       for (const model of response.data) {
@@ -253,8 +255,6 @@ export class OpenAIApiProvider extends BaseApiProvider {
         }
 
         const apiType = this.getChatApiType(model.id);
-        const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
-
         const tools =
           embeddingModel || imageGeneration
             ? []

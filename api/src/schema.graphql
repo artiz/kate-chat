@@ -89,6 +89,19 @@ type ChatTool {
   url: String!
 }
 
+type ChatToolCall {
+  args: String
+  error: String
+  name: String!
+  type: String
+}
+
+type ChatToolCallResult {
+  callId: String
+  content: String!
+  name: String!
+}
+
 input ChatToolInput {
   name: String!
   options: [ChatToolOptionsInput!]
@@ -334,6 +347,8 @@ type MessageMetadata {
   analysis: String
   documentIds: [ID!]
   relevantsChunks: [MessageRelevantChunk!]
+  toolCalls: [ChatToolCall!]
+  tools: [ChatToolCallResult!]
   usage: ModelResponseUsage
 }
 

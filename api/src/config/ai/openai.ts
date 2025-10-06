@@ -8,6 +8,7 @@ export const OPENAI_NON_CHAT_MODELS = [
   "gpt-4o-realtime",
   "o1-pro",
   "tts-1",
+  "davinci-002",
 ];
 
 export const OPENAI_MODELS_SUPPORT_RESPONSES_API = [

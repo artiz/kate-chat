@@ -165,7 +165,6 @@ export class BedrockApiProvider extends BaseApiProvider {
 
             // Extract the token based on model provider
             let token = "";
-            logger.trace(chunkData, "Сhunk received");
 
             // Anthropic models
             if (provider === "anthropic") {
@@ -202,6 +201,9 @@ export class BedrockApiProvider extends BaseApiProvider {
             } else {
               logger.warn(`Unsupported model provider: ${provider}. Cannot process streaming response.`);
             }
+
+            logger.trace({ chunkData, token }, "Сhunk received");
+
             if (chunkData.type === "message_stop" && !metadata && chunkData["amazon-bedrock-invocationMetrics"]) {
               const usage = chunkData["amazon-bedrock-invocationMetrics"];
               metadata = {

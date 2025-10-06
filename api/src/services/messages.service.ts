@@ -665,7 +665,7 @@ export class MessagesService {
 
     let content = "";
     let lastPublish: number = 0;
-    // TODO: extend this callback current status
+
     const handleStreaming = async (
       data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
       completed?: boolean
@@ -700,6 +700,28 @@ export class MessagesService {
         assistantMessage.status = status?.status || ResponseStatus.IN_PROGRESS;
         assistantMessage.statusInfo = this.getStatusInformation(status);
         assistantMessage.updatedAt = now;
+
+        if (status?.tools || status?.toolCalls) {
+          if (!assistantMessage.metadata) assistantMessage.metadata = {};
+
+          if (status.tools) {
+            const existingToolsIds = new Set(assistantMessage.metadata.tools?.map(tool => tool.callId) || []);
+            assistantMessage.metadata.tools = [
+              ...(assistantMessage.metadata.tools || []),
+              ...status.tools.filter(tool => !existingToolsIds.has(tool.callId)),
+            ];
+          }
+
+          if (status.toolCalls) {
+            const existingCalls = new Set(assistantMessage.metadata.toolCalls?.map(call => call.name) || []);
+            assistantMessage.metadata.toolCalls = [
+              ...(assistantMessage.metadata.toolCalls || []),
+              ...status.toolCalls.filter(call => !existingCalls.has(call.name)),
+            ];
+          }
+
+          await this.messageRepository.save(assistantMessage);
+        }
 
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
       }

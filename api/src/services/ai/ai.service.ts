@@ -77,7 +77,6 @@ export class AIService {
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
 
-      // Join user duplicate messages
       messages: this.preprocessMessages(inputRequest.messages || []),
     };
 
@@ -101,6 +100,7 @@ export class AIService {
       role: msg.role,
       body: msg.jsonContent || msg.content,
       timestamp: msg.updatedAt,
+      metadata: msg.metadata,
     }));
   }
 
@@ -209,7 +209,11 @@ export class AIService {
     return providers;
   }
 
-  // Preprocess messages to join duplicates
+  /**
+   * Preprocess messages to join duplicates if they are
+   * @param messages
+   * @returns
+   */
   private preprocessMessages(messages: ModelMessage[]): ModelMessage[] {
     messages.sort((a, b) => {
       if (a.timestamp?.getTime() === b.timestamp?.getTime()) {

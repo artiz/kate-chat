@@ -9,41 +9,19 @@ import {
   EmbeddingsResponse,
   ToolType,
   ResponseStatus,
+  ModelMessageContent,
+  ChatToolCallResult,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
-import { EmbeddingCreateParams } from "openai/resources/embeddings";
 import { notEmpty } from "@/utils/assert";
-import { Tool } from "openai/resources/responses/responses";
-import { ChatCompletionTool } from "openai/resources/index";
 import { ConnectionParams } from "@/middleware/auth.middleware";
+import { ChatCompletionToolCall, COMPLETION_API_TOOLS, WEB_SEARCH_TOOL, WEB_SEARCH_TOOL_NAME } from "./openai.tools";
 
 const logger = createLogger(__filename);
 
 export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
-
-const WEB_SEARCH_TOOL: ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "web_search",
-    description: "Search the web for relevant information",
-    parameters: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "Search query",
-        },
-        limit: {
-          type: "number",
-          description: "Maximum number of search results to return",
-        },
-      },
-      required: ["query"],
-    },
-  },
-};
 
 export class OpenAIProtocol {
   private openai: OpenAI;
@@ -149,7 +127,7 @@ export class OpenAIProtocol {
 
   async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
     const { modelId, input, dimensions } = request;
-    const params: EmbeddingCreateParams = {
+    const params: OpenAI.Embeddings.EmbeddingCreateParams = {
       model: modelId,
       input,
       encoding_format: "float",
@@ -181,55 +159,94 @@ export class OpenAIProtocol {
     messages: ModelMessage[],
     systemPrompt: string | undefined
   ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
-    // Format messages for OpenAI API
-    const result: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => {
+    type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
+    type ChatCompletionMessageParamContent = ChatCompletionMessageParam["content"];
+
+    const parseContent = (
+      body: string | ModelMessageContent[],
+      addImages = true
+    ): string | ChatCompletionMessageParamContent => {
+      if (typeof body === "string") {
+        return body as ChatCompletionMessageParamContent;
+      }
+
+      const content = body
+        .filter(part => part.content)
+        .map(part => {
+          if (part.contentType === "text") {
+            return { type: "text" as const, text: part.content };
+          } else if (addImages && part.contentType === "image") {
+            return {
+              type: "image_url" as const,
+              image_url: {
+                url: part.content,
+              },
+            };
+          } else {
+            logger.warn({ ...part }, `Unsupported message content type`);
+            return null;
+          }
+        })
+        .filter(Boolean);
+
+      return content as ChatCompletionMessageParamContent;
+    };
+
+    const requestMessages: ChatCompletionMessageParam[] = messages.flatMap(msg => {
       const role = this.mapMessageRole(msg.role);
 
-      if (typeof msg.body === "string") {
-        return {
-          role,
-          content: msg.body,
-        } as OpenAI.Chat.Completions.ChatCompletionMessageParam;
-      } else {
-        const content = msg.body
-          .filter(part => part.content)
-          .map(part => {
-            if (part.contentType === "text") {
-              return { type: "text" as const, text: part.content };
-            } else if (part.contentType === "image") {
-              return {
-                type: "image_url" as const,
-                image_url: {
-                  url: part.content,
-                },
-              };
-            } else {
-              logger.warn({ ...part }, `Unsupported message content type`);
-              return null;
-            }
-          })
-          .filter(Boolean);
+      const toolCalls =
+        msg.metadata?.toolCalls && msg.metadata.toolCalls.length > 0
+          ? [
+              {
+                role: "assistant" as const,
+                tool_calls: msg.metadata.toolCalls
+                  .filter(tc => !tc.type || tc.type === "function")
+                  .map(tc => ({
+                    id: tc.name,
+                    type: tc.type || "function",
+                    function: {
+                      name: tc.name,
+                      arguments: JSON.stringify(tc.args || {}),
+                    },
+                  })),
+              },
+            ]
+          : [];
 
-        return {
+      const tools =
+        msg.metadata?.tools?.map(
+          t =>
+            ({
+              role: "tool" as const,
+              tool_call_id: t.callId,
+              content: parseContent(t.content, false) || "",
+            }) as OpenAI.Chat.Completions.ChatCompletionToolMessageParam
+        ) || [];
+
+      return [
+        ...toolCalls,
+        ...tools,
+        {
           role,
-          content,
-        } as OpenAI.Chat.Completions.ChatCompletionMessageParam;
-      }
+          content: parseContent(msg.body),
+        },
+      ] as ChatCompletionMessageParam[];
     });
 
+    // Add system prompt at the beginning if provided
     let systemRole: "system" | "developer" = "system";
     if (modelId.startsWith("o1") || modelId.startsWith("o4") || modelId.startsWith("gpt-5")) {
       systemRole = "developer";
     }
-
     if (systemPrompt) {
-      result.unshift({
+      requestMessages.unshift({
         role: systemRole,
         content: systemPrompt,
       });
     }
 
-    return result;
+    return requestMessages;
   }
 
   /**
@@ -258,7 +275,7 @@ export class OpenAIProtocol {
     }
 
     if (inputTools) {
-      const tools: ChatCompletionTool[] = [];
+      const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [];
 
       // custom web search tool
       if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
@@ -283,7 +300,7 @@ export class OpenAIProtocol {
       temperature,
     };
 
-    const tools: Array<Tool> = [];
+    const tools: Array<OpenAI.Responses.Tool> = [];
 
     if (inputRequest.tools) {
       if (inputRequest.tools.find(t => t.type === ToolType.WEB_SEARCH)) {
@@ -363,35 +380,123 @@ export class OpenAIProtocol {
       stream_options: { include_usage: true },
     };
 
-    logger.debug({ ...params, messages: [] }, "invoking streaming chat.completions...");
-
-    const stream = await this.openai.chat.completions.create(params);
     let fullResponse = "";
     let meta: MessageMetadata | undefined = undefined;
+    let requestCompleted = false;
 
-    for await (const chunk of stream) {
-      // TODO: handle tool calls
-      // chunk.choices[0].delta.tool_calls
+    do {
+      logger.debug({ ...params }, "invoking streaming chat.completions...");
+      const stream = await this.openai.chat.completions.create(params);
 
-      const token = chunk.choices[0]?.delta?.content || "";
-      if (token) {
-        fullResponse += token;
-        callbacks.onProgress?.(token);
-      }
+      let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
+      for await (const chunk of stream) {
+        const choice = chunk.choices[0];
 
-      const usage = chunk.usage;
-      if (usage) {
-        meta = {
-          usage: {
-            inputTokens: usage.prompt_tokens || 0,
-            outputTokens: usage.completion_tokens || 0,
-            cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
-          },
-        };
-      }
-    }
+        if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
+          const requestedToolCalls = (streamedToolCalls.length ? streamedToolCalls : choice.delta.tool_calls) || [];
+          logger.debug({ tool_calls: requestedToolCalls }, "Tool calls requested");
+          const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(this.parseCompletionToolCall);
+          const failedCall = toolCalls.find(call => call.error);
+
+          if (failedCall) {
+            callbacks.onError?.(new Error(failedCall.error));
+            requestCompleted = true;
+            break;
+          }
+
+          // TODO: handle other tool calls
+          let status =
+            toolCalls.length === 1 && toolCalls[0].name === WEB_SEARCH_TOOL_NAME
+              ? ResponseStatus.WEB_SEARCH
+              : ResponseStatus.TOOL_CALL;
+          let detail =
+            toolCalls.length === 1
+              ? `Arguments: ${JSON.stringify(toolCalls[0].arguments)}`
+              : `Call tools: ${toolCalls.map(c => c.name).join(", ")}`;
+
+          const metaCalls = toolCalls.map(c => ({
+            ...c,
+            name: c.name || "unknown",
+            args: JSON.stringify(c.arguments || {}),
+          }));
+          callbacks.onProgress?.("", { status, detail, toolCalls: metaCalls });
+
+          const toolResults = await this.callCompletionTools(toolCalls);
+
+          // Add tool calls as last assistant message
+          params.messages.push({
+            role: "assistant",
+            tool_calls: requestedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[],
+          });
+          params.messages.push(...toolResults.map(tr => tr.result));
+
+          const tools: ChatToolCallResult[] = toolResults.map(({ call, result }) => {
+            const content = this.parseCompletionToolCallResult(result);
+            return {
+              name: call.name || "unknown",
+              content,
+              callId: call.callId,
+            };
+          });
+          callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools });
+
+          requestCompleted = false;
+          break; // break for await to restart the request with new messages
+        } else {
+          requestCompleted = true;
+        }
+
+        if (choice?.delta?.tool_calls) {
+          choice?.delta?.tool_calls.forEach(tc => {
+            if (!streamedToolCalls[tc.index]) {
+              streamedToolCalls[tc.index] = tc;
+            } else if (streamedToolCalls[tc.index].function && tc.function?.arguments) {
+              const func = streamedToolCalls[tc.index].function || {};
+              if (!func.arguments) {
+                func.arguments = "";
+              }
+              func.arguments += tc.function.arguments;
+            }
+          });
+        } else {
+          const token = choice?.delta?.content || "";
+          if (token) {
+            fullResponse += token;
+            callbacks.onProgress?.(token);
+          }
+        }
+
+        const usage = chunk.usage;
+        if (usage) {
+          meta = {
+            usage: {
+              inputTokens: usage.prompt_tokens || 0,
+              outputTokens: usage.completion_tokens || 0,
+              cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
+            },
+          };
+        }
+      } // for await (const chunk of stream)
+    } while (!requestCompleted);
 
     callbacks.onComplete?.(fullResponse, meta);
+  }
+
+  parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
+    if (!result.content || typeof result.content === "string") {
+      return result.content || "";
+    }
+
+    const contentParts: string[] = [];
+    result.content.forEach(part => {
+      if ("text" in part) {
+        contentParts.push(part.text);
+      } else if ("refusal" in part) {
+        contentParts.push(part.refusal);
+      }
+    });
+
+    return contentParts.join("\n");
   }
 
   private async streamChatResponses(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
@@ -554,7 +659,7 @@ export class OpenAIProtocol {
     }
   }
 
-  debugResponseInput(input: string | OpenAI.Responses.ResponseInput | undefined): any {
+  private debugResponseInput(input: string | OpenAI.Responses.ResponseInput | undefined): any {
     return Array.isArray(input)
       ? input?.map(m => {
           if ("content" in m && Array.isArray(m.content)) {
@@ -579,5 +684,76 @@ export class OpenAIProtocol {
           return m;
         })
       : [];
+  }
+
+  private callCompletionTools(
+    toolCalls: ChatCompletionToolCall[]
+  ): Promise<{ call: ChatCompletionToolCall; result: OpenAI.Chat.Completions.ChatCompletionMessageParam }[]> {
+    const requests = toolCalls.map(async call => {
+      const tool = COMPLETION_API_TOOLS[call.name || ""];
+      if (!tool) {
+        return {
+          call,
+          result: {
+            role: "tool" as const,
+            tool_call_id: call.callId,
+            content: `Error: Unsupported tool: ${call.name}`,
+          },
+        };
+      }
+
+      if (!this.connection) {
+        return {
+          call,
+          result: {
+            role: "tool" as const,
+            tool_call_id: call.callId,
+            content: `Error: external service connection info is not provided.`,
+          },
+        };
+      }
+
+      const result = await tool.call(call.arguments || {}, call.callId, this.connection);
+      return { call, result };
+    });
+
+    return Promise.all(requests);
+  }
+
+  private parseCompletionToolCall(
+    call: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall
+  ): ChatCompletionToolCall {
+    const callId = call.id || "unknown_id";
+    if (!call.function || !call.function.name) {
+      return {
+        callId,
+        error: `Invalid tool call format: ${JSON.stringify(call, null, 2)}`,
+      };
+    }
+    const { name } = call.function;
+    const tool = COMPLETION_API_TOOLS[call.function.name];
+    if (!tool) {
+      return {
+        callId,
+        type: "function",
+        error: `Unsupported function tool: ${name}`,
+      };
+    }
+
+    const toolCall: ChatCompletionToolCall = {
+      callId,
+      type: "function",
+      name,
+    };
+
+    if (call.function.arguments) {
+      try {
+        toolCall.arguments = JSON.parse(call.function.arguments);
+      } catch (e) {
+        toolCall.error = `Failed to parse tool call arguments: ${e}`;
+      }
+    }
+
+    return toolCall;
   }
 }
