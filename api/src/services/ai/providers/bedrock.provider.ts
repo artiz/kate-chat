@@ -179,12 +179,17 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     const conversationMessages: ConverseMessage[] = [];
     let requestCompleted = false;
-    const input = this.formatConverseParams(request);
 
     do {
       try {
+        const input = this.formatConverseParams(request);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
+
+        // reset tool choice for nova models after first call to avoid infinite loops
+        if (input.modelId?.includes("amazon.nova") && conversationMessages.length > 0 && input.toolConfig) {
+          input.toolConfig.toolChoice = undefined;
+        }
 
         const command = new ConverseStreamCommand(input);
         const streamResponse = await this.bedrockClient.send(command);
@@ -324,9 +329,6 @@ export class BedrockApiProvider extends BaseApiProvider {
             });
             callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools: toolResults });
 
-            if (input.modelId?.includes("amazon.nova") && input.toolConfig) {
-              input.toolConfig.toolChoice = undefined;
-            }
             // Reset for next iteration
             fullResponse = "";
             streamedToolUse = [];

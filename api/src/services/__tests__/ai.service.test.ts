@@ -201,6 +201,7 @@ describe("AIService", () => {
               },
             };
             yield {
+              messageStop: { stopReason: "stop_sequence" },
               metadata: {
                 usage: {
                   inputTokens: 5,
@@ -297,6 +298,9 @@ describe("AIService", () => {
             };
             yield {
               modelStreamErrorException: mockError,
+            };
+            yield {
+              messageStop: { stopReason: "stop_sequence" },
             };
           },
         },
