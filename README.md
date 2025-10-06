@@ -16,6 +16,7 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
+- LLM tools (Web Search, Code Interpreter) support
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 - Multiple chats creation with pristine chat functionality
 - Chat history storage and management, messages editing/deletion
@@ -47,17 +48,16 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 > 📋 **Note**: API keys are stored locally in your browser and sent securely to our backend. See the [Getting Started](#getting-started) section below for detailed instructions on obtaining API keys.
 
 ## TODO
-* Add LLM tools (Web Search, Code Interpreter) support:
-   - OpenAI - add `apiType: "completions" | "responses"` and use ["responses"](https://platform.openai.com/docs/api-reference/responses/create), [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
-   - Yandex FM - use tools in "completions" [API](https://yandex.cloud/en/docs/foundation-models/concepts/openai-compatibility)
-   - Bedrock - use [Converse API](https://builder.aws.com/content/2hW5367isgQOkkXLYjp4JB3Pe16/intro-to-tool-use-with-the-amazon-bedrock-converse-api)  
-   
 
 * Extract katechat-ui package to have all the Message/Model types defined there. Move chat componmment there, 
   extract ChatDataProvider interface that should incorporate all REST/WS calls. Implement plugins support (RAG, Tools, ChatSettings)
   Provide simple demos in `katechat-ui`:
   - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
   - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form
+* Add custom MCP tool support
+   - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
+   - Bedrock - custom wrapper 
+
 * Add request cancellation to stop reasoning or web search
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add [MarkItDown](https://github.com/microsoft/markitdown) ([example](https://dev.to/leapcell/deep-dive-into-microsoft-markitdown-4if5)) in document-processor, support both processors and write script to generate Markdown for files from train and compare them.
