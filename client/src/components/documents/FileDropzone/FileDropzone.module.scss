@@ -1,14 +1,23 @@
+.dropzone {
+  cursor: pointer;
+  &:hover {
+    color: var(--mantine-color-brand-6);
+  }
+}
+
 .dragging {
-  background-color: var(--mantine-color-brand-8);
+  background-color: var(--mantine-color-gray-5);
+  opacity: 0.8;
 }
 
 .activated {
-  position: absolute;
+  position: fixed;
   z-index: 10;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  bottom: 0;
+  right: 0;
+  flex: 1;
 }
 
 .disabled {

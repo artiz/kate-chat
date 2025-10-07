@@ -1,15 +1,15 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
 import bcrypt from "bcryptjs";
-import { User } from "../entities/User";
-import { generateToken } from "../utils/jwt";
-import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "../types/graphql/inputs";
-import { ApplicationConfig, AuthResponse } from "../types/graphql/responses";
-import { DEFAULT_PROMPT } from "@/config/ai";
-import { verifyRecaptchaToken } from "../utils/recaptcha";
-import { logger } from "../utils/logger";
-import { AuthProvider, UserRole } from "../types/ai.types";
+import { User, AuthProvider, UserRole } from "@/entities/User";
+import { generateToken } from "@/utils/jwt";
+import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "@/types/graphql/inputs";
+import { ApplicationConfig, AuthResponse } from "@/types/graphql/responses";
+import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
+import { verifyRecaptchaToken } from "@/utils/recaptcha";
+import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
+
 import {
   DEMO_MODE,
   DEFAULT_ADMIN_EMAILS,
@@ -17,7 +17,7 @@ import {
   DEMO_MAX_CHAT_MESSAGES,
   DEMO_MAX_IMAGES,
 } from "@/config/application";
-import { AppDataSource, DB_TYPE } from "@/config/database";
+import { DB_TYPE } from "@/config/database";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -102,7 +102,7 @@ export class UserResolver extends BaseResolver {
       lastName,
       avatarUrl,
       role,
-      defaultSystemPrompt: DEFAULT_PROMPT,
+      defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
       authProvider: authProvider || AuthProvider.LOCAL,
     });
 

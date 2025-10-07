@@ -23,6 +23,7 @@ export const BASE_MODEL_FRAGMENT = `
       type
       imageInput
       maxInputTokens
+      tools
     }
 `;
 
@@ -50,6 +51,14 @@ export const BASE_CHAT_FRAGMENT = `
             fileName
             status
             downloadUrl
+          }
+        }
+        tools {
+          type
+          name
+          options { 
+            name
+            value
           }
         }
     }
@@ -112,6 +121,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       content
       role
       createdAt
+      updatedAt
       modelId
       modelName
       user {
@@ -182,6 +192,10 @@ export const UPDATE_CHAT_MUTATION = gql`
       maxTokens
       topP
       imagesCount
+      tools {
+        type
+        name
+      }
       updatedAt
     }
   }
@@ -643,7 +657,7 @@ export const graphqlApi = api.injectEndpoints({
 
         for (const chat of chats.chats) {
           if (chat.lastBotMessage) {
-            chat.lastBotMessageHtml = await parseMarkdown(chat.lastBotMessage);
+            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
           }
         }
 

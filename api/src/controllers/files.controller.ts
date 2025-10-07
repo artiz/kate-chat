@@ -3,16 +3,14 @@ import { Readable } from "stream";
 import { IncomingForm, File as FormidableFile } from "formidable";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
-import { authMiddleware } from "@/middleware/auth.middleware";
-import { S3Service } from "@/services/s3.service";
+import { S3Service } from "@/services/data";
 
 import { ok } from "assert";
 import { getRepository } from "@/config/database";
 import { ChatDocument, User, Document, Chat } from "@/entities";
 import { DocumentStatus } from "@/types/ai.types";
 import { TokenPayload } from "@/utils/jwt";
-import { SubscriptionsService } from "@/services/subscriptions.service";
-import { SQSService } from "@/services/sqs.service";
+import { SubscriptionsService, SQSService } from "@/services/messaging";
 import { MessagesService } from "@/services/messages.service";
 
 declare global {
@@ -109,7 +107,6 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
       status: DocumentStatus.UPLOAD,
       statusProgress: 1,
     });
-    const fileRe = filepath;
 
     document = await documentRepo.save(document);
     subService.publishDocumentStatus(document);

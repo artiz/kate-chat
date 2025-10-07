@@ -7,6 +7,7 @@ import { Message, MessageRole } from "@/store/slices/chatSlice";
 import classes from "../ChatMessage.module.scss";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
+import { MessageStatus } from "../MessageStatus";
 
 interface IProps {
   message: Message;
@@ -31,6 +32,14 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
           <Text size="xs" fw={500} c="teal">
             {message.modelName}
           </Text>
+          {message.status && (
+            <>
+              <MessageStatus status={message.status} />
+              <Text size="xs" c="dimmed">
+                {message.statusInfo}
+              </Text>
+            </>
+          )}
           {message.metadata?.usage && (
             <Text size="xs" c="dimmed">
               OUT: {message.metadata.usage.outputTokens || "N/A"}

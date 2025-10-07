@@ -104,7 +104,7 @@ export function ChatSettings({
             </Group>
           </Group>
           <Slider
-            value={tempValue || 0.7}
+            value={tempValue}
             onChange={handleTemperatureChange}
             min={0}
             max={1}
@@ -146,7 +146,7 @@ export function ChatSettings({
             </Text>
             <Group gap={5}>
               <Text size="sm" c="dimmed">
-                {imagesCountValue || 1}
+                {imagesCountValue}
               </Text>
               <Tooltip label="Generated images limit.">
                 <ActionIcon size="xs" variant="subtle">
@@ -156,7 +156,7 @@ export function ChatSettings({
             </Group>
           </Group>
           <Slider
-            value={imagesCountValue || 1}
+            value={imagesCountValue}
             onChange={handleImagesCountChange}
             min={1}
             max={10}
@@ -187,7 +187,7 @@ export function ChatSettings({
             </Group>
           </Group>
           <Slider
-            value={topPValue || 0.9}
+            value={topPValue}
             onChange={handleTopPChange}
             min={0}
             max={1}

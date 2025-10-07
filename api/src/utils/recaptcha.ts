@@ -1,4 +1,4 @@
-import axios from "axios";
+import { fetch } from "undici";
 import { RECAPTCHA_SECRET_KEY, RECAPTCHA_VERIFY_URL, RECAPTCHA_SCORE_THRESHOLD } from "../config/application";
 import { logger } from "./logger";
 
@@ -31,15 +31,20 @@ export const verifyRecaptchaToken = async (token: string, expectedAction: string
 
   try {
     // Send verification request to Google
-    const response = await axios.post<RecaptchaResponse>(RECAPTCHA_VERIFY_URL, null, {
-      params: {
-        secret: RECAPTCHA_SECRET_KEY,
-        response: token,
-      },
+    const params = new URLSearchParams({
+      secret: RECAPTCHA_SECRET_KEY,
+      response: token,
     });
+    const response = await fetch(RECAPTCHA_VERIFY_URL, {
+      method: "POST",
+      body: params.toString(),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+    }).then(res => res.json() as Promise<RecaptchaResponse>);
 
-    const { success, score, action, "error-codes": errorCodes } = response.data;
-
+    const { success, score, action, "error-codes": errorCodes } = response;
     if (!success) {
       logger.warn({ errorCodes }, "reCAPTCHA verification failed");
       return false;

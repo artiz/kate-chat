@@ -1,36 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Title,
-  Text,
-  Grid,
-  Card,
-  Group,
-  Badge,
-  Stack,
-  Loader,
-  Button,
-  Switch,
-  Modal,
-  TextInput,
-  Textarea,
-  Code,
-  Alert,
-  Tabs,
-  Select,
-  Table,
-  Paper,
-  Divider,
-} from "@mantine/core";
+import { Title, Text, Card, Group, Stack, Loader, Button, Modal, TextInput, Alert, Table } from "@mantine/core";
 import { DatePicker, DateStringValue } from "@mantine/dates";
-import {
-  IconBrandOpenai,
-  IconRocket,
-  IconBook2,
-  IconBrandAws,
-  IconRefresh,
-  IconAlertCircle,
-} from "@tabler/icons-react";
+import { IconRefresh, IconAlertCircle } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { useMutation, useLazyQuery } from "@apollo/client";
 import { Model, setModelsAndProviders, updateModel } from "@/store/slices/modelSlice";
@@ -46,21 +18,6 @@ import { addChat } from "@/store/slices/chatSlice";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
 import { GqlCostsInfo, Message } from "@/types/graphql";
-
-// Helper function to get provider icon
-const getProviderIcon = (provider: string | null) => {
-  switch (provider?.toLowerCase()) {
-    case "open_ai":
-      return <IconBrandOpenai size={24} />;
-    case "anthropic":
-      return <IconBook2 size={24} />;
-    case "aws":
-    case "amazon":
-      return <IconBrandAws size={24} />;
-    default:
-      return <IconRocket size={24} />;
-  }
-};
 
 export const ModelsDashboard: React.FC = () => {
   const navigate = useNavigate();

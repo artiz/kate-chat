@@ -1,6 +1,7 @@
 import { InputType, Field } from "type-graphql";
-import { ApiProvider, AuthProvider, MessageRole } from "../ai.types";
-import { UserSettings } from "@/entities";
+import { ToolType } from "../ai.types";
+import { UserSettings, AuthProvider } from "@/entities";
+import { ApiProvider } from "@/config/ai/common";
 
 @InputType()
 export class UpdateUserInput {
@@ -76,8 +77,8 @@ export class ChangePasswordInput {
 
 @InputType()
 export class CreateChatInput {
-  @Field()
-  title: string;
+  @Field({ nullable: true })
+  title?: string;
 
   @Field({ nullable: true })
   description?: string;
@@ -87,6 +88,27 @@ export class CreateChatInput {
 
   @Field({ nullable: true })
   systemPrompt?: string;
+}
+
+@InputType()
+export class ChatToolOptionsInput {
+  @Field()
+  name: string;
+
+  @Field()
+  value: string;
+}
+
+@InputType()
+export class ChatToolInput {
+  @Field(() => ToolType)
+  type: ToolType;
+
+  @Field({ nullable: true })
+  name?: string;
+
+  @Field(() => [ChatToolOptionsInput], { nullable: true })
+  options?: ChatToolOptionsInput[];
 }
 
 @InputType()
@@ -111,6 +133,9 @@ export class UpdateChatInput {
 
   @Field({ nullable: true })
   imagesCount?: number;
+
+  @Field(() => [ChatToolInput!], { nullable: true })
+  tools?: ChatToolInput[];
 }
 
 @InputType()

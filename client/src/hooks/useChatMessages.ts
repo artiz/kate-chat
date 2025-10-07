@@ -7,7 +7,7 @@ import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser"
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
 import { pick } from "lodash";
 import { MessageRole } from "@/types/ai";
-import { Message, DeleteMessageResponse, GetChatMessagesResponse } from "@/types/graphql";
+import { Message, DeleteMessageResponse, GetChatMessagesResponse, MessageChatInfo } from "@/types/graphql";
 
 type HookResult = {
   messages: Message[] | undefined;
@@ -33,6 +33,7 @@ export interface UpdateChatInput {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+  tools?: { type: string; name?: string }[];
 
   lastBotMessage?: string;
   lastBotMessageHtml?: string[];
@@ -94,9 +95,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
-            parseChatMessages(messages).then(parsedMessages => {
-              setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
-            });
+            const parsedMessages = parseChatMessages(messages);
+            setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
 
             loadTimeout.current = setTimeout(() => setLoadCompleted(true), 300);
           }
@@ -134,9 +134,10 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
   useEffect(() => {
     if (!chatId) return;
-    setMessages(undefined);
     setHasMoreMessages(false);
+    setMessages(undefined);
     setLoadCompleted(false);
+
     const timeout = setTimeout(() => {
       loadMessages();
     }, 200);
@@ -223,7 +224,16 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       updateChatMutation({
         variables: {
           id,
-          input: pick(input, ["title", "description", "modelId", "temperature", "maxTokens", "topP", "imagesCount"]),
+          input: pick(input, [
+            "title",
+            "description",
+            "modelId",
+            "temperature",
+            "maxTokens",
+            "topP",
+            "imagesCount",
+            "tools",
+          ]),
         },
       });
     }, 300);
@@ -231,7 +241,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
   };
 
-  const addChatMessage = (msg: Message) => {
+  const addChatMessage = (msg: Message, info?: MessageChatInfo) => {
     if (!msg) return;
 
     const addMessage = (message: Message) => {
@@ -273,30 +283,13 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           }
         }
       });
-
-      if (chat && message.role === MessageRole.ASSISTANT && !message.linkedToMessageId) {
-        const update = {
-          ...chat,
-          lastBotMessage: message.content,
-          lastBotMessageHtml: message.html,
-          isPristine: false,
-        };
-
-        dispatch(updateChatInState(update));
-      }
     };
 
     setStreaming(msg.streaming || false);
 
     if (msg.content) {
-      parseMarkdown(msg.content)
-        .then(html => {
-          addMessage({ ...msg, html });
-        })
-        .catch(error => {
-          console.error("Error parsing markdown:", error);
-          addMessage({ ...msg });
-        });
+      const html = parseMarkdown(msg.content);
+      addMessage({ ...msg, html });
     } else {
       addMessage(msg);
     }

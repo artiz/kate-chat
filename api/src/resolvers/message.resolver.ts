@@ -19,12 +19,9 @@ import { BaseResolver } from "./base.resolver";
 import { MessageType } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
-import { S3Service } from "@/services/s3.service";
 import { ChatsService } from "@/services/chats.service";
 import { isAdmin } from "@/utils/jwt";
-
-// Topics for PubSub
-export const NEW_MESSAGE = "NEW_MESSAGE";
+import { NEW_MESSAGE } from "@/services/messaging";
 
 const logger = createLogger(__filename);
 
@@ -178,7 +175,6 @@ export class MessageResolver extends BaseResolver {
   @Subscription(() => GqlMessage, {
     topics: NEW_MESSAGE,
     filter: ({ payload, args }) => {
-      logger.trace(`Filtering message for chat ${args.chatId}, payload chat: ${payload.chatId}`);
       return payload.chatId === args.chatId;
     },
   })
@@ -190,16 +186,6 @@ export class MessageResolver extends BaseResolver {
     await this.validateContextToken(context);
 
     const { message, type = MessageType.MESSAGE, error, ...rest } = payload.data;
-    logger.trace(
-      {
-        type,
-        messageId: message?.id,
-        role: message?.role,
-        error,
-      },
-      `Publishing message to chat ${chatId} subscribers`
-    );
-
     return {
       message,
       error,

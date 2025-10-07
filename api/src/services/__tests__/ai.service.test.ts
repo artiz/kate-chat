@@ -1,24 +1,12 @@
-import { AIService } from "../ai.service";
-import { InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
-import { ApiProvider, MessageRole, ModelMessage } from "../../types/ai.types";
-import { A21InvokeModelResponse } from "../bedrock/providers/ai21.service";
+process.env.ENABLED_API_PROVIDERS = "aws_bedrock";
+import { ApiProvider } from "../../config/ai/common";
+import { AIService } from "../ai/ai.service";
+import { MessageRole, ModelMessage } from "../../types/ai.types";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
   send: jest.fn(),
 };
-
-jest.mock("../../config/ai.ts", () => {
-  return {
-    // values from ApiProvider to avoid circular dependency
-    ENABLED_API_PROVIDERS: ["aws_bedrock", "yandex_fm"],
-    DEFAULT_TEMPERATURE: 0.7,
-    DEFAULT_MAX_TOKENS: 1000,
-    DEFAULT_TOP_P: 0.9,
-    DEFAULT_PROMPT: "You are a helpful AI assistant.",
-    CONTEXT_MESSAGES_LIMIT: 50,
-  };
-});
 
 // Mock the AWS SDK
 jest.mock("@aws-sdk/client-bedrock", () => {
@@ -31,10 +19,10 @@ jest.mock("@aws-sdk/client-bedrock", () => {
 // Mock BedrockService to use real implementation but with mocked clients
 let mockedBedrockInstance: any;
 
-jest.mock("../bedrock/bedrock.service", () => {
-  const originalModule = jest.requireActual("../bedrock/bedrock.service");
+jest.mock("../ai/providers/bedrock.provider", () => {
+  const originalModule = jest.requireActual("../ai/providers/bedrock.provider");
 
-  class MockedBedrockService extends originalModule.BedrockService {
+  class MockedBedrockProvider extends originalModule.BedrockApiProvider {
     constructor(connection: any) {
       super(connection);
       // Replace the clients with our mocks after construction
@@ -45,7 +33,7 @@ jest.mock("../bedrock/bedrock.service", () => {
   }
 
   return {
-    BedrockService: MockedBedrockService,
+    BedrockApiProvider: MockedBedrockProvider,
   };
 });
 
@@ -53,6 +41,8 @@ jest.mock("@aws-sdk/client-bedrock-runtime", () => {
   return {
     InvokeModelCommand: jest.fn(),
     InvokeModelWithResponseStreamCommand: jest.fn(),
+    ConverseCommand: jest.fn(),
+    ConverseStreamCommand: jest.fn(),
     BedrockRuntimeClient: jest.fn().mockImplementation(() => bedrockClient),
   };
 });
@@ -73,19 +63,23 @@ describe("AIService", () => {
       ];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
-      // Mock the AWS Bedrock response
+      // Mock the AWS Bedrock Converse API response
       const mockResponse = {
-        body: Buffer.from(
-          JSON.stringify({
+        output: {
+          message: {
             content: [{ text: "I'm doing well, thanks for asking!" }],
-          })
-        ),
+          },
+        },
+        usage: {
+          inputTokens: 10,
+          outputTokens: 8,
+        },
       };
 
       // Mock the AWS Bedrock client response
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(
+      const response = await aiService.completeChat(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
@@ -95,7 +89,8 @@ describe("AIService", () => {
       );
 
       expect(response.content).toBe("I'm doing well, thanks for asking!");
-      expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
+      expect(response.metadata?.usage?.inputTokens).toBe(10);
+      expect(response.metadata?.usage?.outputTokens).toBe(8);
       expect(bedrockClient.send).toHaveBeenCalledTimes(1);
     });
 
@@ -107,19 +102,23 @@ describe("AIService", () => {
       ];
       const modelId = "meta.llama2-13b-chat-v1";
 
-      // Mock the AWS Bedrock response for Meta provider
+      // Mock the AWS Bedrock Converse API response for Meta provider
       const mockResponse = {
-        body: Buffer.from(
-          JSON.stringify({
-            generation: "I'm a language model, I don't have feelings, but I'm here to help!",
-          })
-        ),
+        output: {
+          message: {
+            content: [{ text: "I'm a language model, I don't have feelings, but I'm here to help!" }],
+          },
+        },
+        usage: {
+          inputTokens: 15,
+          outputTokens: 12,
+        },
       };
 
       // Mock the AWS Bedrock client response
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
-      const response = await aiService.invokeModel(
+      const response = await aiService.completeChat(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
@@ -129,25 +128,38 @@ describe("AIService", () => {
       );
 
       expect(response.content).toBe("I'm a language model, I don't have feelings, but I'm here to help!");
-      expect(InvokeModelCommand).toHaveBeenCalledTimes(1);
+      expect(response.metadata?.usage?.inputTokens).toBe(15);
+      expect(response.metadata?.usage?.outputTokens).toBe(12);
       expect(bedrockClient.send).toHaveBeenCalledTimes(1);
     });
 
-    it("should throw an error for unsupported model provider", async () => {
+    it("should handle empty response", async () => {
       const aiService = new AIService();
       const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
-      const modelId = "unknown.model-v1";
+      const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
-      await expect(
-        aiService.invokeModel(
-          ApiProvider.AWS_BEDROCK,
-          {
-            AWS_BEDROCK_REGION: "aws-region",
-            AWS_BEDROCK_PROFILE: "default",
+      // Mock empty response
+      const mockResponse = {
+        output: {
+          message: {
+            content: [],
           },
-          { messages, modelId }
-        )
-      ).rejects.toThrow("Unsupported model provider");
+        },
+      };
+
+      bedrockClient.send.mockResolvedValueOnce(mockResponse);
+
+      const response = await aiService.completeChat(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_BEDROCK_REGION: "aws-region",
+          AWS_BEDROCK_PROFILE: "default",
+        },
+        { messages, modelId }
+      );
+
+      expect(response.content).toBe("");
+      expect(bedrockClient.send).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -159,33 +171,35 @@ describe("AIService", () => {
 
       const callbacks = {
         onStart: jest.fn(),
-        onToken: jest.fn(),
+        onProgress: jest.fn(),
         onComplete: jest.fn(),
         onError: jest.fn(),
       };
 
-      // Mock a streaming response
+      // Mock a streaming response using Converse Stream API format
       const mockResponse = {
-        body: {
+        stream: {
           async *[Symbol.asyncIterator]() {
             yield {
-              chunk: {
-                bytes: Buffer.from(
-                  JSON.stringify({
-                    type: "content_block_delta",
-                    delta: { text: "Hello" },
-                  })
-                ),
+              contentBlockDelta: {
+                delta: { text: "Hello" },
               },
             };
             yield {
-              chunk: {
-                bytes: Buffer.from(
-                  JSON.stringify({
-                    type: "content_block_delta",
-                    delta: { text: ", world!" },
-                  })
-                ),
+              contentBlockDelta: {
+                delta: { text: ", world!" },
+              },
+            };
+            yield {
+              messageStop: { stopReason: "stop_sequence" },
+              metadata: {
+                usage: {
+                  inputTokens: 5,
+                  outputTokens: 7,
+                },
+                metrics: {
+                  latencyMs: 150,
+                },
               },
             };
           },
@@ -194,7 +208,7 @@ describe("AIService", () => {
 
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
-      await aiService.invokeModelAsync(
+      await aiService.streamChatCompletion(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "us-west-2",
@@ -205,56 +219,15 @@ describe("AIService", () => {
       );
 
       expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onToken).toHaveBeenCalledTimes(2);
-      expect(callbacks.onToken).toHaveBeenNthCalledWith(1, "Hello");
-      expect(callbacks.onToken).toHaveBeenNthCalledWith(2, ", world!");
-      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!", undefined);
-      expect(callbacks.onError).not.toHaveBeenCalled();
-    });
-
-    it("should simulate streaming for non-streaming models", async () => {
-      const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
-      const modelId = "ai21.j2-ultra-v1"; // Non-streaming model
-
-      const callbacks = {
-        onStart: jest.fn(),
-        onToken: jest.fn(),
-        onComplete: jest.fn(),
-        onError: jest.fn(),
-      };
-
-      // Mock the AWS Bedrock response for the non-streaming model
-      const response: A21InvokeModelResponse = {
-        choices: [{ message: { role: "assistant", content: "I'm doing well, thanks for asking!" } }],
-      };
-      const mockResponse = {
-        body: Buffer.from(JSON.stringify(response)),
-      };
-
-      // Mock the AWS Bedrock client response
-      (bedrockClient.send as jest.Mock).mockResolvedValueOnce(mockResponse);
-
-      // Mock the setTimeout to execute immediately
-      jest.spyOn(global, "setTimeout").mockImplementation(callback => {
-        callback();
-        return {} as any;
-      });
-
-      await aiService.invokeModelAsync(
-        ApiProvider.AWS_BEDROCK,
-        {
-          AWS_BEDROCK_REGION: "aws-region",
-          AWS_BEDROCK_PROFILE: "default",
+      expect(callbacks.onProgress).toHaveBeenCalledTimes(2);
+      expect(callbacks.onProgress).toHaveBeenNthCalledWith(1, "Hello");
+      expect(callbacks.onProgress).toHaveBeenNthCalledWith(2, ", world!");
+      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!", {
+        usage: {
+          inputTokens: 5,
+          outputTokens: 7,
+          invocationLatency: 150,
         },
-        { messages, modelId },
-        callbacks
-      );
-
-      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onToken).toHaveBeenCalled();
-      expect(callbacks.onComplete).toHaveBeenCalledWith("I'm doing well, thanks for asking!", {
-        usage: { inputTokens: 0, outputTokens: 0 },
       });
       expect(callbacks.onError).not.toHaveBeenCalled();
     });
@@ -275,7 +248,7 @@ describe("AIService", () => {
       const mockError = new Error("Stream processing error");
       (bedrockClient.send as jest.Mock).mockRejectedValueOnce(mockError);
 
-      await aiService.invokeModelAsync(
+      await aiService.streamChatCompletion(
         ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
@@ -289,6 +262,57 @@ describe("AIService", () => {
       expect(callbacks.onToken).not.toHaveBeenCalled();
       expect(callbacks.onComplete).not.toHaveBeenCalled();
       expect(callbacks.onError).toHaveBeenCalledWith(mockError);
+    });
+
+    it("should handle stream exceptions", async () => {
+      const aiService = new AIService();
+      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
+      const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
+
+      const callbacks = {
+        onStart: jest.fn(),
+        onProgress: jest.fn(),
+        onComplete: jest.fn(),
+        onError: jest.fn(),
+      };
+
+      // Mock a streaming response with an error chunk
+      const mockError = new Error("Model stream error");
+      const mockResponse = {
+        stream: {
+          async *[Symbol.asyncIterator]() {
+            yield {
+              contentBlockDelta: {
+                delta: { text: "Hello" },
+              },
+            };
+            yield {
+              modelStreamErrorException: mockError,
+            };
+            yield {
+              messageStop: { stopReason: "stop_sequence" },
+            };
+          },
+        },
+      };
+
+      bedrockClient.send.mockResolvedValueOnce(mockResponse);
+
+      await aiService.streamChatCompletion(
+        ApiProvider.AWS_BEDROCK,
+        {
+          AWS_BEDROCK_REGION: "us-west-2",
+          AWS_BEDROCK_PROFILE: "default",
+        },
+        { messages, modelId },
+        callbacks
+      );
+
+      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
+      expect(callbacks.onProgress).toHaveBeenCalledTimes(1);
+      expect(callbacks.onProgress).toHaveBeenNthCalledWith(1, "Hello");
+      expect(callbacks.onError).toHaveBeenCalledWith(mockError);
+      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello", undefined);
     });
   });
 });

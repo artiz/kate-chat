@@ -7,7 +7,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { TokenPayload } from "@/utils/jwt";
 import { GraphQLContext } from ".";
 import { MessagesService } from "@/services/messages.service";
-import { SQSService } from "@/services/sqs.service";
+import { SQSService } from "@/services/messaging";
 
 export class BaseResolver {
   protected userRepository: Repository<User>;

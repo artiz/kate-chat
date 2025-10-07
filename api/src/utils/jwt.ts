@@ -1,5 +1,5 @@
-import { UserRole } from "@/types/ai.types";
 import jwt from "jsonwebtoken";
+import { UserRole } from "@/entities";
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "7200"; // 2 hour in seconds

@@ -27,6 +27,8 @@ import {
   IconCheck,
   IconSettings,
   IconCircleChevronDown,
+  IconWorldSearch,
+  IconCloudCode,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatMessages } from "./ChatMessages/ChatMessages";
@@ -42,7 +44,7 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 
 import classes from "./Chat.module.scss";
-import { ModelType } from "@/store/slices/modelSlice";
+import { ModelType, ToolType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 import { ImageInput, Message, ChatDocument } from "@/types/graphql";
@@ -84,6 +86,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const anchorTimer = useRef<NodeJS.Timeout | null>(null);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [selectedTools, setSelectedTools] = useState<Set<ToolType>>(new Set());
 
   const {
     messages,
@@ -134,12 +137,20 @@ export const ChatComponent = ({ chatId }: IProps) => {
   });
 
   useEffect(() => {
-    setEditedTitle(chat ? chat.title || "Untitled Chat" : "");
-  }, [chat]);
+    setEditedTitle(chat?.title || "Untitled Chat");
+  }, [chat?.title]);
 
   useEffect(() => {
     chatInputRef.current?.focus();
   }, [loadCompleted]);
+
+  useEffect(() => {
+    if (chat?.tools) {
+      setSelectedTools(new Set(chat.tools.map(tool => tool.type)));
+    } else {
+      setSelectedTools(new Set());
+    }
+  }, [chat?.tools]);
 
   useEffect(() => {
     if (loadCompleted) {
@@ -262,7 +273,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, [allModels]);
 
   const selectedModel = useMemo(() => {
-    return models?.find(m => m.modelId === chat?.modelId) || null;
+    return (
+      models?.find(m => m.modelId === chat?.modelId) ||
+      models?.find(m => m.modelId === appConfig?.currentUser?.defaultModelId) ||
+      models?.[0]
+    );
   }, [models, chat]);
 
   const handleModelChange = (modelId: string | null) => {
@@ -292,6 +307,23 @@ export const ChatComponent = ({ chatId }: IProps) => {
       topP: 0.9,
       imagesCount: 1,
     });
+  };
+
+  const handleToolToggle = (toolType: ToolType) => {
+    if (!chatId) return;
+
+    const tools = new Set(selectedTools);
+    if (tools.has(toolType)) {
+      tools.delete(toolType);
+    } else {
+      tools.add(toolType);
+    }
+
+    setSelectedTools(tools);
+
+    // Convert Set to array of objects for persistence
+    const toolsArray = Array.from(tools).map(type => ({ type, name: type }));
+    updateChat(chatId, { tools: toolsArray });
   };
 
   const messagesLimitReached = useMemo(() => {
@@ -326,7 +358,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const handleTitleBlur = useCallback(
     (event: React.FocusEvent<HTMLElement>) => {
       setTimeout(() => {
-        setEditedTitle(chat?.title || "");
+        setEditedTitle(chat?.title || "Untitled Chat");
         setIsEditingTitle(false);
       }, 100);
     },
@@ -460,7 +492,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
             />
           ) : (
             <Group gap="xs" className={classes.title}>
-              <Title order={3}>{messagesLoading ? "Loading..." : chat?.title || "Untitled Chat"}</Title>
+              <Title order={3}>{chat?.title || "Untitled Chat"}</Title>
+
               <ActionIcon
                 onClick={() => {
                   setIsEditingTitle(true);
@@ -519,6 +552,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           classes.messagesContainer,
           loadCompleted ? classes.loadCompleted : "",
           streaming ? classes.streaming : "",
+          loadCompleted && messages?.length === 0 ? classes.empty : "",
         ].join(" ")}
       >
         <div ref={firstMessageRef} />
@@ -527,18 +561,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <Loader />
           </Group>
         )}
-
-        {messages && messages.length === 0 ? (
-          <Stack align="center" justify="center" flex="1" gap="md">
-            <IconRobot size={48} opacity={0.5} />
-            <Text size="lg" ta="center">
-              No messages yet
-            </Text>
-            <Text c="dimmed" size="sm" ta="center">
-              Start the conversation by sending a message
-            </Text>
-          </Stack>
-        ) : null}
 
         <div className={classes.messagesList}>
           {messages && (
@@ -556,7 +578,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
           )}
         </div>
       </div>
-
       <div style={{ position: "relative" }}>
         <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
           <div className={classes.anchor}>
@@ -573,98 +594,144 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Tooltip>
       )}
 
-      <Group mb="sm" align="center" gap="xs" className={classes.modelRow}>
-        <IconRobot size={20} />
-        <Select
-          data={models.map(model => ({
-            value: model.modelId,
-            label: `${model.provider}: ${model.name}`,
-          }))}
-          searchable
-          value={selectedModel?.modelId || ""}
-          onChange={handleModelChange}
-          placeholder="Select a model"
-          size="sm"
-          clearable={false}
-          style={{ maxWidth: "50%" }}
-          disabled={isExternalChat || sending || messagesLoading}
-        />
-        {selectedModel && <ModelInfo model={selectedModel} />}
+      <div
+        className={[
+          classes.chatControlsContainer,
+          messages?.length === 0 ? classes.fullHeight : "",
+          loadCompleted ? "" : classes.hidden,
+        ].join(" ")}
+      >
+        {messages?.length === 0 ? (
+          <Stack align="center" justify="center" gap="md" mb="lg">
+            <Text c="dimmed" size="lg" ta="center">
+              Start the conversation by sending a message
+            </Text>
+          </Stack>
+        ) : null}
 
-        <Popover width={300} position="top" withArrow shadow="md">
-          <Popover.Target>
-            <Tooltip label="Chat Settings">
-              <ActionIcon>
-                <IconSettings size="1.2rem" />
-              </ActionIcon>
-            </Tooltip>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <ChatSettings
-              temperature={chat?.temperature}
-              maxTokens={chat?.maxTokens}
-              topP={chat?.topP}
-              imagesCount={chat?.imagesCount}
-              onSettingsChange={handleSettingsChange}
-              resetToDefaults={resetSettingsToDefaults}
+        <div className={classes.chatControls}>
+          <Group align="center" gap="xs" className={classes.modelRow}>
+            <IconRobot size={20} />
+            <Select
+              data={models.map(model => ({
+                value: model.modelId,
+                label: `${model.provider}: ${model.name}`,
+              }))}
+              searchable
+              value={selectedModel?.modelId || ""}
+              onChange={handleModelChange}
+              placeholder="Select a model"
+              size="xs"
+              clearable={false}
+              style={{ maxWidth: "50%" }}
+              disabled={isExternalChat || sending || messagesLoading}
             />
-          </Popover.Dropdown>
-        </Popover>
-      </Group>
+            {selectedModel && <ModelInfo model={selectedModel} size="18" />}
 
-      {/* Message input */}
-
-      <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
-        {uploadAllowed && (
-          <Group align="flex-start">
-            <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
-            {appConfig?.ragEnabled ? (
-              <ChatDocumentsSelector
-                chatId={chatId}
-                selectedDocIds={selectedDocIds}
-                onSelectionChange={setSelectedDocIds}
-                disabled={isExternalChat || !appConfig?.s3Connected || sending || messagesLoading}
-                documents={chatDocuments}
-              />
-            ) : null}
-            {selectedImages.map(file => (
-              <Paper key={file.fileName} className={classes.filesList}>
-                <div className={classes.previewImage}>
-                  <img src={file.bytesBase64} alt={file.fileName} />
-                  <ActionIcon
-                    className={classes.removeButton}
-                    color="red"
-                    size="xs"
-                    onClick={e => {
-                      e.stopPropagation();
-                      setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
-                    }}
-                  >
-                    <IconX size={16} />
+            <Popover width={300} position="top" withArrow shadow="md">
+              <Popover.Target>
+                <Tooltip label="Chat Settings">
+                  <ActionIcon disabled={isExternalChat || sending || messagesLoading}>
+                    <IconSettings size="1.2rem" />
                   </ActionIcon>
-                </div>
-              </Paper>
-            ))}
-          </Group>
-        )}
+                </Tooltip>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <ChatSettings
+                  temperature={chat?.temperature}
+                  maxTokens={chat?.maxTokens}
+                  topP={chat?.topP}
+                  imagesCount={chat?.imagesCount}
+                  onSettingsChange={handleSettingsChange}
+                  resetToDefaults={resetSettingsToDefaults}
+                />
+              </Popover.Dropdown>
+            </Popover>
 
-        <Group align="flex-start" className={classes.chatInputGroup}>
-          <Textarea
-            ref={chatInputRef}
-            className={classes.chatInput}
-            placeholder="Type your message..."
-            value={userMessage}
-            autosize
-            minRows={1}
-            maxRows={7}
-            onChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
-            disabled={isExternalChat || messagesLoading || messagesLimitReached}
-          />
-          <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
-            <IconSend size={16} /> Send
-          </Button>
-        </Group>
+            {/* Tool buttons */}
+            {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
+              <Tooltip label="Web Search">
+                <ActionIcon
+                  variant={selectedTools.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
+                  color={selectedTools.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
+                  onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
+                  disabled={isExternalChat || sending || messagesLoading}
+                >
+                  <IconWorldSearch size="1.2rem" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
+            {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
+              <Tooltip label="Code Interpreter">
+                <ActionIcon
+                  variant={selectedTools.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
+                  color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
+                  onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
+                  disabled={isExternalChat || sending || messagesLoading}
+                >
+                  <IconCloudCode size="1.2rem" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Group>
+
+          {/* Message input */}
+
+          <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
+            {uploadAllowed && (
+              <div className={classes.documentsInput}>
+                <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
+                {appConfig?.ragEnabled ? (
+                  <ChatDocumentsSelector
+                    chatId={chatId}
+                    selectedDocIds={selectedDocIds}
+                    onSelectionChange={setSelectedDocIds}
+                    disabled={!appConfig?.s3Connected || sending || messagesLoading}
+                    documents={chatDocuments}
+                  />
+                ) : null}
+
+                <div className={classes.filesList}>
+                  {selectedImages.map(file => (
+                    <div key={file.fileName} className={classes.previewImage}>
+                      <img src={file.bytesBase64} alt={file.fileName} />
+                      <ActionIcon
+                        className={classes.removeButton}
+                        color="red"
+                        size="xs"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
+                        }}
+                      >
+                        <IconX size={16} />
+                      </ActionIcon>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={classes.chatInputGroup}>
+              <Textarea
+                ref={chatInputRef}
+                className={classes.chatInput}
+                placeholder="Type your message..."
+                value={userMessage}
+                autosize
+                minRows={1}
+                maxRows={7}
+                onChange={handleInputChange}
+                onKeyDown={handleInputKeyDown}
+                disabled={messagesLoading || messagesLimitReached}
+              />
+              <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
+                <IconSend size={16} /> Send
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </Container>
   );

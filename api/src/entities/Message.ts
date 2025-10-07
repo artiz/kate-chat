@@ -2,7 +2,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryG
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
-import { MessageRole, ModelMessageContent, MessageMetadata } from "../types/ai.types";
+import { MessageRole, ModelMessageContent, MessageMetadata, ResponseStatus } from "../types/ai.types";
 import { JSONTransformer } from "../utils/db";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
@@ -67,6 +67,12 @@ export class Message {
 
   @Field(() => [Message], { nullable: true })
   linkedMessages?: Message[]; // Virtual field for GraphQL, populated in resolvers
+
+  @Field({ nullable: true })
+  status?: ResponseStatus;
+
+  @Field({ nullable: true })
+  statusInfo?: string;
 
   @Field({ nullable: true })
   @CreateDateColumn()

@@ -3,33 +3,35 @@ import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
 import { Message } from "../entities/Message";
-import { AIService } from "./ai.service";
-import { NEW_MESSAGE } from "@/resolvers/message.resolver";
+import { AIService } from "./ai/ai.service";
 import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput } from "@/types/graphql/inputs";
 import {
-  InvokeModelParamsRequest,
+  ChatResponseStatus,
+  CompleteChatRequest,
   MessageMetadata,
   MessageRole,
   MessageType,
   ModelMessageContent,
   ModelResponse,
+  ResponseStatus,
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
-import { CONTEXT_MESSAGES_LIMIT, DEFAULT_PROMPT } from "@/config/ai";
 import { createLogger } from "@/utils/logger";
 import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
-import { SubscriptionsService } from "./subscriptions.service";
+import { NEW_MESSAGE, SubscriptionsService } from "./messaging";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { S3Service } from "./s3.service";
+import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
-import { EmbeddingsService } from "./embeddings.service";
-import { RAG_REQUEST, RagResponse } from "@/config/ai.prompts";
-import { RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai";
+import { EmbeddingsService } from "./ai/embeddings.service";
+import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
+import { CONTEXT_MESSAGES_LIMIT, RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai/common";
 
 const logger = createLogger(__filename);
+
+const MIN_STREAMING_UPDATE_MS = 30; // Minimum interval between streaming updates
 
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
@@ -115,7 +117,7 @@ export class MessagesService {
     // Save user message
     const userMessage = await this.publishUserMessage(input, user, chat, model);
     // Get previous messages for context
-    const inputMessages = await this.getContextMessages(chatId);
+    const inputMessages = await this.getContextMessages(chatId, userMessage);
     inputMessages.push(userMessage);
 
     // Generate AI response
@@ -175,7 +177,7 @@ export class MessagesService {
     originalMessage = await this.messageRepository.save(originalMessage);
 
     // Publish message to Queue
-    await this.subscriptionsService.publishChatMessage(chat.id, originalMessage, true);
+    await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
     const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
     const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
@@ -521,14 +523,6 @@ export class MessagesService {
         throw err;
       });
 
-    // Set chat isPristine to false when adding the first message
-    if (chat.isPristine) {
-      chat.isPristine = false;
-    }
-
-    chat.updatedAt = new Date();
-    await this.chatRepository.save(chat);
-
     let jsonContent: ModelMessageContent[] | undefined = undefined;
 
     // If there's an image, handle it
@@ -572,7 +566,7 @@ export class MessagesService {
     });
 
     // Publish message to Queue
-    await this.subscriptionsService.publishChatMessage(chat.id, userMessage);
+    await this.subscriptionsService.publishChatMessage(chat, userMessage);
 
     return userMessage;
   }
@@ -586,25 +580,36 @@ export class MessagesService {
     inputMessages: Message[],
     assistantMessage: Message
   ): Promise<void> {
-    const systemPrompt = user.defaultSystemPrompt || DEFAULT_PROMPT;
-    const request: InvokeModelParamsRequest = {
+    const systemPrompt = user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
+    const request: CompleteChatRequest = {
       modelId: model.modelId,
       systemPrompt,
       temperature: input.temperature || chat.temperature,
       maxTokens: input.maxTokens || chat.maxTokens,
       topP: input.topP || chat.topP,
       imagesCount: input.imagesCount || chat.imagesCount,
+      tools: chat.tools,
     };
 
     const completeRequest = async (message: Message) => {
       ok(message);
+      if (!chat.title || chat.isPristine) {
+        chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || "");
+        chat.isPristine = false;
+        await this.chatRepository.save(chat);
+      }
+
+      message.status = undefined;
+      message.statusInfo = undefined;
+
       const savedMessage = await this.messageRepository.save(message);
-      await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
+      await this.subscriptionsService.publishChatMessage(chat, savedMessage);
     };
 
     if (!model.streaming) {
       // sync call
       try {
+        await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
         const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
@@ -658,7 +663,16 @@ export class MessagesService {
       return;
     }
 
-    const handleStreaming = async (token: string, completed?: boolean, error?: Error, metadata?: MessageMetadata) => {
+    let content = "";
+    let lastPublish: number = 0;
+
+    const handleStreaming = async (
+      data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
+      completed?: boolean,
+      forceFlush?: boolean
+    ) => {
+      const { content: token = "", error, metadata, status } = data;
+
       if (completed) {
         if (error) {
           return completeRequest({
@@ -671,18 +685,48 @@ export class MessagesService {
         assistantMessage.content = token;
         assistantMessage.metadata = metadata;
 
-        completeRequest(assistantMessage).catch(err => {
+        return completeRequest(assistantMessage).catch(err => {
           this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
           logger.error(err, "Error sending AI response");
         });
+      }
 
-        // stream token
-      } else {
-        assistantMessage.content += token;
-        await this.subscriptionsService.publishChatMessage(chat.id, assistantMessage, true);
+      content += token;
+      const now = new Date();
+      if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
+        lastPublish = now.getTime();
+        assistantMessage.content = content;
+        assistantMessage.status = status?.status || ResponseStatus.IN_PROGRESS;
+        assistantMessage.statusInfo = this.getStatusInformation(status);
+        assistantMessage.updatedAt = now;
+
+        if (status?.tools || status?.toolCalls) {
+          if (!assistantMessage.metadata) assistantMessage.metadata = {};
+
+          if (status.tools) {
+            const existingToolsIds = new Set(assistantMessage.metadata.tools?.map(tool => tool.callId) || []);
+            assistantMessage.metadata.tools = [
+              ...(assistantMessage.metadata.tools || []),
+              ...status.tools.filter(tool => !existingToolsIds.has(tool.callId)),
+            ];
+          }
+
+          if (status.toolCalls) {
+            const existingCalls = new Set(assistantMessage.metadata.toolCalls?.map(call => call.name) || []);
+            assistantMessage.metadata.toolCalls = [
+              ...(assistantMessage.metadata.toolCalls || []),
+              ...status.toolCalls.filter(call => !existingCalls.has(call.name)),
+            ];
+          }
+
+          await this.messageRepository.save(assistantMessage);
+        }
+
+        await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
       }
     };
 
+    await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
     this.aiService
       .streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
       .catch((error: unknown) => {
@@ -693,6 +737,20 @@ export class MessagesService {
           role: MessageRole.ERROR,
         }).catch(err => logger.error(err, "Error sending AI response"));
       });
+  }
+
+  protected getStatusInformation(status: ChatResponseStatus | undefined): string | undefined {
+    if (!status) return;
+
+    switch (status.status) {
+      case ResponseStatus.WEB_SEARCH:
+      case ResponseStatus.TOOL_CALL:
+      case ResponseStatus.OUTPUT_ITEM:
+      case ResponseStatus.REASONING:
+        return status.detail || (status.sequence_number == null ? "" : `Step #${status.sequence_number}`);
+      default:
+        return undefined;
+    }
   }
 
   protected async publishRagMessage(
@@ -707,12 +765,19 @@ export class MessagesService {
     let loadFullPage = RAG_LOAD_FULL_PAGES;
     let aiResponse: ModelResponse | undefined = undefined;
     let chunks: DocumentChunk[] = [];
+    let ragRequest: string = "";
 
     const completeRequest = async (message: Message) => {
       ok(message);
       try {
+        if (!chat.title || chat.isPristine) {
+          chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || ragRequest);
+          chat.isPristine = false;
+          await this.chatRepository.save(chat);
+        }
+
         const savedMessage = await this.messageRepository.save(message);
-        await this.subscriptionsService.publishChatMessage(chat.id, savedMessage);
+        await this.subscriptionsService.publishChatMessage(chat, savedMessage);
       } catch (err) {
         this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         logger.error(err, "Error sending RAG response");
@@ -726,6 +791,7 @@ export class MessagesService {
           loadFullPage,
         });
         const { systemPrompt, userInput } = RAG_REQUEST({ chunks, question: input.content });
+        ragRequest = userInput;
 
         logger.trace(
           {
@@ -740,7 +806,7 @@ export class MessagesService {
           "RAG request"
         );
 
-        const request: InvokeModelParamsRequest = {
+        const request: CompleteChatRequest = {
           modelId: model.modelId,
           systemPrompt,
           temperature: input.temperature || chat.temperature,
@@ -833,6 +899,26 @@ export class MessagesService {
       await completeRequest(ragMessage);
     }
   }
+
+  public suggestChatTitle = async (
+    model: Model,
+    connection: ConnectionParams,
+    question: string,
+    answer: string
+  ): Promise<string> => {
+    const res = await this.aiService.completeChat(model.apiProvider, connection, {
+      modelId: model.modelId,
+      messages: [
+        {
+          role: MessageRole.USER,
+          body: PROMPT_CHAT_TITLE({ question, answer }),
+        },
+      ],
+    });
+
+    const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
+    return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+  };
 
   public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {
     if (!deletedImageFiles || deletedImageFiles.length === 0) return;

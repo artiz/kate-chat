@@ -217,7 +217,7 @@ export const ImageLibrary: React.FC = () => {
                         onClick={() => navigateToChat(image.chat.id)}
                         lineClamp={1}
                       >
-                        {image.chat.title}
+                        {image.chat.title || image.chat.id}
                       </Text>
                     </Group>
                   </Stack>

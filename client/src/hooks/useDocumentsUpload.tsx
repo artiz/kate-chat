@@ -72,7 +72,8 @@ export const useDocumentsUpload = () => {
           authorization: token ? `Bearer ${token}` : "",
         },
 
-        // TODO: use axios to get it working
+        // TODO: use XMLHttpRequest to get it working
+        // https://gist.github.com/adinan-cenci/9fc1d9785700d58f63055bc8d02a54d0
         // onUploadProgress: (evt: any) => {
         //   const progress = Math.round(evt.loaded / evt.total);
         //   onProgress?.(progress);

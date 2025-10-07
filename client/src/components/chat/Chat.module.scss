@@ -46,18 +46,26 @@
   overflow-y: scroll;
   margin-bottom: 1rem;
   position: relative;
-  display: flex;
+  display: none;
   flex-direction: column;
-  border: 1px solid var(--input-bd);
+  border: 1px solid var(--app-shell-border-color);
   border-radius: var(--mantine-radius-md);
+  transition: all 0.3s ease;
+  opacity: 1;
 
   .messagesList {
     opacity: 0;
     margin-bottom: 1rem;
   }
 
+  &.empty {
+    flex-grow: 0;
+    opacity: 0;
+  }
+
   &.loadCompleted {
     scroll-behavior: smooth;
+    display: flex;
 
     .messagesList {
       opacity: 1;
@@ -65,16 +73,65 @@
   }
 }
 
+[data-mantine-color-scheme="light"] {
+  .chatControlsContainer {
+    .chatControls {
+      border: 1px solid var(--app-shell-border-color);
+    }
+
+    .modelRow {
+      background-color: var(--mantine-color-gray-4);
+    }
+
+    .chatInputGroup .chatInput :global(textarea) {
+      border: 1px solid var(--app-shell-border-color);
+    }
+  }
+}
+
+.chatControlsContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+
+  &.hidden {
+    display: none;
+  }
+
+  &.fullHeight {
+    flex-grow: 1;
+    padding-bottom: 15rem;
+  }
+
+  .chatControls {
+    border: 1px solid var(--app-shell-border-color);
+    border-top: none;
+    border-radius: var(--mantine-radius-default);
+  }
+}
+
+.modelRow {
+  padding: 0.33rem;
+  border-top-left-radius: var(--mantine-radius-default);
+  border-top-right-radius: var(--mantine-radius-default);
+  background-color: var(--app-shell-border-color);
+}
+
 .chatInputContainer {
   display: flex;
   flex-direction: row;
-  justify-items: space-between;
   align-items: flex-start;
   padding: 0.5rem;
-  gap: 0.5rem;
-  border: 1px solid var(--input-bd);
-  border-radius: var(--mantine-radius-default);
   position: relative;
+  gap: 0.5rem;
+
+  .documentsInput {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    align-items: stretch;
+  }
 
   &.columned {
     flex-direction: column;
@@ -87,6 +144,10 @@
   }
 
   .filesList {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+
     .previewImage {
       position: relative;
       background-color: var(--input-bg);
@@ -111,12 +172,15 @@
 
   .chatInputGroup {
     flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
 
     .chatInput {
       flex-grow: 1;
 
       :global(textarea) {
-        border: none !important;
+        border: 1px solid var(--app-shell-border-color);
       }
     }
   }

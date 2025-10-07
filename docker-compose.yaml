@@ -84,6 +84,7 @@ services:
       - PORT=4000
       - DB_TYPE=postgres
       - DB_URL=postgres://katechat:katechat@postgres:5432/katechat
+      - DB_MIGRATIONS_PATH=./db-migrations
       - REDIS_URL=redis://redis:6379
       - DOCUMENT_STATUS_CHANNEL="document:status"
       - CALLBACK_URL_BASE=http://katechat.dev.com/api
@@ -100,8 +101,8 @@ services:
       - SQS_REGION=us-east-1
       - SQS_ACCESS_KEY_ID=localstack
       - SQS_SECRET_ACCESS_KEY=localstack
-      - SQS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
-      - SQS_INDEX_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue"
+      - SQS_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue
+      - SQS_INDEX_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue
 
     networks:
       - kate-chat-network
@@ -111,11 +112,13 @@ services:
   document-processor:
     container_name: kate-chat-document-processor
     build:
-      context: ./document-processor
-      dockerfile: Dockerfile
+      context: ./
+      dockerfile: document-processor/Dockerfile
     tty: true
     volumes:
       - ./document-processor:/app/:cached
+    ports:
+      - "8080:8080"
     environment:
       - REDIS_URL=redis://redis:6379
       - DOCUMENT_STATUS_CHANNEL="document:status"
@@ -128,8 +131,8 @@ services:
       - SQS_REGION=us-east-1
       - SQS_ACCESS_KEY_ID=localstack
       - SQS_SECRET_ACCESS_KEY=localstack
-      - SQS_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue"
-      - SQS_INDEX_DOCUMENTS_QUEUE="http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue"
+      - SQS_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue
+      - SQS_INDEX_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue
       - PORT=8080
     networks:
       - kate-chat-network

@@ -20,6 +20,15 @@ type AdminUsersResponse {
   users: [User!]!
 }
 
+"""
+API provider for the model
+"""
+enum ApiProvider {
+  AWS_BEDROCK
+  OPEN_AI
+  YANDEX_FM
+}
+
 type ApplicationConfig {
   currentUser: User
   demoMode: Boolean!
@@ -67,6 +76,7 @@ type Chat {
   modelId: String
   temperature: Float
   title: String!
+  tools: [ChatTool!]
   topP: Float
   updatedAt: DateTimeISO!
   user: User
@@ -81,11 +91,47 @@ type ChatDocument {
   id: ID!
 }
 
+type ChatTool {
+  name: String!
+  options: [ChatToolOptions!]
+  type: ToolType!
+  url: String
+}
+
+type ChatToolCall {
+  args: String
+  error: String
+  name: String!
+  type: String
+}
+
+type ChatToolCallResult {
+  callId: String
+  content: String!
+  name: String!
+}
+
+input ChatToolInput {
+  name: String
+  options: [ChatToolOptionsInput!]
+  type: ToolType!
+}
+
+type ChatToolOptions {
+  name: String!
+  value: String!
+}
+
+input ChatToolOptionsInput {
+  name: String!
+  value: String!
+}
+
 input CreateChatInput {
   description: String
   modelId: String
   systemPrompt: String
-  title: String!
+  title: String
 }
 
 input CreateMessageInput {
@@ -229,6 +275,7 @@ type GqlImagesList {
 }
 
 type GqlMessage {
+  chat: MessageChatInfo
   error: String
   message: Message
   streaming: Boolean
@@ -288,15 +335,29 @@ type Message {
   modelId: String!
   modelName: String
   role: String!
+  status: String
+  statusInfo: String
   updatedAt: DateTimeISO
   user: User
   userId: String
+}
+
+type MessageChatInfo {
+  imagesCount: Float
+  isPristine: Boolean!
+  maxTokens: Float
+  modelId: String!
+  temperature: Float
+  title: String
+  topP: Float
 }
 
 type MessageMetadata {
   analysis: String
   documentIds: [ID!]
   relevantsChunks: [MessageRelevantChunk!]
+  toolCalls: [ChatToolCall!]
+  tools: [ChatToolCallResult!]
   usage: ModelResponseUsage
 }
 
@@ -311,7 +372,7 @@ type MessageRelevantChunk {
 }
 
 type Model {
-  apiProvider: String!
+  apiProvider: ApiProvider!
   createdAt: DateTimeISO!
   description: String
   id: ID!
@@ -323,7 +384,8 @@ type Model {
   name: String!
   provider: String
   streaming: Boolean!
-  type: String!
+  tools: [ToolType!]
+  type: ModelType!
   updatedAt: DateTimeISO!
   user: User
   userId: String
@@ -335,6 +397,17 @@ type ModelResponseUsage {
   inputTokens: Float
   invocationLatency: Float
   outputTokens: Float
+}
+
+"""
+Type of model - chat or embeddings
+"""
+enum ModelType {
+  AUDIO_GENERATION
+  CHAT
+  EMBEDDING
+  IMAGE_GENERATION
+  OTHER
 }
 
 type Mutation {
@@ -411,6 +484,15 @@ input TestModelInput {
   text: String! = "2+2="
 }
 
+"""
+Type of tool that can be used in chat
+"""
+enum ToolType {
+  CODE_INTERPRETER
+  MCP
+  WEB_SEARCH
+}
+
 input UpdateChatInput {
   description: String
   imagesCount: Float
@@ -418,6 +500,7 @@ input UpdateChatInput {
   modelId: String
   temperature: Float
   title: String
+  tools: [ChatToolInput!]
   topP: Float
 }
 

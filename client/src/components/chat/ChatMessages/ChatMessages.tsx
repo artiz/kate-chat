@@ -386,7 +386,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   return (
     <>
-      <Stack gap="md" ref={componentRef} onClick={handleMessageClick}>
+      <Stack gap="xs" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
           <Group key={msg.id} align="flex-start" gap="xs">
             <ChatMessage
@@ -398,25 +398,6 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             />
           </Group>
         ))}
-
-        {sending && !switchingModel && !callingOthers && (
-          <Group align="flex-start" gap="xs" pl="md" pr="md">
-            <Avatar color="gray" radius="xl">
-              <IconRobot />
-            </Avatar>
-            <Box>
-              <Text size="sm" fw={500}>
-                {selectedModelName || "AI"}
-              </Text>
-              <Paper p="sm" bg="gray.0" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Text size="sm" c="dimmed">
-                  Generating response
-                </Text>
-                <Loader size="xs" />
-              </Paper>
-            </Box>
-          </Group>
-        )}
       </Stack>
 
       {/* Delete message confirmation modal */}

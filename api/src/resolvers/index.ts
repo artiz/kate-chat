@@ -1,8 +1,6 @@
-import { User } from "@/entities";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { MessagesService } from "@/services/messages.service";
-import { SQSService } from "@/services/sqs.service";
-import { SubscriptionsService } from "@/services/subscriptions.service";
+import { SubscriptionsService, SQSService } from "@/services/messaging";
 import { TokenPayload } from "@/utils/jwt";
 
 export * from "./admin.resolver";

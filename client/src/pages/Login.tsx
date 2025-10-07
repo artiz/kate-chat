@@ -5,10 +5,10 @@ import { useNavigate } from "react-router-dom";
 import { LOGIN_MUTATION } from "../store/services/graphql";
 import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper, Text, Anchor } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useAppDispatch, useAppSelector } from "../store";
+import { logout, useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { OAuthButtons } from "../components/auth";
-import { clearUser, setUser } from "@/store/slices/userSlice";
+import { setUser } from "@/store/slices/userSlice";
 
 // Login mutation is imported from graphql.ts
 
@@ -32,7 +32,7 @@ const Login: React.FC = () => {
       navigate("/chat");
     },
     onError: error => {
-      dispatch(clearUser());
+      dispatch(logout());
       dispatch(loginFailure());
       notifications.show({
         title: "Login Failed",

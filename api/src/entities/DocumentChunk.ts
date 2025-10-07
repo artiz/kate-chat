@@ -2,7 +2,10 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, Index, JoinColumn } 
 import { Field, ID, ObjectType } from "type-graphql";
 import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
-import { EMBEDDINGS_DIMENSIONS } from "../config/ai";
+import { EMBEDDINGS_DIMENSIONS } from "../config/ai/common";
+
+const VECTOR_TYPE = process.env.DB_TYPE === "postgres" ? "vector" : "text";
+const VECTOR_LENGTH = process.env.DB_TYPE === "postgres" ? EMBEDDINGS_DIMENSIONS : undefined;
 
 @ObjectType()
 @Entity("document_chunks")
@@ -41,8 +44,13 @@ export class DocumentChunk {
   @Column({ type: "text" })
   content: string;
 
-  // TODO: use postgres "vector" type when https://github.com/typeorm/typeorm/pull/11437 be merged
+  // TODO: add "vector" type support for MS SQL like one for Postgres: https://github.com/typeorm/typeorm/pull/11437
   @Field(() => [Number], { nullable: true })
-  @Column({ type: "text", nullable: true, transformer: EmbeddingTransformer(EMBEDDINGS_DIMENSIONS) })
+  @Column({
+    type: VECTOR_TYPE,
+    length: VECTOR_LENGTH,
+    nullable: true,
+    transformer: EmbeddingTransformer(EMBEDDINGS_DIMENSIONS),
+  })
   embedding?: number[];
 }

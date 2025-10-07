@@ -1,23 +1,6 @@
 import "reflect-metadata";
 import { Field, ID, ObjectType } from "type-graphql";
-
-export enum ApiProvider {
-  AWS_BEDROCK = "aws_bedrock",
-  OPEN_AI = "open_ai",
-  YANDEX_FM = "yandex_fm",
-}
-
-export enum AuthProvider {
-  LOCAL = "local",
-  GOOGLE = "google",
-  GITHUB = "github",
-  MICROSOFT = "microsoft",
-}
-
-export enum UserRole {
-  USER = "user",
-  ADMIN = "admin",
-}
+import { ApiProvider } from "@/config/ai/common";
 
 export enum MessageRole {
   USER = "user",
@@ -31,7 +14,8 @@ export enum MessageType {
   SYSTEM = "system",
 }
 
-export type ContentType = "text" | "image" | "video" | "audio";
+export type ContentType = "text" | "image" | "video" | "audio" | "mixed";
+
 export interface ProviderInfo {
   id: ApiProvider;
   name: string;
@@ -78,6 +62,18 @@ export enum DocumentStatus {
   DELETING = "deleting",
 }
 
+export enum ResponseStatus {
+  IN_PROGRESS = "in_progress",
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  TOOL_CALL = "tool_call",
+  TOOL_CALL_COMPLETED = "tool_call_completed",
+  OUTPUT_ITEM = "output_item",
+  REASONING = "reasoning",
+  COMPLETED = "completed",
+  ERROR = "error",
+}
+
 export interface ParsedDocumentChunk {
   page: number;
   length_tokens: number;
@@ -105,6 +101,7 @@ export interface AIModelInfo {
   streaming?: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
+  tools?: ToolType[];
 }
 
 export interface ModelMessageContent {
@@ -117,6 +114,7 @@ export interface ModelMessageContent {
 export interface ModelMessage {
   role: MessageRole;
   body: string | ModelMessageContent[];
+  metadata?: MessageMetadata;
   timestamp?: Date;
 }
 
@@ -177,37 +175,73 @@ export class MessageMetadata {
   @Field(() => String, { nullable: true })
   analysis?: string;
 
+  // tool calls
+  @Field(() => [ChatToolCall], { nullable: true })
+  toolCalls?: ChatToolCall[];
+  // tool calls results
+  @Field(() => [ChatToolCallResult], { nullable: true })
+  tools?: ChatToolCallResult[];
+
   ///////////// user message meta
   // input document IDs
   @Field(() => [ID], { nullable: true })
   documentIds?: string[];
 }
 
-export class ModelResponse {
+export interface ModelResponse {
   metadata?: MessageMetadata;
   type: ContentType;
   content: string;
   files?: string[];
 }
 
-export class EmbeddingsResponse {
+export interface EmbeddingsResponse {
   metadata?: MessageMetadata;
   embedding: number[];
 }
 
+@ObjectType()
+export class ChatToolCall {
+  @Field()
+  name: string;
+  @Field(() => String, { nullable: true })
+  type?: "function" | "custom" | "mcp";
+  @Field({ nullable: true })
+  error?: string;
+  @Field({ nullable: true })
+  args?: string;
+}
+
+@ObjectType()
+export class ChatToolCallResult {
+  @Field()
+  name: string;
+
+  @Field()
+  content: string;
+
+  jsonContent?: ModelMessageContent[];
+
+  @Field({ nullable: true })
+  callId?: string;
+}
+
+export interface ChatResponseStatus {
+  status?: ResponseStatus;
+  sequence_number?: number;
+  detail?: string;
+  tools?: ChatToolCallResult[];
+  toolCalls?: ChatToolCall[];
+}
+
 export interface StreamCallbacks {
-  onStart?: () => void;
-  onToken?: (token: string) => void;
+  onStart?: (status?: ChatResponseStatus) => void;
+  onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => void;
   onComplete?: (content: string, metadata?: MessageMetadata) => void;
   onError?: (error: Error) => void;
 }
 
-export type InvokeModelParamsResponse = {
-  modelId: string;
-  body: string;
-};
-
-export type InvokeModelParamsRequest = {
+export interface CompleteChatRequest {
   systemPrompt?: string;
   messages?: ModelMessage[];
   modelId: string;
@@ -215,16 +249,41 @@ export type InvokeModelParamsRequest = {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
-};
+  tools?: ChatTool[];
+}
 
-export type GetEmbeddingsRequest = {
+export interface GetEmbeddingsRequest {
   modelId: string;
   input: string;
   dimensions?: number;
-};
+}
 
-export interface BedrockModelServiceProvider<T = unknown> {
-  getInvokeModelParams(request: InvokeModelParamsRequest): Promise<InvokeModelParamsResponse>;
+export enum ToolType {
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  MCP = "mcp",
+}
 
-  parseResponse(responseBody: T, request?: InvokeModelParamsRequest): ModelResponse;
+@ObjectType()
+export class ChatToolOptions {
+  @Field()
+  name: string;
+
+  @Field()
+  value: string;
+}
+
+@ObjectType()
+export class ChatTool {
+  @Field(() => ToolType)
+  type: ToolType;
+
+  @Field()
+  name: string;
+
+  @Field({ nullable: true })
+  url?: string;
+
+  @Field(() => [ChatToolOptions], { nullable: true })
+  options?: ChatToolOptions[];
 }

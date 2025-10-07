@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Stack, Button, NavLink, Divider, ScrollArea, AppShell } from "@mantine/core";
 import {
@@ -39,11 +39,19 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
     return noActiveProviders || (appConfig?.demoMode && chats.length > (appConfig.maxChats ?? 0));
   }, [noActiveProviders, appConfig, chats]);
 
+  const pristineChat = useMemo(() => {
+    return chats?.find(chat => chat.isPristine);
+  }, [chats]);
+
   // Handle navigation to create new chat
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     navbarToggle?.();
-    navigate("/chat/new");
-  };
+    if (pristineChat) {
+      navigate(`/chat/${pristineChat.id}`);
+    } else {
+      navigate("/chat/new");
+    }
+  }, [pristineChat, navigate, navbarToggle]);
 
   // Handle navigation to models page
   const handleModelsClick = () => {

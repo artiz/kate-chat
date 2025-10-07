@@ -9,7 +9,7 @@ import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
-import { useAppSelector } from "../store";
+import { logout, useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "../hooks/useTheme";
 
 // Pages
@@ -25,7 +25,7 @@ import { Library } from "@/pages/Library";
 import { Admin } from "@/pages/Admin";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
-import { loginSuccess, logout, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
+import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
 import { Documents } from "@/pages/Documents";
 import { ChatDocuments } from "@/pages/ChatDocuments";

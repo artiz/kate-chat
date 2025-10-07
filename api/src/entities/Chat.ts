@@ -12,6 +12,7 @@ import { User } from "./User";
 import { Message } from "./Message";
 import { JSONTransformer } from "../utils/db";
 import { ChatDocument } from "./ChatDocument";
+import { ChatTool } from "../types/ai.types";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
@@ -99,6 +100,10 @@ export class Chat {
   @Field()
   @Column({ default: false })
   isPristine: boolean;
+
+  @Field(() => [ChatTool], { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ChatTool[]>(), default: null })
+  tools?: ChatTool[];
 
   @Field()
   @CreateDateColumn()

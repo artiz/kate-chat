@@ -8,6 +8,7 @@ import { Message, Document, Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
 import { MessageRole } from "@/types/ai.types";
 import { ChatsService } from "@/services/chats.service";
+import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai/common";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
@@ -91,7 +92,12 @@ export class ChatResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
     const chat = this.chatRepository.create({
       ...input,
+      title: input.title || "",
       user,
+      temperature: DEFAULT_TEMPERATURE,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      topP: DEFAULT_TOP_P,
+      imagesCount: 1,
       isPristine: true,
     });
 
@@ -112,7 +118,10 @@ export class ChatResolver extends BaseResolver {
 
     if (!chat) throw new Error("Chat not found");
 
-    Object.assign(chat, input);
+    Object.assign(chat, {
+      ...input,
+      isPristine: false,
+    });
     return await this.chatRepository.save(chat);
   }
 

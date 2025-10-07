@@ -1,5 +1,6 @@
 import { ApiProvider } from "@/types/ai";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { logout } from "..";
 
 export interface ProviderDetail {
   key: string;
@@ -33,11 +34,17 @@ export interface UsageCostsInfo {
 }
 
 export enum ModelType {
-  CHAT = "chat",
-  EMBEDDING = "embedding",
-  IMAGE_GENERATION = "image_generation",
-  AUDIO_GENERATION = "audio_generation",
-  OTHER = "other",
+  CHAT = "CHAT",
+  EMBEDDING = "EMBEDDING",
+  IMAGE_GENERATION = "IMAGE_GENERATION",
+  AUDIO_GENERATION = "AUDIO_GENERATION",
+  OTHER = "OTHER",
+}
+
+export enum ToolType {
+  WEB_SEARCH = "WEB_SEARCH",
+  CODE_INTERPRETER = "CODE_INTERPRETER",
+  MCP = "MCP",
 }
 
 export interface Model {
@@ -50,6 +57,7 @@ export interface Model {
   isActive: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
+  tools?: ToolType[];
 }
 
 interface ModelState {
@@ -103,6 +111,16 @@ const modelSlice = createSlice({
         };
       }
     },
+  },
+  extraReducers: builder => {
+    builder.addCase(logout, state => {
+      state.models = [];
+      state.providers = [];
+      state.loading = false;
+      state.error = null;
+      state.costsInfo = undefined;
+      state.costsLoading = false;
+    });
   },
 });
 

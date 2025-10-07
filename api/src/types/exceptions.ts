@@ -1,10 +1,8 @@
-import { HttpStatusCode } from "axios";
-
 export class HttpError<T = unknown> extends Error {
-  readonly statusCode: HttpStatusCode;
+  readonly statusCode: number;
   readonly details?: T;
 
-  constructor(message: string, statusCode: HttpStatusCode = HttpStatusCode.InternalServerError, details?: T) {
+  constructor(message: string, statusCode: number = 500, details?: T) {
     super(message);
     this.statusCode = statusCode;
     this.details = details;

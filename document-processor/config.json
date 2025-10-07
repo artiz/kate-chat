@@ -6,8 +6,8 @@
   },
   "applications": {
     "fastapi": {
-      "type": "python 3.10",
-      "path": "/app/app",
+      "type": "python 3.12",
+      "path": "/app",
       "module": "app.main",
       "callable": "app",
       "protocol": "asgi"
