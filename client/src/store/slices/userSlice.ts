@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ApplicationConfig } from "../services/graphql";
+import { logout } from "..";
 
 export interface UserSettings {
   s3Endpoint?: string;
@@ -87,7 +88,7 @@ const userSlice = createSlice({
     },
   },
   extraReducers: builder => {
-    builder.addCase("logout", state => {
+    builder.addCase(logout, state => {
       state.currentUser = null;
       state.error = undefined;
       state.loading = false;

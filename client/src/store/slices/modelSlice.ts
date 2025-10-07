@@ -1,5 +1,6 @@
 import { ApiProvider } from "@/types/ai";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { logout } from "..";
 
 export interface ProviderDetail {
   key: string;
@@ -112,7 +113,7 @@ const modelSlice = createSlice({
     },
   },
   extraReducers: builder => {
-    builder.addCase("logout", state => {
+    builder.addCase(logout, state => {
       state.models = [];
       state.providers = [];
       state.loading = false;

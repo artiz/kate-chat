@@ -39,7 +39,7 @@ export class YandexApiProvider extends BaseApiProvider {
   // Invoke Yandex model for text generation
   async completeChat(request: CompleteChatRequest): Promise<ModelResponse> {
     if (!this.apiKey) {
-      throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection seettings.");
+      throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection settings.");
     }
 
     const { modelId } = request;

@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User } from "./userSlice";
 import { Chat } from "../services/graphql";
 import { MessageChatInfo } from "@/types/graphql";
+import { logout } from "..";
 
 interface ChatsState {
   chats: Chat[];
@@ -79,7 +80,7 @@ const chatSlice = createSlice({
     },
   },
   extraReducers: builder => {
-    builder.addCase("logout", state => {
+    builder.addCase(logout, state => {
       state.chats = [];
       state.loading = false;
       state.error = null;

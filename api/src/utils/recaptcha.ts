@@ -31,8 +31,17 @@ export const verifyRecaptchaToken = async (token: string, expectedAction: string
 
   try {
     // Send verification request to Google
-    const response = await fetch(RECAPTCHA_VERIFY_URL + `?secret=${RECAPTCHA_SECRET_KEY}&response=${token}`, {
+    const params = new URLSearchParams({
+      secret: RECAPTCHA_SECRET_KEY,
+      response: token,
+    });
+    const response = await fetch(RECAPTCHA_VERIFY_URL, {
       method: "POST",
+      body: params.toString(),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
     }).then(res => res.json() as Promise<RecaptchaResponse>);
 
     const { success, score, action, "error-codes": errorCodes } = response;

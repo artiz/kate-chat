@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { logout } from "..";
 
 export const STORAGE_AUTH_TOKEN = "auth-token";
 
@@ -43,7 +44,7 @@ const authSlice = createSlice({
     },
   },
   extraReducers: builder => {
-    builder.addCase("logout", state => {
+    builder.addCase(logout, state => {
       state.token = null;
       state.isAuthenticated = false;
       state.loading = false;
