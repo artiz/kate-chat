@@ -1,23 +1,12 @@
-import { AIService } from "../ai/ai.service";
-import { ModelMessage } from "../../types/ai.types";
+process.env.ENABLED_API_PROVIDERS = "aws_bedrock";
 import { ApiProvider } from "../../config/ai/common";
+import { AIService } from "../ai/ai.service";
+import { MessageRole, ModelMessage } from "../../types/ai.types";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
   send: jest.fn(),
 };
-
-jest.mock("../../config/ai/common.ts", () => {
-  return {
-    // values from ApiProvider to avoid circular dependency
-    ENABLED_API_PROVIDERS: ["aws_bedrock", "yandex_fm"],
-    DEFAULT_TEMPERATURE: 0.7,
-    DEFAULT_MAX_TOKENS: 1000,
-    DEFAULT_TOP_P: 0.9,
-    DEFAULT_PROMPT: "You are a helpful AI assistant.",
-    CONTEXT_MESSAGES_LIMIT: 50,
-  };
-});
 
 // Mock the AWS SDK
 jest.mock("@aws-sdk/client-bedrock", () => {
