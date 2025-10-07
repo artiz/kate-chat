@@ -1,11 +1,24 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
-import { Field, ID, ObjectType } from "type-graphql";
+import { Field, ID, ObjectType, registerEnumType } from "type-graphql";
 import { ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
 import { JSONTransformer } from "../utils/db";
 import { ApiProvider } from "../config/ai/common";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
+
+registerEnumType(ApiProvider, {
+  name: "ApiProvider",
+  description: "API provider for the model",
+});
+registerEnumType(ModelType, {
+  name: "ModelType",
+  description: "Type of model - chat or embeddings",
+});
+registerEnumType(ToolType, {
+  name: "ToolType",
+  description: "Type of tool that can be used in chat",
+});
 
 @ObjectType()
 @Entity("models")
@@ -38,11 +51,11 @@ export class Model {
   @Column({ nullable: true })
   provider: string; // e.g., 'OpenAI', 'Anthropic', 'Amazon'
 
-  @Field()
+  @Field(() => ApiProvider)
   @Column({ default: ApiProvider.AWS_BEDROCK })
   apiProvider: ApiProvider;
 
-  @Field()
+  @Field(() => ModelType)
   @Column({ default: ModelType.CHAT })
   type: ModelType;
 
@@ -66,7 +79,7 @@ export class Model {
   @Column({ nullable: true })
   maxInputTokens?: number;
 
-  @Field(() => [String], { nullable: true })
+  @Field(() => [ToolType], { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ToolType[]>(), default: null })
   tools?: ToolType[];
 

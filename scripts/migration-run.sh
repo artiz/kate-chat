@@ -2,7 +2,7 @@
 
 set -e
 
-# exit fit there is no migrations name provided
+# exit if there is no migrations name provided
 cd api
 echo "Running migrations..."
 

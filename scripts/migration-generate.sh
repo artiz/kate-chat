@@ -1,7 +1,6 @@
 #!/bin/bash
 
-set -e
-
+set +e
 
 # exit if there is no migrations name provided
 if [ -z "$1" ]; then

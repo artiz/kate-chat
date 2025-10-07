@@ -304,7 +304,10 @@ export class OpenAIProtocol {
 
     if (inputRequest.tools) {
       if (inputRequest.tools.find(t => t.type === ToolType.WEB_SEARCH)) {
-        tools.push({ type: "web_search" });
+        tools.push({
+          type: "web_search",
+          search_context_size: "low",
+        });
       }
       if (inputRequest.tools.find(t => t.type === ToolType.CODE_INTERPRETER)) {
         tools.push({ type: "code_interpreter", container: { type: "auto" } });
@@ -419,7 +422,7 @@ export class OpenAIProtocol {
             name: c.name || "unknown",
             args: JSON.stringify(c.arguments || {}),
           }));
-          callbacks.onProgress?.("", { status, detail, toolCalls: metaCalls });
+          callbacks.onProgress?.("🖥️", { status, detail, toolCalls: metaCalls });
 
           const toolResults = await this.callCompletionTools(toolCalls);
 
@@ -505,7 +508,9 @@ export class OpenAIProtocol {
       stream: true,
     };
 
-    logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking streaming responses...");
+    if (logger.isLevelEnabled("trace")) {
+      logger.trace({ ...params, input: this.debugResponseInput(params.input) }, "invoking streaming responses...");
+    }
 
     const stream = await this.openai.responses.create(params);
     let fullResponse = "";

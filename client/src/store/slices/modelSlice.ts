@@ -34,17 +34,17 @@ export interface UsageCostsInfo {
 }
 
 export enum ModelType {
-  CHAT = "chat",
-  EMBEDDING = "embedding",
-  IMAGE_GENERATION = "image_generation",
-  AUDIO_GENERATION = "audio_generation",
-  OTHER = "other",
+  CHAT = "CHAT",
+  EMBEDDING = "EMBEDDING",
+  IMAGE_GENERATION = "IMAGE_GENERATION",
+  AUDIO_GENERATION = "AUDIO_GENERATION",
+  OTHER = "OTHER",
 }
 
 export enum ToolType {
-  WEB_SEARCH = "web_search",
-  CODE_INTERPRETER = "code_interpreter",
-  MCP = "mcp",
+  WEB_SEARCH = "WEB_SEARCH",
+  CODE_INTERPRETER = "CODE_INTERPRETER",
+  MCP = "MCP",
 }
 
 export interface Model {

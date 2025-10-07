@@ -386,7 +386,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
 
   return (
     <>
-      <Stack gap="md" ref={componentRef} onClick={handleMessageClick}>
+      <Stack gap="xs" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
           <Group key={msg.id} align="flex-start" gap="xs">
             <ChatMessage

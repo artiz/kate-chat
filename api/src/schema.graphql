@@ -20,6 +20,15 @@ type AdminUsersResponse {
   users: [User!]!
 }
 
+"""
+API provider for the model
+"""
+enum ApiProvider {
+  AWS_BEDROCK
+  OPEN_AI
+  YANDEX_FM
+}
+
 type ApplicationConfig {
   currentUser: User
   demoMode: Boolean!
@@ -85,7 +94,7 @@ type ChatDocument {
 type ChatTool {
   name: String!
   options: [ChatToolOptions!]
-  type: String!
+  type: ToolType!
   url: String
 }
 
@@ -105,7 +114,7 @@ type ChatToolCallResult {
 input ChatToolInput {
   name: String
   options: [ChatToolOptionsInput!]
-  type: String!
+  type: ToolType!
 }
 
 type ChatToolOptions {
@@ -363,7 +372,7 @@ type MessageRelevantChunk {
 }
 
 type Model {
-  apiProvider: String!
+  apiProvider: ApiProvider!
   createdAt: DateTimeISO!
   description: String
   id: ID!
@@ -375,8 +384,8 @@ type Model {
   name: String!
   provider: String
   streaming: Boolean!
-  tools: [String!]
-  type: String!
+  tools: [ToolType!]
+  type: ModelType!
   updatedAt: DateTimeISO!
   user: User
   userId: String
@@ -388,6 +397,17 @@ type ModelResponseUsage {
   inputTokens: Float
   invocationLatency: Float
   outputTokens: Float
+}
+
+"""
+Type of model - chat or embeddings
+"""
+enum ModelType {
+  AUDIO_GENERATION
+  CHAT
+  EMBEDDING
+  IMAGE_GENERATION
+  OTHER
 }
 
 type Mutation {
@@ -462,6 +482,15 @@ type SwitchModelResponse {
 input TestModelInput {
   id: String!
   text: String! = "2+2="
+}
+
+"""
+Type of tool that can be used in chat
+"""
+enum ToolType {
+  CODE_INTERPRETER
+  MCP
+  WEB_SEARCH
 }
 
 input UpdateChatInput {

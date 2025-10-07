@@ -275,7 +275,7 @@ export class ChatToolOptions {
 
 @ObjectType()
 export class ChatTool {
-  @Field(() => String)
+  @Field(() => ToolType)
   type: ToolType;
 
   @Field()

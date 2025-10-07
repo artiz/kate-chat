@@ -176,8 +176,6 @@ export class SQSService {
         const result = await this.sqs.send(command);
         const messages = result.Messages || [];
 
-        logger.debug(`Got ${messages.length} messages from SQS`);
-
         for (const message of messages) {
           try {
             const handled = await this.handleMessage(message);

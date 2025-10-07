@@ -16,7 +16,7 @@
     "build:migrations": "npx tsc  -p ./db-migrations/tsconfig.json",
     "test": "npm run test --workspaces --if-present",
     "format": "npm run format -w client -w api",
-    "migration:generate": "bash scripts/migration-generate.sh $*",
+    "migration:generate": "bash scripts/migration-generate.sh \"$@\"",
     "migration:run": "bash scripts/migration-run.sh"
   },
   "author": "",
