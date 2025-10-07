@@ -1,6 +1,7 @@
 import { InputType, Field } from "type-graphql";
-import { ApiProvider, AuthProvider, MessageRole, ChatTool, ToolType, ChatToolOptions } from "../ai.types";
-import { UserSettings } from "@/entities";
+import { ToolType } from "../ai.types";
+import { UserSettings, AuthProvider } from "@/entities";
+import { ApiProvider } from "@/config/ai/common";
 
 @InputType()
 export class UpdateUserInput {

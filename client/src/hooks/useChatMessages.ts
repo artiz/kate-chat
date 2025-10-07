@@ -8,7 +8,6 @@ import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphq
 import { pick } from "lodash";
 import { MessageRole } from "@/types/ai";
 import { Message, DeleteMessageResponse, GetChatMessagesResponse, MessageChatInfo } from "@/types/graphql";
-import { title } from "process";
 
 type HookResult = {
   messages: Message[] | undefined;

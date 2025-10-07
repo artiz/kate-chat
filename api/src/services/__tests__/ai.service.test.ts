@@ -1,5 +1,6 @@
 import { AIService } from "../ai/ai.service";
-import { ApiProvider, MessageRole, ModelMessage } from "../../types/ai.types";
+import { ModelMessage } from "../../types/ai.types";
+import { ApiProvider } from "../../config/ai/common";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {

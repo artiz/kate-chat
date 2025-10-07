@@ -7,7 +7,6 @@ import { DocumentStatus, MessageRole, ParsedJsonDocument } from "@/types/ai.type
 import { S3Service } from "./data";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { MessagesService } from "./messages.service";
 import { Repository } from "typeorm";
 import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai/prompts";
 import { EmbeddingsService } from "./ai/embeddings.service";

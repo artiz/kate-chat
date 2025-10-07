@@ -1,14 +1,11 @@
-import { Resolver, Query, Mutation, Arg, Ctx, Authorized } from "type-graphql";
-import { User } from "../entities/User";
-import { Chat } from "../entities/Chat";
-import { Model } from "../entities/Model";
-import { UserRole } from "../types/ai.types";
+import { ILike } from "typeorm";
+import { Resolver, Query, Arg, Ctx, Authorized } from "type-graphql";
+import { Chat, Model, UserRole } from "../entities";
 import { BaseResolver } from "./base.resolver";
 import { AdminStatsResponse, AdminUsersResponse } from "../types/graphql/responses";
 import { GetUsersInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
-import { ILike, Or } from "typeorm";
 
 @Resolver()
 export class AdminResolver extends BaseResolver {

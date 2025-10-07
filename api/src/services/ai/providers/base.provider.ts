@@ -1,6 +1,6 @@
+import { ApiProvider } from "@/config/ai/common";
 import {
   AIModelInfo,
-  ApiProvider,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
   CompleteChatRequest,

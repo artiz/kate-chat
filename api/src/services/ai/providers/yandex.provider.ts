@@ -1,5 +1,4 @@
 import {
-  ApiProvider,
   CompleteChatRequest,
   ModelResponse,
   ProviderInfo,
@@ -16,6 +15,7 @@ import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
+import { ApiProvider } from "@/config/ai/common";
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;

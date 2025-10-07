@@ -1,7 +1,6 @@
 import { Message } from "../../entities/Message";
 import {
   AIModelInfo,
-  ApiProvider,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
   CompleteChatRequest,
@@ -18,7 +17,13 @@ import { BedrockApiProvider } from "./providers/bedrock.provider";
 import { OpenAIApiProvider } from "./providers/openai.provider";
 import { YandexApiProvider } from "./providers/yandex.provider";
 import { logger } from "../../utils/logger";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P, ENABLED_API_PROVIDERS } from "@/config/ai/common";
+import {
+  ApiProvider,
+  DEFAULT_MAX_TOKENS,
+  DEFAULT_TEMPERATURE,
+  DEFAULT_TOP_P,
+  ENABLED_API_PROVIDERS,
+} from "@/config/ai/common";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseApiProvider } from "./providers/base.provider";
 

@@ -1,11 +1,22 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, OneToMany, Index } from "typeorm";
-import { AuthProvider, UserRole } from "../types/ai.types";
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
 import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { ConnectionParams } from "../middleware/auth.middleware";
+
+export enum AuthProvider {
+  LOCAL = "local",
+  GOOGLE = "google",
+  GITHUB = "github",
+  MICROSOFT = "microsoft",
+}
+
+export enum UserRole {
+  USER = "user",
+  ADMIN = "admin",
+}
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 

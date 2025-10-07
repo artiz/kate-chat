@@ -3,7 +3,6 @@ import axios from "axios";
 import { Agent } from "undici";
 import {
   AIModelInfo,
-  ApiProvider,
   ModelResponse,
   ProviderInfo,
   StreamCallbacks,
@@ -21,7 +20,7 @@ import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
-import { EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
+import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,

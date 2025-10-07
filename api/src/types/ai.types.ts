@@ -1,24 +1,6 @@
 import "reflect-metadata";
-import { Field, ID, InputType, ObjectType } from "type-graphql";
-import { In } from "typeorm";
-
-export enum ApiProvider {
-  AWS_BEDROCK = "aws_bedrock",
-  OPEN_AI = "open_ai",
-  YANDEX_FM = "yandex_fm",
-}
-
-export enum AuthProvider {
-  LOCAL = "local",
-  GOOGLE = "google",
-  GITHUB = "github",
-  MICROSOFT = "microsoft",
-}
-
-export enum UserRole {
-  USER = "user",
-  ADMIN = "admin",
-}
+import { Field, ID, ObjectType } from "type-graphql";
+import { ApiProvider } from "@/config/ai/common";
 
 export enum MessageRole {
   USER = "user",
@@ -297,9 +279,9 @@ export class ChatTool {
   type: ToolType;
 
   @Field()
-  name?: string;
+  name: string;
 
-  @Field()
+  @Field({ nullable: true })
   url?: string;
 
   @Field(() => [ChatToolOptions], { nullable: true })

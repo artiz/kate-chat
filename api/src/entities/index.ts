@@ -4,8 +4,8 @@ import { Document } from "./Document";
 import { DocumentChunk } from "./DocumentChunk";
 import { Message } from "./Message";
 import { Model } from "./Model";
-import { User, UserSettings } from "./User";
+import { AuthProvider, User, UserSettings, UserRole } from "./User";
 
-export { User, UserSettings, Model, Chat, Message, Document, ChatDocument, DocumentChunk };
+export { AuthProvider, User, UserSettings, UserRole, Model, Chat, Message, Document, ChatDocument, DocumentChunk };
 
 export const ENTITIES = [User, Model, Chat, Message, Document, ChatDocument, DocumentChunk];

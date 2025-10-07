@@ -1,4 +1,8 @@
-import { ApiProvider } from "../../types/ai.types";
+export enum ApiProvider {
+  AWS_BEDROCK = "aws_bedrock",
+  OPEN_AI = "open_ai",
+  YANDEX_FM = "yandex_fm",
+}
 
 export const DEFAULT_TEMPERATURE = 0.7;
 export const DEFAULT_MAX_TOKENS = 2048;

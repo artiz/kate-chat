@@ -1,8 +1,9 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
-import { ApiProvider, ModelType, ToolType } from "../types/ai.types";
+import { ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
 import { JSONTransformer } from "../utils/db";
+import { ApiProvider } from "../config/ai/common";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 

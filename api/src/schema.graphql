@@ -86,7 +86,7 @@ type ChatTool {
   name: String!
   options: [ChatToolOptions!]
   type: String!
-  url: String!
+  url: String
 }
 
 type ChatToolCall {

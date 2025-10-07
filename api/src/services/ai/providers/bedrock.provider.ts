@@ -10,14 +10,12 @@ import {
   VideoFormat,
   Message as ConverseMessage,
   Tool,
-  ToolResultBlock,
   ToolUseBlock,
 } from "@aws-sdk/client-bedrock-runtime";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
 
 import {
-  ApiProvider,
   AIModelInfo,
   ModelResponse,
   StreamCallbacks,
@@ -43,6 +41,7 @@ import { notEmpty } from "@/utils/assert";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { BEDROCK_TOOLS, WEB_SEARCH_TOOL_NAME, parseToolUse, callBedrockTool } from "./bedrock.tools";
 import { log } from "console";
+import { ApiProvider } from "@/config/ai/common";
 
 const logger = createLogger(__filename);
 

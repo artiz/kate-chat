@@ -3,7 +3,7 @@ import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, Badge } fro
 import { Carousel } from "@mantine/carousel";
 import { IconFile, IconRobot, IconUser } from "@tabler/icons-react";
 
-import { debounce, update } from "lodash";
+import { debounce } from "lodash";
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
 import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
 

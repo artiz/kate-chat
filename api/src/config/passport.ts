@@ -1,11 +1,9 @@
 import passport from "passport";
-import oauth2 = require("passport-oauth2");
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import { Repository } from "typeorm";
-import { User } from "../entities/User";
+import { User, AuthProvider, UserRole } from "../entities/User";
 import { getRepository } from "./database";
-import { AuthProvider, UserRole } from "../types/ai.types";
 import { DEFAULT_CHAT_PROMPT } from "./ai/prompts";
 import { logger } from "../utils/logger";
 import {

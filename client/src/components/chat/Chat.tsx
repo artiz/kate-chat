@@ -631,7 +631,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <Popover width={300} position="top" withArrow shadow="md">
               <Popover.Target>
                 <Tooltip label="Chat Settings">
-                  <ActionIcon>
+                  <ActionIcon disabled={isExternalChat || sending || messagesLoading}>
                     <IconSettings size="1.2rem" />
                   </ActionIcon>
                 </Tooltip>

@@ -538,9 +538,8 @@ export class OpenAIProtocol {
       } else if (chunk.type == "response.code_interpreter_call.interpreting") {
         toolCall += "\n```";
         logger.debug({ toolCall }, "code interpreter call");
-
-        toolCall = "";
         callbacks.onProgress?.("\n```", { status: ResponseStatus.CODE_INTERPRETER });
+        toolCall = "";
       } else if (chunk.type == "response.output_item.done") {
         let status: ResponseStatus | undefined = undefined;
         const item = chunk.item;
@@ -589,7 +588,7 @@ export class OpenAIProtocol {
           };
         }
       } else if (!["response.output_item.added"].includes(chunk.type)) {
-        logger.debug(chunk, `Unhandled response chunk type: ${chunk.type}`);
+        logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
       }
     }
 

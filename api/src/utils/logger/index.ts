@@ -42,7 +42,7 @@ const loggerConfig: LoggerOptions = {
 };
 
 export const createLogger = (fileName: string) => {
-  const name = path.basename(fileName);
+  const name = path.basename(fileName, ".ts");
   return pino({
     ...loggerConfig,
     formatters: {

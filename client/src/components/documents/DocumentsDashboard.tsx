@@ -301,7 +301,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
         setProcessedSummary(summary.join("\n"));
       } catch (err: unknown) {
         console.error("Error processing markdown", err);
-        setProcessedSummary("Error processing summary: " + err.message);
+        setProcessedSummary("Error processing summary: " + (err instanceof Error ? err.message : String(err)));
       }
     }
   }, [summaryDocument?.summary]);

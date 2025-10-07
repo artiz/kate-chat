@@ -74,7 +74,7 @@ export class YandexWebSearch {
       return [];
     }
 
-    const xml = atob(rawData);
+    const xml = Buffer.from(rawData, "base64").toString("utf-8");
 
     // Parse XML response using fast-xml-parser
     const parser = new XMLParser({
