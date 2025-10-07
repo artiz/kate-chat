@@ -43,8 +43,11 @@ const renderer = new Renderer();
 renderer.html = ({ text }: { text: string }) => {
   return escapeHtml(text);
 };
-renderer.link = ({ href, title, text }) =>
-  `<a target="_blank" rel="noopener noreferrer" href="${href}" title="${title || ""}">${text}</a>`;
+renderer.link = ({ href, title, text }) => {
+  // Sanitize URL to prevent XSS attacks
+  const url = sanitizeUrl(href);
+  return `<a target="_blank" rel="noopener noreferrer" href="${url}" title="${escapeHtml(title) || ""}">${escapeHtml(text)}</a>`;
+};
 
 /**
  * Parse markdown to html blocks
@@ -113,9 +116,55 @@ const ESCAPE_HTML_ENTITIES: { [key: string]: string } = {
   "&": "&amp;",
   "<": "&lt;",
   ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#x27;",
 };
 
 export function escapeHtml(text?: string | null): string {
   if (!text) return "";
-  return text.replace(/[&<>]/g, match => ESCAPE_HTML_ENTITIES[match] || match);
+  return text.replace(/[&<>"']/g, match => ESCAPE_HTML_ENTITIES[match] || match);
+}
+
+/**
+ * Sanitize URL to prevent XSS attacks
+ * Only allows http, https, and mailto protocols
+ */
+function sanitizeUrl(url?: string | null): string {
+  if (!url) return "";
+
+  // Remove any whitespace and decode basic URL encoding for protocol detection
+  const trimmedUrl = url.trim();
+  const decodedUrl = decodeURIComponent(trimmedUrl).toLowerCase();
+
+  // Check for allowed protocols (case-insensitive)
+  const allowedProtocols = /^(https?:\/\/|mailto:)/i;
+
+  // If it starts with an allowed protocol, return as-is (but escaped)
+  if (allowedProtocols.test(trimmedUrl)) {
+    return escapeHtml(trimmedUrl);
+  }
+
+  // If it starts with //, assume https
+  if (trimmedUrl.startsWith("//")) {
+    return escapeHtml(`https:${trimmedUrl}`);
+  }
+
+  // Block dangerous protocols (case-insensitive, with URL decoding)
+  const dangerousProtocols = /^(javascript|data|vbscript|file|ftp):/i;
+  if (dangerousProtocols.test(decodedUrl)) {
+    return "";
+  }
+
+  // Block URLs that contain dangerous protocols with various separators
+  if (decodedUrl.includes("javascript:") || decodedUrl.includes("data:") || decodedUrl.includes("vbscript:")) {
+    return "";
+  }
+
+  // If it looks like a relative path or doesn't have a protocol, allow it
+  if (trimmedUrl.startsWith("/") || !trimmedUrl.includes("://")) {
+    return escapeHtml(trimmedUrl);
+  }
+
+  // Block any other unknown protocols
+  return "";
 }
