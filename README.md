@@ -281,6 +281,7 @@ docker run -it --rm --pid=host --env-file=./api/.env \
  --env REDIS_URL="redis://host.docker.internal:6379" \
  --env S3_ENDPOINT="http://host.docker.internal:4566" \
  --env SQS_ENDPOINT="http://host.docker.internal:4566" \
+ --env DB_URL="postgres://katechat:katechat@host.docker.internal:5432/katechat" \
  --env CALLBACK_URL_BASE="http://localhost" \
  --env FRONTEND_URL="http://localhost" \
  --env DB_MIGRATIONS_PATH="./db-migrations/*-*.js" \
