@@ -1,6 +1,5 @@
 import OpenAI from "openai";
-import axios from "axios";
-import { Agent } from "undici";
+import { fetch, Agent } from "undici";
 import {
   AIModelInfo,
   ModelResponse,
@@ -31,13 +30,12 @@ import { YandexWebSearch } from "../tools/yandex.web_search";
 
 const logger = createLogger(__filename);
 
-const agent = new Agent({
-  keepAliveTimeout: 30_000,
+const dispatcher = new Agent({
+  connectTimeout: 15_000,
+  bodyTimeout: 15_000,
+  keepAliveTimeout: 60_000,
   connections: 100, // pool
 });
-const fetchOptions: Record<string, any> = {
-  dispatcher: agent,
-};
 
 export interface OpenAICostResult {
   object: string;
@@ -172,26 +170,37 @@ export class OpenAIApiProvider extends BaseApiProvider {
     try {
       let page: string | undefined = undefined;
       do {
-        const response = await axios.get<OpenAIList<OpenAICost>>(`${this.baseUrl}/organization/costs`, {
-          params: {
-            start_time: startTime || undefined,
-            end_time: endTime || undefined,
-            group_by: "project_id",
-            limit: 100,
-            page,
-          },
-          headers: this.formatRestHeaders(),
-          fetchOptions,
+        const params = new URLSearchParams({
+          group_by: "project_id",
+          limit: "100",
         });
 
-        const res: OpenAIList<OpenAICost> = response.data;
-        const costsData = res.data
+        if (startTime) {
+          params.append("start_time", String(startTime));
+        }
+        if (endTime) {
+          params.append("end_time", String(endTime));
+        }
+        if (page) {
+          params.append("page", page);
+        }
+
+        const response: OpenAIList<OpenAICost> = await fetch(
+          `${this.baseUrl}/organization/costs?${params.toString()}`,
+          {
+            method: "GET",
+            headers: this.formatRestHeaders(),
+            dispatcher,
+          }
+        ).then(res => res.json() as Promise<OpenAIList<OpenAICost>>);
+
+        const costsData = response.data
           .filter(item => item.results?.length)
           .map(item => item.results)
           .flat();
 
         costsResults.push(...costsData);
-        page = res.next_page;
+        page = response.next_page;
       } while (page && pagesLimit-- > 0);
     } catch (error) {
       logger.error(error, "Error fetching OpenAI usage information");
@@ -395,6 +404,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
   private formatRestHeaders(): Record<string, string> {
     return {
       "Content-Type": "application/json",
+      Accept: "application/json; charset=utf-8",
       Authorization: `Bearer ${this.adminApiKey}`,
     };
   }

@@ -201,7 +201,7 @@ export const WEB_SEARCH_TOOL_RESULT = (results: SearchResult[]): string => {
   return `
     # Web search results
     Please use this information to assist with your answer.
-    Alsways include a reference to the source of the information in your answer, using the format [title](url).
+    Always include a reference to the source of the information in your answer, using the valid markdown format [page title](url).
 
     ${context}
   `;

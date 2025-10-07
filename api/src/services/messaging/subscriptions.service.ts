@@ -97,8 +97,6 @@ export class SubscriptionsService {
             await redisSub.subscribe(
               [CHAT_MESSAGES_CHANNEL, CHAT_ERRORS_CHANNEL, DOCUMENT_STATUS_CHANNEL],
               async (message: string, channel: string) => {
-                logger.trace({ channel, message }, `Received message on Redis channel ${channel}`);
-
                 try {
                   const data = JSON.parse(message);
 

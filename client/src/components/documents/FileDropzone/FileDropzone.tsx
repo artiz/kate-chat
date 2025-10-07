@@ -56,7 +56,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active })
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
-      if (disabled) return onFilesAdd([]);
+      if (disabled) return;
 
       const files =
         e.dataTransfer.files && e.dataTransfer.files.length > 0

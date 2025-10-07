@@ -14,11 +14,10 @@ import {
   em,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
-import { IconUser, IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
+import { IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "../store";
-import { logout } from "../store/slices/authSlice";
-import { clearUser } from "../store/slices/userSlice";
+import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
 import { useTheme } from "../hooks/useTheme";
 
@@ -35,7 +34,6 @@ export const MainLayout: React.FC = () => {
   // Handle logout
   const handleLogout = () => {
     dispatch(logout());
-    dispatch(clearUser());
     navigate("/login");
   };
 

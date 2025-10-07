@@ -78,6 +78,15 @@ const chatSlice = createSlice({
       state.loading = false;
     },
   },
+  extraReducers: builder => {
+    builder.addCase("logout", state => {
+      state.chats = [];
+      state.loading = false;
+      state.error = null;
+      state.hasMore = false;
+      state.total = 0;
+    });
+  },
 });
 
 export const { setChats, addChat, updateChat, updateChatInfo, removeChat, setChatLoading, setChatError } =

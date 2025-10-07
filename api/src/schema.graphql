@@ -103,7 +103,7 @@ type ChatToolCallResult {
 }
 
 input ChatToolInput {
-  name: String!
+  name: String
   options: [ChatToolOptionsInput!]
   type: String!
 }
@@ -337,7 +337,7 @@ type MessageChatInfo {
   imagesCount: Float
   isPristine: Boolean!
   maxTokens: Float
-  modelId: String
+  modelId: String!
   temperature: Float
   title: String
   topP: Float

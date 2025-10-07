@@ -104,7 +104,7 @@ export class ChatToolInput {
   @Field(() => String)
   type: ToolType;
 
-  @Field()
+  @Field({ nullable: true })
   name?: string;
 
   @Field(() => [ChatToolOptionsInput], { nullable: true })

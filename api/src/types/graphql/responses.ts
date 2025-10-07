@@ -52,7 +52,7 @@ export class MessageChatInfo {
   @Field({ nullable: true })
   title?: string;
 
-  @Field({ nullable: true })
+  @Field()
   modelId: string;
 
   @Field({ nullable: true })

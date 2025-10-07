@@ -31,7 +31,6 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.15.18",
     "@types/ws": "^8.5.10",
-    "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.10.0",
     "class-transformer": "^0.5.1",

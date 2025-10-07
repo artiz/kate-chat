@@ -1,20 +1,20 @@
+import { Agent, fetch } from "undici";
 import { WEB_SEARCH_TEST_QUERY } from "@/config/ai/prompts";
 import { YANDEX_SEARCH_API_URL } from "@/config/ai/yandex";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { createLogger } from "@/utils/logger";
-import axios, { isAxiosError } from "axios";
-import { Agent } from "undici";
-import { SearchRequest, SearchResult, SearchSortMode, stripHtml } from "./web_search";
+import { SearchRequest, SearchResult, SearchSortMode } from "./web_search";
 import { XMLParser } from "fast-xml-parser";
+import { stripHtml } from "@/utils/format";
 
 const logger = createLogger(__filename);
 
-const fetchOptions: Record<string, any> = {
-  dispatcher: new Agent({
-    keepAliveTimeout: 30_000,
-    connections: 100, // pool
-  }),
-};
+const dispatcher = new Agent({
+  connectTimeout: 10_000,
+  bodyTimeout: 10_000,
+  keepAliveTimeout: 30_000,
+  connections: 100, // pool
+});
 
 export class YandexWebSearch {
   public static async isAvailable(connection: ConnectionParams): Promise<boolean> {
@@ -49,32 +49,23 @@ export class YandexWebSearch {
       responseFormat: "FORMAT_XML",
     };
 
-    let rawData = "";
-    try {
-      const response = await axios.post<{ rawData: string }>(YANDEX_SEARCH_API_URL, data, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Api-Key ${connection.YANDEX_SEARCH_API_KEY}`,
-        },
-        fetchOptions,
-      });
-      rawData = response.data.rawData;
-    } catch (error) {
-      if (isAxiosError(error)) {
-        const axiosError = error;
-        logger.error(
-          { status: axiosError.response?.status, data: axiosError.response?.data },
-          "Yandex Search API error"
-        );
-      }
-      throw error;
-    }
+    logger.trace(data, "Yandex Web Search request");
 
-    if (!rawData) {
+    const response = await fetch(YANDEX_SEARCH_API_URL, {
+      method: "POST",
+      dispatcher,
+      body: JSON.stringify(data),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Api-Key ${connection.YANDEX_SEARCH_API_KEY}`,
+      },
+    }).then(res => res.json() as Promise<{ rawData: string }>);
+
+    if (!response.rawData) {
       return [];
     }
 
-    const xml = Buffer.from(rawData, "base64").toString("utf-8");
+    const xml = Buffer.from(response.rawData, "base64").toString("utf-8");
 
     // Parse XML response using fast-xml-parser
     const parser = new XMLParser({
@@ -93,11 +84,15 @@ export class YandexWebSearch {
       await Promise.all(
         results.map(async result => {
           try {
-            const pageResponse = await axios.get(result.url, {
-              responseType: "text",
-              timeout: 10000, // 10 seconds timeout
+            const pageResponse = await fetch(result.url, {
+              method: "GET",
+              dispatcher,
+              headers: {
+                Accept: "text/html,application/xhtml+xml,application/xml",
+              },
             });
-            result.content = stripHtml(pageResponse.data);
+            const content = await pageResponse.text();
+            result.content = stripHtml(content);
           } catch (error) {
             logger.warn(error, `Failed to load content for URL: ${result.url}`);
           }

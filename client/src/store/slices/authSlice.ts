@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export const STORAGE_AUTH_TOKEN = "auth-token";
-export const STORAGE_USER_DATA = "user-data";
 
 export const STORAGE_AWS_BEDROCK_REGION = "aws-bedrock-region";
 export const STORAGE_AWS_BEDROCK_PROFILE = "aws-bedrock-profile";
@@ -42,14 +41,17 @@ const authSlice = createSlice({
     loginFailure(state) {
       state.loading = false;
     },
-    logout(state) {
+  },
+  extraReducers: builder => {
+    builder.addCase("logout", state => {
       state.token = null;
       state.isAuthenticated = false;
+      state.loading = false;
+      document.cookie = `${STORAGE_AUTH_TOKEN}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       localStorage.removeItem(STORAGE_AUTH_TOKEN);
-      localStorage.removeItem(STORAGE_USER_DATA);
-    },
+    });
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure } = authSlice.actions;
 export default authSlice.reducer;

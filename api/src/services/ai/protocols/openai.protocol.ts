@@ -350,7 +350,7 @@ export class OpenAIProtocol {
                 type: "input_image" as const,
                 image_url: part.content.startsWith("data:image")
                   ? part.content
-                  : `data:image/pnag;base64,${part.content}`,
+                  : `data:image/png;base64,${part.content}`,
                 detail: "auto" as const,
               };
             } else {

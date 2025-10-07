@@ -40,7 +40,6 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { notEmpty } from "@/utils/assert";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { BEDROCK_TOOLS, WEB_SEARCH_TOOL_NAME, parseToolUse, callBedrockTool } from "./bedrock.tools";
-import { log } from "console";
 import { ApiProvider } from "@/config/ai/common";
 
 const logger = createLogger(__filename);
