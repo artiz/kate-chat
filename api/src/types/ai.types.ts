@@ -182,6 +182,9 @@ export class MessageMetadata {
   @Field(() => [ChatToolCallResult], { nullable: true })
   tools?: ChatToolCallResult[];
 
+  @Field(() => [ChatResultAnnotation], { nullable: true })
+  annotations?: ChatResultAnnotation[];
+
   ///////////// user message meta
   // input document IDs
   @Field(() => [ID], { nullable: true })
@@ -224,6 +227,24 @@ export class ChatToolCallResult {
 
   @Field({ nullable: true })
   callId?: string;
+}
+
+@ObjectType()
+export class ChatResultAnnotation {
+  @Field()
+  type: "url" | "file";
+
+  @Field({ nullable: true })
+  title?: string;
+
+  @Field({ nullable: true })
+  source?: string;
+
+  @Field({ nullable: true })
+  startIndex?: number;
+
+  @Field({ nullable: true })
+  endIndex?: number;
 }
 
 export interface ChatResponseStatus {

@@ -91,6 +91,14 @@ type ChatDocument {
   id: ID!
 }
 
+type ChatResultAnnotation {
+  endIndex: Float
+  source: String
+  startIndex: Float
+  title: String
+  type: String!
+}
+
 type ChatTool {
   name: String!
   options: [ChatToolOptions!]
@@ -354,6 +362,7 @@ type MessageChatInfo {
 
 type MessageMetadata {
   analysis: String
+  annotations: [ChatResultAnnotation!]
   documentIds: [ID!]
   relevantsChunks: [MessageRelevantChunk!]
   toolCalls: [ChatToolCall!]

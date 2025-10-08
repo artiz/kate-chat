@@ -54,11 +54,10 @@ To interact with AI models in the demo, you'll need to provide your own API keys
   Provide simple demos in `katechat-ui`:
   - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
   - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form
+* Add request cancellation to stop reasoning or web search
 * Add custom MCP tool support
    - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
    - Bedrock - custom wrapper 
-
-* Add request cancellation to stop reasoning or web search
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add [MarkItDown](https://github.com/microsoft/markitdown) ([example](https://dev.to/leapcell/deep-dive-into-microsoft-markitdown-4if5)) in document-processor, support both processors and write script to generate Markdown for files from train and compare them.
 * Add SerpApi for Web Search (new setting in UI)

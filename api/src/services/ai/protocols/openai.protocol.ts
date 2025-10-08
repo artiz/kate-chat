@@ -14,7 +14,7 @@ import {
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
-import { notEmpty } from "@/utils/assert";
+import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { ChatCompletionToolCall, COMPLETION_API_TOOLS, WEB_SEARCH_TOOL, WEB_SEARCH_TOOL_NAME } from "./openai.tools";
 
@@ -59,19 +59,12 @@ export class OpenAIProtocol {
         const params = this.formatResponsesRequest(inputRequest);
         logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
-        const { usage, output } = await this.openai.responses.create(params);
-
-        const { content, files } = this.parseResponsesOutput(output);
+        const result = await this.openai.responses.create(params);
+        const { content, files, metadata } = this.parseResponsesOutput(result);
 
         response.content = content;
         response.files = files.length ? files : undefined;
-        response.metadata = {
-          usage: {
-            inputTokens: usage?.input_tokens || 0,
-            outputTokens: usage?.output_tokens || 0,
-            cacheReadInputTokens: usage?.input_tokens_details?.cached_tokens || 0,
-          },
-        };
+        response.metadata = metadata;
       } else {
         const params = this.formatCompletionRequest(inputRequest);
         logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
@@ -393,7 +386,7 @@ export class OpenAIProtocol {
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
       for await (const chunk of stream) {
-        const choice = chunk.choices[0];
+        const choice = chunk.choices?.[0];
 
         if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
           const requestedToolCalls = (streamedToolCalls.length ? streamedToolCalls : choice.delta.tool_calls) || [];
@@ -462,7 +455,7 @@ export class OpenAIProtocol {
             }
           });
         } else {
-          const token = choice?.delta?.content || "";
+          const token = choice?.delta?.content || (choice?.delta as any)?.reasoning_content || "";
           if (token) {
             fullResponse += token;
             callbacks.onProgress?.(token);
@@ -485,7 +478,7 @@ export class OpenAIProtocol {
     callbacks.onComplete?.(fullResponse, meta);
   }
 
-  parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
+  private parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
     if (!result.content || typeof result.content === "string") {
       return result.content || "";
     }
@@ -514,7 +507,7 @@ export class OpenAIProtocol {
 
     const stream = await this.openai.responses.create(params);
     let fullResponse = "";
-    let meta: MessageMetadata | undefined = undefined;
+    let meta: MessageMetadata = {};
     let lastStatus: ResponseStatus | undefined = undefined;
     let toolCall = "";
 
@@ -562,7 +555,7 @@ export class OpenAIProtocol {
         } else if (item.type === "function_call") {
           status = ResponseStatus.TOOL_CALL;
         } else if (item.type === "reasoning") {
-          if (item.content?.length) {
+          if (item.summary?.length || item.content?.length) {
             status = ResponseStatus.REASONING;
           } else {
             status = undefined;
@@ -577,21 +570,50 @@ export class OpenAIProtocol {
             detail,
           });
         }
+      } else if (
+        chunk.type == "response.output_text.annotation.added" &&
+        chunk.annotation &&
+        typeof chunk.annotation === "object"
+      ) {
+        if (!("type" in chunk.annotation)) return;
+
+        if (!meta.annotations) {
+          meta.annotations = [];
+        }
+
+        if (chunk.annotation.type === "url_citation") {
+          const annotation = chunk.annotation as {
+            start_index?: number;
+            end_index?: number;
+            type: string;
+            title?: string;
+            url: string;
+          };
+          meta.annotations.push({
+            type: "url",
+            title: annotation.title,
+            source: annotation.url,
+            endIndex: annotation.end_index,
+            startIndex: annotation.start_index,
+          });
+        } else if (chunk.annotation.type === "file_citation") {
+          const annotation = chunk.annotation as { file_id: string; filename: string; type: string };
+          meta.annotations.push({
+            type: "file",
+            title: annotation.filename,
+            source: annotation.file_id,
+          });
+        }
       } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
-        const { usage, output } = chunk.response;
-
-        const { content } = this.parseResponsesOutput(output);
-        fullResponse = content || "_No response_";
-
-        if (usage) {
+        const { content, metadata } = this.parseResponsesOutput(chunk.response);
+        if (metadata) {
           meta = {
-            usage: {
-              inputTokens: usage.input_tokens || 0,
-              outputTokens: usage.output_tokens || 0,
-              cacheReadInputTokens: usage.input_tokens_details?.cached_tokens || 0,
-            },
+            ...meta,
+            ...metadata,
           };
         }
+
+        fullResponse = content || "_No response_";
       } else if (!["response.output_item.added"].includes(chunk.type)) {
         logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
       }
@@ -600,7 +622,21 @@ export class OpenAIProtocol {
     callbacks.onComplete?.(fullResponse, meta);
   }
 
-  private parseResponsesOutput(output: OpenAI.Responses.ResponseOutputItem[]): { content: string; files: string[] } {
+  private parseResponsesOutput(response: OpenAI.Responses.Response): {
+    content: string;
+    files: string[];
+    metadata: MessageMetadata;
+  } {
+    const { output, usage } = response;
+
+    let metadata: MessageMetadata = {
+      usage: {
+        inputTokens: usage?.input_tokens || 0,
+        outputTokens: usage?.output_tokens || 0,
+        cacheReadInputTokens: usage?.input_tokens_details?.cached_tokens || 0,
+      },
+    };
+
     const { content, files } = output.reduce(
       (res, item) => {
         if (item.type === "message") {
@@ -611,21 +647,42 @@ export class OpenAIProtocol {
               }
 
               let text = c.text || "";
+              const extendText = !text;
 
-              if (!text && c.annotations?.length) {
-                text += "\n### Sources\n";
+              if (c.annotations?.length) {
+                metadata.annotations = metadata.annotations || [];
+                if (extendText) {
+                  text += "\n### Sources\n";
+                }
+
                 const processedSources = new Set<string>();
                 c.annotations.forEach((ann, ndx) => {
                   if (ann.type === "url_citation" && ann.url) {
-                    if (!processedSources.has(ann.url)) {
+                    if (extendText && !processedSources.has(ann.url)) {
                       processedSources.add(ann.url);
                       text += `* [${ann.title || `Source ${ndx + 1}`} ](${ann.url})\n`;
                     }
-                  } else if (ann.type === "file_citation" && ann.filename) {
-                    if (!processedSources.has(ann.filename)) {
+
+                    ok(metadata.annotations);
+                    metadata.annotations.push({
+                      type: "url",
+                      title: ann.title,
+                      source: ann.url,
+                      endIndex: ann.end_index,
+                      startIndex: ann.start_index,
+                    });
+                  } else if (ann.type === "file_citation") {
+                    if (extendText && !processedSources.has(ann.filename)) {
                       processedSources.add(ann.filename);
                       text += `* ${ann.filename}\n`;
                     }
+
+                    ok(metadata.annotations);
+                    metadata.annotations.push({
+                      type: "file",
+                      title: ann.filename,
+                      source: ann.file_id,
+                    });
                   }
                 });
               }
@@ -645,7 +702,7 @@ export class OpenAIProtocol {
       { content: "", files: [] as string[] }
     );
 
-    return { content, files };
+    return { content, files, metadata };
   }
 
   // Helper method to map our message roles to OpenAI roles
