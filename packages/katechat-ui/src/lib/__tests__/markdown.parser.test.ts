@@ -1,6 +1,5 @@
-import { parseMarkdown, parseChatMessages, escapeHtml } from "../MarkdownParser";
-import { Message } from "@/types/graphql";
-import { MessageRole } from "@/types/ai";
+import { parseMarkdown, parseChatMessages, escapeHtml } from "../markdown.parser";
+import { Message, MessageRole } from "../../core/message";
 
 // Mock the sanitizeUrl function by accessing it through module internals
 // Since sanitizeUrl is not exported, we'll test it indirectly through parseMarkdown
@@ -166,6 +165,7 @@ describe("MarkdownParser", () => {
   describe("parseChatMessages", () => {
     const mockMessage: Message = {
       id: "1",
+      chatId: "chat1",
       content: "Hello **world**!",
       role: MessageRole.USER,
       createdAt: new Date().toISOString(),
@@ -195,7 +195,7 @@ describe("MarkdownParser", () => {
     it("should escape non-USER/ASSISTANT messages", () => {
       const systemMessage: Message = {
         ...mockMessage,
-        role: MessageRole.SYSTEM,
+        role: MessageRole.ERROR,
         content: '<script>alert("xss")</script>',
       };
 

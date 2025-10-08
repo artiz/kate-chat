@@ -1,13 +1,13 @@
 import React, { useMemo } from "react";
 import { Text, ActionIcon, Tooltip, Menu } from "@mantine/core";
 import { IconCopy, IconCopyCheck, IconTrash, IconRefresh, IconMoodPlus, IconEdit } from "@tabler/icons-react";
-
-import classes from "../ChatMessage.module.scss";
+import { MessageRole } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { ModelType } from "@/store/slices/modelSlice";
-import { MessageRole } from "@/types/ai";
 import { MessageMetadata } from "@/types/graphql";
+
+import classes from "../ChatMessage.module.scss";
 
 interface IProps {
   id: string;

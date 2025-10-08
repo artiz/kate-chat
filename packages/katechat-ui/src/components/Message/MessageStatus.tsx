@@ -1,6 +1,6 @@
-import { ResponseStatus } from "@/types/graphql";
-import { Badge, DefaultMantineColor } from "@mantine/core";
 import React from "react";
+import { Badge, DefaultMantineColor } from "@mantine/core";
+import { ResponseStatus } from "@/core/message";
 
 const TITLE_MAP: Record<ResponseStatus, string> = {
   [ResponseStatus.IN_PROGRESS]: "In Progress",
@@ -10,6 +10,7 @@ const TITLE_MAP: Record<ResponseStatus, string> = {
   [ResponseStatus.TOOL_CALL]: "Tool Call",
   [ResponseStatus.REASONING]: "Reasoning",
   [ResponseStatus.ERROR]: "Error",
+  [ResponseStatus.TOOL_CALL_COMPLETED]: "Tool Call Completed",
 };
 
 const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
@@ -20,6 +21,7 @@ const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
   [ResponseStatus.TOOL_CALL]: "cyan",
   [ResponseStatus.REASONING]: "yellow",
   [ResponseStatus.ERROR]: "red",
+  [ResponseStatus.TOOL_CALL_COMPLETED]: "green",
 };
 
 export const MessageStatus = ({ status }: { status: ResponseStatus }) => {

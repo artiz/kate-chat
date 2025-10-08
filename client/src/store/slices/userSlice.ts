@@ -1,4 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { User as BaseUser } from "@katechat/ui";
+
 import { ApplicationConfig } from "../services/graphql";
 import { logout } from "..";
 
@@ -24,20 +26,13 @@ export enum UserRole {
   ADMIN = "admin",
 }
 
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
+export interface User extends BaseUser {
   role: UserRole;
-  defaultModelId?: string;
   defaultSystemPrompt?: string;
   documentsEmbeddingsModelId?: string;
   documentSummarizationModelId?: string;
-
   githubId?: string;
   googleId?: string;
-  avatarUrl?: string;
   settings?: UserSettings;
   createdAt?: string;
 }

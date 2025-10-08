@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { MessageRole, MessageType } from "@katechat/ui";
 import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql";
-import { MessageRole, MessageType } from "@/types/ai";
 import { Message, MessageChatInfo } from "@/types/graphql";
 import { updateChatInfo } from "@/store/slices/chatSlice";
 import { useAppDispatch } from "@/store";

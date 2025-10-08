@@ -10,10 +10,11 @@
     "install:client": "npm install -w client",
     "install:api": "npm install -w api",
     "install:all": "npm install",
-    "build": "npm run build -w client -w api",
+    "build": "npm run build --workspaces --if-present",
     "build:client": "npm run build -w client",
     "build:api": "npm run build -w api",
     "build:migrations": "npx tsc  -p ./db-migrations/tsconfig.json",
+    "build:katechat-ui": "npm run build -w packages/katechat-ui",
     "test": "npm run test --workspaces --if-present",
     "format": "npm run format -w client -w api",
     "migration:generate": "bash scripts/migration-generate.sh \"$@\"",
@@ -23,7 +24,8 @@
   "license": "ISC",
   "workspaces": [
     "api",
-    "client"
+    "client",
+    "packages/katechat-ui"
   ],
   "dependencies": {
     "concurrently": "^9.1.2"

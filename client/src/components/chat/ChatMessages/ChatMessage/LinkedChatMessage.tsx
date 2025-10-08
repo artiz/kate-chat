@@ -2,12 +2,12 @@ import React, { useMemo } from "react";
 import { Text, Group, Avatar, ActionIcon, Tooltip } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconCopy, IconCopyCheck, IconRobot, IconTrash } from "@tabler/icons-react";
-import { Message, MessageRole } from "@/store/slices/chatSlice";
-
-import classes from "../ChatMessage.module.scss";
+import { MessageStatus } from "@katechat/ui";
+import { Message } from "@/types/graphql";
 import { useAppSelector } from "@/store";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
-import { MessageStatus } from "../MessageStatus";
+
+import classes from "../ChatMessage.module.scss";
 
 interface IProps {
   message: Message;

@@ -1,7 +1,7 @@
 // Test utilities to access internal functions
 // This file helps test non-exported functions from MarkdownParser
 
-import { parseMarkdown } from "../MarkdownParser";
+import { parseMarkdown } from "../markdown.parser";
 
 /**
  * Test the sanitizeUrl function indirectly by checking link rendering

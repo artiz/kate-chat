@@ -1,8 +1,9 @@
 import { gql } from "@apollo/client";
+import { parseMarkdown } from "@katechat/ui";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
-import { parseMarkdown } from "@/lib/services/MarkdownParser";
+
 import {
   ApplicationConfig,
   Chat,

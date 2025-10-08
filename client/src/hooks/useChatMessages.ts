@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApolloClient, useMutation } from "@apollo/client";
+import { parseChatMessages, parseMarkdown, MessageRole } from "@katechat/ui";
 import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { parseChatMessages, parseMarkdown } from "@/lib/services/MarkdownParser";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql";
 import { pick } from "lodash";
-import { MessageRole } from "@/types/ai";
 import { Message, DeleteMessageResponse, GetChatMessagesResponse, MessageChatInfo } from "@/types/graphql";
 
 type HookResult = {

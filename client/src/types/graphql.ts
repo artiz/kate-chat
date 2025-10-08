@@ -1,6 +1,9 @@
+import { Message as BaseMessage, MessageRole } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
-import { DocumentStatus, MessageRole } from "./ai";
+import { DocumentStatus } from "./ai";
 import { Model, ProviderInfo } from "@/store/slices/modelSlice";
+
+export type Message = BaseMessage<User, MessageMetadata>;
 
 export interface CurrentUserResponse {
   currentUser: User;
@@ -194,36 +197,6 @@ export interface MessageMetadata {
 
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
-}
-
-export enum ResponseStatus {
-  IN_PROGRESS = "in_progress",
-  WEB_SEARCH = "web_search",
-  CODE_INTERPRETER = "code_interpreter",
-  TOOL_CALL = "tool_call",
-  TOOL_CALL_COMPLETED = "tool_call_completed",
-  REASONING = "reasoning",
-  COMPLETED = "completed",
-  ERROR = "error",
-}
-
-export interface Message {
-  id: string;
-  chatId: string;
-  content: string;
-  html?: string[];
-  role: MessageRole;
-  modelId?: string;
-  modelName?: string;
-  user?: User;
-  createdAt: string;
-  updatedAt: string;
-  streaming?: boolean;
-  linkedToMessageId?: string;
-  linkedMessages?: Message[];
-  metadata?: MessageMetadata;
-  status?: ResponseStatus;
-  statusInfo?: string;
 }
 
 export interface MessageChatInfo {

@@ -1,4 +1,4 @@
-import { testSanitizeUrl, testUrlBlocked, testUrlAllowed } from "./test-utils";
+import { testSanitizeUrl, testUrlBlocked, testUrlAllowed } from "./markdown.parser.testUtils";
 
 describe("sanitizeUrl (internal function tests)", () => {
   describe("Dangerous URL Blocking", () => {

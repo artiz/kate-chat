@@ -2,18 +2,16 @@ import React, { ReactNode, useCallback, useEffect, useMemo, useRef } from "react
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, Badge } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconFile, IconRobot, IconUser } from "@tabler/icons-react";
-
+import { MessageStatus, MessageRole } from "@katechat/ui";
 import { debounce } from "lodash";
+
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
 import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
-
 import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
-import { MessageRole } from "@/types/ai";
 import { Message, Document } from "@/types/graphql";
-import { MessageStatus } from "./MessageStatus";
 
 interface ChatMessageProps {
   message: Message;

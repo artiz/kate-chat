@@ -49,8 +49,12 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Extract katechat-ui package to have all the Message/Model types defined there. Move chat componmment there, 
-  extract ChatDataProvider interface that should incorporate all REST/WS calls. Implement plugins support (RAG, Tools, ChatSettings)
+* Extract katechat-ui package to have all the Message/Model types defined there. Move chat component there, 
+  extract ChatDataProvider interface that should incorporate all REST/WS calls. 
+  - Implement chat plugins support (RAG, Tools, ChatSettings).
+  - Implement message level plugins (SwitchModel, CallOther, Delete)
+
+
   Provide simple demos in `katechat-ui`:
   - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
   - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form

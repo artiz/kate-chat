@@ -2,8 +2,8 @@ import hljs from "highlight.js";
 import { Marked, Renderer } from "marked";
 import { markedHighlight } from "marked-highlight";
 import markedKatex from "marked-katex-extension";
-import { Message } from "@/types/graphql";
-import { MessageRole } from "@/types/ai";
+
+import { Message, MessageRole } from "@/core/message";
 
 // Template to store original (unformatted) code to copy it
 const CodeDataTemplate = `<span class="code-data" data-code="<CODE>" data-lang="<LANG>"></span>`;
@@ -136,10 +136,7 @@ function sanitizeUrl(url?: string | null): string {
   const trimmedUrl = url.trim();
   const decodedUrl = decodeURIComponent(trimmedUrl).toLowerCase();
 
-  // Check for allowed protocols (case-insensitive)
   const allowedProtocols = /^(https?:\/\/|mailto:)/i;
-
-  // If it starts with an allowed protocol, return as-is (but escaped)
   if (allowedProtocols.test(trimmedUrl)) {
     return escapeHtml(trimmedUrl);
   }
@@ -149,13 +146,10 @@ function sanitizeUrl(url?: string | null): string {
     return escapeHtml(`https:${trimmedUrl}`);
   }
 
-  // Block dangerous protocols (case-insensitive, with URL decoding)
   const dangerousProtocols = /^(javascript|data|vbscript|file|ftp):/i;
   if (dangerousProtocols.test(decodedUrl)) {
     return "";
   }
-
-  // Block URLs that contain dangerous protocols with various separators
   if (decodedUrl.includes("javascript:") || decodedUrl.includes("data:") || decodedUrl.includes("vbscript:")) {
     return "";
   }
