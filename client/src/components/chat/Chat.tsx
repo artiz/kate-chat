@@ -476,8 +476,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   return (
     <Container size="xl" py="md" className={classes.container}>
-      <Group justify="space-between" mb="sm" className={classes.titleRow}>
-        <Group>
+      <div className={classes.titleRow}>
+        <div className={classes.titleBlock}>
           {isEditingTitle ? (
             <TextInput
               value={editedTitle}
@@ -492,14 +492,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
             />
           ) : (
             <Group gap="xs" className={classes.title}>
-              <Title order={3}>{chat?.title || "Untitled Chat"}</Title>
+              <Title order={4} className={classes.titleText}>
+                {chat?.title || "Untitled Chat"}
+              </Title>
 
               <ActionIcon
                 onClick={() => {
                   setIsEditingTitle(true);
                   setEditedTitle(editedTitle || "Untitled Chat");
                 }}
-                size="sm"
+                size="md"
                 variant="subtle"
                 className={classes.editTitleButton}
               >
@@ -509,18 +511,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
           )}
 
           {isExternalChat && chat?.user ? `Owner: ${chat.user.firstName} ${chat.user.lastName}` : null}
-        </Group>
+        </div>
 
-        <Group>
-          <Box className={classes.wsStatus}>
-            <Box className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
-            <Text size="xs">{wsConnected ? "Connected" : "Connecting..."}</Text>
-          </Box>
+        <div className={classes.actionsBlock}>
+          <div className={classes.wsStatus}>
+            <div className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
+            <div className={classes.wsStatusText}>{wsConnected ? "Connected" : "Connecting..."}</div>
+          </div>
           <ActionIcon onClick={() => navigate("/chat")}>
             <IconX size="1.2rem" />
           </ActionIcon>
-        </Group>
-      </Group>
+        </div>
+      </div>
 
       <Group mb="sm">
         {!appConfig?.s3Connected && (

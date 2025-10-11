@@ -8,19 +8,63 @@
   --container-size-xl: calc(120rem * var(--mantine-scale)) !important;
 }
 
-/* Edit title icon styles */
-.editTitleButton {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.title:hover {
-  .editTitleButton {
-    opacity: 0.7;
-  }
-}
-
 .titleRow {
+  display: flex;
+  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+
+  .titleBlock {
+    flex: 1;
+    min-width: 12rem;
+    max-width: 100%;
+    overflow: hidden;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .title {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .titleText {
+    padding-right: 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    width: 100%;
+  }
+
+  .title:hover {
+    .editTitleButton {
+      opacity: 1;
+    }
+  }
+
+  .editTitleButton {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    background-color: var(--mantine-color-body);
+  }
+
+  .actionsBlock {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
   .wsStatus {
     display: flex;
     align-items: center;
@@ -28,11 +72,21 @@
     opacity: 0.7;
   }
 
+  .wsStatusText {
+    font-size: 0.75rem;
+    color: var(--mantine-color-text-secondary);
+  }
+
+  @media (max-width: 640px) {
+    .wsStatusText {
+      display: none;
+    }
+  }
+
   .wsStatusIndicator {
     width: 0.5em;
     height: 0.5em;
     border-radius: 50%;
-
     background: gray;
 
     &.connected {
