@@ -46,11 +46,6 @@ type AuthResponse {
   user: User!
 }
 
-input CallOtherInput {
-  messageId: String!
-  modelId: String!
-}
-
 type CallOtherResponse {
   error: String
   message: Message
@@ -421,7 +416,7 @@ enum ModelType {
 
 type Mutation {
   addDocumentsToChat(chatId: ID!, documentIds: [ID!]!): AddDocumentsToChatResponse!
-  callOther(input: CallOtherInput!): CallOtherResponse!
+  callOther(messageId: ID!, modelId: String!): CallOtherResponse!
   changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
   createMessage(input: CreateMessageInput!): Message!

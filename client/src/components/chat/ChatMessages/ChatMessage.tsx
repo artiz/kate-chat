@@ -1,28 +1,29 @@
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, Badge } from "@mantine/core";
+import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, Badge, Tooltip, ActionIcon } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { IconFile, IconRobot, IconUser } from "@tabler/icons-react";
+import { IconCopy, IconCopyCheck, IconFile, IconRobot, IconTrash, IconUser } from "@tabler/icons-react";
 import { MessageStatus, MessageRole } from "@katechat/ui";
 import { debounce } from "lodash";
 
 import { LinkedChatMessage } from "./ChatMessage/LinkedChatMessage";
-import { ChatMessageActions } from "./ChatMessage/ChatMessageActions";
 import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
 import { Message, Document } from "@/types/graphql";
+import { InOutTokens } from "./plugins/InOutTokens";
+import { SwitchModel } from "./plugins/SwitchModel";
 
 interface ChatMessageProps {
   message: Message;
   index: number;
   disabled?: boolean;
-  loading?: boolean;
   chatDocuments?: Document[];
+  plugins?: React.ReactNode;
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index, disabled = false, loading = false, chatDocuments } = props;
+  const { message, index, disabled = false, chatDocuments, plugins } = props;
 
   const {
     role,
@@ -271,18 +272,38 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
           {details}
 
-          {(loading || (streaming && !content)) && <Loader size="md" mb="md" />}
-
+          {streaming && !content && <Loader size="md" mb="md" />}
           <div className={classes.messageFooter}>
-            <ChatMessageActions
-              id={id}
-              role={role}
-              modelName={modelName}
-              modelId={modelId}
-              metadata={metadata}
-              index={index}
-              disableActions={disableActions}
-            />
+            <Tooltip label="Copy message" position="top" withArrow>
+              <ActionIcon
+                className="copy-message-btn"
+                data-message-id={id}
+                data-message-index={index}
+                size="sm"
+                color="gray"
+                variant="transparent"
+              >
+                <IconCopy />
+              </ActionIcon>
+            </Tooltip>
+            <ActionIcon disabled size="sm" className="check-icon">
+              <IconCopyCheck />
+            </ActionIcon>
+
+            <Tooltip label="Delete message" position="top" withArrow>
+              <ActionIcon
+                className="delete-message-btn"
+                data-message-id={id}
+                size="sm"
+                color="red.4"
+                variant="transparent"
+                disabled={disableActions}
+              >
+                <IconTrash />
+              </ActionIcon>
+            </Tooltip>
+
+            {plugins}
           </div>
         </div>
       </>
@@ -301,7 +322,6 @@ export const ChatMessage = (props: ChatMessageProps) => {
     metadata?.relevantsChunks,
     index,
     disableActions,
-    loading,
     details,
     streaming,
   ]);
@@ -324,12 +344,12 @@ export const ChatMessage = (props: ChatMessageProps) => {
             message={linkedMsg}
             parentIndex={index}
             index={linkedIndex}
-            disableActions={disableActions}
+            plugins={<></>}
           />
         ))}
       </Carousel>
     );
-  }, [linkedMessages, index, disableActions]);
+  }, [linkedMessages, index]);
 
   if (!linkedMessagesCmp) {
     return (

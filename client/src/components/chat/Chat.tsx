@@ -1,15 +1,13 @@
-import React, { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import {
   Container,
-  Paper,
   Text,
   Textarea,
   Button,
   Group,
   Title,
-  Box,
   ActionIcon,
   Select,
   Tooltip,
@@ -94,12 +92,17 @@ export const ChatComponent = ({ chatId }: IProps) => {
     loadCompleted,
     removeMessages,
     addChatMessage,
-    clearMessagesAfter,
     loadMoreMessages,
     updateChat,
     streaming,
   } = useChatMessages({
     chatId,
+  });
+
+  const { wsConnected } = useChatSubscription({
+    id: chatId,
+    resetSending: () => setSending(false),
+    addMessage: addChatMessage,
   });
 
   const chat = useMemo(() => {
@@ -129,12 +132,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
     return docs;
   }, [chat?.chatDocuments, uploadingDocs]);
-
-  const { wsConnected } = useChatSubscription({
-    id: chatId,
-    resetSending: () => setSending(false),
-    addMessage: addChatMessage,
-  });
 
   useEffect(() => {
     setEditedTitle(chat?.title || "Untitled Chat");
@@ -259,11 +256,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
       });
       setSending(false);
     }
-  };
-
-  const handleEditMessage = async (message: Message) => {
-    clearMessagesAfter(message);
-    addChatMessage(message);
   };
 
   // #endregion
@@ -557,27 +549,24 @@ export const ChatComponent = ({ chatId }: IProps) => {
           loadCompleted && messages?.length === 0 ? classes.empty : "",
         ].join(" ")}
       >
-        <div ref={firstMessageRef} />
-        {messagesLoading && (
-          <Group justify="center" align="center" py="xl">
-            <Loader />
-          </Group>
-        )}
-
-        <div className={classes.messagesList}>
-          {messages && (
-            <ChatMessages
-              messages={messages}
-              sending={sending}
-              chatDocuments={chatDocuments}
-              selectedModelName={selectedModel?.name}
-              onSending={() => setSending(true)}
-              onMessageDeleted={removeMessages} // Reload messages after deletion
-              onMessageModelSwitch={addChatMessage}
-              onCallOther={addChatMessage}
-              onMessageEdit={handleEditMessage}
-            />
+        <div className={classes.scroller}>
+          <div ref={firstMessageRef} />
+          {messagesLoading && (
+            <Group justify="center" align="center" py="xl">
+              <Loader />
+            </Group>
           )}
+
+          <div className={classes.messagesList}>
+            {messages && (
+              <ChatMessages
+                messages={messages}
+                chatDocuments={chatDocuments}
+                onMessageDeleted={removeMessages} // Reload messages after deletion
+                onAddMessage={addChatMessage}
+              />
+            )}
+          </div>
         </div>
       </div>
       <div style={{ position: "relative" }}>

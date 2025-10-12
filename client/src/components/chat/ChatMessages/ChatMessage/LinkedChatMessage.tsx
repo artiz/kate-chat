@@ -13,10 +13,10 @@ interface IProps {
   message: Message;
   parentIndex: number;
   index: number;
-  disableActions?: boolean;
+  plugins?: React.ReactNode;
 }
 
-export const LinkedChatMessage = ({ message, parentIndex, index, disableActions }: IProps) => {
+export const LinkedChatMessage = ({ message, parentIndex, index, plugins }: IProps) => {
   const { models } = useAppSelector(state => state.models);
   var model = useMemo(() => {
     return models.find(m => m.modelId === message.modelId);
@@ -29,7 +29,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
           {model ? <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} /> : <IconRobot />}
         </Avatar>
         <Group gap="xs">
-          <Text size="xs" fw={500} c="teal">
+          <Text size="sm" fw={500} c="teal">
             {message.modelName}
           </Text>
           {message.status && (
@@ -67,7 +67,6 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
               size="sm"
               color="gray"
               variant="transparent"
-              disabled={disableActions}
             >
               <IconCopy />
             </ActionIcon>
@@ -84,11 +83,12 @@ export const LinkedChatMessage = ({ message, parentIndex, index, disableActions 
               size="sm"
               color="red.4"
               variant="transparent"
-              disabled={disableActions}
             >
               <IconTrash />
             </ActionIcon>
           </Tooltip>
+
+          {plugins}
         </div>
       </div>
     </Carousel.Slide>

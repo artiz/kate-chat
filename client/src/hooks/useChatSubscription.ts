@@ -18,6 +18,9 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
         ...BaseMessage
         status
         statusInfo
+        linkedMessages {
+          ...BaseMessage
+        }
       }
       chat {
         title

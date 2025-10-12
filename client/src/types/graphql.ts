@@ -1,7 +1,7 @@
 import { Message as BaseMessage, MessageRole } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
 import { DocumentStatus } from "./ai";
-import { Model, ProviderInfo } from "@/store/slices/modelSlice";
+import { Model, ToolType, ProviderInfo } from "@/store/slices/modelSlice";
 
 export type Message = BaseMessage<User, MessageMetadata>;
 
@@ -209,6 +209,18 @@ export interface MessageChatInfo {
   imagesCount?: number;
 }
 
+export interface ChatToolOptions {
+  name: string;
+  value: string;
+}
+
+export interface ChatTool {
+  type: ToolType;
+  name?: string;
+  url?: string;
+  options?: ChatToolOptions[];
+}
+
 export interface Chat {
   id: string;
   title: string;
@@ -227,6 +239,7 @@ export interface Chat {
   imagesCount?: number;
   chatDocuments?: ChatDocument[];
   user?: User;
+  tools?: ChatTool[];
 }
 
 export interface Document {

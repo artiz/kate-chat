@@ -97,15 +97,15 @@
 
 .messagesContainer {
   flex-grow: 1;
-  overflow-y: scroll;
   margin-bottom: 1rem;
   position: relative;
   display: none;
   flex-direction: column;
   border: 1px solid var(--app-shell-border-color);
   border-radius: var(--mantine-radius-md);
-  transition: all 0.3s ease;
+  overflow-y: hidden;
   opacity: 1;
+  transition: all 0.3s ease;
 
   .messagesList {
     opacity: 0;
@@ -117,8 +117,16 @@
     opacity: 0;
   }
 
+  .scroller {
+    overflow-y: scroll;
+    flex-grow: 1;
+  }
+
   &.loadCompleted {
-    scroll-behavior: smooth;
+    .scroller {
+      scroll-behavior: smooth;
+    }
+
     display: flex;
 
     .messagesList {

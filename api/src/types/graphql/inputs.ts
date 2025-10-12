@@ -244,24 +244,6 @@ export class GetCostsInput {
 }
 
 @InputType()
-export class SwitchModelInput {
-  @Field()
-  messageId: string;
-
-  @Field()
-  modelId: string;
-}
-
-@InputType()
-export class CallOtherInput {
-  @Field()
-  messageId: string;
-
-  @Field()
-  modelId: string;
-}
-
-@InputType()
 export class GetImagesInput {
   @Field({ nullable: true, defaultValue: 0 })
   offset?: number;

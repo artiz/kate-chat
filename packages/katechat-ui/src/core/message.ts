@@ -43,8 +43,17 @@ export interface Message<TUser = User, TMetadata = Record<string, unknown>> {
   updatedAt: string;
   streaming?: boolean;
   linkedToMessageId?: string;
-  linkedMessages?: Message[];
+  linkedMessages?: Message<TUser, TMetadata>[];
   metadata?: TMetadata;
   status?: ResponseStatus;
   statusInfo?: string;
+}
+
+export interface PluginProps<TMessage = Message> {
+  message: TMessage;
+  disabled?: boolean;
+  onAddMessage?: (message: TMessage) => void;
+  onAction?: (messageId: string) => void;
+  onActionEnd?: (messageId: string) => void;
+  onMessageDeleted?: (args: { messagesToDelete?: TMessage[]; deleteAfter?: TMessage }) => void;
 }

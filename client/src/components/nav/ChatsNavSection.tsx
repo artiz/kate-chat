@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Text, Group, Loader, Divider, ScrollArea, Menu, ActionIcon } from "@mantine/core";
-import { IconPlus, IconSettings, IconMessage, IconRobot, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
+import { Stack, Button, NavLink, Text, Group, Loader, Menu, ActionIcon } from "@mantine/core";
+import { IconMessage, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation } from "@apollo/client";
-import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "../../store/services/graphql";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { Chat, removeChat, updateChat } from "@/store/slices/chatSlice";
+import { Chat, UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql";
+import { removeChat, updateChat } from "@/store/slices/chatSlice";
 import { notEmpty } from "@/lib/assert";
 
 import classes from "./ChatsNavSection.module.scss";
@@ -129,7 +129,11 @@ export const sortChats = (chats: Chat[]): ChatsSectionBlock[] => {
   ].filter(notEmpty);
 };
 
-export const ChatsNavSection = () => {
+interface IProps {
+  navbarToggle?: () => void;
+}
+
+export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -232,6 +236,7 @@ export const ChatsNavSection = () => {
 
   // Handle navigation to chat
   const handleChatClick = (id: string) => {
+    navbarToggle?.();
     navigate(`/chat/${id}`);
   };
 

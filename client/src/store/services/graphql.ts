@@ -233,9 +233,9 @@ export const SWITCH_MODEL_MUTATION = gql`
   }
 `;
 
-export const CALL_OTHERS_MUTATION = gql`
-  mutation CallOther($input: CallOtherInput!) {
-    callOther(input: $input) {
+export const CALL_OTHER_MUTATION = gql`
+  mutation CallOther($messageId: ID!, $modelId: String!) {
+    callOther(messageId: $messageId, modelId: $modelId) {
       message {
         ...BaseMessage
         linkedMessages {
