@@ -58,6 +58,37 @@ To interact with AI models in the demo, you'll need to provide your own API keys
   Provide simple demos in `katechat-ui`:
   - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
   - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form
+* Rename `document-processor` to `tasks-processor`, add custom code interpreter tool inplementation there
+```
+from services.code_executor import CodeExecutor
+# Constants
+ALLOWED_MODULES = {
+    'pandas', 'numpy', 'matplotlib', 'PIL', 'cv2', 'moviepy','json', 'csv', 'datetime', 'math', 
+    'openpyxl', 'scipy', 'seaborn', 'networkx', 'tiktoken', 'scikit-learn', 'plotly', 
+    'bokeh', 'beautifulsoup4', 'sqlalchemy', 'scapy', 'dpkt', 'pytesseract', 'python-docx','python-pptx',
+    'manim', 'importlib-metadata', 'schemdraw'
+}
+
+def code_interpreter_handler(event, context):
+      executor = CodeExecutor()
+
+      code = event.get('code')
+      input_files = event.get('input_files', [])
+      chat_session_id = event.get('chat_session_id')
+      available_tokens = event.get('available_tokens', 16000)
+
+      if not code:
+         return {
+               'statusCode': 400,
+               'body': json.dumps({'error': 'No code provided'})
+         }
+
+      file_metadata = executor.download_input_files(input_files)
+      result = executor.execute_code(code, file_metadata, chat_session_id, available_tokens)
+
+      return result
+```        
+
 * Add request cancellation to stop reasoning or web search
 * Add custom MCP tool support
    - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
