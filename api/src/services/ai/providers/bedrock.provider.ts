@@ -89,7 +89,11 @@ export class BedrockApiProvider extends BaseApiProvider {
         };
 
     // AWS Bedrock client configuration
-    this.bedrockClient = new BedrockRuntimeClient(config);
+    this.bedrockClient = new BedrockRuntimeClient({
+      ...config,
+      retryMode: "standard", // https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html
+      maxAttempts: 10, // Set max attempts for retries
+    });
 
     // AWS Bedrock management client for non-runtime operations (listing models, etc.)
     this.bedrockManagementClient = new BedrockClient(config);

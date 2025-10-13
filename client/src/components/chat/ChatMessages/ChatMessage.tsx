@@ -11,19 +11,17 @@ import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { useAppSelector } from "@/store";
 import { Message, Document } from "@/types/graphql";
-import { InOutTokens } from "./plugins/InOutTokens";
-import { SwitchModel } from "./plugins/SwitchModel";
 
 interface ChatMessageProps {
   message: Message;
   index: number;
   disabled?: boolean;
   chatDocuments?: Document[];
-  plugins?: React.ReactNode;
+  pluginsLoader?: (message: Message) => React.ReactNode;
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index, disabled = false, chatDocuments, plugins } = props;
+  const { message, index, disabled = false, chatDocuments, pluginsLoader } = props;
 
   const {
     role,
@@ -233,6 +231,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   const mainMessage = useMemo(() => {
     const model = models.find(m => m.modelId === modelId);
+    const plugins = pluginsLoader ? pluginsLoader(message) : null;
 
     return (
       <>
@@ -264,6 +263,8 @@ export const ChatMessage = (props: ChatMessageProps) => {
           </Group>
         </Group>
         <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>
+          {streaming && !content && <Loader size="md" mb="md" />}
+
           {html ? (
             html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)
           ) : (
@@ -272,7 +273,6 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
           {details}
 
-          {streaming && !content && <Loader size="md" mb="md" />}
           <div className={classes.messageFooter}>
             <Tooltip label="Copy message" position="top" withArrow>
               <ActionIcon
@@ -344,12 +344,12 @@ export const ChatMessage = (props: ChatMessageProps) => {
             message={linkedMsg}
             parentIndex={index}
             index={linkedIndex}
-            plugins={<></>}
+            plugins={pluginsLoader?.(linkedMsg)}
           />
         ))}
       </Carousel>
     );
-  }, [linkedMessages, index]);
+  }, [linkedMessages, pluginsLoader, index]);
 
   if (!linkedMessagesCmp) {
     return (

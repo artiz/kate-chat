@@ -161,7 +161,23 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
           }
           ok(msg, "Message should exist to copy");
           const content = (msg.content || "").trim();
-          navigator.clipboard.writeText(content);
+          const html = msg.html || [];
+
+          if (html.length && html[0]) {
+            const blobHTML = new Blob([html.join("<br/>")], { type: "text/html" });
+            const blobPlain = new Blob([content], { type: "text/plain" });
+            navigator.clipboard
+              .write([new ClipboardItem({ [blobHTML.type]: blobHTML, [blobPlain.type]: blobPlain })])
+              .catch(err =>
+                notifications.show({
+                  title: "Error",
+                  message: err.message || "Failed to copy message",
+                  color: "red",
+                })
+              );
+          } else {
+            navigator.clipboard.writeText(content);
+          }
 
           const checkIcon = target.parentElement?.querySelector(".check-icon") as HTMLElement;
           if (checkIcon) {
@@ -224,6 +240,40 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
     setIsLinkedMessage(false);
   }, [messageToDelete, deleteMessage]);
 
+  const pluginsLoader = useCallback(
+    (msg: Message) => {
+      return (
+        <>
+          <EditMessage
+            message={msg}
+            onAddMessage={onAddMessage}
+            onAction={addEditedMessage}
+            onActionEnd={clearEditedMessage}
+            onMessageDeleted={onMessageDeleted}
+            disabled={updatedMessages.has(msg.id)}
+          />
+          <CallOtherModel
+            message={msg}
+            onAddMessage={onAddMessage}
+            onAction={addEditedMessage}
+            onActionEnd={clearEditedMessage}
+            disabled={updatedMessages.has(msg.id)}
+          />
+          <SwitchModel
+            message={msg}
+            onAddMessage={onAddMessage}
+            onAction={addEditedMessage}
+            onActionEnd={clearEditedMessage}
+            disabled={updatedMessages.has(msg.id)}
+          />
+
+          <InOutTokens message={msg} />
+        </>
+      );
+    },
+    [onAddMessage, onMessageDeleted, updatedMessages, addEditedMessage, clearEditedMessage]
+  );
+
   return (
     <>
       <Stack gap="xs" ref={componentRef} onClick={handleMessageClick}>
@@ -234,34 +284,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
               index={index}
               disabled={updatedMessages.has(msg.id) || deletingMessage}
               chatDocuments={chatDocuments}
-              plugins={
-                <>
-                  <EditMessage
-                    message={msg}
-                    onAddMessage={onAddMessage}
-                    onAction={addEditedMessage}
-                    onActionEnd={clearEditedMessage}
-                    onMessageDeleted={onMessageDeleted}
-                    disabled={updatedMessages.has(msg.id)}
-                  />
-                  <CallOtherModel
-                    message={msg}
-                    onAddMessage={onAddMessage}
-                    onAction={addEditedMessage}
-                    onActionEnd={clearEditedMessage}
-                    disabled={updatedMessages.has(msg.id)}
-                  />
-                  <SwitchModel
-                    message={msg}
-                    onAddMessage={onAddMessage}
-                    onAction={addEditedMessage}
-                    onActionEnd={clearEditedMessage}
-                    disabled={updatedMessages.has(msg.id)}
-                  />
-
-                  <InOutTokens message={msg} />
-                </>
-              }
+              pluginsLoader={pluginsLoader}
             />
           </Group>
         ))}

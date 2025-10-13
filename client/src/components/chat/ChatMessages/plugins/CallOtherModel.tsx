@@ -22,7 +22,7 @@ export const CallOtherModel = ({
   onAction,
   onActionEnd,
 }: PluginProps<Message>) => {
-  const { role, id, modelId, streaming, linkedToMessageId } = message;
+  const { role, id, modelId, streaming } = message;
   const { models: allModels } = useAppSelector(state => state.models);
   const activeModels = useMemo(() => {
     return allModels.filter(m => m.isActive && m.type !== ModelType.EMBEDDING && m.modelId != modelId);
@@ -63,10 +63,6 @@ export const CallOtherModel = ({
         });
       });
   };
-
-  if (linkedToMessageId) {
-    return null;
-  }
 
   return role === MessageRole.ASSISTANT ? (
     <Menu shadow="md" width={200}>

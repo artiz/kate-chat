@@ -166,21 +166,21 @@ export class MessagesService {
 
     await this.removeFiles(files, user, chat);
 
+    const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
+    const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
+
+    // reset original message to be re-processed
     originalMessage.role = MessageRole.ASSISTANT;
     originalMessage.content = ""; // Clear content to indicate it's being regenerated
     originalMessage.jsonContent = undefined;
     originalMessage.modelId = model.modelId; // Update to the new model
     originalMessage.modelName = model.name; // Update model name
-    if (originalMessage.metadata) {
-      originalMessage.metadata.usage = undefined;
-    }
+    originalMessage.metadata = {};
     originalMessage = await this.messageRepository.save(originalMessage);
 
     // Publish message to Queue
     await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
-    const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
-    const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
     if (documentIds && documentIds.length > 0) {
       if (!userMessage) throw new Error("Original user message not found in context");
       await this.publishRagMessage(

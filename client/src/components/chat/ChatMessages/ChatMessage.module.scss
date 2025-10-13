@@ -250,11 +250,16 @@
     margin-bottom: 1rem;
     border-bottom-right-radius: 0.25em;
     border-bottom-left-radius: 0.25em;
+    transition:
+      clip-path 0.5s ease,
+      height 0.5s ease,
+      opacity 0.5s ease;
 
     &.collapsed {
       clip-path: inset(0 0 100% 0);
       overflow-y: hidden;
       height: 0;
+      opacity: 0;
     }
   }
 

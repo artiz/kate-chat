@@ -540,8 +540,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
       {/* Messages */}
       <div
-        ref={messagesContainerRef}
-        onScroll={handleScroll}
         className={[
           classes.messagesContainer,
           loadCompleted ? classes.loadCompleted : "",
@@ -549,7 +547,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           loadCompleted && messages?.length === 0 ? classes.empty : "",
         ].join(" ")}
       >
-        <div className={classes.scroller}>
+        <div className={classes.scroller} ref={messagesContainerRef} onScroll={handleScroll}>
           <div ref={firstMessageRef} />
           {messagesLoading && (
             <Group justify="center" align="center" py="xl">
