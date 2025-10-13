@@ -16,6 +16,7 @@ import {
   Pagination,
   TextInput,
   Badge,
+  ScrollArea,
 } from "@mantine/core";
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
@@ -473,28 +474,32 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                 centered
                 size="xl"
               >
-                <Badge color={getStatusColor(summaryDocument?.status)} p="md" mb="sm">
-                  {summaryDocument?.status}
-                </Badge>
+                <Stack gap="sm">
+                  <Group>
+                    <Badge color={getStatusColor(summaryDocument?.status)} p="sm">
+                      {summaryDocument?.status}
+                    </Badge>
+                    <Box size="sm" fz="12">
+                      {summaryDocument?.statusInfo}
+                    </Box>
+                  </Group>
 
-                <Box size="sm" fz="12">
-                  {summaryDocument?.statusInfo}
-                </Box>
+                  <ScrollArea.Autosize mah={"40vh"}>
+                    <Box size="sm" fz="12">
+                      <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
+                    </Box>
+                  </ScrollArea.Autosize>
+                  <Alert p="xs" title="Summarization Model" color="blue">
+                    {summaryDocument?.summaryModelId}
+                  </Alert>
+                  <Alert p="xs" title="Embeddings Model" color="green">
+                    {summaryDocument?.embeddingsModelId}
+                  </Alert>
 
-                <Box size="sm" fz="12">
-                  <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
-                </Box>
-
-                <Alert p="xs" mb="sm" title="Summarization Model" color="blue">
-                  {summaryDocument?.summaryModelId}
-                </Alert>
-                <Alert p="xs" mb="sm" title="Embeddings Model" color="green">
-                  {summaryDocument?.embeddingsModelId}
-                </Alert>
-
-                <Group mt="md" justify="flex-end">
-                  <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
-                </Group>
+                  <Group mt="md" justify="flex-end">
+                    <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
+                  </Group>
+                </Stack>
               </Modal>
 
               <DocumentsTable

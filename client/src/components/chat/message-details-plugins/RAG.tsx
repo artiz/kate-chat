@@ -1,74 +1,89 @@
-import React, { useCallback, useState } from "react";
-import { ActionIcon, Tooltip } from "@mantine/core";
-import { IconTrash } from "@tabler/icons-react";
-import { DeleteMessageResponse, Message } from "@/types/graphql";
+import React from "react";
+import { Text, Box, Group } from "@mantine/core";
+import { Message, Document } from "@/types/graphql";
+import { IconClipboardData, IconFileSearch, IconReportSearch } from "@tabler/icons-react";
 
-/** Delete Message */
-export const RAGDetails = (message: Message) => {
-  const { metadata = {} } = message;
-  const { relevantsChunks = [], documentIds = [] } = metadata;
+/** RAG Details - Display semantic search documents and relevant chunks */
+export const RAG =
+  (documents: Document[] = []) =>
+  (message: Message): React.ReactNode => {
+    if (!message || !message.metadata) return null;
 
-  // if (documentIds.length && chatDocuments) {
-  //   const docsMap = chatDocuments.reduce(
-  //     (acc, doc) => {
-  //       acc[doc.id] = doc;
-  //       return acc;
-  //     },
-  //     {} as Record<string, Document>
-  //   );
+    const relevantsChunks = message.metadata.relevantsChunks || [];
+    const documentIds = message.metadata.documentIds || [];
 
-  //   const cmp = (
-  //     <div key="rag-search">
-  //       <Text w={500} size="sm">
-  //         Semantic search
-  //       </Text>
-  //       <ol>
-  //         {documentIds.map((docId, idx) => (
-  //           <li key={idx}>
-  //             {docsMap[docId] ? (
-  //               docsMap[docId].downloadUrl ? (
-  //                 <a href={docsMap[docId].downloadUrl} target="_blank" rel="noopener noreferrer">
-  //                   {docsMap[docId].fileName}
-  //                 </a>
-  //               ) : (
-  //                 docsMap[docId].fileName
-  //               )
-  //             ) : (
-  //               docId
-  //             )}
-  //           </li>
-  //         ))}
-  //       </ol>
-  //     </div>
-  //   );
+    const detailsNodes: React.ReactNode[] = [];
+    if (documentIds.length && documents) {
+      const docsMap = documents.reduce(
+        (acc, doc) => {
+          acc[doc.id] = doc;
+          return acc;
+        },
+        {} as Record<string, Document>
+      );
 
-  //   detailsNodes.push(cmp);
-  // }
+      const cmp = (
+        <>
+          <Group justify="flex-start" align="center" gap="xs">
+            {relevantsChunks.length ? <IconReportSearch size={16} /> : <IconFileSearch size={16} />}
+            <Text fw={600} size="sm">
+              {relevantsChunks.length ? "RAG search results" : "RAG search"}
+            </Text>
+          </Group>
 
-  // if (relevantsChunks.length) {
-  //   const cmp = (
-  //     <div key="rag-chunks">
-  //       <Text w={500} size="sm" mt="lg">
-  //         Related chunks
-  //       </Text>
-  //       {relevantsChunks.map((chunk, idx) => (
-  //         <div key={idx}>
-  //           <Text size="xs" c="dimmed">
-  //             {chunk.documentName || chunk.id} (Page {chunk.page})
-  //           </Text>
-  //           <Text size="xs" c="dimmed">
-  //             Relevance: {chunk.relevance || "N/A"}
-  //           </Text>
-  //           <Box fz="12">
-  //             <pre>{chunk.content}</pre>
-  //           </Box>
-  //         </div>
-  //       ))}
-  //     </div>
-  //   );
+          <div key="rag-search">
+            <ol>
+              {documentIds.map((docId, idx) => (
+                <li key={idx}>
+                  {docsMap[docId] ? (
+                    docsMap[docId].downloadUrl ? (
+                      <a href={docsMap[docId].downloadUrl} target="_blank" rel="noopener noreferrer">
+                        {docsMap[docId].fileName}
+                      </a>
+                    ) : (
+                      docsMap[docId].fileName
+                    )
+                  ) : (
+                    docId
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </>
+      );
 
-  //   detailsNodes.push(cmp);
-  // }
+      detailsNodes.push(cmp);
+    }
 
-  return <></>;
-};
+    if (relevantsChunks.length) {
+      const cmp = (
+        <div key="rag-chunks">
+          <Group justify="flex-start" align="center" gap="xs" mt="lg">
+            <IconClipboardData size={16} />
+            <Text fw={600} size="sm">
+              Related chunks
+            </Text>
+          </Group>
+
+          {relevantsChunks.map((chunk, idx) => (
+            <div key={idx}>
+              <Text size="xs" c="dimmed">
+                {chunk.documentName || chunk.id} (Page {chunk.page})
+              </Text>
+              <Text size="xs" c="dimmed">
+                Relevance: {chunk.relevance || "N/A"}
+              </Text>
+              <Box fz="12">
+                <pre>{chunk.content}</pre>
+              </Box>
+            </div>
+          ))}
+        </div>
+      );
+
+      detailsNodes.push(cmp);
+    }
+
+    return detailsNodes.length ? detailsNodes : null;
+  };

@@ -144,7 +144,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     if (!chatId) return;
 
     if (deleteAfter) {
-      return setMessages(
+      setMessages(
         prev =>
           prev?.filter(msg => {
             if (msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id) {
@@ -154,47 +154,46 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             return true;
           }) || []
       );
+    } else {
+      if (!messagesToDelete || messagesToDelete.length === 0) return;
+      const messageIds = new Set(messagesToDelete.map(m => m.id));
+
+      setMessages(prev => {
+        if (!prev) return []; // If no messages yet, return empty array
+        // linked one delete
+        const linkedMessages = new Set(messagesToDelete.filter(m => m.linkedToMessageId).map(m => m.linkedToMessageId));
+        if (linkedMessages.size) {
+          return prev.map(msg => {
+            if (linkedMessages.has(msg.id)) {
+              return { ...msg, linkedMessages: msg.linkedMessages?.filter(lm => !messageIds.has(lm.id)) };
+            }
+            return msg;
+          });
+        } else {
+          // Filter out messages that match the IDs to be removed
+          const updatedMessages = prev.filter(msg => !messageIds.has(msg.id));
+          if (updatedMessages.length === prev.length) {
+            return prev;
+          }
+          return updatedMessages;
+        }
+      });
     }
 
-    if (!messagesToDelete || messagesToDelete.length === 0) return;
-    const messageIds = new Set(messagesToDelete.map(m => m.id));
-
-    setMessages(prev => {
-      if (!prev) return []; // If no messages yet, return empty array
-      // linked one delete
-      const linkedMessages = new Set(messagesToDelete.filter(m => m.linkedToMessageId).map(m => m.linkedToMessageId));
-      if (linkedMessages.size) {
-        return prev.map(msg => {
-          if (linkedMessages.has(msg.id)) {
-            return { ...msg, linkedMessages: msg.linkedMessages?.filter(lm => !messageIds.has(lm.id)) };
-          }
-          return msg;
-        });
-      } else {
-        // Filter out messages that match the IDs to be removed
-        const updatedMessages = prev.filter(msg => !messageIds.has(msg.id));
-        if (updatedMessages.length === prev.length) {
-          return prev;
-        }
-        return updatedMessages;
-      }
-    });
-  };
-
-  useEffect(() => {
     // If the last message was removed, reset the lastBotMessage in chat
-    if (!chatId || !messages) return;
-    const lastMsgNdx = messages.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
-    const lastMsg = lastMsgNdx != -1 ? messages[lastMsgNdx] : undefined;
-    if (!chat || !chat.lastBotMessageId || chat.lastBotMessageId === lastMsg?.id) return;
-
-    updateChat(chatId, {
-      ...chat,
-      lastBotMessage: lastMsg?.content || "...",
-      lastBotMessageId: lastMsg?.id || undefined,
-      lastBotMessageHtml: lastMsg?.html || undefined,
-    });
-  }, [chatId, chat, messages]);
+    if (messages) {
+      const lastMsgNdx = messages.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
+      const lastMsg = lastMsgNdx != -1 ? messages[lastMsgNdx] : undefined;
+      if (chat?.lastBotMessageId && chat.lastBotMessageId === lastMsg?.id) {
+        updateChat(chatId, {
+          ...chat,
+          lastBotMessage: lastMsg?.content || "...",
+          lastBotMessageId: lastMsg?.id || undefined,
+          lastBotMessageHtml: lastMsg?.html || undefined,
+        });
+      }
+    }
+  };
 
   // Update chat mutation (for changing the model)
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {

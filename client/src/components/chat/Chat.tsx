@@ -39,15 +39,16 @@ import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
 
-import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
-
 import classes from "./Chat.module.scss";
 import { ToolType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
-import { ImageInput, Message, ChatDocument, CreateMessageResponse } from "@/types/graphql";
+import { ImageInput, ChatDocument, CreateMessageResponse } from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
 import { CREATE_MESSAGE } from "@/store/services/graphql";
+import { ChatDocumentProvider } from "./ChatDocumentContext";
+import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
+import { RAG } from "./message-details-plugins/RAG";
 
 interface IProps {
   chatId?: string;
@@ -544,13 +545,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
           <div className={classes.messagesList}>
             {messages && (
-              <ChatMessagesList
-                messages={messages}
-                onMessageDeleted={removeMessages} // Reload messages after deletion
-                onAddMessage={addChatMessage}
-                models={models}
-                plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-              />
+              <ChatDocumentProvider documents={chatDocuments}>
+                <ChatMessagesList
+                  messages={messages}
+                  onMessageDeleted={removeMessages} // Reload messages after deletion
+                  onAddMessage={addChatMessage}
+                  models={models}
+                  plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
+                  detailsPlugins={[RAG(chatDocuments)]}
+                />
+              </ChatDocumentProvider>
             )}
           </div>
         </div>

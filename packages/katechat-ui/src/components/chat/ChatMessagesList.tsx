@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Stack, Group } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
-import { ok } from "@/lib/assert";
+import { notEmpty, ok } from "@/lib/assert";
 import { ImageModal } from "@/components/modal/ImagePopup";
 import { Message, Model, PluginProps } from "@/core";
 import { ChatMessage } from "./message/ChatMessage";
@@ -12,6 +12,7 @@ interface ChatMessagesProps {
   onMessageDeleted?: (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => void;
   onAddMessage?: (message: Message) => void;
   plugins?: React.FC<PluginProps<Message>>[];
+  detailsPlugins?: ((message: Message) => React.ReactNode)[];
   models: Model[];
 }
 
@@ -20,6 +21,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
   onMessageDeleted,
   onAddMessage,
   plugins = [],
+  detailsPlugins = [],
   models = [],
 }) => {
   const componentRef = useRef<HTMLDivElement>(null);
@@ -181,6 +183,14 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
     [plugins, onAddMessage, onMessageDeleted, updatedMessages, addEditedMessage, clearEditedMessage]
   );
 
+  const messageDetailsLoader = useCallback(
+    (msg: Message) => {
+      const details = detailsPlugins.map((plugin, idx) => plugin(msg)).filter(notEmpty);
+      return details.length ? details : null;
+    },
+    [plugins, detailsPlugins]
+  );
+
   return (
     <>
       <Stack gap="xs" ref={componentRef} onClick={handleMessageClick}>
@@ -191,6 +201,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
               index={index}
               disabled={updatedMessages.has(msg.id)}
               pluginsLoader={pluginsLoader}
+              messageDetailsLoader={messageDetailsLoader}
               models={models}
             />
           </Group>

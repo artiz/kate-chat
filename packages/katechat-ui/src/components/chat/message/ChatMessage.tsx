@@ -17,11 +17,12 @@ interface ChatMessageProps {
   index: number;
   disabled?: boolean;
   pluginsLoader?: (message: Message) => React.ReactNode;
+  messageDetailsLoader?: (message: Message) => React.ReactNode;
   models?: Model[];
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index, disabled = false, pluginsLoader, models } = props;
+  const { message, index, disabled = false, pluginsLoader, messageDetailsLoader, models } = props;
 
   const {
     role,
@@ -138,23 +139,18 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const toggleDetails = () => setShowDetails(s => !s);
 
   useEffect(() => {
-    const detailsNodes: ReactNode[] = [];
-
-    // TODO: add RAG info
-
-    if (detailsNodes.length) {
+    const detailsContent: React.ReactNode = messageDetailsLoader ? messageDetailsLoader(message) : null;
+    if (detailsContent) {
       const cmp = (
         <Box mt="md">
           <Group mb={5}>
             <Button onClick={toggleDetails} p="xs" variant="light" size="xs">
               Details
             </Button>
-
-            <IconFile size={24} />
           </Group>
 
           <Collapse in={showDetails}>
-            <div className={classes.detailsBlock}>{detailsNodes}</div>
+            <div className={classes.detailsBlock}>{detailsContent}</div>
           </Collapse>
         </Box>
       );
@@ -163,7 +159,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     } else {
       setDetails(null);
     }
-  }, [message?.metadata?.relevantsChunks, message?.metadata?.documentIds, showDetails, isUserMessage]);
+  }, [messageDetailsLoader, showDetails]);
 
   const mainMessage = useMemo(() => {
     const plugins = pluginsLoader ? pluginsLoader(message) : null;
