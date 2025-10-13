@@ -1,9 +1,7 @@
 import esbuild from "esbuild";
-import { config } from "dotenv";
 import { clean } from "esbuild-plugin-clean";
 import { sassPlugin, postcssModules } from "esbuild-sass-plugin";
 import fs from "fs";
-import path from "path";
 
 // Create directory if it doesn't exist
 if (!fs.existsSync("./dist")) {

@@ -11,15 +11,12 @@
     "test": "jest --passWithNoTests --coverage"
   },
   "dependencies": {
-    "@tabler/icons-react": "^3.1.0",
-    "esbuild-sass-plugin": "^3.3.1",
-    "highlight.js": "^11.9.0",
-    "i18next": "^23.10.1",
+    "highlight.js": "^11.11.1",
+    "i18next": "^23.16.8",
     "lodash": "^4.17.21",
-    "marked": "^15.0.1",
-    "marked-highlight": "^2.2.1",
-    "marked-katex-extension": "^5.1.4",
-    "postcss-modules": "^6.0.1"
+    "marked": "^15.0.12",
+    "marked-highlight": "^2.2.2",
+    "marked-katex-extension": "^5.1.5"
   },
   "peerDependencies": {
     "@mantine/carousel": "8.3.3",
@@ -29,6 +26,7 @@
     "@mantine/hooks": "8.3.3",
     "@mantine/modals": "8.3.3",
     "@mantine/notifications": "8.3.3",
+    "@tabler/icons-react": "^3.1.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-redux": "^9.2.0",
@@ -56,10 +54,12 @@
     "esbuild": "^0.25.9",
     "esbuild-plugin-clean": "^1.0.1",
     "esbuild-plugin-polyfill-node": "^0.3.0",
+    "esbuild-sass-plugin": "^3.3.1",
     "express": "^4.19.2",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.5.3",
+    "postcss-modules": "^6.0.1",
     "postcss-preset-mantine": "^1.13.0",
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.2.5",
