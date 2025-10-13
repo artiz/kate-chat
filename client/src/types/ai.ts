@@ -1,5 +1,3 @@
-export type ApiProvider = "aws_bedrock" | "open_ai" | "yandex_fm";
-
 export enum DocumentStatus {
   UPLOAD = "upload",
   STORAGE_UPLOAD = "storage_upload",

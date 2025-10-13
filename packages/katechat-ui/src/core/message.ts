@@ -1,3 +1,5 @@
+import { User } from "./user";
+
 export enum MessageType {
   MESSAGE = "message",
   SYSTEM = "system",
@@ -19,15 +21,6 @@ export enum ResponseStatus {
   REASONING = "reasoning",
   COMPLETED = "completed",
   ERROR = "error",
-}
-
-export interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  avatarUrl?: string;
-  defaultModelId?: string;
 }
 
 export interface Message<TUser = User, TMetadata = Record<string, unknown>> {

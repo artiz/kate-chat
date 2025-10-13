@@ -1,5 +1,5 @@
-import { ApiProvider } from "@/types/ai";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { ApiProvider, Model as BaseModel } from "@katechat/ui";
 import { logout } from "..";
 
 export interface ProviderDetail {
@@ -33,30 +33,13 @@ export interface UsageCostsInfo {
   costs: ServiceCostInfo[];
 }
 
-export enum ModelType {
-  CHAT = "CHAT",
-  EMBEDDING = "EMBEDDING",
-  IMAGE_GENERATION = "IMAGE_GENERATION",
-  AUDIO_GENERATION = "AUDIO_GENERATION",
-  OTHER = "OTHER",
-}
-
 export enum ToolType {
   WEB_SEARCH = "WEB_SEARCH",
   CODE_INTERPRETER = "CODE_INTERPRETER",
   MCP = "MCP",
 }
 
-export interface Model {
-  id: string;
-  name: string;
-  modelId: string;
-  apiProvider: ApiProvider;
-  type: ModelType;
-  provider: string;
-  isActive: boolean;
-  imageInput?: boolean;
-  maxInputTokens?: number;
+export interface Model extends BaseModel {
   tools?: ToolType[];
 }
 

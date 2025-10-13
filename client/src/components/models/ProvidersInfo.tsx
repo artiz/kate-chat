@@ -1,10 +1,9 @@
 import React, { useMemo } from "react";
 import { Text, Grid, Card, Button, Group, Stack, Badge, Divider, Table, Alert, Code } from "@mantine/core";
-import { IconBrandOpenai, IconBrandAws, IconServer, IconReportMoney } from "@tabler/icons-react";
+import { IconReportMoney } from "@tabler/icons-react";
 import { ProviderInfo } from "@/store/slices/modelSlice";
-import { ApiProvider } from "@reduxjs/toolkit/query/react";
 import { Link } from "react-router-dom";
-import { ProviderIcon } from "../icons/ProviderIcon";
+import { ProviderIcon } from "@katechat/ui/src/components/icons/ProviderIcon";
 
 interface ProvidersInfoProps {
   providers: ProviderInfo[];

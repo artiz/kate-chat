@@ -36,7 +36,7 @@ const marked = new Marked(
     throwOnError: false,
     output: "html",
   }),
-  { silent: false, breaks: true, gfm: true }
+  { silent: false, breaks: true }
 );
 
 const renderer = new Renderer();

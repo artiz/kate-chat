@@ -186,7 +186,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     if (!chatId || !messages) return;
     const lastMsgNdx = messages.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
     const lastMsg = lastMsgNdx != -1 ? messages[lastMsgNdx] : undefined;
-    if (!chat || chat.lastBotMessageId === lastMsg?.id) return;
+    if (!chat || !chat.lastBotMessageId || chat.lastBotMessageId === lastMsg?.id) return;
 
     updateChat(chatId, {
       ...chat,

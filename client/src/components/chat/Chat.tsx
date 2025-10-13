@@ -29,7 +29,7 @@ import {
   IconCloudCode,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
-import { ChatMessages } from "./ChatMessages/ChatMessages";
+import { ChatMessagesList, ModelType } from "@katechat/ui";
 import { ChatSettings } from "./ChatSettings";
 import { FileDropzone } from "../documents/FileDropzone/FileDropzone";
 import { notifications } from "@mantine/notifications";
@@ -42,25 +42,12 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 
 import classes from "./Chat.module.scss";
-import { ModelType, ToolType } from "@/store/slices/modelSlice";
+import { ToolType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
-import { ImageInput, Message, ChatDocument } from "@/types/graphql";
-
-const CREATE_MESSAGE = gql`
-  mutation CreateMessage($input: CreateMessageInput!) {
-    createMessage(input: $input) {
-      id
-      content
-      role
-      createdAt
-    }
-  }
-`;
-
-interface CreateMessageResponse {
-  createMessage: Message;
-}
+import { ImageInput, Message, ChatDocument, CreateMessageResponse } from "@/types/graphql";
+import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
+import { CREATE_MESSAGE } from "@/store/services/graphql";
 
 interface IProps {
   chatId?: string;
@@ -557,11 +544,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
           <div className={classes.messagesList}>
             {messages && (
-              <ChatMessages
+              <ChatMessagesList
                 messages={messages}
-                chatDocuments={chatDocuments}
                 onMessageDeleted={removeMessages} // Reload messages after deletion
                 onAddMessage={addChatMessage}
+                models={models}
+                plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
               />
             )}
           </div>

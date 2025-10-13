@@ -180,6 +180,17 @@ export const UPDATE_USER_MUTATION = gql`
   }
 `;
 
+export const CREATE_MESSAGE = gql`
+  mutation CreateMessage($input: CreateMessageInput!) {
+    createMessage(input: $input) {
+      id
+      content
+      role
+      createdAt
+    }
+  }
+`;
+
 export const UPDATE_CHAT_MUTATION = gql`
   mutation UpdateChat($id: ID!, $input: UpdateChatInput!) {
     updateChat(id: $id, input: $input) {

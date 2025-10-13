@@ -5,6 +5,10 @@ import { Model, ToolType, ProviderInfo } from "@/store/slices/modelSlice";
 
 export type Message = BaseMessage<User, MessageMetadata>;
 
+export interface CreateMessageResponse {
+  createMessage: Message;
+}
+
 export interface CurrentUserResponse {
   currentUser: User;
 }

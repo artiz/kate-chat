@@ -21,6 +21,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "src/**/*"],
+  "include": ["**/*.ts", "**/*.tsx", "src/**/*", "../packages/katechat-ui/src/**/*"],
   "exclude": ["../node_modules/**/*.*", "node_modules/**/*.*", "**/*.test.tsx", "**/*.test.ts"]
 }

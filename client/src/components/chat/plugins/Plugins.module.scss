@@ -1,0 +1,8 @@
+.switchModelDropdown {
+  max-height: 300px;
+  overflow-y: auto;
+
+  :global .mantine-Menu-itemLabel {
+    font-size: 90%;
+  }
+}

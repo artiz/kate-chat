@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@apollo/client";
 import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
-import { addChat, Chat } from "@/store/slices/chatSlice";
+import { addChat } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION, CreateChatInput } from "../store/services/graphql";
+import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION, CreateChatInput, Chat } from "@/store/services/graphql";
 import { useChatMessages } from "@/hooks";
-import { ModelType } from "@/store/slices/modelSlice";
+import { ModelType } from "@katechat/ui";
 
 export const CreateChat: React.FC = () => {
   const navigate = useNavigate();

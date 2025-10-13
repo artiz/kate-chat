@@ -33,7 +33,7 @@ import {
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { GET_ALL_IMAGES, GetAllImagesResponse, LibraryImage, GetImagesInput } from "../../store/services/graphql";
-import { ImageModal } from "../modal/ImagePopup";
+import { ImageModal } from "@katechat/ui/src/components/modal/ImagePopup";
 
 export const ImageLibrary: React.FC = () => {
   const client = useApolloClient();
@@ -236,7 +236,6 @@ export const ImageLibrary: React.FC = () => {
         )}
       </Stack>
 
-      {/* Image Preview Modal */}
       <ImageModal
         fileName={selectedImage?.fileName ?? ""}
         fileUrl={selectedImage?.fileUrl ?? ""}
