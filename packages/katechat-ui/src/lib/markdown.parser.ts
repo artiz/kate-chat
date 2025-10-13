@@ -49,15 +49,24 @@ renderer.link = ({ href, title, text }) => {
   return `<a target="_blank" rel="noopener noreferrer" href="${url}" title="${escapeHtml(title) || ""}">${escapeHtml(text)}</a>`;
 };
 
+export function normalizeMatJAX(input: string): string {
+  return input
+    ? input
+        .replace(/\\\(([\s\S]+?)\\\)/g, (_, expr) => `$${expr}$`)
+        // Block math: \[ ... \] → $$ ... $$ (on newlines for KaTeX block mode)
+        .replace(/\\\[([\s\S]+?)\\\]/g, (_, expr) => `\n$$${expr}$$\n`)
+    : "";
+}
+
 /**
  * Parse markdown to html blocks
  * @param content Raw markdown
  * @returns Array for formatted HTML blocks to be rendered
  */
-
 export function parseMarkdown(content?: string | null): string[] {
   if (!content) return [];
 
+  content = normalizeMatJAX(content);
   // process complex code blocks, tables as one block
   if (content.match(/(```)|(\|---)/)) {
     return [marked.parse(content, { renderer }) as string];

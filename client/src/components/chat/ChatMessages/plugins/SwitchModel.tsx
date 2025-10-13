@@ -21,7 +21,7 @@ export const SwitchModel = ({
   onAction,
   onActionEnd,
 }: PluginProps<Message>) => {
-  const { role, id, modelId, modelName, streaming, linkedToMessageId } = message;
+  const { role, id, modelId, modelName, streaming } = message;
   const { models: allModels } = useAppSelector(state => state.models);
   const activeModels = useMemo(() => {
     return allModels.filter(m => m.isActive && m.type !== ModelType.EMBEDDING && m.modelId != modelId);
@@ -62,10 +62,6 @@ export const SwitchModel = ({
       },
     });
   };
-
-  if (linkedToMessageId) {
-    return null;
-  }
 
   return role === MessageRole.ASSISTANT || role === MessageRole.ERROR ? (
     <Menu shadow="md" width={200}>
