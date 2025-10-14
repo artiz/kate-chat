@@ -12,7 +12,6 @@ import {
   Select,
   Tooltip,
   TextInput,
-  Loader,
   Stack,
   Alert,
   Popover,
@@ -24,31 +23,29 @@ import {
   IconEdit,
   IconCheck,
   IconSettings,
-  IconCircleChevronDown,
   IconWorldSearch,
   IconCloudCode,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
-import { ChatMessagesList, ModelType } from "@katechat/ui";
+import { ModelType, ChatMessagesContainer } from "@katechat/ui";
 import { ChatSettings } from "./ChatSettings";
 import { FileDropzone } from "../documents/FileDropzone/FileDropzone";
 import { notifications } from "@mantine/notifications";
-import { useChatSubscription, useChatMessages, useIntersectionObserver } from "@/hooks";
+import { useChatSubscription, useChatMessages } from "@/hooks";
 
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { notEmpty, ok } from "@/lib/assert";
 import { ModelInfo } from "@/components/models/ModelInfo";
 
-import classes from "./Chat.module.scss";
-import { ToolType } from "@/store/slices/modelSlice";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
-import { ImageInput, ChatDocument, CreateMessageResponse } from "@/types/graphql";
+import { ImageInput, ChatDocument, CreateMessageResponse, ToolType } from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
 import { CREATE_MESSAGE } from "@/store/services/graphql";
-import { ChatDocumentProvider } from "./ChatDocumentContext";
 import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 import { RAG } from "./message-details-plugins/RAG";
+
+import classes from "./Chat.module.scss";
 
 interface IProps {
   chatId?: string;
@@ -67,10 +64,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
 
-  const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
-  const anchorTimer = useRef<NodeJS.Timeout | null>(null);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [selectedTools, setSelectedTools] = useState<Set<ToolType>>(new Set());
 
@@ -136,63 +130,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
       setSelectedTools(new Set());
     }
   }, [chat?.tools]);
-
-  useEffect(() => {
-    if (loadCompleted) {
-      setShowAnchorButton(false);
-      setTimeout(scrollToBottom, 200);
-    }
-  }, [chatId, loadCompleted]);
-
-  // #region Scrolling
-  const scrollToBottom = useCallback(() => {
-    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
-  }, [messagesContainerRef]);
-
-  const autoScroll = useCallback(() => {
-    if (!showAnchorButton) {
-      scrollToBottom();
-    }
-  }, [scrollToBottom, showAnchorButton]);
-
-  useEffect(() => {
-    autoScroll();
-  }, [messages, chat?.lastBotMessage, autoScroll]);
-
-  const handleScroll = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
-      anchorTimer.current && clearTimeout(anchorTimer.current);
-
-      if (scrollHeight - scrollTop - clientHeight < 2) {
-        setShowAnchorButton(false);
-      } else if (messages?.length) {
-        if (streaming) {
-          anchorTimer.current = setTimeout(() => {
-            setShowAnchorButton(true);
-          }, 100);
-        } else {
-          setShowAnchorButton(true);
-        }
-      }
-    },
-    [messages?.length, streaming]
-  );
-
-  const anchorHandleClick = useCallback(() => {
-    setShowAnchorButton(false);
-    scrollToBottom();
-  }, [scrollToBottom]);
-
-  const firstMessageRef = useIntersectionObserver<HTMLDivElement>(
-    () => {
-      loadMoreMessages();
-    },
-    [loadMoreMessages],
-    200
-  );
-
-  // #endregion
 
   // #region Send message
   const [createMessage] = useMutation<CreateMessageResponse>(CREATE_MESSAGE, {
@@ -504,7 +441,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </div>
       </div>
 
-      <Group mb="sm">
+      <Group>
         {!appConfig?.s3Connected && (
           <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
         )}
@@ -526,46 +463,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
         />
       </Group>
 
-      {/* Messages */}
-      <div
-        className={[
-          classes.messagesContainer,
-          loadCompleted ? classes.loadCompleted : "",
-          streaming ? classes.streaming : "",
-          loadCompleted && messages?.length === 0 ? classes.empty : "",
-        ].join(" ")}
-      >
-        <div className={classes.scroller} ref={messagesContainerRef} onScroll={handleScroll}>
-          <div ref={firstMessageRef} />
-          {messagesLoading && (
-            <Group justify="center" align="center" py="xl">
-              <Loader />
-            </Group>
-          )}
-
-          <div className={classes.messagesList}>
-            {messages && (
-              <ChatDocumentProvider documents={chatDocuments}>
-                <ChatMessagesList
-                  messages={messages}
-                  onMessageDeleted={removeMessages} // Reload messages after deletion
-                  onAddMessage={addChatMessage}
-                  models={models}
-                  plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-                  detailsPlugins={[RAG(chatDocuments)]}
-                />
-              </ChatDocumentProvider>
-            )}
-          </div>
-        </div>
-      </div>
-      <div style={{ position: "relative" }}>
-        <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
-          <div className={classes.anchor}>
-            <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
-          </div>
-        </div>
-      </div>
+      <ChatMessagesContainer
+        messages={messages}
+        models={models}
+        addChatMessage={addChatMessage}
+        removeMessages={removeMessages}
+        loadMoreMessages={loadMoreMessages}
+        plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
+        detailsPlugins={[RAG(chatDocuments)]}
+        streaming={streaming}
+        loading={messagesLoading}
+        loadCompleted={loadCompleted}
+      />
 
       {messagesLimitReached && (
         <Tooltip label={`You have reached the limit of ${appConfig?.maxChatMessages} messages in this chat`}>

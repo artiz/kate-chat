@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
-import { Text, Group, Avatar, ActionIcon, Tooltip } from "@mantine/core";
+import { Text, Group, Avatar } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { IconCopy, IconCopyCheck, IconRobot } from "@tabler/icons-react";
+import { IconRobot } from "@tabler/icons-react";
 
 import { Message, Model } from "@/core";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { MessageStatus } from "./MessageStatus";
+import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import classes from "./ChatMessage.module.scss";
 
@@ -32,13 +33,11 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
           <Text size="sm" fw={500} c="teal">
             {message.modelName}
           </Text>
-          {message.status && (
-            <>
-              <MessageStatus status={message.status} />
-              <Text size="xs" c="dimmed">
-                {message.statusInfo}
-              </Text>
-            </>
+          {message.status && <MessageStatus status={message.status} />}
+          {message.statusInfo && (
+            <Text size="xs" c="dimmed">
+              {message.statusInfo}
+            </Text>
           )}
         </Group>
       </Group>
@@ -53,22 +52,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
         )}
 
         <div className={classes.messageFooter}>
-          <Tooltip label="Copy message" position="top" withArrow>
-            <ActionIcon
-              className="copy-message-btn"
-              data-message-id={message.id}
-              data-message-index={parentIndex}
-              data-message-linked-index={index}
-              size="sm"
-              color="gray"
-              variant="transparent"
-            >
-              <IconCopy />
-            </ActionIcon>
-          </Tooltip>
-          <ActionIcon disabled size="sm" className="check-icon">
-            <IconCopyCheck />
-          </ActionIcon>
+          <CopyMessageButton messageId={message.id} messageIndex={parentIndex} linkedMessageIndex={index} />
 
           {plugins}
         </div>

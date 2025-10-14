@@ -14,26 +14,14 @@ import {
   Group,
   Button,
   Stack,
-  ScrollArea,
   Box,
   ActionIcon,
-  Modal,
-  Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconPhoto,
-  IconCalendar,
-  IconMessage,
-  IconZoomIn,
-  IconExternalLink,
-  IconUser,
-  IconUserUp,
-  IconMessageCircleUp,
-} from "@tabler/icons-react";
+import { IconPhoto, IconCalendar, IconMessage, IconZoomIn, IconUserUp, IconMessageCircleUp } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { ImagePopup } from "@katechat/ui";
 import { GET_ALL_IMAGES, GetAllImagesResponse, LibraryImage, GetImagesInput } from "../../store/services/graphql";
-import { ImageModal } from "@katechat/ui/src/components/modal/ImagePopup";
 
 export const ImageLibrary: React.FC = () => {
   const client = useApolloClient();
@@ -236,13 +224,13 @@ export const ImageLibrary: React.FC = () => {
         )}
       </Stack>
 
-      <ImageModal
+      <ImagePopup
         fileName={selectedImage?.fileName ?? ""}
         fileUrl={selectedImage?.fileUrl ?? ""}
         mimeType={selectedImage?.mimeType}
         createdAt={selectedImage?.createdAt}
-        chatId={selectedImage?.chat?.id}
-        chatTitle={selectedImage?.chat?.title}
+        sourceUrl={selectedImage?.chat?.id ? `/chat/${selectedImage.chat.id}` : undefined}
+        sourceTitle={selectedImage?.chat?.title}
         onClose={resetSelectedImage}
       />
     </Container>

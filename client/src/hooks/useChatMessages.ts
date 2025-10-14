@@ -143,17 +143,34 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   }) => {
     if (!chatId) return;
 
+    const resetLastBotMessage = (messages: Message[] = []) => {
+      // If the last message was removed, reset the lastBotMessage in chat
+      const lastMsgNdx = messages.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
+      const lastMsg = lastMsgNdx != -1 ? messages[lastMsgNdx] : undefined;
+      if (chat?.lastBotMessageId && chat.lastBotMessageId !== lastMsg?.id) {
+        updateChat(chatId, {
+          ...chat,
+          lastBotMessage: lastMsg?.content || "...",
+          lastBotMessageId: lastMsg?.id || undefined,
+          lastBotMessageHtml: lastMsg?.html || undefined,
+        });
+      }
+    };
+
     if (deleteAfter) {
-      setMessages(
-        prev =>
+      setMessages(prev => {
+        const filtered =
           prev?.filter(msg => {
             if (msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id) {
               return false; // Remove messages after the specified message
             }
 
             return true;
-          }) || []
-      );
+          }) || [];
+
+        resetLastBotMessage(filtered);
+        return filtered;
+      });
     } else {
       if (!messagesToDelete || messagesToDelete.length === 0) return;
       const messageIds = new Set(messagesToDelete.map(m => m.id));
@@ -171,27 +188,14 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           });
         } else {
           // Filter out messages that match the IDs to be removed
-          const updatedMessages = prev.filter(msg => !messageIds.has(msg.id));
-          if (updatedMessages.length === prev.length) {
+          const filtered = prev.filter(msg => !messageIds.has(msg.id));
+          if (filtered.length === prev.length) {
             return prev;
           }
-          return updatedMessages;
+          resetLastBotMessage(filtered);
+          return filtered;
         }
       });
-    }
-
-    // If the last message was removed, reset the lastBotMessage in chat
-    if (messages) {
-      const lastMsgNdx = messages.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
-      const lastMsg = lastMsgNdx != -1 ? messages[lastMsgNdx] : undefined;
-      if (chat?.lastBotMessageId && chat.lastBotMessageId === lastMsg?.id) {
-        updateChat(chatId, {
-          ...chat,
-          lastBotMessage: lastMsg?.content || "...",
-          lastBotMessageId: lastMsg?.id || undefined,
-          lastBotMessageHtml: lastMsg?.html || undefined,
-        });
-      }
     }
   };
 

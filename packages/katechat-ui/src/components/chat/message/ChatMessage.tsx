@@ -1,16 +1,16 @@
-import React, { ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, Badge, Tooltip, ActionIcon } from "@mantine/core";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { IconCopy, IconCopyCheck, IconFile, IconRobot, IconTrash, IconUser } from "@tabler/icons-react";
+import { IconRobot, IconUser } from "@tabler/icons-react";
 import { MessageRole, Message } from "@/core/message";
 import { LinkedChatMessage, MessageStatus } from "@/components/chat";
 import { debounce } from "lodash";
-
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
+import { Model } from "@/core";
+import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import classes from "./ChatMessage.module.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
-import { Model } from "@/core";
 
 interface ChatMessageProps {
   message: Message;
@@ -184,13 +184,11 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <Text size="xs" c="dimmed">
               {timestamp}
             </Text>
-            {status && (
-              <>
-                <MessageStatus status={status} />
-                <Text size="xs" c="dimmed">
-                  {statusInfo}
-                </Text>
-              </>
+            {status && <MessageStatus status={status} />}
+            {statusInfo && (
+              <Text size="xs" c="dimmed">
+                {statusInfo}
+              </Text>
             )}
           </Group>
         </Group>
@@ -206,21 +204,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
           {details}
 
           <div className={classes.messageFooter}>
-            <Tooltip label="Copy message" position="top" withArrow>
-              <ActionIcon
-                className="copy-message-btn"
-                data-message-id={id}
-                data-message-index={index}
-                size="sm"
-                color="gray"
-                variant="transparent"
-              >
-                <IconCopy />
-              </ActionIcon>
-            </Tooltip>
-            <ActionIcon disabled size="sm" className="check-icon">
-              <IconCopyCheck />
-            </ActionIcon>
+            <CopyMessageButton messageId={id} messageIndex={index} />
 
             {plugins}
           </div>

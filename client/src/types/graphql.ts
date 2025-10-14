@@ -1,7 +1,29 @@
-import { Message as BaseMessage, MessageRole } from "@katechat/ui";
+import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
 import { DocumentStatus } from "./ai";
-import { Model, ToolType, ProviderInfo } from "@/store/slices/modelSlice";
+
+export interface ProviderDetail {
+  key: string;
+  value: string;
+}
+
+export interface ProviderInfo {
+  name: string;
+  id: ApiProvider;
+  isConnected: boolean;
+  details: ProviderDetail[];
+  costsInfoAvailable?: boolean;
+}
+
+export enum ToolType {
+  WEB_SEARCH = "WEB_SEARCH",
+  CODE_INTERPRETER = "CODE_INTERPRETER",
+  MCP = "MCP",
+}
+
+export interface Model extends BaseModel {
+  tools?: ToolType[];
+}
 
 export type Message = BaseMessage<User, MessageMetadata>;
 

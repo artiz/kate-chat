@@ -344,7 +344,6 @@ export class BedrockApiProvider extends BaseApiProvider {
             callbacks.onError?.(chunk.modelStreamErrorException);
           } else if (chunk.validationException) {
             callbacks.onError?.(chunk.validationException);
-            // TODO: add retry
           } else if (chunk.throttlingException) {
             callbacks.onError?.(chunk.throttlingException);
           } else if (chunk.serviceUnavailableException) {

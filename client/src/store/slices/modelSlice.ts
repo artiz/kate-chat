@@ -1,19 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { ApiProvider, Model as BaseModel } from "@katechat/ui";
 import { logout } from "..";
-
-export interface ProviderDetail {
-  key: string;
-  value: string;
-}
-
-export interface ProviderInfo {
-  name: string;
-  id: ApiProvider;
-  isConnected: boolean;
-  details: ProviderDetail[];
-  costsInfoAvailable?: boolean;
-}
+import { Model, ProviderInfo } from "@/types/graphql";
 
 export interface CostAmount {
   amount: number;
@@ -31,16 +18,6 @@ export interface UsageCostsInfo {
   end?: Date;
   error?: string;
   costs: ServiceCostInfo[];
-}
-
-export enum ToolType {
-  WEB_SEARCH = "WEB_SEARCH",
-  CODE_INTERPRETER = "CODE_INTERPRETER",
-  MCP = "MCP",
-}
-
-export interface Model extends BaseModel {
-  tools?: ToolType[];
 }
 
 interface ModelState {

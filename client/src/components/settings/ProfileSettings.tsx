@@ -1,6 +1,6 @@
 import React, { useState, useEffect, use } from "react";
 import { Paper, TextInput, Button, Group, Stack, Text, SegmentedControl } from "@mantine/core";
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme } from "@katechat/ui";
 import { UpdateUserInput, User } from "@/store/slices/userSlice";
 
 type ColorScheme = "light" | "dark" | "auto";

@@ -8,7 +8,7 @@ interface IProps {
 
 export const Settings = ({ onReloadAppData }: IProps) => {
   return (
-    <Container size="md" py="xl">
+    <Container size="xl" py="xl">
       <Title order={2} mb="xl">
         Settings
       </Title>

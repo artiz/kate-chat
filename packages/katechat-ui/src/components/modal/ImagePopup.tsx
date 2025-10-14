@@ -10,18 +10,18 @@ interface IProps {
   fileUrl: string;
   mimeType?: string;
   createdAt?: string;
-  chatId?: string;
-  chatTitle?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
   onClose: () => void;
 }
 
-export const ImageModal: React.FC<IProps> = ({
+export const ImagePopup: React.FC<IProps> = ({
   fileName,
   fileUrl,
   mimeType,
   createdAt,
-  chatId,
-  chatTitle,
+  sourceUrl,
+  sourceTitle,
   onClose,
 }) => {
   const navigate = useNavigate();
@@ -39,10 +39,10 @@ export const ImageModal: React.FC<IProps> = ({
   }, [onClose, close]);
 
   const navigateToChat = useCallback(() => {
-    ok(chatId);
-    navigate(`/chat/${chatId}`);
+    ok(sourceUrl);
+    navigate(sourceUrl);
     handleClose();
-  }, [navigate, chatId, handleClose]);
+  }, [navigate, sourceUrl, handleClose]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -71,9 +71,9 @@ export const ImageModal: React.FC<IProps> = ({
               </Text>
             </div>
 
-            {chatId && (
+            {sourceUrl && (
               <Group gap="xs">
-                <Tooltip label="Open in chat">
+                <Tooltip label="Open source">
                   <ActionIcon variant="light" onClick={navigateToChat}>
                     <IconExternalLink size={16} />
                   </ActionIcon>
@@ -82,11 +82,11 @@ export const ImageModal: React.FC<IProps> = ({
             )}
           </Group>
 
-          {chatId && (
+          {sourceUrl && (
             <Text size="sm" c="dimmed">
               From:{" "}
               <Text span c="blue" style={{ cursor: "pointer" }} onClick={navigateToChat}>
-                {chatTitle}
+                {sourceTitle || sourceUrl}
               </Text>
             </Text>
           )}

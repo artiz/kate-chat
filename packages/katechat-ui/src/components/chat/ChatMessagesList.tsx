@@ -3,9 +3,9 @@ import { Stack, Group } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
 import { notEmpty, ok } from "@/lib/assert";
-import { ImageModal } from "@/components/modal/ImagePopup";
 import { Message, Model, PluginProps } from "@/core";
 import { ChatMessage } from "./message/ChatMessage";
+import { ImagePopup } from "../modal/ImagePopup";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -114,10 +114,12 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
         if (target.dataset["messageId"]) {
           const index = target.dataset["messageIndex"];
           const linkedIndex = target.dataset["messageLinkedIndex"];
+          const messageId = target.dataset["messageId"];
 
-          let msg: Message | undefined = messages[Number(index)];
+          let msg: Message | undefined =
+            index != undefined ? messages[Number(index)] : messages.find(m => m.id === messageId);
           if (linkedIndex != undefined) {
-            msg = msg.linkedMessages?.[Number(linkedIndex)];
+            msg = msg?.linkedMessages?.[Number(linkedIndex)];
           }
           ok(msg, "Message should exist to copy");
           const content = (msg.content || "").trim();
@@ -208,7 +210,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
         ))}
       </Stack>
 
-      <ImageModal fileName={imageFileName ?? ""} fileUrl={imageToShow ?? ""} onClose={resetSelectedImage} />
+      <ImagePopup fileName={imageFileName ?? ""} fileUrl={imageToShow ?? ""} onClose={resetSelectedImage} />
     </>
   );
 };

@@ -1,5 +1,7 @@
 .controls:where([data-orientation="horizontal"]) {
-  top: auto !important;
-  bottom: 0;
-  padding: 0 5rem !important;
+  bottom: auto !important;
+  top: 0.5rem !important;
+  left: calc(50% - 5rem) !important;
+  width: 10rem !important;
+  padding: 0 !important;
 }

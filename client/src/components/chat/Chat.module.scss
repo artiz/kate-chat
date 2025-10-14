@@ -1,11 +1,8 @@
 .container {
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--app-shell-header-height));
   display: flex;
   flex-direction: column;
-
-  --container-size-md: calc(75rem * var(--mantine-scale)) !important;
-  --container-size-lg: calc(100rem * var(--mantine-scale)) !important;
-  --container-size-xl: calc(120rem * var(--mantine-scale)) !important;
+  gap: 0.5rem;
 }
 
 .titleRow {
@@ -90,52 +87,6 @@
 
     &.connected {
       background: green;
-    }
-  }
-}
-
-.messagesContainer {
-  flex-grow: 1;
-  margin-bottom: 1rem;
-  position: relative;
-  display: none;
-  flex-direction: column;
-  border: 1px solid var(--app-shell-border-color);
-  border-radius: var(--mantine-radius-md);
-  /* 
-   * Two-level scrolling architecture:
-   * The parent (.messagesContainer) uses overflow-y: hidden to prevent unwanted scrollbars and control the visible area.
-   * The child (.scroller) uses overflow-y: scroll to enable vertical scrolling for the message list.
-   * This pattern is intentional; do not merge the scroll behavior into the parent.
-   */
-  overflow-y: hidden;
-  opacity: 1;
-  transition: all 0.3s ease;
-
-  .messagesList {
-    opacity: 0;
-    margin-bottom: 1rem;
-  }
-
-  &.empty {
-    flex-grow: 0;
-    opacity: 0;
-  }
-
-  .scroller {
-    overflow-y: scroll;
-    flex-grow: 1;
-  }
-
-  &.loadCompleted {
-    .scroller {
-      scroll-behavior: smooth;
-    }
-
-    display: flex;
-
-    .messagesList {
-      opacity: 1;
     }
   }
 }
@@ -250,32 +201,5 @@
         border: 1px solid var(--app-shell-border-color);
       }
     }
-  }
-}
-
-.anchorContainer {
-  position: absolute;
-  width: 40px;
-  left: calc(50% - 40px);
-  bottom: 0;
-  top: -4em;
-  height: 40px;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  justify-items: center;
-  align-items: center;
-  opacity: 0;
-  transition: all 0.5s ease;
-
-  &.visible {
-    opacity: 1;
-  }
-
-  .anchor {
-    background-color: var(--mantine-color-body);
-    border-radius: 50%;
-    height: 32px;
-    width: 32px;
   }
 }

@@ -1,0 +1,75 @@
+.messagesContainer {
+  flex-grow: 1;
+  position: relative;
+  display: none;
+  flex-direction: column;
+  border: 1px solid var(--app-shell-border-color);
+  border-radius: var(--mantine-radius-md);
+  /* 
+   * Two-level scrolling architecture:
+   * The parent (.messagesContainer) uses overflow-y: hidden to prevent unwanted scrollbars and control the visible area.
+   * The child (.scroller) uses overflow-y: scroll to enable vertical scrolling for the message list.
+   * This pattern is intentional; do not merge the scroll behavior into the parent.
+   */
+  overflow-y: hidden;
+  opacity: 1;
+  transition: all 0.3s ease;
+
+  .messagesList {
+    opacity: 0;
+    margin-bottom: 1rem;
+  }
+
+  &.empty {
+    flex-grow: 0;
+    opacity: 0;
+  }
+
+  .scroller {
+    overflow-y: scroll;
+    flex-grow: 1;
+  }
+
+  &.loadCompleted {
+    .scroller {
+      scroll-behavior: smooth;
+    }
+
+    display: flex;
+
+    .messagesList {
+      opacity: 1;
+    }
+  }
+}
+
+.anchorContainer {
+  position: absolute;
+  width: 40px;
+  left: calc(50% - 40px);
+  bottom: 0;
+  height: 48px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
+  opacity: 0;
+  transition: all 0.5s ease;
+
+  &.visible {
+    opacity: 1;
+  }
+
+  .anchor {
+    background-color: var(--mantine-color-body);
+    border-radius: 50%;
+    height: 32px;
+    width: 32px;
+    opacity: 0.75;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}

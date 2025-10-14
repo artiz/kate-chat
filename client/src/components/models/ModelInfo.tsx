@@ -8,7 +8,7 @@ import {
   IconWorldSearch,
   IconCloudCode,
 } from "@tabler/icons-react";
-import { Model, ToolType } from "@/store/slices/modelSlice";
+import { Model, ToolType } from "@/types/graphql";
 import { ModelType } from "@katechat/ui";
 
 interface IProps {
