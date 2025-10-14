@@ -46,6 +46,7 @@ import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 import { RAG } from "./message-details-plugins/RAG";
 
 import classes from "./Chat.module.scss";
+import { ChatInput } from "./ChatInput";
 
 interface IProps {
   chatId?: string;
@@ -53,20 +54,16 @@ interface IProps {
 
 export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
-  const [userMessage, setUserMessage] = useState("");
-  const [sending, setSending] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
+  const [sending, setSending] = useState(false);
 
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
 
-  const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const [selectedTools, setSelectedTools] = useState<Set<ToolType>>(new Set());
 
   const {
     messages,
@@ -119,18 +116,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     setEditedTitle(chat?.title || "Untitled Chat");
   }, [chat?.title]);
 
-  useEffect(() => {
-    chatInputRef.current?.focus();
-  }, [loadCompleted]);
-
-  useEffect(() => {
-    if (chat?.tools) {
-      setSelectedTools(new Set(chat.tools.map(tool => tool.type)));
-    } else {
-      setSelectedTools(new Set());
-    }
-  }, [chat?.tools]);
-
   // #region Send message
   const [createMessage] = useMutation<CreateMessageResponse>(CREATE_MESSAGE, {
     onCompleted: data => {
@@ -148,23 +133,19 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
-  const handleSendMessage = async () => {
-    if ((!userMessage?.trim() && !selectedImages.length) || !chatId) return;
+  const handleSendMessage = async (message: string, images: ImageInput[] = []) => {
+    if (!message?.trim() && !images.length) return;
     ok(chatId, "Chat is required to send a message");
-    setSending(true);
 
     try {
-      setUserMessage("");
-      setSelectedImages([]);
-
       // Convert images to base64
       await createMessage({
         variables: {
           input: {
             chatId,
-            content: userMessage?.trim() || "",
-            images: selectedImages,
-            modelId: selectedModel?.modelId,
+            content: message?.trim() || "",
+            images,
+            modelId: chat?.modelId,
             temperature: chat?.temperature,
             maxTokens: chat?.maxTokens,
             topP: chat?.topP,
@@ -179,7 +160,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
         message: error instanceof Error ? error.message : "Failed to send message",
         color: "red",
       });
-      setSending(false);
     }
   };
 
@@ -191,75 +171,15 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const selectedModel = useMemo(() => {
     return (
-      models?.find(m => m.modelId === chat?.modelId) ||
-      models?.find(m => m.modelId === appConfig?.currentUser?.defaultModelId) ||
+      allModels?.find(m => m.modelId === chat?.modelId) ||
+      allModels?.find(m => m.modelId === appConfig?.currentUser?.defaultModelId) ||
       models?.[0]
     );
-  }, [models, chat]);
-
-  const handleModelChange = (modelId: string | null) => {
-    const model = models.find(m => m.modelId === modelId);
-    if (!model || !chatId) return;
-    updateChat(chatId, { modelId: model.modelId });
-  };
-
-  const handleSettingsChange = (settings: {
-    temperature?: number;
-    maxTokens?: number;
-    topP?: number;
-    imagesCount?: number;
-  }) => {
-    updateChat(chatId, {
-      temperature: settings.temperature,
-      maxTokens: settings.maxTokens,
-      topP: settings.topP,
-      imagesCount: settings.imagesCount,
-    });
-  };
-
-  const resetSettingsToDefaults = () => {
-    handleSettingsChange({
-      temperature: 0.7,
-      maxTokens: 2048,
-      topP: 0.9,
-      imagesCount: 1,
-    });
-  };
-
-  const handleToolToggle = (toolType: ToolType) => {
-    if (!chatId) return;
-
-    const tools = new Set(selectedTools);
-    if (tools.has(toolType)) {
-      tools.delete(toolType);
-    } else {
-      tools.add(toolType);
-    }
-
-    setSelectedTools(tools);
-
-    // Convert Set to array of objects for persistence
-    const toolsArray = Array.from(tools).map(type => ({ type, name: type }));
-    updateChat(chatId, { tools: toolsArray });
-  };
+  }, [allModels, models, chat]);
 
   const messagesLimitReached = useMemo(() => {
     return appConfig?.demoMode && (chat?.messagesCount ?? 0) >= (appConfig.maxChatMessages || 0);
   }, [chat, appConfig]);
-
-  const handleInputKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        handleSendMessage();
-      }
-    },
-    [handleSendMessage]
-  );
-
-  const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setUserMessage(event.currentTarget.value);
-  }, []);
 
   const handleTitleUpdate = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -287,77 +207,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return chat.user.id && appConfig.currentUser.id !== chat.user.id;
   }, [chat?.user, appConfig?.currentUser]);
 
-  const sendMessageNotAllowed = useMemo(() => {
-    return (
-      isExternalChat ||
-      sending ||
-      messagesLoading ||
-      messagesLimitReached ||
-      (!userMessage?.trim() && !selectedImages.length)
-    );
-  }, [userMessage, selectedImages, sending, messagesLoading, messagesLimitReached, isExternalChat]);
-
-  const handleAddFiles = useCallback(
-    (files: File[]) => {
-      const filesToAdd = files.filter(f => f.size < MAX_UPLOAD_FILE_SIZE);
-      if (filesToAdd.length < files.length) {
-        notifications.show({
-          title: "Warning",
-          message: `Some files are too large and were not added (max size: ${MAX_UPLOAD_FILE_SIZE / 1024 / 1024} MB)`,
-          color: "yellow",
-        });
-      }
-
-      let imageFiles = filesToAdd.filter(f => f.type?.startsWith("image/"));
-      const documents = filesToAdd.filter(f => !f.type?.startsWith("image/"));
-
-      // Limit to MAX_IMAGES
-      if (imageFiles.length + selectedImages.length > MAX_IMAGES) {
-        notifications.show({
-          title: "Warning",
-          message: `You can only add up to ${MAX_IMAGES} images at a time`,
-          color: "yellow",
-        });
-
-        imageFiles = imageFiles.slice(0, MAX_IMAGES - selectedImages.length);
-      }
-
-      if (imageFiles.length) {
-        Promise.all(
-          imageFiles.map(file => {
-            return new Promise<ImageInput>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = e => {
-                if (e.target?.result) {
-                  const bytesBase64 = e.target.result as string;
-                  resolve({
-                    fileName: file.name,
-                    mimeType: file.type,
-                    bytesBase64,
-                  });
-                } else {
-                  reject(new Error(`Failed to read file: ${file.name}`));
-                }
-              };
-              reader.onerror = err => {
-                reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
-              };
-              reader.readAsDataURL(file);
-            });
-          })
-        )
-          .then(images => {
-            setSelectedImages(prev => [...prev, ...images]);
-          })
-          .catch(error => {
-            notifications.show({
-              title: "Error",
-              message: error.message || "Failed to read image files",
-              color: "red",
-            });
-          });
-      }
-
+  const handleAddDocuments = useCallback(
+    (documents: File[]) => {
       if (documents.length) {
         if (!appConfig?.ragEnabled) {
           return notifications.show({
@@ -378,7 +229,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         });
       }
     },
-    [selectedImages, chatId]
+    [chatId]
   );
 
   const uploadAllowed = useMemo(() => {
@@ -484,145 +335,24 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Tooltip>
       )}
 
-      <div
-        className={[
-          classes.chatControlsContainer,
-          messages?.length === 0 ? classes.fullHeight : "",
-          loadCompleted ? "" : classes.hidden,
-        ].join(" ")}
-      >
-        {messages?.length === 0 ? (
-          <Stack align="center" justify="center" gap="md" mb="lg">
-            <Text c="dimmed" size="lg" ta="center">
-              Start the conversation by sending a message
-            </Text>
-          </Stack>
-        ) : null}
-
-        <div className={classes.chatControls}>
-          <Group align="center" gap="xs" className={classes.modelRow}>
-            <IconRobot size={20} />
-            <Select
-              data={models.map(model => ({
-                value: model.modelId,
-                label: `${model.provider}: ${model.name}`,
-              }))}
-              searchable
-              value={selectedModel?.modelId || ""}
-              onChange={handleModelChange}
-              placeholder="Select a model"
-              size="xs"
-              clearable={false}
-              style={{ maxWidth: "50%" }}
-              disabled={isExternalChat || sending || messagesLoading}
-            />
-            {selectedModel && <ModelInfo model={selectedModel} size="18" />}
-
-            <Popover width={300} position="top" withArrow shadow="md">
-              <Popover.Target>
-                <Tooltip label="Chat Settings">
-                  <ActionIcon disabled={isExternalChat || sending || messagesLoading}>
-                    <IconSettings size="1.2rem" />
-                  </ActionIcon>
-                </Tooltip>
-              </Popover.Target>
-              <Popover.Dropdown>
-                <ChatSettings
-                  temperature={chat?.temperature}
-                  maxTokens={chat?.maxTokens}
-                  topP={chat?.topP}
-                  imagesCount={chat?.imagesCount}
-                  onSettingsChange={handleSettingsChange}
-                  resetToDefaults={resetSettingsToDefaults}
-                />
-              </Popover.Dropdown>
-            </Popover>
-
-            {/* Tool buttons */}
-            {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
-              <Tooltip label="Web Search">
-                <ActionIcon
-                  variant={selectedTools.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
-                  color={selectedTools.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
-                  onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
-                  disabled={isExternalChat || sending || messagesLoading}
-                >
-                  <IconWorldSearch size="1.2rem" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-
-            {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
-              <Tooltip label="Code Interpreter">
-                <ActionIcon
-                  variant={selectedTools.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
-                  color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
-                  onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
-                  disabled={isExternalChat || sending || messagesLoading}
-                >
-                  <IconCloudCode size="1.2rem" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </Group>
-
-          {/* Message input */}
-
-          <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
-            {uploadAllowed && (
-              <div className={classes.documentsInput}>
-                <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected} />
-                {appConfig?.ragEnabled ? (
-                  <ChatDocumentsSelector
-                    chatId={chatId}
-                    selectedDocIds={selectedDocIds}
-                    onSelectionChange={setSelectedDocIds}
-                    disabled={!appConfig?.s3Connected || sending || messagesLoading}
-                    documents={chatDocuments}
-                  />
-                ) : null}
-
-                <div className={classes.filesList}>
-                  {selectedImages.map(file => (
-                    <div key={file.fileName} className={classes.previewImage}>
-                      <img src={file.bytesBase64} alt={file.fileName} />
-                      <ActionIcon
-                        className={classes.removeButton}
-                        color="red"
-                        size="xs"
-                        onClick={e => {
-                          e.stopPropagation();
-                          setSelectedImages(prev => prev.filter(f => f.fileName !== file.fileName));
-                        }}
-                      >
-                        <IconX size={16} />
-                      </ActionIcon>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className={classes.chatInputGroup}>
-              <Textarea
-                ref={chatInputRef}
-                className={classes.chatInput}
-                placeholder="Type your message..."
-                value={userMessage}
-                autosize
-                minRows={1}
-                maxRows={7}
-                onChange={handleInputChange}
-                onKeyDown={handleInputKeyDown}
-                disabled={messagesLoading || messagesLimitReached}
-              />
-              <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
-                <IconSend size={16} /> Send
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ChatInput
+        chatId={chatId}
+        loadCompleted={loadCompleted}
+        disabled={isExternalChat || messagesLoading || messagesLimitReached}
+        uploadAllowed={uploadAllowed}
+        fullHeight={messages?.length === 0}
+        sending={sending}
+        setSending={setSending}
+        chatTools={chat?.tools}
+        chatSettings={chat}
+        models={models}
+        selectedModel={selectedModel}
+        ragEnabled={appConfig?.ragEnabled}
+        ragDocuments={chatDocuments}
+        onDocumentsUpload={handleAddDocuments}
+        onSendMessage={handleSendMessage}
+        onUpdateChat={updateChat}
+      />
     </Container>
   );
 };

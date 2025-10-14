@@ -3,28 +3,33 @@ import { Paper, Title, Slider, Text, NumberInput, Stack, Group, Tooltip, ActionI
 import { IconInfoCircle, IconRefresh } from "@tabler/icons-react";
 import classes from "./ChatSettings.module.scss";
 
-interface ChatSettingsProps {
+export const DEFAULT_CHAT_SETTINGS = {
+  temperature: 0.7,
+  maxTokens: 2048,
+  topP: 0.9,
+  imagesCount: 1,
+};
+
+export interface ChatSettingsProps {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
-  onSettingsChange: (settings: {
-    temperature?: number;
-    maxTokens?: number;
-    topP?: number;
-    imagesCount?: number;
-  }) => void;
+}
+
+interface ChatSettingsComponentProps extends ChatSettingsProps {
+  onSettingsChange: (settings: ChatSettingsProps) => void;
   resetToDefaults: () => void;
 }
 
 export function ChatSettings({
-  temperature = 0.7,
-  maxTokens = 2048,
-  topP = 0.9,
-  imagesCount = 1,
+  temperature = DEFAULT_CHAT_SETTINGS.temperature,
+  maxTokens = DEFAULT_CHAT_SETTINGS.maxTokens,
+  topP = DEFAULT_CHAT_SETTINGS.topP,
+  imagesCount = DEFAULT_CHAT_SETTINGS.imagesCount,
   onSettingsChange,
   resetToDefaults,
-}: ChatSettingsProps) {
+}: ChatSettingsComponentProps) {
   const [tempValue, setTempValue] = useState<number>(temperature);
   const [tokensValue, setTokensValue] = useState<number>(maxTokens);
   const [topPValue, setTopPValue] = useState<number>(topP);

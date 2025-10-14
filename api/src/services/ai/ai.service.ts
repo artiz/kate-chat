@@ -61,7 +61,6 @@ export class AIService {
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
-      // Join user duplicate messages
       messages: this.preprocessMessages(inputRequest.messages || []),
     };
 
@@ -81,7 +80,6 @@ export class AIService {
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
-
       messages: this.preprocessMessages(inputRequest.messages || []),
     };
 
@@ -104,7 +102,7 @@ export class AIService {
     return messages.map(msg => ({
       role: msg.role,
       body: msg.jsonContent || msg.content,
-      timestamp: msg.updatedAt,
+      timestamp: msg.createdAt,
       metadata: msg.metadata,
     }));
   }
@@ -221,7 +219,8 @@ export class AIService {
    * @returns
    */
   private preprocessMessages(messages: ModelMessage[]): ModelMessage[] {
-    messages.sort((a, b) => {
+    const result = messages.slice();
+    result.sort((a, b) => {
       if (a.timestamp?.getTime() === b.timestamp?.getTime()) {
         return a.role === b.role ? 0 : a.role === MessageRole.USER ? -1 : 1;
       }
@@ -229,7 +228,7 @@ export class AIService {
       return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
     });
 
-    return messages.reduce((acc: ModelMessage[], msg: ModelMessage) => {
+    return result.reduce((acc: ModelMessage[], msg: ModelMessage) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
 
       // Check if the last message is of the same role and content
@@ -237,7 +236,7 @@ export class AIService {
         if (lastMessage.body === msg.body) {
           return acc;
         } else if (typeof lastMessage.body === "string" && typeof msg.body === "string") {
-          lastMessage.body += "\n" + msg.body;
+          lastMessage.body = (lastMessage.body + "\n" + msg.body).trimEnd();
         } else {
           lastMessage.body = Array.isArray(lastMessage.body)
             ? lastMessage.body
@@ -245,7 +244,7 @@ export class AIService {
           if (Array.isArray(msg.body)) {
             lastMessage.body.push(...msg.body);
           } else {
-            lastMessage.body.push({ content: msg.body, contentType: "text" });
+            lastMessage.body.push({ content: msg.body?.trimEnd(), contentType: "text" });
           }
         }
       } else if (msg.body?.length) {

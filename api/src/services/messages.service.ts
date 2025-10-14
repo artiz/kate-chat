@@ -682,7 +682,7 @@ export class MessagesService {
           }).catch(err => logger.error(err, "Error sending AI response"));
         }
 
-        assistantMessage.content = token;
+        assistantMessage.content = token.trim() || "_No response_";
         assistantMessage.metadata = metadata;
 
         return completeRequest(assistantMessage).catch(err => {
