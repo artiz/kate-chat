@@ -7,11 +7,10 @@ import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
 interface IProps {
   disabled?: boolean;
-  active?: boolean;
   onFilesAdd: (images: File[]) => void;
 }
 
-export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active }) => {
+export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,13 +91,13 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, active })
     <>
       <Box
         ref={dropzoneRef}
-        className={`drop-zone ${classes.dropzone} ${isDragging ? classes.dragging : ""} ${active ? classes.activated : ""} ${disabled ? classes.disabled : ""}`}
+        className={`drop-zone ${classes.dropzone} ${isDragging ? classes.dragging : ""} ${disabled ? classes.disabled : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={openFileDialog}
       >
-        <Group justify="center" gap="md">
+        <Group justify="center" gap="md" className="drop-zone-control">
           <Tooltip label="Click or drop an image/document here" position="top">
             <IconFileUpload size={32} stroke={1.5} />
           </Tooltip>

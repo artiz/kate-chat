@@ -6,18 +6,7 @@
 }
 
 .dragging {
-  background-color: var(--mantine-color-gray-5);
-  opacity: 0.8;
-}
-
-.activated {
-  position: fixed;
-  z-index: 10;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  flex: 1;
+  color: var(--mantine-color-brand-6);
 }
 
 .disabled {

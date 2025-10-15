@@ -21,20 +21,17 @@ interface IProps {
   disabled?: boolean;
   fullHeight?: boolean;
   uploadAllowed?: boolean;
-  sending: boolean;
+  streaming: boolean;
   setSending: (value: boolean) => void;
   chatTools?: ChatTool[];
   chatSettings?: ChatSettingsProps;
   models: Model[];
   previousMessages?: string[];
   selectedModel?: Model;
-  ragEnabled?: boolean;
-  ragDocuments?: Document[];
-  selectedRagDocIds?: string[];
-  setSelectedRagDocIds?: (value: string[]) => void;
-
-  onSendMessage: (message: string, images?: ImageInput[]) => Promise<void>;
   onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
+
+  inputPlugins?: React.ReactNode;
+  onSendMessage: (message: string, images?: ImageInput[]) => Promise<void>;
   onDocumentsUpload?: (documents: File[]) => void;
 }
 
@@ -44,17 +41,14 @@ export const ChatInput = ({
   disabled = false,
   fullHeight = false,
   uploadAllowed = true,
-  sending,
+  streaming,
   setSending,
   chatTools,
   chatSettings = DEFAULT_CHAT_SETTINGS,
   models,
   previousMessages = [],
   selectedModel,
-  ragEnabled = false,
-  ragDocuments = [],
-  selectedRagDocIds,
-  setSelectedRagDocIds,
+  inputPlugins,
   onSendMessage,
   onUpdateChat,
   onDocumentsUpload,
@@ -69,7 +63,7 @@ export const ChatInput = ({
 
   useEffect(() => {
     inputRef.current?.focus();
-    setPrevImageNdx(previousMessages?.length ? previousMessages.length - 1 : 0);
+    setPrevImageNdx(previousMessages?.length ? previousMessages.length : 0);
   }, [loadCompleted, previousMessages]);
 
   useEffect(() => {
@@ -165,8 +159,8 @@ export const ChatInput = ({
   }, []);
 
   const sendMessageNotAllowed = useMemo(() => {
-    return disabled || sending || (!userMessage?.trim() && !selectedImages.length);
-  }, [userMessage, selectedImages, sending, disabled]);
+    return disabled || streaming || (!userMessage?.trim() && !selectedImages.length);
+  }, [userMessage, selectedImages, streaming, disabled]);
 
   const handleAddFiles = useCallback(
     (files: File[]) => {
@@ -280,14 +274,14 @@ export const ChatInput = ({
             size="xs"
             clearable={false}
             style={{ maxWidth: "50%" }}
-            disabled={disabled || sending}
+            disabled={disabled}
           />
           {selectedModel && <ModelInfo model={selectedModel} size="18" />}
 
           <Popover width={300} position="top" withArrow shadow="md">
             <Popover.Target>
               <Tooltip label="Chat Settings">
-                <ActionIcon disabled={disabled || sending}>
+                <ActionIcon disabled={disabled || streaming}>
                   <IconSettings size="1.2rem" />
                 </ActionIcon>
               </Tooltip>
@@ -308,7 +302,7 @@ export const ChatInput = ({
                 variant={selectedTools.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
                 color={selectedTools.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
                 onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
-                disabled={disabled || sending}
+                disabled={disabled || streaming}
               >
                 <IconWorldSearch size="1.2rem" />
               </ActionIcon>
@@ -321,7 +315,7 @@ export const ChatInput = ({
                 variant={selectedTools.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
                 color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
                 onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
-                disabled={disabled || sending}
+                disabled={disabled || streaming}
               >
                 <IconCloudCode size="1.2rem" />
               </ActionIcon>
@@ -336,15 +330,7 @@ export const ChatInput = ({
             <div className={classes.documentsInput}>
               <FileDropzone onFilesAdd={handleAddFiles} disabled={!uploadAllowed} />
 
-              {ragEnabled ? (
-                <ChatDocumentsSelector
-                  chatId={chatId}
-                  selectedDocIds={selectedRagDocIds}
-                  onSelectionChange={setSelectedRagDocIds}
-                  disabled={!uploadAllowed || disabled || sending}
-                  documents={ragDocuments}
-                />
-              ) : null}
+              {inputPlugins}
 
               <div className={classes.filesList}>
                 {selectedImages.map(file => (
@@ -375,7 +361,7 @@ export const ChatInput = ({
               maxRows={7}
               onChange={handleInputChange}
               onKeyDown={handleInputKeyDown}
-              disabled={disabled && !sending}
+              disabled={disabled}
             />
             <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
               <IconSend size={16} /> Send

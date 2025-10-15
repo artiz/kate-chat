@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Group, Loader } from "@mantine/core";
 import { IconCircleChevronDown } from "@tabler/icons-react";
 import { Message, Model, PluginProps } from "@/core";
@@ -20,108 +20,132 @@ interface IProps {
   loadCompleted?: boolean;
 }
 
-export const ChatMessagesContainer = ({
-  messages,
-  models,
-  addChatMessage,
-  removeMessages,
-  loadMoreMessages,
-  plugins,
-  detailsPlugins,
-  streaming = false,
-  loadCompleted = true,
-  loading = false,
-}: IProps) => {
-  const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const anchorTimer = useRef<NodeJS.Timeout | null>(null);
+export interface ChatMessagesContainerRef {
+  scrollToBottom: () => void;
+}
 
-  // #region Scrolling
-  const scrollToBottom = useCallback(() => {
-    messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
-  }, [messagesContainerRef]);
-
-  const autoScroll = useCallback(() => {
-    if (!showAnchorButton) {
-      scrollToBottom();
-    }
-  }, [scrollToBottom, showAnchorButton]);
-
-  useEffect(() => {
-    autoScroll();
-  }, [messages, autoScroll]);
-
-  const handleScroll = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
-      anchorTimer.current && clearTimeout(anchorTimer.current);
-
-      if (scrollHeight - scrollTop - clientHeight < 2) {
-        setShowAnchorButton(false);
-      } else if (messages?.length) {
-        if (streaming) {
-          anchorTimer.current = setTimeout(() => {
-            setShowAnchorButton(true);
-          }, 100);
-        } else {
-          setShowAnchorButton(true);
-        }
-      }
+export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, IProps>(
+  (
+    {
+      messages,
+      models,
+      addChatMessage,
+      removeMessages,
+      loadMoreMessages,
+      plugins,
+      detailsPlugins,
+      streaming = false,
+      loadCompleted = true,
+      loading = false,
     },
-    [messages?.length, streaming]
-  );
+    ref
+  ) => {
+    const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const anchorTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const anchorHandleClick = useCallback(() => {
-    setShowAnchorButton(false);
-    scrollToBottom();
-  }, [scrollToBottom]);
+    // #region Scrolling
+    const scrollToBottom = useCallback(() => {
+      messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
+    }, [messagesContainerRef]);
 
-  useEffect(() => {
-    if (loadCompleted) {
+    // Expose scrollToBottom method to parent via ref
+    useImperativeHandle(
+      ref,
+      () => ({
+        scrollToBottom,
+      }),
+      [scrollToBottom]
+    );
+
+    const autoScroll = useCallback(() => {
+      if (!showAnchorButton) {
+        scrollToBottom();
+      }
+    }, [scrollToBottom, showAnchorButton]);
+
+    useEffect(() => {
+      autoScroll();
+    }, [messages, autoScroll]);
+
+    const handleScroll = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
+        anchorTimer.current && clearTimeout(anchorTimer.current);
+
+        if (scrollHeight - scrollTop - clientHeight < 2) {
+          setShowAnchorButton(false);
+        } else if (messages?.length) {
+          if (streaming) {
+            anchorTimer.current = setTimeout(() => {
+              setShowAnchorButton(true);
+            }, 100);
+          } else {
+            setShowAnchorButton(true);
+          }
+        }
+      },
+      [messages?.length, streaming]
+    );
+
+    const anchorHandleClick = useCallback(() => {
       setShowAnchorButton(false);
-      setTimeout(scrollToBottom, 200);
-    }
-  }, [loadCompleted]);
+      scrollToBottom();
+    }, [scrollToBottom]);
 
-  const firstMessageRef = useIntersectionObserver<HTMLDivElement>(() => loadMoreMessages?.(), [loadMoreMessages], 200);
+    useEffect(() => {
+      if (loadCompleted) {
+        setShowAnchorButton(false);
+        setTimeout(scrollToBottom, 200);
+      }
+    }, [loadCompleted]);
 
-  // #endregion
+    const firstMessageRef = useIntersectionObserver<HTMLDivElement>(
+      () => loadMoreMessages?.(),
+      [loadMoreMessages],
+      200
+    );
 
-  return (
-    <div
-      className={[
-        classes.messagesContainer,
-        loadCompleted ? classes.loadCompleted : "",
-        loadCompleted && messages?.length === 0 ? classes.empty : "",
-      ].join(" ")}
-    >
-      <div className={classes.scroller} ref={messagesContainerRef} onScroll={handleScroll}>
-        <div ref={firstMessageRef} />
-        {loading && (
-          <Group justify="center" align="center" py="xl">
-            <Loader />
-          </Group>
-        )}
+    // #endregion
 
-        <div className={classes.messagesList}>
-          {messages && (
-            <ChatMessagesList
-              messages={messages}
-              onMessageDeleted={removeMessages} // Reload messages after deletion
-              onAddMessage={addChatMessage}
-              models={models}
-              plugins={plugins}
-              detailsPlugins={detailsPlugins}
-            />
+    return (
+      <div
+        className={[
+          classes.messagesContainer,
+          loadCompleted ? classes.loadCompleted : "",
+          loadCompleted && messages?.length === 0 ? classes.empty : "",
+        ].join(" ")}
+      >
+        <div className={classes.scroller} ref={messagesContainerRef} onScroll={handleScroll}>
+          <div ref={firstMessageRef} />
+          {loading && (
+            <Group justify="center" align="center" py="xl">
+              <Loader />
+            </Group>
           )}
-        </div>
-      </div>
 
-      <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
-        <div className={classes.anchor}>
-          <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
+          <div className={classes.messagesList}>
+            {messages && (
+              <ChatMessagesList
+                messages={messages}
+                onMessageDeleted={removeMessages} // Reload messages after deletion
+                onAddMessage={addChatMessage}
+                models={models}
+                plugins={plugins}
+                detailsPlugins={detailsPlugins}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
+          <div className={classes.anchor}>
+            <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+ChatMessagesContainer.displayName = "ChatMessagesContainer";

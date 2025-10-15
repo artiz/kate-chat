@@ -25,7 +25,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   return (
     <Modal opened={isOpen} onClose={onClose} title={title} centered>
       <Stack>
-        <Text>{message}</Text>
+        <Text style={{ wordBreak: "break-word" }}>{message}</Text>
 
         <Group mt="md" justify="flex-end">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>

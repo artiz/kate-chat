@@ -1,53 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { gql, useMutation } from "@apollo/client";
-import {
-  Container,
-  Text,
-  Textarea,
-  Button,
-  Group,
-  Title,
-  ActionIcon,
-  Select,
-  Tooltip,
-  TextInput,
-  Stack,
-  Alert,
-  Popover,
-} from "@mantine/core";
-import {
-  IconSend,
-  IconX,
-  IconRobot,
-  IconEdit,
-  IconCheck,
-  IconSettings,
-  IconWorldSearch,
-  IconCloudCode,
-} from "@tabler/icons-react";
+import { useMutation } from "@apollo/client";
+import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
+import { IconX, IconEdit, IconCheck } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
-import { ModelType, ChatMessagesContainer, MessageRole } from "@katechat/ui";
-import { ChatSettings } from "./ChatSettings";
-import { FileDropzone } from "../documents/FileDropzone/FileDropzone";
+import { ModelType, ChatMessagesContainer, ChatMessagesContainerRef, MessageRole } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages } from "@/hooks";
-
-import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES } from "@/lib/config";
 import { notEmpty, ok } from "@/lib/assert";
-import { ModelInfo } from "@/components/models/ModelInfo";
-
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
-import { ImageInput, ChatDocument, CreateMessageResponse, ToolType } from "@/types/graphql";
+import { ImageInput, ChatDocument, CreateMessageResponse } from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
 import { CREATE_MESSAGE } from "@/store/services/graphql";
-import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 import { RAG } from "./message-details-plugins/RAG";
+import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
+import { ChatInput } from "./ChatInput";
 
 import classes from "./Chat.module.scss";
-import { ChatInput } from "./ChatInput";
-import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
+import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 
 interface IProps {
   chatId?: string;
@@ -59,6 +30,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [editedTitle, setEditedTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [sending, setSending] = useState(false);
+
+  const chatMessagesRef = useRef<ChatMessagesContainerRef>(null);
 
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
@@ -155,6 +128,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
           },
         },
       });
+
+      // Scroll chat to bottom after sending message
+      setTimeout(() => {
+        chatMessagesRef.current?.scrollToBottom();
+      }, 250);
     } catch (error) {
       notifications.show({
         title: "Error",
@@ -316,6 +294,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       </Group>
 
       <ChatMessagesContainer
+        ref={chatMessagesRef}
         messages={messages}
         models={models}
         addChatMessage={addChatMessage}
@@ -339,20 +318,29 @@ export const ChatComponent = ({ chatId }: IProps) => {
       <ChatInput
         chatId={chatId}
         loadCompleted={loadCompleted}
-        disabled={isExternalChat || messagesLoading || messagesLimitReached}
+        disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
         uploadAllowed={uploadAllowed}
         fullHeight={messages?.length === 0}
-        sending={sending}
+        streaming={streaming}
         setSending={setSending}
         chatTools={chat?.tools}
         chatSettings={chat}
         models={models}
         previousMessages={messages?.filter(m => m.role === MessageRole.USER).map(m => m.content)}
         selectedModel={selectedModel}
-        ragEnabled={appConfig?.ragEnabled}
-        ragDocuments={chatDocuments}
-        selectedRagDocIds={selectedRagDocIds}
-        setSelectedRagDocIds={setSelectedRagDocIds}
+        inputPlugins={
+          <>
+            {appConfig?.ragEnabled && (
+              <ChatDocumentsSelector
+                chatId={chatId}
+                selectedDocIds={selectedRagDocIds}
+                onSelectionChange={setSelectedRagDocIds}
+                disabled={!uploadAllowed || isExternalChat || messagesLoading}
+                documents={chatDocuments}
+              />
+            )}
+          </>
+        }
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}
         onUpdateChat={updateChat}

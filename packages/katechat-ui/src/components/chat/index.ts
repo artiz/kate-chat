@@ -1,3 +1,3 @@
 export * from "./message";
 export * from "./ChatMessagesList";
-export * from "./ChatMessagesContainer";
+export { ChatMessagesContainer, type ChatMessagesContainerRef } from "./ChatMessagesContainer";
