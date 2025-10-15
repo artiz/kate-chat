@@ -5,6 +5,7 @@ import { ResponseStatus } from "@/core/message";
 const TITLE_MAP: Record<ResponseStatus, string> = {
   [ResponseStatus.IN_PROGRESS]: "In Progress",
   [ResponseStatus.COMPLETED]: "Completed",
+  [ResponseStatus.RAG_SEARCH]: "RAG Search",
   [ResponseStatus.WEB_SEARCH]: "Web Search",
   [ResponseStatus.CODE_INTERPRETER]: "Code Interpreter",
   [ResponseStatus.TOOL_CALL]: "Tool Call",
@@ -16,6 +17,7 @@ const TITLE_MAP: Record<ResponseStatus, string> = {
 const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
   [ResponseStatus.IN_PROGRESS]: "blue",
   [ResponseStatus.COMPLETED]: "green",
+  [ResponseStatus.RAG_SEARCH]: "orange",
   [ResponseStatus.WEB_SEARCH]: "teal",
   [ResponseStatus.CODE_INTERPRETER]: "teal",
   [ResponseStatus.TOOL_CALL]: "cyan",

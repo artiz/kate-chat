@@ -27,7 +27,7 @@ import {
   IconCloudCode,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
-import { ModelType, ChatMessagesContainer } from "@katechat/ui";
+import { ModelType, ChatMessagesContainer, MessageRole } from "@katechat/ui";
 import { ChatSettings } from "./ChatSettings";
 import { FileDropzone } from "../documents/FileDropzone/FileDropzone";
 import { notifications } from "@mantine/notifications";
@@ -64,7 +64,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
 
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [selectedRagDocIds, setSelectedRagDocIds] = useState<string[]>([]);
 
   const {
     messages,
@@ -151,7 +151,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             maxTokens: chat?.maxTokens,
             topP: chat?.topP,
             imagesCount: chat?.imagesCount,
-            documentIds: selectedDocIds,
+            documentIds: selectedRagDocIds,
           },
         },
       });
@@ -347,9 +347,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
         chatTools={chat?.tools}
         chatSettings={chat}
         models={models}
+        previousMessages={messages?.filter(m => m.role === MessageRole.USER).map(m => m.content)}
         selectedModel={selectedModel}
         ragEnabled={appConfig?.ragEnabled}
         ragDocuments={chatDocuments}
+        selectedRagDocIds={selectedRagDocIds}
+        setSelectedRagDocIds={setSelectedRagDocIds}
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}
         onUpdateChat={updateChat}

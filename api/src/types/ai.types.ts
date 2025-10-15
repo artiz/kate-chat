@@ -2,6 +2,19 @@ import "reflect-metadata";
 import { Field, ID, ObjectType } from "type-graphql";
 import { ApiProvider } from "@/config/ai/common";
 
+export enum MessageType {
+  MESSAGE = "message",
+  SYSTEM = "system",
+}
+
+export enum ModelType {
+  CHAT = "chat",
+  EMBEDDING = "embedding",
+  IMAGE_GENERATION = "image_generation",
+  AUDIO_GENERATION = "audio_generation",
+  OTHER = "other",
+}
+
 export enum MessageRole {
   USER = "user",
   ASSISTANT = "assistant",
@@ -9,9 +22,29 @@ export enum MessageRole {
   SYSTEM = "system",
 }
 
-export enum MessageType {
-  MESSAGE = "message",
-  SYSTEM = "system",
+export enum ResponseStatus {
+  IN_PROGRESS = "in_progress",
+  RAG_SEARCH = "rag_search",
+  WEB_SEARCH = "web_search",
+  CODE_INTERPRETER = "code_interpreter",
+  TOOL_CALL = "tool_call",
+  TOOL_CALL_COMPLETED = "tool_call_completed",
+  OUTPUT_ITEM = "output_item",
+  REASONING = "reasoning",
+  COMPLETED = "completed",
+  ERROR = "error",
+}
+
+export enum DocumentStatus {
+  UPLOAD = "upload",
+  STORAGE_UPLOAD = "storage_upload",
+  PARSING = "parsing",
+  CHUNKING = "chunking",
+  EMBEDDING = "embedding",
+  SUMMARIZING = "summarizing",
+  READY = "ready",
+  ERROR = "error",
+  DELETING = "deleting",
 }
 
 export type ContentType = "text" | "image" | "video" | "audio" | "mixed";
@@ -40,38 +73,6 @@ export interface UsageCostInfo {
   end?: Date;
   error?: string;
   costs: ServiceCostInfo[];
-}
-
-export enum ModelType {
-  CHAT = "chat",
-  EMBEDDING = "embedding",
-  IMAGE_GENERATION = "image_generation",
-  AUDIO_GENERATION = "audio_generation",
-  OTHER = "other",
-}
-
-export enum DocumentStatus {
-  UPLOAD = "upload",
-  STORAGE_UPLOAD = "storage_upload",
-  PARSING = "parsing",
-  CHUNKING = "chunking",
-  EMBEDDING = "embedding",
-  SUMMARIZING = "summarizing",
-  READY = "ready",
-  ERROR = "error",
-  DELETING = "deleting",
-}
-
-export enum ResponseStatus {
-  IN_PROGRESS = "in_progress",
-  WEB_SEARCH = "web_search",
-  CODE_INTERPRETER = "code_interpreter",
-  TOOL_CALL = "tool_call",
-  TOOL_CALL_COMPLETED = "tool_call_completed",
-  OUTPUT_ITEM = "output_item",
-  REASONING = "reasoning",
-  COMPLETED = "completed",
-  ERROR = "error",
 }
 
 export interface ParsedDocumentChunk {

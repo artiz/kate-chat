@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { Text, Box, Group } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconCode } from "@tabler/icons-react";
@@ -27,10 +27,8 @@ export const CodeInterpreterCall = (message: Message): React.ReactNode => {
     })
     .flatMap(text => parseMarkdown(text));
 
-  // parseMarkdown
-
   const cmp = (
-    <>
+    <Fragment key="code-interpreter">
       <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
         <IconCode size={16} />
         <Text fw={600} size="sm">
@@ -45,7 +43,7 @@ export const CodeInterpreterCall = (message: Message): React.ReactNode => {
           </div>
         ))}
       </div>
-    </>
+    </Fragment>
   );
 
   detailsNodes.push(cmp);

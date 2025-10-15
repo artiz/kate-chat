@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Fragment } from "react";
 import { Text, Box, Group } from "@mantine/core";
 import { Message, Document } from "@/types/graphql";
 import { IconClipboardData, IconFileSearch, IconReportSearch } from "@tabler/icons-react";
@@ -23,7 +23,7 @@ export const RAG =
       );
 
       const cmp = (
-        <>
+        <Fragment key="rag-documents">
           <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
             {relevantsChunks.length ? (
               <IconReportSearch className="message-details-icon" size={16} />
@@ -54,7 +54,7 @@ export const RAG =
               ))}
             </ol>
           </div>
-        </>
+        </Fragment>
       );
 
       detailsNodes.push(cmp);
@@ -62,7 +62,7 @@ export const RAG =
 
     if (relevantsChunks.length) {
       const cmp = (
-        <>
+        <Fragment key="rag-chunks">
           <Group justify="flex-start" align="center" gap="xs" mt="lg" className="message-details-header">
             <IconClipboardData size={16} className="message-details-icon" />
             <Text fw={600} size="sm">
@@ -71,7 +71,7 @@ export const RAG =
           </Group>
 
           {relevantsChunks.map((chunk, idx) => (
-            <div className="message-details-content">
+            <div key={chunk.id || idx} className="message-details-content">
               <Text size="xs" c="dimmed">
                 {chunk.documentName || chunk.id} (Page {chunk.page})
               </Text>
@@ -83,7 +83,7 @@ export const RAG =
               </Box>
             </div>
           ))}
-        </>
+        </Fragment>
       );
 
       detailsNodes.push(cmp);

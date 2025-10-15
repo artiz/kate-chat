@@ -13,8 +13,7 @@ import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
 
-import classes from "./Chat.module.scss";
-import fileMock from "@/__mocks__/fileMock";
+import classes from "./ChatInput.module.scss";
 
 interface IProps {
   chatId?: string;
@@ -27,9 +26,12 @@ interface IProps {
   chatTools?: ChatTool[];
   chatSettings?: ChatSettingsProps;
   models: Model[];
+  previousMessages?: string[];
   selectedModel?: Model;
   ragEnabled?: boolean;
   ragDocuments?: Document[];
+  selectedRagDocIds?: string[];
+  setSelectedRagDocIds?: (value: string[]) => void;
 
   onSendMessage: (message: string, images?: ImageInput[]) => Promise<void>;
   onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
@@ -47,23 +49,28 @@ export const ChatInput = ({
   chatTools,
   chatSettings = DEFAULT_CHAT_SETTINGS,
   models,
+  previousMessages = [],
   selectedModel,
   ragEnabled = false,
   ragDocuments = [],
+  selectedRagDocIds,
+  setSelectedRagDocIds,
   onSendMessage,
   onUpdateChat,
   onDocumentsUpload,
 }: IProps) => {
   const [userMessage, setUserMessage] = useState("");
   const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [selectedTools, setSelectedTools] = useState<Set<ToolType>>(new Set());
+  const [prevImageNdx, setPrevImageNdx] = useState<number>(0);
+  const [isImagesSeek, setIsImagesSeek] = useState<boolean>(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, [loadCompleted]);
+    setPrevImageNdx(previousMessages?.length ? previousMessages.length - 1 : 0);
+  }, [loadCompleted, previousMessages]);
 
   useEffect(() => {
     if (chatTools) {
@@ -131,12 +138,26 @@ export const ChatInput = ({
 
   const handleInputKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key === "Enter" && !event.shiftKey) {
+      const isEmpty = !userMessage?.trim();
+      if (event.key === "Enter" && !event.shiftKey && !event.altKey) {
         event.preventDefault();
         handleSendMessage();
+        setIsImagesSeek(false);
+      } else if (event.key === "ArrowUp" && (isEmpty || isImagesSeek)) {
+        const ndx = Math.max(0, prevImageNdx - 1);
+        setUserMessage(previousMessages[ndx]);
+        setPrevImageNdx(ndx);
+        setIsImagesSeek(true);
+      } else if (event.key === "ArrowDown" && (isEmpty || isImagesSeek)) {
+        const ndx = Math.min(previousMessages.length - 1, prevImageNdx + 1);
+        setUserMessage(previousMessages[ndx]);
+        setPrevImageNdx(ndx);
+        setIsImagesSeek(true);
+      } else {
+        setIsImagesSeek(false);
       }
     },
-    [handleSendMessage]
+    [handleSendMessage, userMessage, previousMessages, prevImageNdx]
   );
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -318,8 +339,8 @@ export const ChatInput = ({
               {ragEnabled ? (
                 <ChatDocumentsSelector
                   chatId={chatId}
-                  selectedDocIds={selectedDocIds}
-                  onSelectionChange={setSelectedDocIds}
+                  selectedDocIds={selectedRagDocIds}
+                  onSelectionChange={setSelectedRagDocIds}
                   disabled={!uploadAllowed || disabled || sending}
                   documents={ragDocuments}
                 />
@@ -348,7 +369,7 @@ export const ChatInput = ({
               ref={inputRef}
               className={classes.chatInput}
               placeholder="Type your message..."
-              value={userMessage}
+              value={userMessage || ""}
               autosize
               minRows={1}
               maxRows={7}

@@ -187,10 +187,7 @@ export const UPDATE_USER_MUTATION = gql`
 export const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
     createMessage(input: $input) {
-      id
-      content
-      role
-      createdAt
+      ...BaseMessage
     }
   }
 `;

@@ -29,7 +29,6 @@ export const ChatMessage = (props: ChatMessageProps) => {
     id,
     modelName,
     modelId,
-    metadata,
     content,
     html,
     updatedAt,
@@ -42,7 +41,6 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   const componentRef = useRef<HTMLDivElement>(null);
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
-  const [details, setDetails] = React.useState<React.ReactNode>(null);
   const [showMainMessage, setShowMainMessage] = React.useState(true);
   const [showDetails, setShowDetails] = React.useState(false);
 
@@ -138,28 +136,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   const toggleDetails = () => setShowDetails(s => !s);
 
-  useEffect(() => {
-    const detailsContent: React.ReactNode = messageDetailsLoader ? messageDetailsLoader(message) : null;
-    if (detailsContent) {
-      const cmp = (
-        <Box mt="md">
-          <Group mb={5}>
-            <Button onClick={toggleDetails} p="xs" variant="light" size="xs">
-              Details
-            </Button>
-          </Group>
-
-          <Collapse in={showDetails}>
-            <div className={classes.detailsBlock}>{detailsContent}</div>
-          </Collapse>
-        </Box>
-      );
-
-      setDetails(cmp);
-    } else {
-      setDetails(null);
-    }
-  }, [messageDetailsLoader, showDetails]);
+  const details = useMemo(() => {
+    return messageDetailsLoader ? messageDetailsLoader(message) : null;
+  }, [messageDetailsLoader, message]);
 
   const mainMessage = useMemo(() => {
     const plugins = pluginsLoader ? pluginsLoader(message) : null;
@@ -201,7 +180,19 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <div>{content}</div>
           )}
 
-          {details}
+          {details && (
+            <Box mt="md">
+              <Group mb={5}>
+                <Button onClick={toggleDetails} p="xs" variant="light" size="xs">
+                  Details
+                </Button>
+              </Group>
+
+              <Collapse in={showDetails}>
+                <div className={classes.detailsBlock}>{details}</div>
+              </Collapse>
+            </Box>
+          )}
 
           <div className={classes.messageFooter}>
             <CopyMessageButton messageId={id} messageIndex={index} />
@@ -221,11 +212,10 @@ export const ChatMessage = (props: ChatMessageProps) => {
     modelName,
     modelId,
     models,
-    metadata,
-    metadata?.relevantsChunks,
     index,
     disableActions,
     details,
+    showDetails,
     streaming,
   ]);
 

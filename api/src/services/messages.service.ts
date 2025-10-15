@@ -757,7 +757,7 @@ export class MessagesService {
       case ResponseStatus.REASONING:
         return status.detail || (status.sequence_number == null ? "" : `Step #${status.sequence_number}`);
       default:
-        return undefined;
+        return status.detail || undefined;
     }
   }
 
@@ -793,6 +793,15 @@ export class MessagesService {
     };
 
     do {
+      await this.subscriptionsService.publishChatMessage(
+        chat,
+        {
+          ...ragMessage,
+          status: ResponseStatus.RAG_SEARCH,
+        },
+        true
+      );
+
       try {
         chunks = await this.embeddingsService.findChunks(input.documentIds!, input.content, connection, {
           limit: chunksLimit,

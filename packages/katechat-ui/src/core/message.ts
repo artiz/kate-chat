@@ -14,6 +14,7 @@ export enum MessageRole {
 
 export enum ResponseStatus {
   IN_PROGRESS = "in_progress",
+  RAG_SEARCH = "rag_search",
   WEB_SEARCH = "web_search",
   CODE_INTERPRETER = "code_interpreter",
   TOOL_CALL = "tool_call",
