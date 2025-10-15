@@ -215,6 +215,22 @@ export interface MessageRelevantChunk {
   content: string;
 }
 
+export type ContentType = "text" | "image" | "video" | "audio" | "mixed";
+
+export interface ModelMessageContent {
+  content: string;
+  contentType?: ContentType;
+  fileName?: string;
+  mimeType?: string;
+}
+
+export interface ChatToolCallResult {
+  name: string;
+  content: string;
+  jsonContent?: ModelMessageContent[];
+  callId?: string;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -223,6 +239,7 @@ export interface MessageMetadata {
 
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
+  tools?: ChatToolCallResult[];
 }
 
 export interface MessageChatInfo {

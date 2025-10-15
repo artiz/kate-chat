@@ -146,6 +146,10 @@ export const BASE_MESSAGE_FRAGMENT = `
           content
           relevance
         }
+        tools {
+          name
+          content
+        }
       }
     }
 `;

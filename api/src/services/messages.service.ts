@@ -673,7 +673,7 @@ export class MessagesService {
       completed?: boolean,
       forceFlush?: boolean
     ) => {
-      const { content: token = "", error, metadata, status } = data;
+      const { content: token = "", error, metadata = {}, status } = data;
 
       if (completed) {
         if (error) {
@@ -685,7 +685,13 @@ export class MessagesService {
         }
 
         assistantMessage.content = token.trim() || "_No response_";
-        assistantMessage.metadata = metadata;
+        if (metadata) {
+          if (!assistantMessage.metadata) {
+            assistantMessage.metadata = metadata;
+          } else {
+            assistantMessage.metadata = { ...assistantMessage.metadata, ...metadata };
+          }
+        }
 
         return completeRequest(assistantMessage).catch(err => {
           this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));

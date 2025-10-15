@@ -6,7 +6,7 @@
 
   .main,
   .linked {
-    padding: var(--mb-padding, var(--mantine-spacing-md));
+    padding: var(--mantine-spacing-md);
     flex-grow: 1;
     width: 50%;
     display: flex;
@@ -15,7 +15,7 @@
   }
 
   .linked {
-    margin: 0 var(--mb-padding, var(--mantine-spacing-md));
+    margin: 0 var(--mantine-spacing-md);
   }
 
   .linkedToggle {
@@ -104,17 +104,28 @@
   }
 
   .detailsBlock {
-    padding-left: var(--mb-padding, var(--mantine-spacing-md));
-    border-left: 1px solid var(--mantine-color-default-border);
-    margin-left: 1rem;
-    margin-top: 0.5rem;
-
+    margin-top: 1rem;
     font-size: 80%;
 
     :global ol,
     :global ul {
       margin: 0.25rem 0;
       padding: 0 0 0 1rem;
+    }
+
+    :global .message-details-header {
+      margin-bottom: var(--mantine-spacing-md);
+      margin-left: 1rem;
+
+      :global svg {
+        color: var(--mantine-color-gray-7);
+      }
+    }
+
+    :global .message-details-content {
+      padding-left: var(--mantine-spacing-md);
+      border-left: 1px solid var(--mantine-color-gray-7);
+      margin-left: 1.5rem;
     }
   }
 

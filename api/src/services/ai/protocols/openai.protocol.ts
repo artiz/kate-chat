@@ -23,6 +23,11 @@ const logger = createLogger(__filename);
 export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
 
+function genProcessSymbol(): string {
+  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢"];
+  return symbols[Math.floor(Math.random() * symbols.length)];
+}
+
 export class OpenAIProtocol {
   private openai: OpenAI;
   private connection?: ConnectionParams;
@@ -422,7 +427,7 @@ export class OpenAIProtocol {
             name: c.name || "unknown",
             args: JSON.stringify(c.arguments || {}),
           }));
-          callbacks.onProgress?.("🖥️", { status, detail, toolCalls: metaCalls });
+          callbacks.onProgress?.(genProcessSymbol(), { status, detail, toolCalls: metaCalls });
 
           const toolResults = await this.callCompletionTools(toolCalls);
 
@@ -520,7 +525,6 @@ export class OpenAIProtocol {
     let fullResponse = "";
     let meta: MessageMetadata = {};
     let lastStatus: ResponseStatus | undefined = undefined;
-    let toolCall = "";
 
     for await (const chunk of stream) {
       if (chunk.type == "response.output_text.delta") {
@@ -540,15 +544,21 @@ export class OpenAIProtocol {
           callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
         }
       } else if (chunk.type == "response.code_interpreter_call_code.delta") {
-        const delta = toolCall === "" ? "```\n" + chunk.delta : chunk.delta;
-        toolCall += delta;
-
-        callbacks.onProgress?.(delta, { status: ResponseStatus.CODE_INTERPRETER });
+        callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
       } else if (chunk.type == "response.code_interpreter_call.interpreting") {
-        toolCall += "\n```";
-        logger.debug({ toolCall }, "code interpreter call");
-        callbacks.onProgress?.("\n```", { status: ResponseStatus.CODE_INTERPRETER });
-        toolCall = "";
+        callbacks.onProgress?.(genProcessSymbol(), { status: ResponseStatus.CODE_INTERPRETER });
+      } else if (chunk.type == "response.code_interpreter_call_code.done") {
+        logger.debug(chunk, "code interpreter call completed");
+        callbacks.onProgress?.("", {
+          status: ResponseStatus.CODE_INTERPRETER,
+          tools: [
+            {
+              name: "code_interpreter",
+              content: chunk.code || "",
+              callId: chunk.item_id,
+            },
+          ],
+        });
       } else if (chunk.type == "response.output_item.done") {
         let status: ResponseStatus | undefined = undefined;
         const item = chunk.item;

@@ -36,7 +36,19 @@ const marked = new Marked(
     throwOnError: false,
     output: "html",
   }),
-  { silent: false, breaks: true }
+  { silent: true }
+);
+
+const markedSimple = new Marked(
+  markedHighlight({
+    emptyLangClass: "hljs plaintext",
+    langPrefix: "hljs ",
+    highlight(code: string, lang: string) {
+      const language = hljs.getLanguage(lang) ? lang : "plaintext";
+      return hljs.highlight(code?.trim(), { language }).value;
+    },
+  }),
+  { silent: true, breaks: true, gfm: true }
 );
 
 const renderer = new Renderer();
@@ -63,8 +75,12 @@ export function normalizeMatJAX(input: string): string {
  * @param content Raw markdown
  * @returns Array for formatted HTML blocks to be rendered
  */
-export function parseMarkdown(content?: string | null): string[] {
+export function parseMarkdown(content?: string | null, simple = false): string[] {
   if (!content) return [];
+
+  if (simple) {
+    return [markedSimple.parse(content, { renderer }) as string];
+  }
 
   content = normalizeMatJAX(content);
   // process complex code blocks, tables as one block

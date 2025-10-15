@@ -24,14 +24,18 @@ export const RAG =
 
       const cmp = (
         <>
-          <Group justify="flex-start" align="center" gap="xs">
-            {relevantsChunks.length ? <IconReportSearch size={16} /> : <IconFileSearch size={16} />}
+          <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
+            {relevantsChunks.length ? (
+              <IconReportSearch className="message-details-icon" size={16} />
+            ) : (
+              <IconFileSearch className="message-details-icon" size={16} />
+            )}
             <Text fw={600} size="sm">
               {relevantsChunks.length ? "RAG search results" : "RAG search"}
             </Text>
           </Group>
 
-          <div key="rag-search">
+          <div className="message-details-content">
             <ol>
               {documentIds.map((docId, idx) => (
                 <li key={idx}>
@@ -58,16 +62,16 @@ export const RAG =
 
     if (relevantsChunks.length) {
       const cmp = (
-        <div key="rag-chunks">
-          <Group justify="flex-start" align="center" gap="xs" mt="lg">
-            <IconClipboardData size={16} />
+        <>
+          <Group justify="flex-start" align="center" gap="xs" mt="lg" className="message-details-header">
+            <IconClipboardData size={16} className="message-details-icon" />
             <Text fw={600} size="sm">
               Related chunks
             </Text>
           </Group>
 
           {relevantsChunks.map((chunk, idx) => (
-            <div key={idx}>
+            <div className="message-details-content">
               <Text size="xs" c="dimmed">
                 {chunk.documentName || chunk.id} (Page {chunk.page})
               </Text>
@@ -79,7 +83,7 @@ export const RAG =
               </Box>
             </div>
           ))}
-        </div>
+        </>
       );
 
       detailsNodes.push(cmp);

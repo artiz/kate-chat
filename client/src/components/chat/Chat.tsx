@@ -47,6 +47,7 @@ import { RAG } from "./message-details-plugins/RAG";
 
 import classes from "./Chat.module.scss";
 import { ChatInput } from "./ChatInput";
+import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 
 interface IProps {
   chatId?: string;
@@ -321,7 +322,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         removeMessages={removeMessages}
         loadMoreMessages={loadMoreMessages}
         plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-        detailsPlugins={[RAG(chatDocuments)]}
+        detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall]}
         streaming={streaming}
         loading={messagesLoading}
         loadCompleted={loadCompleted}
