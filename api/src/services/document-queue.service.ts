@@ -183,17 +183,22 @@ export class DocumentQueueService {
         markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
 
       // Generate summary
-      const summaryResponse = await this.aiService.completeChat(model.apiProvider, connection, {
-        modelId,
-        messages: [
+      const summaryResponse = await this.aiService.completeChat(
+        model.apiProvider,
+        connection,
+        {
+          modelId,
+          maxTokens: SUMMARIZING_OUTPUT_TOKENS,
+          temperature: SUMMARIZING_TEMPERATURE,
+        },
+        [
           {
+            id: "",
             role: MessageRole.USER,
-            body: PROMPT_DOCUMENT_SUMMARY({ content: contentToSummarize }),
+            content: PROMPT_DOCUMENT_SUMMARY({ content: contentToSummarize }),
           },
-        ],
-        maxTokens: SUMMARIZING_OUTPUT_TOKENS,
-        temperature: SUMMARIZING_TEMPERATURE,
-      });
+        ]
+      );
 
       logger.info(`Generated summary for document ${document.id} (${summaryResponse.content.length} characters)`);
 

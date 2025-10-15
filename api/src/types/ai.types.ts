@@ -264,7 +264,6 @@ export interface StreamCallbacks {
 
 export interface CompleteChatRequest {
   systemPrompt?: string;
-  messages?: ModelMessage[];
   modelId: string;
   temperature?: number;
   maxTokens?: number;

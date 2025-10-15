@@ -28,6 +28,7 @@ import {
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   MessageRole,
+  ModelMessage,
   ResponseStatus,
   ToolType,
   ChatToolCallResult,
@@ -99,7 +100,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     this.bedrockManagementClient = new BedrockClient(config);
   }
 
-  async completeChat(request: CompleteChatRequest): Promise<ModelResponse> {
+  async completeChat(request: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
     if (!this.bedrockClient) {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
@@ -110,7 +111,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     do {
       // Get provider service and parameters
-      const input = this.formatConverseParams(request);
+      const input = this.formatConverseParams(request, messages);
       // Append any tool result messages from previous iterations
       if (input.messages) {
         input.messages = [...input.messages, ...conversationMessages];
@@ -166,7 +167,11 @@ export class BedrockApiProvider extends BaseApiProvider {
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
-  async streamChatCompletion(request: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(
+    request: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void> {
     if (!this.bedrockClient) {
       const err = new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
       if (callbacks.onError) {
@@ -184,7 +189,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     do {
       try {
-        const input = this.formatConverseParams(request);
+        const input = this.formatConverseParams(request, messages);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
 
@@ -715,8 +720,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     };
   }
 
-  private formatConverseParams(request: CompleteChatRequest): ConverseCommandInput {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP, tools: inputTools } = request;
+  private formatConverseParams(request: CompleteChatRequest, messages: ModelMessage[] = []): ConverseCommandInput {
+    const { systemPrompt, modelId, temperature, maxTokens, topP, tools: inputTools } = request;
 
     const requestMessages: ConverseMessage[] = messages.map(msg => {
       if (typeof msg.body === "string") {

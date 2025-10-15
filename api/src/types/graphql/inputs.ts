@@ -162,7 +162,7 @@ export class CreateMessageInput {
   images?: ImageInput[];
 
   @Field({ nullable: true })
-  modelId: string;
+  modelId?: string;
 
   @Field({ nullable: true })
   temperature?: number;

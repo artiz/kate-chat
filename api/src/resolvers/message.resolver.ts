@@ -140,7 +140,7 @@ export class MessageResolver extends BaseResolver {
               fileUrl: `/files/${content.fileName}`,
               mimeType: content.mimeType || "image/jpeg",
               role: message.role,
-              createdAt: message.createdAt,
+              createdAt: message.createdAt || new Date(),
               message: message,
               chat: message.chat!,
             });

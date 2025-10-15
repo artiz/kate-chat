@@ -236,8 +236,8 @@ export class ModelResolver extends BaseResolver {
       const content = `Embedding [${result.embedding.length}]: [${preview}${result.embedding.length > previewLength ? ", ..." : ""}]`;
 
       return {
-        id: "00000000-0000-0000-0000-000000000000",
-        role: MessageRole.SYSTEM,
+        id: "00000000-0000-0000-0000-000000000001",
+        role: MessageRole.ASSISTANT,
         content: content,
         modelId: model.modelId,
         modelName: model.name,
@@ -247,22 +247,28 @@ export class ModelResolver extends BaseResolver {
     }
 
     // Create a message format for the test
-    const message: ModelMessage = {
+    const message: Message = {
+      id: "00000000-0000-0000-0000-000000000000",
       role: MessageRole.USER,
-      body: text,
-      timestamp,
+      content: text,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     // Generate a response using the AI service
-    const response = await this.aiService.completeChat(model.apiProvider, connectionParams, {
-      modelId: model.modelId,
-      messages: [message],
-    });
+    const response = await this.aiService.completeChat(
+      model.apiProvider,
+      connectionParams,
+      {
+        modelId: model.modelId,
+      },
+      [message]
+    );
 
     logger.trace({ message, response }, "Test model inference");
 
     return {
-      id: "00000000-0000-0000-0000-000000000000",
+      id: "00000000-0000-0000-0000-000000000001",
       role: MessageRole.ASSISTANT,
       content: response.content,
       modelId: model.modelId,

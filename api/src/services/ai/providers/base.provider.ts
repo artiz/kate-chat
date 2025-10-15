@@ -8,7 +8,8 @@ import {
   ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
-} from "../../../types/ai.types";
+  ModelMessage,
+} from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 export abstract class BaseApiProvider {
@@ -17,8 +18,12 @@ export abstract class BaseApiProvider {
     this.connection = connection;
   }
 
-  abstract completeChat(request: CompleteChatRequest): Promise<ModelResponse>;
-  abstract streamChatCompletion(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void>;
+  abstract completeChat(request: CompleteChatRequest, messages: ModelMessage[]): Promise<ModelResponse>;
+  abstract streamChatCompletion(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void>;
   abstract getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse>;
 
   abstract getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo>;

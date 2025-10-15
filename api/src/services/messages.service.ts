@@ -235,6 +235,7 @@ export class MessagesService {
     const chatId = chat.id;
 
     // Delete all messages after this one in the chat
+    ok(originalMessage.createdAt);
     const messagesToDelete = await this.messageRepository.findBy({
       chatId,
       createdAt: MoreThanOrEqual(formatDateFloor(originalMessage.createdAt)),
@@ -408,6 +409,7 @@ export class MessagesService {
     }
 
     // If deleteFollowing is true, find and delete all messages after this one
+    ok(message.createdAt);
     const messagesToDelete = (
       deleteFollowing
         ? await this.messageRepository.find({
@@ -610,7 +612,7 @@ export class MessagesService {
       // sync call
       try {
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
-        const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
+        const aiResponse = await this.aiService.completeChat(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
           if (!aiResponse.files) {
@@ -728,7 +730,7 @@ export class MessagesService {
 
     await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
     this.aiService
-      .streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
+      .streamChatCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
       .catch((error: unknown) => {
         logger.error(error, "Error streaming AI response");
         return completeRequest({
@@ -814,7 +816,7 @@ export class MessagesService {
         };
 
         // always sync call
-        aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, [
+        aiResponse = await this.aiService.completeChat(model.apiProvider, connection, request, [
           {
             ...inputMessage,
             jsonContent: undefined,
@@ -906,15 +908,20 @@ export class MessagesService {
     question: string,
     answer: string
   ): Promise<string> => {
-    const res = await this.aiService.completeChat(model.apiProvider, connection, {
-      modelId: model.modelId,
-      messages: [
+    const res = await this.aiService.completeChat(
+      model.apiProvider,
+      connection,
+      {
+        modelId: model.modelId,
+      },
+      [
         {
+          id: "summary-system",
           role: MessageRole.USER,
-          body: PROMPT_CHAT_TITLE({ question, answer }),
+          content: PROMPT_CHAT_TITLE({ question, answer }),
         },
-      ],
-    });
+      ]
+    );
 
     const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
     return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
@@ -968,6 +975,7 @@ export class MessagesService {
       .andWhere("message.linkedToMessageId IS NULL");
 
     if (currentMessage) {
+      ok(currentMessage.createdAt);
       query = query
         .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateCeil(currentMessage.createdAt) })
         .andWhere("message.id <> :id", { id: currentMessage.id });

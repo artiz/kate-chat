@@ -2,6 +2,8 @@ process.env.ENABLED_API_PROVIDERS = "aws_bedrock";
 import { ApiProvider } from "../../config/ai/common";
 import { AIService } from "../ai/ai.service";
 import { MessageRole, ModelMessage } from "../../types/ai.types";
+import { Message } from "../../entities/Message";
+import { error } from "console";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
@@ -57,9 +59,9 @@ describe("AIService", () => {
   describe("generateResponse", () => {
     it("should generate a response using Anthropic provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [
-        { role: MessageRole.ASSISTANT, body: "You are a helpful AI assistant." },
-        { role: MessageRole.USER, body: "Hello, how are you?" },
+      const messages: Message[] = [
+        { id: "1", role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
+        { id: "2", role: MessageRole.USER, content: "Hello, how are you?" },
       ];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
@@ -85,7 +87,8 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { messages, modelId }
+        { modelId },
+        messages
       );
 
       expect(response.content).toBe("I'm doing well, thanks for asking!");
@@ -96,9 +99,9 @@ describe("AIService", () => {
 
     it("should generate a response using Meta provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [
-        { role: MessageRole.ASSISTANT, body: "You are a helpful AI assistant." },
-        { role: MessageRole.USER, body: "Hello, how are you?" },
+      const messages: Message[] = [
+        { id: "1", role: MessageRole.ASSISTANT, content: "You are a helpful AI assistant." },
+        { id: "2", role: MessageRole.USER, content: "Hello, how are you?" },
       ];
       const modelId = "meta.llama2-13b-chat-v1";
 
@@ -124,7 +127,8 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { messages, modelId }
+        { modelId },
+        messages
       );
 
       expect(response.content).toBe("I'm a language model, I don't have feelings, but I'm here to help!");
@@ -135,7 +139,7 @@ describe("AIService", () => {
 
     it("should handle empty response", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
+      const messages: Message[] = [{ id: "1", role: MessageRole.USER, content: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
       // Mock empty response
@@ -155,7 +159,8 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { messages, modelId }
+        { modelId },
+        messages
       );
 
       expect(response.content).toBe("");
@@ -166,15 +171,10 @@ describe("AIService", () => {
   describe("streamResponse", () => {
     it("should stream a response using Anthropic provider", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
+      const messages: Message[] = [{ id: "1", role: MessageRole.USER, content: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
-      const callbacks = {
-        onStart: jest.fn(),
-        onProgress: jest.fn(),
-        onComplete: jest.fn(),
-        onError: jest.fn(),
-      };
+      const callback = jest.fn();
 
       // Mock a streaming response using Converse Stream API format
       const mockResponse = {
@@ -214,35 +214,37 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "us-west-2",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { messages, modelId },
-        callbacks
+        { modelId },
+        messages,
+        callback
       );
 
-      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onProgress).toHaveBeenCalledTimes(2);
-      expect(callbacks.onProgress).toHaveBeenNthCalledWith(1, "Hello");
-      expect(callbacks.onProgress).toHaveBeenNthCalledWith(2, ", world!");
-      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello, world!", {
-        usage: {
-          inputTokens: 5,
-          outputTokens: 7,
-          invocationLatency: 150,
+      expect(callback).toHaveBeenCalledTimes(4);
+      expect(callback).toHaveBeenNthCalledWith(1, { status: undefined });
+      expect(callback).toHaveBeenNthCalledWith(2, { content: "Hello", status: undefined }, false, undefined);
+      expect(callback).toHaveBeenNthCalledWith(3, { content: ", world!", status: undefined }, false, undefined);
+      expect(callback).toHaveBeenNthCalledWith(
+        4,
+        {
+          content: "Hello, world!",
+          metadata: {
+            usage: {
+              inputTokens: 5,
+              outputTokens: 7,
+              invocationLatency: 150,
+            },
+          },
         },
-      });
-      expect(callbacks.onError).not.toHaveBeenCalled();
+        true
+      );
     });
 
     it("should handle errors during streaming", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
+      const messages: Message[] = [{ id: "1", role: MessageRole.USER, content: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
-      const callbacks = {
-        onStart: jest.fn(),
-        onToken: jest.fn(),
-        onComplete: jest.fn(),
-        onError: jest.fn(),
-      };
+      const callback = jest.fn();
 
       // Mock an error response
       const mockError = new Error("Stream processing error");
@@ -254,27 +256,22 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { messages, modelId },
-        callbacks
+        { modelId },
+        messages,
+        callback
       );
 
-      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onToken).not.toHaveBeenCalled();
-      expect(callbacks.onComplete).not.toHaveBeenCalled();
-      expect(callbacks.onError).toHaveBeenCalledWith(mockError);
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(callback).toHaveBeenNthCalledWith(1, { status: undefined });
+      expect(callback).toHaveBeenNthCalledWith(2, { error: mockError, status: undefined }, true);
     });
 
     it("should handle stream exceptions", async () => {
       const aiService = new AIService();
-      const messages: ModelMessage[] = [{ role: MessageRole.USER, body: "Hello" }];
+      const messages: Message[] = [{ id: "1", role: MessageRole.USER, content: "Hello" }];
       const modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
 
-      const callbacks = {
-        onStart: jest.fn(),
-        onProgress: jest.fn(),
-        onComplete: jest.fn(),
-        onError: jest.fn(),
-      };
+      const callback = jest.fn();
 
       // Mock a streaming response with an error chunk
       const mockError = new Error("Model stream error");
@@ -304,15 +301,15 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "us-west-2",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { messages, modelId },
-        callbacks
+        { modelId },
+        messages,
+        callback
       );
 
-      expect(callbacks.onStart).toHaveBeenCalledTimes(1);
-      expect(callbacks.onProgress).toHaveBeenCalledTimes(1);
-      expect(callbacks.onProgress).toHaveBeenNthCalledWith(1, "Hello");
-      expect(callbacks.onError).toHaveBeenCalledWith(mockError);
-      expect(callbacks.onComplete).toHaveBeenCalledWith("Hello", undefined);
+      expect(callback).toHaveBeenCalledTimes(4);
+      expect(callback).toHaveBeenNthCalledWith(1, { status: undefined });
+      expect(callback).toHaveBeenNthCalledWith(2, { content: "Hello", status: undefined }, false, undefined);
+      expect(callback).toHaveBeenNthCalledWith(3, { error: mockError }, true);
     });
   });
 });

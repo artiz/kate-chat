@@ -9,7 +9,6 @@ import {
   ModelResponse,
   MessageMetadata,
   ProviderInfo,
-  StreamCallbacks,
   UsageCostInfo,
   ChatResponseStatus,
 } from "../../types/ai.types";
@@ -28,105 +27,24 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseApiProvider } from "./providers/base.provider";
 
 export class AIService {
-  /**
-   * Get the appropriate API provider service instance.
-   * @param apiProvider The API provider type.
-   * @param connection The connection parameters.
-   * @returns The API provider service instance.
-   */
-  protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseApiProvider {
-    if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
-      throw new Error(`API provider ${apiProvider} is not enabled`);
-    }
-
-    if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return new BedrockApiProvider(connection);
-    } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return new OpenAIApiProvider(connection);
-    } else if (apiProvider === ApiProvider.YANDEX_FM) {
-      return new YandexApiProvider(connection);
-    } else {
-      throw new Error(`Unsupported API provider: ${apiProvider}`);
-    }
-  }
-
   // Main method to interact with models
-  async completeChat(
-    apiProvider: ApiProvider,
-    connection: ConnectionParams,
-    inputRequest: CompleteChatRequest
-  ): Promise<ModelResponse> {
-    const request: CompleteChatRequest = {
-      ...inputRequest,
-      temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
-      maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
-      topP: inputRequest.topP ?? DEFAULT_TOP_P,
-      messages: this.preprocessMessages(inputRequest.messages || []),
-    };
-
-    const providerService = this.getApiProvider(apiProvider, connection);
-    return providerService.completeChat(request);
-  }
-
-  // Stream response from models
-  async streamChatCompletion(
+  public async completeChat(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
     inputRequest: CompleteChatRequest,
-    callbacks: StreamCallbacks
-  ): Promise<void> {
+    messages: Message[]
+  ): Promise<ModelResponse> {
     const request: CompleteChatRequest = {
       ...inputRequest,
       temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
       maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
       topP: inputRequest.topP ?? DEFAULT_TOP_P,
-      messages: this.preprocessMessages(inputRequest.messages || []),
     };
 
-    const providerService = this.getApiProvider(apiProvider, connection);
-    return providerService.streamChatCompletion(request, callbacks);
+    return this.getApiProvider(apiProvider, connection).completeChat(request, this.formatMessages(messages || []));
   }
 
-  // Main method to interact with models
-  async getEmbeddings(
-    apiProvider: ApiProvider,
-    connection: ConnectionParams,
-    request: GetEmbeddingsRequest
-  ): Promise<EmbeddingsResponse> {
-    const providerService = this.getApiProvider(apiProvider, connection);
-    return providerService.getEmbeddings(request);
-  }
-
-  // Format messages for model invocation
-  formatMessages(messages: Message[]): ModelMessage[] {
-    return messages.map(msg => ({
-      role: msg.role,
-      body: msg.jsonContent || msg.content,
-      timestamp: msg.createdAt,
-      metadata: msg.metadata,
-    }));
-  }
-
-  // Adapter method for message resolver
-  async getCompletion(
-    apiProvider: ApiProvider,
-    connection: ConnectionParams,
-    request: CompleteChatRequest,
-    messages: Message[]
-  ): Promise<ModelResponse> {
-    // Convert DB message objects to ModelMessage structure
-    const formattedMessages = this.formatMessages(messages);
-
-    // Invoke the model
-    const response = await this.completeChat(apiProvider, connection, {
-      ...request,
-      messages: formattedMessages,
-    });
-
-    return response;
-  }
-
-  async streamCompletion(
+  public async streamChatCompletion(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
     request: CompleteChatRequest,
@@ -138,28 +56,29 @@ export class AIService {
     ) => void
   ) {
     // Stream the completion in background
-    return this.streamChatCompletion(
-      apiProvider,
-      connection,
-      {
-        ...request,
-        messages: this.formatMessages(messages),
+    return this.getApiProvider(apiProvider, connection).streamChatCompletion(request, this.formatMessages(messages), {
+      onStart: (status?: ChatResponseStatus) => {
+        callback({ status });
       },
-      {
-        onStart: (status?: ChatResponseStatus) => {
-          callback({ status });
-        },
-        onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => {
-          callback({ content: token, status }, false, force);
-        },
-        onComplete: (response: string, metadata: MessageMetadata | undefined) => {
-          callback({ content: response, metadata }, true);
-        },
-        onError: (error: Error) => {
-          callback({ error }, true);
-        },
-      }
-    );
+      onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => {
+        callback({ content: token, status }, false, force);
+      },
+      onComplete: (response: string, metadata: MessageMetadata | undefined) => {
+        callback({ content: response, metadata }, true);
+      },
+      onError: (error: Error) => {
+        callback({ error }, true);
+      },
+    });
+  }
+
+  // Main method to interact with models
+  public async getEmbeddings(
+    apiProvider: ApiProvider,
+    connection: ConnectionParams,
+    request: GetEmbeddingsRequest
+  ): Promise<EmbeddingsResponse> {
+    return this.getApiProvider(apiProvider, connection).getEmbeddings(request);
   }
 
   async getCosts(
@@ -214,13 +133,41 @@ export class AIService {
   }
 
   /**
-   * Preprocess messages to join duplicates if they are
+   * Get the appropriate API provider service instance.
+   * @param apiProvider The API provider type.
+   * @param connection The connection parameters.
+   * @returns The API provider service instance.
+   */
+  protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseApiProvider {
+    if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
+      throw new Error(`API provider ${apiProvider} is not enabled`);
+    }
+
+    if (apiProvider === ApiProvider.AWS_BEDROCK) {
+      return new BedrockApiProvider(connection);
+    } else if (apiProvider === ApiProvider.OPEN_AI) {
+      return new OpenAIApiProvider(connection);
+    } else if (apiProvider === ApiProvider.YANDEX_FM) {
+      return new YandexApiProvider(connection);
+    } else {
+      throw new Error(`Unsupported API provider: ${apiProvider}`);
+    }
+  }
+
+  /**
+   * Format messages for model invocation and preprocess messages to join duplicates if they are
    * @param messages
    * @returns
    */
-  private preprocessMessages(messages: ModelMessage[]): ModelMessage[] {
-    const result = messages.slice();
-    result.sort((a, b) => {
+  private formatMessages(messages: Message[]): ModelMessage[] {
+    const modelMessages = messages.map(msg => ({
+      role: msg.role,
+      body: msg.jsonContent || msg.content,
+      timestamp: msg.createdAt,
+      metadata: msg.metadata,
+    }));
+
+    modelMessages.sort((a, b) => {
       if (a.timestamp?.getTime() === b.timestamp?.getTime()) {
         return a.role === b.role ? 0 : a.role === MessageRole.USER ? -1 : 1;
       }
@@ -228,7 +175,7 @@ export class AIService {
       return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
     });
 
-    return result.reduce((acc: ModelMessage[], msg: ModelMessage) => {
+    return modelMessages.reduce((acc: ModelMessage[], msg: ModelMessage) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
 
       // Check if the last message is of the same role and content

@@ -303,7 +303,7 @@ type GqlModelsList {
 type GqlProviderInfo {
   costsInfoAvailable: Boolean!
   details: [ProviderDetail!]!
-  id: String!
+  id: ApiProvider!
   isConnected: Boolean!
   name: String!
 }
@@ -335,7 +335,7 @@ type Message {
   linkedToMessage: Message!
   linkedToMessageId: String
   metadata: MessageMetadata
-  modelId: String!
+  modelId: String
   modelName: String
   role: String!
   status: String

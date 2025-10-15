@@ -45,8 +45,9 @@ export class OpenAIProtocol {
     return this.openai;
   }
 
-  async completeChat(
-    inputRequest: CompleteChatRequest,
+  public async completeChat(
+    input: CompleteChatRequest,
+    messages: ModelMessage[] = [],
     apiType: OpenAIApiType = "completions"
   ): Promise<ModelResponse> {
     try {
@@ -56,7 +57,7 @@ export class OpenAIProtocol {
       };
 
       if (apiType === "responses") {
-        const params = this.formatResponsesRequest(inputRequest);
+        const params = this.formatResponsesRequest(input, messages);
         logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
         const result = await this.openai.responses.create(params);
@@ -66,7 +67,7 @@ export class OpenAIProtocol {
         response.files = files.length ? files : undefined;
         response.metadata = metadata;
       } else {
-        const params = this.formatCompletionRequest(inputRequest);
+        const params = this.formatCompletionRequest(input, messages);
         logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
 
         const completion = await this.openai.chat.completions.create(params);
@@ -96,17 +97,18 @@ export class OpenAIProtocol {
   }
 
   // Stream response from OpenAI models
-  async streamChatCompletion(
+  public async streamChatCompletion(
     inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = [],
     callbacks: StreamCallbacks,
     apiType: OpenAIApiType = "completions"
   ): Promise<void> {
     callbacks.onStart?.();
     try {
       if (apiType === "responses") {
-        await this.streamChatResponses(inputRequest, callbacks);
+        await this.streamChatResponses(inputRequest, messages, callbacks);
       } else {
-        await this.streamChatCompletionLegacy(inputRequest, callbacks);
+        await this.streamChatCompletionLegacy(inputRequest, messages, callbacks);
       }
     } catch (error) {
       logger.warn(error, "streaming error");
@@ -248,9 +250,10 @@ export class OpenAIProtocol {
    * @returns The formatted completion request parameters.
    */
   private formatCompletionRequest(
-    inputRequest: CompleteChatRequest
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = []
   ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
+    const { systemPrompt, modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
@@ -283,8 +286,11 @@ export class OpenAIProtocol {
     return params;
   }
 
-  private formatResponsesRequest(inputRequest: CompleteChatRequest): OpenAI.Responses.ResponseCreateParamsNonStreaming {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
+  private formatResponsesRequest(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = []
+  ): OpenAI.Responses.ResponseCreateParamsNonStreaming {
+    const { systemPrompt, modelId, temperature, maxTokens } = inputRequest;
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
       model: modelId,
       input: this.formatResponsesInput(messages),
@@ -367,11 +373,12 @@ export class OpenAIProtocol {
   }
 
   private async streamChatCompletionLegacy(
-    inputRequest: CompleteChatRequest,
+    input: CompleteChatRequest,
+    messages: ModelMessage[] = [],
     callbacks: StreamCallbacks
   ): Promise<void> {
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-      ...this.formatCompletionRequest(inputRequest),
+      ...this.formatCompletionRequest(input, messages),
       stream: true,
       stream_options: { include_usage: true },
     };
@@ -495,9 +502,13 @@ export class OpenAIProtocol {
     return contentParts.join("\n");
   }
 
-  private async streamChatResponses(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
+  private async streamChatResponses(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void> {
     const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
-      ...this.formatResponsesRequest(inputRequest),
+      ...this.formatResponsesRequest(inputRequest, messages),
       stream: true,
     };
 
