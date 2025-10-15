@@ -4,7 +4,7 @@
       border: 1px solid var(--app-shell-border-color);
     }
 
-    .modelRow {
+    .headerRow {
       background-color: var(--mantine-color-gray-4);
     }
 
@@ -35,7 +35,7 @@
     background-color: var(--app-shell-border-color);
   }
 
-  .modelRow {
+  .headerRow {
     padding: 0.33rem;
     border-top-left-radius: var(--mantine-radius-default);
     border-top-right-radius: var(--mantine-radius-default);

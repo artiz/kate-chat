@@ -1,0 +1,15 @@
+.dropzone {
+  cursor: pointer;
+  &:hover {
+    color: var(--mantine-color-brand-6);
+  }
+}
+
+.dragging {
+  color: var(--mantine-color-brand-6);
+}
+
+.disabled {
+  color: var(--mantine-color-gray-4);
+  cursor: not-allowed;
+}

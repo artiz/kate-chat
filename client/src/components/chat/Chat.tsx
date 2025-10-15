@@ -4,18 +4,26 @@ import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
 import { IconX, IconEdit, IconCheck } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
-import { ModelType, ChatMessagesContainer, ChatMessagesContainerRef, MessageRole } from "@katechat/ui";
+import {
+  ModelType,
+  ChatMessagesContainer,
+  ChatMessagesContainerRef,
+  MessageRole,
+  ImageInput,
+  ChatInput,
+} from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages } from "@/hooks";
 import { notEmpty, ok } from "@/lib/assert";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
-import { ImageInput, ChatDocument, CreateMessageResponse } from "@/types/graphql";
+import { ChatDocument, CreateMessageResponse } from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
 import { CREATE_MESSAGE } from "@/store/services/graphql";
+import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
-import { ChatInput } from "./ChatInput";
+import { ChatInputHeader } from "./ChatInputHeader";
 
 import classes from "./Chat.module.scss";
 import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
@@ -316,18 +324,25 @@ export const ChatComponent = ({ chatId }: IProps) => {
       )}
 
       <ChatInput
-        chatId={chatId}
         loadCompleted={loadCompleted}
         disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
         uploadAllowed={uploadAllowed}
         fullHeight={messages?.length === 0}
         streaming={streaming}
         setSending={setSending}
-        chatTools={chat?.tools}
-        chatSettings={chat}
-        models={models}
         previousMessages={messages?.filter(m => m.role === MessageRole.USER).map(m => m.content)}
-        selectedModel={selectedModel}
+        header={
+          <ChatInputHeader
+            chatId={chatId}
+            disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
+            streaming={streaming}
+            chatTools={chat?.tools}
+            chatSettings={chat}
+            models={models}
+            selectedModel={selectedModel}
+            onUpdateChat={updateChat}
+          />
+        }
         inputPlugins={
           <>
             {appConfig?.ragEnabled && (
@@ -341,9 +356,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
             )}
           </>
         }
+        uploadFormats={SUPPORTED_UPLOAD_FORMATS}
+        maxImagesCount={MAX_IMAGES}
+        maxUploadFileSize={MAX_UPLOAD_FILE_SIZE}
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}
-        onUpdateChat={updateChat}
       />
     </Container>
   );

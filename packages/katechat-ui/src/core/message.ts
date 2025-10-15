@@ -51,3 +51,9 @@ export interface PluginProps<TMessage = Message> {
   onActionEnd?: (messageId: string) => void;
   onMessageDeleted?: (args: { messagesToDelete?: TMessage[]; deleteAfter?: TMessage }) => void;
 }
+
+export interface ImageInput {
+  fileName: string;
+  mimeType: string;
+  bytesBase64: string;
+}

@@ -1,1 +1,1 @@
-export type ApiProvider = "aws_bedrock" | "open_ai" | "yandex_fm" | "google_vertex_ai" | "deepseek" | "anthropic";
+export type ApiProvider = "AWS_BEDROCK" | "OPEN_AI" | "YANDEX_FM" | "GOOGLE_VERTEX_AI" | "DEEPSEEK" | "ANTHROPIC";

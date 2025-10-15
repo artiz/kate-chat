@@ -114,12 +114,6 @@ export interface GetDocumentsForChatResponse {
   chatById: Chat | null | undefined;
 }
 
-export interface ImageInput {
-  fileName: string;
-  mimeType: string;
-  bytesBase64: string;
-}
-
 export interface CreateChatInput {
   title?: string;
   description?: string;

@@ -212,7 +212,7 @@ input GetChatsInput {
 }
 
 input GetCostsInput {
-  apiProvider: String!
+  apiProvider: ApiProvider!
   endTime: Float
   startTime: Float!
 }

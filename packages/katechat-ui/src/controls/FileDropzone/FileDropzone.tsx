@@ -2,16 +2,17 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Group, Tooltip, Box } from "@mantine/core";
 import { IconFileUpload } from "@tabler/icons-react";
 import { notEmpty } from "@/lib/assert";
-import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
-
 import classes from "./FileDropzone.module.scss";
 
 interface IProps {
   disabled?: boolean;
+  uploadFormats?: string[];
   onFilesAdd: (images: File[]) => void;
 }
 
-export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
+export const IMAGE_UPLOAD_FORMATS = ["image/jpeg", "image/png", "image/webp"];
+
+export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, uploadFormats = IMAGE_UPLOAD_FORMATS }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +107,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
             ref={fileInputRef}
             type="file"
             multiple
-            accept={SUPPORTED_UPLOAD_FORMATS.join(",")}
+            accept={uploadFormats?.join(",")}
             onChange={handleFileSelect}
             className={classes.fileInput}
             style={{ display: "none" }}

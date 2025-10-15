@@ -26,6 +26,6 @@ export const RAG_LOAD_FULL_PAGES = ["1", "true", "y", "yes"].includes(
 
 export const ENABLED_API_PROVIDERS: ApiProvider[] = (() => {
   const allIds: ApiProvider[] = Object.values(ApiProvider);
-  const enabledIds = new Set(process.env.ENABLED_API_PROVIDERS?.split(",").map(id => id.trim()) || []);
+  const enabledIds = new Set(process.env.ENABLED_API_PROVIDERS?.split(",")?.map(id => id.trim()) || []);
   return process.env.ENABLED_API_PROVIDERS === "*" ? allIds : allIds.filter(id => enabledIds.has(id));
 })();

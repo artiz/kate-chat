@@ -233,7 +233,7 @@ export class TestModelInput {
 
 @InputType()
 export class GetCostsInput {
-  @Field()
+  @Field(() => ApiProvider)
   apiProvider: ApiProvider;
 
   @Field()

@@ -11,6 +11,8 @@ import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
 import passport from "passport";
 import session from "cookie-session";
+import { execute, GraphQLError, subscribe } from "graphql";
+
 import { configurePassport } from "./config/passport";
 import { router as authRoutes } from "./controllers/auth.controller";
 import { router as healthRoutes } from "./controllers/health.controller";
@@ -25,7 +27,7 @@ import {
   DocumentResolver,
 } from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
-import { execute, GraphQLError, subscribe } from "graphql";
+
 import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";

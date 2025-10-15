@@ -1,4 +1,4 @@
-export const MAX_INPUT_JSON = process.env.MAX_INPUT_JSON || "5mb";
+export const MAX_INPUT_JSON = process.env.MAX_INPUT_JSON || "50mb";
 export const DEMO_MODE = ["1", "true", "y", "yes"].includes(process.env.DEMO_MODE?.toLowerCase() || "");
 export const DEMO_MAX_CHAT_MESSAGES = +(process.env.DEMO_MAX_CHAT_MESSAGES || 100);
 export const DEMO_MAX_CHATS = +(process.env.DEMO_MAX_CHATS || 50);
