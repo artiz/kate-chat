@@ -107,6 +107,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.23.1",
     "sass": "^1.71.1",
+    "ts-jest": "^29.4.5",
     "typescript": "^5.8.3"
   }
 }
