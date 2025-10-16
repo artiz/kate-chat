@@ -64,7 +64,7 @@ renderer.link = ({ href, title, text }) => {
   return `<a target="_blank" rel="noopener noreferrer" href="${url}" title="${escapeHtml(title) || ""}">${escapeHtml(text)}</a>`;
 };
 
-export function normalizeMatJAX(input: string): string {
+export function normalizeMatJax(input: string): string {
   return input
     ? input
         .replace(/\\\(([\s\S]+?)\\\)/g, (_, expr) => `$${expr}$`)
@@ -85,7 +85,7 @@ export function parseMarkdown(content?: string | null, simple = false): string[]
     return [markedSimple.parse(content, { renderer }) as string];
   }
 
-  content = normalizeMatJAX(content);
+  content = normalizeMatJax(content);
 
   // process complex code blocks, tables as one block
   if (content.match(/(```)|(\|---)/)) {

@@ -28,7 +28,7 @@ export const ChatInputHeader = ({
   selectedModel,
   onUpdateChat,
 }: IHeaderProps) => {
-  const [selectedTools, setSelectedTools] = useState<Set<ToolType>>(new Set());
+  const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   useEffect(() => {
     if (chatTools) {
       setSelectedTools(new Set(chatTools.map(tool => tool.type)));
@@ -62,7 +62,7 @@ export const ChatInputHeader = ({
   const handleToolToggle = (toolType: ToolType) => {
     if (!chatId) return;
 
-    const tools = new Set(selectedTools);
+    const tools = new Set(selectedTools || []);
     if (tools.has(toolType)) {
       tools.delete(toolType);
     } else {
@@ -113,8 +113,8 @@ export const ChatInputHeader = ({
       {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
         <Tooltip label="Web Search">
           <ActionIcon
-            variant={selectedTools.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
-            color={selectedTools.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
+            variant={selectedTools?.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
+            color={selectedTools?.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
             onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
             disabled={disabled || streaming}
           >
@@ -126,8 +126,8 @@ export const ChatInputHeader = ({
       {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
         <Tooltip label="Code Interpreter">
           <ActionIcon
-            variant={selectedTools.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
-            color={selectedTools.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
+            variant={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
+            color={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
             onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
             disabled={disabled || streaming}
           >

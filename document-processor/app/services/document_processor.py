@@ -201,7 +201,7 @@ class DocumentProcessor:
         """Set progress in Redis and publish notification"""
         # Set progress with 30 second expiration
         await redis.setex(progress_key, 30, str(progress))
-        logger.debug(f"Document {document_id} status update: {status} {progress*100:.1f}% {info or ''}")
+        logger.debug(f"Document {document_id} status update: {status} {progress * 100:.1f}% {info or ''}")
 
         # Publish notification
         notification = {
