@@ -290,12 +290,12 @@ jobs:
     - name: Bump version
       run: |
         cd packages/katechat-ui
-        npm version patch -m "chore(ui): bump version to %s [skip ci]"
-        echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+        npm version patch
 
-    - name: Push version bump
-      run: |
+        NEW_VERSION=$(node -p "require('./package.json').version")
+        git commit -a -m "chore: bump @katechat/ui version to $NEW_VERSION [skip ci]"
         git push origin HEAD:master --follow-tags
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
     - name: Publish to NPM
       run: |
