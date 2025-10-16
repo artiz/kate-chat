@@ -1,6 +1,7 @@
 # Package Publishing Fix Summary
 
 ## Problem
+
 The `@katechat/ui` package was configured to publish source TypeScript files instead of built JavaScript files, which caused issues when consuming the package.
 
 ## Solution
@@ -8,18 +9,21 @@ The `@katechat/ui` package was configured to publish source TypeScript files ins
 ## Changes Made
 
 ### 1. Updated Build Configuration (`esbuild.js`)
+
 - Changed from single IIFE build to dual ESM + CommonJS builds
 - Externalized peer dependencies (React, Mantine, etc.)
 - Added proper sourcemaps
 - Created separate builds in `dist/esm/` and `dist/cjs/`
 
 ### 2. Created TypeScript Build Configuration (`tsconfig.build.json`)
+
 - Created dedicated config for building type definitions
 - Extends base `tsconfig.json` but overrides `noEmit: false`
 - Outputs `.d.ts` files to `dist/types/`
 - Includes declaration maps for better IDE support
 
 ### 2. Updated Package Configuration (`package.json`)
+
 - Changed `main` field from `src/index.ts` to `./dist/cjs/index.js`
 - Added `module` field pointing to `./dist/esm/index.js`
 - Added `types` field pointing to `./dist/types/index.d.ts`
@@ -41,6 +45,7 @@ The `@katechat/ui` package was configured to publish source TypeScript files ins
 - Added `prepublishOnly` hook for automatic builds
 
 ### 3. Fixed TypeScript Errors
+
 - Fixed `ProviderIcon.tsx` to use correct uppercase ApiProvider values
   - Changed `"open_ai"` → `"OPEN_AI"`
   - Changed `"aws_bedrock"` → `"AWS_BEDROCK"`
@@ -48,6 +53,7 @@ The `@katechat/ui` package was configured to publish source TypeScript files ins
   - Changed `"google_vertex_ai"` → `"GOOGLE_VERTEX_AI"`
 
 ### 4. Added `.npmignore`
+
 - Excludes source files, dev configs, and test files from npm package
 - Ensures only `dist/`, `README.md`, and `LICENSE` are published
 
@@ -71,6 +77,7 @@ dist/
 ## Testing
 
 Verified that the example `openai-client` app now builds successfully:
+
 ```bash
 cd examples/openai-client
 npm run build

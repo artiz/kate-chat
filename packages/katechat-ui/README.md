@@ -72,25 +72,30 @@ The package automatically uses the correct build format based on your bundler an
 ### Components
 
 #### Chat Components (`./components/chat`)
+
 - **ChatMessagesContainer** - Container component for chat messages with scrolling behavior
 - **ChatMessagesList** - List component for rendering chat messages
 - **Chat Input** - Input components for user messages
 - **Chat Message** - Individual message display components
 
 #### Modal Components (`./components/modal`)
+
 - **ImagePopup** - Modal for displaying images in fullscreen
 
 #### Icon Components (`./components/icons`)
+
 - **ProviderIcon** - Icons for different AI providers (OpenAI, Anthropic, etc.)
 
 ### Controls
 
 #### File Controls (`./controls`)
+
 - **FileDropzone** - Drag-and-drop file upload component
 
 ### Core Types & Utilities (`./core`)
 
 Type definitions and utilities for:
+
 - **Message Types** - Chat message structures and interfaces
 - **Model Types** - AI model configurations and metadata
 - **User Types** - User profile and authentication types
@@ -99,6 +104,7 @@ Type definitions and utilities for:
 ### Hooks (`./hooks`)
 
 Custom React hooks:
+
 - **useIntersectionObserver** - Detect element visibility for lazy loading and infinite scroll
 - **useTheme** - Access and manage application theme
 
@@ -130,19 +136,13 @@ import "@katechat/ui/styles.css";
 ### Basic Import
 
 ```typescript
-import {
-  ChatMessagesContainer,
-  ChatMessagesList,
-  FileDropzone,
-  useTheme,
-  useIntersectionObserver
-} from '@katechat/ui';
+import { ChatMessagesContainer, ChatMessagesList, FileDropzone, useTheme, useIntersectionObserver } from "@katechat/ui";
 ```
 
 ### Using Chat Components
 
 ```tsx
-import { ChatMessagesContainer, ChatMessagesList } from '@katechat/ui';
+import { ChatMessagesContainer, ChatMessagesList } from "@katechat/ui";
 
 function ChatView({ messages }) {
   return (
@@ -156,11 +156,11 @@ function ChatView({ messages }) {
 ### Using File Upload
 
 ```tsx
-import { FileDropzone } from '@katechat/ui';
+import { FileDropzone } from "@katechat/ui";
 
 function UploadArea() {
   const handleFileDrop = (files: File[]) => {
-    console.log('Files uploaded:', files);
+    console.log("Files uploaded:", files);
   };
 
   return <FileDropzone onDrop={handleFileDrop} />;
@@ -170,31 +170,27 @@ function UploadArea() {
 ### Using Custom Hooks
 
 ```tsx
-import { useTheme, useIntersectionObserver } from '@katechat/ui';
+import { useTheme, useIntersectionObserver } from "@katechat/ui";
 
 function MyComponent() {
   const { theme, setTheme } = useTheme();
-  
+
   const { ref, isIntersecting } = useIntersectionObserver({
-    threshold: 0.5
+    threshold: 0.5,
   });
 
-  return (
-    <div ref={ref}>
-      {isIntersecting && <div>Element is visible!</div>}
-    </div>
-  );
+  return <div ref={ref}>{isIntersecting && <div>Element is visible!</div>}</div>;
 }
 ```
 
 ### Using Markdown Parser
 
 ```tsx
-import { parseMarkdown } from '@katechat/ui';
+import { parseMarkdown } from "@katechat/ui";
 
 function MessageRenderer({ content }) {
   const html = parseMarkdown(content);
-  
+
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 ```

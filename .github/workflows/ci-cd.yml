@@ -37,16 +37,10 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm run install:all
+      run: npm install
 
-    - name: Run API tests
+    - name: Run tests
       run: |
-        cd api
-        npm test
-
-    - name: Run frontend tests
-      run: |
-        cd client
         npm test -- --watchAll=false
    
   lint:
@@ -64,7 +58,7 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm run install:all
+      run: npm install
 
     - name: Prettier API
       run: |
