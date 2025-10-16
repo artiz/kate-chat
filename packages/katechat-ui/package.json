@@ -1,9 +1,24 @@
 {
   "name": "@katechat/ui",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "KateChat - AI Chat Interface modules collection",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artiz/kate-chat",
+    "directory": "packages/katechat-ui"
+  },
+  "keywords": [
+    "chatbot"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/artiz/kate-chat/issues"
+  },
+  "homepage": "https://katechat.tech",
   "main": "src/index.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "node --experimental-default-type=module esbuild.js",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",

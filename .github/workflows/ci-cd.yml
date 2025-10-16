@@ -94,6 +94,7 @@ jobs:
     outputs:
       api: ${{ steps.changes.outputs.api }}
       client: ${{ steps.changes.outputs.client }}
+      packages: ${{ steps.changes.outputs.packages }}
       document_processor: ${{ steps.changes.outputs.document_processor }}
       docs: ${{ steps.changes.outputs.docs }}
     steps:
@@ -115,8 +116,12 @@ jobs:
             - 'db-migrations/**'
           client:
             - 'client/**'
+            - 'packages/katechat-ui/**'
             - 'package.json'
             - 'docker-compose.yaml'
+          packages:
+            - 'packages/**'
+            - 'package.json'
           document_processor:
             - 'document-processor/**'
             - 'infrastructure/services/katechat-document-processor/**'
@@ -245,6 +250,76 @@ jobs:
         fi
         echo "📦 Commit: ${{ github.sha }}"
         echo "🌿 Branch: ${{ github.ref_name }}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  publish-ui-package:
+    name: Publish @katechat/ui to NPM
+    runs-on: ubuntu-latest
+    needs: [test, lint, changes]
+    if: github.ref == 'refs/heads/master' && needs.changes.outputs.packages == 'true'
+    continue-on-error: true
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+        registry-url: 'https://registry.npmjs.org'
+        cache: 'npm'
+
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Install dependencies
+      run: |
+        cd packages/katechat-ui
+        npm install
+
+    - name: Build package
+      run: |
+        cd packages/katechat-ui
+        npm run build
+
+    - name: Run tests
+      run: |
+        cd packages/katechat-ui
+        npm test
+
+    - name: Bump version
+      run: |
+        cd packages/katechat-ui
+        npm version patch -m "chore(ui): bump version to %s [skip ci]"
+        echo "NEW_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
+    - name: Push version bump
+      run: |
+        git push origin HEAD:master --follow-tags
+
+    - name: Publish to NPM
+      run: |
+        cd packages/katechat-ui
+        npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    - name: Publication Summary
+      if: always()
+      run: |
+        echo "📦 NPM Package Publication Complete!"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📦 Package: @katechat/ui"
+        echo "� Version: ${{ env.NEW_VERSION }}"
+        echo "�📄 Commit: ${{ github.sha }}"
+        echo "🌿 Branch: ${{ github.ref_name }}"
+        echo "🔗 NPM: https://www.npmjs.com/package/@katechat/ui"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   security-scan:
