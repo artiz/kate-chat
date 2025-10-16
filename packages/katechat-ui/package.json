@@ -1,6 +1,6 @@
 {
   "name": "@katechat/ui",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "KateChat - AI Chat Interface modules collection",
   "repository": {
     "type": "git",
@@ -29,7 +29,8 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
-    }
+    },
+    "./styles.css": "./dist/esm/index.css"
   },
   "files": [
     "dist",

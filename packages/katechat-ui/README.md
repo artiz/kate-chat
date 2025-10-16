@@ -111,6 +111,22 @@ Custom React hooks:
 
 ## Usage
 
+### Importing Styles
+
+The package includes pre-bundled CSS with all Mantine styles. Import it in your main entry file:
+
+```scss
+// In your main SCSS file
+@import "@katechat/ui/styles.css";
+```
+
+Or in your JavaScript/TypeScript:
+
+```typescript
+// In your main entry file (e.g., index.tsx)
+import "@katechat/ui/styles.css";
+```
+
 ### Basic Import
 
 ```typescript

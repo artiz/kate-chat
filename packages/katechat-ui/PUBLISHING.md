@@ -5,11 +5,19 @@ The `@katechat/ui` package was configured to publish source TypeScript files ins
 
 ## Solution
 
+## Changes Made
+
 ### 1. Updated Build Configuration (`esbuild.js`)
 - Changed from single IIFE build to dual ESM + CommonJS builds
 - Externalized peer dependencies (React, Mantine, etc.)
 - Added proper sourcemaps
 - Created separate builds in `dist/esm/` and `dist/cjs/`
+
+### 2. Created TypeScript Build Configuration (`tsconfig.build.json`)
+- Created dedicated config for building type definitions
+- Extends base `tsconfig.json` but overrides `noEmit: false`
+- Outputs `.d.ts` files to `dist/types/`
+- Includes declaration maps for better IDE support
 
 ### 2. Updated Package Configuration (`package.json`)
 - Changed `main` field from `src/index.ts` to `./dist/cjs/index.js`
@@ -28,7 +36,9 @@ The `@katechat/ui` package was configured to publish source TypeScript files ins
 - Added `files` field to only publish `dist/`, `README.md`, and `LICENSE`
 - Added `type: "module"` for ESM-first approach
 - Split build script into `build:js` and `build:types`
-- Added `prepublishOnly` hook to ensure build before publishing
+  - `build:js`: Runs esbuild for ESM and CJS bundles
+  - `build:types`: Runs `tsc --project tsconfig.build.json` for type definitions
+- Added `prepublishOnly` hook for automatic builds
 
 ### 3. Fixed TypeScript Errors
 - Fixed `ProviderIcon.tsx` to use correct uppercase ApiProvider values

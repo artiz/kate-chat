@@ -327,7 +327,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         loadCompleted={loadCompleted}
         disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
         uploadAllowed={uploadAllowed}
-        fullHeight={messages?.length === 0}
+        promptMode={messages?.length === 0}
         streaming={streaming}
         setSending={setSending}
         previousMessages={messages?.filter(m => m.role === MessageRole.USER).map(m => m.content)}

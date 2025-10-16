@@ -11,7 +11,7 @@ interface IProps {
   chatId?: string;
   loadCompleted?: boolean;
   disabled?: boolean;
-  fullHeight?: boolean;
+  promptMode?: boolean;
   uploadAllowed?: boolean;
   streaming: boolean;
   setSending: (value: boolean) => void;
@@ -30,7 +30,7 @@ interface IProps {
 export const ChatInput = ({
   loadCompleted = false,
   disabled = false,
-  fullHeight = false,
+  promptMode = false,
   uploadAllowed = true,
   streaming,
   setSending,
@@ -191,11 +191,11 @@ export const ChatInput = ({
     <div
       className={[
         classes.chatControlsContainer,
-        fullHeight ? classes.fullHeight : "",
+        promptMode ? classes.promptMode : "",
         loadCompleted ? "" : classes.hidden,
       ].join(" ")}
     >
-      {fullHeight ? (
+      {promptMode ? (
         <Stack align="center" justify="center" gap="md" mb="lg">
           <Text c="dimmed" size="lg" ta="center">
             Start the conversation by sending a message
