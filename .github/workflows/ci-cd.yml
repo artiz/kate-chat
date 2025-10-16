@@ -288,9 +288,9 @@ jobs:
     - name: Run tests
       run: |
         cd packages/katechat-ui
+        npx prettier -c ./src
         npm test
-        npx prettier -c .
-
+          
     - name: Bump version
       run: |
         cd packages/katechat-ui
