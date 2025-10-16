@@ -1,6 +1,6 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { Repository, IsNull, In } from "typeorm";
-import { Chat, Message, Document } from "@/entities";
+import { Message } from "@/entities";
 import { CreateMessageInput, GetMessagesInput, GetImagesInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from ".";

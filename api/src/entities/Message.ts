@@ -1,4 +1,4 @@
-import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryGeneratedColumn, Index } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { User } from "./User";
@@ -63,6 +63,7 @@ export class Message {
 
   @Field({ nullable: true })
   @Column({ nullable: true })
+  @Index()
   linkedToMessageId?: string; // Links this message to a parent message for parallel model calls
 
   @Field(() => [Message], { nullable: true })

@@ -528,12 +528,13 @@ export class MessagesService {
     let jsonContent: ModelMessageContent[] | undefined = undefined;
 
     // If there's an image, handle it
-    if (images) {
+    if (images?.length) {
       const s3Service = new S3Service(user.toToken());
       jsonContent = [];
 
       if (content) {
         jsonContent.push({ content, contentType: "text" });
+        content += "\n\n"; // Separate text and images
       }
 
       for (let index = 0; index < images.length; ++index) {
@@ -552,7 +553,7 @@ export class MessagesService {
         });
 
         // For display purposes, append image markdown to the content
-        content += `${content ? "\n\n" : ""}![Uploaded Image](${S3Service.getFileUrl(fileName)})`;
+        content += ` ![Uploaded Image](${S3Service.getFileUrl(fileName)})`;
       }
 
       chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
