@@ -121,7 +121,7 @@ export const ImageLibrary: React.FC = () => {
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <div>
-            <Title order={1} mb="xs">
+            <Title order={2} mb="lg">
               <Group gap="xs">
                 <IconPhoto size={32} />
                 Library

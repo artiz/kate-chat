@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
-import { Stack, Group } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
 import { notEmpty, ok } from "@/lib/assert";

@@ -8,7 +8,7 @@ import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { MessageStatus } from "./MessageStatus";
 import { CopyMessageButton } from "./controls/CopyMessageButton";
 
-import classes from "./ChatMessage.module.scss";
+import "./ChatMessage.scss";
 
 interface IProps {
   message: Message;
@@ -24,7 +24,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
   }, [models, message.modelId]);
 
   return (
-    <Carousel.Slide key={message.id} className={classes.linkedMessageContainer}>
+    <Carousel.Slide key={message.id} className="katechat-message-linked">
       <Group align="center">
         <Avatar radius="xl" size="md">
           {model ? <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} /> : <IconRobot />}
@@ -42,7 +42,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
         </Group>
       </Group>
 
-      <div className={classes.message}>
+      <div className="katechat-message-content">
         {message.html ? (
           message.html.map((part: string, index: number) => (
             <div key={index} dangerouslySetInnerHTML={{ __html: part }} />
@@ -51,7 +51,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
           <div>{message.content}</div>
         )}
 
-        <div className={classes.messageFooter}>
+        <div className="katechat-message-footer">
           <CopyMessageButton messageId={message.id} messageIndex={parentIndex} linkedMessageIndex={index} />
 
           {plugins}

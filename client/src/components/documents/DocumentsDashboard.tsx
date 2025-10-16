@@ -409,9 +409,11 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       />
-      <Stack gap="xl" style={{ position: "relative" }}>
+      <Stack gap="xl">
         <Group justify="space-between" align="center">
-          <Title order={1}>Documents {chat ? `for "${chat.title || chat.id}"` : ""}</Title>
+          <Title order={2} mb="lg">
+            Documents {chat ? `for "${chat.title || chat.id}"` : ""}
+          </Title>
           <Group>
             {chatId ? (
               <Tooltip label="Back to chat">

@@ -7,7 +7,7 @@ import { ProviderIcon, LinkedChatMessage, MessageStatus } from "@/components";
 import { debounce } from "lodash";
 import { CopyMessageButton } from "./controls/CopyMessageButton";
 
-import classes from "./ChatMessage.module.scss";
+import "./ChatMessage.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
 
 interface ChatMessageProps {
@@ -169,7 +169,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             )}
           </Group>
         </Group>
-        <div className={classes.message}>
+        <div className="katechat-message-content">
           {streaming && !content && <Loader size="md" mb="md" />}
 
           {html ? (
@@ -187,12 +187,12 @@ export const ChatMessage = (props: ChatMessageProps) => {
               </Group>
 
               <Collapse in={showDetails}>
-                <div className={classes.detailsBlock}>{details}</div>
+                <div className="katechat-message-content-details">{details}</div>
               </Collapse>
             </Box>
           )}
 
-          <div className={classes.messageFooter}>
+          <div className="katechat-message-footer">
             <CopyMessageButton messageId={id} messageIndex={index} />
 
             {plugins}
@@ -245,15 +245,15 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   if (!linkedMessagesCmp) {
     return (
-      <div className={[classes.messageContainer, classes[role] || ""].join(" ")} ref={componentRef}>
-        <div className={classes.main}>{mainMessage}</div>
+      <div className={["katechat-message", `katechat-message__${role || ""}`].join(" ")} ref={componentRef}>
+        <div className="katechat-message-main">{mainMessage}</div>
       </div>
     );
   }
 
   return (
-    <div className={[classes.messageContainer, classes[role] || ""].join(" ")} ref={componentRef}>
-      <div className={classes.linkedToggle}>
+    <div className={["katechat-message", `katechat-message__${role || ""}`].join(" ")} ref={componentRef}>
+      <div className="katechat-message-linked-toggle">
         <Switch
           checked={showMainMessage}
           onChange={event => setShowMainMessage(event.currentTarget.checked)}
@@ -261,8 +261,8 @@ export const ChatMessage = (props: ChatMessageProps) => {
           size="sm"
         />
       </div>
-      <div className={[classes.main, showMainMessage ? "" : classes.hidden].join(" ")}>{mainMessage}</div>
-      <div className={[classes.linked, showMainMessage ? classes.hidden : ""].join(" ")}>{linkedMessagesCmp}</div>
+      <div className={["katechat-message-main", showMainMessage ? "" : "hidden"].join(" ")}>{mainMessage}</div>
+      <div className={["katechat-message-linked", showMainMessage ? "hidden" : ""].join(" ")}>{linkedMessagesCmp}</div>
     </div>
   );
 };

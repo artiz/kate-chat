@@ -1,11 +1,11 @@
-.messageContainer {
+.katechat-message {
   width: 100%;
   overflow-x: hidden;
   display: flex;
   flex-direction: row;
 
-  .main,
-  .linked {
+  .katechat-message-main,
+  .katechat-message-linked {
     padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
     flex-grow: 1;
     width: 50%;
@@ -14,21 +14,21 @@
     border-radius: var(--mantine-radius-md);
   }
 
-  .linked {
+  .katechat-message-linked {
     margin: 0 var(--mantine-spacing-md);
   }
 
-  .linkedToggle {
+  .katechat-message-linked-toggle {
     display: none;
   }
 }
 
 @media (max-width: 1280px) {
-  .messageContainer {
+  .katechat-message {
     flex-direction: column;
     position: relative;
 
-    .linkedToggle {
+    .katechat-message-linked-toggle {
       position: absolute;
       right: 0.5rem;
       top: 0.5rem;
@@ -36,8 +36,8 @@
       z-index: 5;
     }
 
-    .main,
-    .linked {
+    .katechat-message-main,
+    .katechat-message-linked {
       width: 100%;
       margin: 0;
       border-radius: 0;
@@ -49,14 +49,14 @@
   }
 }
 
-.linkedMessageContainer {
+.katechat-message-linked {
   width: 100%;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.message {
+.katechat-message-content {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -64,74 +64,81 @@
 
   margin-top: var(--mantine-spacing-md);
 
-  :global p {
+  p {
     margin-block-start: 0;
     margin-block-end: 0;
   }
 
-  :global blockquote {
+  blockquote {
     padding: 0 var(--mb-padding, var(--mantine-spacing-sm));
     border-left: 0.5rem solid var(--mantine-color-default-border);
     margin: 0.25rem 0;
   }
 
-  :global hr {
+  hr {
     width: 100%;
     margin: 0.5rem 0 0.25rem;
     border: none;
     border-top: 1px solid var(--mantine-color-default-border);
   }
 
-  :global img {
+  ol,
+  ul {
+    margin: 0.25rem 0 0.25rem 0.5rem;
+    padding: 0 0 0 1.5rem;
+  }
+
+  img {
     max-width: 256px;
     max-height: 256px;
     align-self: center;
     height: auto;
-    margin: 0 auto;
+    margin: 0.5rem;
+    vertical-align: top;
     cursor: pointer;
   }
 
-  &.preview {
+  &.katechat-message-preview {
     height: 200px;
     padding: var(--mb-padding, var(--mantine-spacing-sm)) 0 0 0;
     font-size: 80%;
 
-    :global img {
+    img {
       max-width: 50%;
       height: auto;
     }
   }
 
-  .detailsBlock {
+  .katechat-message-content-details {
     margin-top: 1rem;
     font-size: 80%;
     display: flex;
     flex-direction: column;
     gap: 0;
 
-    :global ol,
-    :global ul {
+    ol,
+    ul {
       margin: 0.25rem 0;
       padding: 0 0 0 1rem;
     }
 
-    :global .message-details-header {
+    .message-details-header {
       margin-bottom: var(--mantine-spacing-md);
       margin-left: 1rem;
 
-      :global svg {
+      svg {
         color: var(--mantine-color-gray-7);
       }
     }
 
-    :global .message-details-content {
+    .message-details-content {
       padding-left: var(--mantine-spacing-md);
       border-left: 1px solid var(--mantine-color-gray-7);
       margin-left: 1.5rem;
     }
   }
 
-  :global table {
+  table {
     margin-top: var(--mantine-spacing-md);
     margin-bottom: var(--mantine-spacing-md);
     border-spacing: 0;
@@ -177,7 +184,7 @@
     }
   }
 
-  :global pre {
+  pre {
     margin: 0.5rem 0;
     padding: 1em;
     clip-path: none;
@@ -187,7 +194,7 @@
     overflow-x: auto;
   }
 
-  :global .code-header {
+  .code-header {
     font-size: 0.875rem;
     margin-top: 0.5rem;
     padding: 0.25rem 1rem 0.25rem 0.5rem;
@@ -201,7 +208,7 @@
     white-space: normal;
     gap: 0.5rem;
 
-    :global .title {
+    .title {
       width: fit-content;
       font-weight: 700;
       display: flex;
@@ -211,7 +218,7 @@
       user-select: none;
       min-height: 2rem;
 
-      :global .header-toggle {
+      .header-toggle {
         margin-right: 0.5rem;
         display: none;
         display: inline-block;
@@ -220,11 +227,11 @@
       }
     }
 
-    :global .code-header-actions {
+    .code-header-actions {
       align-content: flex-end;
     }
 
-    :global .action-btn {
+    .action-btn {
       padding: 0.1rem;
       line-height: 1;
       display: flex;
@@ -239,8 +246,8 @@
       border-bottom-right-radius: 0.25em;
       border-bottom-left-radius: 0.25em;
       margin-bottom: 0;
-      :global .title {
-        :global .header-toggle {
+      .title {
+        .header-toggle {
           transform: translateY(0.2rem) rotateZ(0deg);
         }
       }
@@ -251,8 +258,8 @@
     }
   }
 
-  :global .code-block {
-    :global pre {
+  .code-block {
+    pre {
       margin: 0;
       white-space: pre;
     }
@@ -276,11 +283,11 @@
     }
   }
 
-  :global .code-data {
+  .code-data {
     display: none;
   }
 
-  :global .code-footer {
+  .code-footer {
     font-size: 90%;
     display: flex;
     align-items: flex-start;
@@ -291,13 +298,13 @@
     }
   }
 
-  :global .katex-html {
+  .katex-html {
     display: inline-block;
     margin: 0.5rem 0.5rem 0 0;
   }
 }
 
-.messageFooter {
+.katechat-message-footer {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -306,7 +313,7 @@
   opacity: 0.5;
   transition: opacity var(--theme-default-time) ease;
 
-  :global .check-icon {
+  .check-icon {
     display: none;
   }
 
@@ -316,64 +323,64 @@
 }
 
 [data-mantine-color-scheme="dark"] {
-  .messageContainer {
-    :global .code-block,
-    :global pre {
+  .katechat-message {
+    .code-block,
+    pre {
       background-color: var(--mantine-color-dark-6);
     }
 
-    :global .code-header {
+    .code-header {
       background-color: var(--mantine-color-dark-6);
       &:hover {
         background-color: var(--mantine-color-dark-5);
       }
     }
 
-    &.user {
+    &.katechat-message__user {
       background-color: var(--mantine-color-dark-8);
       border-top: 1px solid var(--mantine-color-dark-6);
       border-bottom: 1px solid var(--mantine-color-dark-6);
     }
 
-    &.error {
-      .message {
+    &.katechat-message__error {
+      .katechat-message-content {
         color: var(--mantine-color-yellow-9);
       }
     }
 
-    .linked {
+    .katechat-message-linked {
       background-color: var(--mantine-color-dark-8);
     }
   }
 }
 
 [data-mantine-color-scheme="light"] {
-  .messageContainer {
-    :global .code-block,
-    :global pre {
+  .katechat-message {
+    .code-block,
+    pre {
       background-color: var(--mantine-color-gray-3);
     }
 
-    :global .code-header {
+    .code-header {
       background-color: var(--mantine-color-gray-3);
       &:hover {
         background-color: var(--mantine-color-gray-4);
       }
     }
 
-    &.user {
+    &.katechat-message__user {
       background-color: var(--mantine-color-blue-0);
       border-top: 1px solid var(--mantine-color-blue-1);
       border-bottom: 1px solid var(--mantine-color-blue-1);
     }
 
-    &.error {
-      .message {
+    &.katechat-message__error {
+      .katechat-message-content {
         color: var(--mantine-color-red-5);
       }
     }
 
-    .linked {
+    .katechat-message-linked {
       background-color: var(--mantine-color-gray-3);
     }
 

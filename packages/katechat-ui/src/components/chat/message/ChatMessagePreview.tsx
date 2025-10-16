@@ -1,11 +1,15 @@
 import React from "react";
 import { ScrollArea } from "@mantine/core";
 
-import classes from "./ChatMessage.module.scss";
+import "./ChatMessage.scss";
 
 export const ChatMessagePreview: React.FC<{ html?: string[]; text?: string }> = ({ html, text }) => {
   return (
-    <ScrollArea type="hover" offsetScrollbars className={[classes.message, classes.preview].join(" ")}>
+    <ScrollArea
+      type="hover"
+      offsetScrollbars
+      className={["katechat-message-content", "katechat-message-preview"].join(" ")}
+    >
       {text ? (
         <>
           {html ? (

@@ -5,7 +5,7 @@ import { Message, Model, PluginProps } from "@/core";
 import { useIntersectionObserver } from "@/hooks";
 import { ChatMessagesList } from "./ChatMessagesList";
 
-import classes from "./ChatMessagesContainer.module.scss";
+import "./ChatMessagesContainer.scss";
 
 interface IProps {
   messages?: Message[];
@@ -111,12 +111,12 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
     return (
       <div
         className={[
-          classes.messagesContainer,
-          loadCompleted ? classes.loadCompleted : "",
-          loadCompleted && messages?.length === 0 ? classes.empty : "",
+          "katechat-messages-container",
+          loadCompleted ? "container--load-completed" : "",
+          loadCompleted && messages?.length === 0 ? "container--empty" : "",
         ].join(" ")}
       >
-        <div className={classes.scroller} ref={messagesContainerRef} onScroll={handleScroll}>
+        <div className="katechat-messages-container-scroller" ref={messagesContainerRef} onScroll={handleScroll}>
           <div ref={firstMessageRef} />
           {loading && (
             <Group justify="center" align="center" py="xl">
@@ -124,7 +124,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
             </Group>
           )}
 
-          <div className={classes.messagesList}>
+          <div className="katechat-messages-list">
             {messages && (
               <ChatMessagesList
                 messages={messages}
@@ -138,9 +138,9 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
           </div>
         </div>
 
-        <div className={[classes.anchorContainer, showAnchorButton ? classes.visible : ""].join(" ")}>
-          <div className={classes.anchor}>
-            <IconCircleChevronDown size={32} color="teal" style={{ cursor: "pointer" }} onClick={anchorHandleClick} />
+        <div className={["katechat-anchor-container", showAnchorButton ? "container--visible" : ""].join(" ")}>
+          <div className="katechat-anchor">
+            <IconCircleChevronDown size={32} color="teal" onClick={anchorHandleClick} />
           </div>
         </div>
       </div>

@@ -1,5 +1,7 @@
 .container {
-  height: calc(100vh - var(--app-shell-header-height));
+  max-height: calc(100vh - var(--app-shell-header-height) * var(--mantine-scale));
+  height: 100%;
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -84,10 +86,10 @@
     width: 0.5em;
     height: 0.5em;
     border-radius: 50%;
-    background: var(--mantine-color-gray);
+    background: var(--mantine-color-gray-8);
 
     &.connected {
-      background: var(--mantine-color-green);
+      background: var(--mantine-color-green-8);
     }
   }
 }

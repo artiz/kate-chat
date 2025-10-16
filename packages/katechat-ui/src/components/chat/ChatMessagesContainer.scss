@@ -1,6 +1,6 @@
 @import "@mantine/core/styles.css";
 
-.messagesContainer {
+.katechat-messages-container {
   flex-grow: 1;
   position: relative;
   display: none;
@@ -17,35 +17,42 @@
   opacity: 1;
   transition: all 0.3s ease;
 
-  .messagesList {
+  .katechat-messages-list {
     opacity: 0;
     margin-bottom: 1rem;
   }
 
-  &.empty {
+  &.container--empty {
     flex-grow: 0;
     opacity: 0;
   }
 
-  .scroller {
+  .katechat-messages-container-scroller {
     overflow-y: scroll;
     flex-grow: 1;
   }
 
-  &.loadCompleted {
+  &.container--load-completed {
     .scroller {
       scroll-behavior: smooth;
     }
 
     display: flex;
 
-    .messagesList {
+    .katechat-messages-list {
       opacity: 1;
     }
   }
+
+  .katechat-message:first-child {
+    border-top: none;
+  }
+  .katechat-message:last-child {
+    border-bottom: none;
+  }
 }
 
-.anchorContainer {
+.katechat-anchor-container {
   position: absolute;
   width: 40px;
   left: calc(50% - 40px);
@@ -59,16 +66,17 @@
   opacity: 0;
   transition: all 0.5s ease;
 
-  &.visible {
+  &.container--visible {
     opacity: 1;
   }
 
-  .anchor {
+  .katechat-anchor {
     background-color: var(--mantine-color-body);
     border-radius: 50%;
     height: 32px;
     width: 32px;
     opacity: 0.75;
+    cursor: pointer;
 
     &:hover {
       opacity: 1;

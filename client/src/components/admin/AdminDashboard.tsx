@@ -170,7 +170,9 @@ export const AdminDashboard: React.FC = () => {
   return (
     <Stack gap="xl">
       <Group justify="space-between" align="center">
-        <Title order={1}>Admin Dashboard</Title>
+        <Title order={2} mb="lg">
+          Admin Dashboard
+        </Title>
         <Tooltip label="Refresh data">
           <ActionIcon
             variant="light"
