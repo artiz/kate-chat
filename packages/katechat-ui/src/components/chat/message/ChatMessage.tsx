@@ -169,7 +169,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             )}
           </Group>
         </Group>
-        <div className={`${classes.message} ${classes[role] || ""} ${streaming ? classes.streaming : ""}`}>
+        <div className={classes.message}>
           {streaming && !content && <Loader size="md" mb="md" />}
 
           {html ? (
@@ -245,14 +245,14 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
   if (!linkedMessagesCmp) {
     return (
-      <div className={classes.messageContainer} ref={componentRef}>
+      <div className={[classes.messageContainer, classes[role] || ""].join(" ")} ref={componentRef}>
         <div className={classes.main}>{mainMessage}</div>
       </div>
     );
   }
 
   return (
-    <div className={classes.messageContainer} ref={componentRef}>
+    <div className={[classes.messageContainer, classes[role] || ""].join(" ")} ref={componentRef}>
       <div className={classes.linkedToggle}>
         <Switch
           checked={showMainMessage}

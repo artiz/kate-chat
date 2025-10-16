@@ -53,6 +53,9 @@ const markedSimple = new Marked(
 
 const renderer = new Renderer();
 renderer.html = ({ text }: { text: string }) => {
+  if (["<br>", "<br/>", "<br />", "<p>"].includes(text.trim())) {
+    return text;
+  }
   return escapeHtml(text);
 };
 renderer.link = ({ href, title, text }) => {
@@ -83,6 +86,7 @@ export function parseMarkdown(content?: string | null, simple = false): string[]
   }
 
   content = normalizeMatJAX(content);
+
   // process complex code blocks, tables as one block
   if (content.match(/(```)|(\|---)/)) {
     return [marked.parse(content, { renderer }) as string];

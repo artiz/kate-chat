@@ -11,12 +11,19 @@ import {
   ResponseStatus,
   ModelMessageContent,
   ChatToolCallResult,
+  ChatResponseStatus,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { ChatCompletionToolCall, COMPLETION_API_TOOLS, WEB_SEARCH_TOOL, WEB_SEARCH_TOOL_NAME } from "./openai.tools";
+import {
+  ChatCompletionToolCall,
+  COMPLETION_API_TOOLS,
+  COMPLETION_API_TOOLS_TO_STATUS,
+  WEB_SEARCH_TOOL,
+  WEB_SEARCH_TOOL_NAME,
+} from "./openai.tools";
 
 const logger = createLogger(__filename);
 
@@ -393,7 +400,7 @@ export class OpenAIProtocol {
     let requestCompleted = false;
 
     do {
-      logger.debug({ ...params }, "invoking streaming chat.completions...");
+      logger.trace({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
@@ -412,24 +419,14 @@ export class OpenAIProtocol {
             break;
           }
 
-          // TODO: handle other tool calls
-          let status =
-            toolCalls.length === 1 && toolCalls[0].name === WEB_SEARCH_TOOL_NAME
-              ? ResponseStatus.WEB_SEARCH
-              : ResponseStatus.TOOL_CALL;
-          let detail =
-            toolCalls.length === 1
-              ? `Arguments: ${JSON.stringify(toolCalls[0].arguments)}`
-              : `Call tools: ${toolCalls.map(c => c.name).join(", ")}`;
-
           const metaCalls = toolCalls.map(c => ({
             ...c,
             name: c.name || "unknown",
             args: JSON.stringify(c.arguments || {}),
           }));
-          callbacks.onProgress?.(genProcessSymbol(), { status, detail, toolCalls: metaCalls });
+          callbacks.onProgress?.(genProcessSymbol(), { status: ResponseStatus.TOOL_CALL, toolCalls: metaCalls });
 
-          const toolResults = await this.callCompletionTools(toolCalls);
+          const toolResults = await this.callCompletionTools(toolCalls, callbacks.onProgress);
 
           // Add tool calls as last assistant message
           params.messages.push({
@@ -446,7 +443,7 @@ export class OpenAIProtocol {
               callId: call.callId,
             };
           });
-          callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools });
+          callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, tools });
 
           requestCompleted = false;
           break; // break for await to restart the request with new messages
@@ -769,7 +766,8 @@ export class OpenAIProtocol {
   }
 
   private callCompletionTools(
-    toolCalls: ChatCompletionToolCall[]
+    toolCalls: ChatCompletionToolCall[],
+    onProgress?: ((token: string, status?: ChatResponseStatus, force?: boolean) => void) | undefined
   ): Promise<{ call: ChatCompletionToolCall; result: OpenAI.Chat.Completions.ChatCompletionMessageParam }[]> {
     const requests = toolCalls.map(async call => {
       const tool = COMPLETION_API_TOOLS[call.name || ""];
@@ -794,6 +792,10 @@ export class OpenAIProtocol {
           },
         };
       }
+
+      let status = (call.name && COMPLETION_API_TOOLS_TO_STATUS[call.name]) || ResponseStatus.TOOL_CALL;
+      let detail = call.arguments ? JSON.stringify(call.arguments) : "";
+      onProgress?.("", { status, detail });
 
       const result = await tool.call(call.arguments || {}, call.callId, this.connection);
       return { call, result };

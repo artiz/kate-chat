@@ -6,7 +6,7 @@
 
   .main,
   .linked {
-    padding: var(--mantine-spacing-md);
+    padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
     flex-grow: 1;
     width: 50%;
     display: flex;
@@ -60,10 +60,9 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: var(--mb-padding, var(--mantine-spacing-sm));
   border-radius: var(--mantine-radius-md);
 
-  margin-top: var(--mantine-spacing-xs);
+  margin-top: var(--mantine-spacing-md);
 
   :global p {
     margin-block-start: 0;
@@ -303,7 +302,7 @@
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0 0.25rem;
+  padding: 0.5rem 0 0;
   opacity: 0.5;
   transition: opacity var(--theme-default-time) ease;
 
@@ -330,11 +329,16 @@
       }
     }
 
-    .message.user {
-      background-color: var(--mantine-color-dark-9);
+    &.user {
+      background-color: var(--mantine-color-dark-8);
+      border-top: 1px solid var(--mantine-color-dark-6);
+      border-bottom: 1px solid var(--mantine-color-dark-6);
     }
-    .message.error {
-      color: var(--mantine-color-yellow-9);
+
+    &.error {
+      .message {
+        color: var(--mantine-color-yellow-9);
+      }
     }
 
     .linked {
@@ -357,12 +361,18 @@
       }
     }
 
-    .message.user {
+    &.user {
       background-color: var(--mantine-color-blue-0);
+      border-top: 1px solid var(--mantine-color-blue-1);
+      border-bottom: 1px solid var(--mantine-color-blue-1);
     }
-    .message.error {
-      color: var(--mantine-color-red-5);
+
+    &.error {
+      .message {
+        color: var(--mantine-color-red-5);
+      }
     }
+
     .linked {
       background-color: var(--mantine-color-gray-3);
     }

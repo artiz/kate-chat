@@ -197,16 +197,15 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
     <>
       <Stack gap="xs" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
-          <Group key={msg.id} align="flex-start" gap="xs">
-            <ChatMessage
-              message={msg}
-              index={index}
-              disabled={updatedMessages.has(msg.id)}
-              pluginsLoader={pluginsLoader}
-              messageDetailsLoader={messageDetailsLoader}
-              models={models}
-            />
-          </Group>
+          <ChatMessage
+            key={msg.id}
+            message={msg}
+            index={index}
+            disabled={updatedMessages.has(msg.id)}
+            pluginsLoader={pluginsLoader}
+            messageDetailsLoader={messageDetailsLoader}
+            models={models}
+          />
         ))}
       </Stack>
 
