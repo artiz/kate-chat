@@ -10,6 +10,7 @@ export class OpenAIClient {
   private baseUrl: string;
   private mode: ApiMode;
   private useProxy: boolean;
+  private controller: AbortController | null = null;
 
   constructor(apiKey: string, baseUrl: string, mode: ApiMode = "completions") {
     this.apiKey = apiKey;
@@ -35,6 +36,7 @@ export class OpenAIClient {
     const endpoint =
       this.mode === "completions" ? "/chat/completions" : "/responses";
     const url = this.getUrl(endpoint);
+    this.controller = new AbortController();
 
     const body =
       this.mode === "completions"
@@ -57,6 +59,7 @@ export class OpenAIClient {
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
+      signal: this.controller.signal,
     });
 
     if (!response.ok) {
@@ -123,8 +126,13 @@ export class OpenAIClient {
       }
     } finally {
       reader.releaseLock();
+      this.controller = null;
     }
 
     return fullContent;
+  }
+
+  stop() {
+    this.controller?.abort();
   }
 }

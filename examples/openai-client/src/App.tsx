@@ -8,11 +8,9 @@ import {
   Message,
   MessageRole,
   Model,
-  ModelType,
   parseMarkdown,
   escapeHtml,
 } from "@katechat/ui";
-import type { ApiProvider } from "@katechat/ui";
 import { DEFAULT_MODEL, SettingsForm } from "./components/SettingsForm";
 import { OpenAIClient, ApiMode } from "./lib/openai-client";
 
@@ -118,33 +116,52 @@ export const App: React.FC = () => {
           ),
         );
       } catch (error: any) {
-        console.error("Error sending message:", error);
-
-        // Update assistant message with error
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessage.id
-              ? {
-                  ...msg,
-                  content: `Error: ${error.message || "Failed to get response"}`,
-                  role: MessageRole.ERROR,
-                  streaming: false,
-                }
-              : msg,
-          ),
-        );
-
-        notifications.show({
-          title: "Error",
-          message: error.message || "Failed to get response from API",
-          color: "red",
-        });
+        if (error instanceof Error && error.name === "AbortError") {
+          const abortMessage = "... Request was aborted.";
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id
+                ? {
+                    ...msg,
+                    html: msg.html
+                      ? msg.html.concat(abortMessage)
+                      : [abortMessage],
+                    streaming: false,
+                  }
+                : msg,
+            ),
+          );
+        } else {
+          console.error("Error sending message:", error);
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id
+                ? {
+                    ...msg,
+                    content: `Error: ${error.message || "Failed to get response"}`,
+                    role: MessageRole.ERROR,
+                    streaming: false,
+                  }
+                : msg,
+            ),
+          );
+          notifications.show({
+            title: "Error",
+            message: error.message || "Failed to get response from API",
+            color: "red",
+          });
+        }
       } finally {
         setStreaming(false);
       }
     },
     [messages, apiKey, apiEndpoint, modelName],
   );
+
+  const handleStopRequest = () => {
+    if (!clientRef.current) return;
+    clientRef.current.stop();
+  };
 
   const handleSaveSettings = useCallback(
     (settings: {
@@ -200,13 +217,8 @@ export const App: React.FC = () => {
   // Dummy models array for ChatMessagesList
   const models: Model[] = [
     {
-      id: "1",
       name: modelName,
       modelId: modelName,
-      apiProvider: "OPEN_AI" as ApiProvider,
-      type: ModelType.CHAT,
-      provider: "OpenAI",
-      isActive: true,
     },
   ];
 
@@ -253,6 +265,7 @@ export const App: React.FC = () => {
               uploadAllowed={false}
               loadCompleted={true}
               promptMode={!messages.length}
+              onStopRequest={handleStopRequest}
               header={
                 <Group gap="md">
                   <Badge
