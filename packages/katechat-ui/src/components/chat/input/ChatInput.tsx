@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, Textarea, Button, Group, ActionIcon, Stack } from "@mantine/core";
-import { IconSend, IconX } from "@tabler/icons-react";
+import { IconPlayerStop, IconPlayerStopFilled, IconSend, IconX } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { ImageInput } from "@/core";
 import { FileDropzone } from "@/controls";
@@ -24,6 +24,7 @@ interface IProps {
   maxImagesCount?: number;
 
   onSendMessage: (message: string, images?: ImageInput[]) => Promise<void>;
+  onStopRequest?: () => void;
   onDocumentsUpload?: (documents: File[]) => void;
 }
 
@@ -41,6 +42,7 @@ export const ChatInput = ({
   maxUploadFileSize = 64 * 1024 * 1024,
   maxImagesCount = 5,
   onSendMessage,
+  onStopRequest,
   onDocumentsUpload,
 }: IProps) => {
   const [userMessage, setUserMessage] = useState("");
@@ -248,9 +250,21 @@ export const ChatInput = ({
               onKeyDown={handleInputKeyDown}
               disabled={disabled}
             />
-            <Button onClick={handleSendMessage} disabled={sendMessageNotAllowed}>
-              <IconSend size={16} /> Send
-            </Button>
+            {onStopRequest ? true : null}
+
+            {onStopRequest && streaming ? (
+              <Button onClick={onStopRequest} disabled={disabled}>
+                <IconPlayerStopFilled size={16} /> Stop
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSendMessage}
+                disabled={sendMessageNotAllowed}
+                className={onStopRequest && streaming ? classes.hidden : ""}
+              >
+                <IconSend size={16} /> Send
+              </Button>
+            )}
           </div>
         </div>
       </div>

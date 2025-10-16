@@ -17,7 +17,7 @@ export const ProviderIcon = ({
   provider,
   size = 24,
 }: {
-  apiProvider: ApiProvider;
+  apiProvider?: ApiProvider;
   provider?: string;
   size?: number;
 }) => {

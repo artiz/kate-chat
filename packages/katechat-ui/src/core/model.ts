@@ -10,13 +10,13 @@ export enum ModelType {
 }
 
 export interface Model<TUser = User> {
-  id: string;
+  id?: string;
   name: string;
   modelId: string;
-  apiProvider: ApiProvider;
-  type: ModelType;
-  provider: string;
-  isActive: boolean;
+  apiProvider?: ApiProvider;
+  provider?: string;
+  type?: ModelType;
+  isActive?: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
   user?: TUser;

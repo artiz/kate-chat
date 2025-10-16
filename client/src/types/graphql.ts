@@ -1,4 +1,4 @@
-import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole } from "@katechat/ui";
+import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole, ModelType } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
 import { DocumentStatus } from "./ai";
 
@@ -22,6 +22,8 @@ export enum ToolType {
 }
 
 export interface Model extends BaseModel {
+  id: string;
+  type: ModelType;
   tools?: ToolType[];
 }
 

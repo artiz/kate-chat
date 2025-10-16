@@ -14,15 +14,15 @@
   }
 }
 
+.hidden {
+  display: none !important;
+}
+
 .chatControlsContainer {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-
-  &.hidden {
-    display: none;
-  }
 
   &.promptMode {
     flex-grow: 1;

@@ -291,6 +291,7 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   };
 
   const handleDeleteChat = () => {
+    setDeletingChatId(undefined);
     deleteChat({
       variables: {
         id: deletingChatId,
