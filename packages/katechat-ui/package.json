@@ -1,10 +1,10 @@
 {
   "name": "@katechat/ui",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "KateChat - AI Chat Interface modules collection",
   "repository": {
     "type": "git",
-    "url": "https://github.com/artiz/kate-chat",
+    "url": "git+https://github.com/artiz/kate-chat.git",
     "directory": "packages/katechat-ui"
   },
   "keywords": [
