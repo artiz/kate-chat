@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Text, Grid, Card, Button, Group, Stack, Badge, Divider, Table, Alert, Code } from "@mantine/core";
 import { IconReportMoney } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
-import { ProviderIcon } from "@katechat/ui/src/components/icons/ProviderIcon";
+import { ProviderIcon } from "@katechat/ui";
 import { ProviderInfo } from "@/types/graphql";
 
 interface ProvidersInfoProps {

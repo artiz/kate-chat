@@ -30,7 +30,7 @@ import {
   STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
-import { ApiProvider } from "@katechat/ui/src/core/ai";
+import type { ApiProvider } from "@katechat/ui";
 import { ModelType } from "@katechat/ui";
 
 interface AISettingsProps {

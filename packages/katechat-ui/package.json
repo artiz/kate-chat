@@ -1,6 +1,6 @@
 {
   "name": "@katechat/ui",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "KateChat - AI Chat Interface modules collection",
   "repository": {
     "type": "git",
@@ -8,19 +8,42 @@
     "directory": "packages/katechat-ui"
   },
   "keywords": [
-    "chatbot"
+    "chatbot",
+    "chat",
+    "ui",
+    "react",
+    "mantine",
+    "ai"
   ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/artiz/kate-chat/issues"
   },
   "homepage": "https://katechat.tech",
-  "main": "src/index.ts",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "node --experimental-default-type=module esbuild.js",
+    "build": "npm run build:js && npm run build:types",
+    "build:js": "node --experimental-default-type=module esbuild.js",
+    "build:types": "tsc --project tsconfig.build.json",
+    "prepublishOnly": "npm run build",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests --coverage"

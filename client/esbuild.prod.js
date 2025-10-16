@@ -33,6 +33,11 @@ esbuild
       ".ttf": "file",
       ".eot": "file",
     },
+    alias: {
+      // Use source files from @katechat/ui for production build as well
+      // This ensures consistency and allows for proper tree-shaking
+      "@katechat/ui": "../packages/katechat-ui/src/index.ts",
+    },
     plugins: [
       clean({ patterns: ["./dist/*.*"] }),
       sassPlugin({

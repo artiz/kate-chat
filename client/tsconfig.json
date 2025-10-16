@@ -18,7 +18,8 @@
     "incremental": true,
     "noImplicitAny": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@katechat/ui": ["../packages/katechat-ui/src/index.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "src/**/*", "../packages/katechat-ui/src/**/*"],

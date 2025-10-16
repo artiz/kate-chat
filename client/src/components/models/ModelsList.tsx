@@ -5,7 +5,7 @@ import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
 import { formatTokensLimit } from "@/lib";
-import { ProviderIcon } from "@katechat/ui/src/components/icons/ProviderIcon";
+import { ProviderIcon } from "@katechat/ui";
 
 interface ModelsListProps {
   models: Model[];

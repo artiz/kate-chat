@@ -58,6 +58,17 @@ This package requires the following peer dependencies:
 
 ## Package Structure
 
+This package is distributed with both ESM and CommonJS builds for maximum compatibility:
+
+```
+dist/
+├── esm/           # ES Module build (import)
+├── cjs/           # CommonJS build (require)
+└── types/         # TypeScript type definitions
+```
+
+The package automatically uses the correct build format based on your bundler and module system.
+
 ### Components
 
 #### Chat Components (`./components/chat`)

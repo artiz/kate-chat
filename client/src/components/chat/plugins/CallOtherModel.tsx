@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { CALL_OTHER_MUTATION } from "@/store/services/graphql";
 import { ok } from "@/lib/assert";
 import classes from "./Plugins.module.scss";
-import { ProviderIcon } from "@katechat/ui/src/components/icons/ProviderIcon";
+import { ProviderIcon } from "@katechat/ui";
 
 /** Call Others button - only show on parent Assistant messages */
 

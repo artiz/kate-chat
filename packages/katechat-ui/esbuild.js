@@ -7,48 +7,70 @@ import fs from "fs";
 if (!fs.existsSync("./dist")) {
   fs.mkdirSync("./dist");
 }
-// Production build configuration
-esbuild
-  .build({
-    entryPoints: ["./src/index.ts"],
-    outdir: "./dist",
-    bundle: true,
-    minify: true,
-    format: "iife",
-    splitting: false,
-    loader: {
-      ".js": "jsx",
-      ".svg": "dataurl",
-      ".png": "dataurl",
-      ".jpg": "dataurl",
-      ".gif": "dataurl",
-      ".woff": "file",
-      ".woff2": "file",
-      ".ttf": "file",
-      ".eot": "file",
-    },
-    plugins: [
-      clean({ patterns: ["./dist/*.*"] }),
-      sassPlugin({
-        filter: /\.module\.scss$/,
-        transform: postcssModules({}),
-      }),
-      sassPlugin({
-        filter: /\.scss$/,
-      }),
-    ],
-    define: {
-      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "production"),
-    },
-    metafile: true,
-  })
-  .then(result => {
-    console.log("⚡ Build complete! Bundle created in ./dist");
-    console.log(`📦 Config: APP_API_URL: ${process.env.APP_API_URL}`);
-    const outputSize = Object.entries(result.metafile.outputs).reduce((total, [name, data]) => {
-      return total + data.bytes;
+
+// Build ESM and CJS versions
+const buildConfig = {
+  entryPoints: ["./src/index.ts"],
+  bundle: true,
+  sourcemap: true,
+  external: ["react", "react-dom", "react-router-dom", "react-redux", "@mantine/*", "@tabler/icons-react"],
+  loader: {
+    ".js": "jsx",
+    ".svg": "dataurl",
+    ".png": "dataurl",
+    ".jpg": "dataurl",
+    ".gif": "dataurl",
+    ".woff": "file",
+    ".woff2": "file",
+    ".ttf": "file",
+    ".eot": "file",
+  },
+  plugins: [
+    sassPlugin({
+      filter: /\.module\.scss$/,
+      transform: postcssModules({}),
+    }),
+    sassPlugin({
+      filter: /\.scss$/,
+    }),
+  ],
+};
+
+Promise.all([
+  // ESM build
+  esbuild.build({
+    ...buildConfig,
+    outdir: "./dist/esm",
+    format: "esm",
+    plugins: [clean({ patterns: ["./dist/esm/*.*"] }), ...buildConfig.plugins],
+  }),
+  // CJS build
+  esbuild.build({
+    ...buildConfig,
+    outdir: "./dist/cjs",
+    format: "cjs",
+    plugins: [clean({ patterns: ["./dist/cjs/*.*"] }), ...buildConfig.plugins],
+  }),
+])
+  .then(results => {
+    console.log("⚡ Build complete!");
+    console.log("📦 ESM build created in ./dist/esm");
+    console.log("📦 CJS build created in ./dist/cjs");
+
+    // Calculate total size
+    const totalSize = results.reduce((total, result) => {
+      if (result.metafile) {
+        return (
+          total +
+          Object.entries(result.metafile.outputs).reduce((sum, [, data]) => {
+            return sum + data.bytes;
+          }, 0)
+        );
+      }
+      return total;
     }, 0);
-    console.log(`📦 Total bundle size: ${(outputSize / 1024 / 1024).toFixed(2)}MB`);
+
+    console.log(`📦 Total bundle size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
   })
   .catch(e => {
     console.error("❌ Build failed:", e);

@@ -229,7 +229,7 @@ export const ImageLibrary: React.FC = () => {
         fileUrl={selectedImage?.fileUrl ?? ""}
         mimeType={selectedImage?.mimeType}
         createdAt={selectedImage?.createdAt}
-        sourceUrl={selectedImage?.chat?.id ? `/chat/${selectedImage.chat.id}` : undefined}
+        onOpenSource={selectedImage?.chat?.id ? () => navigateToChat(selectedImage.chat.id) : undefined}
         sourceTitle={selectedImage?.chat?.title}
         onClose={resetSelectedImage}
       />

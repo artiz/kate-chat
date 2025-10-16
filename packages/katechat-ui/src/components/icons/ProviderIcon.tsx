@@ -22,9 +22,9 @@ export const ProviderIcon = ({
   size?: number;
 }) => {
   switch (apiProvider) {
-    case "open_ai":
+    case "OPEN_AI":
       return <IconBrandOpenai size={size} />;
-    case "aws_bedrock":
+    case "AWS_BEDROCK":
       switch (provider?.toLowerCase()) {
         case "amazon":
           return <IconBrandAws size={size} />;
@@ -38,9 +38,9 @@ export const ProviderIcon = ({
         default:
           return <IconBrandAws size={size} />;
       }
-    case "yandex_fm":
+    case "YANDEX_FM":
       return <IconBrandYandex size={size} />;
-    case "google_vertex_ai":
+    case "GOOGLE_VERTEX_AI":
       return <IconBrandGoogle size={size} />;
 
     default:

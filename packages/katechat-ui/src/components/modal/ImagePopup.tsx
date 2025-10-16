@@ -1,16 +1,14 @@
 import React, { useEffect, useCallback } from "react";
 import { Image, Text, Group, Stack, ActionIcon, Modal, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { useNavigate } from "react-router-dom";
 import { IconExternalLink } from "@tabler/icons-react";
-import { ok } from "@/lib/assert";
 
 interface IProps {
   fileName: string;
   fileUrl: string;
   mimeType?: string;
   createdAt?: string;
-  sourceUrl?: string;
+  onOpenSource?: () => void;
   sourceTitle?: string;
   onClose: () => void;
 }
@@ -20,11 +18,10 @@ export const ImagePopup: React.FC<IProps> = ({
   fileUrl,
   mimeType,
   createdAt,
-  sourceUrl,
+  onOpenSource,
   sourceTitle,
   onClose,
 }) => {
-  const navigate = useNavigate();
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
@@ -38,11 +35,10 @@ export const ImagePopup: React.FC<IProps> = ({
     close();
   }, [onClose, close]);
 
-  const navigateToChat = useCallback(() => {
-    ok(sourceUrl);
-    navigate(sourceUrl);
+  const navigateToSource = useCallback(() => {
+    onOpenSource?.();
     handleClose();
-  }, [navigate, sourceUrl, handleClose]);
+  }, [onOpenSource, handleClose]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -71,10 +67,10 @@ export const ImagePopup: React.FC<IProps> = ({
               </Text>
             </div>
 
-            {sourceUrl && (
+            {onOpenSource && (
               <Group gap="xs">
                 <Tooltip label="Open source">
-                  <ActionIcon variant="light" onClick={navigateToChat}>
+                  <ActionIcon variant="light" onClick={navigateToSource}>
                     <IconExternalLink size={16} />
                   </ActionIcon>
                 </Tooltip>
@@ -82,11 +78,11 @@ export const ImagePopup: React.FC<IProps> = ({
             )}
           </Group>
 
-          {sourceUrl && (
+          {onOpenSource && (
             <Text size="sm" c="dimmed">
               From:{" "}
-              <Text span c="blue" style={{ cursor: "pointer" }} onClick={navigateToChat}>
-                {sourceTitle || sourceUrl}
+              <Text span c="blue" style={{ cursor: "pointer" }} onClick={navigateToSource}>
+                {sourceTitle || "source"}
               </Text>
             </Text>
           )}
