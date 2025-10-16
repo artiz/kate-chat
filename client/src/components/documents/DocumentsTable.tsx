@@ -9,7 +9,7 @@ import {
   IconFileCheckFilled,
   IconFileStack,
 } from "@tabler/icons-react";
-import { formatFileSize } from "@/lib";
+import { formatFileSize } from "@katechat/ui";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
 import { Document } from "@/types/graphql";
 

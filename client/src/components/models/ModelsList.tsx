@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
 import { IconMessagePlus, IconTestPipe } from "@tabler/icons-react";
-import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
-import { formatTokensLimit } from "@/lib";
-import { ProviderIcon } from "@katechat/ui";
+import { formatTokensLimit, ProviderIcon } from "@katechat/ui";
+import { Model } from "@/types/graphql";
 
 interface ModelsListProps {
   models: Model[];

@@ -20,7 +20,7 @@ import { Document } from "@/types/graphql";
 import classes from "./ChatDocumentsSelector.module.scss";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
 import { useNavigate } from "react-router-dom";
-import { ok } from "@/lib/assert";
+import { assert } from "@katechat/ui";
 
 interface ChatDocumentsSelectorProps {
   chatId?: string;
@@ -71,7 +71,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   };
 
   const handleOpenDocuments = () => {
-    ok(chatId);
+    assert.ok(chatId);
     navigate(`/chat/${chatId}/documents`);
   };
 

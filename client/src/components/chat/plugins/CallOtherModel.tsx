@@ -8,7 +8,7 @@ import { MessageRole, ModelType, PluginProps } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { useMemo } from "react";
 import { CALL_OTHER_MUTATION } from "@/store/services/graphql";
-import { ok } from "@/lib/assert";
+import { assert } from "@katechat/ui";
 import classes from "./Plugins.module.scss";
 import { ProviderIcon } from "@katechat/ui";
 
@@ -31,8 +31,8 @@ export const CallOtherModel = ({
   const [callOther, { loading: callingOthers }] = useMutation<CallOthersResponse>(CALL_OTHER_MUTATION, {});
 
   const handleSelectModel = (modelId: string) => () => {
-    ok(id, "Message id is required to call other model");
-    ok(modelId);
+    assert.ok(id, "Message id is required to call other model");
+    assert.ok(modelId);
 
     onAction?.(id);
     callOther({
@@ -50,7 +50,7 @@ export const CallOtherModel = ({
             color: "red",
           });
         }
-        ok(res.data?.callOther?.message, "Call Other response should contain a message");
+        assert.ok(res.data?.callOther?.message, "Call Other response should contain a message");
         onAddMessage?.(res.data.callOther.message);
       })
       .catch(error => {

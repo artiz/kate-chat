@@ -22,7 +22,7 @@ import {
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { parseMarkdown } from "@katechat/ui";
+import { assert, parseMarkdown } from "@katechat/ui";
 
 import { DeleteConfirmationModal } from "@/components/modal";
 import { updateChat } from "@/store/slices/chatSlice";
@@ -37,7 +37,6 @@ import {
   REMOVE_FROM_CHAT_MUTATION,
 } from "@/store/services/graphql";
 import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
-import { notEmpty, ok } from "@/lib/assert";
 import { FileDropzone } from "./FileDropzone/FileDropzone";
 import { MAX_UPLOAD_FILE_SIZE } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
@@ -113,7 +112,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       ...new Set(
         (data?.getDocuments?.documents?.map((d: Document) => d.id) || [])
           .concat(uploadingDocs.map((d: Document) => d.id))
-          .filter(notEmpty)
+          .filter(assert.notEmpty)
       ),
     ],
     [data?.getDocuments?.documents, uploadingDocs]
@@ -251,12 +250,12 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   });
 
   const handleAddToChat = (doc: Document) => {
-    ok(chatId);
+    assert.ok(chatId);
     addToChat({ variables: { documentIds: [doc.id], chatId } });
   };
 
   const handleRemoveFromChat = (doc: Document) => {
-    ok(chatId);
+    assert.ok(chatId);
     removeFromChat({ variables: { documentIds: [doc.id], chatId } });
   };
 

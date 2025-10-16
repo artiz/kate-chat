@@ -6,7 +6,7 @@ import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { MessageRole, PluginProps } from "@katechat/ui";
 import { EDIT_MESSAGE_MUTATION } from "@/store/services/graphql";
-import { ok } from "@/lib/assert";
+import { assert } from "@katechat/ui";
 import { EditMessageModal } from "./EditMessageModal";
 
 /** Edit Message button - only show on User messages */
@@ -44,7 +44,7 @@ export const EditMessage = ({
         color: "green",
       });
 
-      ok(res.editMessage.message, "Edit Message response should contain a message");
+      assert.ok(res.editMessage.message, "Edit Message response should contain a message");
       const resMessage = res.editMessage.message;
 
       onMessageDeleted?.({ deleteAfter: resMessage });

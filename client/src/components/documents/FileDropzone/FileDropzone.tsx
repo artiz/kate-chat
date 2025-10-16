@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Group, Tooltip, Box } from "@mantine/core";
 import { IconFileUpload } from "@tabler/icons-react";
-import { notEmpty } from "@/lib/assert";
+import { assert } from "@katechat/ui";
 import { SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 
 import classes from "./FileDropzone.module.scss";
@@ -23,7 +23,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled }) => {
       if (e.clipboardData && e.clipboardData.items) {
         const files = Array.from(e.clipboardData.items)
           .map(f => f.getAsFile())
-          .filter(notEmpty);
+          .filter(assert.notEmpty);
 
         if (files.length > 0) {
           e.preventDefault();

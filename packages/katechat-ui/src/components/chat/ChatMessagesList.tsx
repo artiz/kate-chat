@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-
 import { notEmpty, ok } from "@/lib/assert";
 import { Message, Model, PluginProps } from "@/core";
 import { ChatMessage } from "./message/ChatMessage";

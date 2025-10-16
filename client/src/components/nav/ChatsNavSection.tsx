@@ -5,10 +5,10 @@ import { IconMessage, IconDots, IconEdit, IconTrash } from "@tabler/icons-react"
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
+import { assert } from "@katechat/ui";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { Chat, UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql";
 import { removeChat, updateChat } from "@/store/slices/chatSlice";
-import { notEmpty } from "@/lib/assert";
 
 import classes from "./ChatsNavSection.module.scss";
 import { DeleteConfirmationModal } from "../modal";
@@ -127,7 +127,7 @@ export const sortChats = (chats: Chat[]): ChatsSectionBlock[] => {
           chats: pinnedChats,
         }
       : null,
-  ].filter(notEmpty);
+  ].filter(assert.notEmpty);
 };
 
 interface IProps {

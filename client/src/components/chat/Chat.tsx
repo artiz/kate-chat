@@ -3,8 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
 import { IconX, IconEdit, IconCheck } from "@tabler/icons-react";
-import { useAppSelector } from "../../store";
+import { useAppSelector } from "@/store";
 import {
+  assert,
   ModelType,
   ChatMessagesContainer,
   ChatMessagesContainerRef,
@@ -14,7 +15,7 @@ import {
 } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages } from "@/hooks";
-import { notEmpty, ok } from "@/lib/assert";
+
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 import { ChatDocument, CreateMessageResponse } from "@/types/graphql";
@@ -74,7 +75,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chatDocuments = useMemo(() => {
-    let docs = (chat?.chatDocuments || []).map((doc: ChatDocument) => doc.document).filter(notEmpty);
+    let docs = (chat?.chatDocuments || []).map((doc: ChatDocument) => doc.document).filter(assert.notEmpty);
     if (uploadingDocs) {
       // If documents are uploading, include them in the list
       docs = docs.map(d => {
@@ -117,7 +118,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const handleSendMessage = async (message: string, images: ImageInput[] = []) => {
     if (!message?.trim() && !images.length) return;
-    ok(chatId, "Chat is required to send a message");
+    assert.ok(chatId, "Chat is required to send a message");
 
     try {
       // Convert images to base64
@@ -205,7 +206,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           });
         }
 
-        ok(chatId, "Chat ID is required to upload documents");
+        assert.ok(chatId, "Chat ID is required to upload documents");
         setUploadProgress(0);
         uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
           notifications.show({
