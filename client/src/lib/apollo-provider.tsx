@@ -1,14 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import {
-  ApolloClient,
-  ApolloProvider,
-  InMemoryCache,
-  HttpLink,
-  split,
-  from,
-  NormalizedCacheObject,
-  gql,
-} from "@apollo/client";
+import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from, gql } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
@@ -36,7 +27,6 @@ import {
   FULL_USER_FRAGMENT,
   BASE_DOCUMENT_FRAGMENT,
 } from "@/store/services/graphql";
-import { Chat } from "@/pages/Chat";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {

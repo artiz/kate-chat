@@ -3,7 +3,6 @@ import { Text, Box, Group } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconCode } from "@tabler/icons-react";
 import { parseMarkdown } from "@katechat/ui";
-import { text } from "stream/consumers";
 
 export const CodeInterpreterCall = (message: Message): React.ReactNode => {
   if (!message || !message.metadata) return null;

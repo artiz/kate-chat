@@ -19,7 +19,7 @@ interface IProps {
 }
 
 export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models }: IProps) => {
-  var model = useMemo(() => {
+  const model = useMemo(() => {
     return models?.find(m => m.modelId === message.modelId);
   }, [models, message.modelId]);
 
