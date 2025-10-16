@@ -1,0 +1,15 @@
+.app-main {
+  overflow: hidden;
+  height: calc(100vh - 60px);
+
+  .chat-container {
+    height: 100%;
+    display: flex;
+    gap: 1rem;
+    flex-grow: 1;
+    flex-direction: column;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+}

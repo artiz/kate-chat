@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
+import React from "react";
+import { Group, Tooltip } from "@mantine/core";
 import {
   IconPhotoAi,
   IconTextScan2,
@@ -8,7 +8,8 @@ import {
   IconWorldSearch,
   IconCloudCode,
 } from "@tabler/icons-react";
-import { Model, ModelType, ToolType } from "@/store/slices/modelSlice";
+import { Model, ToolType } from "@/types/graphql";
+import { ModelType } from "@katechat/ui";
 
 interface IProps {
   model: Model;

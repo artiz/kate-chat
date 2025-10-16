@@ -24,14 +24,14 @@ import { ok } from "@/lib/assert";
 
 interface ChatDocumentsSelectorProps {
   chatId?: string;
-  selectedDocIds: string[];
-  onSelectionChange: (selectedIds: string[]) => void;
+  selectedDocIds?: string[];
+  onSelectionChange?: (selectedIds: string[]) => void;
   disabled?: boolean;
   documents: Document[];
 }
 
 export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
-  selectedDocIds,
+  selectedDocIds = [],
   onSelectionChange,
   documents = [],
   disabled = false,
@@ -59,15 +59,15 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
     const newSelection = selectedDocIds.includes(docId)
       ? selectedDocIds.filter(id => id !== docId)
       : [...selectedDocIds, docId];
-    onSelectionChange(newSelection);
+    onSelectionChange?.(newSelection);
   };
 
   const handleSelectAll = () => {
-    onSelectionChange([...availableDocumentsIds]);
+    onSelectionChange?.([...availableDocumentsIds]);
   };
 
   const handleUnselectAll = () => {
-    onSelectionChange([]);
+    onSelectionChange?.([]);
   };
 
   const handleOpenDocuments = () => {

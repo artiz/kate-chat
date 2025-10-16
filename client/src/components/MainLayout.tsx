@@ -16,10 +16,10 @@ import {
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
+import { useTheme } from "@katechat/ui";
 import { useAppSelector } from "../store";
 import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
-import { useTheme } from "../hooks/useTheme";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();

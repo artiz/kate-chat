@@ -9,6 +9,7 @@ import {
   EmbeddingsResponse,
   GetEmbeddingsRequest,
   ToolType,
+  ModelMessage,
 } from "@/types/ai.types";
 import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS } from "@/config/ai/yandex";
 import { BaseApiProvider } from "./base.provider";
@@ -37,7 +38,7 @@ export class YandexApiProvider extends BaseApiProvider {
   }
 
   // Invoke Yandex model for text generation
-  async completeChat(request: CompleteChatRequest): Promise<ModelResponse> {
+  async completeChat(request: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection settings.");
     }
@@ -48,10 +49,14 @@ export class YandexApiProvider extends BaseApiProvider {
       modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
-    return this.protocol.completeChat(openAiRequest);
+    return this.protocol.completeChat(openAiRequest, messages);
   }
 
-  async streamChatCompletion(request: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(
+    request: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void> {
     if (!this.apiKey || !this.folderId) {
       callbacks.onError?.(
         new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in environment variables.")
@@ -65,7 +70,7 @@ export class YandexApiProvider extends BaseApiProvider {
       modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
-    return this.protocol.streamChatCompletion(openAiRequest, callbacks);
+    return this.protocol.streamChatCompletion(openAiRequest, messages, callbacks);
   }
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {

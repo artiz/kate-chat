@@ -3,9 +3,9 @@ import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, T
 import { IconMessagePlus, IconTestPipe } from "@tabler/icons-react";
 import { Model } from "@/store/slices/modelSlice";
 import { useAppSelector } from "@/store";
-import { ProviderIcon } from "../icons/ProviderIcon";
 import { ModelInfo } from "./ModelInfo";
 import { formatTokensLimit } from "@/lib";
+import { ProviderIcon } from "@katechat/ui";
 
 interface ModelsListProps {
   models: Model[];

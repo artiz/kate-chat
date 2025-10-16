@@ -11,17 +11,29 @@ import {
   ResponseStatus,
   ModelMessageContent,
   ChatToolCallResult,
+  ChatResponseStatus,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { ChatCompletionToolCall, COMPLETION_API_TOOLS, WEB_SEARCH_TOOL, WEB_SEARCH_TOOL_NAME } from "./openai.tools";
+import {
+  ChatCompletionToolCall,
+  COMPLETION_API_TOOLS,
+  COMPLETION_API_TOOLS_TO_STATUS,
+  WEB_SEARCH_TOOL,
+  WEB_SEARCH_TOOL_NAME,
+} from "./openai.tools";
 
 const logger = createLogger(__filename);
 
 export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
+
+function genProcessSymbol(): string {
+  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢"];
+  return symbols[Math.floor(Math.random() * symbols.length)];
+}
 
 export class OpenAIProtocol {
   private openai: OpenAI;
@@ -45,8 +57,9 @@ export class OpenAIProtocol {
     return this.openai;
   }
 
-  async completeChat(
-    inputRequest: CompleteChatRequest,
+  public async completeChat(
+    input: CompleteChatRequest,
+    messages: ModelMessage[] = [],
     apiType: OpenAIApiType = "completions"
   ): Promise<ModelResponse> {
     try {
@@ -56,7 +69,7 @@ export class OpenAIProtocol {
       };
 
       if (apiType === "responses") {
-        const params = this.formatResponsesRequest(inputRequest);
+        const params = this.formatResponsesRequest(input, messages);
         logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
         const result = await this.openai.responses.create(params);
@@ -66,7 +79,7 @@ export class OpenAIProtocol {
         response.files = files.length ? files : undefined;
         response.metadata = metadata;
       } else {
-        const params = this.formatCompletionRequest(inputRequest);
+        const params = this.formatCompletionRequest(input, messages);
         logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
 
         const completion = await this.openai.chat.completions.create(params);
@@ -96,17 +109,18 @@ export class OpenAIProtocol {
   }
 
   // Stream response from OpenAI models
-  async streamChatCompletion(
+  public async streamChatCompletion(
     inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = [],
     callbacks: StreamCallbacks,
     apiType: OpenAIApiType = "completions"
   ): Promise<void> {
     callbacks.onStart?.();
     try {
       if (apiType === "responses") {
-        await this.streamChatResponses(inputRequest, callbacks);
+        await this.streamChatResponses(inputRequest, messages, callbacks);
       } else {
-        await this.streamChatCompletionLegacy(inputRequest, callbacks);
+        await this.streamChatCompletionLegacy(inputRequest, messages, callbacks);
       }
     } catch (error) {
       logger.warn(error, "streaming error");
@@ -248,9 +262,10 @@ export class OpenAIProtocol {
    * @returns The formatted completion request parameters.
    */
   private formatCompletionRequest(
-    inputRequest: CompleteChatRequest
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = []
   ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
+    const { systemPrompt, modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
@@ -283,8 +298,11 @@ export class OpenAIProtocol {
     return params;
   }
 
-  private formatResponsesRequest(inputRequest: CompleteChatRequest): OpenAI.Responses.ResponseCreateParamsNonStreaming {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens } = inputRequest;
+  private formatResponsesRequest(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = []
+  ): OpenAI.Responses.ResponseCreateParamsNonStreaming {
+    const { systemPrompt, modelId, temperature, maxTokens } = inputRequest;
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
       model: modelId,
       input: this.formatResponsesInput(messages),
@@ -367,11 +385,12 @@ export class OpenAIProtocol {
   }
 
   private async streamChatCompletionLegacy(
-    inputRequest: CompleteChatRequest,
+    input: CompleteChatRequest,
+    messages: ModelMessage[] = [],
     callbacks: StreamCallbacks
   ): Promise<void> {
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-      ...this.formatCompletionRequest(inputRequest),
+      ...this.formatCompletionRequest(input, messages),
       stream: true,
       stream_options: { include_usage: true },
     };
@@ -381,7 +400,7 @@ export class OpenAIProtocol {
     let requestCompleted = false;
 
     do {
-      logger.debug({ ...params }, "invoking streaming chat.completions...");
+      logger.trace({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
@@ -400,24 +419,14 @@ export class OpenAIProtocol {
             break;
           }
 
-          // TODO: handle other tool calls
-          let status =
-            toolCalls.length === 1 && toolCalls[0].name === WEB_SEARCH_TOOL_NAME
-              ? ResponseStatus.WEB_SEARCH
-              : ResponseStatus.TOOL_CALL;
-          let detail =
-            toolCalls.length === 1
-              ? `Arguments: ${JSON.stringify(toolCalls[0].arguments)}`
-              : `Call tools: ${toolCalls.map(c => c.name).join(", ")}`;
-
           const metaCalls = toolCalls.map(c => ({
             ...c,
             name: c.name || "unknown",
             args: JSON.stringify(c.arguments || {}),
           }));
-          callbacks.onProgress?.("🖥️", { status, detail, toolCalls: metaCalls });
+          callbacks.onProgress?.(genProcessSymbol(), { status: ResponseStatus.TOOL_CALL, toolCalls: metaCalls });
 
-          const toolResults = await this.callCompletionTools(toolCalls);
+          const toolResults = await this.callCompletionTools(toolCalls, callbacks.onProgress);
 
           // Add tool calls as last assistant message
           params.messages.push({
@@ -434,7 +443,7 @@ export class OpenAIProtocol {
               callId: call.callId,
             };
           });
-          callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools });
+          callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, tools });
 
           requestCompleted = false;
           break; // break for await to restart the request with new messages
@@ -495,9 +504,13 @@ export class OpenAIProtocol {
     return contentParts.join("\n");
   }
 
-  private async streamChatResponses(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
+  private async streamChatResponses(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void> {
     const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
-      ...this.formatResponsesRequest(inputRequest),
+      ...this.formatResponsesRequest(inputRequest, messages),
       stream: true,
     };
 
@@ -509,7 +522,6 @@ export class OpenAIProtocol {
     let fullResponse = "";
     let meta: MessageMetadata = {};
     let lastStatus: ResponseStatus | undefined = undefined;
-    let toolCall = "";
 
     for await (const chunk of stream) {
       if (chunk.type == "response.output_text.delta") {
@@ -529,15 +541,21 @@ export class OpenAIProtocol {
           callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
         }
       } else if (chunk.type == "response.code_interpreter_call_code.delta") {
-        const delta = toolCall === "" ? "```\n" + chunk.delta : chunk.delta;
-        toolCall += delta;
-
-        callbacks.onProgress?.(delta, { status: ResponseStatus.CODE_INTERPRETER });
+        callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
       } else if (chunk.type == "response.code_interpreter_call.interpreting") {
-        toolCall += "\n```";
-        logger.debug({ toolCall }, "code interpreter call");
-        callbacks.onProgress?.("\n```", { status: ResponseStatus.CODE_INTERPRETER });
-        toolCall = "";
+        callbacks.onProgress?.(genProcessSymbol(), { status: ResponseStatus.CODE_INTERPRETER });
+      } else if (chunk.type == "response.code_interpreter_call_code.done") {
+        logger.debug(chunk, "code interpreter call completed");
+        callbacks.onProgress?.("", {
+          status: ResponseStatus.CODE_INTERPRETER,
+          tools: [
+            {
+              name: "code_interpreter",
+              content: chunk.code || "",
+              callId: chunk.item_id,
+            },
+          ],
+        });
       } else if (chunk.type == "response.output_item.done") {
         let status: ResponseStatus | undefined = undefined;
         const item = chunk.item;
@@ -748,7 +766,8 @@ export class OpenAIProtocol {
   }
 
   private callCompletionTools(
-    toolCalls: ChatCompletionToolCall[]
+    toolCalls: ChatCompletionToolCall[],
+    onProgress?: ((token: string, status?: ChatResponseStatus, force?: boolean) => void) | undefined
   ): Promise<{ call: ChatCompletionToolCall; result: OpenAI.Chat.Completions.ChatCompletionMessageParam }[]> {
     const requests = toolCalls.map(async call => {
       const tool = COMPLETION_API_TOOLS[call.name || ""];
@@ -773,6 +792,10 @@ export class OpenAIProtocol {
           },
         };
       }
+
+      let status = (call.name && COMPLETION_API_TOOLS_TO_STATUS[call.name]) || ResponseStatus.TOOL_CALL;
+      let detail = call.arguments ? JSON.stringify(call.arguments) : "";
+      onProgress?.("", { status, detail });
 
       const result = await tool.call(call.arguments || {}, call.callId, this.connection);
       return { call, result };

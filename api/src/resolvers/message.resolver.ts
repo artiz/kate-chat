@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { Repository, IsNull, In } from "typeorm";
 import { Chat, Message, Document } from "@/entities";
-import { CreateMessageInput, GetMessagesInput, GetImagesInput, CallOtherInput } from "@/types/graphql/inputs";
+import { CreateMessageInput, GetMessagesInput, GetImagesInput } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from ".";
 import {
@@ -140,7 +140,7 @@ export class MessageResolver extends BaseResolver {
               fileUrl: `/files/${content.fileName}`,
               mimeType: content.mimeType || "image/jpeg",
               role: message.role,
-              createdAt: message.createdAt,
+              createdAt: message.createdAt || new Date(),
               message: message,
               chat: message.chat!,
             });
@@ -228,13 +228,17 @@ export class MessageResolver extends BaseResolver {
   }
 
   @Mutation(() => CallOtherResponse)
-  async callOther(@Arg("input") input: CallOtherInput, @Ctx() context: GraphQLContext): Promise<CallOtherResponse> {
+  async callOther(
+    @Arg("messageId", () => ID) messageId: string,
+    @Arg("modelId") modelId: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<CallOtherResponse> {
     try {
       const user = await this.validateContextUser(context);
       const messageService = this.getMessagesService(context);
       const message = await messageService.callOtherModel(
-        input.messageId,
-        input.modelId,
+        messageId,
+        modelId,
         this.loadConnectionParams(context, user),
         user
       );

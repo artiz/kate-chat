@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Text, Group, Loader, Divider, ScrollArea, Menu, ActionIcon } from "@mantine/core";
-import { IconPlus, IconSettings, IconMessage, IconRobot, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
+import { Stack, Button, NavLink, Text, Group, Loader, Menu, ActionIcon } from "@mantine/core";
+import { IconMessage, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation } from "@apollo/client";
-import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "../../store/services/graphql";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { Chat, removeChat, updateChat } from "@/store/slices/chatSlice";
+import { Chat, UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql";
+import { removeChat, updateChat } from "@/store/slices/chatSlice";
 import { notEmpty } from "@/lib/assert";
 
 import classes from "./ChatsNavSection.module.scss";
+import { DeleteConfirmationModal } from "../modal";
 
 export interface ChatsSectionBlock {
   label: string;
@@ -129,21 +130,30 @@ export const sortChats = (chats: Chat[]): ChatsSectionBlock[] => {
   ].filter(notEmpty);
 };
 
-export const ChatsNavSection = () => {
+interface IProps {
+  navbarToggle?: () => void;
+}
+
+export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [currentChatId, setCurrentChatId] = useState<string>();
-  const [isEditing, setIsEditing] = useState<string | null>(null);
+  const [editingChatId, setEditingChatId] = useState<string | undefined>();
+  const [deletingChatId, setDeletingChatId] = useState<string | undefined>();
   const [editedTitle, setEditedTitle] = useState<string>("");
 
   const { chats, loading, error } = useAppSelector(state => state.chats);
   const sortedChats = useMemo(() => sortChats(chats), [chats]);
+  const deletingChat = useMemo(
+    () => (deletingChatId ? chats.find(chat => chat.id === deletingChatId) : undefined),
+    [deletingChatId, chats]
+  );
 
   // Mutations
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
     onCompleted: () => {
-      setIsEditing(null);
+      setEditingChatId(undefined);
       notifications.show({
         title: "Success",
         message: "Chat renamed successfully",
@@ -171,7 +181,7 @@ export const ChatsNavSection = () => {
     },
   });
 
-  const [deleteChat] = useMutation<any>(DELETE_CHAT_MUTATION, {
+  const [deleteChat, { loading: deleteLoading }] = useMutation<any>(DELETE_CHAT_MUTATION, {
     onCompleted: (data, options) => {
       // Show success notification
       notifications.show({
@@ -232,17 +242,18 @@ export const ChatsNavSection = () => {
 
   // Handle navigation to chat
   const handleChatClick = (id: string) => {
+    navbarToggle?.();
     navigate(`/chat/${id}`);
   };
 
   const handleEditBlur = () => {
-    setTimeout(() => setIsEditing(null), 200); // Delay to allow click events to register
+    setTimeout(() => setEditingChatId(undefined), 200); // Delay to allow click events to register
   };
 
   // Handle edit chat
   const handleEditClick = (e: React.MouseEvent, chat: Chat) => {
     e.stopPropagation();
-    setIsEditing(chat.id);
+    setEditingChatId(chat.id);
     setEditedTitle(chat.title || "Untitled Chat");
   };
 
@@ -269,21 +280,22 @@ export const ChatsNavSection = () => {
     if (e.key === "Enter") {
       updateTitle(chatId);
     } else if (e.key === "Escape") {
-      setIsEditing(null);
+      setEditingChatId(undefined);
     }
   };
 
   // Handle delete chat
   const handleDeleteClick = (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this chat?")) {
-      // Delete the chat, navigation will be handled in the mutation's onCompleted callback
-      deleteChat({
-        variables: {
-          id: chatId,
-        },
-      });
-    }
+    setDeletingChatId(chatId);
+  };
+
+  const handleDeleteChat = () => {
+    deleteChat({
+      variables: {
+        id: deletingChatId,
+      },
+    });
   };
 
   if (loading) {
@@ -316,7 +328,7 @@ export const ChatsNavSection = () => {
           <div className={classes.chatsBlockLabel}>{block.label}</div>
           {block.chats.map(chat => (
             <div key={chat.id} style={{ position: "relative" }}>
-              {isEditing === chat.id ? (
+              {editingChatId === chat.id ? (
                 <TextInput
                   value={editedTitle}
                   onChange={e => setEditedTitle(e.currentTarget.value)}
@@ -369,6 +381,16 @@ export const ChatsNavSection = () => {
           ))}
         </Stack>
       ))}
+
+      <DeleteConfirmationModal
+        isOpen={!!deletingChatId}
+        onClose={() => setDeletingChatId(undefined)}
+        onConfirm={handleDeleteChat}
+        title="Delete Chat"
+        message={`Are you sure you want to delete "${deletingChat?.title}"? This action cannot be undone and will remove the chat and all its associated data.`}
+        confirmLabel="Delete"
+        isLoading={deleteLoading}
+      />
     </Stack>
   );
 };

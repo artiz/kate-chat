@@ -1,6 +1,7 @@
 import { ObjectType, Field, ID } from "type-graphql";
 import { User, Chat, Message, Model, Document } from "../../entities";
 import { DocumentStatus, MessageRole, MessageType } from "../../types/ai.types";
+import { ApiProvider } from "@/config/ai/common";
 
 @ObjectType()
 export class UserResponse {
@@ -118,8 +119,8 @@ export class ProviderDetail {
 
 @ObjectType()
 export class GqlProviderInfo {
-  @Field()
-  id: string;
+  @Field(() => ApiProvider)
+  id: ApiProvider;
 
   @Field()
   name: string;

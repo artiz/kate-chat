@@ -54,15 +54,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   }, [pristineChat, navigate, navbarToggle]);
 
   // Handle navigation to models page
-  const handleModelsClick = () => {
+  const handleSectionClick = (path: string) => () => {
     navbarToggle?.();
-    navigate("/models");
-  };
-
-  // Handle navigation to admin page
-  const handleAdminClick = () => {
-    navbarToggle?.();
-    navigate("/admin");
+    navigate(path);
   };
 
   return (
@@ -88,19 +82,19 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
               label="Models"
               leftSection={<IconRobot size={16} />}
               active={location.pathname === "/models"}
-              onClick={handleModelsClick}
+              onClick={handleSectionClick("/models")}
             />
             <NavLink
               label="Settings"
               leftSection={<IconSettings size={16} />}
               active={location.pathname === "/settings"}
-              onClick={() => navigate("/settings")}
+              onClick={handleSectionClick("/settings")}
             />
             <NavLink
               label="Library"
               leftSection={<IconPhoto size={16} />}
               active={location.pathname === "/library"}
-              onClick={() => navigate("/library")}
+              onClick={handleSectionClick("/library")}
             />
             {appConfig?.ragEnabled && (
               <NavLink
@@ -108,7 +102,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
                 leftSection={<IconFile size={16} />}
                 active={location.pathname === "/documents"}
                 color="blue"
-                onClick={() => navigate("/documents")}
+                onClick={handleSectionClick("/documents")}
               />
             )}
             {currentUser?.role === UserRole.ADMIN && (
@@ -116,7 +110,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
                 label="Admin"
                 leftSection={<IconShield size={16} />}
                 active={location.pathname === "/admin"}
-                onClick={handleAdminClick}
+                onClick={handleSectionClick("/admin")}
               />
             )}
           </Stack>
@@ -125,7 +119,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
         </Stack>
       </AppShell.Section>
       <AppShell.Section grow component={ScrollArea}>
-        <ChatsNavSection />
+        <ChatsNavSection navbarToggle={navbarToggle} />
       </AppShell.Section>
       <AppShell.Section p="sm">
         <Button

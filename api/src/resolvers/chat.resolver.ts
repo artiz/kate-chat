@@ -54,7 +54,9 @@ export class ChatResolver extends BaseResolver {
         return sq
           .select("m.content")
           .from(Message, "m")
-          .where("m.chatId = chat.id and m.role = :role", { role: MessageRole.ASSISTANT })
+          .where("m.chatId = chat.id and m.role = :role and m.linkedToMessageId IS NULL", {
+            role: MessageRole.ASSISTANT,
+          })
           .orderBy("m.createdAt", "DESC")
           .limit(1);
       }, "chat_lastBotMessage")
@@ -62,7 +64,9 @@ export class ChatResolver extends BaseResolver {
         return sq
           .select("m.id")
           .from(Message, "m")
-          .where("m.chatId = chat.id and m.role = :role", { role: MessageRole.ASSISTANT })
+          .where("m.chatId = chat.id and m.role = :role and m.linkedToMessageId IS NULL", {
+            role: MessageRole.ASSISTANT,
+          })
           .orderBy("m.createdAt", "DESC")
           .limit(1);
       }, "chat_lastBotMessageId")

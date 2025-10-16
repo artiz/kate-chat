@@ -1,0 +1,8 @@
+.katex-display {
+  margin: 1rem 0;
+  text-align: left;
+}
+
+.katex-display > .katex {
+  text-align: left;
+}

@@ -7,7 +7,14 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 
 ## Features
 
-- CI/CD pipeline with GitHub Actions to deploy the app to AWS
+- Multiple chats creation with pristine chat functionality
+- Chat history storage and management, messages editing/deletion
+- Rich markdown formatting: code blocks, images, MathJax formulas etc.
+- "Switch model"/"Call other model" logic to process current chat messages with another model
+- Parallel call for assistant message against other models to [compare results](#screenshots)
+- Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
+- Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
+  Usage examples are available in [examples](/tree/master/examples).
 - Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
 - User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
@@ -16,15 +23,9 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
-- LLM tools (Web Search, Code Interpreter) support
+- LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
+- CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
-- Multiple chats creation with pristine chat functionality
-- Chat history storage and management, messages editing/deletion
-- Rich markdown formatting: code blocks, images, MathJax formulas etc.
-- "Switch model"/"Call other model" logic to process current chat messages with another model
-- Parallel call for assistant message against other models to [compare results](#screenshots)
-- Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
-- Responsive UI with Mantine
 
 ## 🚀 Live Demo
 
@@ -49,12 +50,41 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Extract katechat-ui package to have all the Message/Model types defined there. Move chat componmment there, 
-  extract ChatDataProvider interface that should incorporate all REST/WS calls. Implement plugins support (RAG, Tools, ChatSettings)
-  Provide simple demos in `katechat-ui`:
-  - use "completions" and "responses" API from OpenAI proto (for OpenAI, Yandex FM, Deepseek). Use simple backend proxy to get it working;
-  - simple chat bot with animated UI and custom actions buttons in chat to ask weather report tool or fill some form
-* Add request cancellation to stop reasoning or web search
+* Add request cancellation to stop reasoning or web search (GPT-5)
+* Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc)
+* @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
+* Rename `document-processor` to `tasks-processor` to perform following tasks:
+ - implemented cleanup chat files task (search for "delete the files from S3")
+ - add custom code interpreter tool implementation
+```
+from services.code_executor import CodeExecutor
+# Constants
+ALLOWED_MODULES = {
+    'pandas', 'numpy', 'matplotlib', 'PIL', 'cv2', 'moviepy','json', 'csv', 'datetime', 'math', 
+    'openpyxl', 'scipy', 'seaborn', 'networkx', 'tiktoken', 'scikit-learn', 'plotly', 
+    'bokeh', 'beautifulsoup4', 'sqlalchemy', 'scapy', 'dpkt', 'pytesseract', 'python-docx','python-pptx',
+    'manim', 'importlib-metadata', 'schemdraw'
+}
+
+def code_interpreter_handler(event, context):
+      executor = CodeExecutor()
+
+      code = event.get('code')
+      input_files = event.get('input_files', [])
+      chat_session_id = event.get('chat_session_id')
+      available_tokens = event.get('available_tokens', 16000)
+
+      if not code:
+         return {
+               'statusCode': 400,
+               'body': json.dumps({'error': 'No code provided'})
+         }
+
+      file_metadata = executor.download_input_files(input_files)
+      result = executor.execute_code(code, file_metadata, chat_session_id, available_tokens)
+
+      return result
+```        
 * Add custom MCP tool support
    - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
    - Bedrock - custom wrapper 

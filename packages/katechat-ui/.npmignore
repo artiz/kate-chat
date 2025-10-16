@@ -1,0 +1,22 @@
+# Source files
+src/
+
+# Development files
+node_modules/
+coverage/
+.prettierrc
+jest.config.js
+tsconfig.json
+postcss.config.cjs
+esbuild.js
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Build artifacts that shouldn't be published
+*.log
+*.map
+.DS_Store

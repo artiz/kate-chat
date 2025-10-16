@@ -6,7 +6,8 @@ import { store } from "./store";
 import App from "./components/App";
 
 import "./index.scss";
-import "./assets/katex/katex.css";
+import "katex/dist/katex.css";
+import "./assets/katex-overrides.css";
 
 // Ensure the container exists
 const container = document.getElementById("root");

@@ -1,4 +1,4 @@
-// Pure assertion tests whether a value is truthy, as determined  by !!value.
+// Pure assertion tests whether a value is truthy, as determined by !!value.
 export function ok<T>(value: T, message?: string | Error): asserts value {
   if (!value) {
     if (message instanceof Error) {

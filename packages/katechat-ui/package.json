@@ -1,0 +1,112 @@
+{
+  "name": "@katechat/ui",
+  "version": "1.0.5",
+  "description": "KateChat - AI Chat Interface modules collection",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artiz/kate-chat",
+    "directory": "packages/katechat-ui"
+  },
+  "keywords": [
+    "chatbot",
+    "chat",
+    "ui",
+    "react",
+    "mantine",
+    "ai"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/artiz/kate-chat/issues"
+  },
+  "homepage": "https://katechat.tech",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./styles.css": "./dist/esm/index.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "npm run build:js && npm run build:types",
+    "build:js": "node --experimental-default-type=module esbuild.js",
+    "build:types": "tsc --project tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --passWithNoTests --coverage"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "i18next": "^23.16.8",
+    "lodash": "^4.17.21",
+    "marked": "^15.0.12",
+    "marked-highlight": "^2.2.2",
+    "marked-katex-extension": "^5.1.5"
+  },
+  "peerDependencies": {
+    "@mantine/carousel": "8.3.3",
+    "@mantine/core": "8.3.3",
+    "@mantine/dates": "8.3.3",
+    "@mantine/form": "8.3.3",
+    "@mantine/hooks": "8.3.3",
+    "@mantine/modals": "8.3.3",
+    "@mantine/notifications": "8.3.3",
+    "@tabler/icons-react": "^3.1.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^6.23.1"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.24.5",
+    "@babel/preset-react": "^7.24.1",
+    "@babel/preset-typescript": "^7.24.1",
+    "@mantine/carousel": "8.3.3",
+    "@mantine/core": "8.3.3",
+    "@mantine/dates": "8.3.3",
+    "@mantine/form": "8.3.3",
+    "@mantine/hooks": "8.3.3",
+    "@mantine/modals": "8.3.3",
+    "@mantine/notifications": "8.3.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^29.5.12",
+    "@types/lodash": "^4.17.17",
+    "@types/node": "^22.15.18",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@types/react-router-dom": "^5.3.3",
+    "esbuild": "^0.25.9",
+    "esbuild-plugin-clean": "^1.0.1",
+    "esbuild-plugin-polyfill-node": "^0.3.0",
+    "esbuild-sass-plugin": "^3.3.1",
+    "express": "^4.19.2",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "postcss": "^8.5.3",
+    "postcss-modules": "^6.0.1",
+    "postcss-preset-mantine": "^1.13.0",
+    "postcss-simple-vars": "^7.0.1",
+    "prettier": "^3.2.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^6.23.1",
+    "sass": "^1.71.1",
+    "typescript": "^5.8.3"
+  }
+}

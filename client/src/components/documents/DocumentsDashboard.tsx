@@ -16,10 +16,14 @@ import {
   Pagination,
   TextInput,
   Badge,
+  ScrollArea,
+  Overlay,
 } from "@mantine/core";
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { parseMarkdown } from "@katechat/ui";
+
 import { DeleteConfirmationModal } from "@/components/modal";
 import { updateChat } from "@/store/slices/chatSlice";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -32,7 +36,6 @@ import {
   GET_DOCUMENTS_FOR_CHAT,
   REMOVE_FROM_CHAT_MUTATION,
 } from "@/store/services/graphql";
-import { parseMarkdown } from "@/lib/services/MarkdownParser";
 import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
 import { notEmpty, ok } from "@/lib/assert";
 import { FileDropzone } from "./FileDropzone/FileDropzone";
@@ -358,20 +361,29 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   );
 
   const handleDragOver = (ev: React.DragEvent<HTMLDivElement>) => {
-    if (ev.dataTransfer.types?.includes("Files") && appConfig?.s3Connected) {
+    ev.preventDefault();
+    if (ev.dataTransfer.types?.includes("Files")) {
+      ev.dataTransfer.dropEffect = "copy";
       setIsDragging(true);
     }
   };
   const handleDragLeave = (ev: React.DragEvent<HTMLDivElement>) => {
-    if (
-      ev.target === ev.currentTarget ||
-      ("classList" in ev.target && (ev.target as HTMLElement).classList.contains("drop-zone"))
-    ) {
+    ev.preventDefault();
+    if (ev.target === ev.currentTarget) {
       setIsDragging(false);
     }
   };
+
   const handleDrop = (ev: React.DragEvent<HTMLDivElement>) => {
-    setIsDragging(false);
+    ev.preventDefault();
+    ev.stopPropagation();
+    const files =
+      ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length > 0
+        ? Array.from(ev.dataTransfer.files).filter(f => f.size > 0)
+        : [];
+    if (files.length) {
+      handleAddFiles(files);
+    }
   };
 
   // Calculate pagination
@@ -388,143 +400,151 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   }
 
   return (
-    <Stack gap="xl">
-      <Group justify="space-between" align="center">
-        <Title order={1}>Documents {chat ? `for "${chat.title || chat.id}"` : ""}</Title>
-        <Group>
-          {chatId ? (
-            <Tooltip label="Back to chat">
-              <ActionIcon onClick={() => navigate(`/chat/${chatId}`)}>
-                <IconX size="1.2rem" />
+    <>
+      <Overlay
+        display={isDragging ? "flex" : "none"}
+        opacity={0.9}
+        zIndex={5}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
+      <Stack gap="xl" style={{ position: "relative" }}>
+        <Group justify="space-between" align="center">
+          <Title order={1}>Documents {chat ? `for "${chat.title || chat.id}"` : ""}</Title>
+          <Group>
+            {chatId ? (
+              <Tooltip label="Back to chat">
+                <ActionIcon onClick={() => navigate(`/chat/${chatId}`)}>
+                  <IconX size="1.2rem" />
+                </ActionIcon>
+              </Tooltip>
+            ) : null}
+            <Tooltip label="Refresh documents">
+              <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh} loading={loading}>
+                <IconRefresh size="1.2rem" />
               </ActionIcon>
             </Tooltip>
-          ) : null}
-          <Tooltip label="Refresh documents">
-            <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh} loading={loading}>
-              <IconRefresh size="1.2rem" />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
-      </Group>
-
-      <Paper
-        withBorder
-        p="lg"
-        onDragOverCapture={handleDragOver}
-        onDragLeaveCapture={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Title order={2}>Document Library</Title>
-            <Group>
-              {uploadLoading && <Loader size="sm" />}
-
-              <TextInput
-                placeholder="Search documents..."
-                value={searchInput}
-                onChange={e => setSearchInput(e.currentTarget.value)}
-                onKeyDown={e => e.key === "Enter" && handleSearch()}
-                rightSection={
-                  <ActionIcon variant="light" onClick={handleSearch} loading={loading}>
-                    <IconSearch size="1rem" />
-                  </ActionIcon>
-                }
-              />
-              <FileDropzone
-                active={isDragging}
-                onFilesAdd={handleAddFiles}
-                disabled={!appConfig?.s3Connected || uploadLoading}
-              />
-            </Group>
           </Group>
+        </Group>
 
-          {loading ? (
-            <Group justify="center" p="xl">
-              <Loader size="lg" />
+        <Paper withBorder p="lg" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Title order={2}>Document Library</Title>
+              <Group>
+                {uploadLoading && <Loader size="sm" />}
+
+                <TextInput
+                  placeholder="Search documents..."
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.currentTarget.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  rightSection={
+                    <ActionIcon variant="light" onClick={handleSearch} loading={loading}>
+                      <IconSearch size="1rem" />
+                    </ActionIcon>
+                  }
+                />
+                <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected || uploadLoading} />
+              </Group>
             </Group>
-          ) : documentsResponse && documents.length > 0 ? (
-            <>
-              <DeleteConfirmationModal
-                isOpen={!!documentToDelete}
-                onClose={() => setDocumentToDelete(undefined)}
-                onConfirm={confirmDeleteDocument}
-                title="Delete Document"
-                message={`Are you sure you want to delete "${documentToDelete?.fileName}"? This action cannot be undone and will remove the document and all its associated data.`}
-                confirmLabel="Delete Document"
-                isLoading={deleteLoading}
-              />
 
-              <DeleteConfirmationModal
-                isOpen={!!documentToReindex}
-                onClose={() => setDocumentToReindex(undefined)}
-                onConfirm={confirmReindexDocument}
-                title="Reindex Document"
-                message={`Are you sure you want to reindex "${documentToReindex?.fileName}"? This action cannot be undone and will remove all the document embeddings and summary.`}
-                confirmLabel="Reindex Document"
-                isLoading={reindexLoading}
-              />
+            {loading ? (
+              <Group justify="center" p="xl">
+                <Loader size="lg" />
+              </Group>
+            ) : documentsResponse && documents.length > 0 ? (
+              <>
+                <DeleteConfirmationModal
+                  isOpen={!!documentToDelete}
+                  onClose={() => setDocumentToDelete(undefined)}
+                  onConfirm={confirmDeleteDocument}
+                  title="Delete Document"
+                  message={`Are you sure you want to delete "${documentToDelete?.fileName}"? This action cannot be undone and will remove the document and all its associated data.`}
+                  confirmLabel="Delete Document"
+                  isLoading={deleteLoading}
+                />
 
-              <Modal
-                opened={!!summaryDocument}
-                onClose={() => setSummaryDocument(undefined)}
-                title="Document Info"
-                centered
-                size="xl"
-              >
-                <Badge color={getStatusColor(summaryDocument?.status)} p="md" mb="sm">
-                  {summaryDocument?.status}
-                </Badge>
+                <DeleteConfirmationModal
+                  isOpen={!!documentToReindex}
+                  onClose={() => setDocumentToReindex(undefined)}
+                  onConfirm={confirmReindexDocument}
+                  title="Reindex Document"
+                  message={`Are you sure you want to reindex "${documentToReindex?.fileName}"? This action cannot be undone and will remove all the document embeddings and summary.`}
+                  confirmLabel="Reindex Document"
+                  isLoading={reindexLoading}
+                />
 
-                <Box size="sm" fz="12">
-                  {summaryDocument?.statusInfo}
-                </Box>
+                <Modal
+                  opened={!!summaryDocument}
+                  onClose={() => setSummaryDocument(undefined)}
+                  title="Document Info"
+                  centered
+                  size="xl"
+                >
+                  <Stack gap="sm">
+                    <Group>
+                      <Badge color={getStatusColor(summaryDocument?.status)} p="sm">
+                        {summaryDocument?.status}
+                      </Badge>
+                      <Box size="sm" fz="12">
+                        {summaryDocument?.statusInfo}
+                      </Box>
+                    </Group>
 
-                <Box size="sm" fz="12">
-                  <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
-                </Box>
+                    <ScrollArea.Autosize mah={"40vh"}>
+                      <Box size="sm" fz="12">
+                        <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
+                      </Box>
+                    </ScrollArea.Autosize>
+                    {summaryDocument?.summaryModelId && (
+                      <Alert p="xs" title="Summarization Model" color="blue">
+                        {summaryDocument.summaryModelId}
+                      </Alert>
+                    )}
+                    {summaryDocument?.embeddingsModelId && (
+                      <Alert p="xs" title="Embeddings Model" color="green">
+                        {summaryDocument?.embeddingsModelId}
+                      </Alert>
+                    )}
 
-                <Alert p="xs" mb="sm" title="Summarization Model" color="blue">
-                  {summaryDocument?.summaryModelId}
-                </Alert>
-                <Alert p="xs" mb="sm" title="Embeddings Model" color="green">
-                  {summaryDocument?.embeddingsModelId}
-                </Alert>
+                    <Group mt="md" justify="flex-end">
+                      <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
+                    </Group>
+                  </Stack>
+                </Modal>
 
-                <Group mt="md" justify="flex-end">
-                  <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
-                </Group>
-              </Modal>
+                <DocumentsTable
+                  documents={documents}
+                  chatDocumentsMap={chatDocumentsMap}
+                  chatId={chatId}
+                  onAddToChat={handleAddToChat}
+                  onRemoveFromChat={handleRemoveFromChat}
+                  onReindexDocument={handleReindexDocument}
+                  onDeleteDocument={handleDeleteDocument}
+                  onViewSummary={setSummaryDocument}
+                  disableActions={addingToChat || removingFromChat || reindexLoading || deleteLoading}
+                />
 
-              <DocumentsTable
-                documents={documents}
-                chatDocumentsMap={chatDocumentsMap}
-                chatId={chatId}
-                onAddToChat={handleAddToChat}
-                onRemoveFromChat={handleRemoveFromChat}
-                onReindexDocument={handleReindexDocument}
-                onDeleteDocument={handleDeleteDocument}
-                onViewSummary={setSummaryDocument}
-                disableActions={addingToChat || removingFromChat || reindexLoading || deleteLoading}
-              />
+                {totalPages > 1 && (
+                  <Group justify="center" mt="md">
+                    <Pagination value={currentPage} onChange={handlePageChange} total={totalPages} size="sm" />
+                  </Group>
+                )}
 
-              {totalPages > 1 && (
-                <Group justify="center" mt="md">
-                  <Pagination value={currentPage} onChange={handlePageChange} total={totalPages} size="sm" />
-                </Group>
-              )}
-
-              <Text size="sm" c="dimmed" ta="center">
-                Showing {documents.length} of {totalDocuments} documents
+                <Text size="sm" c="dimmed" ta="center">
+                  Showing {documents.length} of {totalDocuments} documents
+                </Text>
+              </>
+            ) : (
+              <Text ta="center" c="dimmed" py="xl">
+                No documents found
               </Text>
-            </>
-          ) : (
-            <Text ta="center" c="dimmed" py="xl">
-              No documents found
-            </Text>
-          )}
-        </Stack>
-      </Paper>
-    </Stack>
+            )}
+          </Stack>
+        </Paper>
+      </Stack>
+    </>
   );
 };

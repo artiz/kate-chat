@@ -33,13 +33,13 @@ export class Message {
   @Field(() => MessageMetadata, { nullable: true })
   metadata?: MessageMetadata;
 
-  @Field()
-  @Column()
-  modelId: string; // The ID of the model used for this message
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  modelId?: string; // The ID of the model used for this message
 
   @Field({ nullable: true })
   @Column({ nullable: true })
-  modelName: string; // The name of the model used for this message
+  modelName?: string; // The name of the model used for this message
 
   @Field(() => Chat)
   @ManyToOne(() => Chat, { onDelete: "CASCADE" })
@@ -76,9 +76,9 @@ export class Message {
 
   @Field({ nullable: true })
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @Field({ nullable: true })
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

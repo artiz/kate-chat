@@ -166,21 +166,21 @@ export class MessagesService {
 
     await this.removeFiles(files, user, chat);
 
+    const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
+    const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
+
+    // reset original message to be re-processed
     originalMessage.role = MessageRole.ASSISTANT;
     originalMessage.content = ""; // Clear content to indicate it's being regenerated
     originalMessage.jsonContent = undefined;
     originalMessage.modelId = model.modelId; // Update to the new model
     originalMessage.modelName = model.name; // Update model name
-    if (originalMessage.metadata) {
-      originalMessage.metadata.usage = undefined;
-    }
+    originalMessage.metadata = {};
     originalMessage = await this.messageRepository.save(originalMessage);
 
     // Publish message to Queue
     await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
-    const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
-    const { documentIds } = (userMessage ? userMessage.metadata : originalMessage.metadata) || {};
     if (documentIds && documentIds.length > 0) {
       if (!userMessage) throw new Error("Original user message not found in context");
       await this.publishRagMessage(
@@ -235,6 +235,7 @@ export class MessagesService {
     const chatId = chat.id;
 
     // Delete all messages after this one in the chat
+    ok(originalMessage.createdAt);
     const messagesToDelete = await this.messageRepository.findBy({
       chatId,
       createdAt: MoreThanOrEqual(formatDateFloor(originalMessage.createdAt)),
@@ -408,6 +409,7 @@ export class MessagesService {
     }
 
     // If deleteFollowing is true, find and delete all messages after this one
+    ok(message.createdAt);
     const messagesToDelete = (
       deleteFollowing
         ? await this.messageRepository.find({
@@ -610,7 +612,7 @@ export class MessagesService {
       // sync call
       try {
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
-        const aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, inputMessages);
+        const aiResponse = await this.aiService.completeChat(model.apiProvider, connection, request, inputMessages);
 
         if (aiResponse.type === "image") {
           if (!aiResponse.files) {
@@ -671,7 +673,7 @@ export class MessagesService {
       completed?: boolean,
       forceFlush?: boolean
     ) => {
-      const { content: token = "", error, metadata, status } = data;
+      const { content: token = "", error, metadata = {}, status } = data;
 
       if (completed) {
         if (error) {
@@ -682,8 +684,14 @@ export class MessagesService {
           }).catch(err => logger.error(err, "Error sending AI response"));
         }
 
-        assistantMessage.content = token;
-        assistantMessage.metadata = metadata;
+        assistantMessage.content = token.trim() || "_No response_";
+        if (metadata) {
+          if (!assistantMessage.metadata) {
+            assistantMessage.metadata = metadata;
+          } else {
+            assistantMessage.metadata = { ...assistantMessage.metadata, ...metadata };
+          }
+        }
 
         return completeRequest(assistantMessage).catch(err => {
           this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
@@ -728,7 +736,7 @@ export class MessagesService {
 
     await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
     this.aiService
-      .streamCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
+      .streamChatCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
       .catch((error: unknown) => {
         logger.error(error, "Error streaming AI response");
         return completeRequest({
@@ -749,7 +757,7 @@ export class MessagesService {
       case ResponseStatus.REASONING:
         return status.detail || (status.sequence_number == null ? "" : `Step #${status.sequence_number}`);
       default:
-        return undefined;
+        return status.detail || undefined;
     }
   }
 
@@ -785,6 +793,15 @@ export class MessagesService {
     };
 
     do {
+      await this.subscriptionsService.publishChatMessage(
+        chat,
+        {
+          ...ragMessage,
+          status: ResponseStatus.RAG_SEARCH,
+        },
+        true
+      );
+
       try {
         chunks = await this.embeddingsService.findChunks(input.documentIds!, input.content, connection, {
           limit: chunksLimit,
@@ -814,7 +831,7 @@ export class MessagesService {
         };
 
         // always sync call
-        aiResponse = await this.aiService.getCompletion(model.apiProvider, connection, request, [
+        aiResponse = await this.aiService.completeChat(model.apiProvider, connection, request, [
           {
             ...inputMessage,
             jsonContent: undefined,
@@ -906,15 +923,20 @@ export class MessagesService {
     question: string,
     answer: string
   ): Promise<string> => {
-    const res = await this.aiService.completeChat(model.apiProvider, connection, {
-      modelId: model.modelId,
-      messages: [
+    const res = await this.aiService.completeChat(
+      model.apiProvider,
+      connection,
+      {
+        modelId: model.modelId,
+      },
+      [
         {
+          id: "summary-system",
           role: MessageRole.USER,
-          body: PROMPT_CHAT_TITLE({ question, answer }),
+          content: PROMPT_CHAT_TITLE({ question, answer }),
         },
-      ],
-    });
+      ]
+    );
 
     const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
     return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
@@ -968,6 +990,7 @@ export class MessagesService {
       .andWhere("message.linkedToMessageId IS NULL");
 
     if (currentMessage) {
+      ok(currentMessage.createdAt);
       query = query
         .andWhere("message.createdAt <= :createdAt", { createdAt: formatDateCeil(currentMessage.createdAt) })
         .andWhere("message.id <> :id", { id: currentMessage.id });

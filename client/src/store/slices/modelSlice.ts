@@ -1,19 +1,6 @@
-import { ApiProvider } from "@/types/ai";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { logout } from "..";
-
-export interface ProviderDetail {
-  key: string;
-  value: string;
-}
-
-export interface ProviderInfo {
-  name: string;
-  id: ApiProvider;
-  isConnected: boolean;
-  details: ProviderDetail[];
-  costsInfoAvailable?: boolean;
-}
+import { Model, ProviderInfo } from "@/types/graphql";
 
 export interface CostAmount {
   amount: number;
@@ -31,33 +18,6 @@ export interface UsageCostsInfo {
   end?: Date;
   error?: string;
   costs: ServiceCostInfo[];
-}
-
-export enum ModelType {
-  CHAT = "CHAT",
-  EMBEDDING = "EMBEDDING",
-  IMAGE_GENERATION = "IMAGE_GENERATION",
-  AUDIO_GENERATION = "AUDIO_GENERATION",
-  OTHER = "OTHER",
-}
-
-export enum ToolType {
-  WEB_SEARCH = "WEB_SEARCH",
-  CODE_INTERPRETER = "CODE_INTERPRETER",
-  MCP = "MCP",
-}
-
-export interface Model {
-  id: string;
-  name: string;
-  modelId: string;
-  apiProvider: ApiProvider;
-  type: ModelType;
-  provider: string;
-  isActive: boolean;
-  imageInput?: boolean;
-  maxInputTokens?: number;
-  tools?: ToolType[];
 }
 
 interface ModelState {

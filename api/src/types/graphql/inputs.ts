@@ -162,7 +162,7 @@ export class CreateMessageInput {
   images?: ImageInput[];
 
   @Field({ nullable: true })
-  modelId: string;
+  modelId?: string;
 
   @Field({ nullable: true })
   temperature?: number;
@@ -233,7 +233,7 @@ export class TestModelInput {
 
 @InputType()
 export class GetCostsInput {
-  @Field()
+  @Field(() => ApiProvider)
   apiProvider: ApiProvider;
 
   @Field()
@@ -241,24 +241,6 @@ export class GetCostsInput {
 
   @Field({ nullable: true })
   endTime?: number;
-}
-
-@InputType()
-export class SwitchModelInput {
-  @Field()
-  messageId: string;
-
-  @Field()
-  modelId: string;
-}
-
-@InputType()
-export class CallOtherInput {
-  @Field()
-  messageId: string;
-
-  @Field()
-  modelId: string;
 }
 
 @InputType()

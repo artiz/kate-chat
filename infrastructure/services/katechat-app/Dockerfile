@@ -12,10 +12,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN mkdir ./client
 RUN mkdir ./api
+RUN mkdir -p ./packages/katechat-ui
 COPY client/package.json ./client
 COPY api/package.json ./api
+COPY packages/katechat-ui/package.json ./packages/katechat-ui/
 RUN npm ci
 
+COPY ./packages ./packages
 COPY ./client ./client
 COPY ./api ./api
 COPY ./db-migrations ./db-migrations
@@ -26,6 +29,7 @@ ENV RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY
 ENV COMMIT_SHA=$COMMIT_SHA
 ENV NODE_ENV=production
 
+RUN npm run build:packages
 RUN npm run build:client
 RUN npm run build:api
 RUN npm run build:migrations

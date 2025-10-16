@@ -1,0 +1,113 @@
+[data-mantine-color-scheme="light"] {
+  .chatControlsContainer {
+    .chatControls {
+      border: 1px solid var(--app-shell-border-color);
+    }
+
+    .headerRow {
+      background-color: var(--mantine-color-gray-4);
+    }
+
+    .chatInputGroup .chatInput :global(textarea) {
+      border: 1px solid var(--app-shell-border-color);
+    }
+  }
+}
+
+.chatControlsContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+
+  &.hidden {
+    display: none;
+  }
+
+  &.promptMode {
+    flex-grow: 1;
+    padding-bottom: 15rem;
+  }
+
+  .chatControls {
+    border: 1px solid var(--app-shell-border-color);
+    border-radius: var(--mantine-radius-default);
+    background-color: var(--app-shell-border-color);
+  }
+
+  .headerRow {
+    padding: 0.33rem;
+    border-top-left-radius: var(--mantine-radius-default);
+    border-top-right-radius: var(--mantine-radius-default);
+  }
+}
+
+.chatInputContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 0.5rem;
+  gap: 0.5rem;
+
+  background-color: var(--mantine-color-body);
+  border-radius: var(--mantine-radius-default);
+
+  .documentsInput {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+    align-items: stretch;
+  }
+
+  &.columned {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-items: stretch;
+
+    .chatInputGroup {
+      align-self: stretch;
+    }
+  }
+
+  .filesList {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+
+    .previewImage {
+      position: relative;
+      background-color: var(--input-bg);
+      height: 64px;
+      border-radius: var(--mantine-radius-default);
+
+      :global img {
+        max-width: 64px;
+        max-height: 64px;
+        object-fit: cover;
+        border-radius: var(--mantine-radius-default);
+      }
+
+      .removeButton {
+        position: absolute;
+        top: 0.1rem;
+        right: 0.1rem;
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .chatInputGroup {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+
+    .chatInput {
+      flex-grow: 1;
+
+      :global(textarea) {
+        border: 1px solid var(--app-shell-border-color);
+      }
+    }
+  }
+}

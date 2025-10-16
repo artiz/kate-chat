@@ -1,26 +1,67 @@
 .container {
-  height: calc(100vh - 60px);
+  height: calc(100vh - var(--app-shell-header-height));
   display: flex;
   flex-direction: column;
-
-  --container-size-md: calc(75rem * var(--mantine-scale)) !important;
-  --container-size-lg: calc(100rem * var(--mantine-scale)) !important;
-  --container-size-xl: calc(120rem * var(--mantine-scale)) !important;
-}
-
-/* Edit title icon styles */
-.editTitleButton {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.title:hover {
-  .editTitleButton {
-    opacity: 0.7;
-  }
+  gap: 0.5rem;
+  position: relative;
 }
 
 .titleRow {
+  display: flex;
+  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+
+  .titleBlock {
+    max-width: 100%;
+    overflow: hidden;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .title {
+    flex: 1;
+    min-width: 6rem;
+    padding-right: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .titleText {
+    padding-right: 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    width: 100%;
+  }
+
+  .title:hover {
+    .editTitleButton {
+      opacity: 1;
+    }
+  }
+
+  .editTitleButton {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    background-color: var(--mantine-color-body);
+  }
+
+  .actionsBlock {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+
   .wsStatus {
     display: flex;
     align-items: center;
@@ -28,187 +69,25 @@
     opacity: 0.7;
   }
 
+  .wsStatusText {
+    font-size: 0.75rem;
+    color: var(--mantine-color-text-secondary);
+  }
+
+  @media (max-width: 640px) {
+    .wsStatusText {
+      display: none;
+    }
+  }
+
   .wsStatusIndicator {
     width: 0.5em;
     height: 0.5em;
     border-radius: 50%;
-
-    background: gray;
+    background: var(--mantine-color-gray);
 
     &.connected {
-      background: green;
+      background: var(--mantine-color-green);
     }
-  }
-}
-
-.messagesContainer {
-  flex-grow: 1;
-  overflow-y: scroll;
-  margin-bottom: 1rem;
-  position: relative;
-  display: none;
-  flex-direction: column;
-  border: 1px solid var(--app-shell-border-color);
-  border-radius: var(--mantine-radius-md);
-  transition: all 0.3s ease;
-  opacity: 1;
-
-  .messagesList {
-    opacity: 0;
-    margin-bottom: 1rem;
-  }
-
-  &.empty {
-    flex-grow: 0;
-    opacity: 0;
-  }
-
-  &.loadCompleted {
-    scroll-behavior: smooth;
-    display: flex;
-
-    .messagesList {
-      opacity: 1;
-    }
-  }
-}
-
-[data-mantine-color-scheme="light"] {
-  .chatControlsContainer {
-    .chatControls {
-      border: 1px solid var(--app-shell-border-color);
-    }
-
-    .modelRow {
-      background-color: var(--mantine-color-gray-4);
-    }
-
-    .chatInputGroup .chatInput :global(textarea) {
-      border: 1px solid var(--app-shell-border-color);
-    }
-  }
-}
-
-.chatControlsContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-
-  &.hidden {
-    display: none;
-  }
-
-  &.fullHeight {
-    flex-grow: 1;
-    padding-bottom: 15rem;
-  }
-
-  .chatControls {
-    border: 1px solid var(--app-shell-border-color);
-    border-top: none;
-    border-radius: var(--mantine-radius-default);
-  }
-}
-
-.modelRow {
-  padding: 0.33rem;
-  border-top-left-radius: var(--mantine-radius-default);
-  border-top-right-radius: var(--mantine-radius-default);
-  background-color: var(--app-shell-border-color);
-}
-
-.chatInputContainer {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  padding: 0.5rem;
-  position: relative;
-  gap: 0.5rem;
-
-  .documentsInput {
-    display: flex;
-    flex-direction: row;
-    gap: 0.25rem;
-    align-items: stretch;
-  }
-
-  &.columned {
-    flex-direction: column;
-    align-items: flex-start;
-    justify-items: stretch;
-
-    .chatInputGroup {
-      align-self: stretch;
-    }
-  }
-
-  .filesList {
-    display: flex;
-    flex-direction: row;
-    gap: 0.5rem;
-
-    .previewImage {
-      position: relative;
-      background-color: var(--input-bg);
-      height: 64px;
-      border-radius: var(--mantine-radius-default);
-
-      :global img {
-        max-width: 64px;
-        max-height: 64px;
-        object-fit: cover;
-        border-radius: var(--mantine-radius-default);
-      }
-
-      .removeButton {
-        position: absolute;
-        top: 0.1rem;
-        right: 0.1rem;
-        border-radius: 50%;
-      }
-    }
-  }
-
-  .chatInputGroup {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: row;
-    gap: 0.5rem;
-
-    .chatInput {
-      flex-grow: 1;
-
-      :global(textarea) {
-        border: 1px solid var(--app-shell-border-color);
-      }
-    }
-  }
-}
-
-.anchorContainer {
-  position: absolute;
-  width: 40px;
-  left: calc(50% - 40px);
-  bottom: 0;
-  top: -4em;
-  height: 40px;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  justify-items: center;
-  align-items: center;
-  opacity: 0;
-  transition: all 0.5s ease;
-
-  &.visible {
-    opacity: 1;
-  }
-
-  .anchor {
-    background-color: var(--mantine-color-body);
-    border-radius: 50%;
-    height: 32px;
-    width: 32px;
   }
 }

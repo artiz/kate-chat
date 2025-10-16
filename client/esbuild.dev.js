@@ -34,6 +34,10 @@ const context = await esbuild.context({
     ".ttf": "file",
     ".eot": "file",
   },
+  alias: {
+    // Use source files from @katechat/ui during development for easier debugging
+    "@katechat/ui": "../packages/katechat-ui/src/index.ts",
+  },
   define: {
     "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV || "development"),
     "process.env.APP_API_URL": JSON.stringify(process.env.APP_API_URL),

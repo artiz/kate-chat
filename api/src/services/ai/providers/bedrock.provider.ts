@@ -28,6 +28,7 @@ import {
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   MessageRole,
+  ModelMessage,
   ResponseStatus,
   ToolType,
   ChatToolCallResult,
@@ -89,13 +90,17 @@ export class BedrockApiProvider extends BaseApiProvider {
         };
 
     // AWS Bedrock client configuration
-    this.bedrockClient = new BedrockRuntimeClient(config);
+    this.bedrockClient = new BedrockRuntimeClient({
+      ...config,
+      retryMode: "standard", // https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html
+      maxAttempts: 10, // Set max attempts for retries
+    });
 
     // AWS Bedrock management client for non-runtime operations (listing models, etc.)
     this.bedrockManagementClient = new BedrockClient(config);
   }
 
-  async completeChat(request: CompleteChatRequest): Promise<ModelResponse> {
+  async completeChat(request: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
     if (!this.bedrockClient) {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
@@ -106,7 +111,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     do {
       // Get provider service and parameters
-      const input = this.formatConverseParams(request);
+      const input = this.formatConverseParams(request, messages);
       // Append any tool result messages from previous iterations
       if (input.messages) {
         input.messages = [...input.messages, ...conversationMessages];
@@ -162,7 +167,11 @@ export class BedrockApiProvider extends BaseApiProvider {
   }
 
   // Stream response from models using InvokeModelWithResponseStreamCommand
-  async streamChatCompletion(request: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
+  async streamChatCompletion(
+    request: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void> {
     if (!this.bedrockClient) {
       const err = new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
       if (callbacks.onError) {
@@ -180,7 +189,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     do {
       try {
-        const input = this.formatConverseParams(request);
+        const input = this.formatConverseParams(request, messages);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
 
@@ -340,7 +349,6 @@ export class BedrockApiProvider extends BaseApiProvider {
             callbacks.onError?.(chunk.modelStreamErrorException);
           } else if (chunk.validationException) {
             callbacks.onError?.(chunk.validationException);
-            // TODO: add retry
           } else if (chunk.throttlingException) {
             callbacks.onError?.(chunk.throttlingException);
           } else if (chunk.serviceUnavailableException) {
@@ -712,8 +720,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     };
   }
 
-  private formatConverseParams(request: CompleteChatRequest): ConverseCommandInput {
-    const { systemPrompt, messages = [], modelId, temperature, maxTokens, topP, tools: inputTools } = request;
+  private formatConverseParams(request: CompleteChatRequest, messages: ModelMessage[] = []): ConverseCommandInput {
+    const { systemPrompt, modelId, temperature, maxTokens, topP, tools: inputTools } = request;
 
     const requestMessages: ConverseMessage[] = messages.map(msg => {
       if (typeof msg.body === "string") {

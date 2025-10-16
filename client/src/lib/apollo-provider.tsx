@@ -1,14 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import {
-  ApolloClient,
-  ApolloProvider,
-  InMemoryCache,
-  HttpLink,
-  split,
-  from,
-  NormalizedCacheObject,
-  gql,
-} from "@apollo/client";
+import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from, gql } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
@@ -166,6 +157,22 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
           ${BASE_DOCUMENT_FRAGMENT}
           ${FULL_USER_FRAGMENT}
         `),
+        typePolicies: {
+          Chat: {
+            fields: {
+              tools: {
+                merge(existing = [], incoming: any[]) {
+                  return incoming;
+                },
+              },
+              chatDocuments: {
+                merge(existing = [], incoming: any[]) {
+                  return incoming;
+                },
+              },
+            },
+          },
+        },
       }),
       defaultOptions: {
         watchQuery: {

@@ -1,8 +1,9 @@
 import { gql } from "@apollo/client";
+import { parseMarkdown } from "@katechat/ui";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
 import { Model, ProviderInfo } from "../slices/modelSlice";
-import { parseMarkdown } from "@/lib/services/MarkdownParser";
+
 import {
   ApplicationConfig,
   Chat,
@@ -145,6 +146,10 @@ export const BASE_MESSAGE_FRAGMENT = `
           content
           relevance
         }
+        tools {
+          name
+          content
+        }
       }
     }
 `;
@@ -175,6 +180,14 @@ export const UPDATE_USER_MUTATION = gql`
   mutation UpdateUser($input: UpdateUserInput!) {
     updateUser(input: $input) {
       ...FullUser
+    }
+  }
+`;
+
+export const CREATE_MESSAGE = gql`
+  mutation CreateMessage($input: CreateMessageInput!) {
+    createMessage(input: $input) {
+      ...BaseMessage
     }
   }
 `;
@@ -232,9 +245,9 @@ export const SWITCH_MODEL_MUTATION = gql`
   }
 `;
 
-export const CALL_OTHERS_MUTATION = gql`
-  mutation CallOther($input: CallOtherInput!) {
-    callOther(input: $input) {
+export const CALL_OTHER_MUTATION = gql`
+  mutation CallOther($messageId: ID!, $modelId: String!) {
+    callOther(messageId: $messageId, modelId: $modelId) {
       message {
         ...BaseMessage
         linkedMessages {

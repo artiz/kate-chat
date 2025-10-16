@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
+import { ResponseStatus } from "@/types/ai.types";
 
 export interface ChatCompletionToolCall {
   name?: string;
@@ -20,6 +21,7 @@ export type ChatCompletionToolCallable = OpenAI.Chat.Completions.ChatCompletionT
 };
 
 export const WEB_SEARCH_TOOL_NAME = "web_search";
+
 export const WEB_SEARCH_TOOL: ChatCompletionToolCallable = {
   type: "function",
   function: {
@@ -82,4 +84,8 @@ export const WEB_SEARCH_TOOL: ChatCompletionToolCallable = {
 
 export const COMPLETION_API_TOOLS: Record<string, ChatCompletionToolCallable> = {
   [WEB_SEARCH_TOOL_NAME]: WEB_SEARCH_TOOL,
+};
+
+export const COMPLETION_API_TOOLS_TO_STATUS: Record<string, ResponseStatus> = {
+  [WEB_SEARCH_TOOL_NAME]: ResponseStatus.WEB_SEARCH,
 };

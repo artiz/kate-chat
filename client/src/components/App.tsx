@@ -10,7 +10,7 @@ import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
-import { ThemeProvider, useTheme } from "../hooks/useTheme";
+import { ThemeProvider, useTheme } from "@katechat/ui";
 
 // Pages
 import Login from "@/pages/Login";

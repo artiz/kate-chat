@@ -6,6 +6,7 @@ import { createLogger } from "@/utils/logger";
 import { SearchRequest, SearchResult, SearchSortMode } from "./web_search";
 import { XMLParser } from "fast-xml-parser";
 import { stripHtml } from "@/utils/format";
+import { APP_USER_AGENT } from "@/config/application";
 
 const logger = createLogger(__filename);
 
@@ -44,9 +45,11 @@ export class YandexWebSearch {
             }
           : undefined,
       maxPassages: 5,
+      docsInGroup: 3,
       region: request.region,
       l10n: "LOCALIZATION_EN",
       responseFormat: "FORMAT_XML",
+      userAgent: APP_USER_AGENT,
     };
 
     logger.trace(data, "Yandex Web Search request");

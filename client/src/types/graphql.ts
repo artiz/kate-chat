@@ -1,6 +1,35 @@
+import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
-import { DocumentStatus, MessageRole } from "./ai";
-import { Model, ProviderInfo } from "@/store/slices/modelSlice";
+import { DocumentStatus } from "./ai";
+
+export interface ProviderDetail {
+  key: string;
+  value: string;
+}
+
+export interface ProviderInfo {
+  name: string;
+  id: ApiProvider;
+  isConnected: boolean;
+  details: ProviderDetail[];
+  costsInfoAvailable?: boolean;
+}
+
+export enum ToolType {
+  WEB_SEARCH = "WEB_SEARCH",
+  CODE_INTERPRETER = "CODE_INTERPRETER",
+  MCP = "MCP",
+}
+
+export interface Model extends BaseModel {
+  tools?: ToolType[];
+}
+
+export type Message = BaseMessage<User, MessageMetadata>;
+
+export interface CreateMessageResponse {
+  createMessage: Message;
+}
 
 export interface CurrentUserResponse {
   currentUser: User;
@@ -83,12 +112,6 @@ export interface GetDocumentsForChatResponse {
     hasMore: boolean;
   };
   chatById: Chat | null | undefined;
-}
-
-export interface ImageInput {
-  fileName: string;
-  mimeType: string;
-  bytesBase64: string;
 }
 
 export interface CreateChatInput {
@@ -186,6 +209,22 @@ export interface MessageRelevantChunk {
   content: string;
 }
 
+export type ContentType = "text" | "image" | "video" | "audio" | "mixed";
+
+export interface ModelMessageContent {
+  content: string;
+  contentType?: ContentType;
+  fileName?: string;
+  mimeType?: string;
+}
+
+export interface ChatToolCallResult {
+  name: string;
+  content: string;
+  jsonContent?: ModelMessageContent[];
+  callId?: string;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -194,36 +233,7 @@ export interface MessageMetadata {
 
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
-}
-
-export enum ResponseStatus {
-  IN_PROGRESS = "in_progress",
-  WEB_SEARCH = "web_search",
-  CODE_INTERPRETER = "code_interpreter",
-  TOOL_CALL = "tool_call",
-  TOOL_CALL_COMPLETED = "tool_call_completed",
-  REASONING = "reasoning",
-  COMPLETED = "completed",
-  ERROR = "error",
-}
-
-export interface Message {
-  id: string;
-  chatId: string;
-  content: string;
-  html?: string[];
-  role: MessageRole;
-  modelId?: string;
-  modelName?: string;
-  user?: User;
-  createdAt: string;
-  updatedAt: string;
-  streaming?: boolean;
-  linkedToMessageId?: string;
-  linkedMessages?: Message[];
-  metadata?: MessageMetadata;
-  status?: ResponseStatus;
-  statusInfo?: string;
+  tools?: ChatToolCallResult[];
 }
 
 export interface MessageChatInfo {
@@ -234,6 +244,18 @@ export interface MessageChatInfo {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+}
+
+export interface ChatToolOptions {
+  name: string;
+  value: string;
+}
+
+export interface ChatTool {
+  type: ToolType;
+  name?: string;
+  url?: string;
+  options?: ChatToolOptions[];
 }
 
 export interface Chat {
@@ -254,6 +276,7 @@ export interface Chat {
   imagesCount?: number;
   chatDocuments?: ChatDocument[];
   user?: User;
+  tools?: ChatTool[];
 }
 
 export interface Document {

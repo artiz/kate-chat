@@ -12,6 +12,7 @@ import {
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   ToolType,
+  ModelMessage,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
@@ -23,6 +24,7 @@ import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
+  OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
   OPENAI_MODELS_SUPPORT_RESPONSES_API,
   OPENAI_NON_CHAT_MODELS,
 } from "@/config/ai/openai";
@@ -90,26 +92,30 @@ export class OpenAIApiProvider extends BaseApiProvider {
     }
   }
 
-  async completeChat(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
-    const { modelId } = inputRequest;
+  async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
+    const { modelId } = input;
 
     // image generation request
     if (modelId.startsWith("dall-e")) {
-      return this.generateImages(inputRequest);
+      return this.generateImages(input, messages);
     }
 
-    return this.protocol.completeChat(inputRequest, this.getChatApiType(modelId));
+    return this.protocol.completeChat(input, messages, this.getChatApiType(modelId));
   }
 
   // Stream response from OpenAI models
-  async streamChatCompletion(inputRequest: CompleteChatRequest, callbacks: StreamCallbacks): Promise<void> {
-    const { modelId } = inputRequest;
+  async streamChatCompletion(
+    input: CompleteChatRequest,
+    messages: ModelMessage[],
+    callbacks: StreamCallbacks
+  ): Promise<void> {
+    const { modelId } = input;
 
     // If this is an image generation model, generate the image non-streaming
     if (modelId.startsWith("dall-e")) {
       callbacks.onStart?.();
       try {
-        const response = await this.generateImages(inputRequest);
+        const response = await this.generateImages(input, messages);
         callbacks.onComplete?.(response.content);
       } catch (error) {
         callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
@@ -117,7 +123,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       return;
     }
 
-    return this.protocol.streamChatCompletion(inputRequest, callbacks, this.getChatApiType(modelId));
+    return this.protocol.streamChatCompletion(input, messages, callbacks, this.getChatApiType(modelId));
   }
 
   // Get OpenAI provider information including account details
@@ -256,7 +262,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
         const nonChatModel = OPENAI_NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
         const embeddingModel = model.id.startsWith("text-embedding");
         const imageGeneration = model.id.startsWith("dall-e");
-        const imageInput = model.id.startsWith("gpt-4.1") || model.id.startsWith("gpt-4o");
+        const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => model.id.startsWith(prefix));
 
         if (nonChatModel && !imageGeneration && !embeddingModel) {
           continue; // Skip non-chat models that are not image generation or embeddings
@@ -347,13 +353,17 @@ export class OpenAIApiProvider extends BaseApiProvider {
       dimensions: modelId == "text-embedding-3-large" ? EMBEDDINGS_DIMENSIONS : undefined,
     });
   }
+
   // Image generation implementation for DALL-E models
-  private async generateImages(inputRequest: CompleteChatRequest): Promise<ModelResponse> {
+  private async generateImages(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = []
+  ): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
 
-    const { modelId, messages = [], imagesCount } = inputRequest;
+    const { modelId, imagesCount } = inputRequest;
 
     // Extract the prompt from the last user message
     const userMessages = messages.filter(msg => msg.role === MessageRole.USER);
