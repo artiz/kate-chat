@@ -97,6 +97,10 @@ export class Chat {
   @Column({ nullable: true, type: "int" })
   imagesCount?: number;
 
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  systemPrompt?: string;
+
   @Field()
   @Column({ default: false })
   isPristine: boolean;

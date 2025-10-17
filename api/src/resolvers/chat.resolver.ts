@@ -9,6 +9,7 @@ import { BaseResolver } from "./base.resolver";
 import { MessageRole } from "@/types/ai.types";
 import { ChatsService } from "@/services/chats.service";
 import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai/common";
+import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
@@ -98,10 +99,11 @@ export class ChatResolver extends BaseResolver {
       ...input,
       title: input.title || "",
       user,
-      temperature: DEFAULT_TEMPERATURE,
-      maxTokens: DEFAULT_MAX_TOKENS,
-      topP: DEFAULT_TOP_P,
-      imagesCount: 1,
+      systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      temperature: user.defaultTemperature ?? DEFAULT_TEMPERATURE,
+      maxTokens: user.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
+      topP: user.defaultTopP ?? DEFAULT_TOP_P,
+      imagesCount: user.defaultImagesCount ?? 1,
       isPristine: true,
     });
 

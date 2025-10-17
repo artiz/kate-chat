@@ -41,18 +41,8 @@ export const ChatInputHeader = ({
     onUpdateChat(chatId, { modelId: modelId || undefined });
   };
 
-  const handleSettingsChange = (settings: {
-    temperature?: number;
-    maxTokens?: number;
-    topP?: number;
-    imagesCount?: number;
-  }) => {
-    onUpdateChat(chatId, {
-      temperature: settings.temperature,
-      maxTokens: settings.maxTokens,
-      topP: settings.topP,
-      imagesCount: settings.imagesCount,
-    });
+  const handleSettingsChange = (settings: ChatSettingsProps) => {
+    onUpdateChat(chatId, { ...settings });
   };
 
   const resetSettingsToDefaults = () => {
@@ -92,7 +82,7 @@ export const ChatInputHeader = ({
       />
       {selectedModel && <ModelInfo model={selectedModel} size="18" />}
 
-      <Popover width={300} position="top" withArrow shadow="md">
+      <Popover width={400} position="top" withArrow shadow="md">
         <Popover.Target>
           <Tooltip label="Chat Settings">
             <ActionIcon disabled={disabled || streaming}>

@@ -1,10 +1,10 @@
 .settingsPanel {
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-md) 0;
   flex-direction: column;
   gap: var(--mantine-spacing-sm);
   height: fit-content;
 }
 
 .settingItem {
-  margin-bottom: var(--mantine-spacing-sm);
+  flex-grow: 1;
 }

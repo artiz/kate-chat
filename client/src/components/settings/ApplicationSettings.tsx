@@ -8,6 +8,7 @@ import { UPDATE_USER_MUTATION } from "@/store/services/graphql";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { notifications } from "@mantine/notifications";
 import { setUser, UpdateUserInput } from "@/store/slices/userSlice";
+import { ConnectivitySettings } from "./ConnectivitySettings";
 
 interface IProps {
   onReloadAppData?: () => void;
@@ -59,9 +60,14 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
     <Tabs defaultValue="ai">
       <Tabs.List mb="md">
         <Tabs.Tab value="ai">AI Settings</Tabs.Tab>
+        <Tabs.Tab value="connectivity">Connectivity Settings</Tabs.Tab>
         <Tabs.Tab value="profile">Profile Settings</Tabs.Tab>
         {isLocalUser && <Tabs.Tab value="password">Password</Tabs.Tab>}
       </Tabs.List>
+
+      <Tabs.Panel value="connectivity">
+        <ConnectivitySettings user={currentUser} updateUser={handleUpdateUser} updateLoading={updateLoading} />
+      </Tabs.Panel>
 
       <Tabs.Panel value="ai">
         <AISettings user={currentUser} updateUser={handleUpdateUser} updateLoading={updateLoading} />

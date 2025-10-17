@@ -16,6 +16,7 @@ pub struct Chat {
     pub user_id: Option<String>,
     pub files: Option<String>, // JSON string
     pub model_id: Option<String>,
+    pub system_prompt: Option<String>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
@@ -39,6 +40,8 @@ pub struct ChatWithStats {
     pub files: Option<String>,
     #[diesel(sql_type = Nullable<Text>)]
     pub model_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub system_prompt: Option<String>,
     #[diesel(sql_type = Nullable<Float>)]
     pub temperature: Option<f32>,
     #[diesel(sql_type = Nullable<Integer>)]
@@ -69,6 +72,7 @@ pub struct NewChat {
     pub user_id: Option<String>,
     pub files: Option<String>,
     pub model_id: Option<String>,
+    pub system_prompt: Option<String>,
     pub temperature: Option<f32>,
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
@@ -83,6 +87,7 @@ impl NewChat {
         description: Option<String>,
         user_id: Option<String>,
         model_id: Option<String>,
+        system_prompt: Option<String>,
     ) -> Self {
         let now = Utc::now().naive_utc();
         Self {
@@ -92,6 +97,7 @@ impl NewChat {
             user_id,
             files: None,
             model_id,
+            system_prompt,
             temperature: None,
             max_tokens: None,
             top_p: None,

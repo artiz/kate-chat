@@ -33,6 +33,7 @@ export const BASE_CHAT_FRAGMENT = `
       id
         title
         modelId
+        systemPrompt
         isPristine
         messagesCount
         createdAt
@@ -91,6 +92,10 @@ export const FULL_USER_FRAGMENT = `
       createdAt
       defaultModelId
       defaultSystemPrompt
+      defaultTemperature
+      defaultMaxTokens
+      defaultTopP
+      defaultImagesCount
       documentsEmbeddingsModelId
       documentSummarizationModelId
       googleId
@@ -205,6 +210,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       maxTokens
       topP
       imagesCount
+      systemPrompt
       tools {
         type
         name

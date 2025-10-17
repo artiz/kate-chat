@@ -50,10 +50,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Add system prompt to chat props, remove temperature, maxTokens, topP, and imagesCount from CreateMessageInput. 
-  Split AI Settings to "Services" and "Chat Defaults" and manage default model, system prompt, temperature, maxTokens, topP, and imagesCount there.
-  Init each new chat with defaults on backend.
-
 * Add request cancellation to stop reasoning or web search (GPT-5)
 * Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc)
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
@@ -277,11 +273,13 @@ npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrat
 ```
 
 Create new migration
+
 ```bash
 cd api
 npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/<migration name>  
 ```
 
+NOTE: do not update more than one table definition at once, sqlite sometimes applies migrations incorrectly due to "temporary_xxx" tables creation.
 
 ### Production Build
 

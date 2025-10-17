@@ -5,7 +5,7 @@ import type { WebSocket } from "ws";
 import { Message } from "../entities/Message";
 import { AIService } from "./ai/ai.service";
 import { Chat, DocumentChunk, Model, User } from "@/entities";
-import { CreateMessageInput } from "@/types/graphql/inputs";
+import { CreateMessageInput, ImageInput } from "@/types/graphql/inputs";
 import {
   ChatResponseStatus,
   CompleteChatRequest,
@@ -27,11 +27,31 @@ import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
-import { CONTEXT_MESSAGES_LIMIT, RAG_LOAD_FULL_PAGES, RAG_QUERY_CHUNKS_LIMIT } from "@/config/ai/common";
+import {
+  CONTEXT_MESSAGES_LIMIT,
+  DEFAULT_MAX_TOKENS,
+  DEFAULT_TEMPERATURE,
+  DEFAULT_TOP_P,
+  RAG_LOAD_FULL_PAGES,
+  RAG_QUERY_CHUNKS_LIMIT,
+} from "@/config/ai/common";
 
 const logger = createLogger(__filename);
 
 const MIN_STREAMING_UPDATE_MS = 30; // Minimum interval between streaming updates
+
+export interface CreateMessageRequest {
+  chatId: string;
+  modelId: string;
+  content: string;
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  imagesCount: number;
+  systemPrompt?: string;
+  images?: ImageInput[];
+  documentIds?: string[];
+}
 
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
@@ -79,14 +99,17 @@ export class MessagesService {
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
-    const { chatId, modelId, documentIds, content } = input;
+    const { chatId, documentIds } = input;
     if (!chatId) throw new Error("Chat ID is required");
-    if (!modelId) throw new Error("Model ID is required");
     const chat = await this.chatRepository.findOne({
       where: { id: chatId },
     });
     if (!chat) throw new Error("Chat not found");
 
+    const modelId = chat.modelId || user.defaultModelId;
+    if (!modelId) throw new Error("Model must be defined for the chat or user");
+
+    const request: CreateMessageRequest = this.formatMessageRequest(modelId, input.content, chat, user);
     const model = await this.modelRepository.findOne({
       where: {
         modelId,
@@ -109,7 +132,7 @@ export class MessagesService {
       const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
 
       const ragMessage = await this.messageRepository.save(assistantMessage);
-      await this.publishRagMessage(input, connection, model, chat, userMessage, ragMessage);
+      await this.publishRagMessage(request, connection, model, chat, userMessage, ragMessage);
 
       return userMessage;
     }
@@ -122,7 +145,7 @@ export class MessagesService {
 
     // Generate AI response
     assistantMessage = await this.messageRepository.save(assistantMessage);
-    await this.publishAssistantMessage(input, connection, user, model, chat, inputMessages, assistantMessage);
+    await this.publishAssistantMessage(request, connection, user, model, chat, inputMessages, assistantMessage);
     return userMessage;
   }
 
@@ -181,14 +204,16 @@ export class MessagesService {
     // Publish message to Queue
     await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
+    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, "", chat, user);
+
     if (documentIds && documentIds.length > 0) {
       if (!userMessage) throw new Error("Original user message not found in context");
       await this.publishRagMessage(
         {
+          ...request,
           content: userMessage.content,
           documentIds,
-          modelId: userMessage.modelId,
-          chatId: chat.id,
+          modelId: userMessage.modelId || model.modelId,
         },
         connection,
         model,
@@ -199,17 +224,8 @@ export class MessagesService {
       return originalMessage;
     }
 
-    const input: CreateMessageInput = {
-      chatId,
-      content: "",
-      modelId: model.modelId,
-      temperature: chat.temperature,
-      maxTokens: chat.maxTokens,
-      topP: chat.topP,
-    };
-
     // Call publishAssistantMessage to generate new response
-    await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, originalMessage);
+    await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, originalMessage);
 
     return originalMessage;
   }
@@ -293,20 +309,13 @@ export class MessagesService {
         throw err;
       });
 
-    const input: CreateMessageInput = {
-      chatId,
-      content: "",
-      modelId: model.modelId,
-      temperature: chat.temperature,
-      maxTokens: chat.maxTokens,
-      topP: chat.topP,
-    };
+    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, originalMessage.content, chat, user);
 
     // Add the edited user message to context
     contextMessages.push(originalMessage);
 
     // Generate new assistant response
-    await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, assistantMessage);
+    await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, assistantMessage);
 
     return originalMessage;
   }
@@ -358,16 +367,9 @@ export class MessagesService {
         throw err;
       });
 
-    const input: CreateMessageInput = {
-      chatId,
-      content: "",
-      modelId: model.modelId,
-      temperature: chat.temperature,
-      maxTokens: chat.maxTokens,
-      topP: chat.topP,
-    };
+    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, originalMessage.content, chat, user);
 
-    await this.publishAssistantMessage(input, connection, user, model, chat, contextMessages, linkedMessage);
+    await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, linkedMessage);
     return linkedMessage;
   }
 
@@ -575,7 +577,7 @@ export class MessagesService {
   }
 
   protected async publishAssistantMessage(
-    input: CreateMessageInput,
+    input: CreateMessageRequest,
     connection: ConnectionParams,
     user: User,
     model: Model,
@@ -583,14 +585,14 @@ export class MessagesService {
     inputMessages: Message[],
     assistantMessage: Message
   ): Promise<void> {
-    const systemPrompt = user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
+    const systemPrompt = chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
     const request: CompleteChatRequest = {
-      modelId: model.modelId,
+      ...input,
       systemPrompt,
-      temperature: input.temperature || chat.temperature,
-      maxTokens: input.maxTokens || chat.maxTokens,
-      topP: input.topP || chat.topP,
-      imagesCount: input.imagesCount || chat.imagesCount,
+      temperature: chat.temperature,
+      maxTokens: chat.maxTokens,
+      topP: chat.topP,
+      imagesCount: chat.imagesCount,
       tools: chat.tools,
     };
 
@@ -763,7 +765,7 @@ export class MessagesService {
   }
 
   protected async publishRagMessage(
-    input: CreateMessageInput,
+    input: CreateMessageRequest,
     connection: ConnectionParams,
     model: Model,
     chat: Chat,
@@ -825,10 +827,9 @@ export class MessagesService {
         );
 
         const request: CompleteChatRequest = {
+          ...input,
           modelId: model.modelId,
           systemPrompt,
-          temperature: input.temperature || chat.temperature,
-          topP: input.topP || chat.topP,
         };
 
         // always sync call
@@ -999,5 +1000,23 @@ export class MessagesService {
 
     const messages = await query.orderBy("message.createdAt", "DESC").take(CONTEXT_MESSAGES_LIMIT).getMany();
     return messages.reverse();
+  }
+
+  protected formatMessageRequest(modelId: string, content: string, chat: Chat, user: User): CreateMessageRequest {
+    const modelId_ = modelId || chat.modelId || user.defaultModelId;
+    if (!modelId_) throw new Error("Model ID is required");
+
+    const request: CreateMessageRequest = {
+      chatId: chat.id,
+      modelId: modelId_,
+      content,
+      temperature: chat.temperature ?? user.defaultTemperature ?? DEFAULT_TEMPERATURE,
+      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
+      topP: chat.topP ?? user.defaultTopP ?? DEFAULT_TOP_P,
+      imagesCount: chat.imagesCount ?? user.defaultImagesCount ?? 1,
+      systemPrompt: chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+    };
+
+    return request;
   }
 }

@@ -69,6 +69,7 @@ type Chat {
   messages: [Message!]
   messagesCount: Float
   modelId: String
+  systemPrompt: String
   temperature: Float
   title: String!
   tools: [ChatTool!]
@@ -142,11 +143,6 @@ input CreateMessageInput {
   content: String!
   documentIds: [String!]
   images: [ImageInput!]
-  imagesCount: Float
-  maxTokens: Float
-  modelId: String
-  temperature: Float
-  topP: Float
 }
 
 """
@@ -502,6 +498,7 @@ input UpdateChatInput {
   imagesCount: Float
   maxTokens: Float
   modelId: String
+  systemPrompt: String
   temperature: Float
   title: String
   tools: [ChatToolInput!]
@@ -515,8 +512,12 @@ input UpdateModelStatusInput {
 
 input UpdateUserInput {
   avatarUrl: String
+  defaultImagesCount: Float
+  defaultMaxTokens: Float
   defaultModelId: String
   defaultSystemPrompt: String
+  defaultTemperature: Float
+  defaultTopP: Float
   documentSummarizationModelId: String
   documentsEmbeddingsModelId: String
   email: String
@@ -530,8 +531,12 @@ type User {
   avatarUrl: String
   chatsCount: Float
   createdAt: DateTimeISO!
+  defaultImagesCount: Float
+  defaultMaxTokens: Float
   defaultModelId: String
   defaultSystemPrompt: String
+  defaultTemperature: Float
+  defaultTopP: Float
   documentSummarizationModelId: String
   documents: [Document!]
   documentsEmbeddingsModelId: String

@@ -276,6 +276,7 @@ export interface Chat {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+  systemPrompt?: string;
   chatDocuments?: ChatDocument[];
   user?: User;
   tools?: ChatTool[];

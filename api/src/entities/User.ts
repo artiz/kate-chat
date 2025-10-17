@@ -5,6 +5,7 @@ import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { ConnectionParams } from "../middleware/auth.middleware";
+import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "../config/ai/common";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -99,6 +100,22 @@ export class User {
   @Field({ nullable: true })
   @Column({ nullable: true })
   defaultSystemPrompt?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, default: DEFAULT_TEMPERATURE, type: "float" })
+  defaultTemperature?: number;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, default: DEFAULT_MAX_TOKENS, type: "integer" })
+  defaultMaxTokens?: number;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, default: DEFAULT_TOP_P, type: "float" })
+  defaultTopP?: number;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true, default: 1, type: "integer" })
+  defaultImagesCount?: number;
 
   @Field({ nullable: true })
   @Column({ nullable: true })

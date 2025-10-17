@@ -32,6 +32,7 @@ export interface UpdateChatInput {
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+  systemPrompt?: string;
   tools?: { type: ToolType; name?: string }[];
 
   lastBotMessage?: string;
@@ -250,6 +251,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             "maxTokens",
             "topP",
             "imagesCount",
+            "systemPrompt",
             "tools",
           ]),
         },

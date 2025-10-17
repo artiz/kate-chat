@@ -29,6 +29,18 @@ export class UpdateUserInput {
   @Field({ nullable: true })
   defaultSystemPrompt?: string;
 
+  @Field({ nullable: true })
+  defaultTemperature?: number;
+
+  @Field({ nullable: true })
+  defaultMaxTokens?: number;
+
+  @Field({ nullable: true })
+  defaultTopP?: number;
+
+  @Field({ nullable: true })
+  defaultImagesCount?: number;
+
   @Field(() => UserSettings, { nullable: true })
   settings?: UserSettings;
 }
@@ -134,6 +146,9 @@ export class UpdateChatInput {
   @Field({ nullable: true })
   imagesCount?: number;
 
+  @Field({ nullable: true })
+  systemPrompt?: string;
+
   @Field(() => [ChatToolInput!], { nullable: true })
   tools?: ChatToolInput[];
 }
@@ -160,21 +175,6 @@ export class CreateMessageInput {
 
   @Field(() => [ImageInput], { nullable: true })
   images?: ImageInput[];
-
-  @Field({ nullable: true })
-  modelId?: string;
-
-  @Field({ nullable: true })
-  temperature?: number;
-
-  @Field({ nullable: true })
-  maxTokens?: number;
-
-  @Field({ nullable: true })
-  topP?: number;
-
-  @Field({ nullable: true })
-  imagesCount?: number;
 
   @Field(() => [String], { nullable: true })
   documentIds?: string[];

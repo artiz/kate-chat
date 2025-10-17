@@ -30,6 +30,10 @@ export const CallOtherModel = ({
   // Call Others mutation
   const [callOther, { loading: callingOthers }] = useMutation<CallOthersResponse>(CALL_OTHER_MUTATION, {});
 
+  if (message.linkedToMessageId) {
+    return null;
+  }
+
   const handleSelectModel = (modelId: string) => () => {
     assert.ok(id, "Message id is required to call other model");
     assert.ok(modelId);

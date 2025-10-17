@@ -119,15 +119,13 @@ pub struct GqlMessage {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[derive(
+    Debug, Serialize, Deserialize, InputObject, Debug, Serialize, Deserialize, InputObject,
+)]
 pub struct CreateMessageInput {
     pub chat_id: String,
     pub content: String,
     pub role: Option<String>,
-    pub model_id: Option<String>,
-    pub temperature: Option<f32>,
-    pub max_tokens: Option<i32>,
-    pub top_p: Option<f32>,
     pub images: Option<Vec<ImageInput>>,
 }
 

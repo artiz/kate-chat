@@ -29,6 +29,10 @@ export enum UserRole {
 export interface User extends BaseUser {
   role: UserRole;
   defaultSystemPrompt?: string;
+  defaultTemperature?: number;
+  defaultMaxTokens?: number;
+  defaultTopP?: number;
+  defaultImagesCount?: number;
   documentsEmbeddingsModelId?: string;
   documentSummarizationModelId?: string;
   githubId?: string;
@@ -40,6 +44,10 @@ export interface User extends BaseUser {
 export interface UpdateUserInput {
   defaultModelId?: string;
   defaultSystemPrompt?: string;
+  defaultTemperature?: number;
+  defaultMaxTokens?: number;
+  defaultTopP?: number;
+  defaultImagesCount?: number;
   documentsEmbeddingsModelId?: string;
   documentSummarizationModelId?: string;
   email?: string;
