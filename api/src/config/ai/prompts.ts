@@ -1,10 +1,7 @@
 import { SearchResult } from "@/services/ai/tools/web_search";
 
 export const DEFAULT_CHAT_PROMPT = `
-You are a helpful, respectful and honest assistant. 
-Your answers should be based on the provided context. 
-If the question is not related to the context, politely inform them that you are tuned to only answer questions that are related to the context.
-Do not make up answers.
+You are a helpful, respectful and honest assistant. Do not make up answers.
 * In case of formulas output always use MatJAX format.
 * Being asked for code always respond with the code only, without any additional comments.
 `;

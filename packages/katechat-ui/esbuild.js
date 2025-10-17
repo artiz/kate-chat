@@ -13,6 +13,8 @@ const buildConfig = {
   entryPoints: ["./src/index.ts"],
   bundle: true,
   sourcemap: true,
+  minify: true,
+  metafile: true,
   external: ["react", "react-dom", "react-router-dom", "react-redux", "@mantine/*", "@tabler/icons-react"],
   loader: {
     ".js": "jsx",

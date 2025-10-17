@@ -75,7 +75,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   </Table.Tbody>
                 </Table>
 
-                {provider.id === "aws_bedrock" && !provider.isConnected && (
+                {provider.id === "AWS_BEDROCK" && !provider.isConnected && (
                   <Alert color="yellow" title="AWS Bedrock Configuration">
                     {process.env.NODE_ENV === "development" && (
                       <>
@@ -107,7 +107,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   </Alert>
                 )}
 
-                {provider.id === "open_ai" && !provider.isConnected && (
+                {provider.id === "OPEN_AI" && !provider.isConnected && (
                   <Alert color="yellow" title="OpenAI Configuration">
                     {process.env.NODE_ENV === "development" && (
                       <>
@@ -128,7 +128,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   </Alert>
                 )}
 
-                {provider.id === "yandex_fm" && !provider.isConnected && (
+                {provider.id === "YANDEX_FM" && !provider.isConnected && (
                   <Alert color="yellow" title="Yandex Configuration">
                     {process.env.NODE_ENV === "development" && (
                       <>

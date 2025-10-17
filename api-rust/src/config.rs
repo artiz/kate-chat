@@ -118,9 +118,9 @@ impl AppConfig {
 
     fn parse_enabled_providers() -> Vec<String> {
         let all_providers = vec![
-            "aws_bedrock".to_string(),
-            "open_ai".to_string(),
-            "yandex_fm".to_string(),
+            "AWS_BEDROCK".to_string(),
+            "OPEN_AI".to_string(),
+            "YANDEX_FM".to_string(),
         ];
 
         match env::var("ENABLED_API_PROVIDERS") {

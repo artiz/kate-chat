@@ -1,4 +1,4 @@
-process.env.ENABLED_API_PROVIDERS = "aws_bedrock";
+process.env.ENABLED_API_PROVIDERS = "AWS_BEDROCK";
 import { ApiProvider } from "../../config/ai/common";
 import { AIService } from "../ai/ai.service";
 import { MessageRole, ModelMessage } from "../../types/ai.types";

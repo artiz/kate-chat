@@ -50,6 +50,10 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
+* Add system prompt to chat props, remove temperature, maxTokens, topP, and imagesCount from CreateMessageInput. 
+  Split AI Settings to "Services" and "Chat Defaults" and manage default model, system prompt, temperature, maxTokens, topP, and imagesCount there.
+  Init each new chat with defaults on backend.
+
 * Add request cancellation to stop reasoning or web search (GPT-5)
 * Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc)
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form

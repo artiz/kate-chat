@@ -2,7 +2,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedCol
 import { Field, ID, ObjectType, registerEnumType } from "type-graphql";
 import { ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
-import { JSONTransformer } from "../utils/db";
+import { EnumTransformer, JSONTransformer } from "../utils/db";
 import { ApiProvider } from "../config/ai/common";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
@@ -52,7 +52,7 @@ export class Model {
   provider: string; // e.g., 'OpenAI', 'Anthropic', 'Amazon'
 
   @Field(() => ApiProvider)
-  @Column({ default: ApiProvider.AWS_BEDROCK })
+  @Column({ default: ApiProvider.AWS_BEDROCK, transformer: EnumTransformer<ApiProvider>() })
   apiProvider: ApiProvider;
 
   @Field(() => ModelType)

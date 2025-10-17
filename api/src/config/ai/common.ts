@@ -1,7 +1,8 @@
+// must be in sync with packages/katechat-ui/src/core/ai.ts
 export enum ApiProvider {
-  AWS_BEDROCK = "aws_bedrock",
-  OPEN_AI = "open_ai",
-  YANDEX_FM = "yandex_fm",
+  AWS_BEDROCK = "AWS_BEDROCK",
+  OPEN_AI = "OPEN_AI",
+  YANDEX_FM = "YANDEX_FM",
 }
 
 export const DEFAULT_TEMPERATURE = 0.7;
@@ -26,6 +27,6 @@ export const RAG_LOAD_FULL_PAGES = ["1", "true", "y", "yes"].includes(
 
 export const ENABLED_API_PROVIDERS: ApiProvider[] = (() => {
   const allIds: ApiProvider[] = Object.values(ApiProvider);
-  const enabledIds = new Set(process.env.ENABLED_API_PROVIDERS?.split(",")?.map(id => id.trim()) || []);
+  const enabledIds = new Set(process.env.ENABLED_API_PROVIDERS?.split(",")?.map(id => id.trim().toUpperCase()) || []);
   return process.env.ENABLED_API_PROVIDERS === "*" ? allIds : allIds.filter(id => enabledIds.has(id));
 })();

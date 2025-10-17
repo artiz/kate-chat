@@ -16,20 +16,20 @@ use crate::utils::errors::AppError;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub enum ApiProvider {
-    #[serde(rename = "aws_bedrock")]
+    #[serde(rename = "AWS_BEDROCK")]
     AwsBedrock,
-    #[serde(rename = "open_ai")]
+    #[serde(rename = "OPEN_AI")]
     OpenAi,
-    #[serde(rename = "yandex_fm")]
+    #[serde(rename = "YANDEX_FM")]
     YandexFm,
 }
 
 impl ApiProvider {
     fn as_str(&self) -> &'static str {
         match self {
-            ApiProvider::AwsBedrock => "aws_bedrock",
-            ApiProvider::OpenAi => "open_ai",
-            ApiProvider::YandexFm => "yandex_fm",
+            ApiProvider::AwsBedrock => "AWS_BEDROCK",
+            ApiProvider::OpenAi => "OPEN_AI",
+            ApiProvider::YandexFm => "YANDEX_FM",
         }
     }
 }
@@ -37,9 +37,9 @@ impl ApiProvider {
 impl From<String> for ApiProvider {
     fn from(msg_type: String) -> Self {
         match msg_type.as_str() {
-            "aws_bedrock" => ApiProvider::AwsBedrock,
-            "open_ai" => ApiProvider::OpenAi,
-            "yandex_fm" => ApiProvider::YandexFm,
+            "AWS_BEDROCK" => ApiProvider::AwsBedrock,
+            "OPEN_AI" => ApiProvider::OpenAi,
+            "YANDEX_FM" => ApiProvider::YandexFm,
             &_ => todo!(),
         }
     }
@@ -255,9 +255,9 @@ impl AIService {
 
     pub fn get_provider(&self, api_provider: ApiProvider) -> Result<AIProviderWrapper, AppError> {
         let provider_str = match api_provider {
-            ApiProvider::AwsBedrock => "aws_bedrock",
-            ApiProvider::OpenAi => "open_ai",
-            ApiProvider::YandexFm => "yandex_fm",
+            ApiProvider::AwsBedrock => "AWS_BEDROCK",
+            ApiProvider::OpenAi => "OPEN_AI",
+            ApiProvider::YandexFm => "YANDEX_FM",
         };
 
         if !self.config.is_provider_enabled(provider_str) {
@@ -407,13 +407,13 @@ impl AIService {
     fn get_enabled_providers(&self) -> Vec<ApiProvider> {
         let mut providers = Vec::new();
 
-        if self.config.is_provider_enabled("aws_bedrock") {
+        if self.config.is_provider_enabled("AWS_BEDROCK") {
             providers.push(ApiProvider::AwsBedrock);
         }
-        if self.config.is_provider_enabled("open_ai") {
+        if self.config.is_provider_enabled("OPEN_AI") {
             providers.push(ApiProvider::OpenAi);
         }
-        if self.config.is_provider_enabled("yandex_fm") {
+        if self.config.is_provider_enabled("YANDEX_FM") {
             providers.push(ApiProvider::YandexFm);
         }
 
@@ -435,9 +435,9 @@ impl AIService {
         end_time: Option<i64>,
     ) -> Result<UsageCostInfo, AppError> {
         let provider: ApiProvider = match api_provider.as_str() {
-            "aws_bedrock" => ApiProvider::AwsBedrock,
-            "open_ai" => ApiProvider::OpenAi,
-            "yandex_fm" => ApiProvider::YandexFm,
+            "AWS_BEDROCK" => ApiProvider::AwsBedrock,
+            "OPEN_AI" => ApiProvider::OpenAi,
+            "YANDEX_FM" => ApiProvider::YandexFm,
             _ => {
                 return Err(AppError::BadRequest(format!(
                     "Unsupported API provider: {}",

@@ -69,7 +69,7 @@ locals {
     },
     {
       name  = "ENABLED_API_PROVIDERS"
-      value = "aws_bedrock,open_ai,yandex_fm"
+      value = "AWS_BEDROCK,OPEN_AI,YANDEX_FM"
     },
     {
       name  = "DEFAULT_ADMIN_EMAILS"

@@ -18,7 +18,9 @@ import {
   Switch,
 } from "@mantine/core";
 import { IconHelp } from "@tabler/icons-react";
-import { useAppSelector, useAppDispatch } from "@/store";
+import type { ApiProvider } from "@katechat/ui";
+import { ModelType } from "@katechat/ui";
+import { useAppSelector } from "@/store";
 import { UpdateUserInput, User, UserSettings } from "@/store/slices/userSlice";
 import {
   STORAGE_AWS_BEDROCK_ACCESS_KEY_ID,
@@ -30,8 +32,6 @@ import {
   STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
-import type { ApiProvider } from "@katechat/ui";
-import { ModelType } from "@katechat/ui";
 
 interface AISettingsProps {
   user: User;
@@ -86,7 +86,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     setDocumentSummarizationModelId(user?.documentSummarizationModelId);
 
     // Load initial connection settings from localStorage or defaults
-    if (enabledApiProviders.has("aws_bedrock")) {
+    if (enabledApiProviders.has("AWS_BEDROCK")) {
       setAwsRegion(localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || settings.awsBedrockRegion || "");
       setAwsProfile(localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || settings.awsBedrockProfile || "");
       setAwsAccessKeyId(
@@ -105,13 +105,13 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
         )
       );
     }
-    if (enabledApiProviders.has("open_ai")) {
+    if (enabledApiProviders.has("OPEN_AI")) {
       setOpenaiApiKey(localStorage.getItem(STORAGE_OPENAI_API_KEY) || settings.openaiApiKey || "");
       setOpenaiApiAdminKey(localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || settings.openaiApiAdminKey || "");
 
       setOpenAiServerSave(Boolean(settings.openaiApiKey || settings.openaiApiAdminKey));
     }
-    if (enabledApiProviders.has("yandex_fm")) {
+    if (enabledApiProviders.has("YANDEX_FM")) {
       setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || settings.yandexFmApiKey || "");
       setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER) || settings.yandexFmApiFolderId || "");
 
@@ -139,11 +139,11 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
   const toggleServerSave = (provider: ApiProvider): React.ChangeEventHandler<HTMLInputElement> | undefined => {
     switch (provider) {
-      case "aws_bedrock":
+      case "AWS_BEDROCK":
         return event => setAwsBedrockServerSave(event.currentTarget.checked);
-      case "open_ai":
+      case "OPEN_AI":
         return event => setOpenAiServerSave(event.currentTarget.checked);
-      case "yandex_fm":
+      case "YANDEX_FM":
         return event => setYandexFmServerSave(event.currentTarget.checked);
       default:
         return undefined;
@@ -205,7 +205,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
       <Paper withBorder p="xl">
         <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
           <Stack gap="sm">
-            {enabledApiProviders.has("aws_bedrock") && (
+            {enabledApiProviders.has("AWS_BEDROCK") && (
               <>
                 <Group justify="space-between" align="center">
                   <Title order={3}>AWS Bedrock</Title>
@@ -219,7 +219,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                 </Group>
                 <Switch
                   checked={awsBedrockServerSave}
-                  onChange={toggleServerSave("aws_bedrock")}
+                  onChange={toggleServerSave("AWS_BEDROCK")}
                   label="Store on server (to use on other devices)"
                 />
 
@@ -280,7 +280,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                 <Divider />
               </>
             )}
-            {enabledApiProviders.has("open_ai") && (
+            {enabledApiProviders.has("OPEN_AI") && (
               <>
                 <Group justify="space-between" align="center">
                   <Title order={3}>OpenAI</Title>
@@ -294,7 +294,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                 </Group>
                 <Switch
                   checked={openAiServerSave}
-                  onChange={toggleServerSave("open_ai")}
+                  onChange={toggleServerSave("OPEN_AI")}
                   label="Store on server (to use on other devices)"
                 />
 
@@ -339,7 +339,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               </>
             )}
 
-            {enabledApiProviders.has("yandex_fm") && (
+            {enabledApiProviders.has("YANDEX_FM") && (
               <>
                 <Group justify="space-between" align="center">
                   <Title order={3}>Yandex Foundational Models</Title>
@@ -354,7 +354,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                 </Group>
                 <Switch
                   checked={yandexFmServerSave}
-                  onChange={toggleServerSave("yandex_fm")}
+                  onChange={toggleServerSave("YANDEX_FM")}
                   label="Store on server (to use on other devices)"
                 />
 
