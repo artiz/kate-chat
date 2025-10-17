@@ -5,7 +5,7 @@ import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
 import { addChat } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION, CreateChatInput, Chat } from "@/store/services/graphql";
+import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION, CreateChatInput, Chat } from "@/store/services/graphql.queries";
 import { useChatMessages } from "@/hooks";
 import { ModelType } from "@katechat/ui";
 

@@ -4,7 +4,7 @@ import { AISettings } from "./AISettings";
 import { ProfileSettings } from "./ProfileSettings";
 import { PasswordSettings } from "./PasswordSettings";
 import { useMutation } from "@apollo/client";
-import { UPDATE_USER_MUTATION } from "@/store/services/graphql";
+import { UPDATE_USER_MUTATION } from "@/store/services/graphql.queries";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { notifications } from "@mantine/notifications";
 import { setUser, UpdateUserInput } from "@/store/slices/userSlice";

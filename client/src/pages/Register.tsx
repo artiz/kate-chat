@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useMutation } from "@apollo/client";
 import { useForm } from "@mantine/form";
-import { REGISTER_MUTATION } from "../store/services/graphql";
+import { REGISTER_MUTATION } from "../store/services/graphql.queries";
 import { useNavigate } from "react-router-dom";
 import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper, Text, Anchor } from "@mantine/core";
 import { notifications } from "@mantine/notifications";

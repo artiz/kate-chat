@@ -60,7 +60,6 @@ const AppContent: React.FC = () => {
   // Get theme from context
   const { colorScheme } = useTheme();
 
-  // Use RTK Query hook to fetch initial data
   const {
     data: initData,
     isLoading,
@@ -104,7 +103,7 @@ const AppContent: React.FC = () => {
       } else if ("error" in error) {
         // Show error notification
         notifications.show({
-          title: "GraphQL Error",
+          title: "API Error",
           message: error.error || "An unknown error occurred",
           color: "red",
         });

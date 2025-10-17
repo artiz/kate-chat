@@ -82,12 +82,11 @@ describe("AIService", () => {
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       const response = await aiService.completeChat(
-        ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
         messages
       );
 
@@ -122,12 +121,11 @@ describe("AIService", () => {
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       const response = await aiService.completeChat(
-        ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
         messages
       );
 
@@ -154,12 +152,11 @@ describe("AIService", () => {
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       const response = await aiService.completeChat(
-        ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
         messages
       );
 
@@ -209,12 +206,11 @@ describe("AIService", () => {
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       await aiService.streamChatCompletion(
-        ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "us-west-2",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
         messages,
         callback
       );
@@ -251,12 +247,11 @@ describe("AIService", () => {
       (bedrockClient.send as jest.Mock).mockRejectedValueOnce(mockError);
 
       await aiService.streamChatCompletion(
-        ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
         messages,
         callback
       );
@@ -296,12 +291,11 @@ describe("AIService", () => {
       bedrockClient.send.mockResolvedValueOnce(mockResponse);
 
       await aiService.streamChatCompletion(
-        ApiProvider.AWS_BEDROCK,
         {
           AWS_BEDROCK_REGION: "us-west-2",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
         messages,
         callback
       );

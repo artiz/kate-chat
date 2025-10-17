@@ -1,5 +1,5 @@
 import { useSubscription } from "@apollo/client";
-import { DOCUMENT_STATUS_SUBSCRIPTION } from "@/store/services/graphql";
+import { DOCUMENT_STATUS_SUBSCRIPTION } from "@/store/services/graphql.queries";
 import { Document } from "@/types/graphql";
 import { APP_API_URL } from "@/lib/config";
 import { useEffect, useState } from "react";

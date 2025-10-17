@@ -20,7 +20,7 @@ import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
 import { ChatDocument, CreateMessageResponse } from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
-import { CREATE_MESSAGE } from "@/store/services/graphql";
+import { CREATE_MESSAGE } from "@/store/services/graphql.queries";
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";

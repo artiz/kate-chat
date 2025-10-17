@@ -13,6 +13,7 @@ import {
   MessageRole,
   MessageType,
   ModelMessageContent,
+  ModelMessageContentImage,
   ModelResponse,
   ResponseStatus,
 } from "@/types/ai.types";
@@ -182,10 +183,10 @@ export class MessagesService {
 
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
     const files =
-      originalMessage?.jsonContent
-        ?.filter(content => content.fileName)
-        .map(content => content.fileName)
-        .filter(notEmpty) || [];
+      originalMessage.jsonContent
+        ?.filter(part => part.contentType === "image")
+        ?.map(part => (part.contentType === "image" ? part.fileName : undefined))
+        ?.filter(notEmpty) || [];
 
     await this.removeFiles(files, user, chat);
 
@@ -261,11 +262,11 @@ export class MessagesService {
     // Remove any files from following messages before deleting them
     const deletedImageFiles: string[] = [];
     for (const msg of messagesToDelete) {
-      if (msg.jsonContent?.length) {
-        for (const content of msg.jsonContent) {
-          if (content.contentType === "image" && content.fileName) {
-            deletedImageFiles.push(content.fileName);
-          }
+      if (!msg.jsonContent) continue;
+
+      for (const content of msg.jsonContent) {
+        if (content.contentType === "image" && content.fileName) {
+          deletedImageFiles.push(content.fileName);
         }
       }
       await this.messageRepository.remove(msg);
@@ -402,7 +403,7 @@ export class MessagesService {
     const deletedImageFiles: string[] = [];
 
     // Process this message's images
-    if (message.jsonContent?.length) {
+    if (message.jsonContent) {
       for (const content of message.jsonContent) {
         if (content.contentType === "image" && content.fileName) {
           deletedImageFiles.push(content.fileName);
@@ -450,11 +451,10 @@ export class MessagesService {
     if (messagesToDelete.length) {
       // Process each message to find image files
       for (const msg of messagesToDelete) {
-        if (msg.jsonContent?.length) {
-          for (const content of msg.jsonContent) {
-            if (content.contentType === "image" && content.fileName) {
-              deletedImageFiles.push(content.fileName);
-            }
+        if (!msg.jsonContent) continue;
+        for (const content of msg.jsonContent) {
+          if (content.contentType === "image" && content.fileName) {
+            deletedImageFiles.push(content.fileName);
           }
         }
 
@@ -548,7 +548,6 @@ export class MessagesService {
         });
 
         jsonContent.push({
-          content: image.bytesBase64,
           contentType: "image",
           fileName,
           mimeType: image.mimeType,
@@ -588,6 +587,7 @@ export class MessagesService {
     const systemPrompt = chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
     const request: CompleteChatRequest = {
       ...input,
+      apiProvider: model.apiProvider,
       systemPrompt,
       temperature: chat.temperature,
       maxTokens: chat.maxTokens,
@@ -595,6 +595,8 @@ export class MessagesService {
       imagesCount: chat.imagesCount,
       tools: chat.tools,
     };
+
+    const s3Service = new S3Service(user.toToken());
 
     const completeRequest = async (message: Message) => {
       ok(message);
@@ -615,7 +617,7 @@ export class MessagesService {
       // sync call
       try {
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
-        const aiResponse = await this.aiService.completeChat(model.apiProvider, connection, request, inputMessages);
+        const aiResponse = await this.aiService.completeChat(connection, request, inputMessages, s3Service);
 
         if (aiResponse.type === "image") {
           if (!aiResponse.files) {
@@ -623,7 +625,7 @@ export class MessagesService {
           }
 
           const s3Service = new S3Service(user.toToken());
-          const images: ModelMessageContent[] = [];
+          const images: ModelMessageContentImage[] = [];
 
           for (const file of aiResponse.files) {
             // Save base64 images to S3
@@ -634,7 +636,6 @@ export class MessagesService {
             });
 
             images.push({
-              content: file,
               contentType: "image",
               fileName,
               mimeType: contentType,
@@ -643,10 +644,10 @@ export class MessagesService {
 
           assistantMessage.jsonContent = images;
           assistantMessage.content = images
-            .map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName!)})`)
+            .map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`)
             .join("   ");
 
-          chat.files = [...(chat.files || []), ...images.map(img => img.fileName!)];
+          chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
         } else {
           assistantMessage.content = aiResponse.content;
         }
@@ -684,7 +685,7 @@ export class MessagesService {
             ...assistantMessage,
             content: getErrorMessage(error),
             role: MessageRole.ERROR,
-          }).catch(err => logger.error(err, "Error sending AI response"));
+          } as Message).catch(err => logger.error(err, "Error sending AI response"));
         }
 
         assistantMessage.content = token.trim() || "_No response_";
@@ -739,14 +740,14 @@ export class MessagesService {
 
     await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
     this.aiService
-      .streamChatCompletion(model.apiProvider, connection, request, inputMessages, handleStreaming)
+      .streamChatCompletion(connection, request, inputMessages, handleStreaming, s3Service)
       .catch((error: unknown) => {
         logger.error(error, "Error streaming AI response");
         return completeRequest({
           ...assistantMessage,
           content: getErrorMessage(error),
           role: MessageRole.ERROR,
-        }).catch(err => logger.error(err, "Error sending AI response"));
+        } as Message).catch(err => logger.error(err, "Error sending AI response"));
       });
   }
 
@@ -798,10 +799,10 @@ export class MessagesService {
     do {
       await this.subscriptionsService.publishChatMessage(
         chat,
-        {
+        this.messageRepository.create({
           ...ragMessage,
           status: ResponseStatus.RAG_SEARCH,
-        },
+        }),
         true
       );
 
@@ -828,17 +829,18 @@ export class MessagesService {
 
         const request: CompleteChatRequest = {
           ...input,
+          apiProvider: model.apiProvider,
           modelId: model.modelId,
           systemPrompt,
         };
 
         // always sync call
-        aiResponse = await this.aiService.completeChat(model.apiProvider, connection, request, [
-          {
+        aiResponse = await this.aiService.completeChat(connection, request, [
+          this.messageRepository.create({
             ...inputMessage,
             jsonContent: undefined,
             content: userInput, // only user input without images and so on
-          },
+          }),
         ]);
 
         break;
@@ -926,17 +928,17 @@ export class MessagesService {
     answer: string
   ): Promise<string> => {
     const res = await this.aiService.completeChat(
-      model.apiProvider,
       connection,
       {
         modelId: model.modelId,
+        apiProvider: model.apiProvider,
       },
       [
-        {
+        this.messageRepository.create({
           id: "summary-system",
           role: MessageRole.USER,
           content: PROMPT_CHAT_TITLE({ question, answer }),
-        },
+        }),
       ]
     );
 

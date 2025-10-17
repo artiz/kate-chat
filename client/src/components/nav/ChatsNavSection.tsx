@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
 import { assert } from "@katechat/ui";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { Chat, UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql";
+import { Chat, UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { removeChat, updateChat } from "@/store/slices/chatSlice";
 
 import classes from "./ChatsNavSection.module.scss";

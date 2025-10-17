@@ -35,7 +35,7 @@ import {
   ADD_TO_CHAT_MUTATION,
   GET_DOCUMENTS_FOR_CHAT,
   REMOVE_FROM_CHAT_MUTATION,
-} from "@/store/services/graphql";
+} from "@/store/services/graphql.queries";
 import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
 import { FileDropzone } from "./FileDropzone/FileDropzone";
 import { MAX_UPLOAD_FILE_SIZE } from "@/lib/config";

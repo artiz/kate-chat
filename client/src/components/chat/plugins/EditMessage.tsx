@@ -5,7 +5,7 @@ import { EditMessageResponse, Message } from "@/types/graphql";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { MessageRole, PluginProps } from "@katechat/ui";
-import { EDIT_MESSAGE_MUTATION } from "@/store/services/graphql";
+import { EDIT_MESSAGE_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import { EditMessageModal } from "./EditMessageModal";
 

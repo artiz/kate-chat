@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useMutation } from "@apollo/client";
 import { useForm } from "@mantine/form";
 import { useNavigate } from "react-router-dom";
-import { LOGIN_MUTATION } from "../store/services/graphql";
+import { LOGIN_MUTATION } from "../store/services/graphql.queries";
 import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper, Text, Anchor } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { logout, useAppDispatch, useAppSelector } from "../store";

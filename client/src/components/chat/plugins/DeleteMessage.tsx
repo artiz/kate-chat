@@ -5,7 +5,7 @@ import { DeleteMessageResponse, Message } from "@/types/graphql";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { PluginProps } from "@katechat/ui";
-import { DELETE_MESSAGE_MUTATION } from "@/store/services/graphql";
+import { DELETE_MESSAGE_MUTATION } from "@/store/services/graphql.queries";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 
 /** Delete Message */

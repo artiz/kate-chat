@@ -270,7 +270,6 @@ type GqlImagesList {
   error: String
   images: [GqlImage!]
   nextPage: Float
-  total: Float
 }
 
 type GqlMessage {

@@ -16,36 +16,26 @@ import { BedrockApiProvider } from "./providers/bedrock.provider";
 import { OpenAIApiProvider } from "./providers/openai.provider";
 import { YandexApiProvider } from "./providers/yandex.provider";
 import { logger } from "../../utils/logger";
-import {
-  ApiProvider,
-  DEFAULT_MAX_TOKENS,
-  DEFAULT_TEMPERATURE,
-  DEFAULT_TOP_P,
-  ENABLED_API_PROVIDERS,
-} from "@/config/ai/common";
+import { ApiProvider, ENABLED_API_PROVIDERS } from "@/config/ai/common";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseApiProvider } from "./providers/base.provider";
+import { FileContentLoader } from "../data";
 
 export class AIService {
   // Main method to interact with models
   public async completeChat(
-    apiProvider: ApiProvider,
     connection: ConnectionParams,
-    inputRequest: CompleteChatRequest,
-    messages: Message[]
+    request: CompleteChatRequest,
+    messages: Message[],
+    fileLoader?: FileContentLoader
   ): Promise<ModelResponse> {
-    const request: CompleteChatRequest = {
-      ...inputRequest,
-      temperature: inputRequest.temperature ?? DEFAULT_TEMPERATURE,
-      maxTokens: inputRequest.maxTokens ?? DEFAULT_MAX_TOKENS,
-      topP: inputRequest.topP ?? DEFAULT_TOP_P,
-    };
-
-    return this.getApiProvider(apiProvider, connection).completeChat(request, this.formatMessages(messages || []));
+    return this.getApiProvider(request.apiProvider, connection, fileLoader).completeChat(
+      request,
+      this.formatMessages(messages || [])
+    );
   }
 
   public async streamChatCompletion(
-    apiProvider: ApiProvider,
     connection: ConnectionParams,
     request: CompleteChatRequest,
     messages: Message[],
@@ -53,23 +43,28 @@ export class AIService {
       data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
       completed?: boolean,
       force?: boolean
-    ) => void
+    ) => void,
+    fileLoader?: FileContentLoader
   ) {
     // Stream the completion in background
-    return this.getApiProvider(apiProvider, connection).streamChatCompletion(request, this.formatMessages(messages), {
-      onStart: (status?: ChatResponseStatus) => {
-        callback({ status });
-      },
-      onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => {
-        callback({ content: token, status }, false, force);
-      },
-      onComplete: (response: string, metadata: MessageMetadata | undefined) => {
-        callback({ content: response, metadata }, true);
-      },
-      onError: (error: Error) => {
-        callback({ error }, true);
-      },
-    });
+    return this.getApiProvider(request.apiProvider, connection, fileLoader).streamChatCompletion(
+      request,
+      this.formatMessages(messages),
+      {
+        onStart: (status?: ChatResponseStatus) => {
+          callback({ status });
+        },
+        onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => {
+          callback({ content: token, status }, false, force);
+        },
+        onComplete: (response: string, metadata: MessageMetadata | undefined) => {
+          callback({ content: response, metadata }, true);
+        },
+        onError: (error: Error) => {
+          callback({ error }, true);
+        },
+      }
+    );
   }
 
   // Main method to interact with models
@@ -138,17 +133,21 @@ export class AIService {
    * @param connection The connection parameters.
    * @returns The API provider service instance.
    */
-  protected getApiProvider(apiProvider: ApiProvider, connection: ConnectionParams): BaseApiProvider {
+  protected getApiProvider(
+    apiProvider: ApiProvider,
+    connection: ConnectionParams,
+    fileLoader?: FileContentLoader
+  ): BaseApiProvider {
     if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
       throw new Error(`API provider ${apiProvider} is not enabled`);
     }
 
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
-      return new BedrockApiProvider(connection);
+      return new BedrockApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return new OpenAIApiProvider(connection);
+      return new OpenAIApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.YANDEX_FM) {
-      return new YandexApiProvider(connection);
+      return new YandexApiProvider(connection, fileLoader);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }

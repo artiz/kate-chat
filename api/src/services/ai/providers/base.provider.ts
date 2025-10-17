@@ -11,11 +11,14 @@ import {
   ModelMessage,
 } from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
+import { FileContentLoader } from "@/services/data/s3.service";
 
 export abstract class BaseApiProvider {
   protected connection: ConnectionParams;
-  constructor(connection: ConnectionParams) {
+  protected fileLoader?: FileContentLoader;
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
     this.connection = connection;
+    this.fileLoader = fileLoader;
   }
 
   abstract completeChat(request: CompleteChatRequest, messages: ModelMessage[]): Promise<ModelResponse>;

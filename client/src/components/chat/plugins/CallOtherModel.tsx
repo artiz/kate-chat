@@ -7,7 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { MessageRole, ModelType, PluginProps } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { useMemo } from "react";
-import { CALL_OTHER_MUTATION } from "@/store/services/graphql";
+import { CALL_OTHER_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import classes from "./Plugins.module.scss";
 import { ProviderIcon } from "@katechat/ui";

@@ -12,7 +12,7 @@ import {
   UPDATE_MODEL_STATUS_MUTATION,
   TEST_MODEL_MUTATION,
   GET_COSTS_QUERY,
-} from "@/store/services/graphql";
+} from "@/store/services/graphql.queries";
 import { notifications } from "@mantine/notifications";
 import { addChat } from "@/store/slices/chatSlice";
 import { ProvidersInfo } from "../ProvidersInfo";

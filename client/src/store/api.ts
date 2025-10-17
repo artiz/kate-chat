@@ -20,7 +20,7 @@ export type GrpahQLErrorResponse = {
       column: number;
     }[];
     extensions: {
-      code: string;
+      code: string | number;
       exception?: {
         stacktrace: string[];
       };
@@ -60,7 +60,7 @@ export const api = createApi({
         const data: GrpahQLErrorResponse = await response.json();
 
         if (data.errors) {
-          const authError = data.errors.find(error => error?.extensions?.code === "UNAUTHENTICATED");
+          const authError = data.errors.find(error => ["UNAUTHENTICATED", 401, 403].includes(error?.extensions?.code));
           if (authError) {
             return Promise.reject(ERROR_UNAUTHORIZED);
           }

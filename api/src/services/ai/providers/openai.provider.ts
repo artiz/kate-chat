@@ -29,6 +29,7 @@ import {
   OPENAI_NON_CHAT_MODELS,
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "../tools/yandex.web_search";
+import { FileContentLoader } from "@/services/data";
 
 const logger = createLogger(__filename);
 
@@ -74,8 +75,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
   private adminApiKey: string;
   private baseUrl: string;
 
-  constructor(connection: ConnectionParams) {
-    super(connection);
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+    super(connection, fileLoader);
 
     this.adminApiKey = connection.OPENAI_API_ADMIN_KEY || "";
     this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
@@ -88,6 +89,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
         baseURL: this.baseUrl,
         apiKey: this.apiKey,
         connection,
+        fileLoader,
       });
     }
   }
@@ -373,7 +375,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     const lastUserMessage = userMessages[userMessages.length - 1].body;
     const prompt = Array.isArray(lastUserMessage)
       ? lastUserMessage
-          .map(part => part.content)
+          .map(part => (part.contentType === "text" ? part.content : ""))
           .join(" ")
           .trim()
       : lastUserMessage;

@@ -16,7 +16,7 @@ import {
 } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
-import { MessageType } from "@/types/ai.types";
+import { MessageType, ModelMessageContent } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
 import { ChatsService } from "@/services/chats.service";
@@ -113,7 +113,7 @@ export class MessageResolver extends BaseResolver {
   @Query(() => GqlImagesList)
   async getAllImages(@Arg("input") input: GetImagesInput, @Ctx() context: GraphQLContext): Promise<GqlImagesList> {
     const token = await this.validateContextToken(context);
-    const { offset: skip = 0, limit: take = 50 } = input;
+    const { offset: skip = 0, limit: take = 100 } = input;
 
     // Get all messages with images for the user
     const messages = await this.messageRepository
@@ -124,44 +124,35 @@ export class MessageResolver extends BaseResolver {
       .andWhere("message.jsonContent IS NOT NULL")
       .orderBy("message.createdAt", "DESC")
       .skip(skip)
-      .take(take)
+      .take(take + 1)
       .getMany();
+
+    const nextPage = messages.length > take ? skip + take : undefined;
 
     // Extract images from jsonContent and create GqlImage objects
     const images: GqlImage[] = [];
 
-    for (const message of messages) {
-      if (message.jsonContent) {
-        for (const content of message.jsonContent) {
-          if (content.contentType === "image" && content.fileName) {
-            images.push({
-              id: `${message.id}-${content.fileName}`,
-              fileName: content.fileName,
-              fileUrl: `/files/${content.fileName}`,
-              mimeType: content.mimeType || "image/jpeg",
-              role: message.role,
-              createdAt: message.createdAt || new Date(),
-              message: message,
-              chat: message.chat!,
-            });
-          }
+    for (const message of nextPage ? messages.slice(0, -1) : messages) {
+      if (!message.jsonContent) continue;
+
+      for (const content of message.jsonContent) {
+        if (content.contentType === "image" && content.fileName) {
+          images.push({
+            id: `${message.id}-${content.fileName}`,
+            fileName: content.fileName,
+            fileUrl: `/files/${content.fileName}`,
+            mimeType: content.mimeType || "image/jpeg",
+            role: message.role,
+            createdAt: message.createdAt || new Date(),
+            message: message,
+            chat: message.chat!,
+          });
         }
       }
     }
-
-    // Get total count
-    const totalMessages = await this.messageRepository
-      .createQueryBuilder("message")
-      .leftJoin("message.chat", "chat")
-      .where("chat.userId = :userId", { userId: token.userId })
-      .andWhere("message.jsonContent IS NOT NULL")
-      .getCount();
-
-    const nextPage = skip + take;
     return {
       images,
-      total: images.length,
-      nextPage: nextPage < totalMessages ? nextPage : undefined,
+      nextPage,
     };
   }
 

@@ -26,7 +26,7 @@ import {
   BASE_CHAT_FRAGMENT,
   FULL_USER_FRAGMENT,
   BASE_DOCUMENT_FRAGMENT,
-} from "@/store/services/graphql";
+} from "@/store/services/graphql.queries";
 
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {

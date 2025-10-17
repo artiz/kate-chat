@@ -42,6 +42,7 @@ import { notEmpty } from "@/utils/assert";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { BEDROCK_TOOLS, WEB_SEARCH_TOOL_NAME, parseToolUse, callBedrockTool } from "./bedrock.tools";
 import { ApiProvider } from "@/config/ai/common";
+import { FileContentLoader } from "@/services/data";
 
 const logger = createLogger(__filename);
 
@@ -68,8 +69,8 @@ export class BedrockApiProvider extends BaseApiProvider {
   protected bedrockClient: BedrockRuntimeClient;
   protected bedrockManagementClient: BedrockClient;
 
-  constructor(connection: ConnectionParams) {
-    super(connection);
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+    super(connection, fileLoader);
 
     if (!connection.AWS_BEDROCK_PROFILE && !connection.AWS_BEDROCK_ACCESS_KEY_ID) {
       logger.warn("AWS_BEDROCK_PROFILE/AWS_BEDROCK_ACCESS_KEY_ID is not set. Skipping AWS Bedrock initialization.");
@@ -111,7 +112,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     do {
       // Get provider service and parameters
-      const input = this.formatConverseParams(request, messages);
+      const input = await this.formatConverseParams(request, messages);
       // Append any tool result messages from previous iterations
       if (input.messages) {
         input.messages = [...input.messages, ...conversationMessages];
@@ -189,7 +190,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     do {
       try {
-        const input = this.formatConverseParams(request, messages);
+        const input = await this.formatConverseParams(request, messages);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
 
@@ -720,75 +721,72 @@ export class BedrockApiProvider extends BaseApiProvider {
     };
   }
 
-  private formatConverseParams(request: CompleteChatRequest, messages: ModelMessage[] = []): ConverseCommandInput {
+  private async formatConverseParams(
+    request: CompleteChatRequest,
+    messages: ModelMessage[] = []
+  ): Promise<ConverseCommandInput> {
     const { systemPrompt, modelId, temperature, maxTokens, topP, tools: inputTools } = request;
 
-    const requestMessages: ConverseMessage[] = messages.map(msg => {
+    const requestMessages: ConverseMessage[] = [];
+
+    for (const msg of messages) {
       if (typeof msg.body === "string") {
-        return {
+        requestMessages.push({
           role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
           content: [{ text: msg.body }],
-        };
+        });
+        continue;
       }
 
-      const content: ContentBlock[] = msg.body
-        .map(m => {
-          if (m.contentType === "image" || m.contentType === "video") {
-            // input format "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABv..."
-            let base64Data = m.content;
-            let mediaType = m.mimeType?.split("/")[1];
-            let format = m.mimeType?.split("/")[0]; // "image" or "video"
+      const content: ContentBlock[] = [];
+      for (const part of msg.body) {
+        if (part.contentType === "image" || part.contentType === "video") {
+          // input format "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABv..."
 
-            const parts = m.content.match(/^data:(image|video)\/([^;]+);base64,(.*)/);
-            if ((!parts || parts.length < 3) && !mediaType) {
-              logger.error({ content: m.content.substring(0, 256) }, "Invalid image format");
-              throw new Error(
-                "Invalid image format, expected base64 data URL starting with 'data:image/xxxl;base64,...',"
-              );
-            } else if (parts) {
-              // parts[0] is the full match, parts[1] is the media type, parts[2] is the base64 data
-              base64Data = parts[3]; // e.g., "iVBORw0KGgoAAAANSUhEUgAA..."
-              mediaType = parts[2]; // e.g., "jpeg", "png"
-              format = parts[1]; // e.g., "image", "video"
-            }
-
-            if (format === "image") {
-              const image: ContentBlock = {
-                image: {
-                  format: mediaType as ImageFormat,
-                  source: {
-                    // get base64Data as Uint8Array
-                    bytes: new Uint8Array(Buffer.from(base64Data, "base64")),
-                  },
-                },
-              };
-              return image;
-            } else {
-              const video: ContentBlock = {
-                video: {
-                  format: mediaType as VideoFormat,
-                  source: {
-                    bytes: new Uint8Array(Buffer.from(base64Data, "base64")),
-                  },
-                },
-              };
-              return video;
-            }
-          } else if (m.contentType === "text") {
-            return {
-              text: m.content,
-            };
-          } else {
-            return undefined; // Ignore unsupported content types
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load image content: ${part.fileName}`);
+            continue;
           }
-        })
-        .filter(notEmpty); // Filter out any null values
 
-      return {
+          const bytes = await this.fileLoader.getFileContent(part.fileName);
+
+          let mediaType = part.mimeType?.split("/")[1];
+          let format = part.mimeType?.split("/")[0]; // "image" or "video"
+
+          if (format === "image") {
+            const image: ContentBlock = {
+              image: {
+                format: mediaType as ImageFormat,
+                source: {
+                  bytes,
+                },
+              },
+            };
+
+            content.push(image);
+          } else {
+            const video: ContentBlock = {
+              video: {
+                format: mediaType as VideoFormat,
+                source: {
+                  bytes,
+                },
+              },
+            };
+            content.push(video);
+          }
+        } else if (part.contentType === "text") {
+          content.push({
+            text: part.content,
+          });
+        }
+      }
+
+      requestMessages.push({
         role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
         content,
-      };
-    });
+      });
+    }
 
     const command: ConverseCommandInput = {
       modelId,

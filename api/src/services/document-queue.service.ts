@@ -2,8 +2,8 @@ import { createLogger } from "@/utils/logger";
 import { SubscriptionsService } from "./messaging/subscriptions.service";
 import { AIService } from "./ai/ai.service";
 import { getRepository } from "@/config/database";
-import { Document, Model, User } from "@/entities";
-import { DocumentStatus, MessageRole, ParsedJsonDocument } from "@/types/ai.types";
+import { Document, Message, Model, User } from "@/entities";
+import { DocumentStatus, MessageRole, ModelMessageContent, ParsedJsonDocument } from "@/types/ai.types";
 import { S3Service } from "./data";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -21,6 +21,7 @@ export class DocumentQueueService {
   private modelRepo: Repository<Model>;
   private documentRepo: Repository<Document>;
   private userRepo: Repository<User>;
+  private messageRepo: Repository<Message>;
 
   constructor(subService: SubscriptionsService) {
     this.subService = subService;
@@ -29,6 +30,7 @@ export class DocumentQueueService {
     this.modelRepo = getRepository(Model);
     this.documentRepo = getRepository(Document);
     this.userRepo = getRepository(User);
+    this.messageRepo = getRepository(Message);
   }
 
   async handleIndexDocumentCommand(command: { command: string; documentId: string; s3key: string }): Promise<void> {
@@ -184,19 +186,19 @@ export class DocumentQueueService {
 
       // Generate summary
       const summaryResponse = await this.aiService.completeChat(
-        model.apiProvider,
         connection,
         {
           modelId,
+          apiProvider: model.apiProvider,
           maxTokens: SUMMARIZING_OUTPUT_TOKENS,
           temperature: SUMMARIZING_TEMPERATURE,
         },
         [
-          {
+          this.messageRepo.create({
             id: "",
             role: MessageRole.USER,
             content: PROMPT_DOCUMENT_SUMMARY({ content: contentToSummarize }),
-          },
+          }),
         ]
       );
 

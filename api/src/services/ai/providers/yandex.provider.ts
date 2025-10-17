@@ -17,14 +17,15 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { ApiProvider } from "@/config/ai/common";
+import { FileContentLoader } from "@/services/data/s3.service";
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
   private folderId: string;
   private protocol: OpenAIProtocol;
 
-  constructor(connection: ConnectionParams) {
-    super(connection);
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+    super(connection, fileLoader);
     this.apiKey = connection.YANDEX_FM_API_KEY || "";
     this.folderId = connection.YANDEX_FM_API_FOLDER || "";
 
@@ -33,6 +34,7 @@ export class YandexApiProvider extends BaseApiProvider {
         baseURL: YANDEX_FM_OPENAI_API_URL,
         apiKey: this.apiKey,
         connection,
+        fileLoader,
       });
     }
   }

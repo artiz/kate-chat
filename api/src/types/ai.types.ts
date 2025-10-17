@@ -47,8 +47,6 @@ export enum DocumentStatus {
   DELETING = "deleting",
 }
 
-export type ContentType = "text" | "image" | "video" | "audio" | "mixed";
-
 export interface ProviderInfo {
   id: ApiProvider;
   name: string;
@@ -105,12 +103,26 @@ export interface AIModelInfo {
   tools?: ToolType[];
 }
 
-export interface ModelMessageContent {
+export type ContentType = "text" | "image";
+
+export interface ModelMessageContentText {
   content: string;
-  contentType?: ContentType;
-  fileName?: string;
-  mimeType?: string;
+  contentType: "text";
 }
+
+export interface ModelMessageContentImage {
+  contentType: "image";
+  fileName: string;
+  mimeType: string;
+}
+
+export interface ModelMessageContentVideo {
+  contentType: "video";
+  fileName: string;
+  mimeType: string;
+}
+
+export type ModelMessageContent = ModelMessageContentText | ModelMessageContentImage | ModelMessageContentVideo;
 
 export interface ModelMessage {
   role: MessageRole;
@@ -265,6 +277,7 @@ export interface StreamCallbacks {
 
 export interface CompleteChatRequest {
   systemPrompt?: string;
+  apiProvider: ApiProvider;
   modelId: string;
   temperature?: number;
   maxTokens?: number;

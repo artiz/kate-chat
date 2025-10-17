@@ -24,6 +24,7 @@ import {
   WEB_SEARCH_TOOL,
   WEB_SEARCH_TOOL_NAME,
 } from "./openai.tools";
+import { FileContentLoader } from "@/services/data";
 
 const logger = createLogger(__filename);
 
@@ -38,14 +39,26 @@ function genProcessSymbol(): string {
 export class OpenAIProtocol {
   private openai: OpenAI;
   private connection?: ConnectionParams;
-
-  constructor({ baseURL, apiKey, connection }: { baseURL: string; apiKey: string; connection?: ConnectionParams }) {
+  private fileLoader?: FileContentLoader;
+  constructor({
+    baseURL,
+    apiKey,
+    connection,
+    fileLoader,
+  }: {
+    baseURL: string;
+    apiKey: string;
+    connection?: ConnectionParams;
+    fileLoader?: FileContentLoader;
+  }) {
     if (!apiKey) {
       logger.warn("API key is not defined.");
     }
 
     // be used in tools
     this.connection = connection;
+    this.fileLoader = fileLoader;
+
     this.openai = new OpenAI({
       apiKey,
       baseURL,
@@ -69,7 +82,7 @@ export class OpenAIProtocol {
       };
 
       if (apiType === "responses") {
-        const params = this.formatResponsesRequest(input, messages);
+        const params = await this.formatResponsesRequest(input, messages);
         logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
         const result = await this.openai.responses.create(params);
@@ -79,7 +92,7 @@ export class OpenAIProtocol {
         response.files = files.length ? files : undefined;
         response.metadata = metadata;
       } else {
-        const params = this.formatCompletionRequest(input, messages);
+        const params = await this.formatCompletionRequest(input, messages);
         logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
 
         const completion = await this.openai.chat.completions.create(params);
@@ -161,45 +174,59 @@ export class OpenAIProtocol {
 
   // Text generation for OpenAI proto
   // https://platform.openai.com/docs/guides/text?api-mode=chat
-  private formatMessages(
+  private async formatMessages(
     modelId: string,
     messages: ModelMessage[],
     systemPrompt: string | undefined
-  ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
-    type ChatCompletionMessageParamContent = ChatCompletionMessageParam["content"];
+    type ChatCompletionContentPartText = OpenAI.Chat.Completions.ChatCompletionContentPartText;
+    type ChatCompletionContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
 
-    const parseContent = (
+    const parseContent = async (
       body: string | ModelMessageContent[],
       addImages = true
-    ): string | ChatCompletionMessageParamContent => {
+    ): Promise<string | ChatCompletionContentPart[]> => {
       if (typeof body === "string") {
-        return body as ChatCompletionMessageParamContent;
+        return body;
       }
 
-      const content = body
-        .filter(part => part.content)
-        .map(part => {
-          if (part.contentType === "text") {
-            return { type: "text" as const, text: part.content };
-          } else if (addImages && part.contentType === "image") {
-            return {
-              type: "image_url" as const,
-              image_url: {
-                url: part.content,
-              },
-            };
-          } else {
-            logger.warn({ ...part }, `Unsupported message content type`);
-            return null;
-          }
-        })
-        .filter(Boolean);
+      const parts: ChatCompletionContentPart[] = [];
 
-      return content as ChatCompletionMessageParamContent;
+      for (const part of body) {
+        if (part.contentType === "text") {
+          parts.push({ type: "text" as const, text: part.content });
+          continue;
+        }
+
+        if (addImages && part.contentType === "image") {
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load image content: ${part.fileName}`);
+            continue;
+          }
+
+          const fileData = await this.fileLoader.getFileContent(part.fileName);
+          const fileContent = fileData.toString("base64");
+
+          parts.push({
+            type: "image_url" as const,
+            image_url: {
+              url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,
+            },
+          });
+
+          continue;
+        }
+
+        logger.warn(part, `Unsupported message content type`);
+      }
+
+      return parts;
     };
 
-    const requestMessages: ChatCompletionMessageParam[] = messages.flatMap(msg => {
+    const requestMessages: ChatCompletionMessageParam[] = [];
+
+    for (const msg of messages) {
       const role = this.mapMessageRole(msg.role);
 
       const toolCalls =
@@ -211,7 +238,7 @@ export class OpenAIProtocol {
                   .filter(tc => !tc.type || tc.type === "function")
                   .map(tc => ({
                     id: tc.name,
-                    type: tc.type || "function",
+                    type: "function" as const,
                     function: {
                       name: tc.name,
                       arguments: JSON.stringify(tc.args || {}),
@@ -221,25 +248,22 @@ export class OpenAIProtocol {
             ]
           : [];
 
-      const tools =
-        msg.metadata?.tools?.map(
-          t =>
-            ({
-              role: "tool" as const,
-              tool_call_id: t.callId,
-              content: parseContent(t.content, false) || "",
-            }) as OpenAI.Chat.Completions.ChatCompletionToolMessageParam
-        ) || [];
+      const tools: OpenAI.Chat.Completions.ChatCompletionToolMessageParam[] = [];
+      if (msg.metadata?.tools) {
+        for (const tool of msg.metadata.tools) {
+          tools.push({
+            role: "tool" as const,
+            tool_call_id: tool.callId || "",
+            content: ((await parseContent(tool.content, false)) || "") as string | Array<ChatCompletionContentPartText>,
+          });
+        }
+      }
 
-      return [
-        ...toolCalls,
-        ...tools,
-        {
-          role,
-          content: parseContent(msg.body),
-        },
-      ] as ChatCompletionMessageParam[];
-    });
+      requestMessages.push(...toolCalls, ...tools, {
+        role,
+        content: await parseContent(msg.body),
+      } as ChatCompletionMessageParam);
+    }
 
     // Add system prompt at the beginning if provided
     let systemRole: "system" | "developer" = "system";
@@ -261,15 +285,15 @@ export class OpenAIProtocol {
    * @param inputRequest The input request containing chat parameters.
    * @returns The formatted completion request parameters.
    */
-  private formatCompletionRequest(
+  private async formatCompletionRequest(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
-  ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
+  ): Promise<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> {
     const { systemPrompt, modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
-      messages: this.formatMessages(modelId, messages, systemPrompt),
+      messages: await this.formatMessages(modelId, messages, systemPrompt),
       temperature,
       max_completion_tokens: maxTokens,
     };
@@ -298,14 +322,14 @@ export class OpenAIProtocol {
     return params;
   }
 
-  private formatResponsesRequest(
+  private async formatResponsesRequest(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
-  ): OpenAI.Responses.ResponseCreateParamsNonStreaming {
+  ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
     const { systemPrompt, modelId, temperature, maxTokens } = inputRequest;
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
       model: modelId,
-      input: this.formatResponsesInput(messages),
+      input: await this.formatResponsesInput(messages),
       max_output_tokens: maxTokens,
       instructions: systemPrompt,
       temperature,
@@ -339,47 +363,55 @@ export class OpenAIProtocol {
     return params;
   }
 
-  private formatResponsesInput(messages: ModelMessage[]): OpenAI.Responses.ResponseInput {
-    const result: OpenAI.Responses.ResponseInputItem[] = messages.map(msg => {
+  private async formatResponsesInput(messages: ModelMessage[]): Promise<OpenAI.Responses.ResponseInput> {
+    const result: OpenAI.Responses.ResponseInputItem[] = [];
+
+    for (const msg of messages) {
       let role = this.mapMessageRole(msg.role);
 
       if (typeof msg.body === "string") {
-        return {
+        result.push({
           role,
           content: msg.body,
-        } as OpenAI.Responses.EasyInputMessage;
-      } else {
-        const content: OpenAI.Responses.ResponseInputContent[] = msg.body
-          .filter(part => part.content)
-          .map(part => {
-            if (part.contentType === "text") {
-              return { type: "input_text" as const, text: part.content };
-            } else if (part.contentType === "image") {
-              // send previous image as user message to give model more context
-              if (role === "assistant") {
-                role = "user";
-              }
+        } as OpenAI.Responses.EasyInputMessage);
 
-              return {
-                type: "input_image" as const,
-                image_url: part.content.startsWith("data:image")
-                  ? part.content
-                  : `data:image/png;base64,${part.content}`,
-                detail: "auto" as const,
-              };
-            } else {
-              logger.warn({ ...part }, `Unsupported message content type`);
-              return null;
-            }
-          })
-          .filter(notEmpty);
-
-        return {
-          role,
-          content,
-        } as OpenAI.Responses.EasyInputMessage;
+        continue;
       }
-    });
+
+      const content: OpenAI.Responses.ResponseInputContent[] = [];
+
+      for (const part of msg.body) {
+        if (part.contentType === "text") {
+          content.push({ type: "input_text" as const, text: part.content });
+        } else if (part.contentType === "image") {
+          // send previous image as user message to give model more context
+          if (role === "assistant") {
+            role = "user";
+          }
+
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load image content: ${part.fileName}`);
+            continue;
+          }
+
+          const fileData = await this.fileLoader.getFileContent(part.fileName);
+          const fileContent = fileData.toString("base64");
+
+          content.push({
+            type: "input_image" as const,
+            image_url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,
+            detail: "auto" as const,
+          });
+        } else {
+          logger.warn(part, `Unsupported message content type`);
+        }
+      }
+
+      result.push({
+        role,
+        content,
+      } as OpenAI.Responses.EasyInputMessage);
+    }
 
     return result;
   }
@@ -390,7 +422,7 @@ export class OpenAIProtocol {
     callbacks: StreamCallbacks
   ): Promise<void> {
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-      ...this.formatCompletionRequest(input, messages),
+      ...(await this.formatCompletionRequest(input, messages)),
       stream: true,
       stream_options: { include_usage: true },
     };
@@ -510,7 +542,7 @@ export class OpenAIProtocol {
     callbacks: StreamCallbacks
   ): Promise<void> {
     const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
-      ...this.formatResponsesRequest(inputRequest, messages),
+      ...(await this.formatResponsesRequest(inputRequest, messages)),
       stream: true,
     };
 

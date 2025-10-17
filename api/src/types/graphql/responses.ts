@@ -294,9 +294,6 @@ export class GqlImagesList {
   images?: GqlImage[];
 
   @Field({ nullable: true })
-  total?: number;
-
-  @Field({ nullable: true })
   nextPage?: number;
 }
 

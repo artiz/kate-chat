@@ -17,7 +17,11 @@ const DEFAULT_REGION = "eu-central-1";
 
 const ConnectionSettingsCache: Map<string, UserSettings> = new Map();
 
-export class S3Service {
+export interface FileContentLoader {
+  getFileContent(fileName: string): Promise<Buffer>;
+}
+
+export class S3Service implements FileContentLoader {
   private s3client: S3Client;
   private connecting: boolean = true;
   private bucketName: string;
@@ -224,6 +228,27 @@ export class S3Service {
     } catch (error) {
       return false;
     }
+  }
+
+  async getFileContent(fileKey: string): Promise<Buffer> {
+    const client = await this.getClient();
+    if (!client) {
+      throw new Error("S3 client is not configured");
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+    });
+
+    const s3Object = await client.send(command);
+
+    const buffer = await s3Object?.Body?.transformToByteArray();
+    if (!buffer) {
+      throw new Error(`No content found for key ${fileKey}`);
+    }
+
+    return Buffer.from(buffer);
   }
 
   /**

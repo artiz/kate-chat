@@ -21,7 +21,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { IconPhoto, IconCalendar, IconMessage, IconZoomIn, IconUserUp, IconMessageCircleUp } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { ImagePopup } from "@katechat/ui";
-import { GET_ALL_IMAGES, GetAllImagesResponse, LibraryImage, GetImagesInput } from "../../store/services/graphql";
+import { GET_ALL_IMAGES } from "../../store/services/graphql.queries";
+import { GetAllImagesResponse, GetImagesInput, LibraryImage } from "@/types/graphql";
 
 export const ImageLibrary: React.FC = () => {
   const client = useApolloClient();
