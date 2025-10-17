@@ -26,8 +26,8 @@ export class Message {
   @Column({ type: "text" })
   content: string;
 
-  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ModelMessageContent[]>() })
-  jsonContent?: ModelMessageContent[];
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true })
+  jsonContent?: string;
 
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<MessageMetadata>(), default: null })
   @Field(() => MessageMetadata, { nullable: true })
@@ -82,4 +82,11 @@ export class Message {
   @Field({ nullable: true })
   @UpdateDateColumn()
   updatedAt?: Date;
+
+  jsonData?(): ModelMessageContent[] {
+    if (!this.jsonContent) {
+      return [];
+    }
+    return JSON.parse(this.jsonContent) as ModelMessageContent[];
+  }
 }

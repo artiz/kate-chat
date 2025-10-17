@@ -182,8 +182,9 @@ export class MessagesService {
 
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
     const files =
-      originalMessage?.jsonContent
-        ?.filter(content => content.fileName)
+      originalMessage
+        ?.jsonData?.()
+        .filter(content => content.fileName)
         .map(content => content.fileName)
         .filter(notEmpty) || [];
 
@@ -261,11 +262,9 @@ export class MessagesService {
     // Remove any files from following messages before deleting them
     const deletedImageFiles: string[] = [];
     for (const msg of messagesToDelete) {
-      if (msg.jsonContent?.length) {
-        for (const content of msg.jsonContent) {
-          if (content.contentType === "image" && content.fileName) {
-            deletedImageFiles.push(content.fileName);
-          }
+      for (const content of msg.jsonData?.() || []) {
+        if (content.contentType === "image" && content.fileName) {
+          deletedImageFiles.push(content.fileName);
         }
       }
       await this.messageRepository.remove(msg);
@@ -402,11 +401,9 @@ export class MessagesService {
     const deletedImageFiles: string[] = [];
 
     // Process this message's images
-    if (message.jsonContent?.length) {
-      for (const content of message.jsonContent) {
-        if (content.contentType === "image" && content.fileName) {
-          deletedImageFiles.push(content.fileName);
-        }
+    for (const content of message.jsonData?.() || []) {
+      if (content.contentType === "image" && content.fileName) {
+        deletedImageFiles.push(content.fileName);
       }
     }
 
@@ -450,11 +447,9 @@ export class MessagesService {
     if (messagesToDelete.length) {
       // Process each message to find image files
       for (const msg of messagesToDelete) {
-        if (msg.jsonContent?.length) {
-          for (const content of msg.jsonContent) {
-            if (content.contentType === "image" && content.fileName) {
-              deletedImageFiles.push(content.fileName);
-            }
+        for (const content of msg.jsonData?.() || []) {
+          if (content.contentType === "image" && content.fileName) {
+            deletedImageFiles.push(content.fileName);
           }
         }
 
@@ -563,7 +558,7 @@ export class MessagesService {
     }
 
     // update message content
-    userMessage.jsonContent = jsonContent;
+    userMessage.jsonContent = JSON.stringify(jsonContent);
     userMessage.content = content;
     userMessage = await this.messageRepository.save(userMessage).catch(err => {
       this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
@@ -641,7 +636,7 @@ export class MessagesService {
             });
           }
 
-          assistantMessage.jsonContent = images;
+          assistantMessage.jsonContent = JSON.stringify(images);
           assistantMessage.content = images
             .map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName!)})`)
             .join("   ");
@@ -684,7 +679,7 @@ export class MessagesService {
             ...assistantMessage,
             content: getErrorMessage(error),
             role: MessageRole.ERROR,
-          }).catch(err => logger.error(err, "Error sending AI response"));
+          } as Message).catch(err => logger.error(err, "Error sending AI response"));
         }
 
         assistantMessage.content = token.trim() || "_No response_";
@@ -746,7 +741,7 @@ export class MessagesService {
           ...assistantMessage,
           content: getErrorMessage(error),
           role: MessageRole.ERROR,
-        }).catch(err => logger.error(err, "Error sending AI response"));
+        } as Message).catch(err => logger.error(err, "Error sending AI response"));
       });
   }
 

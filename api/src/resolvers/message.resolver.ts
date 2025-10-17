@@ -16,7 +16,7 @@ import {
 } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
-import { MessageType } from "@/types/ai.types";
+import { MessageType, ModelMessageContent } from "@/types/ai.types";
 import { notEmpty } from "@/utils/assert";
 import { ok } from "assert";
 import { ChatsService } from "@/services/chats.service";
@@ -132,7 +132,7 @@ export class MessageResolver extends BaseResolver {
 
     for (const message of messages) {
       if (message.jsonContent) {
-        for (const content of message.jsonContent) {
+        for (const content of message.jsonData?.() || []) {
           if (content.contentType === "image" && content.fileName) {
             images.push({
               id: `${message.id}-${content.fileName}`,

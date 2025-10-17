@@ -243,7 +243,7 @@ export class ModelResolver extends BaseResolver {
         modelName: model.name,
         createdAt: timestamp,
         updatedAt: timestamp,
-      };
+      } as Message;
     }
 
     // Create a message format for the test
@@ -253,7 +253,7 @@ export class ModelResolver extends BaseResolver {
       content: text,
       createdAt: timestamp,
       updatedAt: timestamp,
-    };
+    } as Message;
 
     // Generate a response using the AI service
     const response = await this.aiService.completeChat(
@@ -275,7 +275,7 @@ export class ModelResolver extends BaseResolver {
       modelName: model.name,
       createdAt: timestamp,
       updatedAt: timestamp,
-    };
+    } as Message;
   }
 
   @Query(() => GqlCostsInfo)
