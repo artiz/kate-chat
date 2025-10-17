@@ -14,7 +14,7 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 - Parallel call for assistant message against other models to [compare results](#screenshots)
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
-  Usage examples are available in [examples](/tree/master/examples).
+  Usage examples are available in [examples](examples).
 - Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
 - User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
