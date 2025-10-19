@@ -384,10 +384,12 @@ export class OpenAIApiProvider extends BaseApiProvider {
       throw new Error("Empty prompt provided for image generation");
     }
 
+    let n = modelId === "dall-e-3" ? 1 : Math.min(imagesCount || 1, 10);
+
     const params: OpenAI.Images.ImageGenerateParams = {
       model: modelId,
       prompt,
-      n: Math.min(imagesCount || 1, 10),
+      n,
       size: "1024x1024",
       response_format: "b64_json",
     };

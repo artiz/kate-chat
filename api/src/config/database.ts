@@ -22,15 +22,11 @@ let dbOptions: DataSourceOptions = {
   prepareDatabase: db => sqliteVecLoad(db),
 };
 
-// TODO: check migrations against "mysql"
 if (DB_TYPE === "mysql") {
   dbOptions = {
     type: "mysql",
     charset: "UTF8_GENERAL_CI",
     url: process.env.DB_URL,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
   };
 } else if (DB_TYPE === "postgres") {
   const ssl = ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || "");

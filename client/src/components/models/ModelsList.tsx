@@ -3,7 +3,7 @@ import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, T
 import { IconMessagePlus, IconTestPipe } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
-import { formatTokensLimit, ProviderIcon } from "@katechat/ui";
+import { formatTokensLimit, ModelType, ProviderIcon } from "@katechat/ui";
 import { Model } from "@/types/graphql";
 
 interface ModelsListProps {
@@ -168,7 +168,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     leftSection={<IconMessagePlus size={16} />}
                     onClick={() => onCreateChat(model)}
                     loading={creatingChat}
-                    disabled={!model.isActive}
+                    disabled={!model.isActive || model.type !== ModelType.CHAT}
                   >
                     Start Chat
                   </Button>

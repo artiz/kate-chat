@@ -20,6 +20,22 @@ services:
       timeout: 5s
       retries: 5
 
+  mysql:
+    image: mysql
+    container_name: kate-chat-mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=katechat
+      - MYSQL_USER=katechat
+      - MYSQL_ROOT_PASSWORD=katechat
+      - MYSQL_PASSWORD=katechat
+      - MYSQL_ROOT_HOST=%
+    networks:
+      - kate-chat-network
+
   mssql:
     image: mcr.microsoft.com/mssql/server:2025-latest
     container_name: kate-chat-mssql
@@ -175,5 +191,6 @@ networks:
 volumes:
   postgres-data: {}
   mssql-data: {}
+  mysql-data: {}
   redis-data: {}
   localstack-data: {}

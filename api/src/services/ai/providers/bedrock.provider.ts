@@ -692,16 +692,27 @@ export class BedrockApiProvider extends BaseApiProvider {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
 
+    let body = "";
     const { modelId } = request;
     const isV2 = modelId.includes("embed-text-v2");
 
-    // TODO: add cohere.embed-multilingual-v3 support
-    const params = {
-      modelId: request.modelId,
-      body: JSON.stringify({
+    if (modelId == "cohere.embed-multilingual-v3") {
+      body = JSON.stringify({
+        texts: [request.input],
+        input_type: "search_query",
+        truncate: "END",
+        dimensions: request.dimensions,
+      });
+    } else {
+      body = JSON.stringify({
         inputText: request.input,
         dimensions: isV2 ? request.dimensions : undefined,
-      }),
+      });
+    }
+
+    const params = {
+      modelId: request.modelId,
+      body,
     };
 
     // Send command using Bedrock client
@@ -712,7 +723,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     const responseBody = JSON.parse(new TextDecoder().decode(response.body));
 
     return {
-      embedding: responseBody.embedding || [],
+      embedding: responseBody.embedding || responseBody.embeddings?.[0] || [],
       metadata: {
         usage: {
           inputTokens: responseBody.inputTextTokenCount || 0,
