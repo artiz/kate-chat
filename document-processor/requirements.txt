@@ -32,3 +32,5 @@ langchain==0.3.3
 # passlib==1.7.4
 # bcrypt==3.2.2
 # pyjwt==2.4.0
+h11>=0.16.0 # not directly required, pinned by Snyk to avoid a vulnerability
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
