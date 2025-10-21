@@ -4,6 +4,7 @@ import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
 import { EMBEDDINGS_DIMENSIONS } from "../config/ai/common";
 
+// TODO: use "vector" type when https://github.com/typeorm/typeorm/pull/11732 is merged
 const VECTOR_TYPE = process.env.DB_TYPE === "postgres" ? "vector" : "text";
 const VECTOR_LENGTH = process.env.DB_TYPE === "postgres" ? EMBEDDINGS_DIMENSIONS : undefined;
 
@@ -44,7 +45,6 @@ export class DocumentChunk {
   @Column({ type: "text" })
   content: string;
 
-  // TODO: add "vector" type support for MS SQL like one for Postgres: https://github.com/typeorm/typeorm/pull/11437
   @Field(() => [Number], { nullable: true })
   @Column({
     type: VECTOR_TYPE,

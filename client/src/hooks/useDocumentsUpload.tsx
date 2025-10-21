@@ -64,27 +64,45 @@ export const useDocumentsUpload = () => {
 
     try {
       onProgress?.(0);
-      const response = await fetch(`${APP_API_URL}/files/upload?chatId=${chatId ? encodeURIComponent(chatId) : ""}`, {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-        headers: {
-          authorization: token ? `Bearer ${token}` : "",
-        },
 
-        // TODO: use XMLHttpRequest to get it working
-        // https://gist.github.com/adinan-cenci/9fc1d9785700d58f63055bc8d02a54d0
-        // onUploadProgress: (evt: any) => {
-        //   const progress = Math.round(evt.loaded / evt.total);
-        //   onProgress?.(progress);
-        // },
+      // good old XMLHttpRequest to track upload progress
+      const xhr = new XMLHttpRequest();
+      xhr.responseType = "json";
+
+      const response = await new Promise(function (resolve, reject) {
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState != XMLHttpRequest.DONE) {
+            return;
+          }
+          const status = xhr.status;
+          if (status >= 300) {
+            return reject(new TypeError("Network request failed"));
+          }
+
+          const result = typeof xhr.response === "string" ? JSON.parse(xhr.response) : xhr.response;
+          resolve(result);
+        };
+
+        xhr.addEventListener("error", xhr => {
+          reject(new Error("Failed to fetch"));
+        });
+
+        xhr.addEventListener("progress", evt => {
+          if (evt.lengthComputable) {
+            const progress = Math.round((100 * evt.loaded) / evt.total) / 100;
+            onProgress?.(progress);
+          }
+        });
+
+        xhr.open("POST", `${APP_API_URL}/files/upload?chatId=${chatId ? encodeURIComponent(chatId) : ""}`, true);
+        xhr.withCredentials = true;
+        if (token) {
+          xhr.setRequestHeader("authorization", `Bearer ${token}`);
+        }
+
+        xhr.send(formData);
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to upload documents");
-      }
-
-      const documents = (await response.json()) as Document[];
+      const documents = response as Document[];
       setUploadingDocs(prev => [...prev, ...documents.filter(doc => doc.status !== DocumentStatus.READY)]);
     } catch (error: unknown) {
       setUploadError(error instanceof Error ? error : new Error(String(error)));
