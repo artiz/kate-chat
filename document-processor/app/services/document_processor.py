@@ -2,7 +2,8 @@ import asyncio
 import json
 import logging
 import io
-from typing import Callable, Dict, Any, Optional
+import math
+from typing import Callable, Dict, Any, Optional, Tuple
 from redis.asyncio.client import Redis
 import boto3
 from botocore.exceptions import ClientError
@@ -50,6 +51,7 @@ class DocumentProcessor:
         command_type = cmd.get("command")
         document_id = cmd.get("documentId")
         s3_key = cmd.get("s3key")
+        mime = cmd.get("mime")
 
         if not all([command_type, document_id, s3_key]):
             logger.warning(
@@ -60,13 +62,13 @@ class DocumentProcessor:
         logger.info(f"Processing command {cmd}")
 
         if command_type == "parse_document":
-            await self._handle_parse_document(document_id, s3_key)
+            await self._handle_parse_document(document_id, s3_key, mime)
         elif command_type == "split_document":
             await self._handle_split_document(document_id, s3_key)
         else:
             logger.warning(f"Unknown command type: {command_type}")
 
-    async def _handle_parse_document(self, document_id: str, s3_key: str):
+    async def _handle_parse_document(self, document_id: str, s3_key: str, mime: str):
         """Handle parse_document command"""
         progress_key = f"{s3_key}.parsing"
         parsed_json_key = f"{s3_key}.parsed.json"
@@ -76,7 +78,6 @@ class DocumentProcessor:
         s3 = await self._get_s3_client()
 
         try:
-
             # Check if parsing is already in progress or completed
             existing_progress = await redis.get(progress_key)
             if existing_progress is not None:
@@ -92,7 +93,10 @@ class DocumentProcessor:
                 return
 
             await self._set_progress(redis, progress_key, 0.0, document_id, "parsing")
-            document_stream = await self._download_s3_stream(s3, s3_key)
+            (document_stream, content_type) = await self._download_s3_stream(s3, s3_key)
+            if not mime: 
+                mime = content_type
+                
             await self._set_progress(redis, progress_key, 0.3, document_id, "parsing")
 
             # Parse document
@@ -116,9 +120,9 @@ class DocumentProcessor:
                 s3, parsed_json_key, json_content, "application/json"
             )
 
-            markdown_content = await asyncio.to_thread(self._extract_markdown_text, processed_report)
+            content = await asyncio.to_thread(self._extract_markdown_text, processed_report)
             await self._upload_to_s3(
-                s3, parsed_md_key, markdown_content, "text/markdown"
+                s3, parsed_md_key, content, "text/markdown"
             )
 
             # Complete parsing
@@ -129,7 +133,7 @@ class DocumentProcessor:
 
         except Exception as e:
             logger.exception(e, f"Failed to parse document {document_id}")
-            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e))
+            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e), mime)
         finally:
             await redis.close()
 
@@ -196,12 +200,12 @@ class DocumentProcessor:
             await redis.close()
 
     async def _set_progress(
-        self, redis: Redis, progress_key: str, progress: float, document_id: str, status: str, info: Optional[str] = None
+        self, redis: Redis, progress_key: str, progress: float, document_id: str, status: str, info: Optional[str] = None, mime: Optional[str] = None
     ):
         """Set progress in Redis and publish notification"""
         # Set progress with 30 second expiration
         await redis.setex(progress_key, 30, str(progress))
-        logger.debug(f"Document {document_id} status update: {status} {progress * 100:.1f}% {info or ''}")
+        logger.debug(f"Document {document_id} {mime or ''} status update: {status} {progress * 100:.1f}% {info or ''}")
 
         # Publish notification
         notification = {
@@ -226,15 +230,16 @@ class DocumentProcessor:
                 return False
             raise
 
-    async def _download_s3_stream(self, s3, key: str) -> DocumentStream:
+    async def _download_s3_stream(self, s3, key: str) -> Tuple[DocumentStream, str]:
         """Download document from S3 as stream"""
         try:
             response = s3.get_object(Bucket=settings.s3_files_bucket_name, Key=key)
             content = response["Body"].read()
+            content_type = response["ContentType"]
 
             # Create DocumentStream from content
             stream = DocumentStream(name=key.split("/")[-1], stream=io.BytesIO(content))
-            return stream
+            return (stream, content_type)
         except ClientError as e:
             logger.error(f"Failed to download {key} from S3: {e}")
             raise

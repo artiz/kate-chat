@@ -42,6 +42,7 @@ export class DocumentResolver extends BaseResolver {
         command: "index_document",
         documentId: document.id,
         s3key: document.s3key,
+        mime: document.mime,
       },
       0,
       true

@@ -7,6 +7,7 @@ from typing import Iterable, List, Union
 
 from docling.backend.docling_parse_v2_backend import DoclingParseV2DocumentBackend
 from docling.backend.msword_backend import MsWordDocumentBackend
+from docling.backend.md_backend import MarkdownDocumentBackend
 from docling.backend.html_backend import HTMLDocumentBackend
 from docling.datamodel.base_models import ConversionStatus
 from docling.datamodel.document import ConversionResult
@@ -38,11 +39,13 @@ class PDFParser:
         pdf_backend=DoclingParseV2DocumentBackend,
         msword_backend=MsWordDocumentBackend,
         html_backend=HTMLDocumentBackend,
+        md_backend=MarkdownDocumentBackend,
         output_dir: Path = Path("./parsed_pdfs"),
     ):
         self.pdf_backend = pdf_backend
         self.msword_backend = msword_backend
         self.html_backend = html_backend
+        self.md_backend = md_backend
         self.output_dir = output_dir
         self.doc_converter = self._create_document_converter()
         self.ocr_doc_converter = self._create_document_converter(True)
@@ -78,6 +81,12 @@ class PDFParser:
             # HTML format
             InputFormat.HTML: FormatOption(
                 pipeline_cls=SimplePipeline, backend=self.html_backend
+            ),
+            InputFormat.MD: FormatOption(
+                pipeline_cls=SimplePipeline, backend=self.md_backend
+            ),
+            InputFormat.ASCIIDOC: FormatOption(
+                pipeline_cls=SimplePipeline, backend=self.md_backend
             ),
         }
 

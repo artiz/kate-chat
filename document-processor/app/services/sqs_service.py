@@ -71,23 +71,27 @@ class SQSService:
                 messages = response.get('Messages', [])
                 logger.debug(f"Got messages: {messages}")
                 
-                for message in messages:
-                    try:
-                        # Process message
-                        await self._handle_message(message)
-                        
-                        # Delete message after successful processing
-                        await asyncio.to_thread(
-                            self.sqs_client.delete_message,
-                            QueueUrl=self.queue_url,
-                            ReceiptHandle=message['ReceiptHandle']
-                        )
-                        
-                    except Exception as e:
-                        logger.error(f"Error processing message: {message}")
-                        logger.exception(e, exc_info=True)
-                        
-                        # Message will become visible again after timeout
+                # Process all messages in parallel
+                if messages:
+                    async def process_message(message):
+                        try:
+                            # Process message
+                            await self._handle_message(message)
+                            
+                            # Delete message after successful processing
+                            await asyncio.to_thread(
+                                self.sqs_client.delete_message,
+                                QueueUrl=self.queue_url,
+                                ReceiptHandle=message['ReceiptHandle']
+                            )
+                            
+                        except Exception as e:
+                            logger.error(f"Error processing message: {message}")
+                            logger.exception(e, exc_info=True)
+                            
+                            # Message will become visible again after timeout
+                    
+                    await asyncio.gather(*[process_message(msg) for msg in messages], return_exceptions=True)
                         
             except asyncio.CancelledError:
                 logger.info("Polling cancelled, shutting down")
