@@ -51,10 +51,12 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 ## TODO
 
 * Add request cancellation to stop reasoning or web search (GPT-5)
+* Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
+* Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc)
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
-* Rename `document-processor` to `tasks-processor` to perform following tasks:
- - implemented cleanup chat files task (search for "delete the files from S3")
+* Rename `document-processor` to `tasks-processor` service to perform following tasks:
+ - implement chat files deletion task (search for "delete the files from S3")
  - add custom code interpreter tool implementation
 ```
 from services.code_executor import CodeExecutor
@@ -88,13 +90,11 @@ def code_interpreter_handler(event, context):
 * Add custom MCP tool support
    - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
    - Bedrock - custom wrapper 
-* Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add [MarkItDown](https://github.com/microsoft/markitdown) ([example](https://dev.to/leapcell/deep-dive-into-microsoft-markitdown-4if5)) in document-processor, support both processors and write script to generate Markdown for files from train and compare them.
 * Add SerpApi for Web Search (new setting in UI)
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
-* Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Rust API sync: add images generation (DALL-E) support, Library, admin API
 
 
