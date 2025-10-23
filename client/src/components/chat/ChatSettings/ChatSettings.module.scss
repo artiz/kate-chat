@@ -3,8 +3,11 @@
   flex-direction: column;
   gap: var(--mantine-spacing-sm);
   height: fit-content;
+  max-width: calc(100vw - 3rem);
 }
 
-.settingItem {
-  flex-grow: 1;
+@media (min-width: 500px) {
+  .settingsPanel {
+    width: 500px;
+  }
 }

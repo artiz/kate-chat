@@ -12,6 +12,7 @@ import {
   Textarea,
   Button,
   Divider,
+  Flex,
 } from "@mantine/core";
 import { IconInfoCircle, IconRestore } from "@tabler/icons-react";
 import classes from "./ChatSettings.module.scss";
@@ -129,7 +130,7 @@ export function ChatSettings({
       </Group>
 
       <Stack gap="md">
-        <div className={classes.settingItem}>
+        <div>
           <Group mb={5} justify="space-between">
             <Text size="sm" fw={500}>
               System Prompt{" "}
@@ -154,8 +155,8 @@ export function ChatSettings({
           />
         </div>
 
-        <Group gap="md" align="flex-start">
-          <div className={classes.settingItem}>
+        <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
+          <div>
             <Group p="apart" mb={5}>
               <Text size="sm">Temperature</Text>
               <Group gap={5}>
@@ -184,7 +185,7 @@ export function ChatSettings({
             />
           </div>
 
-          <div className={classes.settingItem}>
+          <div>
             <Group p="apart" mb={5}>
               <Text size="sm">Top P</Text>
               <Group gap={5}>
@@ -212,10 +213,10 @@ export function ChatSettings({
               ]}
             />
           </div>
-        </Group>
+        </Flex>
         <Divider my="xs" />
-        <Group gap="md" align="flex-start" justify="stretch">
-          <div className={classes.settingItem}>
+        <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
+          <div>
             <Group p="apart" mb={5}>
               <Text size="sm">Images Count</Text>
               <Group gap={5}>
@@ -244,7 +245,7 @@ export function ChatSettings({
             />
           </div>
 
-          <div className={classes.settingItem}>
+          <div>
             <Group p="apart" mb={5}>
               <Text size="sm">Max Tokens</Text>
               <Tooltip label="Maximum number of tokens to generate. A token is about 4 characters or 0.75 words.">
@@ -262,7 +263,7 @@ export function ChatSettings({
               size="sm"
             />
           </div>
-        </Group>
+        </Flex>
       </Stack>
     </Box>
   );

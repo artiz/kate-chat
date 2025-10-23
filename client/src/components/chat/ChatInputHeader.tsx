@@ -29,6 +29,7 @@ export const ChatInputHeader = ({
   onUpdateChat,
 }: IHeaderProps) => {
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
+
   useEffect(() => {
     if (chatTools) {
       setSelectedTools(new Set(chatTools.map(tool => tool.type)));
@@ -82,7 +83,7 @@ export const ChatInputHeader = ({
       />
       {selectedModel && <ModelInfo model={selectedModel} size="18" />}
 
-      <Popover width={400} position="top" withArrow shadow="md">
+      <Popover position="top" withArrow shadow="md" trapFocus>
         <Popover.Target>
           <Tooltip label="Chat Settings">
             <ActionIcon disabled={disabled || streaming}>
