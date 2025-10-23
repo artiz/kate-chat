@@ -2,10 +2,7 @@
   .chatControlsContainer {
     .chatControls {
       border: 1px solid var(--app-shell-border-color);
-    }
-
-    .headerRow {
-      background-color: var(--mantine-color-gray-4);
+      background-color: var(--mantine-color-gray-2);
     }
 
     .chatInputGroup .chatInput :global(textarea) {
@@ -32,11 +29,11 @@
   .chatControls {
     border: 1px solid var(--app-shell-border-color);
     border-radius: var(--mantine-radius-default);
-    background-color: var(--app-shell-border-color);
+    background-color: var(--mantine-color-dark-6);
   }
 
   .headerRow {
-    padding: 0.33rem;
+    padding: 0.33rem 0.5rem;
     border-top-left-radius: var(--mantine-radius-default);
     border-top-right-radius: var(--mantine-radius-default);
   }
@@ -50,7 +47,8 @@
   gap: 0.5rem;
 
   background-color: var(--mantine-color-body);
-  border-radius: var(--mantine-radius-default);
+  border-bottom-left-radius: var(--mantine-radius-default);
+  border-bottom-right-radius: var(--mantine-radius-default);
 
   .documentsInput {
     display: flex;
