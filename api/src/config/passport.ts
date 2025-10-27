@@ -1,4 +1,4 @@
-import passport from "passport";
+import passport, { use } from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
@@ -58,6 +58,7 @@ export const configurePassport = () => {
             });
 
             const email = profile.emails?.[0]?.value || "";
+            const avatarUrl = profile.photos?.[0]?.value || undefined;
 
             // If user doesn't exist, check if there's a user with the same email
             if (!user && email) {
@@ -68,6 +69,7 @@ export const configurePassport = () => {
                 user.googleId = profile.id;
                 user.authProvider = AuthProvider.GOOGLE;
                 user.password = ""; // No password for OAuth users
+                user.avatarUrl = user.avatarUrl || avatarUrl;
                 user = await userRepository.save(user);
                 logger.info({ userId: user.id }, "User linked with Google account");
               }
@@ -82,7 +84,6 @@ export const configurePassport = () => {
 
               const firstName = profile.name?.givenName || "User";
               const lastName = profile.name?.familyName || "";
-              const avatarUrl = profile.photos?.[0]?.value || undefined;
 
               // Determine user role
               const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
@@ -135,6 +136,7 @@ export const configurePassport = () => {
             });
             // For GitHub, we need to extract email from the profile
             const email = profile.emails?.[0]?.value;
+            const avatarUrl = profile.photos?.[0]?.value || undefined;
 
             // If user doesn't exist, check if there's a user with the same email
             if (!user && email) {
@@ -145,6 +147,7 @@ export const configurePassport = () => {
                 user.githubId = profile.id;
                 user.authProvider = AuthProvider.GITHUB;
                 user.password = ""; // No password for OAuth users
+                user.avatarUrl = user.avatarUrl || avatarUrl;
                 user = await userRepository.save(user);
                 logger.info({ userId: user.id }, "User linked with GitHub account");
               }
@@ -162,7 +165,6 @@ export const configurePassport = () => {
               const nameParts = displayName.split(" ");
               const firstName = nameParts[0] || "User";
               const lastName = nameParts.slice(1).join(" ") || "";
-              const avatarUrl = profile.photos?.[0]?.value || undefined;
 
               // Determine user role
               const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
@@ -269,7 +271,8 @@ export const configurePassport = () => {
             if (!user) {
               const firstName = userInfo.givenName || "User";
               const lastName = userInfo.surname || "";
-              const avatarUrl = undefined; // Microsoft Graph doesn't provide photo URL directly
+              // const avatarUrl = undefined;
+              // Microsoft Graph doesn't provide photo URL directly
               // TODO: Fetch photo from /me/photo/$value endpoint if needed
               // https://graph.microsoft.com/v1.0/me/photo/$value
 
@@ -281,7 +284,6 @@ export const configurePassport = () => {
                 microsoftId,
                 firstName,
                 lastName,
-                avatarUrl,
                 role,
                 authProvider: AuthProvider.MICROSOFT,
                 defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
