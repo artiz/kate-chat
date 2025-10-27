@@ -129,6 +129,10 @@ export class User {
   @Column({ nullable: true })
   githubId?: string;
 
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  microsoftId?: string;
+
   @Field(() => String, { nullable: true })
   @Column({ nullable: true, type: "varchar" })
   authProvider?: AuthProvider;

@@ -64,6 +64,19 @@ resource "aws_secretsmanager_secret" "github_client_secret" {
   recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
 
+
+resource "aws_secretsmanager_secret" "microsoft_client_id" {
+  name                    = "${var.project_name}-${var.environment}-microsoft-entra-client-id"
+  description             = "Microsoft Entra ID OAuth Client ID"
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
+}
+
+resource "aws_secretsmanager_secret" "microsoft_client_secret" {
+  name                    = "${var.project_name}-${var.environment}-microsoft-entra-client-secret"
+  description             = "Microsoft Entra ID OAuth Client Secret"
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
+}
+
 resource "aws_secretsmanager_secret" "yandex_fm_api_key" {
   name                    = "${var.project_name}-${var.environment}-yandex-fm-api-key"
   description             = "Yandex Foundational Models API Key"

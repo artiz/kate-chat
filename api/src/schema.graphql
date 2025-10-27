@@ -545,6 +545,7 @@ type User {
   googleId: String
   id: ID!
   lastName: String!
+  microsoftId: String
   models: [Model!]
   modelsCount: Float
   role: String!

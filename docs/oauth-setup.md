@@ -1,6 +1,6 @@
 # Setting up OAuth Authentication
 
-KateChat supports authentication through Google and GitHub OAuth providers. This document explains how to set up OAuth for these providers.
+KateChat supports authentication through Google, GitHub, and Microsoft OAuth providers. This document explains how to set up OAuth for these providers.
 
 ## Required Environment Variables
 
@@ -12,6 +12,9 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
+MICROSOFT_CLIENT_ID=your_microsoft_client_id
+MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
+MICROSOFT_TENANT_ID=common
 CALLBACK_URL_BASE=http://localhost:4000
 FRONTEND_URL=http://localhost:3000
 SESSION_SECRET=your_session_secret
@@ -50,6 +53,36 @@ SESSION_SECRET=your_session_secret
 6. Generate a new client secret
 7. Copy the Client ID and Client Secret to your environment variables
 
+## Microsoft Azure OAuth Setup
+
+1. Go to the [Azure Portal](https://portal.azure.com/)
+2. Navigate to "Azure Active Directory" > "App registrations"
+3. Click "New registration"
+4. Fill in the application details:
+   - Name: "KateChat" (or your preferred name)
+   - Supported account types: Choose based on your needs:
+     - "Accounts in any organizational directory (Any Azure AD directory - Multitenant)" for multi-tenant
+     - "Accounts in any organizational directory (Any Azure AD directory - Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)" for broader access
+   - Redirect URI: Select "Web" and enter `http://localhost:4000/api/auth/microsoft/callback` (adjust based on your CALLBACK_URL_BASE)
+5. Click "Register"
+6. In the app overview page, copy the "Application (client) ID" - this is your `MICROSOFT_CLIENT_ID`
+7. Copy the "Directory (tenant) ID" - this can be your `MICROSOFT_TENANT_ID`, or use "common" for multi-tenant
+8. Go to "Certificates & secrets" in the left menu
+9. Click "New client secret", add a description and expiration period
+10. Copy the secret value immediately (it won't be shown again) - this is your `MICROSOFT_CLIENT_SECRET`
+11. Go to "API permissions" and ensure the following Microsoft Graph permissions are granted:
+    - `User.Read` (should be added by default)
+    - `profile`
+    - `email`
+    - `openid`
+12. If you added new permissions, you may need to grant admin consent
+
+### Tenant Configuration
+
+- Use `MICROSOFT_TENANT_ID=common` to allow users from any Azure AD tenant and personal Microsoft accounts
+- Use `MICROSOFT_TENANT_ID=organizations` to allow users from any Azure AD tenant (no personal accounts)
+- Use your specific tenant ID to restrict to your organization only
+
 ## Configuring Session Secret
 
 The SESSION_SECRET environment variable is used to sign the session cookie. Generate a strong random string for this value. You can use a command like this:
@@ -62,7 +95,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 1. Start the KateChat application
 2. Navigate to the login page
-3. Click on either the "Google" or "GitHub" button
+3. Click on the "Google", "GitHub", or "Microsoft" button
 4. You should be redirected to the respective provider's authentication page
 5. After authenticating, you should be redirected back to KateChat and automatically logged in
 

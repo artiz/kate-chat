@@ -68,7 +68,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Container size={420} my={40}>
+    <Container size="sm" my={40}>
       <Title ta="center" fw={900}>
         Welcome to KateChat!
       </Title>

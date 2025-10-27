@@ -48,3 +48,12 @@ router.get(
   passport.authenticate("github", { failureRedirect: "/login", session: false }),
   handleAuthResponse
 );
+
+// Microsoft OAuth routes
+router.get("/microsoft", passport.authenticate("microsoft"));
+
+router.get(
+  "/microsoft/callback",
+  passport.authenticate("microsoft", { failureRedirect: "/login", session: false }),
+  handleAuthResponse
+);

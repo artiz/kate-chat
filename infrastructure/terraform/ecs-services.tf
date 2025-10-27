@@ -179,6 +179,14 @@ locals {
         valueFrom = aws_secretsmanager_secret.github_client_secret.arn
       },
       {
+        name      = "MICROSOFT_CLIENT_ID"
+        valueFrom = aws_secretsmanager_secret.microsoft_client_id.arn
+      },
+      {
+        name      = "MICROSOFT_CLIENT_SECRET"
+        valueFrom = aws_secretsmanager_secret.microsoft_client_secret.arn
+      },
+      {
         name      = "YANDEX_FM_API_KEY"
         valueFrom = aws_secretsmanager_secret.yandex_fm_api_key.arn
       },
