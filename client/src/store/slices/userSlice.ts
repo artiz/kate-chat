@@ -37,6 +37,7 @@ export interface User extends BaseUser {
   documentSummarizationModelId?: string;
   githubId?: string;
   googleId?: string;
+  microsoftId?: string;
   settings?: UserSettings;
   createdAt?: string;
 }

@@ -19,7 +19,7 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
   const dispatch = useAppDispatch();
 
   const isLocalUser = useMemo(() => {
-    return !currentUser?.googleId && !currentUser?.githubId;
+    return !currentUser?.googleId && !currentUser?.githubId && !currentUser?.microsoftId;
   }, [currentUser]);
 
   // Update user mutation

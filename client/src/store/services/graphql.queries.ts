@@ -87,6 +87,7 @@ export const FULL_USER_FRAGMENT = `
       documentSummarizationModelId
       googleId
       githubId
+      microsoftId
       avatarUrl
       role
       settings {
