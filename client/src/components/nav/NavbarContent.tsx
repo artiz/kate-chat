@@ -1,13 +1,23 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Divider, ScrollArea, AppShell, Group, ActionIcon, Collapse } from "@mantine/core";
+import { useLocalStorage } from "@mantine/hooks";
 import {
-  IconPlus,
+  Stack,
+  Button,
+  NavLink,
+  Divider,
+  ScrollArea,
+  AppShell,
+  Group,
+  ActionIcon,
+  Collapse,
+  Tooltip,
+} from "@mantine/core";
+import {
   IconSettings,
   IconRobot,
   IconPhoto,
   IconShield,
-  IconBrandGit,
   IconBrandGithub,
   IconFile,
   IconFileCv,
@@ -27,7 +37,10 @@ interface IProps {
 const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useLocalStorage<boolean>({
+    key: "advanced-settings-menu-open",
+    defaultValue: false,
+  });
 
   // Get chats from Redux store
   const { chats } = useAppSelector(state => state.chats);
@@ -62,6 +75,12 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
     navigate(path);
   };
 
+  useEffect(() => {
+    if (chats.length === 0) {
+      setMenuOpen(true);
+    }
+  }, [chats]);
+
   const toggleMenu = (): void => {
     setMenuOpen(p => !p);
   };
@@ -79,9 +98,11 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
             >
               New Chat
             </Button>
-            <ActionIcon variant="light" onClick={toggleMenu} size="lg">
-              {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
-            </ActionIcon>
+            <Tooltip label="Advanced Settings">
+              <ActionIcon variant="light" onClick={toggleMenu} size="lg">
+                {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
+              </ActionIcon>
+            </Tooltip>
           </Group>
 
           <Collapse in={menuOpen}>

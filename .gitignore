@@ -18,7 +18,7 @@ db-migrations/*.js
 db-migrations/**/*.js
 
 # Rust
-api-rust/target/
+target/
 
 # terraform
 infrastructure/terraform/.terraform/
