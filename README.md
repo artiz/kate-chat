@@ -94,7 +94,7 @@ def code_interpreter_handler(event, context):
 * Add SerpApi for Web Search (new setting in UI)
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
-* Test MySQL support, generate appropriate migrations, check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
+* MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
 * Rust API sync: add images generation (DALL-E) support, Library, admin API
 
 
