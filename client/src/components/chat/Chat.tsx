@@ -133,12 +133,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
           message: data.stopMessageGeneration.error,
           color: "red",
         });
-      } else {
-        notifications.show({
-          title: "Success",
-          message: "Message generation stopped successfully",
-          color: "green",
-        });
       }
     },
     onError: error => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActionIcon, Select, Tooltip, Popover } from "@mantine/core";
+import { ActionIcon, Select, Tooltip, Popover, Box } from "@mantine/core";
 import { IconRobot, IconSettings, IconWorldSearch, IconCloudCode } from "@tabler/icons-react";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
@@ -46,10 +46,6 @@ export const ChatInputHeader = ({
     onUpdateChat(chatId, { ...settings });
   };
 
-  const resetSettingsToDefaults = () => {
-    handleSettingsChange(DEFAULT_CHAT_SETTINGS);
-  };
-
   const handleToolToggle = (toolType: ToolType) => {
     if (!chatId) return;
 
@@ -81,7 +77,11 @@ export const ChatInputHeader = ({
         style={{ maxWidth: "50%" }}
         disabled={disabled}
       />
-      {selectedModel && <ModelInfo model={selectedModel} size="18" />}
+      {selectedModel && (
+        <Box visibleFrom="xs">
+          <ModelInfo model={selectedModel} size="18" />
+        </Box>
+      )}
 
       <Popover position="top" withArrow shadow="md" trapFocus>
         <Popover.Target>
@@ -92,11 +92,7 @@ export const ChatInputHeader = ({
           </Tooltip>
         </Popover.Target>
         <Popover.Dropdown>
-          <ChatSettings
-            {...chatSettings}
-            onSettingsChange={handleSettingsChange}
-            resetToDefaults={resetSettingsToDefaults}
-          />
+          <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
         </Popover.Dropdown>
       </Popover>
 

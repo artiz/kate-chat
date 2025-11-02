@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Divider, ScrollArea, AppShell } from "@mantine/core";
+import { Stack, Button, NavLink, Divider, ScrollArea, AppShell, Group, ActionIcon, Collapse } from "@mantine/core";
 import {
   IconPlus,
   IconSettings,
@@ -11,6 +11,8 @@ import {
   IconBrandGithub,
   IconFile,
   IconFileCv,
+  IconMessagePlus,
+  IconSettingsFilled,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -25,6 +27,7 @@ interface IProps {
 const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Get chats from Redux store
   const { chats } = useAppSelector(state => state.chats);
@@ -59,66 +62,74 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
     navigate(path);
   };
 
+  const toggleMenu = (): void => {
+    setMenuOpen(p => !p);
+  };
+
   return (
     <>
       <AppShell.Section>
         <Stack h="100%" justify="space-between" gap="0">
-          <Stack p="sm">
+          <Group p="sm" justify="space-between">
             <Button
-              leftSection={<IconPlus size={16} />}
+              leftSection={<IconMessagePlus size={16} />}
               disabled={newChatDisabled}
               variant="light"
               onClick={handleNewChat}
-              fullWidth
             >
               New Chat
             </Button>
-          </Stack>
+            <ActionIcon variant="light" onClick={toggleMenu} size="lg">
+              {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
+            </ActionIcon>
+          </Group>
 
-          <Divider mt="xs" mb="0" />
+          <Collapse in={menuOpen}>
+            <Divider m="0" />
 
-          <Stack gap="0" className={styles.navLinks}>
-            <NavLink
-              label="Models"
-              leftSection={<IconRobot size={16} />}
-              active={location.pathname === "/models"}
-              onClick={handleSectionClick("/models")}
-            />
-            <NavLink
-              label="Settings"
-              leftSection={<IconSettings size={16} />}
-              active={location.pathname === "/settings"}
-              onClick={handleSectionClick("/settings")}
-            />
-            <NavLink
-              label="Library"
-              leftSection={<IconPhoto size={16} />}
-              active={location.pathname === "/library"}
-              onClick={handleSectionClick("/library")}
-            />
-            {appConfig?.ragEnabled && (
+            <Stack gap="0" className={styles.navLinks}>
               <NavLink
-                label="Documents"
-                leftSection={<IconFile size={16} />}
-                active={location.pathname === "/documents"}
-                color="blue"
-                onClick={handleSectionClick("/documents")}
+                label="Models"
+                leftSection={<IconRobot size={16} />}
+                active={location.pathname === "/models"}
+                onClick={handleSectionClick("/models")}
               />
-            )}
-            {currentUser?.role === UserRole.ADMIN && (
               <NavLink
-                label="Admin"
-                leftSection={<IconShield size={16} />}
-                active={location.pathname === "/admin"}
-                onClick={handleSectionClick("/admin")}
+                label="Settings"
+                leftSection={<IconSettings size={16} />}
+                active={location.pathname === "/settings"}
+                onClick={handleSectionClick("/settings")}
               />
-            )}
-          </Stack>
+              <NavLink
+                label="Library"
+                leftSection={<IconPhoto size={16} />}
+                active={location.pathname === "/library"}
+                onClick={handleSectionClick("/library")}
+              />
+              {appConfig?.ragEnabled && (
+                <NavLink
+                  label="Documents"
+                  leftSection={<IconFile size={16} />}
+                  active={location.pathname === "/documents"}
+                  color="blue"
+                  onClick={handleSectionClick("/documents")}
+                />
+              )}
+              {currentUser?.role === UserRole.ADMIN && (
+                <NavLink
+                  label="Admin"
+                  leftSection={<IconShield size={16} />}
+                  active={location.pathname === "/admin"}
+                  onClick={handleSectionClick("/admin")}
+                />
+              )}
+            </Stack>
 
-          <Divider mb="xs" />
+            <Divider mb="0" />
+          </Collapse>
         </Stack>
       </AppShell.Section>
-      <AppShell.Section grow component={ScrollArea}>
+      <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12" p="0">
         <ChatsNavSection navbarToggle={navbarToggle} />
       </AppShell.Section>
       <AppShell.Section p="sm">

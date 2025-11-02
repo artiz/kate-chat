@@ -79,7 +79,7 @@ export class MessagesService {
 
   public connectClient(socket: WebSocket, request: IncomingMessage, chatId: string) {
     const clientIp = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
-    logger.debug({ chatId, clientIp }, "Client connected");
+    logger.trace({ chatId, clientIp }, "Client connected");
 
     MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
@@ -736,7 +736,7 @@ export class MessagesService {
       if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
         lastPublish = now.getTime();
         assistantMessage.content = content;
-        assistantMessage.status = status?.status || ResponseStatus.IN_PROGRESS;
+        assistantMessage.status = status?.status || ResponseStatus.STARTED;
         assistantMessage.statusInfo = this.getStatusInformation(status);
         assistantMessage.updatedAt = now;
 
