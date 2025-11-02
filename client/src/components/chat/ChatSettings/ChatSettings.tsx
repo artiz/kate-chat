@@ -14,7 +14,7 @@ import {
   Divider,
   Flex,
 } from "@mantine/core";
-import { IconInfoCircle, IconRestore } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import classes from "./ChatSettings.module.scss";
 
 export const DEFAULT_CHAT_SETTINGS = {
@@ -35,7 +35,6 @@ export interface ChatSettingsProps {
 
 interface ChatSettingsComponentProps extends ChatSettingsProps {
   onSettingsChange: (settings: ChatSettingsProps) => void;
-  resetToDefaults: () => void;
 }
 
 export function ChatSettings({
@@ -45,7 +44,6 @@ export function ChatSettings({
   imagesCount = DEFAULT_CHAT_SETTINGS.imagesCount,
   systemPrompt = DEFAULT_CHAT_SETTINGS.systemPrompt,
   onSettingsChange,
-  resetToDefaults,
 }: ChatSettingsComponentProps) {
   const [tempValue, setTempValue] = useState<number>(temperature);
   const [tokensValue, setTokensValue] = useState<number>(maxTokens);
@@ -110,10 +108,6 @@ export function ChatSettings({
     setSystemPromptValue(event.currentTarget.value);
   };
 
-  const handleReset = () => {
-    resetToDefaults();
-  };
-
   function handlePromptSave(): void {
     handleSettingsChange({ systemPrompt: systemPromptValue });
   }
@@ -122,11 +116,6 @@ export function ChatSettings({
     <Box className={classes.settingsPanel}>
       <Group mb="md" justify="space-between">
         <Title order={4}>Chat Settings</Title>
-        <Tooltip label="Reset to defaults">
-          <ActionIcon onClick={handleReset}>
-            <IconRestore size={18} />
-          </ActionIcon>
-        </Tooltip>
       </Group>
 
       <Stack gap="md">

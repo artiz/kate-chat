@@ -355,6 +355,7 @@ type MessageMetadata {
   annotations: [ChatResultAnnotation!]
   documentIds: [ID!]
   relevantsChunks: [MessageRelevantChunk!]
+  requestId: String
   toolCalls: [ChatToolCall!]
   tools: [ChatToolCallResult!]
   usage: ModelResponseUsage
@@ -374,6 +375,7 @@ type Model {
   apiProvider: ApiProvider!
   createdAt: DateTimeISO!
   description: String
+  features: [ModelFeature!]
   id: ID!
   imageInput: Boolean!
   isActive: Boolean!
@@ -388,6 +390,14 @@ type Model {
   updatedAt: DateTimeISO!
   user: User
   userId: String
+}
+
+"""
+Features that can be enabled for the model
+"""
+enum ModelFeature {
+  REASONING
+  REQUEST_CANCELLATION
 }
 
 type ModelResponseUsage {
@@ -425,6 +435,7 @@ type Mutation {
   reindexDocument(id: ID!): Document!
   reloadModels: GqlModelsList!
   removeDocumentsFromChat(chatId: ID!, documentIds: [ID!]!): RemoveDocumentsFromChatResponse!
+  stopMessageGeneration(input: StopMessageGenerationInput!): StopMessageGenerationResponse!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
@@ -466,6 +477,17 @@ input RegisterInput {
 type RemoveDocumentsFromChatResponse {
   chat: Chat
   error: String
+}
+
+input StopMessageGenerationInput {
+  messageId: String!
+  requestId: String!
+}
+
+type StopMessageGenerationResponse {
+  error: String
+  messageId: String
+  requestId: String
 }
 
 type Subscription {

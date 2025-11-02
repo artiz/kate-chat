@@ -12,6 +12,7 @@ export const BASE_MODEL_FRAGMENT = `
       imageInput
       maxInputTokens
       tools
+      features
     }
 `;
 
@@ -125,6 +126,7 @@ export const BASE_MESSAGE_FRAGMENT = `
         avatarUrl
       }
       linkedToMessageId
+      status
       metadata {
         documentIds
         usage {
@@ -263,6 +265,16 @@ export const EDIT_MESSAGE_MUTATION = gql`
         }
       }
       error
+    }
+  }
+`;
+
+export const STOP_MESSAGE_GENERATION_MUTATION = gql`
+  mutation StopMessageGeneration($input: StopMessageGenerationInput!) {
+    stopMessageGeneration(input: $input) {
+      error
+      requestId
+      messageId
     }
   }
 `;

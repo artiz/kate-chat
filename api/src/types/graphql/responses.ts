@@ -259,6 +259,18 @@ export class CallOtherResponse {
 }
 
 @ObjectType()
+export class StopMessageGenerationResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field({ nullable: true })
+  requestId?: string;
+
+  @Field({ nullable: true })
+  messageId?: string;
+}
+
+@ObjectType()
 export class GqlImage {
   @Field(() => ID)
   id: string;

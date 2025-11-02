@@ -18,9 +18,15 @@ import { useChatSubscription, useChatMessages } from "@/hooks";
 
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
-import { ChatDocument, CreateMessageResponse } from "@/types/graphql";
+import {
+  ChatDocument,
+  CreateMessageResponse,
+  ModelFeature,
+  StopMessageGenerationResponse,
+  StopMessageGenerationInput,
+} from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
-import { CREATE_MESSAGE } from "@/store/services/graphql.queries";
+import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/services/graphql.queries";
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
@@ -61,7 +67,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     chatId,
   });
 
-  const { wsConnected } = useChatSubscription({
+  const { wsConnected, messageMetadata } = useChatSubscription({
     id: chatId,
     resetSending: () => setSending(false),
     addMessage: addChatMessage,
@@ -116,6 +122,28 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
+  const [stopMessageGeneration, { loading: stopping }] = useMutation<
+    StopMessageGenerationResponse,
+    { input: StopMessageGenerationInput }
+  >(STOP_MESSAGE_GENERATION_MUTATION, {
+    onCompleted: data => {
+      if (data.stopMessageGeneration.error) {
+        notifications.show({
+          title: "Error",
+          message: data.stopMessageGeneration.error,
+          color: "red",
+        });
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to stop message generation",
+        color: "red",
+      });
+    },
+  });
+
   const handleSendMessage = async (message: string, images: ImageInput[] = []) => {
     if (!message?.trim() && !images.length) return;
     assert.ok(chatId, "Chat is required to send a message");
@@ -146,7 +174,41 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
   };
 
-  // #endregion
+  const handleStopRequest = useCallback(async () => {
+    if (!messageMetadata?.requestId) {
+      return notifications.show({
+        title: "Error",
+        message: "No request ID found for current message",
+        color: "red",
+      });
+    }
+
+    // Find the assistant message that's currently being generated
+    const message = messages?.findLast(
+      msg => msg.role === MessageRole.ASSISTANT && msg.metadata?.requestId === messageMetadata.requestId
+    );
+
+    if (!message?.id) {
+      return notifications.show({
+        title: "Error",
+        message: "No message found to stop",
+        color: "red",
+      });
+    }
+
+    try {
+      await stopMessageGeneration({
+        variables: {
+          input: {
+            requestId: messageMetadata.requestId,
+            messageId: message.id,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error stopping message generation:", error);
+    }
+  }, [messageMetadata, messages, stopMessageGeneration]); // #endregion
 
   const models = useMemo(() => {
     return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
@@ -224,6 +286,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
     return appConfig?.s3Connected;
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
+
+  const requestStoppable = useMemo(() => {
+    return (
+      !stopping && messageMetadata?.requestId && selectedModel?.features?.includes(ModelFeature.REQUEST_CANCELLATION)
+    );
+  }, [selectedModel, stopping, messageMetadata?.requestId]);
 
   return (
     <Container size="xl" py="md" className={classes.container}>
@@ -357,6 +425,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         maxUploadFileSize={MAX_UPLOAD_FILE_SIZE}
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}
+        onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />
     </Container>
   );

@@ -14,7 +14,7 @@ import {
 } from "@/types/graphql";
 import { BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "./graphql.queries";
 
-export const handleError = (error: { name: string; status?: string }, meta: unknown) => {
+export const handleError = (error: { status?: string | number }, meta: unknown) => {
   if (error?.status === "FETCH_ERROR") {
     setTimeout(() => {
       window.location.reload();

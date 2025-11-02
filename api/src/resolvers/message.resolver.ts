@@ -1,7 +1,12 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { Repository, IsNull, In } from "typeorm";
 import { Message } from "@/entities";
-import { CreateMessageInput, GetMessagesInput, GetImagesInput } from "@/types/graphql/inputs";
+import {
+  CreateMessageInput,
+  GetMessagesInput,
+  GetImagesInput,
+  StopMessageGenerationInput,
+} from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from ".";
 import {
@@ -13,6 +18,7 @@ import {
   GqlImage,
   CallOtherResponse,
   DeleteMessageResponse,
+  StopMessageGenerationResponse,
 } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
@@ -266,6 +272,32 @@ export class MessageResolver extends BaseResolver {
     } catch (error) {
       logger.error(error, "Error editing message");
       return { error: `Failed to edit message: ${error instanceof Error ? error.message : String(error)}` };
+    }
+  }
+
+  @Mutation(() => StopMessageGenerationResponse)
+  async stopMessageGeneration(
+    @Arg("input") input: StopMessageGenerationInput,
+    @Ctx() context: GraphQLContext
+  ): Promise<StopMessageGenerationResponse> {
+    try {
+      const user = await this.validateContextUser(context);
+      const messageService = this.getMessagesService(context);
+
+      await messageService.stopMessageGeneration(
+        input.requestId,
+        input.messageId,
+        this.loadConnectionParams(context, user),
+        user
+      );
+
+      return { ...input };
+    } catch (error) {
+      logger.error(error, "Error stopping message generation");
+      return {
+        ...input,
+        error: `Failed to stop message generation: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   }
 

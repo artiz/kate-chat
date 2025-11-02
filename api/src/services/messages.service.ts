@@ -22,7 +22,7 @@ import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
 import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
-import { NEW_MESSAGE, SubscriptionsService } from "./messaging";
+import { CHAT_MESSAGES_CHANNEL, NEW_MESSAGE, SubscriptionsService } from "./messaging";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
@@ -64,6 +64,7 @@ export class MessagesService {
   private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
   private embeddingsService: EmbeddingsService;
+  private cancelledMessages: Set<string> = new Set<string>();
 
   constructor(subscriptionsService: SubscriptionsService) {
     this.subscriptionsService = subscriptionsService;
@@ -72,11 +73,13 @@ export class MessagesService {
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
     this.modelRepository = getRepository(Model);
+
+    subscriptionsService.on(CHAT_MESSAGES_CHANNEL, this.handleMessageEvent.bind(this));
   }
 
   public connectClient(socket: WebSocket, request: IncomingMessage, chatId: string) {
     const clientIp = request.headers["x-forwarded-for"] || request.socket.remoteAddress;
-    logger.debug({ chatId, clientIp }, "Client connected");
+    logger.trace({ chatId, clientIp }, "Client connected");
 
     MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
@@ -86,7 +89,9 @@ export class MessagesService {
 
   public disconnectClient(socket: WebSocket) {
     const chatId = MessagesService.clients.get(socket);
-    MessagesService.clients.delete(socket);
+    if (chatId) {
+      MessagesService.clients.delete(socket);
+    }
   }
 
   public publishGraphQL(routingKey: string, payload: unknown) {
@@ -97,6 +102,14 @@ export class MessagesService {
     return {
       [Symbol.asyncIterator]: () => SubscriptionsService.pubSub.asyncIterator(routingKey),
     };
+  }
+
+  protected async handleMessageEvent(data: { message: Message; streaming: boolean }) {
+    const { message } = data;
+
+    if (message?.status === ResponseStatus.CANCELLED) {
+      this.cancelledMessages.add(message.id);
+    }
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
@@ -598,19 +611,31 @@ export class MessagesService {
 
     const s3Service = new S3Service(user.toToken());
 
-    const completeRequest = async (message: Message) => {
+    const completeRequest = async (message: Message): Promise<boolean> => {
       ok(message);
       if (!chat.title || chat.isPristine) {
         chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || "");
         chat.isPristine = false;
         await this.chatRepository.save(chat);
       }
+      const stopped = this.cancelledMessages.has(message.id);
 
-      message.status = undefined;
-      message.statusInfo = undefined;
+      if (stopped) {
+        message.status = ResponseStatus.CANCELLED;
+        message.statusInfo = undefined;
+      } else {
+        message.status = undefined;
+        message.statusInfo = undefined;
+      }
 
       const savedMessage = await this.messageRepository.save(message);
       await this.subscriptionsService.publishChatMessage(chat, savedMessage);
+
+      if (stopped) {
+        this.cancelledMessages.delete(message.id);
+      }
+
+      return stopped;
     };
 
     if (!model.streaming) {
@@ -676,8 +701,9 @@ export class MessagesService {
       data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
       completed?: boolean,
       forceFlush?: boolean
-    ) => {
+    ): Promise<boolean | undefined> => {
       const { content: token = "", error, metadata = {}, status } = data;
+      const messageId = assistantMessage.id;
 
       if (completed) {
         if (error) {
@@ -685,7 +711,7 @@ export class MessagesService {
             ...assistantMessage,
             content: getErrorMessage(error),
             role: MessageRole.ERROR,
-          } as Message).catch(err => logger.error(err, "Error sending AI response"));
+          } as Message);
         }
 
         assistantMessage.content = token.trim() || "_No response_";
@@ -697,18 +723,20 @@ export class MessagesService {
           }
         }
 
-        return completeRequest(assistantMessage).catch(err => {
-          this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
-          logger.error(err, "Error sending AI response");
-        });
+        return completeRequest(assistantMessage);
+      }
+
+      if (this.cancelledMessages.has(messageId)) {
+        return true;
       }
 
       content += token;
       const now = new Date();
+
       if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
         lastPublish = now.getTime();
         assistantMessage.content = content;
-        assistantMessage.status = status?.status || ResponseStatus.IN_PROGRESS;
+        assistantMessage.status = status?.status || ResponseStatus.STARTED;
         assistantMessage.statusInfo = this.getStatusInformation(status);
         assistantMessage.updatedAt = now;
 
@@ -732,13 +760,15 @@ export class MessagesService {
           }
 
           await this.messageRepository.save(assistantMessage);
+        } else if (status?.status === ResponseStatus.STARTED && status.requestId) {
+          if (!assistantMessage.metadata) assistantMessage.metadata = {};
+          assistantMessage.metadata.requestId = status.requestId;
         }
 
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
       }
     };
 
-    await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
     this.aiService
       .streamChatCompletion(connection, request, inputMessages, handleStreaming, s3Service)
       .catch((error: unknown) => {
@@ -945,6 +975,57 @@ export class MessagesService {
     const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
     return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
   };
+
+  /**
+   * Stop message generation by request ID and message ID.
+   */
+  async stopMessageGeneration(
+    requestId: string,
+    messageId: string,
+    connection: ConnectionParams,
+    user: User
+  ): Promise<void> {
+    logger.debug(
+      `Stopping message generation for requestId: ${requestId}, messageId: ${messageId}, userId: ${user.id}`
+    );
+
+    // First verify that the message belongs to the user
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId },
+      relations: ["chat"],
+    });
+    if (!message) {
+      throw new Error("Message not found");
+    }
+    if (!message.chat) {
+      throw new Error("Message chat not found");
+    }
+    if (message.userId !== user.id) {
+      throw new Error("Access denied: Message does not belong to the user");
+    }
+
+    const model = await this.modelRepository.findOne({ where: { modelId: message.modelId } });
+
+    if (!model) {
+      throw new Error("Model not found");
+    }
+
+    try {
+      await this.aiService.stopRequest(model, connection, requestId);
+      this.cancelledMessages.add(messageId);
+
+      message.status = ResponseStatus.CANCELLED;
+      await this.subscriptionsService.publishChatMessage(
+        message.chat,
+        await this.messageRepository.save(message),
+        false
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(error, `Failed to stop message generation for requestId: ${requestId}`);
+      throw new Error(`Failed to stop message generation: ${errorMessage}`);
+    }
+  }
 
   public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {
     if (!deletedImageFiles || deletedImageFiles.length === 0) return;

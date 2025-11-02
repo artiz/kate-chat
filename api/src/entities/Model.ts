@@ -1,6 +1,6 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
 import { Field, ID, ObjectType, registerEnumType } from "type-graphql";
-import { ModelType, ToolType } from "../types/ai.types";
+import { ModelFeature, ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
 import { EnumTransformer, JSONTransformer } from "../utils/db";
 import { ApiProvider } from "../config/ai/common";
@@ -18,6 +18,10 @@ registerEnumType(ModelType, {
 registerEnumType(ToolType, {
   name: "ToolType",
   description: "Type of tool that can be used in chat",
+});
+registerEnumType(ModelFeature, {
+  name: "ModelFeature",
+  description: "Features that can be enabled for the model",
 });
 
 @ObjectType()
@@ -78,6 +82,10 @@ export class Model {
   @Field({ nullable: true })
   @Column({ nullable: true })
   maxInputTokens?: number;
+
+  @Field(() => [ModelFeature], { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ModelFeature[]>(), default: null })
+  features?: ModelFeature[];
 
   @Field(() => [ToolType], { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ToolType[]>(), default: null })

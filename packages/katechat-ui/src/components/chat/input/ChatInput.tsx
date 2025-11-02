@@ -250,11 +250,10 @@ export const ChatInput = ({
               onKeyDown={handleInputKeyDown}
               disabled={disabled}
             />
-            {onStopRequest ? true : null}
 
             {onStopRequest && streaming ? (
               <Button onClick={onStopRequest} disabled={disabled}>
-                <IconPlayerStopFilled size={16} /> Stop
+                <IconPlayerStopFilled size={24} /> <Text visibleFrom="md">Stop</Text>
               </Button>
             ) : (
               <Button
@@ -262,7 +261,7 @@ export const ChatInput = ({
                 disabled={sendMessageNotAllowed}
                 className={onStopRequest && streaming ? classes.hidden : ""}
               >
-                <IconSend size={16} /> Send
+                <IconSend size={24} /> <Text visibleFrom="md">Send</Text>
               </Button>
             )}
           </div>

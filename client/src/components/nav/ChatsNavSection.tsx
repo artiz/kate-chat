@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Text, Group, Loader, Menu, ActionIcon } from "@mantine/core";
+import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion } from "@mantine/core";
 import { IconMessage, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
 import { assert } from "@katechat/ui";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { Chat, UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql.queries";
+import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { removeChat, updateChat } from "@/store/slices/chatSlice";
 
 import classes from "./ChatsNavSection.module.scss";
 import { DeleteConfirmationModal } from "../modal";
+import { Chat } from "@/types/graphql";
 
 export interface ChatsSectionBlock {
   label: string;
@@ -323,64 +324,75 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   }
 
   return (
-    <Stack gap="0">
+    <Accordion
+      multiple
+      p="0"
+      variant="default"
+      chevronSize="lg"
+      defaultValue={sortedChats.map(block => block.label)}
+      classNames={classes}
+    >
       {sortedChats.map((block, index) => (
-        <Stack key={index} className={classes.chatsBlock} gap="0">
-          <div className={classes.chatsBlockLabel}>{block.label}</div>
-          {block.chats.map(chat => (
-            <div key={chat.id} style={{ position: "relative" }}>
-              {editingChatId === chat.id ? (
-                <TextInput
-                  value={editedTitle}
-                  onChange={e => setEditedTitle(e.currentTarget.value)}
-                  autoFocus
-                  rightSection={
-                    <Button size="xs" p="xs" variant="subtle" onClick={handleSaveTitle(chat.id)}>
-                      ✔️
-                    </Button>
-                  }
-                  onKeyUp={handleEditKeyUp(chat.id)}
-                  onBlur={handleEditBlur}
-                />
-              ) : (
-                <Group justify="space-between" wrap="nowrap" className={classes.chatItem} gap="0">
-                  <NavLink
-                    active={chat.id === currentChatId}
-                    label={chat.title || "Untitled Chat"}
-                    leftSection={<IconMessage size={16} />}
-                    onClick={() => handleChatClick(chat.id)}
+        <Accordion.Item key={block.label} value={block.label}>
+          <Accordion.Control icon={<IconMessage />}>{block.label}</Accordion.Control>
+          <Accordion.Panel>
+            {block.chats.map(chat => (
+              <div key={chat.id} className={classes.chatItem}>
+                {editingChatId === chat.id ? (
+                  <TextInput
+                    value={editedTitle}
+                    onChange={e => setEditedTitle(e.currentTarget.value)}
+                    autoFocus
+                    rightSection={
+                      <Button size="xs" p="xs" variant="subtle" onClick={handleSaveTitle(chat.id)}>
+                        ✔️
+                      </Button>
+                    }
+                    onKeyUp={handleEditKeyUp(chat.id)}
+                    onBlur={handleEditBlur}
                   />
-                  <Menu
-                    position="right"
-                    withArrow
-                    arrowPosition="center"
-                    trigger="click"
-                    openDelay={100}
-                    closeDelay={400}
-                  >
-                    <Menu.Target>
-                      <ActionIcon size="sm" onClick={e => e.stopPropagation()}>
-                        <IconDots size={14} />
-                      </ActionIcon>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item leftSection={<IconEdit size={14} />} onClick={e => handleEditClick(e, chat)}>
-                        Rename
-                      </Menu.Item>
-                      <Menu.Item
-                        leftSection={<IconTrash size={14} />}
-                        color="red"
-                        onClick={e => handleDeleteClick(e, chat.id)}
-                      >
-                        Delete
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                </Group>
-              )}
-            </div>
-          ))}
-        </Stack>
+                ) : (
+                  <>
+                    <NavLink
+                      active={chat.id === currentChatId}
+                      label={chat.title || "Untitled Chat"}
+                      leftSection={<IconMessage size={16} />}
+                      onClick={() => handleChatClick(chat.id)}
+                      p="xs"
+                      m="0"
+                    />
+                    <Menu
+                      position="right"
+                      withArrow
+                      arrowPosition="center"
+                      trigger="click"
+                      openDelay={100}
+                      closeDelay={400}
+                    >
+                      <Menu.Target>
+                        <ActionIcon size="sm" onClick={e => e.stopPropagation()}>
+                          <IconDots size={14} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item leftSection={<IconEdit size={14} />} onClick={e => handleEditClick(e, chat)}>
+                          Rename
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconTrash size={14} />}
+                          color="red"
+                          onClick={e => handleDeleteClick(e, chat.id)}
+                        >
+                          Delete
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  </>
+                )}
+              </div>
+            ))}
+          </Accordion.Panel>
+        </Accordion.Item>
       ))}
 
       <DeleteConfirmationModal
@@ -392,6 +404,6 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
         confirmLabel="Delete"
         isLoading={deleteLoading}
       />
-    </Stack>
+    </Accordion>
   );
 };

@@ -11,6 +11,7 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 - Chat history storage and management, messages editing/deletion
 - Rich markdown formatting: code blocks, images, MathJax formulas etc.
 - "Switch model"/"Call other model" logic to process current chat messages with another model
+- Request cancellation to stop reasoning or web search
 - Parallel call for assistant message against other models to [compare results](#screenshots)
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
@@ -50,7 +51,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
-* Add request cancellation to stop reasoning or web search (GPT-5)
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc)

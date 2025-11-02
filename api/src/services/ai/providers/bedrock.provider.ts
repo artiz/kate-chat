@@ -175,15 +175,11 @@ export class BedrockApiProvider extends BaseApiProvider {
   ): Promise<void> {
     if (!this.bedrockClient) {
       const err = new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
-      if (callbacks.onError) {
-        callbacks.onError(err);
-      } else {
-        throw err;
-      }
+      await callbacks.onError(err);
       return;
     }
 
-    callbacks.onStart?.();
+    await callbacks.onStart();
 
     const conversationMessages: ConverseMessage[] = [];
     let requestCompleted = false;
@@ -210,7 +206,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
         // Process the stream
         if (!streamResponse?.stream) {
-          callbacks.onComplete?.("_No response_");
+          await callbacks.onComplete("_No response_");
           requestCompleted = true;
           break;
         }
@@ -220,15 +216,15 @@ export class BedrockApiProvider extends BaseApiProvider {
             const delta = chunk.contentBlockDelta.delta;
             if (delta.text) {
               fullResponse += delta.text;
-              callbacks.onProgress?.(delta.text);
+              await callbacks.onProgress(delta.text);
             } else if (delta.reasoningContent) {
               reasoningContent += delta.reasoningContent;
-              callbacks.onProgress?.("", { status: ResponseStatus.REASONING, detail: reasoningContent });
+              await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: reasoningContent });
             } else if (delta.toolUse && currentToolUse) {
               currentToolUse.input += delta.toolUse.input || "";
               const status =
                 currentToolUse.name === WEB_SEARCH_TOOL_NAME ? ResponseStatus.WEB_SEARCH : ResponseStatus.TOOL_CALL;
-              callbacks.onProgress?.("", { status, detail: currentToolUse.input as string }, true);
+              await callbacks.onProgress("", { status, detail: currentToolUse.input as string }, true);
             }
           } else if (chunk.contentBlockStart?.start?.toolUse) {
             currentToolUse = {
@@ -272,7 +268,7 @@ export class BedrockApiProvider extends BaseApiProvider {
                 ? JSON.stringify(streamedToolUse[0].input || {})
                 : `Call tools: ${streamedToolUse.map(t => t.name).join(", ")}`;
 
-            callbacks.onProgress?.("", { status, detail, toolCalls });
+            await callbacks.onProgress("", { status, detail, toolCalls });
 
             // Build assistant message with tool use for conversation history
             const assistantContent: ContentBlock[] = [];
@@ -335,7 +331,7 @@ export class BedrockApiProvider extends BaseApiProvider {
               role: "user",
               content: toolResultContent,
             });
-            callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools: toolResults });
+            await callbacks.onProgress("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools: toolResults });
 
             // Reset for next iteration
             fullResponse = "";
@@ -345,15 +341,15 @@ export class BedrockApiProvider extends BaseApiProvider {
           }
 
           if (chunk.internalServerException) {
-            callbacks.onError?.(chunk.internalServerException);
+            await callbacks.onError(chunk.internalServerException);
           } else if (chunk.modelStreamErrorException) {
-            callbacks.onError?.(chunk.modelStreamErrorException);
+            await callbacks.onError(chunk.modelStreamErrorException);
           } else if (chunk.validationException) {
-            callbacks.onError?.(chunk.validationException);
+            await callbacks.onError(chunk.validationException);
           } else if (chunk.throttlingException) {
-            callbacks.onError?.(chunk.throttlingException);
+            await callbacks.onError(chunk.throttlingException);
           } else if (chunk.serviceUnavailableException) {
-            callbacks.onError?.(chunk.serviceUnavailableException);
+            await callbacks.onError(chunk.serviceUnavailableException);
           }
 
           if (chunk.messageStop?.stopReason && chunk.messageStop.stopReason !== "tool_use") {
@@ -362,11 +358,11 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
 
         if (requestCompleted) {
-          callbacks.onComplete?.(fullResponse, metadata);
+          await callbacks.onComplete(fullResponse, metadata);
         }
       } catch (e: unknown) {
         logger.error(e, "InvokeModelWithResponseStreamCommand failed");
-        callbacks.onError?.(e instanceof Error ? e : new Error(getErrorMessage(e)));
+        await callbacks.onError(e instanceof Error ? e : new Error(getErrorMessage(e)));
         requestCompleted = true;
       }
     } while (!requestCompleted);
@@ -914,5 +910,10 @@ export class BedrockApiProvider extends BaseApiProvider {
       toolUse: toolUse.length > 0 ? toolUse : undefined,
       stopReason: response.stopReason,
     };
+  }
+
+  async stopRequest(requestId: string, modelId: string): Promise<void> {
+    // Bedrock does not support request cancellation
+    throw new Error("Request cancellation is not supported by AWS Bedrock");
   }
 }

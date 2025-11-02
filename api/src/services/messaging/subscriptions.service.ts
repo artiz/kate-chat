@@ -9,6 +9,7 @@ import { MessageRole } from "@/types/ai.types";
 import { Document } from "@/entities/Document";
 import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/responses";
 import { Chat } from "@/entities";
+import EventEmitter from "events";
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -25,7 +26,7 @@ export const CHAT_MESSAGES_CHANNEL = process.env.CHAT_MESSAGES_CHANNEL || "chat:
 export const CHAT_ERRORS_CHANNEL = process.env.CHAT_ERRORS_CHANNEL || "chat:errors";
 export const DOCUMENT_STATUS_CHANNEL = process.env.DOCUMENT_STATUS_CHANNEL || "document:status";
 
-export class SubscriptionsService {
+export class SubscriptionsService extends EventEmitter {
   private connectionError: boolean = false;
   private redisClient: RedisClientType | null = null;
   private redisSub: RedisClientType | null = null;
@@ -42,6 +43,8 @@ export class SubscriptionsService {
   }
 
   constructor() {
+    super();
+
     // init Redis client for storing messages and PubSub
     // NOTE: Redis connection is optional - application works without Redis
     // but will not share messages between multiple instances
@@ -101,12 +104,14 @@ export class SubscriptionsService {
                   const data = JSON.parse(message);
 
                   if (channel === DOCUMENT_STATUS_CHANNEL) {
+                    this.emit(channel, data);
                     await SubscriptionsService.pubSub.publish(DOCUMENT_STATUS_CHANNEL, data);
                     return;
                   }
 
                   const { chatId, messageId, error, streaming } = data;
                   if (channel === CHAT_ERRORS_CHANNEL) {
+                    this.emit(channel, data);
                     return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
                       chatId,
                       data: { error: error || "Unknown error" },
@@ -117,6 +122,12 @@ export class SubscriptionsService {
                   const messageData = await this.getMessageData(messageId);
                   if (messageData) {
                     const { message, chat } = messageData;
+                    this.emit(channel, {
+                      chat,
+                      message,
+                      streaming,
+                    });
+
                     // Send to client via GraphQL PubSub
                     await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
                       chatId,
@@ -129,6 +140,10 @@ export class SubscriptionsService {
                     });
                   } else {
                     logger.error(error, `Sync error: message ${messageId} not found in Redis`);
+                    await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+                      chatId,
+                      data: { error: "Sync error: message not found in cache" },
+                    });
                   }
                 } catch (error) {
                   logger.error(error, "Error processing Redis message");

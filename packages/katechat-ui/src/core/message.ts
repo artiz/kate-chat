@@ -13,6 +13,7 @@ export enum MessageRole {
 }
 
 export enum ResponseStatus {
+  STARTED = "started",
   IN_PROGRESS = "in_progress",
   RAG_SEARCH = "rag_search",
   WEB_SEARCH = "web_search",
@@ -21,6 +22,7 @@ export enum ResponseStatus {
   TOOL_CALL_COMPLETED = "tool_call_completed",
   REASONING = "reasoning",
   COMPLETED = "completed",
+  CANCELLED = "cancelled",
   ERROR = "error",
 }
 

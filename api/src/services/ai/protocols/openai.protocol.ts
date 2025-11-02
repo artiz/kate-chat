@@ -5,6 +5,7 @@ import {
   StreamCallbacks,
   CompleteChatRequest,
   MessageMetadata,
+  MessageRole,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   ToolType,
@@ -13,7 +14,6 @@ import {
   ChatToolCallResult,
   ChatResponseStatus,
 } from "@/types/ai.types";
-import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -22,7 +22,6 @@ import {
   COMPLETION_API_TOOLS,
   COMPLETION_API_TOOLS_TO_STATUS,
   WEB_SEARCH_TOOL,
-  WEB_SEARCH_TOOL_NAME,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
 
@@ -128,7 +127,6 @@ export class OpenAIProtocol {
     callbacks: StreamCallbacks,
     apiType: OpenAIApiType = "completions"
   ): Promise<void> {
-    callbacks.onStart?.();
     try {
       if (apiType === "responses") {
         await this.streamChatResponses(inputRequest, messages, callbacks);
@@ -136,11 +134,12 @@ export class OpenAIProtocol {
         await this.streamChatCompletionLegacy(inputRequest, messages, callbacks);
       }
     } catch (error) {
-      logger.warn(error, "streaming error");
+      logger.warn(error, "Streaming error");
+
       if (error instanceof OpenAI.APIError) {
-        callbacks.onError?.(new Error(`OpenAI API error: ${error.message}`));
+        await callbacks.onError(new Error(`OpenAI API error: ${error.message}`));
       } else {
-        callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+        await callbacks.onError(error instanceof Error ? error : new Error(String(error)));
       }
     }
   }
@@ -429,7 +428,11 @@ export class OpenAIProtocol {
 
     let fullResponse = "";
     let meta: MessageMetadata | undefined = undefined;
-    let requestCompleted = false;
+
+    let stopped = await callbacks.onStart();
+    if (stopped) {
+      return await callbacks.onComplete(fullResponse, meta);
+    }
 
     do {
       logger.trace({ ...params }, "invoking streaming chat.completions...");
@@ -437,6 +440,11 @@ export class OpenAIProtocol {
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
       for await (const chunk of stream) {
+        if (stopped) {
+          stream?.controller?.abort();
+          break;
+        }
+
         const choice = chunk.choices?.[0];
 
         if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
@@ -446,8 +454,8 @@ export class OpenAIProtocol {
           const failedCall = toolCalls.find(call => call.error);
 
           if (failedCall) {
-            callbacks.onError?.(new Error(failedCall.error));
-            requestCompleted = true;
+            await callbacks.onError(new Error(failedCall.error));
+            stopped = true;
             break;
           }
 
@@ -456,7 +464,14 @@ export class OpenAIProtocol {
             name: c.name || "unknown",
             args: JSON.stringify(c.arguments || {}),
           }));
-          callbacks.onProgress?.(genProcessSymbol(), { status: ResponseStatus.TOOL_CALL, toolCalls: metaCalls });
+          stopped = await callbacks.onProgress(genProcessSymbol(), {
+            status: ResponseStatus.TOOL_CALL,
+            toolCalls: metaCalls,
+          });
+
+          if (stopped) {
+            break;
+          }
 
           const toolResults = await this.callCompletionTools(toolCalls, callbacks.onProgress);
 
@@ -467,20 +482,24 @@ export class OpenAIProtocol {
           });
           params.messages.push(...toolResults.map(tr => tr.result));
 
-          const tools: ChatToolCallResult[] = toolResults.map(({ call, result }) => {
-            const content = this.parseCompletionToolCallResult(result);
-            return {
-              name: call.name || "unknown",
-              content,
-              callId: call.callId,
-            };
-          });
-          callbacks.onProgress?.("", { status: ResponseStatus.TOOL_CALL_COMPLETED, tools });
+          const tools: ChatToolCallResult[] = toolResults
+            .map(({ call, result }) => {
+              if (!result) return undefined;
+              const content = this.parseCompletionToolCallResult(result);
+              return {
+                name: call.name || "unknown",
+                content,
+                callId: call.callId,
+              };
+            })
+            .filter(notEmpty);
 
-          requestCompleted = false;
+          await callbacks.onProgress("", { status: ResponseStatus.TOOL_CALL_COMPLETED, tools });
+
+          stopped = toolResults.some(tr => tr.stopped);
           break; // break for await to restart the request with new messages
         } else {
-          requestCompleted = true;
+          stopped = true;
         }
 
         if (choice?.delta?.tool_calls) {
@@ -499,7 +518,7 @@ export class OpenAIProtocol {
           const token = choice?.delta?.content || (choice?.delta as any)?.reasoning_content || "";
           if (token) {
             fullResponse += token;
-            callbacks.onProgress?.(token);
+            stopped = await callbacks.onProgress(token);
           }
         }
 
@@ -514,9 +533,9 @@ export class OpenAIProtocol {
           };
         }
       } // for await (const chunk of stream)
-    } while (!requestCompleted);
+    } while (!stopped);
 
-    callbacks.onComplete?.(fullResponse, meta);
+    await callbacks.onComplete(fullResponse, meta);
   }
 
   private parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
@@ -544,132 +563,153 @@ export class OpenAIProtocol {
     const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
       ...(await this.formatResponsesRequest(inputRequest, messages)),
       stream: true,
+      background: true, // to cancel it
     };
 
     if (logger.isLevelEnabled("trace")) {
       logger.trace({ ...params, input: this.debugResponseInput(params.input) }, "invoking streaming responses...");
     }
 
-    const stream = await this.openai.responses.create(params);
     let fullResponse = "";
     let meta: MessageMetadata = {};
     let lastStatus: ResponseStatus | undefined = undefined;
 
-    for await (const chunk of stream) {
-      if (chunk.type == "response.output_text.delta") {
-        callbacks.onProgress?.(chunk.delta);
-      } else if (
-        chunk.type == "response.web_search_call.in_progress" ||
-        chunk.type == "response.web_search_call.searching" ||
-        chunk.type == "response.web_search_call.completed"
-      ) {
-        if (lastStatus !== ResponseStatus.WEB_SEARCH) {
-          lastStatus = ResponseStatus.WEB_SEARCH;
-          callbacks.onProgress?.("", { status: ResponseStatus.WEB_SEARCH });
-        }
-      } else if (chunk.type == "response.code_interpreter_call.in_progress") {
-        if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
-          lastStatus = ResponseStatus.CODE_INTERPRETER;
-          callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
-        }
-      } else if (chunk.type == "response.code_interpreter_call_code.delta") {
-        callbacks.onProgress?.("", { status: ResponseStatus.CODE_INTERPRETER });
-      } else if (chunk.type == "response.code_interpreter_call.interpreting") {
-        callbacks.onProgress?.(genProcessSymbol(), { status: ResponseStatus.CODE_INTERPRETER });
-      } else if (chunk.type == "response.code_interpreter_call_code.done") {
-        logger.debug(chunk, "code interpreter call completed");
-        callbacks.onProgress?.("", {
-          status: ResponseStatus.CODE_INTERPRETER,
-          tools: [
-            {
-              name: "code_interpreter",
-              content: chunk.code || "",
-              callId: chunk.item_id,
-            },
-          ],
-        });
-      } else if (chunk.type == "response.output_item.done") {
-        let status: ResponseStatus | undefined = undefined;
-        const item = chunk.item;
-        let detail: string | undefined = undefined;
-        if ("action" in item) {
-          if ("query" in item.action) {
-            detail = item.action.query as string;
+    await callbacks.onStart();
+    const stream = await this.openai.responses.create(params);
+    let stopped: boolean | undefined = false;
+
+    try {
+      for await (const chunk of stream) {
+        if (stopped) break;
+
+        if (chunk.type == "response.created") {
+          stopped = await callbacks.onProgress("", {
+            status: ResponseStatus.STARTED,
+            requestId: chunk.response.id,
+          });
+        } else if (chunk.type == "response.output_text.delta") {
+          stopped = await callbacks.onProgress(chunk.delta);
+          fullResponse += chunk.delta;
+        } else if (
+          chunk.type == "response.web_search_call.in_progress" ||
+          chunk.type == "response.web_search_call.searching" ||
+          chunk.type == "response.web_search_call.completed"
+        ) {
+          if (lastStatus !== ResponseStatus.WEB_SEARCH) {
+            lastStatus = ResponseStatus.WEB_SEARCH;
+            stopped = await callbacks.onProgress("", { status: ResponseStatus.WEB_SEARCH });
           }
-        }
-
-        if (item.type === "web_search_call") {
-          status = ResponseStatus.WEB_SEARCH;
-        } else if (item.type === "code_interpreter_call") {
-          status = ResponseStatus.CODE_INTERPRETER;
-        } else if (item.type === "function_call") {
-          status = ResponseStatus.TOOL_CALL;
-        } else if (item.type === "reasoning") {
-          if (item.summary?.length || item.content?.length) {
-            status = ResponseStatus.REASONING;
-          } else {
-            status = undefined;
+        } else if (chunk.type == "response.code_interpreter_call.in_progress") {
+          if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
+            lastStatus = ResponseStatus.CODE_INTERPRETER;
+            stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
           }
-        }
-
-        if (status) {
-          lastStatus = status;
-          callbacks.onProgress?.("", {
-            status,
-            sequence_number: chunk.sequence_number,
-            detail,
+        } else if (chunk.type == "response.code_interpreter_call_code.delta") {
+          stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
+        } else if (chunk.type == "response.code_interpreter_call.interpreting") {
+          stopped = await callbacks.onProgress(genProcessSymbol(), { status: ResponseStatus.CODE_INTERPRETER });
+        } else if (chunk.type == "response.code_interpreter_call_code.done") {
+          logger.debug(chunk, "code interpreter call completed");
+          stopped = await callbacks.onProgress("", {
+            status: ResponseStatus.CODE_INTERPRETER,
+            tools: [
+              {
+                name: "code_interpreter",
+                content: chunk.code || "",
+                callId: chunk.item_id,
+              },
+            ],
           });
-        }
-      } else if (
-        chunk.type == "response.output_text.annotation.added" &&
-        chunk.annotation &&
-        typeof chunk.annotation === "object"
-      ) {
-        if (!("type" in chunk.annotation)) return;
+        } else if (chunk.type == "response.output_item.done") {
+          let status: ResponseStatus | undefined = undefined;
+          const item = chunk.item;
+          let detail: string | undefined = undefined;
+          if ("action" in item) {
+            if ("query" in item.action) {
+              detail = item.action.query as string;
+            }
+          }
 
-        if (!meta.annotations) {
-          meta.annotations = [];
-        }
+          if (item.type === "web_search_call") {
+            status = ResponseStatus.WEB_SEARCH;
+          } else if (item.type === "code_interpreter_call") {
+            status = ResponseStatus.CODE_INTERPRETER;
+          } else if (item.type === "function_call") {
+            status = ResponseStatus.TOOL_CALL;
+          } else if (item.type === "reasoning") {
+            if (item.summary?.length || item.content?.length) {
+              status = ResponseStatus.REASONING;
+            } else {
+              status = undefined;
+            }
+          }
 
-        if (chunk.annotation.type === "url_citation") {
-          const annotation = chunk.annotation as {
-            start_index?: number;
-            end_index?: number;
-            type: string;
-            title?: string;
-            url: string;
-          };
-          meta.annotations.push({
-            type: "url",
-            title: annotation.title,
-            source: annotation.url,
-            endIndex: annotation.end_index,
-            startIndex: annotation.start_index,
-          });
-        } else if (chunk.annotation.type === "file_citation") {
-          const annotation = chunk.annotation as { file_id: string; filename: string; type: string };
-          meta.annotations.push({
-            type: "file",
-            title: annotation.filename,
-            source: annotation.file_id,
-          });
-        }
-      } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
-        const { content, metadata } = this.parseResponsesOutput(chunk.response);
-        if (metadata) {
-          meta = {
-            ...meta,
-            ...metadata,
-          };
-        }
+          if (status) {
+            lastStatus = status;
+            stopped = await callbacks.onProgress("", {
+              status,
+              sequence_number: chunk.sequence_number,
+              detail,
+            });
+          }
+        } else if (
+          chunk.type == "response.output_text.annotation.added" &&
+          chunk.annotation &&
+          typeof chunk.annotation === "object"
+        ) {
+          if (!("type" in chunk.annotation)) return;
 
-        fullResponse = content || "_No response_";
-      } else if (!["response.output_item.added"].includes(chunk.type)) {
-        logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
+          if (!meta.annotations) {
+            meta.annotations = [];
+          }
+
+          if (chunk.annotation.type === "url_citation") {
+            const annotation = chunk.annotation as {
+              start_index?: number;
+              end_index?: number;
+              type: string;
+              title?: string;
+              url: string;
+            };
+            meta.annotations.push({
+              type: "url",
+              title: annotation.title,
+              source: annotation.url,
+              endIndex: annotation.end_index,
+              startIndex: annotation.start_index,
+            });
+          } else if (chunk.annotation.type === "file_citation") {
+            const annotation = chunk.annotation as { file_id: string; filename: string; type: string };
+            meta.annotations.push({
+              type: "file",
+              title: annotation.filename,
+              source: annotation.file_id,
+            });
+          }
+        } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
+          const { content, metadata } = this.parseResponsesOutput(chunk.response);
+          if (metadata) {
+            meta = {
+              ...meta,
+              ...metadata,
+            };
+          }
+
+          if (content) {
+            fullResponse = content;
+          }
+        } else if (!["response.output_item.added"].includes(chunk.type)) {
+          logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
+        }
       }
+    } catch (err: unknown) {
+      stopped = await callbacks.onError(err instanceof Error ? err : new Error(String(err)));
     }
 
-    callbacks.onComplete?.(fullResponse, meta);
+    if (stopped) {
+      stream?.controller?.abort(); // ensure stopping the background request
+    }
+    await callbacks.onComplete(fullResponse || (stopped ? "_Cancelled_" : "_No response_"), meta);
   }
 
   private parseResponsesOutput(response: OpenAI.Responses.Response): {
@@ -799,13 +839,22 @@ export class OpenAIProtocol {
 
   private callCompletionTools(
     toolCalls: ChatCompletionToolCall[],
-    onProgress?: ((token: string, status?: ChatResponseStatus, force?: boolean) => void) | undefined
-  ): Promise<{ call: ChatCompletionToolCall; result: OpenAI.Chat.Completions.ChatCompletionMessageParam }[]> {
+    onProgress?:
+      | ((token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>)
+      | undefined
+  ): Promise<
+    {
+      call: ChatCompletionToolCall;
+      result: OpenAI.Chat.Completions.ChatCompletionMessageParam;
+      stopped: boolean | undefined;
+    }[]
+  > {
     const requests = toolCalls.map(async call => {
       const tool = COMPLETION_API_TOOLS[call.name || ""];
       if (!tool) {
         return {
           call,
+          stopped: true,
           result: {
             role: "tool" as const,
             tool_call_id: call.callId,
@@ -817,6 +866,7 @@ export class OpenAIProtocol {
       if (!this.connection) {
         return {
           call,
+          stopped: true,
           result: {
             role: "tool" as const,
             tool_call_id: call.callId,
@@ -827,10 +877,20 @@ export class OpenAIProtocol {
 
       let status = (call.name && COMPLETION_API_TOOLS_TO_STATUS[call.name]) || ResponseStatus.TOOL_CALL;
       let detail = call.arguments ? JSON.stringify(call.arguments) : "";
-      onProgress?.("", { status, detail });
-
+      const stopped = await onProgress?.("", { status, detail });
+      if (stopped) {
+        return {
+          call,
+          result: {
+            role: "tool" as const,
+            tool_call_id: call.callId,
+            content: "",
+          },
+          stopped,
+        };
+      }
       const result = await tool.call(call.arguments || {}, call.callId, this.connection);
-      return { call, result };
+      return { call, result, stopped };
     });
 
     return Promise.all(requests);
@@ -871,5 +931,17 @@ export class OpenAIProtocol {
     }
 
     return toolCall;
+  }
+
+  /**
+   * Stop a running request by request ID.
+   * Only works with OpenAI responses API (background: true).
+   */
+  public async stopRequest(requestId: string): Promise<void> {
+    try {
+      await this.openai.responses.cancel(requestId);
+    } catch (error) {
+      logger.error(error, `Failed to stop request ${requestId}`);
+    }
   }
 }

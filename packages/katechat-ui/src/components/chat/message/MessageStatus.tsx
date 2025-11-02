@@ -3,6 +3,7 @@ import { Badge, DefaultMantineColor } from "@mantine/core";
 import { ResponseStatus } from "@/core/message";
 
 const TITLE_MAP: Record<ResponseStatus, string> = {
+  [ResponseStatus.STARTED]: "Started",
   [ResponseStatus.IN_PROGRESS]: "In Progress",
   [ResponseStatus.COMPLETED]: "Completed",
   [ResponseStatus.RAG_SEARCH]: "RAG Search",
@@ -12,9 +13,11 @@ const TITLE_MAP: Record<ResponseStatus, string> = {
   [ResponseStatus.REASONING]: "Reasoning",
   [ResponseStatus.ERROR]: "Error",
   [ResponseStatus.TOOL_CALL_COMPLETED]: "Tool Call Completed",
+  [ResponseStatus.CANCELLED]: "Cancelled",
 };
 
 const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
+  [ResponseStatus.STARTED]: "gray",
   [ResponseStatus.IN_PROGRESS]: "blue",
   [ResponseStatus.COMPLETED]: "green",
   [ResponseStatus.RAG_SEARCH]: "orange",
@@ -24,6 +27,7 @@ const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
   [ResponseStatus.REASONING]: "yellow",
   [ResponseStatus.ERROR]: "red",
   [ResponseStatus.TOOL_CALL_COMPLETED]: "green",
+  [ResponseStatus.CANCELLED]: "orange",
 };
 
 export const MessageStatus = ({ status }: { status: ResponseStatus }) => {

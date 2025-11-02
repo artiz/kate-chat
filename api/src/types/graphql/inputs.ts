@@ -275,3 +275,12 @@ export class GetDocumentsInput {
   @Field({ nullable: true })
   searchTerm?: string;
 }
+
+@InputType()
+export class StopMessageGenerationInput {
+  @Field()
+  requestId: string;
+
+  @Field()
+  messageId: string;
+}
