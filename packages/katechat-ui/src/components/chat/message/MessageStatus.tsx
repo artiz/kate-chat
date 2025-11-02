@@ -27,7 +27,7 @@ const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
   [ResponseStatus.REASONING]: "yellow",
   [ResponseStatus.ERROR]: "red",
   [ResponseStatus.TOOL_CALL_COMPLETED]: "green",
-  [ResponseStatus.CANCELLED]: "dark",
+  [ResponseStatus.CANCELLED]: "orange",
 };
 
 export const MessageStatus = ({ status }: { status: ResponseStatus }) => {

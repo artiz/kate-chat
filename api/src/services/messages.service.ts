@@ -105,7 +105,7 @@ export class MessagesService {
   }
 
   protected async handleMessageEvent(data: { message: Message; streaming: boolean }) {
-    const { message, streaming } = data;
+    const { message } = data;
 
     if (message?.status === ResponseStatus.CANCELLED) {
       this.cancelledMessages.add(message.id);

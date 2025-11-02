@@ -136,7 +136,7 @@ export class OpenAIProtocol {
     } catch (error) {
       logger.warn(error, "Streaming error");
 
-      if (error instanceof OpenAI.OpenAIError) {
+      if (error instanceof OpenAI.APIError) {
         await callbacks.onError(new Error(`OpenAI API error: ${error.message}`));
       } else {
         await callbacks.onError(error instanceof Error ? error : new Error(String(error)));
@@ -469,6 +469,10 @@ export class OpenAIProtocol {
             toolCalls: metaCalls,
           });
 
+          if (stopped) {
+            break;
+          }
+
           const toolResults = await this.callCompletionTools(toolCalls, callbacks.onProgress);
 
           // Add tool calls as last assistant message
@@ -476,7 +480,7 @@ export class OpenAIProtocol {
             role: "assistant",
             tool_calls: requestedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[],
           });
-          params.messages.push(...toolResults.map(tr => tr.result).filter(notEmpty));
+          params.messages.push(...toolResults.map(tr => tr.result));
 
           const tools: ChatToolCallResult[] = toolResults
             .map(({ call, result }) => {
@@ -841,7 +845,7 @@ export class OpenAIProtocol {
   ): Promise<
     {
       call: ChatCompletionToolCall;
-      result?: OpenAI.Chat.Completions.ChatCompletionMessageParam;
+      result: OpenAI.Chat.Completions.ChatCompletionMessageParam;
       stopped: boolean | undefined;
     }[]
   > {

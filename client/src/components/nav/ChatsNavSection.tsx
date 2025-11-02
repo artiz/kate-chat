@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Stack, Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion } from "@mantine/core";
+import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion } from "@mantine/core";
 import { IconMessage, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
