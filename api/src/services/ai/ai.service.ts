@@ -20,6 +20,7 @@ import { ApiProvider, ENABLED_API_PROVIDERS } from "@/config/ai/common";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseApiProvider } from "./providers/base.provider";
 import { FileContentLoader } from "../data";
+import { Model } from "@/entities";
 
 export class AIService {
   // Main method to interact with models
@@ -43,7 +44,7 @@ export class AIService {
       data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
       completed?: boolean,
       force?: boolean
-    ) => void,
+    ) => Promise<boolean | undefined>,
     fileLoader?: FileContentLoader
   ) {
     // Stream the completion in background
@@ -51,17 +52,31 @@ export class AIService {
       request,
       this.formatMessages(messages),
       {
-        onStart: (status?: ChatResponseStatus) => {
-          callback({ status });
+        onStart: async (status?: ChatResponseStatus) => {
+          try {
+            return await callback({ status });
+          } catch (error) {
+            logger.error(error, "Error starting AI request");
+            return true;
+          }
         },
-        onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => {
-          callback({ content: token, status }, false, force);
+        onProgress: async (token: string, status?: ChatResponseStatus, force?: boolean) => {
+          try {
+            return await callback({ content: token, status }, false, force);
+          } catch (error) {
+            logger.error(error, "Error processing AI request");
+            return true;
+          }
         },
-        onComplete: (response: string, metadata: MessageMetadata | undefined) => {
-          callback({ content: response, metadata }, true);
+        onComplete: async (response: string, metadata: MessageMetadata | undefined) => {
+          await callback({ content: response, metadata }, true);
         },
-        onError: (error: Error) => {
-          callback({ error }, true);
+        onError: async (error: Error) => {
+          try {
+            return await callback({ error }, true);
+          } catch (error) {
+            return true;
+          }
         },
       }
     );
@@ -199,5 +214,13 @@ export class AIService {
 
       return acc;
     }, []);
+  }
+
+  /**
+   * Stop a running request by request ID.
+   */
+  public async stopRequest(model: Model, connection: ConnectionParams, requestId: string): Promise<void> {
+    const provider = this.getApiProvider(model.apiProvider, connection);
+    return provider.stopRequest(requestId, model.modelId);
   }
 }

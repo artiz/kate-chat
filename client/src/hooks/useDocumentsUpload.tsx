@@ -63,7 +63,7 @@ export const useDocumentsUpload = () => {
     setUploadError(null);
 
     try {
-      onProgress?.(0);
+      onProgress(0);
 
       // good old XMLHttpRequest to track upload progress
       const xhr = new XMLHttpRequest();
@@ -90,7 +90,7 @@ export const useDocumentsUpload = () => {
         xhr.addEventListener("progress", evt => {
           if (evt.lengthComputable) {
             const progress = Math.round((100 * evt.loaded) / evt.total) / 100;
-            onProgress?.(progress);
+            onProgress(progress);
           }
         });
 
@@ -107,7 +107,7 @@ export const useDocumentsUpload = () => {
     } catch (error: unknown) {
       setUploadError(error instanceof Error ? error : new Error(String(error)));
     } finally {
-      onProgress?.(1);
+      onProgress(1);
       setLoading(false);
     }
   };

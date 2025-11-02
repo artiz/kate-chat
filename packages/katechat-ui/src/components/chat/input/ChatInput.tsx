@@ -250,7 +250,6 @@ export const ChatInput = ({
               onKeyDown={handleInputKeyDown}
               disabled={disabled}
             />
-            {onStopRequest ? true : null}
 
             {onStopRequest && streaming ? (
               <Button onClick={onStopRequest} disabled={disabled}>

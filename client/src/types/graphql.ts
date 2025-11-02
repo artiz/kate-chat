@@ -21,10 +21,16 @@ export enum ToolType {
   MCP = "MCP",
 }
 
+export enum ModelFeature {
+  REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
+  REASONING = "reasoning",
+}
+
 export interface Model extends BaseModel {
   id: string;
   type: ModelType;
   tools?: ToolType[];
+  features?: ModelFeature[];
 }
 
 export type Message = BaseMessage<User, MessageMetadata>;
@@ -236,6 +242,7 @@ export interface MessageMetadata {
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
   tools?: ChatToolCallResult[];
+  requestId?: string;
 }
 
 export interface MessageChatInfo {
@@ -319,4 +326,17 @@ export interface UploadDocumentsResponse {
 export interface ChatDocument {
   chat: Chat;
   document: Document;
+}
+
+export interface StopMessageGenerationInput {
+  requestId: string;
+  messageId: string;
+}
+
+export interface StopMessageGenerationResponse {
+  stopMessageGeneration: {
+    error?: string;
+    requestId?: string;
+    messageId?: string;
+  };
 }

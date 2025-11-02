@@ -23,6 +23,7 @@ export enum MessageRole {
 }
 
 export enum ResponseStatus {
+  STARTED = "started",
   IN_PROGRESS = "in_progress",
   RAG_SEARCH = "rag_search",
   WEB_SEARCH = "web_search",
@@ -32,6 +33,7 @@ export enum ResponseStatus {
   OUTPUT_ITEM = "output_item",
   REASONING = "reasoning",
   COMPLETED = "completed",
+  CANCELLED = "cancelled",
   ERROR = "error",
 }
 
@@ -101,6 +103,7 @@ export interface AIModelInfo {
   imageInput?: boolean;
   maxInputTokens?: number;
   tools?: ToolType[];
+  features?: ModelFeature[];
 }
 
 export type ContentType = "text" | "image";
@@ -175,8 +178,11 @@ export class MessageRelevantChunk {
 
 @ObjectType()
 export class MessageMetadata {
-  ///////////// assistant message meta
+  // --------------- assistant message meta ---------------
   // model usage details
+  @Field({ nullable: true })
+  requestId?: string;
+
   @Field(() => ModelResponseUsage, { nullable: true })
   usage?: ModelResponseUsage;
 
@@ -198,7 +204,7 @@ export class MessageMetadata {
   @Field(() => [ChatResultAnnotation], { nullable: true })
   annotations?: ChatResultAnnotation[];
 
-  ///////////// user message meta
+  // --------------- user message meta ---------------
   // input document IDs
   @Field(() => [ID], { nullable: true })
   documentIds?: string[];
@@ -263,16 +269,17 @@ export class ChatResultAnnotation {
 export interface ChatResponseStatus {
   status?: ResponseStatus;
   sequence_number?: number;
+  requestId?: string;
   detail?: string;
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
 }
 
 export interface StreamCallbacks {
-  onStart?: (status?: ChatResponseStatus) => void;
-  onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => void;
-  onComplete?: (content: string, metadata?: MessageMetadata) => void;
-  onError?: (error: Error) => void;
+  onStart: (status?: ChatResponseStatus) => Promise<boolean | undefined>;
+  onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>;
+  onComplete: (content: string, metadata?: MessageMetadata) => Promise<void | undefined>;
+  onError: (error: Error) => Promise<boolean | undefined>;
 }
 
 export interface CompleteChatRequest {
@@ -296,6 +303,11 @@ export enum ToolType {
   WEB_SEARCH = "web_search",
   CODE_INTERPRETER = "code_interpreter",
   MCP = "mcp",
+}
+
+export enum ModelFeature {
+  REQUEST_CANCELLATION = "request_cancellation",
+  REASONING = "reasoning",
 }
 
 @ObjectType()

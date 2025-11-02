@@ -13,6 +13,7 @@ import {
   EmbeddingsResponse,
   ToolType,
   ModelMessage,
+  ModelFeature,
 } from "@/types/ai.types";
 import { MessageRole } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
@@ -115,12 +116,12 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
     // If this is an image generation model, generate the image non-streaming
     if (modelId.startsWith("dall-e")) {
-      callbacks.onStart?.();
+      callbacks.onStart();
       try {
         const response = await this.generateImages(input, messages);
-        callbacks.onComplete?.(response.content);
+        callbacks.onComplete(response.content);
       } catch (error) {
-        callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+        callbacks.onError(error instanceof Error ? error : new Error(String(error)));
       }
       return;
     }
@@ -280,6 +281,9 @@ export class OpenAIApiProvider extends BaseApiProvider {
                 ? [ToolType.WEB_SEARCH]
                 : [];
 
+        const features: ModelFeature[] | undefined =
+          apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : undefined;
+
         const type = embeddingModel
           ? ModelType.EMBEDDING
           : imageGeneration
@@ -301,6 +305,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
           imageInput,
           maxInputTokens,
           tools,
+          features,
         };
       }
 
@@ -354,6 +359,25 @@ export class OpenAIApiProvider extends BaseApiProvider {
       ...request,
       dimensions: modelId == "text-embedding-3-large" ? EMBEDDINGS_DIMENSIONS : undefined,
     });
+  }
+
+  async stopRequest(requestId: string, modelId: string): Promise<void> {
+    if (!this.protocol) {
+      throw new Error("OpenAI protocol is not initialized");
+    }
+
+    const apiType = this.getChatApiType(modelId);
+
+    if (apiType !== "responses") {
+      throw new Error(`Request cancellation is only supported for OpenAI models using Responses API`);
+    }
+
+    try {
+      await this.protocol.stopRequest(requestId);
+    } catch (error) {
+      logger.error(error, `OpenAI provider failed to stop request: ${requestId}`);
+      throw error;
+    }
   }
 
   // Image generation implementation for DALL-E models

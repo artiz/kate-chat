@@ -32,6 +32,7 @@ export abstract class BaseApiProvider {
   abstract getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo>;
   abstract getModels(): Promise<Record<string, AIModelInfo>>;
   abstract getInfo(checkConnection?: boolean): Promise<ProviderInfo>;
+  abstract stopRequest(requestId: string, modelId: string): Promise<void>;
 
   static getApiProviderName(apiProvider: ApiProvider): string {
     switch (apiProvider) {

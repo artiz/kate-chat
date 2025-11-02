@@ -11,3 +11,11 @@ export class HttpError<T = unknown> extends Error {
     Object.setPrototypeOf(this, HttpError.prototype);
   }
 }
+
+export class RequestCancelledError extends Error {
+  constructor(message: string) {
+    super(message);
+    // Only because we are extending a built in class
+    Object.setPrototypeOf(this, RequestCancelledError.prototype);
+  }
+}

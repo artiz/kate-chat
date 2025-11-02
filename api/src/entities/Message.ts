@@ -70,9 +70,11 @@ export class Message {
   linkedMessages?: Message[]; // Virtual field for GraphQL, populated in resolvers
 
   @Field({ nullable: true })
+  @Column({ nullable: true })
   status?: ResponseStatus;
 
   @Field({ nullable: true })
+  @Column({ nullable: true })
   statusInfo?: string;
 
   @Field({ nullable: true })

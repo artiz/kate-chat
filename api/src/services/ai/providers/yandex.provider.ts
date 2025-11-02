@@ -60,7 +60,7 @@ export class YandexApiProvider extends BaseApiProvider {
     callbacks: StreamCallbacks
   ): Promise<void> {
     if (!this.apiKey || !this.folderId) {
-      callbacks.onError?.(
+      callbacks.onError(
         new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in environment variables.")
       );
       return;
@@ -132,5 +132,10 @@ export class YandexApiProvider extends BaseApiProvider {
 
   async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
     throw new Error("Embeddings loading is not implemented.");
+  }
+
+  async stopRequest(requestId: string, modelId: string): Promise<void> {
+    // Yandex FM does not support request cancellation
+    throw new Error("Request cancellation is not supported by Yandex FM");
   }
 }

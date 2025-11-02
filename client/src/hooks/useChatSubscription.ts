@@ -3,7 +3,7 @@ import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { MessageRole, MessageType } from "@katechat/ui";
 import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql.queries";
-import { Message, MessageChatInfo } from "@/types/graphql";
+import { Message, MessageChatInfo, MessageMetadata } from "@/types/graphql";
 import { updateChatInfo } from "@/store/slices/chatSlice";
 import { useAppDispatch } from "@/store";
 
@@ -21,6 +21,9 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
         linkedMessages {
           ...BaseMessage
         }
+        metadata {
+          requestId
+        }
       }
       chat {
         title
@@ -36,6 +39,7 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
 
 type SubscriptionResult = {
   wsConnected: boolean;
+  messageMetadata?: MessageMetadata;
 };
 
 interface UseChatSubscriptionProps {
@@ -50,6 +54,8 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
   addMessage,
 }) => {
   const [wsConnected, setWsConnected] = useState(false);
+  const [messageMetadata, setMessageMetadata] = useState<MessageMetadata | undefined>(undefined);
+
   const lastTs = useRef(0);
   const addMessageTs = useRef<NodeJS.Timeout>(null);
   const dispatch = useAppDispatch();
@@ -123,6 +129,8 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
               0
             );
 
+            setMessageMetadata(message.metadata);
+
             if (!response.streaming && response.chat && message.role === MessageRole.ASSISTANT && id) {
               // Update chat info in state
               dispatch(
@@ -162,5 +170,6 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 
   return {
     wsConnected,
+    messageMetadata,
   };
 };
