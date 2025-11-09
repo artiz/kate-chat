@@ -1,12 +1,11 @@
-import { Resolver, Query, Mutation, Arg, Ctx, ID, Root, FieldResolver } from "type-graphql";
-import { ILike, In, Repository } from "typeorm";
+import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
+import { In, Repository } from "typeorm";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
 import { AddDocumentsToChatResponse, GqlChatsList, RemoveDocumentsFromChatResponse } from "../types/graphql/responses";
 import { Message, Document, Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
-import { MessageRole } from "@/types/ai.types";
 import { ChatsService } from "@/services/chats.service";
 import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai/common";
 import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
@@ -30,56 +29,7 @@ export class ChatResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<GqlChatsList> {
     const user = await this.validateContextToken(context);
-    const { from = 0, limit = 20, searchTerm } = input;
-
-    let query = {
-      user: {
-        id: user.userId,
-      },
-    } as any;
-
-    if (searchTerm) {
-      query = query.where([{ title: ILike(`%${searchTerm}%`) }, { description: ILike(`%${searchTerm}%`) }]);
-    }
-
-    const total = await this.chatRepository.count({ where: query });
-    const chats = await this.chatRepository
-      .createQueryBuilder("chat")
-      .addSelect(sq => {
-        return sq.select("COUNT(*)").from(Message, "m").where("m.chatId = chat.id");
-      }, "chat_messagesCount")
-      .addSelect(sq => {
-        return sq
-          .select("m.content")
-          .from(Message, "m")
-          .where("m.chatId = chat.id and m.role = :role and m.linkedToMessageId IS NULL", {
-            role: MessageRole.ASSISTANT,
-          })
-          .orderBy("m.createdAt", "DESC")
-          .limit(1);
-      }, "chat_lastBotMessage")
-      .addSelect(sq => {
-        return sq
-          .select("m.id")
-          .from(Message, "m")
-          .where("m.chatId = chat.id and m.role = :role and m.linkedToMessageId IS NULL", {
-            role: MessageRole.ASSISTANT,
-          })
-          .orderBy("m.createdAt", "DESC")
-          .limit(1);
-      }, "chat_lastBotMessageId")
-      .leftJoinAndSelect("chat.user", "user")
-      .where(query)
-      .skip(from)
-      .take(limit)
-      .orderBy("chat.updatedAt", "DESC")
-      .getMany();
-
-    return {
-      chats,
-      total,
-      next: from + chats.length < total ? from + chats.length : undefined,
-    };
+    return this.chatService.getChats(input, user);
   }
 
   @Query(() => Chat, { nullable: true })

@@ -8,7 +8,7 @@ import { theme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
-import { setChats } from "../store/slices/chatSlice";
+import { addChats, setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "@katechat/ui";
 
@@ -78,7 +78,14 @@ const AppContent: React.FC = () => {
       dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
-      dispatch(setChats(initData.chats));
+
+      dispatch(
+        setChats({
+          chats: [...initData.pinnedChats.chats, ...initData.chats.chats],
+          total: initData.chats.total,
+          next: initData.chats.next,
+        })
+      );
 
       dispatch(loginSuccess(initData.appConfig.token));
     }

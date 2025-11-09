@@ -144,14 +144,19 @@ export interface ApplicationConfig {
 
 export interface GetInitialDataResponse {
   data: {
-    getModels: {
+    models: {
       models: Model[];
       providers?: ProviderInfo[];
     };
-    getChats: {
+    chats: {
       chats: Chat[];
       total: number;
-      hasMore: boolean;
+      next: number | undefined;
+    };
+    pinnedChats: {
+      chats: Chat[];
+      total: number;
+      next: number | undefined;
     };
     appConfig: ApplicationConfig;
   };

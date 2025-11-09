@@ -133,7 +133,12 @@ export const graphqlApi = api.injectEndpoints({
         chats: {
           chats: Chat[];
           total: number;
-          hasMore: boolean;
+          next: number | undefined;
+        };
+        pinnedChats: {
+          chats: Chat[];
+          total: number;
+          next: number | undefined;
         };
       },
       void
@@ -144,7 +149,7 @@ export const graphqlApi = api.injectEndpoints({
         body: {
           query: `
             query GetInitialData {
-              getModels {
+              models: getModels {
                 models {
                     ...BaseModel
                 }
@@ -159,11 +164,12 @@ export const graphqlApi = api.injectEndpoints({
                   }
                 }
               }
-              getChats(input: { limit: ${CHAT_PAGE_SIZE} }) {
+              chats: getChats(input: { limit: ${CHAT_PAGE_SIZE}, pinned: false }) {
                 chats {
                   id
                   title
                   isPristine
+                  isPinned
                   modelId
                   messagesCount
                   updatedAt
@@ -173,6 +179,21 @@ export const graphqlApi = api.injectEndpoints({
                 total
                 next
               }
+              
+              pinnedChats: getChats(input: { pinned: true }) {
+                chats {
+                  id
+                  title
+                  isPristine
+                  isPinned
+                  modelId
+                  messagesCount
+                  updatedAt
+                  lastBotMessage
+                  lastBotMessageId
+                }
+              }
+
               appConfig {
                 currentUser {
                   ...FullUser
@@ -195,12 +216,20 @@ export const graphqlApi = api.injectEndpoints({
       }),
 
       transformResponse: async (response: GetInitialDataResponse) => {
-        const { getModels, getChats, appConfig } = response.data || {};
-        const chats = getChats || {
-          chats: [],
-          total: 0,
-          next: undefined,
-        };
+        const {
+          models,
+          chats = {
+            chats: [],
+            total: 0,
+            next: undefined,
+          },
+          pinnedChats = {
+            chats: [],
+            total: 0,
+            next: undefined,
+          },
+          appConfig,
+        } = response.data || {};
 
         for (const chat of chats.chats) {
           if (chat.lastBotMessage) {
@@ -208,10 +237,23 @@ export const graphqlApi = api.injectEndpoints({
           }
         }
 
+        for (const chat of chats.chats) {
+          if (chat.lastBotMessage) {
+            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
+          }
+        }
+
+        for (const chat of pinnedChats.chats) {
+          if (chat.lastBotMessage) {
+            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
+          }
+        }
+
         return {
-          models: getModels?.models || [],
-          providers: getModels?.providers || [],
+          models: models?.models || [],
+          providers: models?.providers || [],
           chats,
+          pinnedChats,
           appConfig,
         };
       },

@@ -195,6 +195,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       description
       modelId
       isPristine
+      isPinned
       messagesCount
       temperature
       maxTokens

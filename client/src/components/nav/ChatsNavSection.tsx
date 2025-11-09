@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion } from "@mantine/core";
-import { IconMessage, IconDots, IconEdit, IconTrash, IconMessage2Code } from "@tabler/icons-react";
+import {
+  IconMessage,
+  IconDots,
+  IconEdit,
+  IconTrash,
+  IconMessage2Code,
+  IconPin,
+  IconPinFilled,
+} from "@tabler/icons-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
@@ -73,11 +81,6 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
     onCompleted: () => {
       setEditingChatId(undefined);
-      notifications.show({
-        title: "Success",
-        message: "Chat renamed successfully",
-        color: "green",
-      });
     },
     onError: error => {
       notifications.show({
@@ -237,6 +240,19 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
     });
   };
 
+  // Handle pin/unpin chat
+  const handleTogglePin = (e: React.MouseEvent, chat: Chat) => {
+    e.stopPropagation();
+    updateChatMutation({
+      variables: {
+        id: chat.id,
+        input: {
+          isPinned: !chat.isPinned,
+        },
+      },
+    });
+  };
+
   if (loading) {
     return (
       <Group justify="center" p="md">
@@ -269,7 +285,7 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
       defaultValue={sortedChats.map(block => block.label)}
       classNames={classes}
     >
-      {sortedChats.map((block, index) => (
+      {sortedChats.map(block => (
         <Accordion.Item key={block.label} value={block.label}>
           <Accordion.Control icon={<IconMessage2Code />}>{block.label}</Accordion.Control>
           <Accordion.Panel>
@@ -296,6 +312,7 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
                       leftSection={<IconMessage size={16} />}
                       onClick={() => handleChatClick(chat.id)}
                       p="xs"
+                      pl="sm"
                       m="0"
                     />
                     <Menu
@@ -312,6 +329,12 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
                         </ActionIcon>
                       </Menu.Target>
                       <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={chat.isPinned ? <IconPinFilled size={14} /> : <IconPin size={14} />}
+                          onClick={e => handleTogglePin(e, chat)}
+                        >
+                          {chat.isPinned ? "Unpin" : "Pin"}
+                        </Menu.Item>
                         <Menu.Item leftSection={<IconEdit size={14} />} onClick={e => handleEditClick(e, chat)}>
                           Rename
                         </Menu.Item>

@@ -151,6 +151,9 @@ export class UpdateChatInput {
 
   @Field(() => [ChatToolInput!], { nullable: true })
   tools?: ChatToolInput[];
+
+  @Field({ nullable: true })
+  isPinned?: boolean;
 }
 
 @InputType()
@@ -202,6 +205,9 @@ export class GetChatsInput {
 
   @Field({ nullable: true })
   searchTerm?: string;
+
+  @Field({ nullable: true })
+  pinned?: boolean;
 }
 
 @InputType()

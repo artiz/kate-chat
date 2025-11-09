@@ -205,6 +205,7 @@ type EditMessageResponse {
 input GetChatsInput {
   from: Float = 0
   limit: Float = 20
+  pinned: Boolean
   searchTerm: String
 }
 
@@ -519,6 +520,7 @@ enum ToolType {
 input UpdateChatInput {
   description: String
   imagesCount: Float
+  isPinned: Boolean
   maxTokens: Float
   modelId: String
   systemPrompt: String
