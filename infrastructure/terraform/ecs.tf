@@ -20,7 +20,7 @@ resource "aws_ecr_repository" "repositories" {
   }
 }
 
-# ECR Lifecycle Policies
+# ECR Lifecycle Policies (Optimized for cost)
 resource "aws_ecr_lifecycle_policy" "repositories" {
   for_each = aws_ecr_repository.repositories
 
@@ -30,12 +30,12 @@ resource "aws_ecr_lifecycle_policy" "repositories" {
     rules = [
       {
         rulePriority = 1
-        description  = "Delete untagged images after 3 days"
+        description  = "Delete untagged images after 1 day"
         selection = {
           tagStatus   = "untagged"
           countType   = "sinceImagePushed"
           countUnit   = "days"
-          countNumber = 3
+          countNumber = 1
         }
         action = {
           type = "expire"
@@ -43,12 +43,12 @@ resource "aws_ecr_lifecycle_policy" "repositories" {
       },
       {
         rulePriority = 2
-        description  = "Keep only 15 most recent tagged images"
+        description  = "Keep only 5 most recent tagged images"
         selection = {
           tagStatus      = "tagged"
           tagPatternList = ["*"]
           countType      = "imageCountMoreThan"
-          countNumber    = 15
+          countNumber    = 5
         }
         action = {
           type = "expire"

@@ -29,7 +29,8 @@ resource "aws_db_instance" "main" {
 
   backup_window           = "03:00-04:00"
   backup_retention_period = var.environment == "production" ? 7 : 3
-  maintenance_window      = "sun:04:00-sun:05:00"
+
+  apply_immediately = true # Apply changes immediately instead of waiting for maintenance window
 
   skip_final_snapshot       = var.environment != "production"
   final_snapshot_identifier = var.environment == "production" ? "${var.project_name}-${var.environment}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}" : null
@@ -55,6 +56,7 @@ resource "aws_elasticache_subnet_group" "main" {
 resource "aws_elasticache_cluster" "redis" {
   cluster_id           = "${var.project_name}-${var.environment}-redis"
   engine               = "redis"
+  engine_version       = "7.1"
   node_type            = var.redis_node_type
   num_cache_nodes      = var.redis_num_cache_nodes
   parameter_group_name = "default.redis7"
@@ -62,6 +64,9 @@ resource "aws_elasticache_cluster" "redis" {
 
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = [aws_security_group.redis.id]
+
+  auto_minor_version_upgrade = true # Enable automatic minor version updates
+  apply_immediately          = true # Apply changes immediately instead of waiting for maintenance window
 
   tags = {
     Name = "${var.project_name}-${var.environment}-redis"

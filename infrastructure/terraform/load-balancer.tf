@@ -107,10 +107,10 @@ resource "aws_security_group" "redis" {
   }
 }
 
-# CloudWatch Log Groups
+# CloudWatch Log Groups (Optimized retention for cost savings)
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.project_name}-${var.environment}-app"
-  retention_in_days = var.environment == "production" ? 30 : 7
+  retention_in_days = var.environment == "production" ? 7 : 3 # Reduced from 30/7 to 7/3
 
   tags = {
     Name = "${var.project_name}-${var.environment}-app-logs"
@@ -119,7 +119,7 @@ resource "aws_cloudwatch_log_group" "app" {
 
 resource "aws_cloudwatch_log_group" "document_processor" {
   name              = "/ecs/${var.project_name}-${var.environment}-document-processor"
-  retention_in_days = var.environment == "production" ? 30 : 7
+  retention_in_days = var.environment == "production" ? 7 : 3 # Reduced from 30/7 to 7/3
 
   tags = {
     Name = "${var.project_name}-${var.environment}-document-processor-logs"
