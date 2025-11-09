@@ -22,9 +22,8 @@ import {
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { assert, parseMarkdown } from "@katechat/ui";
+import { assert, parseMarkdown, DeleteConfirmationModal } from "@katechat/ui";
 
-import { DeleteConfirmationModal } from "@/components/modal";
 import { updateChat } from "@/store/slices/chatSlice";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {

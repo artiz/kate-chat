@@ -62,6 +62,7 @@ type Chat {
   description: String
   id: ID!
   imagesCount: Float
+  isPinned: Boolean!
   isPristine: Boolean!
   lastBotMessage: String
   lastBotMessageId: String
@@ -202,8 +203,8 @@ type EditMessageResponse {
 }
 
 input GetChatsInput {
+  from: Float = 0
   limit: Float = 20
-  offset: Float = 0
   searchTerm: String
 }
 
@@ -244,7 +245,7 @@ type GqlAmount {
 type GqlChatsList {
   chats: [Chat!]
   error: String
-  hasMore: Boolean!
+  next: Float
   total: Float
 }
 
@@ -451,6 +452,7 @@ type ProviderDetail {
 type Query {
   appConfig: ApplicationConfig
   chatById(id: ID!): Chat
+  findPristineChat: Chat
   getActiveModels: [Model!]!
   getAdminStats: AdminStatsResponse!
   getAllImages(input: GetImagesInput!): GqlImagesList!

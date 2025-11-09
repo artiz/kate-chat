@@ -1,5 +1,5 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID, Root, FieldResolver } from "type-graphql";
-import { In, Repository } from "typeorm";
+import { ILike, In, Repository } from "typeorm";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
@@ -30,7 +30,7 @@ export class ChatResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<GqlChatsList> {
     const user = await this.validateContextToken(context);
-    const { offset = 0, limit = 20, searchTerm } = input;
+    const { from = 0, limit = 20, searchTerm } = input;
 
     let query = {
       user: {
@@ -39,10 +39,7 @@ export class ChatResolver extends BaseResolver {
     } as any;
 
     if (searchTerm) {
-      query = {
-        ...query,
-        $or: [{ title: { $regex: searchTerm, $options: "i" } }, { description: { $regex: searchTerm, $options: "i" } }],
-      };
+      query = query.where([{ title: ILike(`%${searchTerm}%`) }, { description: ILike(`%${searchTerm}%`) }]);
     }
 
     const total = await this.chatRepository.count({ where: query });
@@ -73,15 +70,15 @@ export class ChatResolver extends BaseResolver {
       }, "chat_lastBotMessageId")
       .leftJoinAndSelect("chat.user", "user")
       .where(query)
-      .skip(offset)
+      .skip(from)
       .take(limit)
-      .orderBy("chat.createdAt", "DESC")
+      .orderBy("chat.updatedAt", "DESC")
       .getMany();
 
     return {
       chats,
       total,
-      hasMore: offset + chats.length < total,
+      next: from + chats.length < total ? from + chats.length : undefined,
     };
   }
 
@@ -90,6 +87,23 @@ export class ChatResolver extends BaseResolver {
     const user = await this.validateContextToken(context);
 
     return this.chatService.getChat(id, user.userId);
+  }
+
+  @Query(() => Chat, { nullable: true })
+  async findPristineChat(@Ctx() context: GraphQLContext): Promise<Chat | null> {
+    const user = await this.validateContextToken(context);
+
+    return await this.chatRepository
+      .createQueryBuilder("chat")
+      .leftJoinAndSelect("chat.user", "user")
+      .where({
+        user: {
+          id: user.userId,
+        },
+        isPristine: true,
+      })
+      .orderBy("chat.updatedAt", "DESC")
+      .getOne();
   }
 
   @Mutation(() => Chat)

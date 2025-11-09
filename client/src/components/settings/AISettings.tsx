@@ -1,38 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  Title,
-  Paper,
-  TextInput,
-  PasswordInput,
-  Button,
-  Group,
-  Stack,
-  Divider,
-  Select,
-  Text,
-  Textarea,
-  Collapse,
-  ActionIcon,
-  SimpleGrid,
-  Alert,
-  Switch,
-  NumberInput,
-} from "@mantine/core";
-import { IconHelp } from "@tabler/icons-react";
-import type { ApiProvider } from "@katechat/ui";
+import { Title, Paper, Button, Group, Stack, Select, Textarea, SimpleGrid, NumberInput } from "@mantine/core";
 import { ModelType } from "@katechat/ui";
 import { useAppSelector } from "@/store";
-import { UpdateUserInput, User, UserSettings } from "@/store/slices/userSlice";
-import {
-  STORAGE_AWS_BEDROCK_ACCESS_KEY_ID,
-  STORAGE_AWS_BEDROCK_PROFILE,
-  STORAGE_AWS_BEDROCK_REGION,
-  STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY,
-  STORAGE_OPENAI_API_ADMIN_KEY,
-  STORAGE_OPENAI_API_KEY,
-  STORAGE_YANDEX_FM_API_FOLDER,
-  STORAGE_YANDEX_FM_API_KEY,
-} from "@/store/slices/authSlice";
+import { UpdateUserInput, User } from "@/store/slices/userSlice";
 
 interface AISettingsProps {
   user: User;
@@ -41,8 +11,7 @@ interface AISettingsProps {
 }
 
 export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, updateLoading }) => {
-  const { appConfig } = useAppSelector(state => state.user);
-  const { models, providers } = useAppSelector(state => state.models);
+  const { models } = useAppSelector(state => state.models);
 
   // Default settings form state
   const [defaultModelId, setDefaultModelId] = useState<string>();
@@ -54,16 +23,23 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   const [documentsEmbeddingsModelId, setDocumentsEmbeddingsModelId] = useState<string>();
   const [documentSummarizationModelId, setDocumentSummarizationModelId] = useState<string>();
 
-  useEffect(() => {
-    const settings = user?.settings || {};
+  const handleDefaultsReset = () => {
     setDefaultModelId(user?.defaultModelId);
     setDefaultSystemPrompt(user?.defaultSystemPrompt);
     setDefaultTemperature(user?.defaultTemperature);
     setDefaultMaxTokens(user?.defaultMaxTokens);
     setDefaultTopP(user?.defaultTopP);
     setDefaultImagesCount(user?.defaultImagesCount);
+  };
+
+  const handleDocumentsModelsReset = () => {
     setDocumentsEmbeddingsModelId(user?.documentsEmbeddingsModelId);
     setDocumentSummarizationModelId(user?.documentSummarizationModelId);
+  };
+
+  useEffect(() => {
+    handleDefaultsReset();
+    handleDocumentsModelsReset();
   }, [user]);
 
   // Handle default model and system prompt update
@@ -94,6 +70,18 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
       value: model.modelId,
       label: `${model.apiProvider}: ${model.name}`,
     }));
+
+  const isUserSettingsDirty =
+    defaultModelId !== user?.defaultModelId ||
+    defaultSystemPrompt !== user?.defaultSystemPrompt ||
+    defaultTemperature !== user?.defaultTemperature ||
+    defaultMaxTokens !== user?.defaultMaxTokens ||
+    defaultTopP !== user?.defaultTopP ||
+    defaultImagesCount !== user?.defaultImagesCount;
+
+  const isDocumentsSettingsDirty =
+    documentsEmbeddingsModelId !== user?.documentsEmbeddingsModelId ||
+    documentSummarizationModelId !== user?.documentSummarizationModelId;
 
   if (!user) return null;
 
@@ -176,13 +164,23 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
             </SimpleGrid>
 
             <Group justify="right" mt="md">
-              <Button type="submit" loading={updateLoading}>
+              <Button
+                type="reset"
+                color="gray"
+                loading={updateLoading}
+                onClick={handleDefaultsReset}
+                disabled={!isUserSettingsDirty}
+              >
+                Reset
+              </Button>
+              <Button type="submit" color="green" loading={updateLoading} disabled={!isUserSettingsDirty}>
                 Save
               </Button>
             </Group>
           </Stack>
         </form>
       </Paper>
+
       <Paper withBorder p="md">
         <form name="documents-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
           <Stack gap="md">
@@ -213,7 +211,16 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
             />
 
             <Group justify="right" mt="md">
-              <Button type="submit" loading={updateLoading}>
+              <Button
+                type="reset"
+                color="gray"
+                loading={updateLoading}
+                onClick={handleDocumentsModelsReset}
+                disabled={!isDocumentsSettingsDirty}
+              >
+                Reset
+              </Button>
+              <Button type="submit" color="green" loading={updateLoading} disabled={!isDocumentsSettingsDirty}>
                 Save
               </Button>
             </Group>

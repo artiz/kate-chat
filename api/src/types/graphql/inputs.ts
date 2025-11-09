@@ -195,7 +195,7 @@ export class GetMessagesInput {
 @InputType()
 export class GetChatsInput {
   @Field({ nullable: true, defaultValue: 0 })
-  offset?: number;
+  from?: number;
 
   @Field({ nullable: true, defaultValue: 20 })
   limit?: number;

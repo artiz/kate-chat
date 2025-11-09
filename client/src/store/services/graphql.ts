@@ -13,6 +13,7 @@ import {
   ProviderInfo,
 } from "@/types/graphql";
 import { BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "./graphql.queries";
+import { CHAT_PAGE_SIZE } from "@/lib/config";
 
 export const handleError = (error: { status?: string | number }, meta: unknown) => {
   if (error?.status === "FETCH_ERROR") {
@@ -90,7 +91,7 @@ export const graphqlApi = api.injectEndpoints({
     }),
 
     // Chat queries
-    getChats: builder.query<{ chats: Chat[]; total: number; hasMore: boolean }, { limit: number; offset: number }>({
+    getChats: builder.query<GetChatsResponse["getChats"], { limit: number; offset: number }>({
       query: ({ limit, offset }) => ({
         url: "/graphql",
         method: "POST",
@@ -106,7 +107,7 @@ export const graphqlApi = api.injectEndpoints({
                   updatedAt
                 }
                 total
-                hasMore
+                next
               }
             }
           `,
@@ -158,18 +159,19 @@ export const graphqlApi = api.injectEndpoints({
                   }
                 }
               }
-              getChats(input: { limit: 20, offset: 0 }) {
+              getChats(input: { limit: ${CHAT_PAGE_SIZE} }) {
                 chats {
                   id
                   title
                   isPristine
+                  modelId
                   messagesCount
                   updatedAt
                   lastBotMessage
                   lastBotMessageId
                 }
                 total
-                hasMore
+                next
               }
               appConfig {
                 currentUser {
@@ -197,7 +199,7 @@ export const graphqlApi = api.injectEndpoints({
         const chats = getChats || {
           chats: [],
           total: 0,
-          hasMore: false,
+          next: undefined,
         };
 
         for (const chat of chats.chats) {

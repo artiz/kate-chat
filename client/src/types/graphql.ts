@@ -54,7 +54,7 @@ export interface GetChatsResponse {
   getChats: {
     chats: Chat[];
     total: number;
-    hasMore: boolean;
+    next: number | undefined;
   };
 }
 

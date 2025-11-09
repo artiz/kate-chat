@@ -45,20 +45,13 @@ export const CreateChat: React.FC = () => {
     fetchPolicy: "network-only",
     skip: !!pristineChat, // Skip if we already have a pristine chat in the store
     onCompleted: data => {
-      const pristineChats = data?.getChats?.chats?.filter((chat: Chat) => chat.isPristine) || [];
+      const pristineChat = data?.findPristineChat;
 
-      if (pristineChats.length > 0) {
-        const chat = pristineChats[0];
+      if (pristineChat) {
         // Found a pristine chat, navigate to it
-        updateChat(
-          chat.id,
-          {
-            modelId: modelToUse?.modelId,
-          },
-          () => {
-            navigate(`/chat/${chat.id}`);
-          }
-        );
+        updateChat(pristineChat.id, { modelId: modelToUse?.modelId }, () => {
+          navigate(`/chat/${pristineChat.id}`);
+        });
       } else {
         // No pristine chat found, create a new one
         createNewChat();

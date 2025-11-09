@@ -1,13 +1,13 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Chat } from "../services/graphql";
-import { MessageChatInfo } from "@/types/graphql";
+import { GetChatsResponse, MessageChatInfo } from "@/types/graphql";
 import { logout } from "..";
 
 interface ChatsState {
   chats: Chat[];
   loading: boolean;
   error: string | null;
-  hasMore: boolean;
+  next: number | undefined;
   total: number;
 }
 
@@ -15,7 +15,7 @@ const initialState: ChatsState = {
   chats: [],
   loading: false,
   error: null,
-  hasMore: false,
+  next: undefined,
   total: 0,
 };
 
@@ -23,10 +23,19 @@ const chatSlice = createSlice({
   name: "chats",
   initialState,
   reducers: {
-    setChats(state, action: PayloadAction<{ chats: Chat[]; total: number; hasMore: boolean }>) {
+    setChats(state, action: PayloadAction<GetChatsResponse["getChats"]>) {
       state.chats = action.payload.chats;
       state.total = action.payload.total;
-      state.hasMore = action.payload.hasMore;
+      state.next = action.payload.next;
+      state.error = null;
+    },
+    addChats(state, action: PayloadAction<GetChatsResponse["getChats"]>) {
+      const existingChatIds = new Set(state.chats.map((chat: Chat) => chat.id));
+      const newChats = action.payload.chats.filter(chat => !existingChatIds.has(chat.id));
+      state.chats = [...state.chats, ...newChats];
+
+      state.total = action.payload.total;
+      state.next = action.payload.next;
       state.error = null;
     },
     addChat(state, action: PayloadAction<Chat>) {
@@ -83,12 +92,12 @@ const chatSlice = createSlice({
       state.chats = [];
       state.loading = false;
       state.error = null;
-      state.hasMore = false;
+      state.next = undefined;
       state.total = 0;
     });
   },
 });
 
-export const { setChats, addChat, updateChat, updateChatInfo, removeChat, setChatLoading, setChatError } =
+export const { setChats, addChats, addChat, updateChat, updateChatInfo, removeChat, setChatLoading, setChatError } =
   chatSlice.actions;
 export default chatSlice.reducer;

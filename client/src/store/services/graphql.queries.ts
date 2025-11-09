@@ -378,12 +378,28 @@ export const REMOVE_FROM_CHAT_MUTATION = gql`
 // Query to find a pristine chat
 export const FIND_PRISTINE_CHAT = gql`
   query FindPristineChat {
-    getChats(input: { limit: 10, offset: 0 }) {
+    findPristineChat {
+      id
+      title
+      isPristine
+      modelId
+      updatedAt
+    }
+  }
+`;
+
+export const GET_CHATS = gql`
+  query GetChats($input: GetChatsInput) {
+    getChats(input: $input) {
       chats {
         id
         title
         isPristine
         modelId
+        messagesCount
+        updatedAt
+        lastBotMessage
+        lastBotMessageId
       }
     }
   }

@@ -44,8 +44,8 @@ export class GqlChatsList {
   @Field({ nullable: true })
   total?: number;
 
-  @Field()
-  hasMore: boolean;
+  @Field({ nullable: true })
+  next?: number;
 }
 
 @ObjectType()

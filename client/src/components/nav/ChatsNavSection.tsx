@@ -1,135 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion } from "@mantine/core";
-import { IconMessage, IconDots, IconEdit, IconTrash } from "@tabler/icons-react";
-import { useMutation } from "@apollo/client";
+import { IconMessage, IconDots, IconEdit, IconTrash, IconMessage2Code } from "@tabler/icons-react";
+import { useMutation, useQuery } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { TextInput } from "@mantine/core";
-import { assert } from "@katechat/ui";
+import { DeleteConfirmationModal, sortItemsBySections } from "@katechat/ui";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql.queries";
-import { removeChat, updateChat } from "@/store/slices/chatSlice";
+import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION, GET_CHATS } from "@/store/services/graphql.queries";
+import { addChats, removeChat, updateChat } from "@/store/slices/chatSlice";
 
 import classes from "./ChatsNavSection.module.scss";
-import { DeleteConfirmationModal } from "../modal";
-import { Chat } from "@/types/graphql";
-
-export interface ChatsSectionBlock {
-  label: string;
-  chats: Chat[];
-}
-
-const isToday = (date: string) => {
-  const today = new Date();
-  const dateToCheck = new Date(date);
-  return (
-    dateToCheck.getDate() === today.getDate() &&
-    dateToCheck.getMonth() === today.getMonth() &&
-    dateToCheck.getFullYear() === today.getFullYear()
-  );
-};
-
-const isWithinLastDays = (date: string, days: number): boolean => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const daysAgo = new Date(today);
-  daysAgo.setDate(today.getDate() - days);
-
-  const dateToCheck = new Date(date);
-  return dateToCheck > daysAgo && dateToCheck <= today;
-};
-
-const isYesterday = (date: string) => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const dateToCheck = new Date(date);
-  return (
-    dateToCheck.getDate() === yesterday.getDate() &&
-    dateToCheck.getMonth() === yesterday.getMonth() &&
-    dateToCheck.getFullYear() === yesterday.getFullYear()
-  );
-};
-
-export const sortChats = (chats: Chat[]): ChatsSectionBlock[] => {
-  // sort conversations by last activity
-  const sortedChats = [...chats];
-  sortedChats.sort((a, b) => {
-    if (a.updatedAt === undefined) {
-      return 1;
-    }
-    if (b.updatedAt === undefined) {
-      return -1;
-    }
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-  });
-
-  const todayChats: Chat[] = [];
-  const yesterdayChats: Chat[] = [];
-  const last7DaysChats: Chat[] = [];
-  const last30DaysChats: Chat[] = [];
-  const olderChats: Chat[] = [];
-  const pinnedChats: Chat[] = [];
-
-  sortedChats.forEach(chat => {
-    const date = chat.updatedAt || "";
-    if (chat.isPristine) {
-      return;
-    }
-    if (chat.isPinned) {
-      pinnedChats.push(chat);
-    } else if (isToday(date)) {
-      todayChats.push(chat);
-    } else if (isYesterday(date)) {
-      yesterdayChats.push(chat);
-    } else if (isWithinLastDays(date, 7)) {
-      last7DaysChats.push(chat);
-    } else if (isWithinLastDays(date, 30)) {
-      last30DaysChats.push(chat);
-    } else {
-      olderChats.push(chat);
-    }
-  });
-
-  return [
-    todayChats.length > 0
-      ? {
-          label: "Today",
-          chats: todayChats,
-        }
-      : null,
-    yesterdayChats.length > 0
-      ? {
-          label: "Yesterday",
-          chats: yesterdayChats,
-        }
-      : null,
-    last7DaysChats.length > 0
-      ? {
-          label: "Last 7 Days",
-          chats: last7DaysChats,
-        }
-      : null,
-    last30DaysChats.length > 0
-      ? {
-          label: "Last 30 Days",
-          chats: last30DaysChats,
-        }
-      : null,
-    olderChats.length > 0
-      ? {
-          label: "Older",
-          chats: olderChats,
-        }
-      : null,
-    pinnedChats.length > 0
-      ? {
-          label: "Pinned",
-          chats: pinnedChats,
-        }
-      : null,
-  ].filter(assert.notEmpty);
-};
+import { Chat, GetChatsResponse } from "@/types/graphql";
+import { CHAT_PAGE_SIZE } from "@/lib/config";
 
 interface IProps {
   navbarToggle?: () => void;
@@ -144,8 +27,43 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   const [deletingChatId, setDeletingChatId] = useState<string | undefined>();
   const [editedTitle, setEditedTitle] = useState<string>("");
 
-  const { chats, loading, error } = useAppSelector(state => state.chats);
-  const sortedChats = useMemo(() => sortChats(chats), [chats]);
+  const { chats, loading, error, next } = useAppSelector(state => state.chats);
+
+  const sortedChats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const ago7Days = new Date(today);
+    ago7Days.setDate(ago7Days.getDate() - 7);
+    const ago30Days = new Date(today);
+    ago30Days.setDate(ago30Days.getDate() - 30);
+
+    return sortItemsBySections(
+      chats.filter(chat => !chat.isPristine),
+      [
+        { label: "Pinned", selector: chat => !!chat.isPinned },
+        {
+          label: "Today",
+          selector: (ch, dt) =>
+            dt.getDate() === today.getDate() &&
+            dt.getMonth() === today.getMonth() &&
+            dt.getFullYear() === today.getFullYear(),
+        },
+        {
+          label: "Yesterday",
+          selector: (ch, dt) =>
+            dt.getDate() === yesterday.getDate() &&
+            dt.getMonth() === yesterday.getMonth() &&
+            dt.getFullYear() === yesterday.getFullYear(),
+        },
+        { label: "Last 7 Days", selector: (ch, dt: Date) => dt > ago7Days && dt <= today },
+        { label: "Last 30 Days", selector: (ch, dt: Date) => dt > ago30Days && dt <= today },
+        { label: "Older", selector: false },
+      ]
+    );
+  }, [chats, next]);
+
   const deletingChat = useMemo(
     () => (deletingChatId ? chats.find(chat => chat.id === deletingChatId) : undefined),
     [deletingChatId, chats]
@@ -228,6 +146,25 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
     },
   });
 
+  // Find pristine chat query
+  const {
+    loading: loadingChats,
+    error: loadChatsError,
+    refetch: fetchNextChats,
+  } = useQuery<GetChatsResponse>(GET_CHATS, {
+    fetchPolicy: "network-only",
+    skip: true,
+    onCompleted: data => {
+      dispatch(addChats(data.getChats));
+    },
+    variables: {
+      input: {
+        limit: CHAT_PAGE_SIZE,
+        from: next,
+      },
+    },
+  });
+
   // Update current chat ID from URL
   useEffect(() => {
     const path = location.pathname;
@@ -258,7 +195,7 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
     setEditedTitle(chat.title || "Untitled Chat");
   };
 
-  const updateTitle = (chatId: string) => {
+  const updateChatTitle = (chatId: string) => {
     if (editedTitle.trim()) {
       updateChatMutation({
         variables: {
@@ -274,12 +211,12 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
   // Handle save edited title
   const handleSaveTitle = (chatId: string) => (e: React.MouseEvent) => {
     e.preventDefault();
-    updateTitle(chatId);
+    updateChatTitle(chatId);
   };
 
   const handleEditKeyUp = (chatId: string) => (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      updateTitle(chatId);
+      updateChatTitle(chatId);
     } else if (e.key === "Escape") {
       setEditingChatId(undefined);
     }
@@ -308,10 +245,10 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
     );
   }
 
-  if (error) {
+  if (error || loadChatsError) {
     return (
       <Text c="red" size="sm" ta="center">
-        Error loading chats: {error}
+        Error loading chats: {String(error || loadChatsError)}
       </Text>
     );
   }
@@ -334,9 +271,9 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
     >
       {sortedChats.map((block, index) => (
         <Accordion.Item key={block.label} value={block.label}>
-          <Accordion.Control icon={<IconMessage />}>{block.label}</Accordion.Control>
+          <Accordion.Control icon={<IconMessage2Code />}>{block.label}</Accordion.Control>
           <Accordion.Panel>
-            {block.chats.map(chat => (
+            {block.items.map(chat => (
               <div key={chat.id} className={classes.chatItem}>
                 {editingChatId === chat.id ? (
                   <TextInput
@@ -394,6 +331,14 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
           </Accordion.Panel>
         </Accordion.Item>
       ))}
+
+      {next ? (
+        <Group justify="center" p="md">
+          <Button variant="subtle" size="xs" onClick={() => fetchNextChats()} loading={loadingChats}>
+            Load more...
+          </Button>
+        </Group>
+      ) : null}
 
       <DeleteConfirmationModal
         isOpen={!!deletingChatId}
