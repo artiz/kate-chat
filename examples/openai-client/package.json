@@ -9,7 +9,7 @@
     "build": "node esbuild.prod.js"
   },
   "dependencies": {
-    "@katechat/ui": "^1.0.12",
+    "@katechat/ui": "^1.0.16",
     "@mantine/carousel": "8.3.3",
     "@mantine/core": "8.3.3",
     "@mantine/dates": "8.3.3",
@@ -18,6 +18,7 @@
     "@mantine/modals": "8.3.3",
     "@mantine/notifications": "8.3.3",
     "@tabler/icons-react": "^3.1.0",
+    "idb": "^8.0.1",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },

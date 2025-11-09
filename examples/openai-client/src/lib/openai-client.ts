@@ -132,6 +132,82 @@ export class OpenAIClient {
     return fullContent;
   }
 
+  /**
+   * Generate a chat title based on the first question and answer
+   */
+  async generateChatTitle(
+    question: string,
+    answer: string,
+    model: string,
+  ): Promise<string> {
+    const endpoint =
+      this.mode === "completions" ? "/chat/completions" : "/responses";
+    const url = this.getUrl(endpoint);
+
+    const prompt = `Please provide a short title from 1 to 7 words for a chat based on the following question and answer.
+    Question: ${question}
+    Answer: ${answer}
+    The title should be concise and capture the essence of the conversation and have a maximum of 7 words.`;
+
+    const body =
+      this.mode === "completions"
+        ? {
+            model,
+            messages: [{ role: "user" as const, content: prompt }],
+            stream: false,
+          }
+        : {
+            model,
+            input: [{ role: "user" as const, content: prompt }],
+            stream: false,
+          };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate title: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      let title = "";
+
+      if (this.mode === "completions") {
+        title = data.choices?.[0]?.message?.content || "";
+      } else {
+        title =
+          data.output?.find((item: any) => item.type === "message")
+            ?.content?.[0]?.text || "";
+      }
+
+      // Clean up the title - remove quotes and trim
+      title = String(title || "")
+        .trim()
+        .replace(/(^["'])|(["']$)/g, "");
+
+      // Fallback to question excerpt if title generation failed
+      if (!title) {
+        title = question.substring(0, 25) + (question.length > 25 ? "..." : "");
+      }
+
+      return title || "New Chat";
+    } catch (error) {
+      console.error("Error generating chat title:", error);
+      // Fallback to question excerpt
+      return (
+        question.substring(0, 25) + (question.length > 25 ? "..." : "") ||
+        "New Chat"
+      );
+    }
+  }
+
   stop() {
     this.controller?.abort();
   }

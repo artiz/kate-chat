@@ -1,6 +1,14 @@
-import React, { useState, useCallback, useRef } from "react";
-import { AppShell, Group, Title, Button, Modal, Badge } from "@mantine/core";
-import { IconRobot, IconSettings } from "@tabler/icons-react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import {
+  AppShell,
+  Group,
+  Title,
+  Button,
+  Modal,
+  Badge,
+  Drawer,
+} from "@mantine/core";
+import { IconRobot, IconSettings, IconMenu2 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import {
   ChatMessagesContainer,
@@ -12,14 +20,19 @@ import {
   escapeHtml,
 } from "@katechat/ui";
 import { DEFAULT_MODEL, SettingsForm } from "./components/SettingsForm";
+import { ChatList } from "./components/ChatList";
 import { OpenAIClient, ApiMode } from "./lib/openai-client";
+import { useChats } from "./hooks/useChats";
+import { useMessages } from "./hooks/useMessages";
+import { Chat } from "./lib/db";
 
 import "./App.scss";
 
 export const App: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [settingsOpened, setSettingsOpened] = useState(false);
+  const [sidebarOpened, setSidebarOpened] = useState(false);
   const [apiKey, setApiKey] = useState(
     localStorage.getItem("openai_api_key") || "",
   );
@@ -27,7 +40,7 @@ export const App: React.FC = () => {
     localStorage.getItem("openai_api_endpoint") || "https://api.openai.com/v1",
   );
   const [apiMode, setApiMode] = useState<ApiMode>(
-    (localStorage.getItem("openai_api_mode") as ApiMode) || "chat",
+    (localStorage.getItem("openai_api_mode") as ApiMode) || "completions",
   );
   const [modelName, setModelName] = useState(
     localStorage.getItem("openai_model") || DEFAULT_MODEL,
@@ -36,12 +49,45 @@ export const App: React.FC = () => {
   const clientRef = useRef<OpenAIClient | null>(null);
   const messagesContainerRef = useRef<any>(null);
 
+  const { chats, createChat, updateChat, deleteChat, updateChatTitle } =
+    useChats();
+  const { messages, addMessage, updateMessage, deleteMessages } =
+    useMessages(currentChatId);
+
   // Initialize client when settings change
   React.useEffect(() => {
     if (apiKey && apiEndpoint) {
       clientRef.current = new OpenAIClient(apiKey, apiEndpoint, apiMode);
     }
   }, [apiKey, apiEndpoint, apiMode]);
+
+  const handleNewChat = useCallback(async () => {
+    const newChat = await createChat(modelName);
+    setCurrentChatId(newChat.id);
+    setSidebarOpened(false);
+  }, [createChat, modelName]);
+
+  const handleSelectChat = useCallback((id: string) => {
+    setCurrentChatId(id);
+    setSidebarOpened(false);
+  }, []);
+
+  const handleDeleteChat = useCallback(
+    async (id: string) => {
+      await deleteChat(id);
+      if (currentChatId === id) {
+        setCurrentChatId(null);
+      }
+    },
+    [deleteChat, currentChatId],
+  );
+
+  const handleTogglePin = useCallback(
+    async (chat: Chat) => {
+      await updateChat({ ...chat, isPinned: !chat.isPinned });
+    },
+    [updateChat],
+  );
 
   const handleSendMessage = useCallback(
     async (content: string) => {
@@ -57,10 +103,18 @@ export const App: React.FC = () => {
         return;
       }
 
+      // Create new chat if none is selected
+      let chatId = currentChatId;
+      if (!chatId) {
+        const newChat = await createChat(modelName);
+        chatId = newChat.id;
+        setCurrentChatId(chatId);
+      }
+
       // Add user message
       const userMessage: Message = {
         id: `msg-${Date.now()}`,
-        chatId: "demo-chat",
+        chatId: chatId,
         content,
         html: [escapeHtml(content)],
         role: MessageRole.USER,
@@ -68,13 +122,13 @@ export const App: React.FC = () => {
         updatedAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
+      await addMessage(userMessage);
       setStreaming(true);
 
       // Prepare assistant message
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
-        chatId: "demo-chat",
+        chatId: chatId,
         content: "",
         role: MessageRole.ASSISTANT,
         modelName,
@@ -83,7 +137,7 @@ export const App: React.FC = () => {
         streaming: true,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      await addMessage(assistantMessage);
 
       try {
         // Build conversation history
@@ -99,52 +153,61 @@ export const App: React.FC = () => {
           modelName,
           (chunk: string) => {
             fullContent += chunk;
-            setMessages((prev) =>
-              prev.map((msg) => {
-                if (msg.id !== assistantMessage.id) return msg;
-                const html = parseMarkdown(fullContent);
-                return { ...msg, content: fullContent, streaming: true, html };
-              }),
-            );
+            const html = parseMarkdown(fullContent);
+            updateMessage({
+              ...assistantMessage,
+              content: fullContent,
+              streaming: true,
+              html,
+            });
           },
         );
 
         // Mark as completed
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessage.id ? { ...msg, streaming: false } : msg,
-          ),
-        );
+        const html = parseMarkdown(fullContent);
+        const finalMessage = {
+          ...assistantMessage,
+          content: fullContent,
+          streaming: false,
+          html,
+        };
+        await updateMessage(finalMessage);
+
+        // Generate chat title if this is the first exchange
+        if (messages.length === 0) {
+          try {
+            const title = await clientRef.current.generateChatTitle(
+              content,
+              fullContent,
+              modelName,
+            );
+            await updateChatTitle(chatId, title);
+          } catch (error) {
+            console.error("Failed to generate chat title:", error);
+            // Don't fail the whole operation if title generation fails
+          }
+        }
       } catch (error: any) {
         if (error instanceof Error && error.name === "AbortError") {
           const abortMessage = "... Request was aborted.";
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessage.id
-                ? {
-                    ...msg,
-                    html: msg.html
-                      ? msg.html.concat(abortMessage)
-                      : [abortMessage],
-                    streaming: false,
-                  }
-                : msg,
-            ),
-          );
+
+          const updatedMessage = {
+            ...assistantMessage,
+            html: assistantMessage.html
+              ? assistantMessage.html.concat(abortMessage)
+              : [abortMessage],
+            streaming: false,
+          };
+          await updateMessage(updatedMessage);
         } else {
           console.error("Error sending message:", error);
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessage.id
-                ? {
-                    ...msg,
-                    content: `Error: ${error.message || "Failed to get response"}`,
-                    role: MessageRole.ERROR,
-                    streaming: false,
-                  }
-                : msg,
-            ),
-          );
+          const errorMessage = {
+            ...assistantMessage,
+            content: `Error: ${error.message || "Failed to get response"}`,
+            role: MessageRole.ERROR,
+            streaming: false,
+          };
+          await updateMessage(errorMessage);
           notifications.show({
             title: "Error",
             message: error.message || "Failed to get response from API",
@@ -155,7 +218,17 @@ export const App: React.FC = () => {
         setStreaming(false);
       }
     },
-    [messages, apiKey, apiEndpoint, modelName],
+    [
+      messages,
+      apiKey,
+      apiEndpoint,
+      modelName,
+      currentChatId,
+      createChat,
+      addMessage,
+      updateMessage,
+      updateChatTitle,
+    ],
   );
 
   const handleStopRequest = () => {
@@ -191,27 +264,27 @@ export const App: React.FC = () => {
     [],
   );
 
-  const handleClearChat = useCallback(() => {
-    setMessages([]);
-  }, []);
-
-  const handleAddMessage = useCallback((message: Message) => {
-    setMessages((prev) => [...prev, message]);
-  }, []);
+  const handleAddMessage = useCallback(
+    async (message: Message) => {
+      await addMessage(message);
+    },
+    [addMessage],
+  );
 
   const handleRemoveMessages = useCallback(
-    (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => {
+    async (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => {
       if (args.messagesToDelete) {
-        const idsToDelete = new Set(args.messagesToDelete.map((m) => m.id));
-        setMessages((prev) => prev.filter((m) => !idsToDelete.has(m.id)));
+        const idsToDelete = args.messagesToDelete.map((m) => m.id);
+        await deleteMessages(idsToDelete);
       } else if (args.deleteAfter) {
         const index = messages.findIndex((m) => m.id === args.deleteAfter?.id);
         if (index !== -1) {
-          setMessages((prev) => prev.slice(0, index + 1));
+          const idsToDelete = messages.slice(index + 1).map((m) => m.id);
+          await deleteMessages(idsToDelete);
         }
       }
     },
-    [messages],
+    [messages, deleteMessages],
   );
 
   // Dummy models array for ChatMessagesList
@@ -222,20 +295,26 @@ export const App: React.FC = () => {
     },
   ];
 
+  const currentChat = chats.find((c) => c.id === currentChatId);
+
   return (
     <>
       <AppShell header={{ height: 60 }} padding="md">
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
-            <Title order={3}>OpenAI Client Demo</Title>
             <Group>
               <Button
-                variant="light"
-                onClick={handleClearChat}
-                disabled={messages.length === 0}
+                variant="subtle"
+                onClick={() => setSidebarOpened(true)}
+                leftSection={<IconMenu2 size={18} />}
               >
-                Clear Chat
+                Chats
               </Button>
+              <Title order={3}>
+                {currentChat?.title || "OpenAI Client Demo"}
+              </Title>
+            </Group>
+            <Group>
               <Button
                 leftSection={<IconSettings size={18} />}
                 onClick={() => setSettingsOpened(true)}
@@ -282,6 +361,23 @@ export const App: React.FC = () => {
           </div>
         </AppShell.Main>
       </AppShell>
+
+      <Drawer
+        opened={sidebarOpened}
+        onClose={() => setSidebarOpened(false)}
+        title="Your Chats"
+        padding="md"
+        size="sm"
+      >
+        <ChatList
+          chats={chats}
+          currentChatId={currentChatId}
+          onSelectChat={handleSelectChat}
+          onNewChat={handleNewChat}
+          onDeleteChat={handleDeleteChat}
+          onTogglePin={handleTogglePin}
+        />
+      </Drawer>
 
       <Modal
         opened={settingsOpened}
