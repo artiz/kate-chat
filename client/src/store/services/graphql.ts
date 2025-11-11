@@ -164,7 +164,7 @@ export const graphqlApi = api.injectEndpoints({
                   }
                 }
               }
-              chats: getChats(input: { limit: ${CHAT_PAGE_SIZE}, pinned: false }) {
+              chats: getChats(input: { limit: ${CHAT_PAGE_SIZE} }) {
                 chats {
                   id
                   title
@@ -231,19 +231,13 @@ export const graphqlApi = api.injectEndpoints({
           appConfig,
         } = response.data || {};
 
-        for (const chat of chats.chats) {
-          if (chat.lastBotMessage) {
-            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
-          }
-        }
-
-        for (const chat of chats.chats) {
-          if (chat.lastBotMessage) {
-            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
-          }
-        }
-
         for (const chat of pinnedChats.chats) {
+          if (chat.lastBotMessage) {
+            chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
+          }
+        }
+
+        for (const chat of chats.chats) {
           if (chat.lastBotMessage) {
             chat.lastBotMessageHtml = parseMarkdown(chat.lastBotMessage);
           }

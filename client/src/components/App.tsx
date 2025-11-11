@@ -79,9 +79,10 @@ const AppContent: React.FC = () => {
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
 
+      const pinnedChatsIds = new Set(initData.pinnedChats.chats.map(chat => chat.id));
       dispatch(
         setChats({
-          chats: [...initData.pinnedChats.chats, ...initData.chats.chats],
+          chats: [...initData.pinnedChats.chats, ...initData.chats.chats.filter(chat => !pinnedChatsIds.has(chat.id))],
           total: initData.chats.total,
           next: initData.chats.next,
         })

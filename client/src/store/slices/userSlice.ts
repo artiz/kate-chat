@@ -1,8 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User as BaseUser } from "@katechat/ui";
 
-import { ApplicationConfig } from "../services/graphql";
 import { logout } from "..";
+import { ApplicationConfig } from "@/types/graphql";
 
 export interface UserSettings {
   s3Endpoint?: string;

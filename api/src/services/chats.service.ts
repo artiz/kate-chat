@@ -74,7 +74,7 @@ export class ChatsService {
       }, "chat_lastBotMessageId")
       .leftJoinAndSelect("chat.user", "user")
       .skip(pinned ? 0 : from)
-      .take(pinned ? limit : 300)
+      .take(pinned ? 300 : limit)
       .orderBy("chat.updatedAt", "DESC")
       .getMany();
 
