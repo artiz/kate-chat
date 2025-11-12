@@ -21,6 +21,11 @@
     height: 2.5rem;
     display: flex;
     align-items: center;
+
+    :global(.mantine-TextInput-wrapper) {
+      flex: 1;
+      align-self: stretch;
+    }
   }
 
   .title {

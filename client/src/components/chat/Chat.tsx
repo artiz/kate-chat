@@ -47,6 +47,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [sending, setSending] = useState(false);
 
   const chatMessagesRef = useRef<ChatMessagesContainerRef>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
@@ -100,10 +101,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
     return docs;
   }, [chat?.chatDocuments, uploadingDocs]);
-
-  useEffect(() => {
-    setEditedTitle(chat?.title || "Untitled Chat");
-  }, [chat?.title]);
 
   // #region Send message
   const [createMessage] = useMutation<CreateMessageResponse>(CREATE_MESSAGE, {
@@ -226,26 +223,36 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.demoMode && (chat?.messagesCount ?? 0) >= (appConfig.maxChatMessages || 0);
   }, [chat, appConfig]);
 
-  const handleTitleUpdate = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      const title = editedTitle?.trim() || "";
-      if (title && chatId) {
-        updateChat(chatId, { title });
-        setIsEditingTitle(false);
-      }
-    },
-    [editedTitle, chatId, updateChat]
-  );
+  const handleTitleUpdate = useCallback(() => {
+    const title = editedTitle?.trim() || "";
+    if (title && chatId) {
+      updateChat(chatId, { title });
+      setIsEditingTitle(false);
+    }
+  }, [editedTitle, chatId, updateChat]);
 
   const handleTitleBlur = useCallback(
     (event: React.FocusEvent<HTMLElement>) => {
-      setTimeout(() => {
-        setEditedTitle(chat?.title || "Untitled Chat");
-        setIsEditingTitle(false);
-      }, 100);
+      setTimeout(() => setIsEditingTitle(false), 100);
     },
     [chat?.title]
   );
+
+  const handleEditTitleKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleTitleUpdate();
+    } else if (e.key === "Escape") {
+      setIsEditingTitle(false);
+    }
+  };
+
+  const handleTitleEdit = useCallback(() => {
+    setIsEditingTitle(true);
+    setEditedTitle(chat?.title || "Untitled Chat");
+    setTimeout(() => {
+      titleRef.current?.focus();
+    }, 0);
+  }, [chat?.title]);
 
   const isExternalChat = useMemo(() => {
     if (!chat?.user || !appConfig?.currentUser) return false;
@@ -301,13 +308,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <TextInput
               value={editedTitle}
               onChange={e => setEditedTitle(e.currentTarget.value)}
-              autoFocus
+              onKeyUp={handleEditTitleKeyUp}
               rightSection={
                 <ActionIcon type="submit" size="sm" color="blue" onClick={handleTitleUpdate}>
                   <IconCheck size={16} />
                 </ActionIcon>
               }
               onBlur={handleTitleBlur}
+              ref={titleRef}
             />
           ) : (
             <Group gap="xs" className={classes.title}>
@@ -315,15 +323,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
                 {chat?.title || "Untitled Chat"}
               </Title>
 
-              <ActionIcon
-                onClick={() => {
-                  setIsEditingTitle(true);
-                  setEditedTitle(editedTitle || "Untitled Chat");
-                }}
-                size="md"
-                variant="subtle"
-                className={classes.editTitleButton}
-              >
+              <ActionIcon onClick={handleTitleEdit} size="md" variant="subtle" className={classes.editTitleButton}>
                 <IconEdit size={16} />
               </ActionIcon>
             </Group>

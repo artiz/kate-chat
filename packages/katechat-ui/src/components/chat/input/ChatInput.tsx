@@ -54,6 +54,9 @@ export const ChatInput = ({
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, [loadCompleted]);
+
+  useEffect(() => {
     setPrevImageNdx(previousMessages?.length ? previousMessages.length : 0);
   }, [loadCompleted, previousMessages]);
 
