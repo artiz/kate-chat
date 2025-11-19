@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 from app.core.config import settings
 from app.services.document_processor import DocumentProcessor
 from app.core import util
-
+from app.core.config import settings
 
 logger = util.init_logger(__name__)
 
@@ -64,7 +64,7 @@ class SQSService:
                 response = await asyncio.to_thread(
                     self.sqs_client.receive_message,
                     QueueUrl=self.queue_url,
-                    MaxNumberOfMessages=1,
+                    MaxNumberOfMessages=1, # Docling cannot handle parallel processing yet
                     WaitTimeSeconds=5,  # Shorter polling for better shutdown responsiveness
                     VisibilityTimeout=120  # seconds to process
                 )
@@ -88,7 +88,6 @@ class SQSService:
                         except Exception as e:
                             logger.error(f"Error processing message: {message}")
                             logger.exception(e, exc_info=True)
-                            
                             # Message will become visible again after timeout
                     
                     await asyncio.gather(*[process_message(msg) for msg in messages], return_exceptions=True)

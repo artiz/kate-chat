@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     sqs_documents_queue: str
     sqs_index_documents_queue: str
     
+    num_threads: int = 4 # Number of parallel threads for Docling processing
+    
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()

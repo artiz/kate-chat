@@ -62,7 +62,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const navigate = useNavigate();
   const itemsPerPage = 10;
 
-  const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
+  const { uploadDocuments, uploadingDocs, uploadLoading, stopUpload } = useDocumentsUpload();
 
   const { loading, error, data, refetch } = useQuery<GetDocumentsForChatResponse>(
     chatId ? GET_DOCUMENTS_FOR_CHAT : GET_DOCUMENTS,
@@ -282,6 +282,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const confirmDeleteDocument = () => {
     if (documentToDelete) {
       deleteDocument({ variables: { id: documentToDelete.id } });
+      stopUpload(documentToDelete.id);
       setDocumentToDelete(undefined);
     }
   };

@@ -17,6 +17,9 @@ botocore==1.40.11
 tiktoken==0.8.0
 docling==2.14.0
 langchain==0.3.3
+pypdf==4.3.1
+h11>=0.16.0 # not directly required, pinned by Snyk to avoid a vulnerability
+zipp~=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
 
 # openai==1.51.2
 # requests==2.32.3
@@ -32,5 +35,3 @@ langchain==0.3.3
 # passlib==1.7.4
 # bcrypt==3.2.2
 # pyjwt==2.4.0
-h11>=0.16.0 # not directly required, pinned by Snyk to avoid a vulnerability
-zipp~=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability

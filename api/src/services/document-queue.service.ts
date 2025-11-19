@@ -76,7 +76,8 @@ export class DocumentQueueService {
         await this.documentRepo.save(document);
         this.subService.publishDocumentStatus(document);
 
-        await this.processEmbeddings(document, chunkedData, embeddingsModelId, connection);
+        // TODO: Enable embedding processing when ready
+        // await this.processEmbeddings(document, chunkedData, embeddingsModelId, connection);
       }
 
       if (!summarizationModelId) {
