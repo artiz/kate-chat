@@ -8,6 +8,7 @@ import {
   IconMessageMinus,
   IconFileCheckFilled,
   IconFileStack,
+  IconMarkdown,
 } from "@tabler/icons-react";
 import { formatFileSize } from "@katechat/ui";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
@@ -79,17 +80,26 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
         {documents.map((doc: Document) => (
           <Table.Tr key={doc.id}>
             <Table.Td>
-              <Tooltip label={doc.fileName}>
-                <Text fw={500} truncate>
-                  {doc.downloadUrl ? (
-                    <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
-                      {doc.fileName}
+              <Group gap="xs" align="center">
+                {doc.downloadUrlMarkdown && (
+                  <Tooltip label={doc.fileName + " Markdown"}>
+                    <a href={doc.downloadUrlMarkdown} target="_blank" rel="noopener noreferrer">
+                      <IconMarkdown />
                     </a>
-                  ) : (
-                    doc.fileName
-                  )}
-                </Text>
-              </Tooltip>
+                  </Tooltip>
+                )}
+                <Tooltip label={doc.fileName}>
+                  <Text fw={500} truncate>
+                    {doc.downloadUrl ? (
+                      <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
+                        {doc.fileName}
+                      </a>
+                    ) : (
+                      doc.fileName
+                    )}
+                  </Text>
+                </Tooltip>
+              </Group>
             </Table.Td>
             <Table.Td visibleFrom="lg">
               <Text>{formatFileSize(doc.fileSize || 0)}</Text>

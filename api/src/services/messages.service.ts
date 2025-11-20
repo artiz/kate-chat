@@ -1039,32 +1039,9 @@ export class MessagesService {
     }
 
     // Delete the files from S3
-    // TODO: move this to background task
-    const batches = deletedImageFiles.reduce(
-      (acc: string[][], file: string) => {
-        const batch = acc[acc.length - 1];
-        if (batch.length < 5) {
-          batch.push(file);
-        } else {
-          acc.push([file]);
-        }
-
-        return acc;
-      },
-      [[]]
-    );
-
-    const promises = batches.map(batch => {
-      return Promise.allSettled(
-        batch.map(file => {
-          return s3Service.deleteFile(file).catch(error => {
-            logger.error(`Failed to delete file ${file}: ${error}`);
-          });
-        })
-      );
+    await s3Service.deleteFiles(deletedImageFiles).catch(error => {
+      logger.error(error, `Failed to delete files: ${deletedImageFiles.join(", ")}`);
     });
-
-    return Promise.all(promises).then(() => void 0);
   }
 
   protected async getContextMessages(chatId: string, currentMessage?: Message) {

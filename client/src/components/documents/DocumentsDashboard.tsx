@@ -126,6 +126,13 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   );
 
   useEffect(() => {
+    setDocuments(prev => (prev?.length ? prev : data?.getDocuments?.documents || []));
+  }, [data?.getDocuments?.documents]);
+
+  const statusUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const statusUpdateTimeoutTs = React.useRef<number | null>(null);
+
+  useEffect(() => {
     const statusMap = (subscriptionData?.documentsStatus || []).reduce(
       (acc, message: DocumentStatusMessage) => {
         acc[message.documentId] = message;
@@ -134,25 +141,20 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       {} as Record<string, DocumentStatusMessage>
     );
 
-    const docs = (data?.getDocuments?.documents || []).map((doc: Document) => ({
-      ...doc,
-      ...statusMap[doc.id],
-    }));
+    if (statusUpdateTimeoutTs.current && Date.now() - statusUpdateTimeoutTs.current > 250) {
+      setDocuments(prev => {
+        return prev.map(d => ({ ...d, ...statusMap[d.id] }));
+      });
+    }
 
-    setDocuments(prev => {
-      if (!prev.length) {
-        return docs;
-      }
-      const prevMap = prev.reduce(
-        (acc, doc) => {
-          acc[doc.id] = doc;
-          return acc;
-        },
-        {} as Record<string, Document>
-      );
-      return docs.map(d => ((prevMap[d.id]?.updatedAt ?? 0) > (d.updatedAt ?? 0) ? prevMap[d.id] : d));
-    });
-  }, [data?.getDocuments?.documents, subscriptionData]);
+    statusUpdateTimeoutTs.current = Date.now();
+    statusUpdateTimeoutRef.current && clearTimeout(statusUpdateTimeoutRef.current);
+    statusUpdateTimeoutRef.current = setTimeout(() => {
+      setDocuments(prev => {
+        return prev.map(d => ({ ...d, ...statusMap[d.id] }));
+      });
+    }, 250);
+  }, [subscriptionData]);
 
   const [reindexDocument, { loading: reindexLoading }] = useMutation(REINDEX_DOCUMENT_MUTATION, {
     onCompleted: () => {

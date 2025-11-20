@@ -313,6 +313,7 @@ export interface Document {
   createdAt?: Date;
   updatedAt?: Date;
   downloadUrl?: string;
+  downloadUrlMarkdown?: string;
 }
 
 export interface DocumentStatusMessage {

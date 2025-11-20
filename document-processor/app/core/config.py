@@ -1,6 +1,4 @@
-from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pytz import VERSION
 
 
 class Settings(BaseSettings):
@@ -12,6 +10,7 @@ class Settings(BaseSettings):
     project_name: str = "kate-chat-document-processor"
     log_level: str = "INFO"
     
+    # uvicorn workers
     workers: int = 1
     reload: bool = True
     
@@ -31,7 +30,13 @@ class Settings(BaseSettings):
     sqs_documents_queue: str
     sqs_index_documents_queue: str
     
-    num_threads: int = 4 # Number of parallel threads for Docling processing
+    # Number of parallel threads for Docling processing (1 - 10, limited by SQS)
+    # based on SQS concurrency limits and processing capacity
+    num_threads: int = 5
+    # Number of PDF pages to split large documents into smaller batches
+    pdf_page_batch_size: int = 10
+    # Restart worker process after this many tasks
+    worker_restart_after: int = 20  
     
     model_config = SettingsConfigDict(env_file=".env")
 

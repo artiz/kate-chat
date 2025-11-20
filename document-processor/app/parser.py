@@ -209,6 +209,17 @@ class JsonReportProcessor:
 
     def assemble_report(self, conv_result: ConversionResult, normalized_data=None):
         """Assemble the report using either normalized data or raw conversion result."""
+        if (
+            normalized_data
+            and isinstance(normalized_data, dict)
+            and "metainfo" in normalized_data
+            and "content" in normalized_data
+            and "body" not in normalized_data
+        ):
+            # Already assembled report provided by worker process; return as-is.
+            return normalized_data
+        if conv_result is None:
+            raise ValueError("conv_result must be provided when assembling from raw data")
         data = (
             normalized_data
             if normalized_data is not None

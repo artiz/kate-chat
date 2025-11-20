@@ -20,6 +20,7 @@ class SQSService:
         self.index_queue_url = settings.sqs_index_documents_queue
         self.running = False
         self.poll_task = None
+        self.processor: Optional[DocumentProcessor] = None
         
     async def startup(self):
         """Initialize SQS client and start polling"""
@@ -32,7 +33,11 @@ class SQSService:
                 aws_secret_access_key=settings.sqs_secret_access_key or None,
             )
             self.running = True
+            self.processor = DocumentProcessor(lambda is_processing, cmd, delay: self.send_message(is_processing, cmd, delay))
+            await self.processor.startup()
+            
             self.poll_task = asyncio.create_task(self._poll_messages())
+            
             logger.info(f"SQS Service started, polling queue: {self.queue_url}")
         except Exception as e:
             logger.error(f"Failed to start SQS service: {e}")
@@ -48,6 +53,9 @@ class SQSService:
                 await self.poll_task
             except asyncio.CancelledError:
                 logger.debug("Poll task cancelled successfully")
+            self.poll_task = None
+        if self.processor:
+            await self.processor.shutdown()
         if self.sqs_client:    
             self.sqs_client.close()
         logger.info("SQS Service stopped")
@@ -64,10 +72,13 @@ class SQSService:
                 response = await asyncio.to_thread(
                     self.sqs_client.receive_message,
                     QueueUrl=self.queue_url,
-                    MaxNumberOfMessages=1, # Docling cannot handle parallel processing yet
+                    MaxNumberOfMessages=settings.num_threads,
                     WaitTimeSeconds=5,  # Shorter polling for better shutdown responsiveness
                     VisibilityTimeout=120  # seconds to process
                 )
+                if not self.running:
+                    logger.debug("Polling stop requested; exiting loop")
+                    break
                 messages = response.get('Messages', [])
                 logger.debug(f"Got messages: {messages}")
                 
@@ -101,18 +112,14 @@ class SQSService:
     
     async def _handle_message(self, message: Dict[str, Any]):
         """Handle incoming SQS message"""
-        processor = DocumentProcessor(lambda is_processing, cmd, delay: self.send_message(is_processing, cmd, delay))
-        
         try:
             body = json.loads(message['Body'])
             logger.info(f"Processing message: {body}")
-            await processor.handle_command(body)
+            await self.processor.handle_command(body)
             
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in message body: {e}")
             raise
-        finally:
-            await processor.close()
     
     async def send_message(self, is_processing: bool, command: Dict[str, Any], delay_seconds: int = 0):
         """Send a message to the SQS queue"""

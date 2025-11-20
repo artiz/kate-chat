@@ -41,6 +41,7 @@ export const BASE_CHAT_FRAGMENT = `
             fileName
             status
             downloadUrl
+            
           }
         }
         tools {
@@ -66,6 +67,7 @@ export const BASE_DOCUMENT_FRAGMENT = `
       createdAt
       updatedAt
       downloadUrl
+      downloadUrlMarkdown
       embeddingsModelId
       summaryModelId
     }
