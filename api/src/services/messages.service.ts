@@ -146,7 +146,17 @@ export class MessagesService {
       const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
 
       const ragMessage = await this.messageRepository.save(assistantMessage);
-      await this.publishRagMessage(request, connection, model, chat, userMessage, ragMessage);
+      await this.publishRagMessage(
+        {
+          ...request,
+          documentIds,
+        },
+        connection,
+        model,
+        chat,
+        userMessage,
+        ragMessage
+      );
 
       return userMessage;
     }
@@ -809,6 +819,8 @@ export class MessagesService {
     let chunks: DocumentChunk[] = [];
     let ragRequest: string = "";
 
+    ok(input.documentIds, "Document IDs are required for RAG messages");
+
     const completeRequest = async (message: Message) => {
       ok(message);
       try {
@@ -837,7 +849,7 @@ export class MessagesService {
       );
 
       try {
-        chunks = await this.embeddingsService.findChunks(input.documentIds!, input.content, connection, {
+        chunks = await this.embeddingsService.findChunks(input.documentIds, input.content, connection, {
           limit: chunksLimit,
           loadFullPage,
         });

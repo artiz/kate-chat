@@ -3,9 +3,7 @@ import contextlib
 import io
 import json
 import logging
-import os
 import tempfile
-import uuid
 from pathlib import Path
 from typing import Callable, Dict, Any, Optional, Tuple, List
 from redis.asyncio.client import Redis
@@ -22,7 +20,6 @@ from app.text_splitter import TextSplitter, PageTextPreparation
 from docling.datamodel.base_models import DocumentStream
 from docling.datamodel.base_models import ConversionStatus
 
-
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -37,10 +34,13 @@ class DocumentProcessor:
         self.send_message = send_message
         self._worker_pool: Optional[WorkerPool] = None
         self._assets_dir = Path(__file__).resolve().parent.parent / "assets"
+        self._s3_client = None
 
     async def startup(self):
         num_threads = settings.num_threads or 1
-        logger.info("Initializing document processor with %s worker processes", num_threads)
+        logger.info(
+            "Initializing document processor with %s worker processes", num_threads
+        )
         self._worker_pool = WorkerPool(
             num_threads,
             self._assets_dir,
@@ -48,12 +48,12 @@ class DocumentProcessor:
             restart_after=settings.worker_restart_after,
         )
         await self._worker_pool.start()
-    
+
     async def shutdown(self):
         if self._worker_pool:
             await self._worker_pool.shutdown()
             self._worker_pool = None
-    
+
     async def _write_temp_document(self, document_stream: DocumentStream) -> Path:
         suffix = Path(document_stream.name).suffix or ".pdf"
         return await asyncio.to_thread(
@@ -84,7 +84,9 @@ class DocumentProcessor:
         with path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
 
-    async def _dispatch_parse(self, input_path: Path, output_path: Path) -> Dict[str, Any]:
+    async def _dispatch_parse(
+        self, input_path: Path, output_path: Path
+    ) -> Dict[str, Any]:
         worker_pool = self._worker_pool
         if worker_pool is None:
             raise asyncio.CancelledError()
@@ -95,16 +97,17 @@ class DocumentProcessor:
                 raise asyncio.CancelledError() from exc
             raise
 
-
     def _get_s3_client(self):
         """Get or create S3 client"""
-        return boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint,
-            region_name=settings.s3_region,
-            aws_access_key_id=settings.s3_access_key_id,
-            aws_secret_access_key=settings.s3_secret_access_key,
-        )
+        if not self._s3_client:
+            self._s3_client = boto3.client(
+                "s3",
+                endpoint_url=settings.s3_endpoint,
+                region_name=settings.s3_region,
+                aws_access_key_id=settings.s3_access_key_id,
+                aws_secret_access_key=settings.s3_secret_access_key,
+            )
+        return self._s3_client
 
     async def handle_command(self, cmd: Dict[str, Any]):
         """Handle incoming command"""
@@ -116,7 +119,6 @@ class DocumentProcessor:
         parent_s3_key = cmd.get("parentS3Key")
         part_number = int(cmd.get("part", -1))
         parts_count = int(cmd.get("partsCount", 1))
-        
 
         if not all([command_type, document_id, s3_key]):
             logger.warning(
@@ -153,16 +155,16 @@ class DocumentProcessor:
         progress_key = f"{parent_s3_key}.parsing"
         parts_progress_key = f"{parent_s3_key}.parts_progress"
         parsed_json_key = f"{s3_key}.parsed.json"
-        
+
         if part_number < 0 or parts_count <= 1:
             return logger.error(
                 f"Unexpected part request for document {document_id}: part={part_number}, parts={parts_count}. Stop processing."
             )
-        
+
         redis = Redis(connection_pool=redis_connection_pool)
         input_path: Optional[Path] = None
         output_path: Optional[Path] = None
-        
+
         try:
             if await self._s3_object_exists(parsed_json_key):
                 return await self._finalize_partitioned_doc(
@@ -173,11 +175,11 @@ class DocumentProcessor:
                 )
             parts_progress = await redis.get(parts_progress_key)
             processed_parts = int(parts_progress) if parts_progress is not None else 0
-            
+
             if processed_parts > 0:
                 progress = await redis.get(progress_key)
                 progress = float(progress) if progress is not None else 0.0
-                
+
                 await self._set_progress(
                     redis,
                     progress_key,
@@ -217,16 +219,18 @@ class DocumentProcessor:
                 indent=2,
                 ensure_ascii=False,
             )
-            await self._upload_to_s3(parsed_json_key, part_json_content, "application/json")
+            await self._upload_to_s3(
+                parsed_json_key, part_json_content, "application/json"
+            )
             await self._s3_delete(s3_key)
-            
+
             processed_parts = await self._finalize_partitioned_doc(
                 redis,
                 document_id,
                 parent_s3_key,
                 parts_count,
             )
-            
+
             await self._set_progress(
                 redis,
                 progress_key,
@@ -241,54 +245,59 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Failed to parse document {document_id} part {part_number}")
             logger.exception(e, exc_info=True)
-            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e), mime)
+            await self._set_progress(
+                redis, progress_key, 0, document_id, "error", str(e), mime
+            )
         finally:
             await redis.close()
             for temp_path in (input_path, output_path):
                 if temp_path is not None:
                     with contextlib.suppress(FileNotFoundError):
                         temp_path.unlink()
-        
-    
+
     async def _handle_parse_document(self, document_id: str, s3_key: str, mime: str):
         """Handle parse_document command"""
         progress_key = f"{s3_key}.parsing"
         parsed_json_key = f"{s3_key}.parsed.json"
-        
+
         redis = Redis(connection_pool=redis_connection_pool)
         input_path: Optional[Path] = None
         output_path: Optional[Path] = None
-        
+
         try:
             # Check if parsing is already completed
             if await self._s3_object_exists(parsed_json_key):
                 logger.info(f"Document {document_id} already parsed, skipping to split")
                 await self._send_split_command(document_id, s3_key)
                 return
-                
+
             # Check if parsing is already in progress
             existing_progress = await redis.get(progress_key)
             if existing_progress is not None:
                 progress = float(existing_progress)
                 # If progress < 1, push back to queue with delay
                 if progress <= 1:
-                    logger.info(f"Document {document_id} parsing in progress ({progress*100:.1f}%), delaying")
+                    logger.info(
+                        f"Document {document_id} parsing in progress ({progress*100:.1f}%), delaying"
+                    )
                     await self._send_parse_command_delayed(document_id, s3_key)
                 return
-            
+
             await self._set_progress(redis, progress_key, 0.0, document_id, "parsing")
             (document_stream, content_type) = await self._download_s3_stream(s3_key)
             if not mime:
                 mime = content_type
 
-            #  Determine if document needs to be split into parts       
+            #  Determine if document needs to be split into parts
             if mime == "application/pdf":
-                batches = await asyncio.to_thread(self._get_pdf_batches, document_stream)
+                batches = await asyncio.to_thread(
+                    self._get_pdf_batches, document_stream
+                )
                 document_stream.stream.seek(0)
                 parts_count = len(batches.batches)
-                
+
                 if parts_count > 1:
-                    for (ndx, part) in enumerate(batches.batches):
+                    for ndx, part in enumerate(batches.batches):
                         part_s3_key = f"{s3_key}.part{ndx}"
                         # upload part to S3
                         await self._upload_stream_to_s3(part_s3_key, part, mime)
@@ -312,7 +321,7 @@ class DocumentProcessor:
                         f"queued {parts_count} parts",
                     )
                     return
-    
+
             await self._set_progress(redis, progress_key, 0.3, document_id, "parsing")
 
             input_path = await self._write_temp_document(document_stream)
@@ -330,16 +339,16 @@ class DocumentProcessor:
 
             # Generate reports
             await self._set_progress(redis, progress_key, 0.8, document_id, "parsing")
-            json_content = await asyncio.to_thread(json.dumps, processed_report, indent=2, ensure_ascii=False)
-            await self._upload_to_s3(
-                parsed_json_key, json_content, "application/json"
+            json_content = await asyncio.to_thread(
+                json.dumps, processed_report, indent=2, ensure_ascii=False
             )
-            
+            await self._upload_to_s3(parsed_json_key, json_content, "application/json")
+
             parsed_md_key = f"{s3_key}.parsed.md"
-            content = await asyncio.to_thread(self._extract_markdown_text, processed_report)
-            await self._upload_to_s3(
-                parsed_md_key, content, "text/markdown"
+            content = await asyncio.to_thread(
+                self._extract_markdown_text, processed_report
             )
+            await self._upload_to_s3(parsed_md_key, content, "text/markdown")
             # Complete parsing
             await self._set_progress(redis, progress_key, 1.0, document_id, "parsing")
             await self._send_split_command(document_id, s3_key)
@@ -351,7 +360,9 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Failed to parse document {document_id}")
             logger.exception(e, exc_info=True)
-            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e), mime)
+            await self._set_progress(
+                redis, progress_key, 0, document_id, "error", str(e), mime
+            )
         finally:
             await redis.close()
             for temp_path in (input_path, output_path):
@@ -399,12 +410,16 @@ class DocumentProcessor:
 
             # Split into chunks
             await self._set_progress(redis, progress_key, 0.6, document_id, "chunking")
-            chunked_report = await asyncio.to_thread(text_splitter.split_json_report, joined_report)
+            chunked_report = await asyncio.to_thread(
+                text_splitter.split_json_report, joined_report
+            )
 
             # Upload chunked JSON to S3
             await self._set_progress(redis, progress_key, 0.8, document_id, "chunking")
 
-            chunked_content = await asyncio.to_thread(json.dumps, chunked_report, indent=2, ensure_ascii=False)
+            chunked_content = await asyncio.to_thread(
+                json.dumps, chunked_report, indent=2, ensure_ascii=False
+            )
             await self._upload_to_s3(
                 chunked_json_key, chunked_content, "application/json"
             )
@@ -417,17 +432,28 @@ class DocumentProcessor:
 
         except Exception as e:
             logger.error(f"Failed to chunk document {document_id}: {e}")
-            await self._set_progress(redis, progress_key, 0, document_id, "error", str(e))
+            await self._set_progress(
+                redis, progress_key, 0, document_id, "error", str(e)
+            )
         finally:
             await redis.close()
 
     async def _set_progress(
-        self, redis: Redis, progress_key: str, progress: float, document_id: str, status: str, info: Optional[str] = None, mime: Optional[str] = None
+        self,
+        redis: Redis,
+        progress_key: str,
+        progress: float,
+        document_id: str,
+        status: str,
+        info: Optional[str] = None,
+        mime: Optional[str] = None,
     ):
         """Set progress in Redis and publish notification"""
         # Set progress with 30 second expiration
         await redis.setex(progress_key, 30, str(progress))
-        logger.debug(f"Document {document_id} {mime or ''} status update: {status} {progress * 100:.1f}% {info or ''}")
+        logger.debug(
+            f"Document {document_id} {mime or ''} status update: {status} {progress * 100:.1f}% {info or ''}"
+        )
 
         # Publish notification
         notification = {
@@ -438,15 +464,15 @@ class DocumentProcessor:
             "progress": progress,
             "sync": True,
         }
-        await redis.publish(
-            settings.document_status_channel, json.dumps(notification)
-        )
+        await redis.publish(settings.document_status_channel, json.dumps(notification))
 
     async def _s3_object_exists(self, key: str) -> bool:
         """Check if S3 object exists"""
         s3 = self._get_s3_client()
         try:
-            await asyncio.to_thread(s3.head_object, Bucket=settings.s3_files_bucket_name, Key=key)
+            await asyncio.to_thread(
+                s3.head_object, Bucket=settings.s3_files_bucket_name, Key=key
+            )
             return True
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
@@ -457,7 +483,9 @@ class DocumentProcessor:
         """Download document from S3 as stream"""
         s3 = self._get_s3_client()
         try:
-            response = await asyncio.to_thread(s3.get_object, Bucket=settings.s3_files_bucket_name, Key=key)
+            response = await asyncio.to_thread(
+                s3.get_object, Bucket=settings.s3_files_bucket_name, Key=key
+            )
             content = response["Body"].read()
             content_type = response["ContentType"]
 
@@ -472,7 +500,9 @@ class DocumentProcessor:
         """Download text content from S3"""
         s3 = self._get_s3_client()
         try:
-            response = await asyncio.to_thread(s3.get_object, Bucket=settings.s3_files_bucket_name, Key=key)
+            response = await asyncio.to_thread(
+                s3.get_object, Bucket=settings.s3_files_bucket_name, Key=key
+            )
             content = response["Body"].read().decode("utf-8")
             return content
         except ClientError as e:
@@ -493,7 +523,7 @@ class DocumentProcessor:
         except ClientError as e:
             logger.error(f"Failed to upload {key} to S3: {e}")
             raise
-    
+
     async def _s3_delete(self, key: str):
         """Delete object from S3"""
         s3 = self._get_s3_client()
@@ -506,8 +536,10 @@ class DocumentProcessor:
         except ClientError as e:
             logger.error(f"Failed to delete {key} from S3: {e}")
             raise
-    
-    async def _upload_stream_to_s3(self, key: str, content: DocumentStream, content_type: str):
+
+    async def _upload_stream_to_s3(
+        self, key: str, content: DocumentStream, content_type: str
+    ):
         """Upload content to S3"""
         s3 = self._get_s3_client()
         try:
@@ -523,34 +555,34 @@ class DocumentProcessor:
             raise
 
     def _get_pdf_batches(self, document_stream: DocumentStream) -> PdfBatches:
-        """Count pages in a PDF document stream."""
+        """Split a PDF document stream into batches based on page count."""
         if not document_stream or not document_stream.stream:
-            return 0
+            return PdfBatches(pages_count=0, batches=[])
 
         stream = document_stream.stream
         current_position = stream.tell()
-        
+
         try:
             stream.seek(0)
             reader = PdfReader(stream)
-            pages_count=len(reader.pages)
+            pages_count = len(reader.pages)
             batches = []
             writer: PdfWriter = None
-            
+
             def add_batch(writer: PdfWriter):
-                stream = io.BytesIO()
-                writer.write(stream)
-                stream.seek(0)
-                ds = DocumentStream(name=f"part{len(batches)}", stream=stream)
+                batch_stream = io.BytesIO()
+                writer.write(batch_stream)
+                batch_stream.seek(0)
+                ds = DocumentStream(name=f"part{len(batches)}", stream=batch_stream)
                 batches.append(ds)
-            
+
             for i in range(0, pages_count):
                 if i % settings.pdf_page_batch_size == 0:
                     if writer is not None:
                         add_batch(writer)
                     writer = PdfWriter()
                 writer.add_page(reader.pages[i])
-            
+
             if writer is not None and len(writer.pages) > 0:
                 add_batch(writer)
 
@@ -558,7 +590,6 @@ class DocumentProcessor:
         finally:
             stream.seek(current_position if current_position >= 0 else 0)
 
-   
     def _build_combined_metainfo(
         self,
         base_metainfo: Optional[Dict[str, Any]],
@@ -600,7 +631,7 @@ class DocumentProcessor:
         """Combine partial parsing results into a single document and finish processing. Return processed parts_count."""
         progress_key = f"{s3_key}.parsing"
         parts_progress_key = f"{s3_key}.parts_progress"
-        
+
         parsed_json_key = f"{s3_key}.parsed.json"
 
         if await self._s3_object_exists(parsed_json_key):
@@ -613,23 +644,22 @@ class DocumentProcessor:
                 document_id,
                 "parsing",
             )
-            
+
             return parts_count
 
-        parts_progress = await redis.get(parts_progress_key)
-        # +1 for current part being processed
-        parts_progress = int(parts_progress) + 1 if parts_progress is not None else 0
+         # Atomically increment the progress counter (+1 for current part being processed)
+        parts_progress = await redis.incr(parts_progress_key)
+        await redis.expire(parts_progress_key, 30)
         
         if parts_progress > 0 and parts_progress < parts_count:
             logger.info(
                 f"Document {document_id} is not finalized yet: expected {parts_count} parts, found {parts_progress + 1}"
             )
-            await redis.setex(parts_progress_key, 30, str(parts_progress))
             return parts_progress
-        
+
         parsed_part_files: List[str] = []
         part_files: List[str] = []
-        
+
         for part_idx in range(parts_count):
             part_key = f"{s3_key}.part{part_idx}"
             parsed_part_key = f"{s3_key}.part{part_idx}.parsed.json"
@@ -673,6 +703,7 @@ class DocumentProcessor:
             if base_metainfo is None and report.get("metainfo"):
                 base_metainfo = report["metainfo"]
 
+            first_page = page_num
             for page in report.get("content", []):
                 page["page"] = page_num + 1
                 pages_by_number[int(page_num)] = page
@@ -680,27 +711,22 @@ class DocumentProcessor:
 
             for table in report.get("tables", []):
                 table_id = table.get("table_id")
-                table["page"] = page_num
+                table["page"] = first_page + table.get("page", 0)
                 if table_id is not None:
                     tables_by_id[int(table_id)] = table
 
             for picture in report.get("pictures", []):
                 picture_id = picture.get("picture_id")
-                picture["page"] = page_num
+                picture["page"] = first_page + picture.get("page", 0)
                 if picture_id is not None:
                     pictures_by_id[int(picture_id)] = picture
 
         combined_pages = [
-            pages_by_number[index]
-            for index in sorted(pages_by_number.keys())
+            pages_by_number[index] for index in sorted(pages_by_number.keys())
         ]
-        combined_tables = [
-            tables_by_id[index]
-            for index in sorted(tables_by_id.keys())
-        ]
+        combined_tables = [tables_by_id[index] for index in sorted(tables_by_id.keys())]
         combined_pictures = [
-            pictures_by_id[index]
-            for index in sorted(pictures_by_id.keys())
+            pictures_by_id[index] for index in sorted(pictures_by_id.keys())
         ]
 
         combined_metainfo = self._build_combined_metainfo(
@@ -723,7 +749,9 @@ class DocumentProcessor:
         await self._upload_to_s3(parsed_json_key, json_content, "application/json")
 
         parsed_md_key = f"{s3_key}.parsed.md"
-        markdown_content = await asyncio.to_thread(self._extract_markdown_text, combined_report)
+        markdown_content = await asyncio.to_thread(
+            self._extract_markdown_text, combined_report
+        )
         await self._upload_to_s3(parsed_md_key, markdown_content, "text/markdown")
 
         await self._set_progress(
@@ -738,7 +766,9 @@ class DocumentProcessor:
             try:
                 await self._s3_delete(parsed_part_key)
             except ClientError:
-                logger.warning(f"Failed to delete temporary part {parsed_part_key} from S3")
+                logger.warning(
+                    f"Failed to delete temporary part {parsed_part_key} from S3"
+                )
 
         await self._send_split_command(document_id, s3_key)
         logger.info(
@@ -762,7 +792,7 @@ class DocumentProcessor:
         if "content" in processed_report:
             # Store report data for text preparation
             text_preparation = PageTextPreparation(processed_report)
-            
+
             for page_data in processed_report["content"]:
                 page_num = page_data.get("page", 0)
                 content_parts.append(f"\n---\n\n## Page {page_num}\n")

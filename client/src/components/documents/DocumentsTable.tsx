@@ -80,7 +80,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
         {documents.map((doc: Document) => (
           <Table.Tr key={doc.id}>
             <Table.Td>
-              <Group gap="xs" align="center">
+              <Group gap="xs" align="center" wrap="nowrap">
                 {doc.downloadUrlMarkdown && (
                   <Tooltip label={doc.fileName + " Markdown"}>
                     <a href={doc.downloadUrlMarkdown} target="_blank" rel="noopener noreferrer">
