@@ -181,6 +181,20 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
     
+    - name: Free Disk Space (Ubuntu)
+      if: needs.changes.outputs.document_processor == 'true'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        tool-cache: false
+        # all of these default to true, but feel free to set to "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
     # Build and push document-processor image
     - name: Build and push document-processor image
       id: build-document-processor

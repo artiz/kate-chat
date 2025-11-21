@@ -84,7 +84,10 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
       }
 
       // Send parse command if document is still in UPLOAD state
-      if (existing.status === DocumentStatus.STORAGE_UPLOAD && existing.s3key) {
+      if (
+        [DocumentStatus.STORAGE_UPLOAD, DocumentStatus.PARSING, DocumentStatus.ERROR].includes(existing.status) &&
+        existing.s3key
+      ) {
         await sqsService.sendJsonMessage({
           command: "parse_document",
           documentId: existing.id,

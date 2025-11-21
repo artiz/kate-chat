@@ -44,13 +44,8 @@ async def app_startup():
     loop = asyncio.get_event_loop()
     loop.set_default_executor(executor)
     
-    
     log.info("Startup...")
     await global_app.startup()
-    
-    log.info(f"Load Docling models...")
-    parser = PDFParser()
-    parser.convert_document(assets_dir /  "dummy_report.pdf")
     
     # Setup SQS listener
     sqs_service = SQSService()

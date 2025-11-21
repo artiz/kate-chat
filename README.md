@@ -56,7 +56,6 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 * Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc).
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * Rename `document-processor` to `tasks-processor` service to perform following tasks:
- - implement chat files deletion task (search for "delete the files from S3")
  - add custom code interpreter tool implementation
 ```
 from services.code_executor import CodeExecutor
