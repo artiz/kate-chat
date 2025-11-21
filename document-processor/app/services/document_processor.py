@@ -18,7 +18,6 @@ from app.parser import JsonReportProcessor
 from app.services.parser_worker import WorkerPool, WorkerPoolError
 from app.text_splitter import TextSplitter, PageTextPreparation
 from docling.datamodel.base_models import DocumentStream
-from docling.datamodel.base_models import ConversionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +53,29 @@ class DocumentProcessor:
             await self._worker_pool.shutdown()
             self._worker_pool = None
 
-    async def _write_temp_document(self, document_stream: DocumentStream) -> Path:
-        suffix = Path(document_stream.name).suffix or ".pdf"
+    async def _write_temp_document(self, document_stream: DocumentStream, content_type: str) -> Path:
+        suffix = self._get_file_suffix(content_type)
+        
         return await asyncio.to_thread(
             self._write_temp_document_sync,
             document_stream,
             suffix,
         )
+        
+    def _get_file_suffix(self, content_type: str) -> str:
+        """Get file suffix based on content type"""
+        mapping = {
+            "application/pdf": ".pdf",
+            "application/msword": ".doc",
+            "application/vnd.ms-excel": ".xls",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+            "application/vnd.oasis.opendocument.text": ".odt",
+            "text/plain": ".txt",
+            "text/markdown": ".md",
+            "text/csv": ".csv",
+        }
+        return mapping.get(content_type, ".bin")
 
     @staticmethod
     def _write_temp_document_sync(document_stream: DocumentStream, suffix: str) -> Path:
@@ -189,8 +204,8 @@ class DocumentProcessor:
                     f"processing part {part_number + 1}/{parts_count}",
                 )
 
-            (document_stream, _) = await self._download_s3_stream(s3_key)
-            input_path = await self._write_temp_document(document_stream)
+            (document_stream, content_type) = await self._download_s3_stream(s3_key)
+            input_path = await self._write_temp_document(document_stream, content_type)
             output_path = Path(f"{input_path}.parsed.json")
 
             await self._dispatch_parse(input_path, output_path)
@@ -324,7 +339,7 @@ class DocumentProcessor:
 
             await self._set_progress(redis, progress_key, 0.3, document_id, "parsing")
 
-            input_path = await self._write_temp_document(document_stream)
+            input_path = await self._write_temp_document(document_stream, mime)
             output_path = Path(f"{input_path}.parsed.json")
 
             await self._dispatch_parse(input_path, output_path)
