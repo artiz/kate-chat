@@ -25,6 +25,16 @@ export class DocumentResolver extends BaseResolver {
     return document.s3key ? S3Service.getFileUrl(document.s3key, document.fileName) : undefined;
   }
 
+  @FieldResolver(() => String, { nullable: true })
+  downloadUrlMarkdown(@Root() document: Document) {
+    return document.s3key &&
+      [DocumentStatus.READY, DocumentStatus.CHUNKING, DocumentStatus.EMBEDDING, DocumentStatus.SUMMARIZING].includes(
+        document.status
+      )
+      ? S3Service.getFileUrl(document.s3key + ".parsed.md", document.fileName + ".md")
+      : undefined;
+  }
+
   @Mutation(() => Document)
   async reindexDocument(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Document> {
     await this.validateContextToken(context);
@@ -115,15 +125,7 @@ export class DocumentResolver extends BaseResolver {
 
     // Delete from S3 if exists
     if (document.s3key) {
-      const exts = ["", ".chunked.json", ".parsed.json", ".parsed.md"];
-      for (const ext of exts) {
-        const key = `${document.s3key}${ext}`;
-        try {
-          await s3Service.deleteFile(key);
-        } catch (error) {
-          console.warn(error, `Failed to delete file from S3: ${key}`);
-        }
-      }
+      await s3Service.deleteByPrefix(document.s3key);
     }
 
     // Delete from database

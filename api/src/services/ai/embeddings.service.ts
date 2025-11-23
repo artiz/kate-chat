@@ -91,6 +91,8 @@ export class EmbeddingsService {
       id: In([...new Set(documentIds)]),
     });
 
+    logger.debug({ documentIds: documentIds || [], documents, query }, `Query chunks`);
+
     const modelIds = new Set(documents.map(doc => doc.embeddingsModelId).filter(notEmpty));
     ok(modelIds.size, `No valid embeddings model IDs found for documents`);
     const modelsMap = (

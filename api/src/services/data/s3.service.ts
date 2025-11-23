@@ -2,7 +2,15 @@ import { Repository } from "typeorm";
 import fs from "fs";
 import { PassThrough } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  S3ClientConfig,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { createLogger } from "@/utils/logger";
 import { UserSettings } from "@/entities";
@@ -205,6 +213,62 @@ export class S3Service implements FileContentLoader {
 
     logger.debug({ key }, "Deleting file from S3");
     await client.send(new DeleteObjectCommand(params));
+  }
+
+  /**
+   * Delete files from S3 by prefix
+   * @param prefix S3 key prefix of the files to delete
+   */
+  public async deleteByPrefix(prefix: string): Promise<void> {
+    const client = await this.getClient();
+    if (!client) {
+      throw new Error("S3 client is not configured");
+    }
+
+    const listParams = {
+      Bucket: this.bucketName,
+      Prefix: prefix,
+    };
+
+    const listResult = await client.send(new ListObjectsV2Command(listParams));
+    if (!listResult.Contents || listResult.Contents.length === 0) return;
+
+    const deleteParams = {
+      Bucket: this.bucketName,
+      Delete: { Objects: listResult.Contents.map(item => ({ Key: item.Key })) },
+    };
+
+    logger.debug(
+      { prefix, keys: listResult.Contents.map(item => item.Key).filter(Boolean) },
+      "Delete files from S3 by prefix"
+    );
+    await client.send(new DeleteObjectsCommand(deleteParams));
+
+    if (listResult.IsTruncated) {
+      // continue in background
+      this.deleteByPrefix(prefix).catch(error => {
+        logger.error(error, `Failed to delete files from S3 by prefix "${prefix}"`);
+      });
+    }
+  }
+
+  /**
+   * Delete files from S3
+   * @param keys S3 keys of the files to delete
+   */
+  public async deleteFiles(keys: string[]): Promise<void> {
+    const client = await this.getClient();
+    if (!client) {
+      throw new Error("S3 client is not configured");
+    }
+
+    const deleteParams = {
+      Bucket: this.bucketName,
+      Delete: { Objects: keys.map(key => ({ Key: key })) },
+    };
+
+    logger.debug({ keys }, "Deleting files from S3");
+    await client.send(new DeleteObjectsCommand(deleteParams));
   }
 
   /**

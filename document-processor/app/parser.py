@@ -1,3 +1,5 @@
+import multiprocessing
+import os, sys
 import time
 import logging
 import json
@@ -16,14 +18,16 @@ from docling.document_converter import DocumentConverter, FormatOption
 from docling.datamodel.pipeline_options import (
     PdfPipelineOptions,
     AcceleratorOptions,
+    AcceleratorDevice,
     TableFormerMode,
     EasyOcrOptions,
-    TesseractCliOcrOptions,
 )
 from docling.datamodel.base_models import InputFormat
 from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
 from docling.pipeline.simple_pipeline import SimplePipeline
 from docling.datamodel.base_models import ConversionStatus, DocumentStream
+from app.core.config import settings
+
 
 # Basic ideas got from https://github.com/IlyaRice/RAG-Challenge-2
 # Kudos to @IlyaRice
@@ -31,7 +35,6 @@ from docling.datamodel.base_models import ConversionStatus, DocumentStream
 _log = logging.getLogger(__name__)
 
 NOTDEF = "/.notdef"
-
 
 class PDFParser:
     def __init__(
@@ -42,6 +45,8 @@ class PDFParser:
         md_backend=MarkdownDocumentBackend,
         output_dir: Path = Path("./parsed_pdfs"),
     ):
+        os.environ["OMP_NUM_THREADS"] = str(multiprocessing.cpu_count())
+        
         self.pdf_backend = pdf_backend
         self.msword_backend = msword_backend
         self.html_backend = html_backend
@@ -55,9 +60,6 @@ class PDFParser:
     ) -> "DocumentConverter":
         """Creates and returns a DocumentConverter with default pipeline options."""
 
-        # PDF pipeline options
-        accelerator_options = AcceleratorOptions()
-        
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
         ocr_options = EasyOcrOptions(force_full_page_ocr=use_full_ocr)
@@ -65,8 +67,7 @@ class PDFParser:
         pipeline_options.do_table_structure = True
         pipeline_options.table_structure_options.do_cell_matching = True
         pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
-        pipeline_options.accelerator_options = accelerator_options
-
+        
         format_options = {
             # PDF format
             InputFormat.PDF: FormatOption(
@@ -209,6 +210,17 @@ class JsonReportProcessor:
 
     def assemble_report(self, conv_result: ConversionResult, normalized_data=None):
         """Assemble the report using either normalized data or raw conversion result."""
+        if (
+            normalized_data
+            and isinstance(normalized_data, dict)
+            and "metainfo" in normalized_data
+            and "content" in normalized_data
+            and "body" not in normalized_data
+        ):
+            # Already assembled report provided by worker process; return as-is.
+            return normalized_data
+        if conv_result is None:
+            raise ValueError("conv_result must be provided when assembling from raw data")
         data = (
             normalized_data
             if normalized_data is not None

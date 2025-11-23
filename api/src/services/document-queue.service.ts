@@ -74,8 +74,7 @@ export class DocumentQueueService {
         document.status = DocumentStatus.EMBEDDING;
         document.statusProgress = 0;
         await this.documentRepo.save(document);
-        this.subService.publishDocumentStatus(document);
-
+        await this.subService.publishDocumentStatus(document);
         await this.processEmbeddings(document, chunkedData, embeddingsModelId, connection);
       }
 
@@ -139,15 +138,14 @@ export class DocumentQueueService {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
 
+      logger.debug(`Processed embedding for chunk ${i + 1}/${chunks.length}`);
       await this.embeddingsService.generateEmbedding(document, chunk, model, connection);
 
       // Update progress
       const progress = (i + 1) / chunks.length;
       document.statusProgress = progress;
       await this.documentRepo.save(document);
-      this.subService.publishDocumentStatus(document);
-
-      logger.debug(`Processed embedding for chunk ${i + 1}/${chunks.length}`);
+      await this.subService.publishDocumentStatus(document);
     }
   }
 

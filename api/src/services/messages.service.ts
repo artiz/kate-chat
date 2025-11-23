@@ -146,7 +146,17 @@ export class MessagesService {
       const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
 
       const ragMessage = await this.messageRepository.save(assistantMessage);
-      await this.publishRagMessage(request, connection, model, chat, userMessage, ragMessage);
+      await this.publishRagMessage(
+        {
+          ...request,
+          documentIds,
+        },
+        connection,
+        model,
+        chat,
+        userMessage,
+        ragMessage
+      );
 
       return userMessage;
     }
@@ -809,6 +819,8 @@ export class MessagesService {
     let chunks: DocumentChunk[] = [];
     let ragRequest: string = "";
 
+    ok(input.documentIds, "Document IDs are required for RAG messages");
+
     const completeRequest = async (message: Message) => {
       ok(message);
       try {
@@ -837,7 +849,7 @@ export class MessagesService {
       );
 
       try {
-        chunks = await this.embeddingsService.findChunks(input.documentIds!, input.content, connection, {
+        chunks = await this.embeddingsService.findChunks(input.documentIds, input.content, connection, {
           limit: chunksLimit,
           loadFullPage,
         });
@@ -1039,32 +1051,9 @@ export class MessagesService {
     }
 
     // Delete the files from S3
-    // TODO: move this to background task
-    const batches = deletedImageFiles.reduce(
-      (acc: string[][], file: string) => {
-        const batch = acc[acc.length - 1];
-        if (batch.length < 5) {
-          batch.push(file);
-        } else {
-          acc.push([file]);
-        }
-
-        return acc;
-      },
-      [[]]
-    );
-
-    const promises = batches.map(batch => {
-      return Promise.allSettled(
-        batch.map(file => {
-          return s3Service.deleteFile(file).catch(error => {
-            logger.error(`Failed to delete file ${file}: ${error}`);
-          });
-        })
-      );
+    await s3Service.deleteFiles(deletedImageFiles).catch(error => {
+      logger.error(error, `Failed to delete files: ${deletedImageFiles.join(", ")}`);
     });
-
-    return Promise.all(promises).then(() => void 0);
   }
 
   protected async getContextMessages(chatId: string, currentMessage?: Message) {

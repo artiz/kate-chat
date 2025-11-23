@@ -46,6 +46,8 @@ interface IProps {
   chatId?: string;
 }
 
+const DEBOUNCE_DELAY_MS = 250;
+
 export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
   const [processedSummary, setProcessedSummary] = useState<string>("");
@@ -62,7 +64,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const navigate = useNavigate();
   const itemsPerPage = 10;
 
-  const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
+  const { uploadDocuments, uploadingDocs, uploadLoading, stopUpload } = useDocumentsUpload();
 
   const { loading, error, data, refetch } = useQuery<GetDocumentsForChatResponse>(
     chatId ? GET_DOCUMENTS_FOR_CHAT : GET_DOCUMENTS,
@@ -125,6 +127,9 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     }
   );
 
+  const statusUpdateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const statusUpdateTimeoutTs = React.useRef<number | null>(null);
+
   useEffect(() => {
     const statusMap = (subscriptionData?.documentsStatus || []).reduce(
       (acc, message: DocumentStatusMessage) => {
@@ -139,19 +144,29 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       ...statusMap[doc.id],
     }));
 
-    setDocuments(prev => {
-      if (!prev.length) {
-        return docs;
-      }
-      const prevMap = prev.reduce(
-        (acc, doc) => {
-          acc[doc.id] = doc;
-          return acc;
-        },
-        {} as Record<string, Document>
-      );
-      return docs.map(d => ((prevMap[d.id]?.updatedAt ?? 0) > (d.updatedAt ?? 0) ? prevMap[d.id] : d));
-    });
+    const updateDocs = () => {
+      setDocuments(prev => {
+        if (!prev.length) {
+          return docs;
+        }
+        const prevMap = prev.reduce(
+          (acc, doc) => {
+            acc[doc.id] = doc;
+            return acc;
+          },
+          {} as Record<string, Document>
+        );
+        return docs.map(d => ((prevMap[d.id]?.updatedAt ?? 0) > (d.updatedAt ?? 0) ? prevMap[d.id] : d));
+      });
+    };
+
+    if (statusUpdateTimeoutTs.current && Date.now() - statusUpdateTimeoutTs.current > DEBOUNCE_DELAY_MS) {
+      updateDocs();
+    }
+
+    statusUpdateTimeoutTs.current = Date.now();
+    statusUpdateTimeoutRef.current && clearTimeout(statusUpdateTimeoutRef.current);
+    statusUpdateTimeoutRef.current = setTimeout(updateDocs, DEBOUNCE_DELAY_MS);
   }, [data?.getDocuments?.documents, subscriptionData]);
 
   const [reindexDocument, { loading: reindexLoading }] = useMutation(REINDEX_DOCUMENT_MUTATION, {
@@ -282,6 +297,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const confirmDeleteDocument = () => {
     if (documentToDelete) {
       deleteDocument({ variables: { id: documentToDelete.id } });
+      stopUpload(documentToDelete.id);
       setDocumentToDelete(undefined);
     }
   };

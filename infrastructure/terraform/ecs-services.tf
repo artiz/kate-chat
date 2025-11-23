@@ -333,6 +333,10 @@ resource "aws_ecs_task_definition" "document_processor" {
         {
           name  = "REDIS_URL"
           value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.port}"
+        },
+        {
+          name  = "NUM_THREADS"
+          value = "2"
         }
       ]
 

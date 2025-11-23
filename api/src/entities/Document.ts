@@ -99,4 +99,7 @@ export class Document {
 
   @Field(() => String, { nullable: true })
   downloadUrl?: string;
+
+  @Field(() => String, { nullable: true })
+  downloadUrlMarkdown?: string;
 }
