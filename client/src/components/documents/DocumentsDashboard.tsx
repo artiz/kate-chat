@@ -46,6 +46,8 @@ interface IProps {
   chatId?: string;
 }
 
+const DEBOUNCE_DELAY_MS = 250;
+
 export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
   const [processedSummary, setProcessedSummary] = useState<string>("");
@@ -158,13 +160,13 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       });
     };
 
-    if (statusUpdateTimeoutTs.current && Date.now() - statusUpdateTimeoutTs.current > 250) {
+    if (statusUpdateTimeoutTs.current && Date.now() - statusUpdateTimeoutTs.current > DEBOUNCE_DELAY_MS) {
       updateDocs();
     }
 
     statusUpdateTimeoutTs.current = Date.now();
     statusUpdateTimeoutRef.current && clearTimeout(statusUpdateTimeoutRef.current);
-    statusUpdateTimeoutRef.current = setTimeout(updateDocs, 250);
+    statusUpdateTimeoutRef.current = setTimeout(updateDocs, DEBOUNCE_DELAY_MS);
   }, [data?.getDocuments?.documents, subscriptionData]);
 
   const [reindexDocument, { loading: reindexLoading }] = useMutation(REINDEX_DOCUMENT_MUTATION, {

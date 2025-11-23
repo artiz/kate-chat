@@ -1,4 +1,5 @@
-import os
+import multiprocessing
+import os, sys
 import time
 import logging
 import json
@@ -44,7 +45,7 @@ class PDFParser:
         md_backend=MarkdownDocumentBackend,
         output_dir: Path = Path("./parsed_pdfs"),
     ):
-        os.environ["OMP_NUM_THREADS"] = str(settings.num_threads)
+        os.environ["OMP_NUM_THREADS"] = str(multiprocessing.cpu_count())
         
         self.pdf_backend = pdf_backend
         self.msword_backend = msword_backend

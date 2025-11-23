@@ -237,16 +237,19 @@ export class S3Service implements FileContentLoader {
       Bucket: this.bucketName,
       Delete: { Objects: listResult.Contents.map(item => ({ Key: item.Key })) },
     };
-    await client.send(new DeleteObjectsCommand(deleteParams));
-
-    if (listResult.IsTruncated) {
-      await this.deleteByPrefix(prefix);
-    }
 
     logger.debug(
       { prefix, keys: listResult.Contents.map(item => item.Key).filter(Boolean) },
-      "Deleting files from S3 by prefix"
+      "Delete files from S3 by prefix"
     );
+    await client.send(new DeleteObjectsCommand(deleteParams));
+
+    if (listResult.IsTruncated) {
+      // continue in background
+      this.deleteByPrefix(prefix).catch(error => {
+        logger.error(error, `Failed to delete files from S3 by prefix "${prefix}"`);
+      });
+    }
   }
 
   /**

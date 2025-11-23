@@ -21,10 +21,12 @@ from docling.datamodel.base_models import DocumentStream
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class PdfBatches:
     pages_count: int
     batches: List[DocumentStream]
+
 
 class DocumentProcessor:
     """Service for processing document commands"""
@@ -53,15 +55,17 @@ class DocumentProcessor:
             await self._worker_pool.shutdown()
             self._worker_pool = None
 
-    async def _write_temp_document(self, document_stream: DocumentStream, content_type: str) -> Path:
+    async def _write_temp_document(
+        self, document_stream: DocumentStream, content_type: str
+    ) -> Path:
         suffix = self._get_file_suffix(content_type)
-        
+
         return await asyncio.to_thread(
             self._write_temp_document_sync,
             document_stream,
             suffix,
         )
-        
+
     def _get_file_suffix(self, content_type: str) -> str:
         """Get file suffix based on content type"""
         mapping = {
@@ -582,7 +586,7 @@ class DocumentProcessor:
             reader = PdfReader(stream)
             pages_count = len(reader.pages)
             batches = []
-            writer: PdfWriter = None
+            writer: Optional[PdfWriter] = None
 
             def add_batch(writer: PdfWriter):
                 batch_stream = io.BytesIO()
@@ -662,10 +666,12 @@ class DocumentProcessor:
 
             return parts_count
 
-         # Atomically increment the progress counter (+1 for current part being processed)
-        parts_progress = await redis.incr(parts_progress_key)
-        await redis.expire(parts_progress_key, 30)
-        
+        # Atomically increment the progress counter (+1 for current part being processed)
+        async with redis.pipeline() as pipe:
+            pipe.incr(parts_progress_key)
+            pipe.expire(parts_progress_key, 30)
+            parts_progress, _ = await pipe.execute()
+
         if parts_progress > 0 and parts_progress < parts_count:
             logger.info(
                 f"Document {document_id} is not finalized yet: expected {parts_count} parts, found {parts_progress + 1}"

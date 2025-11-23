@@ -41,3 +41,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
+
+
+def validate_settings() -> None:
+    if not 1 <= settings.num_threads <= 10:
+        raise ValueError("num_threads must be between 1 and 10 inclusive")
+
+
+validate_settings()

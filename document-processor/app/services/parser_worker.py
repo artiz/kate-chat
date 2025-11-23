@@ -71,9 +71,7 @@ class WorkerPool:
         self._loop = asyncio.get_running_loop()
         self._available = asyncio.Queue()
 
-        self._log.info(
-            "Starting %s document worker processes", self._num_workers
-        )
+        self._log.info("Starting %s document worker processes", self._num_workers)
 
         for worker_idx in range(self._num_workers):
             worker = await self._spawn_worker(worker_idx)
@@ -149,9 +147,7 @@ class WorkerPool:
                 try:
                     await self._recycle_worker(worker)
                 except Exception:
-                    self._log.exception(
-                        "Failed to recycle worker %s", worker.worker_id
-                    )
+                    self._log.exception("Failed to recycle worker %s", worker.worker_id)
                     raise
             else:
                 await self._available.put(worker)
@@ -368,7 +364,7 @@ class _ConnectionStream(io.TextIOBase):
 def _worker_process_entrypoint(worker_id: int, address: str, assets_dir: str):
     """Entry point executed in each worker subprocess."""
     from multiprocessing.connection import Client
-    
+
     conn: Optional[Connection] = None
     try:
         conn = Client(address, family="AF_UNIX")
