@@ -484,6 +484,20 @@ class DocumentProcessor:
             "sync": True,
         }
         await redis.publish(settings.document_status_channel, json.dumps(notification))
+        
+    async def _get_s3_objects_by_prefix(self, prefix: str, filter_func: Optional[Callable[[str], bool]] = None) -> int:
+        """Count S3 objects by prefix"""
+        s3 = self._get_s3_client()
+        def get_count():
+            paginator = s3.get_paginator('list_objects_v2')
+            object_list = []
+            for page in paginator.paginate(Bucket=settings.s3_files_bucket_name, Prefix=prefix):
+                for content in page.get('Contents', []):
+                    if filter_func is None or filter_func(content['Key']):
+                        object_list.append(content['Key'])
+
+            return object_list
+        return await asyncio.to_thread(get_count)
 
     async def _s3_object_exists(self, key: str) -> bool:
         """Check if S3 object exists"""
@@ -649,8 +663,6 @@ class DocumentProcessor:
     ) -> int:
         """Combine partial parsing results into a single document and finish processing. Return processed parts_count."""
         progress_key = f"{s3_key}.parsing"
-        parts_progress_key = f"{s3_key}.parts_progress"
-
         parsed_json_key = f"{s3_key}.parsed.json"
 
         if await self._s3_object_exists(parsed_json_key):
@@ -665,13 +677,10 @@ class DocumentProcessor:
             )
 
             return parts_count
-
-        # Atomically increment the progress counter (+1 for current part being processed)
-        async with redis.pipeline() as pipe:
-            pipe.incr(parts_progress_key)
-            pipe.expire(parts_progress_key, 30)
-            parts_progress, _ = await pipe.execute()
-
+        
+        parts_completed = await self._get_s3_objects_by_prefix(f"{s3_key}.part", lambda x: x.endswith(".parsed.json"))
+        parts_progress = len(parts_completed)
+        
         if parts_progress > 0 and parts_progress < parts_count:
             logger.info(
                 f"Document {document_id} is not finalized yet: expected {parts_count} parts, found {parts_progress + 1}"
@@ -688,9 +697,6 @@ class DocumentProcessor:
                 parsed_part_files.append(parsed_part_key)
             if await self._s3_object_exists(part_key):
                 part_files.append(part_key)
-
-        # Set progress with expiration is seconds
-        await redis.setex(parts_progress_key, 30, str(len(parsed_part_files)))
 
         if len(parsed_part_files) < parts_count:
             # fallback for failed state
