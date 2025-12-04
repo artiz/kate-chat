@@ -4,9 +4,8 @@ import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
 import { EMBEDDINGS_DIMENSIONS } from "../config/ai/common";
 
-// TODO: use "vector" type when https://github.com/typeorm/typeorm/pull/11732 is merged
-const VECTOR_TYPE = process.env.DB_TYPE === "postgres" ? "vector" : "text";
-const VECTOR_LENGTH = process.env.DB_TYPE === "postgres" ? EMBEDDINGS_DIMENSIONS : undefined;
+const VECTOR_TYPE = process.env.DB_TYPE !== "sqlite" ? "vector" : "text";
+const VECTOR_LENGTH = process.env.DB_TYPE !== "sqlite" ? EMBEDDINGS_DIMENSIONS : undefined;
 
 @ObjectType()
 @Entity("document_chunks")
