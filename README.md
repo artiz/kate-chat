@@ -51,6 +51,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 
 ## TODO
 
+* Move Python stuff to Python 3.14 and replace nginx:unit with uvicorn
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Add voice2voice @katechat/ui demo with [WebRTC](https://platform.openai.com/docs/guides/realtime-webrtc).

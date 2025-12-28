@@ -202,7 +202,7 @@ export const ChatInput = ({
     >
       {promptMode ? (
         <Stack align="center" justify="center" gap="md" mb="lg">
-          <Text c="dimmed" size="lg" ta="center">
+          <Text c="dimmed" size="lg" ta="center" className={classes.promptModeText}>
             Start the conversation by sending a message
           </Text>
         </Stack>
@@ -263,8 +263,13 @@ export const ChatInput = ({
                 onClick={handleSendMessage}
                 disabled={sendMessageNotAllowed}
                 className={onStopRequest && streaming ? classes.hidden : ""}
+                color="blue"
+                radius="md"
               >
-                <IconSend size={24} /> <Text visibleFrom="md">Send</Text>
+                <IconSend size={24} />{" "}
+                <Text visibleFrom="md" ml="xs">
+                  Send
+                </Text>
               </Button>
             )}
           </div>

@@ -1,12 +1,12 @@
 [data-mantine-color-scheme="light"] {
   .chatControlsContainer {
-    .chatControls {
+    .chatInputContainer {
       border: 1px solid var(--app-shell-border-color);
-      background-color: var(--mantine-color-gray-2);
+      box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
     }
 
     .chatInputGroup .chatInput :global(textarea) {
-      border: 1px solid var(--app-shell-border-color);
+      border: none;
     }
   }
 }
@@ -23,19 +23,12 @@
 
   &.promptMode {
     flex-grow: 1;
-    padding-bottom: 15rem;
-  }
-
-  .chatControls {
-    border: 1px solid var(--app-shell-border-color);
-    border-radius: var(--mantine-radius-default);
-    background-color: var(--mantine-color-dark-6);
   }
 
   .headerRow {
-    padding: 0.33rem 0.5rem;
-    border-top-left-radius: var(--mantine-radius-default);
-    border-top-right-radius: var(--mantine-radius-default);
+    padding: 0.5rem 0;
+    border-top-left-radius: var(--mantine-radius-md);
+    border-top-right-radius: var(--mantine-radius-md);
   }
 }
 
@@ -48,8 +41,9 @@
   gap: 0.5rem;
 
   background-color: var(--mantine-color-body);
-  border-bottom-left-radius: var(--mantine-radius-default);
-  border-bottom-right-radius: var(--mantine-radius-default);
+  border: 1px solid var(--app-shell-border-color);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
 
   .documentsInput {
     display: flex;
@@ -77,13 +71,13 @@
       position: relative;
       background-color: var(--input-bg);
       height: 64px;
-      border-radius: var(--mantine-radius-default);
+      border-radius: var(--mantine-radius-md);
 
       :global img {
         max-width: 64px;
         max-height: 64px;
         object-fit: cover;
-        border-radius: var(--mantine-radius-default);
+        border-radius: var(--mantine-radius-md);
       }
 
       .removeButton {
@@ -105,7 +99,7 @@
       flex-grow: 1;
 
       :global(textarea) {
-        border: 1px solid var(--app-shell-border-color);
+        border: none;
       }
     }
   }
@@ -116,6 +110,8 @@
     flex-direction: row;
     justify-items: flex-start;
     align-items: flex-start;
+    padding: 1rem;
+    gap: 0.5rem;
 
     .chatInputGroup {
       align-self: stretch;

@@ -216,11 +216,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
           color: "red",
         });
       } else {
-        notifications.show({
-          title: "Document(s) Added",
-          message: "Document(s) has been successfully added to chat.",
-          color: "green",
-        });
         dispatch(updateChat(chat));
         setChat(chat);
       }

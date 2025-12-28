@@ -43,6 +43,10 @@ body,
     --theme-default-time: 0.2s;
   }
 
+  body {
+    background-color: var(--mantine-color-gray-0);
+  }
+
   ::selection {
     background-color: var(--mantine-color-gray-4);
   }
@@ -56,6 +60,10 @@ body,
     --app-shell-border-color: var(--mantine-color-dark-6);
     --input-bd-focus: var(--mantine-primary-color-filled);
     --theme-default-time: 0.2s;
+  }
+
+  body {
+    background-color: var(--mantine-color-dark-6);
   }
 
   ::selection {
