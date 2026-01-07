@@ -187,6 +187,7 @@ export class DocumentQueueService {
         connection,
         {
           modelId,
+          modelType: model.type,
           apiProvider: model.apiProvider,
           maxTokens: SUMMARIZING_OUTPUT_TOKENS,
           temperature: SUMMARIZING_TEMPERATURE,

@@ -260,6 +260,7 @@ export class ModelResolver extends BaseResolver {
       connectionParams,
       {
         modelId: model.modelId,
+        modelType: model.type,
         apiProvider: model.apiProvider,
         temperature: 0.5,
         maxTokens: 256,

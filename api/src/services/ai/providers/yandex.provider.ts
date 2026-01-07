@@ -10,8 +10,12 @@ import {
   GetEmbeddingsRequest,
   ToolType,
   ModelMessage,
+  MessageRole,
+  ResponseStatus,
+  ChatResponseStatus,
 } from "@/types/ai.types";
-import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS } from "@/config/ai/yandex";
+import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS, YANDEX_FM_API_URL } from "@/config/ai/yandex";
+import { fetch } from "undici";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
@@ -45,7 +49,12 @@ export class YandexApiProvider extends BaseApiProvider {
       throw new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in connection settings.");
     }
 
-    const { modelId } = request;
+    const { modelId, modelType } = request;
+
+    if (modelType === ModelType.IMAGE_GENERATION || modelId.includes("yandex-art")) {
+      return this.generateImage(request, messages);
+    }
+
     const openAiRequest = {
       ...request,
       modelId: modelId.replace("{folder}", this.folderId ?? "default"),
@@ -66,13 +75,139 @@ export class YandexApiProvider extends BaseApiProvider {
       return;
     }
 
-    const { modelId } = request;
+    const { modelId, modelType } = request;
+
+    if (modelType === ModelType.IMAGE_GENERATION || modelId.includes("yandex-art")) {
+      callbacks.onStart({ status: ResponseStatus.STARTED });
+      try {
+        const response = await this.generateImage(request, messages, callbacks.onProgress);
+        callbacks.onComplete(response);
+      } catch (error) {
+        callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+      }
+      return;
+    }
+
     const openAiRequest = {
       ...request,
       modelId: modelId.replace("{folder}", this.folderId ?? "default"),
     };
 
     return this.protocol.streamChatCompletion(openAiRequest, messages, callbacks);
+  }
+
+  private async generateImage(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = [],
+    onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>
+  ): Promise<ModelResponse> {
+    if (!this.apiKey || !this.folderId) {
+      throw new Error("Yandex API key or Folder ID is not set.");
+    }
+
+    const { modelId } = inputRequest;
+    const modelUri = modelId.replace("{folder}", this.folderId);
+
+    const userMessages = messages.filter(msg => msg.role === MessageRole.USER);
+    if (!userMessages.length) {
+      throw new Error("No user prompt provided for image generation");
+    }
+
+    const promptMessages = userMessages.map((msg, ndx) =>
+      Array.isArray(msg.body)
+        ? {
+            text: msg.body
+              .map(part => (part.contentType === "text" ? part.content : ""))
+              .join("\n")
+              .trim(),
+            weight: ndx === userMessages.length - 1 ? 1 : 0.5,
+          }
+        : {
+            text: msg.body,
+            weight: ndx === userMessages.length - 1 ? 1 : 0.5,
+          }
+    );
+
+    const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
+    const url = `${YANDEX_FM_API_URL}/foundationModels/v1/imageGenerationAsync`;
+
+    // 1. Start generation
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+        "x-folder-id": this.folderId,
+      },
+      body: JSON.stringify({
+        modelUri,
+        generationOptions: {
+          mimeType: "image/png",
+          aspectRatio: {
+            widthRatio: 1,
+            heightRatio: 1,
+          },
+        },
+        messages: promptMessages,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Yandex Art API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const operation = (await response.json()) as { id: string };
+    const operationId = operation.id;
+
+    onProgress?.("", { status: ResponseStatus.CONTENT_GENERATION, requestId: operationId });
+
+    // 2. Poll for completion
+    return this.pollImageGenerationResult(operationId);
+  }
+
+  async pollImageGenerationResult(operationId: string): Promise<ModelResponse> {
+    const maxRetries = 60;
+    let finalResponse: any = null;
+    const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
+
+    for (let i = 0; i < maxRetries; i++) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const opUrl = `${YANDEX_FM_API_URL}/operations/${operationId}`;
+      const opResponse = await fetch(opUrl, {
+        headers: {
+          Authorization: authHeader,
+        },
+      });
+
+      if (!opResponse.ok) {
+        const errorText = await opResponse.text();
+        throw new Error(`Yandex Operations API error: ${opResponse.status} ${opResponse.statusText} - ${errorText}`);
+      }
+
+      const opData = (await opResponse.json()) as any;
+      if (opData.done) {
+        if (opData.error) {
+          throw new Error(`Yandex Art generation failed: ${opData.error.message} (${opData.error.code})`);
+        }
+        finalResponse = opData.response;
+        break;
+      }
+    }
+
+    if (!finalResponse) {
+      throw new Error("Yandex Art generation timed out");
+    }
+
+    // 3. Return result
+    const base64Image = finalResponse.image;
+
+    return {
+      type: "image",
+      content: "",
+      files: [base64Image],
+    };
   }
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
@@ -108,10 +243,11 @@ export class YandexApiProvider extends BaseApiProvider {
           provider: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_FM),
           name: model.name,
           description: model.description || "",
-          type: ModelType.CHAT,
           streaming: true,
           maxInputTokens: model.maxInputTokens,
           tools: searchAvailable ? [ToolType.WEB_SEARCH] : [],
+          imageInput: model.imageInput || false,
+          type: model.type || ModelType.CHAT,
         };
 
         return map;

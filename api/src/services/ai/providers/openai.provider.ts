@@ -96,10 +96,10 @@ export class OpenAIApiProvider extends BaseApiProvider {
   }
 
   async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
-    const { modelId } = input;
+    const { modelId, modelType } = input;
 
     // image generation request
-    if (modelId.startsWith("dall-e")) {
+    if (modelType === ModelType.IMAGE_GENERATION || modelId.startsWith("dall-e")) {
       return this.generateImages(input, messages);
     }
 
@@ -112,14 +112,14 @@ export class OpenAIApiProvider extends BaseApiProvider {
     messages: ModelMessage[],
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const { modelId } = input;
+    const { modelId, modelType } = input;
 
     // If this is an image generation model, generate the image non-streaming
-    if (modelId.startsWith("dall-e")) {
+    if (modelType === ModelType.IMAGE_GENERATION || modelId.startsWith("dall-e")) {
       callbacks.onStart();
       try {
         const response = await this.generateImages(input, messages);
-        callbacks.onComplete(response.content);
+        callbacks.onComplete(response);
       } catch (error) {
         callbacks.onError(error instanceof Error ? error : new Error(String(error)));
       }

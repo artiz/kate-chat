@@ -41,7 +41,7 @@ export class AIService {
     request: CompleteChatRequest,
     messages: Message[],
     callback: (
-      data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
+      data: ModelResponse & { error?: Error; status?: ChatResponseStatus },
       completed?: boolean,
       force?: boolean
     ) => Promise<boolean | undefined>,
@@ -54,7 +54,7 @@ export class AIService {
       {
         onStart: async (status?: ChatResponseStatus) => {
           try {
-            return await callback({ status });
+            return await callback({ content: "", type: "text", status });
           } catch (error) {
             logger.error(error, "Error starting AI request");
             return true;
@@ -62,18 +62,18 @@ export class AIService {
         },
         onProgress: async (token: string, status?: ChatResponseStatus, force?: boolean) => {
           try {
-            return await callback({ content: token, status }, false, force);
+            return await callback({ content: token, type: "text", status }, false, force);
           } catch (error) {
             logger.error(error, "Error processing AI request");
             return true;
           }
         },
-        onComplete: async (response: string, metadata: MessageMetadata | undefined) => {
-          await callback({ content: response, metadata }, true);
+        onComplete: async (response: ModelResponse, metadata: MessageMetadata | undefined) => {
+          await callback({ ...response, metadata }, true);
         },
         onError: async (error: Error) => {
           try {
-            return await callback({ error }, true);
+            return await callback({ type: "text", content: "", error }, true);
           } catch (error) {
             return true;
           }

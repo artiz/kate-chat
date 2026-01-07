@@ -431,7 +431,13 @@ export class OpenAIProtocol {
 
     let stopped = await callbacks.onStart();
     if (stopped) {
-      return await callbacks.onComplete(fullResponse, meta);
+      return await callbacks.onComplete(
+        {
+          type: "text",
+          content: fullResponse,
+        },
+        meta
+      );
     }
 
     do {
@@ -535,7 +541,13 @@ export class OpenAIProtocol {
       } // for await (const chunk of stream)
     } while (!stopped);
 
-    await callbacks.onComplete(fullResponse, meta);
+    await callbacks.onComplete(
+      {
+        type: "text",
+        content: fullResponse,
+      },
+      meta
+    );
   }
 
   private parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
@@ -709,7 +721,13 @@ export class OpenAIProtocol {
     if (stopped) {
       stream?.controller?.abort(); // ensure stopping the background request
     }
-    await callbacks.onComplete(fullResponse || (stopped ? "_Cancelled_" : "_No response_"), meta);
+    await callbacks.onComplete(
+      {
+        type: "text",
+        content: fullResponse || (stopped ? "_Cancelled_" : "_No response_"),
+      },
+      meta
+    );
   }
 
   private parseResponsesOutput(response: OpenAI.Responses.Response): {

@@ -15,6 +15,7 @@ import {
   ModelMessageContent,
   ModelMessageContentImage,
   ModelResponse,
+  ModelType,
   ResponseStatus,
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
@@ -610,6 +611,7 @@ export class MessagesService {
     const systemPrompt = chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
     const request: CompleteChatRequest = {
       ...input,
+      modelType: model.type,
       apiProvider: model.apiProvider,
       systemPrompt,
       temperature: chat.temperature,
@@ -624,9 +626,17 @@ export class MessagesService {
     const completeRequest = async (message: Message): Promise<boolean> => {
       ok(message);
       if (!chat.title || chat.isPristine) {
-        chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || "");
-        chat.isPristine = false;
-        await this.chatRepository.save(chat);
+        let titleModel: Model | null = model;
+        if (titleModel.type !== ModelType.CHAT) {
+          titleModel = await this.modelRepository.findOne({
+            where: { user: { id: user.id }, modelId: user.defaultModelId, type: ModelType.CHAT },
+          });
+        }
+        if (titleModel) {
+          chat.title = await this.suggestChatTitle(titleModel, connection, input.content, message.content || "");
+          chat.isPristine = false;
+          await this.chatRepository.save(chat);
+        }
       }
       const stopped = this.cancelledMessages.has(message.id);
 
@@ -648,45 +658,45 @@ export class MessagesService {
       return stopped;
     };
 
+    const processResponse = async (message: Message, response: ModelResponse): Promise<void> => {
+      if (response.type === "image") {
+        if (!response.files) {
+          throw new Error("No image files returned from AI provider");
+        }
+
+        const images: ModelMessageContentImage[] = [];
+
+        for (const file of response.files) {
+          // Save base64 images to S3
+          const { fileName, contentType } = await this.saveImageFromBase64(s3Service, file, {
+            chatId: chat.id,
+            messageId: message.id,
+            index: images.length,
+          });
+
+          images.push({
+            contentType: "image",
+            fileName,
+            mimeType: contentType,
+          });
+        }
+
+        message.jsonContent = images;
+        message.content = images.map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`).join("   ");
+
+        chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
+      } else {
+        message.content = response.content?.trim() || "_No response_";
+      }
+    };
+
     if (!model.streaming) {
       // sync call
       try {
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
         const aiResponse = await this.aiService.completeChat(connection, request, inputMessages, s3Service);
 
-        if (aiResponse.type === "image") {
-          if (!aiResponse.files) {
-            throw new Error("No image files returned from AI provider");
-          }
-
-          const s3Service = new S3Service(user.toToken());
-          const images: ModelMessageContentImage[] = [];
-
-          for (const file of aiResponse.files) {
-            // Save base64 images to S3
-            const { fileName, contentType } = await this.saveImageFromBase64(s3Service, file, {
-              chatId: chat.id,
-              messageId: assistantMessage.id,
-              index: images.length,
-            });
-
-            images.push({
-              contentType: "image",
-              fileName,
-              mimeType: contentType,
-            });
-          }
-
-          assistantMessage.jsonContent = images;
-          assistantMessage.content = images
-            .map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`)
-            .join("   ");
-
-          chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
-        } else {
-          assistantMessage.content = aiResponse.content;
-        }
-
+        await processResponse(assistantMessage, aiResponse);
         await completeRequest(assistantMessage);
         await this.chatRepository.save(chat);
       } catch (error: unknown) {
@@ -708,7 +718,7 @@ export class MessagesService {
     let lastPublish: number = 0;
 
     const handleStreaming = async (
-      data: { content?: string; error?: Error; metadata?: MessageMetadata; status?: ChatResponseStatus },
+      data: ModelResponse & { error?: Error; status?: ChatResponseStatus },
       completed?: boolean,
       forceFlush?: boolean
     ): Promise<boolean | undefined> => {
@@ -724,7 +734,7 @@ export class MessagesService {
           } as Message);
         }
 
-        assistantMessage.content = token.trim() || "_No response_";
+        await processResponse(assistantMessage, data);
         if (metadata) {
           if (!assistantMessage.metadata) {
             assistantMessage.metadata = metadata;
@@ -871,6 +881,7 @@ export class MessagesService {
 
         const request: CompleteChatRequest = {
           ...input,
+          modelType: model.type,
           apiProvider: model.apiProvider,
           modelId: model.modelId,
           systemPrompt,
@@ -973,6 +984,7 @@ export class MessagesService {
       connection,
       {
         modelId: model.modelId,
+        modelType: model.type,
         apiProvider: model.apiProvider,
       },
       [

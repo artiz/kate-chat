@@ -206,7 +206,10 @@ export class BedrockApiProvider extends BaseApiProvider {
 
         // Process the stream
         if (!streamResponse?.stream) {
-          await callbacks.onComplete("_No response_");
+          await callbacks.onComplete({
+            type: "text",
+            content: "_No response_",
+          });
           requestCompleted = true;
           break;
         }
@@ -358,7 +361,13 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
 
         if (requestCompleted) {
-          await callbacks.onComplete(fullResponse, metadata);
+          await callbacks.onComplete(
+            {
+              type: "text",
+              content: fullResponse,
+            },
+            metadata
+          );
         }
       } catch (e: unknown) {
         logger.error(e, "InvokeModelWithResponseStreamCommand failed");

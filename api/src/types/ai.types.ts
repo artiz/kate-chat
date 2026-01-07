@@ -32,6 +32,7 @@ export enum ResponseStatus {
   TOOL_CALL_COMPLETED = "tool_call_completed",
   OUTPUT_ITEM = "output_item",
   REASONING = "reasoning",
+  CONTENT_GENERATION = "content_generation",
   COMPLETED = "completed",
   CANCELLED = "cancelled",
   ERROR = "error",
@@ -278,7 +279,7 @@ export interface ChatResponseStatus {
 export interface StreamCallbacks {
   onStart: (status?: ChatResponseStatus) => Promise<boolean | undefined>;
   onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>;
-  onComplete: (content: string, metadata?: MessageMetadata) => Promise<void | undefined>;
+  onComplete: (response: ModelResponse, metadata?: MessageMetadata) => Promise<void | undefined>;
   onError: (error: Error) => Promise<boolean | undefined>;
 }
 
@@ -286,6 +287,7 @@ export interface CompleteChatRequest {
   systemPrompt?: string;
   apiProvider: ApiProvider;
   modelId: string;
+  modelType: ModelType;
   temperature?: number;
   maxTokens?: number;
   topP?: number;

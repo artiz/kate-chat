@@ -1,7 +1,7 @@
 process.env.ENABLED_API_PROVIDERS = "AWS_BEDROCK";
 import { ApiProvider } from "../../config/ai/common";
 import { AIService } from "../ai/ai.service";
-import { MessageRole, ModelMessage } from "../../types/ai.types";
+import { MessageRole, ModelMessage, ModelType } from "../../types/ai.types";
 import { Message } from "../../entities/Message";
 import { error } from "console";
 
@@ -86,7 +86,7 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages
       );
 
@@ -125,7 +125,7 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages
       );
 
@@ -156,7 +156,7 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages
       );
 
@@ -210,15 +210,25 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "us-west-2",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages,
         callback
       );
 
       expect(callback).toHaveBeenCalledTimes(4);
-      expect(callback).toHaveBeenNthCalledWith(1, { status: undefined });
-      expect(callback).toHaveBeenNthCalledWith(2, { content: "Hello", status: undefined }, false, undefined);
-      expect(callback).toHaveBeenNthCalledWith(3, { content: ", world!", status: undefined }, false, undefined);
+      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined, type: "text" });
+      expect(callback).toHaveBeenNthCalledWith(
+        2,
+        { content: "Hello", status: undefined, type: "text" },
+        false,
+        undefined
+      );
+      expect(callback).toHaveBeenNthCalledWith(
+        3,
+        { content: ", world!", status: undefined, type: "text" },
+        false,
+        undefined
+      );
       expect(callback).toHaveBeenNthCalledWith(
         4,
         {
@@ -230,6 +240,7 @@ describe("AIService", () => {
               invocationLatency: 150,
             },
           },
+          type: "text",
         },
         true
       );
@@ -251,14 +262,18 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "aws-region",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages,
         callback
       );
 
       expect(callback).toHaveBeenCalledTimes(2);
-      expect(callback).toHaveBeenNthCalledWith(1, { status: undefined });
-      expect(callback).toHaveBeenNthCalledWith(2, { error: mockError, status: undefined }, true);
+      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined, type: "text" });
+      expect(callback).toHaveBeenNthCalledWith(
+        2,
+        { error: mockError, content: "", status: undefined, type: "text" },
+        true
+      );
     });
 
     it("should handle stream exceptions", async () => {
@@ -295,15 +310,20 @@ describe("AIService", () => {
           AWS_BEDROCK_REGION: "us-west-2",
           AWS_BEDROCK_PROFILE: "default",
         },
-        { apiProvider: ApiProvider.AWS_BEDROCK, modelId },
+        { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages,
         callback
       );
 
       expect(callback).toHaveBeenCalledTimes(4);
-      expect(callback).toHaveBeenNthCalledWith(1, { status: undefined });
-      expect(callback).toHaveBeenNthCalledWith(2, { content: "Hello", status: undefined }, false, undefined);
-      expect(callback).toHaveBeenNthCalledWith(3, { error: mockError }, true);
+      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined, type: "text" });
+      expect(callback).toHaveBeenNthCalledWith(
+        2,
+        { content: "Hello", status: undefined, type: "text" },
+        false,
+        undefined
+      );
+      expect(callback).toHaveBeenNthCalledWith(3, { error: mockError, content: "", type: "text" }, true);
     });
   });
 });
