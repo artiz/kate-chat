@@ -20,7 +20,7 @@ import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { FileContentLoader } from "@/services/data/s3.service";
 
 export class YandexApiProvider extends BaseApiProvider {
@@ -267,7 +267,46 @@ export class YandexApiProvider extends BaseApiProvider {
   }
 
   async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
-    throw new Error("Embeddings loading is not implemented.");
+    if (!this.apiKey || !this.folderId) {
+      throw new Error("Yandex API key or Folder ID is not set.");
+    }
+
+    const { modelId, input } = request;
+    const modelUri = modelId.replace("{folder}", this.folderId);
+
+    const url = `${YANDEX_FM_API_URL}/foundationModels/v1/textEmbedding`;
+    const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+        "x-folder-id": this.folderId,
+      },
+      body: JSON.stringify({
+        modelUri,
+        text: input,
+        // dim: request.dimensions || EMBEDDINGS_DIMENSIONS,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Yandex Embeddings API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = (await response.json()) as { embedding: number[]; numTokens: string; modelVersion: string };
+
+    return {
+      embedding: data.embedding,
+      metadata: {
+        usage: {
+          inputTokens: parseInt(data.numTokens, 10),
+          outputTokens: 0,
+        },
+      },
+    };
   }
 
   async stopRequest(requestId: string, modelId: string): Promise<void> {
