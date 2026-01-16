@@ -33,7 +33,7 @@ import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 import { ChatInputHeader } from "./ChatInputHeader";
 
 import classes from "./Chat.module.scss";
-import { ChatDocumentsSelector } from "./ChatDocumentsSelector";
+import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
 
 interface IProps {
   chatId?: string;
@@ -286,12 +286,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const uploadAllowed = useMemo(() => {
     if (!appConfig || !loadCompleted || isExternalChat) return false;
-
-    if (appConfig?.demoMode) {
-      return selectedModel?.imageInput;
-    }
-
-    return appConfig?.s3Connected;
+    return appConfig?.ragEnabled || selectedModel?.imageInput;
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
 
   const requestStoppable = useMemo(() => {
@@ -421,7 +416,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </>
         }
         uploadFormats={SUPPORTED_UPLOAD_FORMATS}
-        maxImagesCount={MAX_IMAGES}
+        maxImagesCount={selectedModel?.imageInput ? MAX_IMAGES : 0}
         maxUploadFileSize={MAX_UPLOAD_FILE_SIZE}
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}

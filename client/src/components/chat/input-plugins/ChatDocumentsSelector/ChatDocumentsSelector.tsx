@@ -14,7 +14,7 @@ import {
   Tooltip,
   Badge,
 } from "@mantine/core";
-import { IconFile, IconChevronDown, IconCheck, IconX } from "@tabler/icons-react";
+import { IconFile, IconChevronDown, IconCheck, IconX, IconFileDatabase } from "@tabler/icons-react";
 import { Document } from "@/types/graphql";
 
 import classes from "./ChatDocumentsSelector.module.scss";
@@ -64,10 +64,16 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
 
   const handleSelectAll = () => {
     onSelectionChange?.([...availableDocumentsIds]);
+    setOpened(false);
   };
 
   const handleUnselectAll = () => {
     onSelectionChange?.([]);
+    setOpened(false);
+  };
+
+  const handleToggle = () => {
+    setOpened(!opened);
   };
 
   const handleOpenDocuments = () => {
@@ -80,34 +86,16 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   return (
     <Popover position="bottom-start" withArrow shadow="md" opened={opened} onChange={setOpened}>
       <Popover.Target>
-        <Paper className={classes.container} data-disabled={disabled}>
-          <Group
-            justify="space-between"
-            gap="xs"
-            style={{ cursor: disabled ? "not-allowed" : "pointer" }}
-            onClick={() => !disabled && setOpened(!opened)}
-          >
-            <Group gap="xs">
-              <IconFile size={16} />
-              {selectedDocuments.length > 0 && (
-                <Badge size="sm" variant="light" color="blue">
-                  {selectedDocuments.length} selected
-                </Badge>
-              )}
-            </Group>
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              disabled={disabled}
-              style={{
-                transform: opened ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform 0.2s ease",
-              }}
-            >
-              <IconChevronDown size={14} />
-            </ActionIcon>
-          </Group>
-        </Paper>
+        <Tooltip label="Attach/select documents to do RAG search" position="bottom">
+          <ActionIcon variant="subtle" size="lg" color="dark" className={classes.button} onClick={handleToggle}>
+            <IconFileDatabase size="lg" />
+            {selectedDocuments.length > 0 && (
+              <Badge size="sm" color="blue" p="0" className={classes.badge}>
+                {selectedDocuments.length}
+              </Badge>
+            )}
+          </ActionIcon>
+        </Tooltip>
       </Popover.Target>
 
       <Popover.Dropdown>

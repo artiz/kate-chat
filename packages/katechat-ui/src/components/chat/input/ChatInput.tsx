@@ -125,6 +125,15 @@ export const ChatInput = ({
       let imageFiles = filesToAdd.filter(f => f.type?.startsWith("image/"));
       const documents = filesToAdd.filter(f => !f.type?.startsWith("image/"));
 
+      if (imageFiles.length && maxImagesCount <= 0) {
+        notifications.show({
+          title: "Warning",
+          message: "Image uploads are not allowed in this chat.",
+          color: "yellow",
+        });
+        imageFiles = [];
+      }
+
       // Limit images
       if (imageFiles.length + selectedImages.length > maxImagesCount) {
         notifications.show({

@@ -22,7 +22,7 @@ import {
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { assert, parseMarkdown, DeleteConfirmationModal } from "@katechat/ui";
+import { assert, parseMarkdown, DeleteConfirmationModal, FileDropzone } from "@katechat/ui";
 
 import { updateChat } from "@/store/slices/chatSlice";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -36,7 +36,6 @@ import {
   REMOVE_FROM_CHAT_MUTATION,
 } from "@/store/services/graphql.queries";
 import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
-import { FileDropzone } from "./FileDropzone/FileDropzone";
 import { MAX_UPLOAD_FILE_SIZE } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
