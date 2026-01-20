@@ -96,7 +96,7 @@ variable "document_processor_storage_gib" {
 variable "document_processor_desired_count" {
   description = "Desired number of document processor tasks"
   type        = number
-  default     = 0
+  default     = 1
 }
 
 # Network configuration

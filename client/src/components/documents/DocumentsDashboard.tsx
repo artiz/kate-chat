@@ -36,7 +36,7 @@ import {
   REMOVE_FROM_CHAT_MUTATION,
 } from "@/store/services/graphql.queries";
 import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
-import { MAX_UPLOAD_FILE_SIZE } from "@/lib/config";
+import { MAX_UPLOAD_FILE_SIZE, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
 import { getStatusColor } from "@/types/ai";
@@ -456,7 +456,11 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                     </ActionIcon>
                   }
                 />
-                <FileDropzone onFilesAdd={handleAddFiles} disabled={!appConfig?.s3Connected || uploadLoading} />
+                <FileDropzone
+                  onFilesAdd={handleAddFiles}
+                  disabled={!appConfig?.s3Connected || uploadLoading}
+                  uploadFormats={SUPPORTED_UPLOAD_FORMATS}
+                />
               </Group>
             </Group>
 
