@@ -168,7 +168,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     leftSection={<IconMessagePlus size={16} />}
                     onClick={() => onCreateChat(model)}
                     loading={creatingChat}
-                    disabled={!model.isActive || model.type !== ModelType.CHAT}
+                    disabled={!model.isActive || ![ModelType.CHAT, ModelType.IMAGE_GENERATION].includes(model.type)}
                   >
                     Start Chat
                   </Button>

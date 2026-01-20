@@ -17,7 +17,6 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
   * Voice2voice demo for OpenAI realtime WebRTC API.
-
 - Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
 - User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
@@ -54,6 +53,7 @@ To interact with AI models in the demo, you'll need to provide your own API keys
 ## TODO
 
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
+* Switch OpenAI "gpt-image..." models to Responses API
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * Rename `document-processor` to `tasks-processor` service to perform following tasks:
@@ -95,7 +95,7 @@ def code_interpreter_handler(event, context):
 * Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
-* Rust API sync: add images generation (DALL-E) support, Library, admin API
+* Rust API sync: add images generation support, Library, admin API
 
 
 ## Tech Stack

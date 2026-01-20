@@ -260,20 +260,24 @@ export class OpenAIApiProvider extends BaseApiProvider {
       const response = await this.protocol.api.models.list();
       const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
 
+      console.log("OpenAI models response:", response.data);
       // Filter and map models
       for (const model of response.data) {
         const nonChatModel = OPENAI_NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
         const embeddingModel = model.id.startsWith("text-embedding");
-        const imageGeneration = model.id.startsWith("dall-e");
+        const isImageGeneration =
+          model.id.startsWith("dall-e") || model.id.startsWith("gpt-image") || model.id.startsWith("chatgpt-image");
+        const isRealtime = model.id.includes("-realtime");
+
         const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => model.id.startsWith(prefix));
 
-        if (nonChatModel && !imageGeneration && !embeddingModel) {
+        if (nonChatModel && !isImageGeneration && !embeddingModel) {
           continue; // Skip non-chat models that are not image generation or embeddings
         }
 
         const apiType = this.getChatApiType(model.id);
         const tools =
-          embeddingModel || imageGeneration
+          embeddingModel || isImageGeneration
             ? []
             : apiType === "responses"
               ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER]
@@ -286,9 +290,11 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
         const type = embeddingModel
           ? ModelType.EMBEDDING
-          : imageGeneration
+          : isImageGeneration
             ? ModelType.IMAGE_GENERATION
-            : ModelType.CHAT;
+            : isRealtime
+              ? ModelType.REALTIME
+              : ModelType.CHAT;
 
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||
@@ -317,31 +323,6 @@ export class OpenAIApiProvider extends BaseApiProvider {
           name: "Text Embedding 3 Small",
           description: "Text Embedding 3 Small by OpenAI",
           type: ModelType.EMBEDDING,
-          streaming: false,
-          imageInput: false,
-        };
-      }
-
-      // Add DALL-E models manually if not returned by the API
-      if (!models["dall-e-3"]) {
-        models["dall-e-3"] = {
-          apiProvider: ApiProvider.OPEN_AI,
-          provider: "OpenAI",
-          name: "DALL-E 3",
-          description: "DALL-E 3 by OpenAI - Advanced image generation",
-          type: ModelType.IMAGE_GENERATION,
-          streaming: false,
-          imageInput: false,
-        };
-      }
-
-      if (!models["dall-e-2"]) {
-        models["dall-e-2"] = {
-          apiProvider: ApiProvider.OPEN_AI,
-          provider: "OpenAI",
-          name: "DALL-E 2",
-          description: "DALL-E 2 by OpenAI - Image generation",
-          type: ModelType.IMAGE_GENERATION,
           streaming: false,
           imageInput: false,
         };
@@ -415,7 +396,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       prompt,
       n,
       size: "1024x1024",
-      response_format: "b64_json",
+      response_format: ["dall-e-2", "dall-e-3"].includes(modelId) ? "b64_json" : undefined,
     };
 
     logger.debug({ params }, "Image generation");

@@ -44,6 +44,7 @@ export const OPENAI_MODELS_SUPPORT_IMAGES_INPUT = [
   "o3",
   "o3-mini",
   "o4-mini",
+  "gpt-image",
 ];
 
 export const OPENAI_MODEL_MAX_INPUT_TOKENS: { [key: string]: number } = {

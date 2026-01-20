@@ -420,6 +420,7 @@ enum ModelType {
   EMBEDDING
   IMAGE_GENERATION
   OTHER
+  REALTIME
 }
 
 type Mutation {
