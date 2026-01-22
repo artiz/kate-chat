@@ -4,7 +4,7 @@ FROM python:3.14
 WORKDIR /app
 
 # Install Rust toolchain for building dependencies
-RUN apt-get update && apt-get install -y curl && \
+RUN apt-get update && apt-get install -y curl libglib2.0-0 libsm6 libxext6 libxrender-dev && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 

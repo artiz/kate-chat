@@ -131,26 +131,28 @@ class WorkerPool:
                 recycle_due_to_error = True
             raise
         finally:
+            process_restart = True
             if self._available is None:
-                return
+                process_restart = False
             if self._shutdown:
                 worker.close()
-                return
+                process_restart = False
 
-            restart_due_to_limit = (
-                self._restart_after > 0
-                and worker.tasks_completed >= self._restart_after
-            )
-            should_recycle = recycle_due_to_error or restart_due_to_limit
+            if process_restart:
+                restart_due_to_limit = (
+                    self._restart_after > 0
+                    and worker.tasks_completed >= self._restart_after
+                )
+                should_recycle = recycle_due_to_error or restart_due_to_limit
 
-            if should_recycle:
-                try:
-                    await self._recycle_worker(worker)
-                except Exception:
-                    self._log.exception("Failed to recycle worker %s", worker.worker_id)
-                    raise
-            else:
-                await self._available.put(worker)
+                if should_recycle:
+                    try:
+                        await self._recycle_worker(worker)
+                    except Exception:
+                        self._log.error("Failed to recycle worker %s", worker.worker_id)
+                        raise
+                else:
+                    await self._available.put(worker)
 
     async def _consume_startup_messages(self, worker: WorkerHandle):
         while True:
@@ -451,7 +453,7 @@ def _worker_process_entrypoint(worker_id: int, address: str, assets_dir: str):
                 )
 
             except Exception as exc:  # noqa: BLE001
-                log.exception("Failed to parse %s", input_path)
+                log.error("Failed to parse %s", input_path)
                 with contextlib.suppress(Exception):
                     conn.send(
                         {
