@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Dict, Any, Optional
+from typing import Awaitable, Callable, Dict, Any, Optional
 import boto3
 from app.core.config import settings
 from app.services.document_processor import DocumentProcessor
@@ -78,22 +78,24 @@ class SQSService:
                     logger.debug("Polling stop requested; exiting loop")
                     break
                 messages = response.get("Messages", [])
-                logger.debug(f"Got messages: {messages}")
-
                 # Process all messages in parallel
                 if messages:
+                    logger.debug(f"Got messages: {messages}")
 
                     async def process_message(message):
                         try:
+                            sqs_client = self.sqs_client
+                            queue_url = self.queue_url
+                            def ack():
+                                # Delete message from queue after processing
+                                sqs_client.delete_message(
+                                    QueueUrl=queue_url,
+                                    ReceiptHandle=message["ReceiptHandle"],
+                                )
+                                logger.info(f"Deleted message from SQS: {message['MessageId']}")
+                            
                             # Process message
-                            await self._handle_message(message)
-
-                            # Delete message after successful processing
-                            await asyncio.to_thread(
-                                self.sqs_client.delete_message,
-                                QueueUrl=self.queue_url,
-                                ReceiptHandle=message["ReceiptHandle"],
-                            )
+                            await self._handle_message(message, ack=ack)
 
                         except Exception as e:
                             logger.error(f"Error processing message: {message}")
@@ -112,12 +114,12 @@ class SQSService:
                 logger.error(f"Error polling SQS: {e}")
                 await asyncio.sleep(5)  # Wait before retrying
 
-    async def _handle_message(self, message: Dict[str, Any]):
+    async def _handle_message(self, message: Dict[str, Any], ack: Callable[[], None]):
         """Handle incoming SQS message"""
         try:
             body = json.loads(message["Body"])
             logger.info(f"Processing message: {body}")
-            await self.processor.handle_command(body)
+            await self.processor.handle_command(body, ack=ack)
 
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in message body: {e}")

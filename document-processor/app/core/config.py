@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Number of PDF pages to split large documents into smaller batches
     pdf_page_batch_size: int = 10
     # Restart worker process after this many tasks
-    worker_restart_after: int = 20  
+    worker_restart_after: int = 50  
     
     model_config = SettingsConfigDict(env_file=".env")
 
