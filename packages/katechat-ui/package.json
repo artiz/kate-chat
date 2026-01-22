@@ -52,7 +52,7 @@
   "dependencies": {
     "highlight.js": "^11.11.1",
     "i18next": "^23.16.8",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "marked": "^15.0.12",
     "marked-highlight": "^2.2.2",
     "marked-katex-extension": "^5.1.5"
