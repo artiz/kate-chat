@@ -12,6 +12,7 @@ import {
   ActionIcon,
   Collapse,
   Tooltip,
+  Flex,
 } from "@mantine/core";
 import {
   IconSettings,
@@ -23,6 +24,8 @@ import {
   IconFileCv,
   IconMessagePlus,
   IconSettingsFilled,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -32,9 +35,11 @@ import styles from "./NavbarContent.module.scss";
 
 interface IProps {
   navbarToggle?: () => void;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
+const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onToggleExpand }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useLocalStorage<boolean>({
@@ -89,60 +94,100 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
     <>
       <AppShell.Section>
         <Stack h="100%" justify="space-between" gap="0">
-          <Group p="sm" justify="space-between">
-            <Button
-              leftSection={<IconMessagePlus size={16} />}
-              disabled={newChatDisabled}
-              variant="light"
-              onClick={handleNewChat}
-            >
-              New Chat
-            </Button>
-            <Tooltip label="Advanced Settings">
-              <ActionIcon variant="light" onClick={toggleMenu} size="lg">
-                {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
-              </ActionIcon>
-            </Tooltip>
-          </Group>
+          <Flex
+            p="xs"
+            gap="xs"
+            justify={expanded ? "space-between" : "center"}
+            wrap="wrap"
+            align="flex-start"
+            direction="row"
+          >
+            <Group>
+              {expanded ? (
+                <Button
+                  leftSection={<IconMessagePlus size={16} />}
+                  disabled={newChatDisabled}
+                  variant="light"
+                  onClick={handleNewChat}
+                  style={{ flex: 1 }}
+                >
+                  New Chat
+                </Button>
+              ) : (
+                <Tooltip label="New Chat" position="right">
+                  <ActionIcon disabled={newChatDisabled} variant="light" onClick={handleNewChat} size="lg">
+                    <IconMessagePlus size={20} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </Group>
 
-          <Collapse in={menuOpen}>
+            <Group>
+              {expanded && (
+                <Tooltip label="Advanced Settings">
+                  <ActionIcon variant="subtle" onClick={toggleMenu} size="lg">
+                    {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {onToggleExpand && (
+                <Tooltip label={expanded ? "Collapse Sidebar" : "Expand Sidebar"}>
+                  <ActionIcon variant="subtle" onClick={onToggleExpand} size="lg" color="gray">
+                    {expanded ? <IconLayoutSidebarLeftCollapse size={20} /> : <IconLayoutSidebarLeftExpand size={20} />}
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </Group>
+          </Flex>
+
+          <Collapse in={menuOpen || !expanded}>
             <Divider m="0" />
 
-            <Stack gap="0" className={styles.navLinks}>
-              <NavLink
-                label="Models"
-                leftSection={<IconRobot size={16} />}
-                active={location.pathname === "/models"}
-                onClick={handleSectionClick("/models")}
-              />
-              <NavLink
-                label="Settings"
-                leftSection={<IconSettings size={16} />}
-                active={location.pathname === "/settings"}
-                onClick={handleSectionClick("/settings")}
-              />
-              <NavLink
-                label="Library"
-                leftSection={<IconPhoto size={16} />}
-                active={location.pathname === "/library"}
-                onClick={handleSectionClick("/library")}
-              />
-              {appConfig?.ragEnabled && (
+            <Stack gap="0" className={styles.navLinks} align={!expanded ? "center" : "stretch"}>
+              <Tooltip label="Models" position="right" disabled={expanded}>
                 <NavLink
-                  label="Documents"
-                  leftSection={<IconFile size={16} />}
-                  active={location.pathname === "/documents"}
-                  color="blue"
-                  onClick={handleSectionClick("/documents")}
+                  label={expanded ? "Models" : null}
+                  leftSection={<IconRobot size={16} />}
+                  active={location.pathname === "/models"}
+                  onClick={handleSectionClick("/models")}
                 />
+              </Tooltip>
+              <Tooltip label="Settings" position="right" disabled={expanded}>
+                <NavLink
+                  label={expanded ? "Settings" : null}
+                  leftSection={<IconSettings size={16} />}
+                  active={location.pathname === "/settings"}
+                  onClick={handleSectionClick("/settings")}
+                />
+              </Tooltip>
+              <Tooltip label="Library" position="right" disabled={expanded}>
+                <NavLink
+                  label={expanded ? "Library" : null}
+                  leftSection={<IconPhoto size={16} />}
+                  active={location.pathname === "/library"}
+                  onClick={handleSectionClick("/library")}
+                />
+              </Tooltip>
+              {appConfig?.ragEnabled && (
+                <Tooltip label="Documents" position="right" disabled={expanded}>
+                  <NavLink
+                    label={expanded ? "Documents" : null}
+                    leftSection={<IconFile size={16} />}
+                    active={location.pathname === "/documents"}
+                    color="blue"
+                    onClick={handleSectionClick("/documents")}
+                  />
+                </Tooltip>
               )}
               {currentUser?.role === UserRole.ADMIN && (
-                <NavLink
-                  label="Admin"
-                  leftSection={<IconShield size={16} />}
-                  active={location.pathname === "/admin"}
-                  onClick={handleSectionClick("/admin")}
-                />
+                <Tooltip label="Admin" position="right" disabled={expanded}>
+                  <NavLink
+                    label={expanded ? "Admin" : null}
+                    leftSection={<IconShield size={16} />}
+                    active={location.pathname === "/admin"}
+                    onClick={handleSectionClick("/admin")}
+                  />
+                </Tooltip>
               )}
             </Stack>
 
@@ -151,32 +196,36 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle }) => {
         </Stack>
       </AppShell.Section>
       <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12" p="0">
-        <ChatsNavSection navbarToggle={navbarToggle} />
+        <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} />
       </AppShell.Section>
       <AppShell.Section p="sm">
-        <Button
-          component="a"
-          variant="subtle"
-          href="https://github.com/artiz/kate-chat"
-          target="_blank"
-          color="dark"
-          title="Project GitHub Repository"
-          p="0"
-        >
-          <IconBrandGithub size={24} />
-        </Button>
+        <Group justify={expanded ? "flex-start" : "center"} gap="xs">
+          <Tooltip label="Project GitHub Repository" position="right" disabled={expanded}>
+            <ActionIcon
+              component="a"
+              variant="subtle"
+              href="https://github.com/artiz/kate-chat"
+              target="_blank"
+              color="dark"
+              title="Project GitHub Repository"
+            >
+              <IconBrandGithub size={24} />
+            </ActionIcon>
+          </Tooltip>
 
-        <Button
-          component="a"
-          variant="subtle"
-          href="https://artiz.github.io/"
-          target="_blank"
-          color="indigo"
-          title="Author's CV"
-          p="0"
-        >
-          <IconFileCv size={24} />
-        </Button>
+          <Tooltip label="Author's CV" position="right" disabled={expanded}>
+            <ActionIcon
+              component="a"
+              variant="subtle"
+              href="https://artiz.github.io/"
+              target="_blank"
+              color="indigo"
+              title="Author's CV"
+            >
+              <IconFileCv size={24} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
       </AppShell.Section>
     </>
   );

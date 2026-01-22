@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion } from "@mantine/core";
+import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion, Tooltip } from "@mantine/core";
 import {
   IconMessage,
   IconDots,
@@ -22,11 +22,14 @@ import classes from "./ChatsNavSection.module.scss";
 import { Chat, GetChatsResponse } from "@/types/graphql";
 import { CHAT_PAGE_SIZE } from "@/lib/config";
 
+const CHATS_TO_SHOW_WHEN_COLLAPSED = 10;
+
 interface IProps {
   navbarToggle?: () => void;
+  expanded?: boolean;
 }
 
-export const ChatsNavSection = ({ navbarToggle }: IProps) => {
+export const ChatsNavSection = ({ navbarToggle, expanded = true }: IProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -259,6 +262,21 @@ export const ChatsNavSection = ({ navbarToggle }: IProps) => {
         <Loader size="sm" />
       </Group>
     );
+  }
+
+  if (!expanded) {
+    return chats.slice(0, CHATS_TO_SHOW_WHEN_COLLAPSED).map(chat => (
+      <Tooltip key={chat.id} label={chat.title || "Untitled Chat"} position="right">
+        <NavLink
+          active={chat.id === currentChatId}
+          leftSection={<IconMessage size={16} />}
+          onClick={() => handleChatClick(chat.id)}
+          p="xs"
+          pl="sm"
+          m="0"
+        />
+      </Tooltip>
+    ));
   }
 
   if (error || loadChatsError) {

@@ -13,7 +13,7 @@ import {
   Tooltip,
   em,
 } from "@mantine/core";
-import { useDisclosure, useMediaQuery } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
 import { IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useTheme } from "@katechat/ui";
@@ -30,6 +30,10 @@ export const MainLayout: React.FC = () => {
 
   // Get user data from Redux store
   const { currentUser, appConfig } = useAppSelector(state => state.user);
+  const [navbarExpanded, setNavbarExpanded] = useLocalStorage({
+    key: "navbar-expanded",
+    defaultValue: true,
+  });
 
   // Handle logout
   const handleLogout = () => {
@@ -48,7 +52,7 @@ export const MainLayout: React.FC = () => {
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 300,
+        width: navbarExpanded ? 300 : 44,
         breakpoint: "sm",
         collapsed: { mobile: !opened },
       }}
@@ -125,7 +129,11 @@ export const MainLayout: React.FC = () => {
       </AppShell.Header>
 
       <AppShell.Navbar p="0">
-        <NavbarContent navbarToggle={isMobile ? toggle : undefined} />
+        <NavbarContent
+          navbarToggle={isMobile ? toggle : undefined}
+          expanded={navbarExpanded}
+          onToggleExpand={() => setNavbarExpanded(v => !v)}
+        />
       </AppShell.Navbar>
 
       <AppShell.Main>
