@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { Stream } from "openai/core/streaming";
+
 import {
   ModelMessage,
   ModelResponse,
@@ -26,6 +28,9 @@ import {
 import { FileContentLoader } from "@/services/data";
 
 const logger = createLogger(__filename);
+
+const RETRY_TIMEOUT_MS = 100;
+const RETRY_COUNT = 10;
 
 export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
@@ -144,7 +149,7 @@ export class OpenAIProtocol {
     }
   }
 
-  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+  async getEmbeddings(request: GetEmbeddingsRequest, retry: number = 0): Promise<EmbeddingsResponse> {
     const { modelId, input, dimensions } = request;
     const params: OpenAI.Embeddings.EmbeddingCreateParams = {
       model: modelId,
@@ -166,6 +171,10 @@ export class OpenAIProtocol {
         },
       };
     } catch (error: unknown) {
+      if (error instanceof OpenAI.APIError && error.code === "rate_limit_exceeded" && retry < RETRY_COUNT) {
+        return new Promise(res => setTimeout(res, RETRY_TIMEOUT_MS)).then(() => this.getEmbeddings(request, retry + 1));
+      }
+
       logger.warn(error, "Error getting embeddings from OpenAI API");
       throw error;
     }
@@ -570,7 +579,8 @@ export class OpenAIProtocol {
   private async streamChatResponses(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[],
-    callbacks: StreamCallbacks
+    callbacks: StreamCallbacks,
+    retry: number = 0
   ): Promise<void> {
     const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
       ...(await this.formatResponsesRequest(inputRequest, messages)),
@@ -587,7 +597,20 @@ export class OpenAIProtocol {
     let lastStatus: ResponseStatus | undefined = undefined;
 
     await callbacks.onStart();
-    const stream = await this.openai.responses.create(params);
+
+    let stream: Stream<OpenAI.Responses.ResponseStreamEvent>;
+    try {
+      stream = await this.openai.responses.create(params);
+    } catch (error) {
+      if (error instanceof OpenAI.APIError && error.code === "rate_limit_exceeded" && retry < RETRY_COUNT) {
+        return new Promise(res => setTimeout(res, RETRY_TIMEOUT_MS)).then(() =>
+          this.streamChatResponses(inputRequest, messages, callbacks, retry + 1)
+        );
+      }
+
+      throw error;
+    }
+
     let stopped: boolean | undefined = false;
 
     try {

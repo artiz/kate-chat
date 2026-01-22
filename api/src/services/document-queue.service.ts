@@ -50,6 +50,11 @@ export class DocumentQueueService {
         return;
       }
 
+      if (document.status === DocumentStatus.EMBEDDING || document.status === DocumentStatus.SUMMARIZING) {
+        logger.info(`Document ${documentId} is already being processed, skipping`);
+        return;
+      }
+
       const embeddingsModelId = document.embeddingsModelId || document.owner?.documentsEmbeddingsModelId;
       const summarizationModelId = document.summaryModelId || document.owner?.documentSummarizationModelId;
 
@@ -143,6 +148,7 @@ export class DocumentQueueService {
 
       // Update progress
       const progress = (i + 1) / chunks.length;
+      document.status = DocumentStatus.EMBEDDING;
       document.statusProgress = progress;
       await this.documentRepo.save(document);
       await this.subService.publishDocumentStatus(document);

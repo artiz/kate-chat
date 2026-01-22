@@ -59,6 +59,8 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
     return (
       doc &&
       (doc.status === DocumentStatus.READY ||
+        (doc.status === DocumentStatus.CHUNKING && doc.statusProgress === 1) ||
+        doc.status === DocumentStatus.EMBEDDING ||
         doc.status === DocumentStatus.SUMMARIZING ||
         doc.status === DocumentStatus.ERROR ||
         (doc.status === DocumentStatus.STORAGE_UPLOAD && doc.statusProgress === 1))

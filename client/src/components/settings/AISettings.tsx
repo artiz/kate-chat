@@ -57,31 +57,45 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     });
   };
 
-  const modelSelectData = models
-    .filter(model => model.isActive && model.type !== ModelType.EMBEDDING)
-    .map(model => ({
-      value: model.modelId,
-      label: `${model.apiProvider}: ${model.name}`,
-    }));
+  const modelSelectData = useMemo(
+    () =>
+      models
+        .filter(model => model.isActive && model.type !== ModelType.EMBEDDING)
+        .map(model => ({
+          value: model.modelId,
+          label: `${model.apiProvider}: ${model.name}`,
+        })),
+    [models]
+  );
 
-  const embeddingModelSelectData = models
-    .filter(model => model.isActive && model.type === ModelType.EMBEDDING)
-    .map(model => ({
-      value: model.modelId,
-      label: `${model.apiProvider}: ${model.name}`,
-    }));
+  const embeddingModelSelectData = useMemo(
+    () =>
+      models
+        .filter(model => model.isActive && model.type === ModelType.EMBEDDING)
+        .map(model => ({
+          value: model.modelId,
+          label: `${model.apiProvider}: ${model.name}`,
+        })),
+    [models]
+  );
 
-  const isUserSettingsDirty =
-    defaultModelId !== user?.defaultModelId ||
-    defaultSystemPrompt !== user?.defaultSystemPrompt ||
-    defaultTemperature !== user?.defaultTemperature ||
-    defaultMaxTokens !== user?.defaultMaxTokens ||
-    defaultTopP !== user?.defaultTopP ||
-    defaultImagesCount !== user?.defaultImagesCount;
+  const isUserSettingsDirty = useMemo(
+    () =>
+      defaultModelId !== user?.defaultModelId ||
+      defaultSystemPrompt !== user?.defaultSystemPrompt ||
+      defaultTemperature !== user?.defaultTemperature ||
+      defaultMaxTokens !== user?.defaultMaxTokens ||
+      defaultTopP !== user?.defaultTopP ||
+      defaultImagesCount !== user?.defaultImagesCount,
+    [defaultModelId, defaultSystemPrompt, defaultTemperature, defaultMaxTokens, defaultTopP, defaultImagesCount, user]
+  );
 
-  const isDocumentsSettingsDirty =
-    documentsEmbeddingsModelId !== user?.documentsEmbeddingsModelId ||
-    documentSummarizationModelId !== user?.documentSummarizationModelId;
+  const isDocumentsSettingsDirty = useMemo(
+    () =>
+      documentsEmbeddingsModelId !== user?.documentsEmbeddingsModelId ||
+      documentSummarizationModelId !== user?.documentSummarizationModelId,
+    [documentsEmbeddingsModelId, documentSummarizationModelId, user]
+  );
 
   if (!user) return null;
 
@@ -189,6 +203,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
             </Title>
 
             <Select
+              name="embeddings-model"
               label="Documents Embeddings Model"
               description="Model used to generate vector embeddings for document chunks"
               placeholder="Select an embeddings model"
@@ -200,6 +215,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
             />
 
             <Select
+              name="summarization-model"
               label="Document Summarization Model"
               description="Model used to generate document summaries (up to 1024 words)"
               placeholder="Select a chat model"

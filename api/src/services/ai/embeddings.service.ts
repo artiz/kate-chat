@@ -30,6 +30,46 @@ export class EmbeddingsService {
     model: Model,
     connection: ConnectionParams
   ): Promise<DocumentChunk> {
+    const selector = {
+      documentId: document.id,
+      page: chunk.page,
+      pageIndex: chunk.id,
+    };
+    let entity = await this.documentChunksRepo.findOne({
+      where: selector,
+    });
+
+    if (entity && entity.modelId === model.modelId) {
+      let embedding = entity?.embedding;
+      if (DB_TYPE === "sqlite") {
+        const runner = AppDataSource.createQueryRunner();
+        try {
+          const rows = await runner.manager.query<{ rowid: number }[]>(
+            `SELECT rowid FROM document_chunks where "id"=? LIMIT 1`,
+            [entity.id]
+          );
+          const rowid = rows?.[0]?.rowid;
+          if (rowid) {
+            const embeds = await runner.manager.query<{ embedding_vec: string }[]>(
+              `SELECT vec_to_json(embedding) as embedding_vec FROM vss_document_chunks where rowid=? LIMIT 1`,
+              [rowid]
+            );
+            embedding = embeds?.[0]?.embedding_vec ? JSON.parse(embeds[0].embedding_vec) : undefined;
+          }
+        } finally {
+          runner.release();
+        }
+      }
+
+      if (embedding && embedding.length === EMBEDDINGS_DIMENSIONS) {
+        logger.debug(
+          { documentId: document.id, chunkId: chunk.id, page: chunk.page },
+          `Embedding already exists for chunk`
+        );
+        return entity;
+      }
+    }
+
     // Get embeddings for chunk text
     const embeddingResponse = await this.aiService.getEmbeddings(model.apiProvider, connection, {
       modelId: model.modelId,
@@ -40,15 +80,6 @@ export class EmbeddingsService {
     if (embedding.length < EMBEDDINGS_DIMENSIONS) {
       embedding.push(...Array(EMBEDDINGS_DIMENSIONS - embedding.length).fill(0));
     }
-
-    const selector = {
-      documentId: document.id,
-      page: chunk.page,
-      pageIndex: chunk.id,
-    };
-    let entity = await this.documentChunksRepo.findOne({
-      where: selector,
-    });
 
     if (!entity) {
       entity = this.documentChunksRepo.create(selector);

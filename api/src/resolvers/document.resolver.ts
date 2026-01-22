@@ -47,6 +47,10 @@ export class DocumentResolver extends BaseResolver {
     if (!document) throw new Error("Document not found");
     if (!document.s3key) throw new Error("Document was not uploaded yet");
 
+    document.status = DocumentStatus.CHUNKING;
+    document.statusProgress = 1;
+    await this.documentRepo.save(document);
+
     await sqsService.sendJsonMessage(
       {
         command: "index_document",
