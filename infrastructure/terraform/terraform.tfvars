@@ -18,9 +18,9 @@ db_allocated_storage = 10
 db_engine_version    = "16.9"
 
 # ECS Configuration (Optimized for cost)
-app_cpu           = 256  # 0.25 vCPU
-app_memory        = 512  # 512 MB
-app_desired_count = 1    # Reduced from 2 to 1 for staging (~$13/month savings)
+app_cpu           = 256 # 0.25 vCPU
+app_memory        = 512 # 512 MB
+app_desired_count = 1   # Reduced from 2 to 1 for staging (~$13/month savings)
 
 # Document Processor Configuration
 document_processor_cpu           = 1024 # 1 vCPU
@@ -29,6 +29,6 @@ document_processor_storage_gib   = 64
 document_processor_desired_count = 0 # Only run when needed
 
 # Redis Configuration (Optimized for cost)
-redis_node_type      = "cache.t4g.micro" # ARM-based Graviton2, ~20% cheaper than t2.micro
+redis_node_type       = "cache.t4g.micro" # ARM-based Graviton2, ~20% cheaper than t2.micro
 redis_num_cache_nodes = 1
 
