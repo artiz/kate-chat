@@ -4,7 +4,7 @@ import tiktoken
 from pathlib import Path
 from typing import List, Dict, Optional
 import logging
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Reused code from https://github.com/IlyaRice/RAG-Challenge-2
 # Kudos to @IlyaRice

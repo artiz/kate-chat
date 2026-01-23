@@ -465,6 +465,7 @@ def _worker_process_entrypoint(worker_id: int, address: str, assets_dir: str):
                     )
 
     except Exception as exc:  # noqa: BLE001
+        log.exception(exc)
         if conn is not None:
             with contextlib.suppress(Exception):
                 conn.send(

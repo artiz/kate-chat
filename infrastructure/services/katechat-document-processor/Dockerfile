@@ -4,7 +4,7 @@ ARG COMMIT_SHA=""
 WORKDIR /app
 
 # Install Rust toolchain for building dependencies
-RUN apt-get update && apt-get install -y curl && \
+RUN apt-get update && apt-get install -y curl libglib2.0-0 libgl1 libsm6 libxext6 libxrender-dev  && \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
@@ -12,7 +12,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 COPY document-processor/requirements.txt ./
 # Workaround for pydantic-core/pyo3 on Python 3.14
 ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # ensures that the python output is sent straight to terminal (e.g. your container log)
 # without being first buffered and that you can see the output of your application (e.g. django logs)
