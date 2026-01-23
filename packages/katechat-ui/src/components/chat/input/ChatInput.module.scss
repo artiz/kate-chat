@@ -100,7 +100,7 @@
 
       :global(textarea) {
         border: none;
-        padding: 0.25rem 0.5rem;
+        padding: var(--mb-padding, var(--mantine-spacing-xs)) var(--mb-padding, var(--mantine-spacing-sm));
       }
     }
   }
