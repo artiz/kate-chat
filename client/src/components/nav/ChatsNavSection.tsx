@@ -27,9 +27,10 @@ const CHATS_TO_SHOW_WHEN_COLLAPSED = 10;
 interface IProps {
   navbarToggle?: () => void;
   expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-export const ChatsNavSection = ({ navbarToggle, expanded = true }: IProps) => {
+export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand }: IProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -265,18 +266,27 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true }: IProps) => {
   }
 
   if (!expanded) {
-    return chats.slice(0, CHATS_TO_SHOW_WHEN_COLLAPSED).map(chat => (
-      <Tooltip key={chat.id} label={chat.title || "Untitled Chat"} position="right">
-        <NavLink
-          active={chat.id === currentChatId}
-          leftSection={<IconMessage size={16} />}
-          onClick={() => handleChatClick(chat.id)}
-          p="xs"
-          pl="sm"
-          m="0"
-        />
-      </Tooltip>
-    ));
+    return (
+      <>
+        {chats.slice(0, CHATS_TO_SHOW_WHEN_COLLAPSED).map(chat => (
+          <Tooltip key={chat.id} label={chat.title || "Untitled Chat"} position="right">
+            <NavLink
+              active={chat.id === currentChatId}
+              leftSection={<IconMessage size={16} />}
+              onClick={() => handleChatClick(chat.id)}
+              p="xs"
+              pl="sm"
+              m="0"
+            />
+          </Tooltip>
+        ))}
+        {chats.length > CHATS_TO_SHOW_WHEN_COLLAPSED && onToggleExpand && (
+          <Tooltip label="Show all chats" position="right">
+            <NavLink leftSection={<IconDots size={16} />} onClick={onToggleExpand} />
+          </Tooltip>
+        )}
+      </>
+    );
   }
 
   if (error || loadChatsError) {

@@ -196,7 +196,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
         </Stack>
       </AppShell.Section>
       <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12" p="0">
-        <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} />
+        <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} onToggleExpand={onToggleExpand} />
       </AppShell.Section>
       <AppShell.Section p="sm">
         <Group justify={expanded ? "flex-start" : "center"} gap="xs">

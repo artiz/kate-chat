@@ -40,7 +40,7 @@ export const ChatInput = ({
   inputPlugins,
   uploadFormats,
   maxUploadFileSize = 64 * 1024 * 1024,
-  maxImagesCount = 5,
+  maxImagesCount = 0,
   onSendMessage,
   onStopRequest,
   onDocumentsUpload,
@@ -231,21 +231,23 @@ export const ChatInput = ({
 
               {inputPlugins}
 
-              <div className={classes.filesList}>
-                {selectedImages.map(file => (
-                  <div key={file.fileName} className={classes.previewImage}>
-                    <img src={file.bytesBase64} alt={file.fileName} />
-                    <ActionIcon
-                      className={classes.removeButton}
-                      color="red"
-                      size="xs"
-                      onClick={handleRemoveImage(file.fileName)}
-                    >
-                      <IconX size={16} />
-                    </ActionIcon>
-                  </div>
-                ))}
-              </div>
+              {selectedImages?.length > 0 && (
+                <div className={classes.imagesList}>
+                  {selectedImages.map(file => (
+                    <div key={file.fileName} className={classes.previewImage}>
+                      <img src={file.bytesBase64} alt={file.fileName} />
+                      <ActionIcon
+                        className={classes.removeButton}
+                        color="red.9"
+                        size="xs"
+                        onClick={handleRemoveImage(file.fileName)}
+                      >
+                        <IconX size={16} />
+                      </ActionIcon>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
