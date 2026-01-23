@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import io
 import json
-import logging
 import tempfile
 from pathlib import Path
 from typing import Awaitable, Callable, Dict, Any, Optional, Tuple, List
@@ -18,9 +17,9 @@ from app.parser import JsonReportProcessor
 from app.services.parser_worker import WorkerPool, WorkerPoolError
 from app.text_splitter import TextSplitter, PageTextPreparation
 from docling.datamodel.base_models import DocumentStream
+from app.core import util
 
-logger = logging.getLogger(__name__)
-
+logger = util.init_logger(__name__)
 
 @dataclass
 class PdfBatches:

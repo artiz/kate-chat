@@ -16,12 +16,14 @@ from dataclasses import dataclass
 from multiprocessing.connection import Connection, Listener
 from pathlib import Path
 from typing import Dict, Optional
+import warnings
 
 from docling.datamodel.base_models import ConversionStatus
 
 from app.parser import JsonReportProcessor, PDFParser
+from app.core import util
 
-logger = logging.getLogger(__name__)
+logger = util.init_logger(__name__)
 
 
 class WorkerPoolError(RuntimeError):
@@ -365,6 +367,9 @@ class _ConnectionStream(io.TextIOBase):
 def _worker_process_entrypoint(worker_id: int, address: str, assets_dir: str):
     """Entry point executed in each worker subprocess."""
     from multiprocessing.connection import Client
+    # Ignore torch warnings, specifically "UserWarning: 'pin_memory' argument is set as true but no accelerator is found"
+    # https://github.com/docling-project/docling/discussions/1967
+    warnings.filterwarnings("ignore", module="torch")
 
     conn: Optional[Connection] = None
     try:
@@ -374,7 +379,7 @@ def _worker_process_entrypoint(worker_id: int, address: str, assets_dir: str):
         handler = _ConnectionLogHandler(conn, worker_id)
         handler.setFormatter(logging.Formatter("%(message)s"))
 
-        root_logger = logging.getLogger()
+        root_logger = util.init_logger()
         for existing in list(root_logger.handlers):
             root_logger.removeHandler(existing)
         root_logger.addHandler(handler)
@@ -383,7 +388,7 @@ def _worker_process_entrypoint(worker_id: int, address: str, assets_dir: str):
         sys.stdout = _ConnectionStream(conn, worker_id, "INFO")
         sys.stderr = _ConnectionStream(conn, worker_id, "ERROR")
 
-        log = logging.getLogger(f"docproc.worker.{worker_id}")
+        log = util.init_logger(f"document_processor.worker.{worker_id}")
         log.info("Worker process bootstrapping")
 
         parser = PDFParser()

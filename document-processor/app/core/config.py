@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # Number of parallel threads for Docling processing (1 - 32)
     # based on processing capacity
-    num_threads: int = 5
+    num_threads: int = 4
     # Number of PDF pages to split large documents into smaller batches
     pdf_page_batch_size: int = 10
     # Restart worker process after this many tasks

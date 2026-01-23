@@ -27,11 +27,11 @@ from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
 from docling.pipeline.simple_pipeline import SimplePipeline
 from docling.datamodel.base_models import ConversionStatus, DocumentStream
 from app.core.config import settings
-
+from app.core import util
 # Basic ideas got from https://github.com/IlyaRice/RAG-Challenge-2
 # Kudos to @IlyaRice
 
-_log = logging.getLogger(__name__)
+logger = util.init_logger(__name__)
 
 NOTDEF = "/.notdef"
 

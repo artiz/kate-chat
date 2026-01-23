@@ -103,4 +103,5 @@ if __name__ == "__main__":
         reload=settings.reload,
         port=settings.port,
         workers=settings.workers,
+        access_log=False,
     )
