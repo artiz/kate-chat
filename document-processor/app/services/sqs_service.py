@@ -34,6 +34,8 @@ class SQSService:
             self.processor = DocumentProcessor(self.send_message)
             await self.processor.startup()
 
+            # TDOD: Run settings.num_threads pollers with MaxNumberOfMessages=1 
+            # each for better parallelism
             self.poll_task = asyncio.create_task(self._poll_messages())
 
             logger.info(f"SQS Service started, polling queue: {self.queue_url}")

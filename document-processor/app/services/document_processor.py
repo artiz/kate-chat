@@ -323,7 +323,7 @@ class DocumentProcessor:
 
             #  Determine if document needs to be split into parts
             if mime == "application/pdf":
-                is_batch_doc = await self._get_pdf_batches(
+                is_batch_doc = await self._batch_pdf(
                     document_stream,
                     document_id=document_id,
                     s3_key=s3_key,
@@ -342,7 +342,6 @@ class DocumentProcessor:
             output_path = Path(f"{input_path}.parsed.json")
 
             await self._dispatch_parse(input_path, output_path)
-
             await self._set_progress(redis, progress_key, 0.6, document_id, "parsing")
 
             processor = JsonReportProcessor()
@@ -363,6 +362,7 @@ class DocumentProcessor:
                 self._extract_markdown_text, processed_report
             )
             await self._upload_to_s3(parsed_md_key, content, "text/markdown")
+
             # Complete parsing
             await self._set_progress(redis, progress_key, 1.0, document_id, "parsing")
             await self._send_split_command(document_id, s3_key)
@@ -591,7 +591,7 @@ class DocumentProcessor:
             logger.error(f"Failed to upload {key} to S3: {e}")
             raise
 
-    async def _get_pdf_batches(
+    async def _batch_pdf(
         self,
         document_stream: DocumentStream,
         document_id: str,
@@ -691,7 +691,8 @@ class DocumentProcessor:
             except Exception as e:
                 logger.error(f"Error processing PDF batches of {document_stream.name}: {e}")
         
-        # Process batches synchronously as requested for performance
+        # TDOD: refactor this introducing new status BATCHING and same progress_key and run with `await`
+        # Process batches asynchronously in background as requested for performance
         asyncio.create_task(process_batches(acknowledge_msg=ack))
         
         return True
