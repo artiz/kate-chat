@@ -1,6 +1,7 @@
 export enum DocumentStatus {
   UPLOAD = "upload",
   STORAGE_UPLOAD = "storage_upload",
+  BATCHING = "batching",
   PARSING = "parsing",
   CHUNKING = "chunking",
   EMBEDDING = "embedding",
@@ -17,6 +18,7 @@ export const getStatusColor = (status?: DocumentStatus): string => {
     case DocumentStatus.UPLOAD:
     case DocumentStatus.STORAGE_UPLOAD:
       return "blue";
+    case DocumentStatus.BATCHING:
     case DocumentStatus.PARSING:
     case DocumentStatus.CHUNKING:
       return "yellow";

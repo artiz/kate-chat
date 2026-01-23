@@ -1,7 +1,12 @@
 import asyncio
 import os
+import warnings
 from pathlib import Path
 from fastapi.concurrency import asynccontextmanager
+
+# Ignore torch warnings, specifically "UserWarning: 'pin_memory' argument is set as true but no accelerator is found"
+# https://github.com/docling-project/docling/discussions/1967
+warnings.filterwarnings("ignore", module="torch")
 
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException, status

@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     sqs_documents_queue: str
     sqs_index_documents_queue: str
 
-    # Number of parallel threads for Docling processing (1 - 10, limited by SQS)
-    # based on SQS concurrency limits and processing capacity
+    # Number of parallel threads for Docling processing (1 - 32)
+    # based on processing capacity
     num_threads: int = 5
     # Number of PDF pages to split large documents into smaller batches
     pdf_page_batch_size: int = 10
@@ -45,8 +45,8 @@ settings = Settings()
 
 
 def validate_settings() -> None:
-    if not 1 <= settings.num_threads <= 10:
-        raise ValueError("num_threads must be between 1 and 10 inclusive")
+    if not 1 <= settings.num_threads <= 32:
+        raise ValueError("num_threads must be between 1 and 32 inclusive")
 
 
 validate_settings()

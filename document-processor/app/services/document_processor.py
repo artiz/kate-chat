@@ -614,6 +614,15 @@ class DocumentProcessor:
         )
         stream = document_stream.stream
         stream.seek(0)
+        
+        await self._set_progress(
+            redis,
+            progress_key,
+            0.0,
+            document_id,
+            "batching",
+            expire=90,
+        )
 
         reader = await asyncio.to_thread(PdfReader, stream)
         logger.info(
@@ -629,16 +638,6 @@ class DocumentProcessor:
             pages_count + settings.pdf_page_batch_size - 1
         ) // settings.pdf_page_batch_size
         s3 = self._get_s3_client()
-
-        await self._set_progress(
-            redis,
-            progress_key,
-            0.0,
-            document_id,
-            "parsing",
-            f"start processing of {parts_count} parts",
-            expire=90,
-        )
 
         def fill_batch(
             first_page: int, last_page: int, part_s3_key: str
@@ -676,33 +675,25 @@ class DocumentProcessor:
             }
             await self._send_sqs_command(True, command)
 
-        async def process_batches(acknowledge_msg: Callable[[], None]):
-            part_no = 0
-            try:
-                for i in range(0, pages_count):
-                    if i % settings.pdf_page_batch_size == 0 and i > 0:
-                        await process_batch(
-                            part_no, i - settings.pdf_page_batch_size, i
-                        )
-                        part_no += 1
-
-                if pages_count % settings.pdf_page_batch_size != 0:
-                    await process_batch(
-                        part_no,
-                        pages_count - (pages_count % settings.pdf_page_batch_size),
-                        pages_count,
-                    )
-
-                await asyncio.to_thread(acknowledge_msg)
-                reader.close()
-            except Exception as e:
-                logger.error(
-                    f"Error processing PDF batches of {document_stream.name}: {e}"
+        part_no = 0
+        try:
+            for i in range(0, pages_count):
+                if i % settings.pdf_page_batch_size == 0 and i > 0:
+                    await process_batch(part_no, i - settings.pdf_page_batch_size, i)
+                    part_no += 1
+            if pages_count % settings.pdf_page_batch_size != 0:
+                await process_batch(
+                    part_no,
+                    pages_count - (pages_count % settings.pdf_page_batch_size),
+                    pages_count,
                 )
 
-        # TDOD: refactor this introducing new status BATCHING and same progress_key and run with `await`
-        # Process batches asynchronously in background as requested for performance
-        asyncio.create_task(process_batches(acknowledge_msg=ack))
+            await asyncio.to_thread(ack)
+            reader.close()
+        except Exception as e:
+            logger.error(
+                f"Error processing PDF batches of {document_stream.name}: {e}"
+            )
 
         return True
 

@@ -42,6 +42,7 @@ export enum ResponseStatus {
 export enum DocumentStatus {
   UPLOAD = "upload",
   STORAGE_UPLOAD = "storage_upload",
+  BATCHING = "batching",
   PARSING = "parsing",
   CHUNKING = "chunking",
   EMBEDDING = "embedding",
