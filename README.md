@@ -4,6 +4,20 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 
 ![logo](/logo.png)
 
+## 🚀 Live Demo
+
+Experience KateChat in action with our live demo:
+
+**[Try KateChat Demo →](https://katechat.tech/)**
+
+### Getting Started with Demo
+
+To interact with all supported AI models in the demo, you'll need to provide your own API keys for:
+- **AWS Bedrock** - Access to Claude, Llama, and other models
+- **OpenAI** - GPT-4, GPT-5, and other OpenAI models  
+- **Yandex Foundation Models** - YandexGPT and other Yandex models
+
+> 📋 **Note**: API keys are stored by default locally in your browser and sent securely to our backend. See the [Getting Started](#getting-started) section below for detailed instructions on obtaining API keys.
 
 ## Features
 
@@ -16,7 +30,7 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
-  * Voice2voice demo for OpenAI realtime WebRTC API.
+  * Voice-to-voice demo for OpenAI realtime WebRTC API.
 - Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
 - User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Real-time communication with GraphQL subscriptions
@@ -29,33 +43,17 @@ _KateChat_ is a universal chat bot platform similar to chat.openai.com that can 
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
-## 🚀 Live Demo
-
-Experience KateChat in action with our live staging environment:
-
-**[Try KateChat Demo →](https://katechat.tech/)**
-
-### Demo Features
-- ✨ Full-featured chat interface
-- 🔄 Real-time model switching
-- 📝 Rich markdown support with code highlighting
-- 🖼️ Image upload and processing capabilities
-- 💬 Multiple chat sessions
-
-### Getting Started with Demo
-To interact with AI models in the demo, you'll need to provide your own API keys for:
-- **AWS Bedrock** - Access to Claude, Llama, and other models
-- **OpenAI** - GPT-3.5, GPT-4, and other OpenAI models  
-- **Yandex Foundation Models** - YandexGPT and other Yandex models
-
-> 📋 **Note**: API keys are stored locally in your browser and sent securely to our backend. See the [Getting Started](#getting-started) section below for detailed instructions on obtaining API keys.
-
 ## TODO
 
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
+* Finish drag & drop support to allow dropping into the chat window (katechat/ui)
+* Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
+* Add custom MCP tool support
+   - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
+   - Bedrock - custom wrapper 
 * Switch OpenAI "gpt-image..." models to Responses API
+* Add support for Google Vertex AI provider
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
-* @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * Rename `document-processor` to `tasks-processor` service to perform following tasks:
  - add custom code interpreter tool implementation
 ```
@@ -87,16 +85,11 @@ def code_interpreter_handler(event, context):
 
       return result
 ```        
-* Add custom MCP tool support
-   - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
-   - Bedrock - custom wrapper 
-* Add [MarkItDown](https://github.com/microsoft/markitdown) ([example](https://dev.to/leapcell/deep-dive-into-microsoft-markitdown-4if5)) in document-processor, support both processors and write script to generate Markdown for files from train and compare them.
+* @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * Add SerpApi for Web Search (new setting in UI)
-* Add support for Google Vertex AI provider
 * Python API (FastAPI)
 * MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
 * Rust API sync: add images generation support, Library, admin API
-
 
 ## Tech Stack
 
@@ -233,7 +226,7 @@ Then run the following commands:
 ```bash
 export COMPOSE_BAKE=true
 npm run install:all
-npm run client:build
+npm run build:client
 docker compose up --build
 ```
 
@@ -243,10 +236,19 @@ App will be available at `http://katechat.dev.com`
 
 To run the projects in development mode:
 
-#### Default Node.js API
+#### Default Node.js API/Client
 ```bash
 npm run install:all
+docker compose up redis localstack postgres mysql mssql -d
 npm run dev
+```
+
+#### Documents processor (Python)
+```bash
+python -m venv document-processor/.venv
+source document-processor/.venv/bin/activate
+pip install -r document-processor/requirements.txt
+npm run dev:document_processor
 ```
 
 #### Rust API (experiment)
@@ -264,20 +266,21 @@ cargo run
 APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
 ```
 
-### Default API DB Migrations
+### API DB Migrations
 
-Create initial migration (done already)
-```bash
-cd api
-npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/init  
-```
-
-Create new migration
+* Create new migration
 
 ```bash
-cd api
-npx typeorm-ts-node-commonjs migration:generate -d typeorm-local.ts ../db-migrations/${DB_TYPE}/<migration name>  
+docker compose up redis localstack postgres mysql mssql -d
+npm run migration:generate <migration name>
 ```
+
+* Apply migrations (automated at app start but could be used to test)
+
+```bash
+npm run migration:run
+```
+
 
 NOTE: do not update more than one table definition at once, sqlite sometimes applies migrations incorrectly due to "temporary_xxx" tables creation.
 
