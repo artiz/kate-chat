@@ -1,5 +1,6 @@
 aiohttp==3.13.3
 aiologger===0.6.1
+black==26.1.0
 boto3==1.40.11
 botocore==1.40.11
 docling==2.69.0

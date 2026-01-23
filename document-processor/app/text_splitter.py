@@ -469,7 +469,7 @@ def main():
         conv_results = [
             parser.convert_document(file_path) for file_path in files_to_parse
         ]
-        
+
         if not conv_results:
             print("No conversion results returned")
             return

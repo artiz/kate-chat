@@ -28,13 +28,13 @@ from docling.pipeline.simple_pipeline import SimplePipeline
 from docling.datamodel.base_models import ConversionStatus, DocumentStream
 from app.core.config import settings
 
-
 # Basic ideas got from https://github.com/IlyaRice/RAG-Challenge-2
 # Kudos to @IlyaRice
 
 _log = logging.getLogger(__name__)
 
 NOTDEF = "/.notdef"
+
 
 class PDFParser:
     def __init__(
@@ -46,7 +46,7 @@ class PDFParser:
         output_dir: Path = Path("./parsed_pdfs"),
     ):
         os.environ["OMP_NUM_THREADS"] = str(multiprocessing.cpu_count())
-        
+
         self.pdf_backend = pdf_backend
         self.msword_backend = msword_backend
         self.html_backend = html_backend
@@ -67,7 +67,7 @@ class PDFParser:
         pipeline_options.do_table_structure = True
         pipeline_options.table_structure_options.do_cell_matching = True
         pipeline_options.table_structure_options.mode = TableFormerMode.ACCURATE
-        
+
         format_options = {
             # PDF format
             InputFormat.PDF: FormatOption(
@@ -220,7 +220,9 @@ class JsonReportProcessor:
             # Already assembled report provided by worker process; return as-is.
             return normalized_data
         if conv_result is None:
-            raise ValueError("conv_result must be provided when assembling from raw data")
+            raise ValueError(
+                "conv_result must be provided when assembling from raw data"
+            )
         data = (
             normalized_data
             if normalized_data is not None
@@ -559,7 +561,7 @@ def main():
         data_dir / "dummy_report.pdf",
         # data_dir / "DDD Quickly (Avram, Marinesku).pdf",
         data_dir / "Apple.docx",
-        data_dir / "Austria - Wikipedia.html"
+        data_dir / "Austria - Wikipedia.html",
     ]
 
     # Check which files exist

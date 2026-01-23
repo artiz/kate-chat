@@ -31,7 +31,9 @@ class PdfBatches:
 class DocumentProcessor:
     """Service for processing document commands"""
 
-    def __init__(self, send_message: Callable[[bool, Dict[str, Any], int], Awaitable[None]]):
+    def __init__(
+        self, send_message: Callable[[bool, Dict[str, Any], int], Awaitable[None]]
+    ):
         self.send_message = send_message
         self._worker_pool: Optional[WorkerPool] = None
         self._assets_dir = Path(__file__).resolve().parent.parent / "assets"
@@ -156,8 +158,10 @@ class DocumentProcessor:
                     parts_count,
                 )
             else:
-                return await self._handle_parse_document(document_id, s3_key, mime, ack=ack)
-                
+                return await self._handle_parse_document(
+                    document_id, s3_key, mime, ack=ack
+                )
+
         elif command_type == "split_document":
             await self._handle_split_document(document_id, s3_key)
         else:
@@ -203,8 +207,7 @@ class DocumentProcessor:
                     f"completed part {part_number + 1}/{parts_count}",
                 )
                 return
-                    
-                 
+
             parts_progress = await redis.get(parts_progress_key)
             processed_parts = int(parts_progress) if parts_progress is not None else 0
 
@@ -221,7 +224,7 @@ class DocumentProcessor:
                     f"processing part {part_number + 1}/{parts_count}",
                 )
 
-            (document_stream, content_type) = await self._download_s3_stream(s3_key)
+            document_stream, content_type = await self._download_s3_stream(s3_key)
             input_path = await self._write_temp_document(document_stream, content_type)
             output_path = Path(f"{input_path}.parsed.json")
 
@@ -287,7 +290,9 @@ class DocumentProcessor:
                     with contextlib.suppress(FileNotFoundError):
                         temp_path.unlink()
 
-    async def _handle_parse_document(self, document_id: str, s3_key: str, mime: str, ack: Callable[[], None]):
+    async def _handle_parse_document(
+        self, document_id: str, s3_key: str, mime: str, ack: Callable[[], None]
+    ):
         """Handle parse_document command"""
         progress_key = f"{s3_key}.parsing"
         parsed_json_key = f"{s3_key}.parsed.json"
@@ -317,7 +322,7 @@ class DocumentProcessor:
                 return
 
             await self._set_progress(redis, progress_key, 0.0, document_id, "parsing")
-            (document_stream, content_type) = await self._download_s3_stream(s3_key)
+            document_stream, content_type = await self._download_s3_stream(s3_key)
             if not mime:
                 mime = content_type
 
@@ -329,7 +334,7 @@ class DocumentProcessor:
                     s3_key=s3_key,
                     redis=redis,
                     progress_key=progress_key,
-                    ack=ack
+                    ack=ack,
                 )
                 if is_batch_doc:
                     ack_message = False
@@ -618,13 +623,13 @@ class DocumentProcessor:
         if pages_count <= settings.pdf_page_batch_size:
             await asyncio.to_thread(reader.close)
             return False
-        
+
         mime = "application/pdf"
         parts_count = (
             pages_count + settings.pdf_page_batch_size - 1
         ) // settings.pdf_page_batch_size
         s3 = self._get_s3_client()
-        
+
         await self._set_progress(
             redis,
             progress_key,
@@ -635,12 +640,12 @@ class DocumentProcessor:
             expire=90,
         )
 
-        def fill_batch(first_page: int, last_page: int, part_s3_key: str) -> DocumentStream:
+        def fill_batch(
+            first_page: int, last_page: int, part_s3_key: str
+        ) -> DocumentStream:
             with PdfWriter(clone_from=reader) as writer:
-                writer.append(
-                    fileobj=reader,
-                    pages=(first_page, last_page))
-                
+                writer.append(fileobj=reader, pages=(first_page, last_page))
+
                 with io.BytesIO() as batch_stream:
                     writer.write(batch_stream)
                     batch_stream.seek(0)
@@ -649,9 +654,9 @@ class DocumentProcessor:
                         Bucket=settings.s3_files_bucket_name,
                         Key=part_s3_key,
                         Body=batch_stream,
-                        ContentType=mime)
+                        ContentType=mime,
+                    )
                     logger.debug(f"Uploaded PDF batch {part_s3_key}")
-            
 
         async def process_batch(part_no: int, first_page: int, last_page: int):
             logger.debug(
@@ -659,7 +664,7 @@ class DocumentProcessor:
             )
             part_s3_key = f"{s3_key}.part{part_no}"
             await asyncio.to_thread(fill_batch, first_page, last_page, part_s3_key)
-            
+
             command = {
                 "command": "parse_document",
                 "documentId": document_id,
@@ -676,9 +681,11 @@ class DocumentProcessor:
             try:
                 for i in range(0, pages_count):
                     if i % settings.pdf_page_batch_size == 0 and i > 0:
-                        await process_batch(part_no, i - settings.pdf_page_batch_size, i)
+                        await process_batch(
+                            part_no, i - settings.pdf_page_batch_size, i
+                        )
                         part_no += 1
-                
+
                 if pages_count % settings.pdf_page_batch_size != 0:
                     await process_batch(
                         part_no,
@@ -689,12 +696,14 @@ class DocumentProcessor:
                 await asyncio.to_thread(acknowledge_msg)
                 reader.close()
             except Exception as e:
-                logger.error(f"Error processing PDF batches of {document_stream.name}: {e}")
-        
+                logger.error(
+                    f"Error processing PDF batches of {document_stream.name}: {e}"
+                )
+
         # TDOD: refactor this introducing new status BATCHING and same progress_key and run with `await`
         # Process batches asynchronously in background as requested for performance
         asyncio.create_task(process_batches(acknowledge_msg=ack))
-        
+
         return True
 
     def _build_combined_metainfo(
@@ -756,7 +765,7 @@ class DocumentProcessor:
             f"{s3_key}.part", lambda x: x.endswith(".parsed.json")
         )
         parts_progress = len(parts_completed)
-        
+
         if parts_progress > 0 and parts_progress < parts_count:
             logger.info(
                 f"Document {document_id} is not finalized yet: expected {parts_count} parts, found {parts_progress}"

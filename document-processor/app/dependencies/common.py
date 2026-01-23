@@ -15,6 +15,7 @@ async def get_redis():
     finally:
         await r.close()
 
+
 async def get_log():
     log = util.init_logger("api")
 

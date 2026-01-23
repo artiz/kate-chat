@@ -34,7 +34,7 @@ class SQSService:
             self.processor = DocumentProcessor(self.send_message)
             await self.processor.startup()
 
-            # TDOD: Run settings.num_threads pollers with MaxNumberOfMessages=1 
+            # TDOD: Run settings.num_threads pollers with MaxNumberOfMessages=1
             # each for better parallelism
             self.poll_task = asyncio.create_task(self._poll_messages())
 
@@ -88,14 +88,17 @@ class SQSService:
                         try:
                             sqs_client = self.sqs_client
                             queue_url = self.queue_url
+
                             def ack():
                                 # Delete message from queue after processing
                                 sqs_client.delete_message(
                                     QueueUrl=queue_url,
                                     ReceiptHandle=message["ReceiptHandle"],
                                 )
-                                logger.info(f"Deleted message from SQS: {message['MessageId']}")
-                            
+                                logger.info(
+                                    f"Deleted message from SQS: {message['MessageId']}"
+                                )
+
                             # Process message
                             await self._handle_message(message, ack=ack)
 

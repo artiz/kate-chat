@@ -21,7 +21,6 @@ from docling.datamodel.base_models import ConversionStatus
 
 from app.parser import JsonReportProcessor, PDFParser
 
-
 logger = logging.getLogger(__name__)
 
 
