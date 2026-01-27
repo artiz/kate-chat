@@ -53,20 +53,21 @@ resource "aws_elasticache_subnet_group" "main" {
 }
 
 # ElastiCache Redis Cluster
-resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "${var.project_name}-${var.environment}-redis"
-  engine               = "redis"
-  engine_version       = "7.1"
+resource "aws_elasticache_replication_group" "redis" {
+  replication_group_id = "${var.project_name}-${var.environment}-valkey"
+  description          = "Terraform-managed ElastiCache replication group for ${var.project_name}-${var.environment}"
+  engine               = "valkey"
+  engine_version       = "7.2"
   node_type            = var.redis_node_type
-  num_cache_nodes      = var.redis_num_cache_nodes
-  parameter_group_name = "default.redis7"
+  num_cache_clusters   = var.redis_num_cache_nodes
+  parameter_group_name = "default.valkey7"
   port                 = 6379
 
   subnet_group_name  = aws_elasticache_subnet_group.main.name
   security_group_ids = [aws_security_group.redis.id]
 
-  auto_minor_version_upgrade = true # Enable automatic minor version updates
-  apply_immediately          = true # Apply changes immediately instead of waiting for maintenance window
+  auto_minor_version_upgrade = true
+  apply_immediately          = true
 
   tags = {
     Name = "${var.project_name}-${var.environment}-redis"

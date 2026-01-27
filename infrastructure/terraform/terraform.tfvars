@@ -26,7 +26,7 @@ app_desired_count = 1   # Reduced from 2 to 1 for staging (~$13/month savings)
 document_processor_cpu           = 1024 # 1 vCPU
 document_processor_memory        = 8192 # 8 GB
 document_processor_storage_gib   = 64
-document_processor_desired_count = 0 # Only run when needed
+document_processor_desired_count = 1 # Only run when needed
 
 # Redis Configuration (Optimized for cost)
 redis_node_type       = "cache.t4g.micro" # ARM-based Graviton2, ~20% cheaper than t2.micro

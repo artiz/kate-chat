@@ -43,15 +43,21 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
-## TODO
 
+## ISSUES
+
+* Check and fix messages deletion (mode: this one and following)
+
+## TODO
+* Create ChatFiles table. mode images there, calculate image predominant color and store to DB
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Add custom MCP tool support
    - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
    - Bedrock - custom wrapper 
-* Switch OpenAI "gpt-image..." models to Responses API
+* Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
+new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
 * Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Rename `document-processor` to `tasks-processor` service to perform following tasks:

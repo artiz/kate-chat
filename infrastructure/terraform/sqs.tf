@@ -9,7 +9,7 @@ resource "aws_sqs_queue" "documents_queue" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.documents_dlq.arn
-    maxReceiveCount     = 5
+    maxReceiveCount     = 10
   })
 
   tags = {
@@ -28,7 +28,7 @@ resource "aws_sqs_queue" "index_documents_queue" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.index_documents_dlq.arn
-    maxReceiveCount     = 5
+    maxReceiveCount     = 10
   })
 
   tags = {
@@ -55,6 +55,7 @@ resource "aws_sqs_queue" "index_documents_dlq" {
     Name = "${var.project_name}-${var.environment}-index-documents-dlq"
   }
 }
+
 
 # IAM policy for SQS access
 resource "aws_iam_policy" "sqs_access" {

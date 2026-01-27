@@ -22,7 +22,7 @@ This guide walks you through setting up Microsoft Azure OAuth authentication for
   - **Accounts in any organizational directory and personal Microsoft accounts** - for broader access including personal accounts
 - **Redirect URI**: 
   - Type: Web
-  - URL: `http://localhost:4000/api/auth/microsoft/callback` (adjust for production)
+  - URL: `http://localhost:4000/api/auth/microsoft/callback` (production: https://katechat.tech/auth/microsoft/callback)
 
 ### Get Application Details
 After registration, copy these values from the **Overview** page:
