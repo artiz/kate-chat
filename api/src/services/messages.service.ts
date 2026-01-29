@@ -481,14 +481,10 @@ export class MessagesService {
             deletedImageFiles.push(content.fileName);
           }
         }
-
-        // Delete the following message
-        if (msg.id !== id) {
-          // Skip the original message, we'll delete it separately
-          result.messages.push({ id: msg.id });
-          await this.messageRepository.remove(msg);
-        }
       }
+
+      result.messages.push(...messagesToDelete.map(msg => ({ id: msg.id })));
+      await this.messageRepository.remove(messagesToDelete);
     }
 
     // Delete the original message

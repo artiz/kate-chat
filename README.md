@@ -49,7 +49,8 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Check and fix messages deletion (mode: this one and following)
 
 ## TODO
-* Create ChatFiles table. mode images there, calculate image predominant color and store to DB
+* Create ChatFiles table. mode images there, calculate image predominant color 
+  (in border area, it all the bottom pixel row hase same color - use it), use it in library and store to DB
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
