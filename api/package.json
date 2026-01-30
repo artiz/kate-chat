@@ -18,7 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.810.0",
     "@aws-sdk/client-bedrock-runtime": "^3.810.0",
-    "@aws-sdk/client-cost-explorer": "^3.818.0",
+    "@aws-sdk/client-cost-explorer": "^3.894.0",
     "@aws-sdk/client-s3": "^3.826.0",
     "@aws-sdk/client-sqs": "^3.826.0",
     "@aws-sdk/lib-storage": "^3.864.0",
@@ -47,7 +47,7 @@
     "exif-reader": "^2.0.3",
     "express": "^5.2.0",
     "express-session": "^1.18.1",
-    "fast-xml-parser": "^5.3.0",
+    "fast-xml-parser": "^5.3.4",
     "finalhandler": "^2.1.0",
     "formidable": "^3.5.4",
     "graphql": "^16.11.0",
