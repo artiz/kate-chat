@@ -60,6 +60,7 @@ type Chat {
   chatDocuments: [ChatDocument!]
   createdAt: DateTimeISO!
   description: String
+  files: [ChatFile!]
   id: ID!
   imagesCount: Float
   isPinned: Boolean!
@@ -86,6 +87,29 @@ type ChatDocument {
   document: Document!
   documentId: String!
   id: ID!
+}
+
+type ChatFile {
+  chat: Chat!
+  chatId: String!
+  createdAt: DateTimeISO!
+  fileName: String
+  id: ID!
+  message: Message
+  messageId: String
+  mime: String
+  predominantColor: String
+  type: ChatFileType!
+  updatedAt: DateTimeISO!
+  uploadFile: String
+  url: String!
+}
+
+enum ChatFileType {
+  IMAGE
+  INLINE_DOCUMENT
+  RAG_DOCUMENT
+  VIDEO
 }
 
 type ChatResultAnnotation {
@@ -264,7 +288,7 @@ type GqlImage {
   fileName: String!
   fileUrl: String!
   id: ID!
-  message: Message!
+  message: Message
   mimeType: String!
   role: String!
 }
@@ -328,6 +352,7 @@ type Message {
   chatId: String
   content: String!
   createdAt: DateTimeISO
+  files: [ChatFile!]
   id: ID!
   linkedMessages: [Message!]
   linkedToMessage: Message!

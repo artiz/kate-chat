@@ -1,6 +1,6 @@
 import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { Repository, IsNull, In } from "typeorm";
-import { Message } from "@/entities";
+import { Message, ChatFile } from "@/entities";
 import {
   CreateMessageInput,
   GetMessagesInput,
@@ -29,16 +29,21 @@ import { ChatsService } from "@/services/chats.service";
 import { isAdmin } from "@/utils/jwt";
 import { NEW_MESSAGE } from "@/services/messaging";
 
+import { ChatFileType } from "@/entities/ChatFile";
+import { MessageRole } from "@/types/ai.types";
+
 const logger = createLogger(__filename);
 
 @Resolver(Message)
 export class MessageResolver extends BaseResolver {
   private messageRepository: Repository<Message>;
+  private chatFileRepository: Repository<ChatFile>;
   private chatsService: ChatsService;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.messageRepository = getRepository(Message);
+    this.chatFileRepository = getRepository(ChatFile);
     this.chatsService = new ChatsService();
   }
 
@@ -121,41 +126,33 @@ export class MessageResolver extends BaseResolver {
     const token = await this.validateContextToken(context);
     const { offset: skip = 0, limit: take = 100 } = input;
 
-    // Get all messages with images for the user
-    const messages = await this.messageRepository
-      .createQueryBuilder("message")
-      .leftJoinAndSelect("message.chat", "chat")
-      .leftJoinAndSelect("message.user", "user")
+    // Get all images for the user from ChatFile
+    const files = await this.chatFileRepository
+      .createQueryBuilder("chatFile")
+      .innerJoinAndSelect("chatFile.chat", "chat")
+      .leftJoinAndSelect("chatFile.message", "message")
       .where("chat.userId = :userId", { userId: token.userId })
-      .andWhere("message.jsonContent IS NOT NULL")
-      .orderBy("message.createdAt", "DESC")
+      .andWhere("chatFile.type = :type", { type: ChatFileType.IMAGE })
+      .orderBy("chatFile.createdAt", "DESC")
       .skip(skip)
       .take(take + 1)
       .getMany();
 
-    const nextPage = messages.length > take ? skip + take : undefined;
+    const nextPage = files.length > take ? skip + take : undefined;
+    const items = nextPage ? files.slice(0, -1) : files;
 
-    // Extract images from jsonContent and create GqlImage objects
-    const images: GqlImage[] = [];
+    // Create GqlImage objects from ChatFile
+    const images: GqlImage[] = items.map(file => ({
+      id: file.id,
+      fileName: file.fileName || "",
+      fileUrl: `/files/${file.fileName}`,
+      mimeType: "image/png", // ChatFile doesn't store mimeType explicitly, assume image
+      role: file.message?.role || MessageRole.USER,
+      createdAt: file.createdAt,
+      message: file.message,
+      chat: file.chat,
+    }));
 
-    for (const message of nextPage ? messages.slice(0, -1) : messages) {
-      if (!message.jsonContent) continue;
-
-      for (const content of message.jsonContent) {
-        if (content.contentType === "image" && content.fileName) {
-          images.push({
-            id: `${message.id}-${content.fileName}`,
-            fileName: content.fileName,
-            fileUrl: `/files/${content.fileName}`,
-            mimeType: content.mimeType || "image/jpeg",
-            role: message.role,
-            createdAt: message.createdAt || new Date(),
-            message: message,
-            chat: message.chat!,
-          });
-        }
-      }
-    }
     return {
       images,
       nextPage,

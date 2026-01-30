@@ -290,8 +290,8 @@ export class GqlImage {
   @Field()
   role: MessageRole;
 
-  @Field(() => Message)
-  message: Message;
+  @Field(() => Message, { nullable: true })
+  message?: Message;
 
   @Field(() => Chat)
   chat: Chat;

@@ -20,6 +20,7 @@
     "format": "npm run format -w client -w api",
     "migration:generate": "bash scripts/migration-generate.sh \"$@\"",
     "migration:run": "bash scripts/migration-run.sh",
+    "migration:revert": "bash scripts/migration-revert.sh",
     "publish:packages": "npm publish -w packages/katechat-ui"
   },
   "author": "",
@@ -30,7 +31,11 @@
     "packages/katechat-ui"
   ],
   "dependencies": {
-    "concurrently": "^9.1.2"
+    "@types/exif-reader": "^1.0.0",
+    "@types/sharp": "^0.31.1",
+    "concurrently": "^9.1.2",
+    "exif-reader": "^2.0.3",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "husky": "^9.1.7",

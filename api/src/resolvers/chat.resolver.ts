@@ -104,11 +104,12 @@ export class ChatResolver extends BaseResolver {
       where: {
         id,
       },
+      relations: ["files"],
     });
 
     if (!chat) throw new Error("Chat not found");
     if (chat.files?.length) {
-      messageService.removeFiles(chat.files, user);
+      await messageService.removeFiles(chat.files, user);
     }
 
     await this.chatRepository.delete({ id });

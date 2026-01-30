@@ -1,6 +1,16 @@
-import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryGeneratedColumn, Index } from "typeorm";
+import {
+  Entity,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Index,
+  OneToMany,
+} from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
+import { ChatFile } from "./ChatFile";
 import { User } from "./User";
 import { MessageRole, ModelMessageContent, MessageMetadata, ResponseStatus } from "../types/ai.types";
 import { JSONTransformer } from "../utils/db";
@@ -48,6 +58,10 @@ export class Message {
   @Field({ nullable: true })
   @Column({ nullable: true })
   chatId?: string;
+
+  @Field(() => [ChatFile], { nullable: true })
+  @OneToMany(() => ChatFile, file => file.message)
+  files: ChatFile[];
 
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User, { onDelete: "CASCADE" })

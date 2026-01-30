@@ -3,7 +3,10 @@ import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 
 import { Message } from "../entities/Message";
+import { ChatFile, ChatFileType } from "../entities/ChatFile";
 import { AIService } from "./ai/ai.service";
+import sharp from "sharp";
+import exifReader, { Exif } from "exif-reader";
 import { Chat, DocumentChunk, Model, User } from "@/entities";
 import { CreateMessageInput, ImageInput } from "@/types/graphql/inputs";
 import {
@@ -60,6 +63,7 @@ export class MessagesService {
 
   private messageRepository: Repository<Message>;
   private chatRepository: Repository<Chat>;
+  private chatFileRepository: Repository<ChatFile>;
   private modelRepository: Repository<Model>;
 
   private subscriptionsService: SubscriptionsService;
@@ -73,6 +77,7 @@ export class MessagesService {
     this.embeddingsService = new EmbeddingsService();
     this.messageRepository = getRepository(Message);
     this.chatRepository = getRepository(Chat);
+    this.chatFileRepository = getRepository(ChatFile);
     this.modelRepository = getRepository(Model);
 
     subscriptionsService.on(CHAT_MESSAGES_CHANNEL, this.handleMessageEvent.bind(this));
@@ -86,6 +91,75 @@ export class MessagesService {
     setTimeout(() => {
       SubscriptionsService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
     }, 300);
+  }
+
+  private async getImageFeatures(buffer: Buffer): Promise<{ predominantColor?: string; exif?: any }> {
+    try {
+      const image = sharp(buffer);
+      const metadata = await image.metadata();
+
+      let predominantColor: string | undefined;
+
+      // Extract predominant color from borders
+      if (metadata.width && metadata.height) {
+        // Define border regions
+        const borderRegions = [
+          // Top row
+          { left: 0, top: 0, width: metadata.width, height: 1 },
+          // Bottom row
+          { left: 0, top: metadata.height - 1, width: metadata.width, height: 1 },
+          // Left column (excluding corners already covered)
+          { left: 0, top: 1, width: 1, height: Math.max(1, metadata.height - 2) },
+          // Right column (excluding corners already covered)
+          { left: metadata.width - 1, top: 1, width: 1, height: Math.max(1, metadata.height - 2) },
+        ];
+
+        const colorCounts = new Map<number, number>();
+        const channels = metadata.channels || 3;
+        let candidateColor: number | undefined = undefined;
+        let maxCandidateCount = 0;
+
+        for (const region of borderRegions) {
+          // Skip invalid regions (e.g., if image is too small)
+          if (region.width <= 0 || region.height <= 0) continue;
+
+          const regionBuffer = await image.extract(region).raw().toBuffer();
+
+          for (let i = 0; i < regionBuffer.length; i += channels) {
+            const r = regionBuffer[i];
+            const g = regionBuffer[i + 1];
+            const b = regionBuffer[i + 2];
+
+            // Pack color into a single integer (assuming 8-bit channels)
+            const color = (1 << 24) + (r << 16) + (g << 8) + b;
+            const count = (colorCounts.get(color) || 0) + 1;
+            colorCounts.set(color, count);
+
+            if (candidateColor === undefined || count > maxCandidateCount) {
+              candidateColor = color;
+              maxCandidateCount = count;
+            }
+          }
+        }
+
+        if (candidateColor !== undefined) {
+          // Convert back to hex string
+          predominantColor = `#${candidateColor.toString(16).slice(1)}`;
+        }
+      }
+
+      let exif: Exif | undefined;
+      if (metadata.exif) {
+        try {
+          exif = exifReader(metadata.exif);
+        } catch (e) {}
+      }
+
+      return { predominantColor, exif };
+    } catch (e) {
+      logger.warn(e, "Failed to extract image features");
+      return {};
+    }
   }
 
   public disconnectClient(socket: WebSocket) {
@@ -206,12 +280,7 @@ export class MessagesService {
     const chatId = chat.id;
 
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
-    const files =
-      originalMessage.jsonContent
-        ?.filter(part => part.contentType === "image")
-        ?.map(part => (part.contentType === "image" ? part.fileName : undefined))
-        ?.filter(notEmpty) || [];
-
+    const files = await this.chatFileRepository.find({ where: { messageId: originalMessage.id } });
     await this.removeFiles(files, user, chat);
 
     const userMessage = contextMessages.findLast(msg => msg.role === MessageRole.USER);
@@ -284,21 +353,18 @@ export class MessagesService {
     });
 
     // Remove any files from following messages before deleting them
-    const deletedImageFiles: string[] = [];
-    for (const msg of messagesToDelete) {
-      if (!msg.jsonContent) continue;
+    const deletedFiles: ChatFile[] = [];
+    if (messagesToDelete.length > 0) {
+      const msgIds = messagesToDelete.map(m => m.id);
+      const files = await this.chatFileRepository.find({ where: { messageId: In(msgIds) } });
+      deletedFiles.push(...files);
 
-      for (const content of msg.jsonContent) {
-        if (content.contentType === "image" && content.fileName) {
-          deletedImageFiles.push(content.fileName);
-        }
-      }
-      await this.messageRepository.remove(msg);
+      await this.messageRepository.remove(messagesToDelete);
     }
 
     // Remove image files if any
-    if (deletedImageFiles.length > 0) {
-      await this.removeFiles(deletedImageFiles, user, chat);
+    if (deletedFiles.length > 0) {
+      await this.removeFiles(deletedFiles, user, chat);
     }
 
     // Update the original message with new content
@@ -423,17 +489,9 @@ export class MessagesService {
     const chatId = message.chatId;
     const chat = message.chat;
 
-    // Get all file references that need to be removed
-    const deletedImageFiles: string[] = [];
-
     // Process this message's images
-    if (message.jsonContent) {
-      for (const content of message.jsonContent) {
-        if (content.contentType === "image" && content.fileName) {
-          deletedImageFiles.push(content.fileName);
-        }
-      }
-    }
+    const originalFiles = await this.chatFileRepository.find({ where: { messageId: message.id } });
+    const deletedFiles: ChatFile[] = originalFiles || [];
 
     // If deleteFollowing is true, find and delete all messages after this one
     ok(message.createdAt);
@@ -474,14 +532,9 @@ export class MessagesService {
 
     if (messagesToDelete.length) {
       // Process each message to find image files
-      for (const msg of messagesToDelete) {
-        if (!msg.jsonContent) continue;
-        for (const content of msg.jsonContent) {
-          if (content.contentType === "image" && content.fileName) {
-            deletedImageFiles.push(content.fileName);
-          }
-        }
-      }
+      const msgIds = messagesToDelete.map(m => m.id);
+      const followingFiles = await this.chatFileRepository.find({ where: { messageId: In(msgIds) } });
+      deletedFiles.push(...followingFiles);
 
       result.messages.push(...messagesToDelete.map(msg => ({ id: msg.id })));
       await this.messageRepository.remove(messagesToDelete);
@@ -491,8 +544,8 @@ export class MessagesService {
     await this.messageRepository.remove(message);
 
     // Remove image files from disk and update chat.files
-    if (deletedImageFiles.length > 0) {
-      await this.removeFiles(deletedImageFiles, user, chat);
+    if (deletedFiles.length > 0) {
+      await this.removeFiles(deletedFiles, user, chat);
     }
 
     return result; // Return all deleted message IDs including the original
@@ -502,7 +555,7 @@ export class MessagesService {
     s3Service: S3Service,
     content: string,
     { chatId, messageId, index = 0 }: { chatId: string; messageId: string; index?: number }
-  ): Promise<{ fileName: string; contentType: string }> {
+  ): Promise<{ fileName: string; contentType: string; buffer: Buffer }> {
     // Parse extension from base64 content if possible, default to .png
     const matches = content.match(/^data:image\/(\w+);base64,/);
     const type = matches ? `${matches[1]}` : "png";
@@ -511,13 +564,15 @@ export class MessagesService {
 
     // Remove data URL prefix if present (e.g., "data:image/png;base64,")
     const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
     // Upload to S3
-    await s3Service.uploadFile(Buffer.from(base64Data, "base64"), fileName, contentType);
+    await s3Service.uploadFile(buffer, fileName, contentType);
 
     // Return the file key
     return {
       fileName,
       contentType,
+      buffer,
     };
   }
 
@@ -561,10 +616,23 @@ export class MessagesService {
 
       for (let index = 0; index < images.length; ++index) {
         const image = images[index];
-        const { fileName } = await this.saveImageFromBase64(s3Service, image.bytesBase64, {
+        const { fileName, buffer } = await this.saveImageFromBase64(s3Service, image.bytesBase64, {
           chatId: chat.id,
           messageId: userMessage.id,
           index,
+        });
+
+        const { predominantColor, exif } = await this.getImageFeatures(buffer);
+
+        await this.chatFileRepository.save({
+          chatId: chat.id,
+          messageId: userMessage.id,
+          type: ChatFileType.IMAGE,
+          uploadFile: image.fileName,
+          mime: image.mimeType,
+          fileName,
+          predominantColor,
+          exif,
         });
 
         jsonContent.push({
@@ -576,9 +644,6 @@ export class MessagesService {
         // For display purposes, append image markdown to the content
         content += ` ![Uploaded Image](${S3Service.getFileUrl(fileName)})`;
       }
-
-      chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
-      await this.chatRepository.save(chat);
     }
 
     // update message content
@@ -664,10 +729,21 @@ export class MessagesService {
 
         for (const file of response.files) {
           // Save base64 images to S3
-          const { fileName, contentType } = await this.saveImageFromBase64(s3Service, file, {
+          const { fileName, contentType, buffer } = await this.saveImageFromBase64(s3Service, file, {
             chatId: chat.id,
             messageId: message.id,
             index: images.length,
+          });
+
+          const { predominantColor, exif } = await this.getImageFeatures(buffer);
+
+          await this.chatFileRepository.save({
+            chatId: chat.id,
+            messageId: message.id,
+            type: ChatFileType.IMAGE,
+            fileName,
+            predominantColor,
+            exif,
           });
 
           images.push({
@@ -679,8 +755,6 @@ export class MessagesService {
 
         message.jsonContent = images;
         message.content = images.map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`).join("   ");
-
-        chat.files = [...(chat.files || []), ...images.map(img => img.fileName)];
       } else {
         message.content = response.content?.trim() || "_No response_";
       }
@@ -1047,21 +1121,22 @@ export class MessagesService {
     }
   }
 
-  public async removeFiles(deletedImageFiles: string[], user: User, chat?: Chat): Promise<void> {
-    if (!deletedImageFiles || deletedImageFiles.length === 0) return;
+  public async removeFiles(files: ChatFile[], user: User, chat?: Chat): Promise<void> {
+    if (!files || files.length === 0) return;
 
     let s3Service = new S3Service(user.toToken());
 
-    // Remove the files from the chat.files array
-    if (chat?.files?.length) {
-      chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
-      await this.chatRepository.save(chat);
-    }
+    // Delete from DB
+    const ids = files.map(f => f.id);
+    await this.chatFileRepository.delete(ids);
 
     // Delete the files from S3
-    await s3Service.deleteFiles(deletedImageFiles).catch(error => {
-      logger.error(error, `Failed to delete files: ${deletedImageFiles.join(", ")}`);
-    });
+    const fileNames = files.map(f => f.fileName).filter(notEmpty);
+    if (fileNames.length > 0) {
+      await s3Service.deleteFiles(fileNames).catch(error => {
+        logger.error(error, `Failed to delete files: ${fileNames.join(", ")}`);
+      });
+    }
   }
 
   protected async getContextMessages(chatId: string, currentMessage?: Message) {

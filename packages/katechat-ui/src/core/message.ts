@@ -1,4 +1,5 @@
 import { User } from "./user";
+import { ChatFile } from "./chat-file";
 
 export enum MessageType {
   MESSAGE = "message",
@@ -26,7 +27,7 @@ export enum ResponseStatus {
   ERROR = "error",
 }
 
-export interface Message<TUser = User, TMetadata = Record<string, unknown>> {
+export interface Message<TUser = User, TMetadata = Record<string, unknown>, TChatFile = ChatFile> {
   id: string;
   chatId: string;
   content: string;
@@ -39,10 +40,11 @@ export interface Message<TUser = User, TMetadata = Record<string, unknown>> {
   updatedAt: string;
   streaming?: boolean;
   linkedToMessageId?: string;
-  linkedMessages?: Message<TUser, TMetadata>[];
+  linkedMessages?: Message<TUser, TMetadata, TChatFile>[];
   metadata?: TMetadata;
   status?: ResponseStatus;
   statusInfo?: string;
+  files?: TChatFile[];
 }
 
 export interface PluginProps<TMessage = Message> {

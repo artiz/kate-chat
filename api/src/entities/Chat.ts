@@ -12,6 +12,7 @@ import { User } from "./User";
 import { Message } from "./Message";
 import { JSONTransformer } from "../utils/db";
 import { ChatDocument } from "./ChatDocument";
+import { ChatFile } from "./ChatFile";
 import { ChatTool } from "../types/ai.types";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
@@ -47,8 +48,9 @@ export class Chat {
   @OneToMany(() => Message, m => m.chat, { cascade: true, onDelete: "CASCADE" })
   messages: Message[];
 
-  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<string[]>() })
-  files?: string[];
+  @Field(() => [ChatFile], { nullable: true })
+  @OneToMany(() => ChatFile, file => file.chat, { cascade: true })
+  files: ChatFile[];
 
   @Field({ nullable: true })
   @Column({
