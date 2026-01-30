@@ -61,7 +61,7 @@ export class Message {
 
   @Field(() => [ChatFile], { nullable: true })
   @OneToMany(() => ChatFile, file => file.message)
-  files: ChatFile[];
+  files?: ChatFile[];
 
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User, { onDelete: "CASCADE" })
