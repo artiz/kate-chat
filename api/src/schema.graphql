@@ -289,7 +289,8 @@ type GqlImage {
   fileUrl: String!
   id: ID!
   message: Message
-  mimeType: String!
+  mime: String!
+  predominantColor: String
   role: String!
 }
 
@@ -462,6 +463,7 @@ type Mutation {
   processDocument(force: Boolean, id: ID!): Document!
   register(input: RegisterInput!): AuthResponse!
   reindexDocument(id: ID!): Document!
+  reloadChatFileMetadata(id: String!): ChatFile!
   reloadModels: GqlModelsList!
   removeDocumentsFromChat(chatId: ID!, documentIds: [ID!]!): RemoveDocumentsFromChatResponse!
   stopMessageGeneration(input: StopMessageGenerationInput!): StopMessageGenerationResponse!

@@ -460,9 +460,10 @@ export const GET_ALL_IMAGES = gql`
         id
         fileName
         fileUrl
-        mimeType
+        mime
         role
         createdAt
+        predominantColor
         message {
           id
           content
@@ -474,6 +475,15 @@ export const GET_ALL_IMAGES = gql`
       }
       nextPage
       error
+    }
+  }
+`;
+
+export const RELOAD_CHAT_FILE_METADATA = gql`
+  mutation ReloadChatFileMetadata($id: String!) {
+    reloadChatFileMetadata(id: $id) {
+      id
+      predominantColor
     }
   }
 `;

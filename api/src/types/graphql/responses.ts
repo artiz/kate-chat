@@ -282,7 +282,10 @@ export class GqlImage {
   fileUrl: string;
 
   @Field()
-  mimeType: string;
+  mime: string;
+
+  @Field({ nullable: true })
+  predominantColor?: string;
 
   @Field()
   createdAt: Date;

@@ -45,34 +45,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 
 ## TODO
-* Create ChatFile table. ChatFile should have following columns: id, chatId, messageId (nullable because some files could be chat level), type (image, video, RAG document, inline document), file name (from client if availabale), created/modified. Move existing images there from Chat.files and remove Chat.files at all, do this images migration in migration scripts, with some common functions for all the DBs, put this common logic to db-migrations/common, add logic to calculate image predominant color after upload/generation
-  (in border area, it all the bottom pixel row hase same color - use it), also extract EXIF info and put predominant color and EXIF to ChatFile table.  
-  Use it in library - show exig and color on image card.
-  Implementation details: 
-  - api/src/services/messages.service.ts:
-   * replace 
-   ```
-   for (const content of msg.jsonContent) {
-          if (content.contentType === "image" && content.fileName) {
-            deletedImageFiles.push(content.fileName);
-          }
-        }
-   ```
-   with query against ChatFile
-
-   * remove
-   ```
-   // Remove the files from the chat.files array
-    if (chat?.files?.length) {
-      chat.files = chat.files.filter(file => !deletedImageFiles.includes(file));
-      await this.chatRepository.save(chat);
-    }
-   ```
-   and replace with 
-   ```
-   DELETE from chat_files where id in (...)
-   ```
-
 
 * Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)

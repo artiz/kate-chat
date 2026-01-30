@@ -47,6 +47,19 @@ export class MessageResolver extends BaseResolver {
     this.chatsService = new ChatsService();
   }
 
+  @Mutation(() => ChatFile)
+  async reloadChatFileMetadata(@Arg("id") id: string, @Ctx() context: GraphQLContext): Promise<ChatFile> {
+    const token = await this.validateContextToken(context);
+    const user = await this.userRepository.findOne({ where: { id: token.userId } });
+    if (!user) throw new Error("User not found");
+
+    if (!context.messagesService) {
+      throw new Error("Messages service not initialized");
+    }
+
+    return context.messagesService.reloadChatFileMetadata(id, user);
+  }
+
   @Query(() => GqlMessagesList)
   async getChatMessages(
     @Arg("input") input: GetMessagesInput,
@@ -146,7 +159,8 @@ export class MessageResolver extends BaseResolver {
       id: file.id,
       fileName: file.fileName || "",
       fileUrl: `/files/${file.fileName}`,
-      mimeType: "image/png", // ChatFile doesn't store mimeType explicitly, assume image
+      mime: file.mime || "image/png", // ChatFile doesn't store mimeType explicitly, assume image
+      predominantColor: file.predominantColor,
       role: file.message?.role || MessageRole.USER,
       createdAt: file.createdAt,
       message: file.message,

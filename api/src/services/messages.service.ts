@@ -24,6 +24,7 @@ import {
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
+import { isAdmin } from "@/utils/jwt";
 import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
 import { IncomingMessage } from "http";
 import { CHAT_MESSAGES_CHANNEL, NEW_MESSAGE, SubscriptionsService } from "./messaging";
@@ -40,6 +41,7 @@ import {
   RAG_LOAD_FULL_PAGES,
   RAG_QUERY_CHUNKS_LIMIT,
 } from "@/config/ai/common";
+import e from "express";
 
 const logger = createLogger(__filename);
 
@@ -93,6 +95,25 @@ export class MessagesService {
     }, 300);
   }
 
+  public async reloadChatFileMetadata(chatFileId: string, user: User): Promise<ChatFile> {
+    const chatFile = await this.chatFileRepository.findOne({
+      where: { id: chatFileId },
+      relations: ["chat", "chat.user"],
+    });
+
+    if (!chatFile || !chatFile.fileName) throw new Error("ChatFile not found");
+    if (chatFile.chat.user?.id !== user.id && !isAdmin(user.toToken())) throw new Error("Access denied");
+
+    const s3Service = new S3Service(user.toToken());
+    const buffer = await s3Service.getFileContent(chatFile.fileName);
+    const features = await this.getImageFeatures(buffer);
+
+    chatFile.predominantColor = features.predominantColor;
+    chatFile.exif = features.exif;
+
+    return this.chatFileRepository.save(chatFile);
+  }
+
   private async getImageFeatures(buffer: Buffer): Promise<{ predominantColor?: string; exif?: any }> {
     try {
       const image = sharp(buffer);
@@ -100,37 +121,51 @@ export class MessagesService {
 
       let predominantColor: string | undefined;
 
-      // Extract predominant color from borders
+      // Extract predominant color from random points
       if (metadata.width && metadata.height) {
-        // Define border regions
-        const borderRegions = [
-          // Top row
-          { left: 0, top: 0, width: metadata.width, height: 1 },
-          // Bottom row
-          { left: 0, top: metadata.height - 1, width: metadata.width, height: 1 },
-          // Left column (excluding corners already covered)
-          { left: 0, top: 1, width: 1, height: Math.max(1, metadata.height - 2) },
-          // Right column (excluding corners already covered)
-          { left: metadata.width - 1, top: 1, width: 1, height: Math.max(1, metadata.height - 2) },
-        ];
+        const totalPixels = metadata.width * metadata.height;
+        const numberOfPoints = totalPixels > 20_000 ? 5_000 : Math.floor(totalPixels * 0.5);
 
         const colorCounts = new Map<number, number>();
         const channels = metadata.channels || 3;
         let candidateColor: number | undefined = undefined;
         let maxCandidateCount = 0;
 
-        for (const region of borderRegions) {
-          // Skip invalid regions (e.g., if image is too small)
-          if (region.width <= 0 || region.height <= 0) continue;
+        // Get raw buffer data
+        const rawBuffer = await image.raw().toBuffer();
 
-          const regionBuffer = await image.extract(region).raw().toBuffer();
+        const borderSize = 0.1; // 10% border
+        const xLeft = Math.floor(metadata.width * borderSize);
+        const xRight = Math.floor(metadata.width * (1 - borderSize));
+        const yTop = Math.floor(metadata.height * borderSize);
+        const yBottom = Math.floor(metadata.height * (1 - borderSize));
 
-          for (let i = 0; i < regionBuffer.length; i += channels) {
-            const r = regionBuffer[i];
-            const g = regionBuffer[i + 1];
-            const b = regionBuffer[i + 2];
+        for (let i = 0; i < numberOfPoints; i++) {
+          const quarter = i % 4;
+          let x = 0,
+            y = 0;
+          if (quarter === 0) {
+            x = Math.floor(Math.random() * xLeft);
+            y = Math.floor(Math.random() * metadata.height);
+          } else if (quarter === 1) {
+            x = Math.floor(Math.random() * metadata.width);
+            y = Math.floor(Math.random() * yTop);
+          } else if (quarter === 2) {
+            x = Math.floor(Math.random() * (metadata.width - xRight)) + xRight;
+            y = Math.floor(Math.random() * metadata.height);
+          } else {
+            x = Math.floor(Math.random() * metadata.width);
+            y = Math.floor(Math.random() * (metadata.height - yBottom)) + yBottom;
+          }
 
-            // Pack color into a single integer (assuming 8-bit channels)
+          const offset = (y * metadata.width + x) * channels;
+
+          if (offset + 2 < rawBuffer.length) {
+            const r = rawBuffer[offset];
+            const g = rawBuffer[offset + 1];
+            const b = rawBuffer[offset + 2];
+
+            // Pack color into a single integer
             const color = (1 << 24) + (r << 16) + (g << 8) + b;
             const count = (colorCounts.get(color) || 0) + 1;
             colorCounts.set(color, count);

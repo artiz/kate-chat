@@ -73,8 +73,10 @@ export interface LibraryImage {
   fileName: string;
   fileUrl: string;
   role: MessageRole;
-  mimeType: string;
+  mime: string;
   createdAt: string;
+  predominantColor?: string;
+  exif?: any; // TODO: adde typings for EXIF data in GQL
   message: {
     id: string;
     content: string;
