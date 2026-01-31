@@ -322,7 +322,7 @@ export class ModelResolver extends BaseResolver {
   @Mutation(() => Model)
   @Authorized()
   async createCustomModel(@Arg("input") input: CreateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
-    const user = await this.validateContextUser(context);
+    const user = await this.validateContextToken(context);
     try {
       const { name, modelId, description, endpoint, apiKey, modelName, protocol } = input;
 
@@ -336,7 +336,7 @@ export class ModelResolver extends BaseResolver {
 
       // Check if model with same modelId already exists for this user
       const existingModel = await modelRepository.findOne({
-        where: { modelId, user: { id: user.id } },
+        where: { modelId, user: { id: user.userId } },
       });
 
       if (existingModel) {
@@ -355,7 +355,7 @@ export class ModelResolver extends BaseResolver {
         imageInput: false,
         isActive: true,
         isCustom: true,
-        user,
+        user: { id: user.userId },
         customSettings: {
           endpoint,
           apiKey,

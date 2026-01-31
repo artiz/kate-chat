@@ -241,20 +241,6 @@ export const ModelsDashboard: React.FC = () => {
     }
   };
 
-  // Handle test custom model connection
-  const handleTestCustomModel = async (formData: CustomModelFormData) => {
-    // For testing, we would need to create a temporary model or call a test endpoint
-    // For now, just show a notification
-    notifications.show({
-      title: "Test Connection",
-      message: "Testing connection to custom model endpoint...",
-      color: "blue",
-    });
-    
-    // TODO: Implement actual test logic
-    // This would involve creating a temporary model and testing it
-  };
-
   // Handle opening test modal
   const handleOpenTestModal = (model: Model) => {
     setCurrentTestingModel(model);
@@ -556,7 +542,6 @@ export const ModelsDashboard: React.FC = () => {
         isOpen={customModelDialogOpen}
         onClose={() => setCustomModelDialogOpen(false)}
         onSubmit={handleCreateCustomModel}
-        onTest={handleTestCustomModel}
         isLoading={creatingCustomModel}
       />
     </>
