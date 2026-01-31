@@ -4,7 +4,7 @@ import { ChatFile } from "./ChatFile";
 import { Document } from "./Document";
 import { DocumentChunk } from "./DocumentChunk";
 import { Message } from "./Message";
-import { Model } from "./Model";
+import { Model, CustomModelSettings, CustomModelProtocol } from "./Model";
 import { AuthProvider, User, UserSettings, UserRole } from "./User";
 
 export {
@@ -13,6 +13,8 @@ export {
   UserSettings,
   UserRole,
   Model,
+  CustomModelSettings,
+  CustomModelProtocol,
   Chat,
   Message,
   Document,

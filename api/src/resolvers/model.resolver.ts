@@ -265,7 +265,9 @@ export class ModelResolver extends BaseResolver {
         temperature: 0.5,
         maxTokens: 256,
       },
-      [message]
+      [message],
+      undefined,
+      model
     );
 
     logger.trace({ message, response }, "Test model inference");
