@@ -26,6 +26,7 @@ export class UserResolver extends BaseResolver {
     const user = await this.loadUserFromContext(context);
     const s3settings = {
       ...(user?.settings || {}),
+      s3endpoint: process.env.S3_ENDPOINT || "",
       s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME || "",
       s3AccessKeyId: process.env.S3_ACCESS_KEY_ID || "",
       s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,

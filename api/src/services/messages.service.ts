@@ -161,9 +161,9 @@ export class MessagesService {
           const offset = (y * metadata.width + x) * channels;
 
           if (offset + 2 < rawBuffer.length) {
-            const r = rawBuffer[offset];
-            const g = rawBuffer[offset + 1];
-            const b = rawBuffer[offset + 2];
+            const r = Math.floor(rawBuffer[offset] / 4) * 4;
+            const g = Math.floor(rawBuffer[offset + 1] / 4) * 4;
+            const b = Math.floor(rawBuffer[offset + 2] / 4) * 4;
 
             // Pack color into a single integer
             const color = (1 << 24) + (r << 16) + (g << 8) + b;

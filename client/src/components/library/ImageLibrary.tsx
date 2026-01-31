@@ -82,7 +82,7 @@ const ImageCard: React.FC<{
     backgroundColor,
     color: textColor,
     borderColor,
-    borderWidth: 3,
+    borderWidth: 8,
     borderStyle: "solid",
   };
 

@@ -70,15 +70,14 @@ export class BaseResolver {
   protected loadConnectionParams(context: GraphQLContext, user: User): ConnectionParams {
     const params: ConnectionParams = context.connectionParams || {};
     if (user?.settings) {
-      params.AWS_BEDROCK_REGION = user.settings.awsBedrockRegion || params.AWS_BEDROCK_REGION;
-      params.AWS_BEDROCK_PROFILE = user.settings.awsBedrockProfile || params.AWS_BEDROCK_PROFILE;
-      params.AWS_BEDROCK_ACCESS_KEY_ID = user.settings.awsBedrockAccessKeyId || params.AWS_BEDROCK_ACCESS_KEY_ID;
-      params.AWS_BEDROCK_SECRET_ACCESS_KEY =
-        user.settings.awsBedrockSecretAccessKey || params.AWS_BEDROCK_SECRET_ACCESS_KEY;
-      params.OPENAI_API_KEY = user.settings.openaiApiKey || params.OPENAI_API_KEY;
-      params.OPENAI_API_ADMIN_KEY = user.settings.openaiApiAdminKey || params.OPENAI_API_ADMIN_KEY;
-      params.YANDEX_FM_API_KEY = user.settings.yandexFmApiKey || params.YANDEX_FM_API_KEY;
-      params.YANDEX_FM_API_FOLDER = user.settings.yandexFmApiFolderId || params.YANDEX_FM_API_FOLDER;
+      params.AWS_BEDROCK_REGION ||= user.settings.awsBedrockRegion;
+      params.AWS_BEDROCK_PROFILE ||= user.settings.awsBedrockProfile;
+      params.AWS_BEDROCK_ACCESS_KEY_ID ||= user.settings.awsBedrockAccessKeyId;
+      params.AWS_BEDROCK_SECRET_ACCESS_KEY ||= user.settings.awsBedrockSecretAccessKey;
+      params.OPENAI_API_KEY ||= user.settings.openaiApiKey;
+      params.OPENAI_API_ADMIN_KEY ||= user.settings.openaiApiAdminKey;
+      params.YANDEX_FM_API_KEY ||= user.settings.yandexFmApiKey;
+      params.YANDEX_FM_API_FOLDER ||= user.settings.yandexFmApiFolderId;
     }
     return params;
   }
