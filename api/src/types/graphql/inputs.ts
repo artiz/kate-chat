@@ -250,6 +250,36 @@ export class GetCostsInput {
 }
 
 @InputType()
+export class CreateCustomModelInput {
+  @Field()
+  name: string;
+
+  @Field()
+  modelId: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field()
+  endpoint: string;
+
+  @Field()
+  apiKey: string;
+
+  @Field()
+  modelName: string;
+
+  @Field()
+  protocol: string;
+}
+
+@InputType()
+export class DeleteModelInput {
+  @Field()
+  modelId: string;
+}
+
+@InputType()
 export class GetImagesInput {
   @Field({ nullable: true, defaultValue: 0 })
   offset?: number;

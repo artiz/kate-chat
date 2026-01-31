@@ -8,11 +8,20 @@ export const BASE_MODEL_FRAGMENT = `
       provider
       apiProvider
       isActive
+      isCustom
       type
       imageInput
       maxInputTokens
       tools
       features
+      description
+      customSettings {
+        endpoint
+        apiKey
+        modelName
+        protocol
+        description
+      }
     }
 `;
 
@@ -530,5 +539,20 @@ export const DOCUMENT_STATUS_SUBSCRIPTION = gql`
       summary
       updatedAt
     }
+  }
+`;
+
+export const CREATE_CUSTOM_MODEL_MUTATION = gql`
+  ${BASE_MODEL_FRAGMENT}
+  mutation CreateCustomModel($input: CreateCustomModelInput!) {
+    createCustomModel(input: $input) {
+      ...BaseModel
+    }
+  }
+`;
+
+export const DELETE_MODEL_MUTATION = gql`
+  mutation DeleteModel($input: DeleteModelInput!) {
+    deleteModel(input: $input)
   }
 `;

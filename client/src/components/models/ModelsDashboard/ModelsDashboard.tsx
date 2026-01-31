@@ -2,28 +2,32 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Title, Text, Card, Group, Stack, Loader, Button, Modal, TextInput, Alert, Table } from "@mantine/core";
 import { DatePicker, DateStringValue } from "@mantine/dates";
-import { IconRefresh, IconAlertCircle } from "@tabler/icons-react";
+import { IconRefresh, IconAlertCircle, IconPlus } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { useMutation, useLazyQuery } from "@apollo/client";
-import { Model, setModelsAndProviders, updateModel } from "@/store/slices/modelSlice";
+import { Model, setModelsAndProviders, updateModel, addModel, removeModel } from "@/store/slices/modelSlice";
 import {
   CREATE_CHAT_MUTATION,
   RELOAD_MODELS_MUTATION,
   UPDATE_MODEL_STATUS_MUTATION,
   TEST_MODEL_MUTATION,
   GET_COSTS_QUERY,
+  CREATE_CUSTOM_MODEL_MUTATION,
+  DELETE_MODEL_MUTATION,
 } from "@/store/services/graphql.queries";
 import { notifications } from "@mantine/notifications";
 import { addChat } from "@/store/slices/chatSlice";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
 import { GqlCostsInfo, Message } from "@/types/graphql";
+import { CustomModelDialog, CustomModelFormData } from "../CustomModelDialog";
 
 export const ModelsDashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { models, providers, loading, error } = useAppSelector(state => state.models);
   const [testModalOpen, setTestModalOpen] = useState(false);
+  const [customModelDialogOpen, setCustomModelDialogOpen] = useState(false);
   const [testText, setTestText] = useState("2+2=");
   const [testResult, setTestResult] = useState<Message>();
   const [testError, setTestError] = useState("");
@@ -173,6 +177,84 @@ export const ModelsDashboard: React.FC = () => {
     });
   };
 
+  // Create custom model mutation
+  const [createCustomModel, { loading: creatingCustomModel }] = useMutation(CREATE_CUSTOM_MODEL_MUTATION, {
+    onCompleted: data => {
+      if (data?.createCustomModel) {
+        dispatch(addModel(data.createCustomModel));
+        notifications.show({
+          title: "Success",
+          message: "Custom model created successfully",
+          color: "green",
+        });
+        setCustomModelDialogOpen(false);
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to create custom model",
+        color: "red",
+      });
+    },
+  });
+
+  // Delete model mutation
+  const [deleteModel] = useMutation(DELETE_MODEL_MUTATION, {
+    onCompleted: data => {
+      if (data?.deleteModel) {
+        notifications.show({
+          title: "Success",
+          message: "Model deleted successfully",
+          color: "green",
+        });
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to delete model",
+        color: "red",
+      });
+    },
+  });
+
+  // Handle create custom model
+  const handleCreateCustomModel = async (formData: CustomModelFormData) => {
+    await createCustomModel({
+      variables: {
+        input: formData,
+      },
+    });
+  };
+
+  // Handle delete model
+  const handleDeleteModel = async (modelId: string) => {
+    const result = await deleteModel({
+      variables: {
+        input: { modelId },
+      },
+    });
+    
+    if (result.data?.deleteModel) {
+      dispatch(removeModel(modelId));
+    }
+  };
+
+  // Handle test custom model connection
+  const handleTestCustomModel = async (formData: CustomModelFormData) => {
+    // For testing, we would need to create a temporary model or call a test endpoint
+    // For now, just show a notification
+    notifications.show({
+      title: "Test Connection",
+      message: "Testing connection to custom model endpoint...",
+      color: "blue",
+    });
+    
+    // TODO: Implement actual test logic
+    // This would involve creating a temporary model and testing it
+  };
+
   // Handle opening test modal
   const handleOpenTestModal = (model: Model) => {
     setCurrentTestingModel(model);
@@ -295,9 +377,18 @@ export const ModelsDashboard: React.FC = () => {
     <>
       <Group justify="space-between" mb="xl">
         <Title order={2}>Available AI Models</Title>
-        <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
-          Reload
-        </Button>
+        <Group>
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setCustomModelDialogOpen(true)}
+            variant="filled"
+          >
+            Custom Model
+          </Button>
+          <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
+            Reload
+          </Button>
+        </Group>
       </Group>
 
       {/* Provider Information Cards */}
@@ -309,6 +400,7 @@ export const ModelsDashboard: React.FC = () => {
         onCreateChat={handleCreateChat}
         onToggleModelStatus={handleToggleModelStatus}
         onOpenTestModal={handleOpenTestModal}
+        onDeleteModel={handleDeleteModel}
         creatingChat={creatingChat}
       />
 
@@ -458,6 +550,15 @@ export const ModelsDashboard: React.FC = () => {
           )}
         </Stack>
       </Modal>
+
+      {/* Custom Model Dialog */}
+      <CustomModelDialog
+        isOpen={customModelDialogOpen}
+        onClose={() => setCustomModelDialogOpen(false)}
+        onSubmit={handleCreateCustomModel}
+        onTest={handleTestCustomModel}
+        isLoading={creatingCustomModel}
+      />
     </>
   );
 };

@@ -1,13 +1,14 @@
 import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
 import { AIService } from "../services/ai/ai.service";
-import { Model } from "../entities/Model";
+import { Model, CustomModelProtocol } from "../entities/Model";
 
 import { GqlModelsList, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
-import { TestModelInput, UpdateModelStatusInput, GetCostsInput } from "../types/graphql/inputs";
+import { TestModelInput, UpdateModelStatusInput, GetCostsInput, CreateCustomModelInput, DeleteModelInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
 import { MessageRole, ModelMessage, ModelType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
+import { ApiProvider } from "@/config/ai/common";
 import { getErrorMessage } from "@/utils/errors";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
@@ -315,6 +316,93 @@ export class ModelResolver extends BaseResolver {
         error: `Failed to fetch costs: ${getErrorMessage(error)}`,
         costs: [],
       };
+    }
+  }
+
+  @Mutation(() => Model)
+  @Authorized()
+  async createCustomModel(@Arg("input") input: CreateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
+    const user = await this.validateContextUser(context);
+    try {
+      const { name, modelId, description, endpoint, apiKey, modelName, protocol } = input;
+
+      // Validate protocol
+      if (protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS && protocol !== CustomModelProtocol.OPENAI_RESPONSES) {
+        throw new Error(`Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`);
+      }
+
+      // Get the repository
+      const modelRepository = getRepository(Model);
+
+      // Check if model with same modelId already exists for this user
+      const existingModel = await modelRepository.findOne({
+        where: { modelId, user: { id: user.id } },
+      });
+
+      if (existingModel) {
+        throw new Error("A model with this ID already exists");
+      }
+
+      // Create new custom model
+      const model = modelRepository.create({
+        name,
+        modelId,
+        description,
+        provider: "Custom",
+        apiProvider: ApiProvider.CUSTOM_REST_API,
+        type: ModelType.CHAT,
+        streaming: true,
+        imageInput: false,
+        isActive: true,
+        isCustom: true,
+        user,
+        customSettings: {
+          endpoint,
+          apiKey,
+          modelName,
+          protocol: protocol as CustomModelProtocol,
+          description,
+        },
+      });
+
+      // Save the model
+      const savedModel = await modelRepository.save(model);
+      logger.info({ modelId: savedModel.id, name: savedModel.name }, "Created custom model");
+      
+      return savedModel;
+    } catch (error) {
+      logger.error(error, "Error creating custom model");
+      throw error;
+    }
+  }
+
+  @Mutation(() => Boolean)
+  @Authorized()
+  async deleteModel(@Arg("input") input: DeleteModelInput, @Ctx() context: GraphQLContext): Promise<boolean> {
+    const user = await this.validateContextToken(context);
+    try {
+      const { modelId } = input;
+
+      // Get the repository
+      const modelRepository = getRepository(Model);
+
+      // Find the model by ID and ensure it's custom and belongs to the user
+      const model = await modelRepository.findOne({
+        where: { id: modelId, user: { id: user.userId }, isCustom: true },
+      });
+
+      if (!model) {
+        throw new Error("Custom model not found or you don't have permission to delete it");
+      }
+
+      // Delete the model
+      await modelRepository.remove(model);
+      logger.info({ modelId: model.id, name: model.name }, "Deleted custom model");
+      
+      return true;
+    } catch (error) {
+      logger.error(error, "Error deleting custom model");
+      throw error;
     }
   }
 }

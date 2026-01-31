@@ -9,6 +9,19 @@ export enum ModelType {
   OTHER = "OTHER",
 }
 
+export enum CustomModelProtocol {
+  OPENAI_CHAT_COMPLETIONS = "OPENAI_CHAT_COMPLETIONS",
+  OPENAI_RESPONSES = "OPENAI_RESPONSES",
+}
+
+export interface CustomModelSettings {
+  endpoint?: string;
+  apiKey?: string;
+  modelName?: string;
+  protocol?: CustomModelProtocol;
+  description?: string;
+}
+
 export interface Model<TUser = User> {
   id?: string;
   name: string;
@@ -17,7 +30,10 @@ export interface Model<TUser = User> {
   provider?: string;
   type?: ModelType;
   isActive?: boolean;
+  isCustom?: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
+  description?: string;
+  customSettings?: CustomModelSettings;
   user?: TUser;
 }
