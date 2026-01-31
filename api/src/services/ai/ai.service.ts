@@ -15,6 +15,7 @@ import {
 import { BedrockApiProvider } from "./providers/bedrock.provider";
 import { OpenAIApiProvider } from "./providers/openai.provider";
 import { YandexApiProvider } from "./providers/yandex.provider";
+import { CustomRestApiProvider } from "./providers/custom-rest-api.provider";
 import { logger } from "../../utils/logger";
 import { ApiProvider, ENABLED_API_PROVIDERS } from "@/config/ai/common";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -28,9 +29,10 @@ export class AIService {
     connection: ConnectionParams,
     request: CompleteChatRequest,
     messages: Message[],
-    fileLoader?: FileContentLoader
+    fileLoader?: FileContentLoader,
+    model?: Model
   ): Promise<ModelResponse> {
-    return this.getApiProvider(request.apiProvider, connection, fileLoader).completeChat(
+    return this.getApiProvider(request.apiProvider, connection, fileLoader, model).completeChat(
       request,
       this.formatMessages(messages || [])
     );
@@ -45,10 +47,11 @@ export class AIService {
       completed?: boolean,
       force?: boolean
     ) => Promise<boolean | undefined>,
-    fileLoader?: FileContentLoader
+    fileLoader?: FileContentLoader,
+    model?: Model
   ) {
     // Stream the completion in background
-    return this.getApiProvider(request.apiProvider, connection, fileLoader).streamChatCompletion(
+    return this.getApiProvider(request.apiProvider, connection, fileLoader, model).streamChatCompletion(
       request,
       this.formatMessages(messages),
       {
@@ -86,18 +89,20 @@ export class AIService {
   public async getEmbeddings(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
-    request: GetEmbeddingsRequest
+    request: GetEmbeddingsRequest,
+    model?: Model
   ): Promise<EmbeddingsResponse> {
-    return this.getApiProvider(apiProvider, connection).getEmbeddings(request);
+    return this.getApiProvider(apiProvider, connection, undefined, model).getEmbeddings(request);
   }
 
   async getCosts(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
     startTime: number,
-    endTime: number | undefined
+    endTime: number | undefined,
+    model?: Model
   ): Promise<UsageCostInfo> {
-    const providerService = this.getApiProvider(apiProvider, connection);
+    const providerService = this.getApiProvider(apiProvider, connection, undefined, model);
     return providerService.getCosts(startTime, endTime);
   }
 
@@ -146,12 +151,15 @@ export class AIService {
    * Get the appropriate API provider service instance.
    * @param apiProvider The API provider type.
    * @param connection The connection parameters.
+   * @param fileLoader Optional file loader.
+   * @param model Optional model entity (required for CUSTOM_REST_API).
    * @returns The API provider service instance.
    */
   protected getApiProvider(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
-    fileLoader?: FileContentLoader
+    fileLoader?: FileContentLoader,
+    model?: Model
   ): BaseApiProvider {
     if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
       throw new Error(`API provider ${apiProvider} is not enabled`);
@@ -163,6 +171,11 @@ export class AIService {
       return new OpenAIApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.YANDEX_FM) {
       return new YandexApiProvider(connection, fileLoader);
+    } else if (apiProvider === ApiProvider.CUSTOM_REST_API) {
+      if (!model) {
+        throw new Error("Model entity is required for CUSTOM_REST_API provider");
+      }
+      return new CustomRestApiProvider(connection, model, fileLoader);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);
     }

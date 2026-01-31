@@ -3,6 +3,7 @@ export enum ApiProvider {
   AWS_BEDROCK = "AWS_BEDROCK",
   OPEN_AI = "OPEN_AI",
   YANDEX_FM = "YANDEX_FM",
+  CUSTOM_REST_API = "CUSTOM_REST_API",
 }
 
 export const DEFAULT_TEMPERATURE = 0.7;

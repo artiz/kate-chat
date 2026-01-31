@@ -1,11 +1,35 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
-import { Field, ID, ObjectType, registerEnumType } from "type-graphql";
+import { Field, ID, ObjectType, registerEnumType, InputType } from "type-graphql";
 import { ModelFeature, ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
 import { EnumTransformer, JSONTransformer } from "../utils/db";
 import { ApiProvider } from "../config/ai/common";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
+
+export enum CustomModelProtocol {
+  OPENAI_CHAT_COMPLETIONS = "OPENAI_CHAT_COMPLETIONS",
+  OPENAI_RESPONSES = "OPENAI_RESPONSES",
+}
+
+@ObjectType("CustomModelSettings")
+@InputType("CustomModelSettingsInput")
+export class CustomModelSettings {
+  @Field({ nullable: true })
+  endpoint?: string;
+
+  @Field({ nullable: true })
+  protocol?: CustomModelProtocol;
+
+  @Field({ nullable: true })
+  apiKey?: string;
+
+  @Field({ nullable: true })
+  modelName?: string;
+
+  @Field({ nullable: true })
+  description?: string;
+}
 
 registerEnumType(ApiProvider, {
   name: "ApiProvider",
@@ -22,6 +46,10 @@ registerEnumType(ToolType, {
 registerEnumType(ModelFeature, {
   name: "ModelFeature",
   description: "Features that can be enabled for the model",
+});
+registerEnumType(CustomModelProtocol, {
+  name: "CustomModelProtocol",
+  description: "Protocol for custom REST API models",
 });
 
 @ObjectType()
@@ -90,6 +118,10 @@ export class Model {
   @Field(() => [ToolType], { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ToolType[]>(), default: null })
   tools?: ToolType[];
+
+  @Field(() => CustomModelSettings, { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<CustomModelSettings>() })
+  customSettings?: CustomModelSettings;
 
   @Field()
   @CreateDateColumn()
