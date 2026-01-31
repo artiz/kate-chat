@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Group, Tooltip, Box, Button, ActionIcon } from "@mantine/core";
+import { Group, Tooltip, Box, Text, ActionIcon } from "@mantine/core";
 import { IconFileUpload } from "@tabler/icons-react";
 import { notEmpty } from "@/lib/assert";
 import classes from "./FileDropzone.module.scss";
@@ -99,12 +99,15 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, uploadFor
         onDrop={handleDrop}
         onClick={openFileDialog}
       >
-        <Group justify="center" gap="md" className="drop-zone-control">
+        <Group justify="start" className="drop-zone-control" gap="xs">
           <Tooltip label="Click or drop an image/document here" position="top">
             <ActionIcon variant="subtle" size="lg" color="dark">
-              <IconFileUpload size="lg" />
+              <IconFileUpload size="24" />
             </ActionIcon>
           </Tooltip>
+          <Box hiddenFrom="xs" pe="sm">
+            Upload File
+          </Box>
           <input
             ref={fileInputRef}
             type="file"

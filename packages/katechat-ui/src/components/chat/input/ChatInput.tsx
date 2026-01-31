@@ -1,6 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Text, Textarea, Button, Group, ActionIcon, Stack } from "@mantine/core";
-import { IconPlayerStop, IconPlayerStopFilled, IconSend, IconX } from "@tabler/icons-react";
+import { Text, Textarea, Button, Group, ActionIcon, Stack, Box, Popover, Tooltip, Menu } from "@mantine/core";
+import {
+  IconCirclePlus,
+  IconCubePlus,
+  IconMoodPlus,
+  IconPlayerStop,
+  IconPlayerStopFilled,
+  IconSend,
+  IconX,
+} from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { ImageInput } from "@/core";
 import { FileDropzone } from "@/controls";
@@ -227,9 +235,10 @@ export const ChatInput = ({
         <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
           {uploadAllowed && (
             <div className={classes.documentsInput}>
-              <FileDropzone onFilesAdd={handleAddFiles} disabled={!uploadAllowed} uploadFormats={uploadFormats} />
-
-              {inputPlugins}
+              <Group visibleFrom="xs" gap="0">
+                <FileDropzone onFilesAdd={handleAddFiles} uploadFormats={uploadFormats} />
+                {inputPlugins}
+              </Group>
 
               {selectedImages?.length > 0 && (
                 <div className={classes.imagesList}>
@@ -252,6 +261,22 @@ export const ChatInput = ({
           )}
 
           <div className={classes.chatInputGroup}>
+            {uploadAllowed && (
+              <Menu shadow="md" width="content">
+                <Menu.Target>
+                  <ActionIcon size="lg" variant="subtle" hiddenFrom="xs" color="dark">
+                    <Tooltip label="More..." position="right" withArrow>
+                      <IconCirclePlus size="24" />
+                    </Tooltip>
+                  </ActionIcon>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <FileDropzone onFilesAdd={handleAddFiles} uploadFormats={uploadFormats} />
+                  {inputPlugins}
+                </Menu.Dropdown>
+              </Menu>
+            )}
             <Textarea
               ref={inputRef}
               className={classes.chatInput}

@@ -13,6 +13,8 @@ import {
   Text,
   Tooltip,
   Badge,
+  Box,
+  Menu,
 } from "@mantine/core";
 import { IconFile, IconChevronDown, IconCheck, IconX, IconFileDatabase } from "@tabler/icons-react";
 import { Document } from "@/types/graphql";
@@ -84,22 +86,27 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   const isAllSelected = availableDocuments.length > 0 && selectedDocIds.length === availableDocuments.length;
 
   return (
-    <Popover position="bottom-start" withArrow shadow="md" opened={opened} onChange={setOpened}>
-      <Popover.Target>
-        <Tooltip label="Attach/select documents to do RAG search" position="bottom">
-          <ActionIcon variant="subtle" size="lg" color="dark" className={classes.button} onClick={handleToggle}>
-            <IconFileDatabase size="lg" />
-            {selectedDocuments.length > 0 && (
-              <Badge size="sm" color="blue" p="0" className={classes.badge}>
-                {selectedDocuments.length}
-              </Badge>
-            )}
-          </ActionIcon>
-        </Tooltip>
-      </Popover.Target>
+    <Menu shadow="md" withArrow opened={opened} onChange={setOpened}>
+      <Menu.Target>
+        <Group justify="start" className="drop-zone-control" gap="xs">
+          <Tooltip label="Attach/select documents to do RAG search" position="bottom">
+            <ActionIcon variant="subtle" size="lg" color="dark" className={classes.button} onClick={handleToggle}>
+              <IconFileDatabase size="24" />
+              {selectedDocuments.length > 0 && (
+                <Badge size="sm" color="blue" p="0" className={classes.badge}>
+                  {selectedDocuments.length}
+                </Badge>
+              )}
+            </ActionIcon>
+          </Tooltip>
+          <Box hiddenFrom="xs" pe="sm">
+            Select documents...
+          </Box>
+        </Group>
+      </Menu.Target>
 
-      <Popover.Dropdown>
-        <Stack gap="sm">
+      <Menu.Dropdown>
+        <Stack gap="sm" p="sm">
           <Group justify="space-between">
             <Text size="sm" fw={500}>
               RAG Documents ({selectedDocuments.length}/{availableDocuments.length})
@@ -172,7 +179,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
             </Button>
           </Group>
         </Stack>
-      </Popover.Dropdown>
-    </Popover>
+      </Menu.Dropdown>
+    </Menu>
   );
 };
