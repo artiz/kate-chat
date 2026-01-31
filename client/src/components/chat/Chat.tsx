@@ -79,6 +79,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return chats.find(c => c.id === chatId);
   }, [chats, chatId]);
 
+  useEffect(() => {
+    if (!chatId) return;
+    setSelectedRagDocIds([]);
+  }, [chatId]);
+
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const chatDocuments = useMemo(() => {
