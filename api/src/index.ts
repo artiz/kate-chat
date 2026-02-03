@@ -25,6 +25,7 @@ import {
   ModelResolver,
   AdminResolver,
   DocumentResolver,
+  CustomModelSettingsResolver,
 } from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 
@@ -70,7 +71,15 @@ async function bootstrap() {
 
   // Build GraphQL schema
   const schema = await buildSchema({
-    resolvers: [ChatResolver, MessageResolver, UserResolver, ModelResolver, AdminResolver, DocumentResolver],
+    resolvers: [
+      ChatResolver,
+      MessageResolver,
+      UserResolver,
+      ModelResolver,
+      CustomModelSettingsResolver,
+      AdminResolver,
+      DocumentResolver,
+    ],
     validate: false,
     emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
     pubSub: schemaPubSub,

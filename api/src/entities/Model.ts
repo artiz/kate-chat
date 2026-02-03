@@ -1,9 +1,11 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
 import { Field, ID, ObjectType, registerEnumType, InputType } from "type-graphql";
+import { Validate, IsOptional } from "class-validator";
 import { ModelFeature, ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
 import { EnumTransformer, JSONTransformer } from "../utils/db";
 import { ApiProvider } from "../config/ai/common";
+import { IsPublicUrl } from "../utils/validators";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
@@ -16,6 +18,8 @@ export enum CustomModelProtocol {
 @InputType("CustomModelSettingsInput")
 export class CustomModelSettings {
   @Field({ nullable: true })
+  @IsOptional()
+  @Validate(IsPublicUrl)
   endpoint?: string;
 
   @Field({ nullable: true })
@@ -26,9 +30,6 @@ export class CustomModelSettings {
 
   @Field({ nullable: true })
   modelName?: string;
-
-  @Field({ nullable: true })
-  description?: string;
 }
 
 registerEnumType(ApiProvider, {

@@ -48,9 +48,18 @@ export class CustomRestApiProvider extends BaseApiProvider {
     }
   }
 
+  // #region interface ModelProtocol implementation, model-specific methods
+
   async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
-    const protocol = this.getProtocol();
-    return protocol.completeChat(input, messages);
+    return this.getProtocol().completeChat(input, messages);
+  }
+
+  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
+    return this.getProtocol().getEmbeddings(request);
+  }
+
+  async stopRequest(requestId: string, modelId: string): Promise<void> {
+    return this.getProtocol().stopRequest(requestId);
   }
 
   async streamChatCompletion(
@@ -58,11 +67,12 @@ export class CustomRestApiProvider extends BaseApiProvider {
     messages: ModelMessage[],
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const protocol = this.getProtocol();
-
-    return protocol.streamChatCompletion(input, messages, callbacks);
+    return this.getProtocol().streamChatCompletion(input, messages, callbacks);
   }
 
+  // #endregion interface ModelProtocol implementation, model-specific methods
+
+  // #region BaseApiProvider abstract methods
   async getInfo(): Promise<ProviderInfo> {
     return {
       id: ApiProvider.CUSTOM_REST_API,
@@ -79,7 +89,7 @@ export class CustomRestApiProvider extends BaseApiProvider {
       start: new Date(startTime * 1000),
       end: endTime ? new Date(endTime * 1000) : undefined,
       costs: [],
-      error: "Cost information is not available for custom REST API providers",
+      error: "Cost information is not available for custom REST API provider",
     };
   }
 
@@ -88,19 +98,11 @@ export class CustomRestApiProvider extends BaseApiProvider {
     return models;
   }
 
-  async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
-    const protocol = this.getProtocol();
-    return protocol.getEmbeddings(request);
-  }
-
-  async stopRequest(requestId: string, modelId: string): Promise<void> {
-    const protocol = this.getProtocol();
-    return protocol.stopRequest(requestId);
-  }
+  // #endregion
 
   private getProtocol(): ModelProtocol {
     if (!this.model) {
-      throw new Error("Model is not defined for CustomRestApiProvider");
+      throw new Error("Model is not defined for CUSTOM_REST_API");
     }
 
     const { endpoint, apiKey, modelName } = this.modelSettings!;

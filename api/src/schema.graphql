@@ -185,7 +185,6 @@ input CreateMessageInput {
 
 type CustomModelSettings {
   apiKey: String
-  description: String
   endpoint: String
   modelName: String
   protocol: String
@@ -563,8 +562,9 @@ type SwitchModelResponse {
 }
 
 input TestCustomModelInput {
-  apiKey: String!
+  apiKey: String
   endpoint: String!
+  modelId: String
   modelName: String!
   protocol: String!
   text: String!
@@ -598,7 +598,7 @@ input UpdateChatInput {
 }
 
 input UpdateCustomModelInput {
-  apiKey: String!
+  apiKey: String
   description: String
   endpoint: String!
   id: String!

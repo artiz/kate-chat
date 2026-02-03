@@ -1,6 +1,6 @@
-import { Resolver, Query, Ctx, Authorized, Arg, Mutation } from "type-graphql";
+import { Resolver, Query, Ctx, Authorized, Arg, Mutation, FieldResolver, Root } from "type-graphql";
 import { AIService } from "../services/ai/ai.service";
-import { Model, CustomModelProtocol } from "../entities/Model";
+import { Model, CustomModelProtocol, CustomModelSettings } from "../entities/Model";
 
 import { GqlModelsList, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
 import {
@@ -13,7 +13,7 @@ import {
   TestCustomModelInput,
 } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { CompleteChatRequest, MessageRole, ModelMessage, ModelType } from "../types/ai.types";
+import { CompleteChatRequest, MessageRole, ModelType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
 import { ApiProvider } from "@/config/ai/common";
@@ -21,6 +21,7 @@ import { getErrorMessage } from "@/utils/errors";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
+import { ok } from "assert";
 
 const logger = createLogger(__filename);
 const MAX_TEST_TEXT_LENGTH = 256;
@@ -374,13 +375,12 @@ export class ModelResolver extends BaseResolver {
           apiKey,
           modelName,
           protocol: protocol as CustomModelProtocol,
-          description,
         },
       });
 
       // Save the model
       const savedModel = await modelRepository.save(model);
-      logger.info({ modelId: savedModel.id, name: savedModel.name }, "Created custom model");
+      logger.debug({ modelId: savedModel.id, name: savedModel.name }, "Created custom model");
 
       return savedModel;
     } catch (error) {
@@ -410,7 +410,7 @@ export class ModelResolver extends BaseResolver {
 
       // Delete the model
       await modelRepository.remove(model);
-      logger.info({ modelId: model.id, name: model.name }, "Deleted custom model");
+      logger.debug({ modelId: model.id, name: model.name }, "Deleted custom model");
 
       return true;
     } catch (error) {
@@ -466,17 +466,19 @@ export class ModelResolver extends BaseResolver {
       model.streaming = streaming === undefined ? model.streaming : streaming;
       model.imageInput = imageInput === undefined ? model.imageInput : imageInput;
       model.description = description || undefined;
-      model.customSettings = {
-        endpoint,
-        apiKey,
-        modelName,
-        protocol: protocol as CustomModelProtocol,
-        description,
-      };
+
+      ok(model.customSettings, "Custom settings must be defined for custom model");
+      model.customSettings.endpoint ||= endpoint;
+      model.customSettings.modelName ||= modelName;
+      model.customSettings.protocol ||= protocol;
+      // update apiKey only if provided
+      if (apiKey) {
+        model.customSettings.apiKey = apiKey;
+      }
 
       // Save the model
       const savedModel = await modelRepository.save(model);
-      logger.info({ modelId: savedModel.id, name: savedModel.name }, "Updated custom model");
+      logger.debug({ modelId: savedModel.id, name: savedModel.name }, "Updated custom model");
 
       return savedModel;
     } catch (error) {
@@ -489,8 +491,22 @@ export class ModelResolver extends BaseResolver {
   @Authorized()
   async testCustomModel(@Arg("input") input: TestCustomModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
     await this.validateContextToken(context);
+    const modelRepository = getRepository(Model);
+
     try {
-      const { endpoint, apiKey, modelName, protocol, text } = input;
+      const { endpoint, modelName, protocol, text, modelId } = input;
+      let { apiKey } = input;
+
+      // saved model test
+      if (!apiKey && modelId) {
+        const existing = await modelRepository.findOne({ where: { modelId } });
+        if (existing) {
+          apiKey = existing.customSettings?.apiKey;
+        }
+      }
+      if (!apiKey) {
+        throw new Error("API Key is required");
+      }
 
       // Validate protocol
       if (
@@ -505,14 +521,15 @@ export class ModelResolver extends BaseResolver {
       const connectionParams = {}; // Custom provider uses settings from model object
 
       // Create a temporary model object for testing
-      const model = new Model();
-      model.apiProvider = ApiProvider.CUSTOM_REST_API;
-      model.customSettings = {
-        endpoint,
-        apiKey,
-        modelName,
-        protocol: protocol as CustomModelProtocol,
-      };
+      const model = modelRepository.create({
+        apiProvider: ApiProvider.CUSTOM_REST_API,
+        customSettings: {
+          endpoint,
+          apiKey,
+          modelName,
+          protocol: protocol as CustomModelProtocol,
+        },
+      });
 
       const request: CompleteChatRequest = {
         apiProvider: ApiProvider.CUSTOM_REST_API,
@@ -546,5 +563,22 @@ export class ModelResolver extends BaseResolver {
       logger.error(error, "Error testing custom model");
       throw error;
     }
+  }
+}
+
+@Resolver(() => CustomModelSettings)
+export class CustomModelSettingsResolver {
+  @FieldResolver(() => String, { nullable: true })
+  apiKey(@Root() settings: CustomModelSettings): string | undefined {
+    if (!settings.apiKey) {
+      return undefined;
+    }
+
+    // Mask the API key if it's shorter than 10 chars, otherwise show parts
+    if (settings.apiKey.length <= 10) {
+      return "********";
+    }
+    // Show first 3 and last 4 characters
+    return `${settings.apiKey.substring(0, 3)}...${settings.apiKey.substring(settings.apiKey.length - 4)}`;
   }
 }

@@ -21,7 +21,6 @@ export const BASE_MODEL_FRAGMENT = `
         apiKey
         modelName
         protocol
-        description
       }
     }
 `;

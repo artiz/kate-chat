@@ -2,6 +2,8 @@ import { InputType, Field } from "type-graphql";
 import { ToolType } from "../ai.types";
 import { UserSettings, AuthProvider } from "@/entities";
 import { ApiProvider } from "@/config/ai/common";
+import { IsOptional, Validate } from "class-validator";
+import { IsPublicUrl } from "@/utils/validators";
 
 @InputType()
 export class UpdateUserInput {
@@ -344,8 +346,8 @@ export class UpdateCustomModelInput {
   @Field()
   endpoint: string;
 
-  @Field()
-  apiKey: string;
+  @Field({ nullable: true })
+  apiKey?: string;
 
   @Field()
   modelName: string;
@@ -363,10 +365,15 @@ export class UpdateCustomModelInput {
 @InputType()
 export class TestCustomModelInput {
   @Field()
+  @IsOptional()
+  @Validate(IsPublicUrl)
   endpoint: string;
 
-  @Field()
-  apiKey: string;
+  @Field({ nullable: true })
+  apiKey?: string;
+
+  @Field({ nullable: true })
+  modelId?: string;
 
   @Field()
   modelName: string;

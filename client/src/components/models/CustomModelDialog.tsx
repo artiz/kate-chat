@@ -1,24 +1,10 @@
 import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  TextInput,
-  Select,
-  Button,
-  Stack,
-  Group,
-  Text,
-  Textarea,
-  Divider,
-  Alert,
-  Code,
-  Switch,
-} from "@mantine/core";
+import { Modal, TextInput, Select, Button, Stack, Group, Text, Textarea, Divider, Alert, Switch } from "@mantine/core";
 import { CustomModelProtocol } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useMutation } from "@apollo/client";
 import { TEST_CUSTOM_MODEL_MUTATION } from "@/store/services/graphql.queries";
 import { IconTestPipe, IconAlertCircle, IconCheck } from "@tabler/icons-react";
-import { set } from "lodash";
 
 interface CustomModelDialogProps {
   isOpen: boolean;
@@ -34,7 +20,7 @@ export interface CustomModelFormData {
   modelId: string;
   description: string;
   endpoint: string;
-  apiKey: string;
+  apiKey?: string;
   modelName: string;
   protocol: string;
   streaming: boolean;
@@ -112,7 +98,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
   };
 
   const handleTest = async () => {
-    if (!formData.endpoint || !formData.apiKey || !formData.modelName) {
+    if (!formData.endpoint || !formData.modelName) {
       notifications.show({
         title: "Validation Error",
         message: "Endpoint, API Key and Model Name (API) are required for testing",
@@ -121,13 +107,15 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
       return;
     }
 
+    setTestResult(null);
     try {
       await testCustomModel({
         variables: {
           input: {
             endpoint: formData.endpoint,
-            apiKey: formData.apiKey,
+            apiKey: initialData?.apiKey === formData.apiKey ? undefined : formData.apiKey,
             modelName: formData.modelName,
+            modelId: formData.modelId,
             protocol: formData.protocol,
             text: testPrompt || "Hey there!",
           },
@@ -140,7 +128,13 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.name || !formData.modelId || !formData.endpoint || !formData.apiKey || !formData.modelName) {
+    if (
+      !formData.name ||
+      !formData.modelId ||
+      !formData.endpoint ||
+      (!formData.apiKey && !initialData?.apiKey) ||
+      !formData.modelName
+    ) {
       notifications.show({
         title: "Validation Error",
         message: "Please fill in all required fields",
@@ -149,7 +143,12 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
       return;
     }
 
-    await onSubmit(formData);
+    const data = { ...formData };
+    if (formData.apiKey === initialData?.apiKey) {
+      data.apiKey = undefined; // Do not send unchanged API key
+    }
+
+    await onSubmit(data);
   };
 
   const handleClose = () => {
@@ -174,24 +173,26 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
       closeOnEscape={!isLoading}
     >
       <Stack gap="md">
-        <TextInput
-          label="Model Name"
-          placeholder="e.g., Deepseek Chat"
-          required
-          value={formData.name}
-          onChange={e => updateFormField("name", e.target.value)}
-          disabled={isLoading}
-        />
+        <Group grow align="flex-end">
+          <TextInput
+            label="Model Name"
+            placeholder="e.g., Deepseek Chat"
+            required
+            value={formData.name}
+            onChange={e => updateFormField("name", e.target.value)}
+            disabled={isLoading}
+          />
 
-        <TextInput
-          label="Model ID"
-          placeholder="e.g., deepseek-chat"
-          description="Unique identifier for this model in your system"
-          required
-          value={formData.modelId}
-          onChange={e => updateFormField("modelId", e.target.value)}
-          disabled={isLoading}
-        />
+          <TextInput
+            label="Model ID"
+            placeholder="e.g., deepseek-chat"
+            description="Unique identifier for this model in your system"
+            required
+            value={formData.modelId}
+            onChange={e => updateFormField("modelId", e.target.value)}
+            disabled={isLoading}
+          />
+        </Group>
 
         <TextInput
           label="Endpoint URL"
@@ -203,26 +204,27 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           disabled={isLoading}
         />
 
-        <TextInput
-          label="API Key"
-          placeholder="sk-..."
-          type="password"
-          required
-          value={formData.apiKey}
-          onChange={e => updateFormField("apiKey", e.target.value)}
-          disabled={isLoading}
-        />
+        <Group grow align="flex-end">
+          <TextInput
+            label="API Key"
+            placeholder="sk-..."
+            type={initialData?.apiKey ? "text" : "password"}
+            required
+            value={formData.apiKey}
+            onChange={e => updateFormField("apiKey", e.target.value)}
+            disabled={isLoading}
+          />
 
-        <TextInput
-          label="Model Name (API)"
-          placeholder="e.g., deepseek-chat"
-          description="The model identifier to send to the API"
-          required
-          value={formData.modelName}
-          onChange={e => updateFormField("modelName", e.target.value)}
-          disabled={isLoading}
-        />
-
+          <TextInput
+            label="Model Name (API)"
+            placeholder="e.g., deepseek-chat"
+            description="The model identifier to send to the API"
+            required
+            value={formData.modelName}
+            onChange={e => updateFormField("modelName", e.target.value)}
+            disabled={isLoading}
+          />
+        </Group>
         <Group grow align="flex-end">
           <Select
             label="Protocol"
