@@ -35,6 +35,7 @@ export class YandexApiProvider extends BaseApiProvider {
 
     if (this.apiKey) {
       this.protocol = new OpenAIProtocol({
+        apiType: "completions",
         baseURL: YANDEX_FM_OPENAI_API_URL,
         apiKey: this.apiKey,
         connection,

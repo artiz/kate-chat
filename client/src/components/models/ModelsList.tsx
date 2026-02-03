@@ -211,9 +211,8 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     variant="subtle"
                     color="red"
                     onClick={() => handleDeleteClick(model)}
-                    fullWidth
                   >
-                    Delete Custom Model
+                    Delete Model
                   </Button>
                 )}
               </Stack>

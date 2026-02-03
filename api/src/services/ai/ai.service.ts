@@ -144,7 +144,7 @@ export class AIService {
 
     logger.debug({ providers }, `Getting info for providers`);
 
-    return providers;
+    return providers.filter(provider => !provider?.hidden);
   }
 
   /**
@@ -168,13 +168,10 @@ export class AIService {
     if (apiProvider === ApiProvider.AWS_BEDROCK) {
       return new BedrockApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
-      return new OpenAIApiProvider(connection, fileLoader);
+      return new OpenAIApiProvider(connection, fileLoader, model?.modelId);
     } else if (apiProvider === ApiProvider.YANDEX_FM) {
       return new YandexApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.CUSTOM_REST_API) {
-      if (!model) {
-        throw new Error("Model entity is required for CUSTOM_REST_API provider");
-      }
       return new CustomRestApiProvider(connection, model, fileLoader);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);

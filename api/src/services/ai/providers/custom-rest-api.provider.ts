@@ -5,66 +5,52 @@ import {
   StreamCallbacks,
   UsageCostInfo,
   CompleteChatRequest,
-  ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   ModelMessage,
-  ModelFeature,
 } from "@/types/ai.types";
-import { createLogger } from "@/utils/logger";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 import { ApiProvider } from "@/config/ai/common";
-import { OpenAIProtocol, OpenAIApiType } from "../protocols/openai.protocol";
+import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { FileContentLoader } from "@/services/data";
 import { Model } from "@/entities";
-import { CustomModelProtocol } from "@/entities/Model";
-
-const logger = createLogger(__filename);
+import { CustomModelProtocol, CustomModelSettings } from "@/entities/Model";
+import { ModelProtocol } from "../protocols/common";
+import { ok } from "assert";
 
 export class CustomRestApiProvider extends BaseApiProvider {
-  private protocol: OpenAIProtocol;
   private model: Model;
-  private apiKey: string;
-  private baseUrl: string;
-  private modelName: string;
-  private protocolType: CustomModelProtocol;
+  private modelSettings?: CustomModelSettings;
+  private modelProtocol: CustomModelProtocol;
 
-  constructor(connection: ConnectionParams, model: Model, fileLoader?: FileContentLoader) {
+  constructor(connection: ConnectionParams, model?: Model, fileLoader?: FileContentLoader) {
     super(connection, fileLoader);
 
-    this.model = model;
+    if (model) {
+      this.model = model;
 
-    if (!model.customSettings) {
-      throw new Error("Custom model settings are required for CUSTOM_REST_API provider");
+      if (!model.customSettings) {
+        throw new Error("Custom model settings are required for CUSTOM_REST_API provider");
+      }
+
+      const { endpoint, protocol } = model.customSettings;
+      if (!protocol) {
+        throw new Error("Custom model settings are required for CUSTOM_REST_API provider");
+      }
+      if (!endpoint) {
+        throw new Error("Endpoint URL is required for custom REST API provider");
+      }
+
+      this.modelProtocol = protocol;
+      this.modelSettings = model.customSettings;
     }
-
-    this.apiKey = model.customSettings.apiKey || "";
-    this.baseUrl = model.customSettings.endpoint || "";
-    this.modelName = model.customSettings.modelName || model.modelId;
-    this.protocolType = model.customSettings.protocol || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS;
-
-    if (!this.apiKey) {
-      throw new Error("API key is required for custom REST API provider");
-    }
-
-    if (!this.baseUrl) {
-      throw new Error("Endpoint URL is required for custom REST API provider");
-    }
-
-    // Initialize OpenAI protocol with custom endpoint
-    this.protocol = new OpenAIProtocol({
-      baseURL: this.baseUrl,
-      apiKey: this.apiKey,
-      connection,
-      fileLoader,
-    });
   }
 
   async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
-    const apiType = this.getApiType();
-    return this.protocol.completeChat(input, messages, apiType);
+    const protocol = this.getProtocol();
+    return protocol.completeChat(input, messages);
   }
 
   async streamChatCompletion(
@@ -72,36 +58,25 @@ export class CustomRestApiProvider extends BaseApiProvider {
     messages: ModelMessage[],
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const apiType = this.getApiType();
-    return this.protocol.streamChatCompletion(input, messages, callbacks, apiType);
+    const protocol = this.getProtocol();
+
+    return protocol.streamChatCompletion(input, messages, callbacks);
   }
 
-  async getInfo(checkConnection = false): Promise<ProviderInfo> {
-    const isConnected = !!this.apiKey && !!this.baseUrl;
+  async getInfo(): Promise<ProviderInfo> {
     const details: Record<string, string | number | boolean> = {
-      apiUrl: this.baseUrl,
-      modelName: this.modelName,
-      protocol: this.protocolType,
-      configured: isConnected,
-      credentialsValid: "N/A",
+      apiUrl: this.modelSettings?.endpoint || "N/A",
+      modelName: this.model?.name,
+      protocol: this.modelProtocol,
+      configured: true,
     };
-
-    if (isConnected && checkConnection) {
-      try {
-        // Try to fetch models list to verify connection
-        await this.protocol.api.models.list();
-        details.credentialsValid = true;
-      } catch (error) {
-        logger.warn(error, "Error testing custom REST API connection");
-        details.credentialsValid = false;
-      }
-    }
 
     return {
       id: ApiProvider.CUSTOM_REST_API,
-      name: this.model.customSettings?.description || BaseApiProvider.getApiProviderName(ApiProvider.CUSTOM_REST_API),
+      name: BaseApiProvider.getApiProviderName(ApiProvider.CUSTOM_REST_API),
       costsInfoAvailable: false,
-      isConnected,
+      isConnected: true,
+      hidden: true,
       details,
     };
   }
@@ -118,41 +93,50 @@ export class CustomRestApiProvider extends BaseApiProvider {
 
   async getModels(): Promise<Record<string, AIModelInfo>> {
     const models: Record<string, AIModelInfo> = {};
-
-    // For custom REST API, we return the configured model
-    models[this.model.modelId] = {
-      apiProvider: ApiProvider.CUSTOM_REST_API,
-      provider: this.model.customSettings?.description || BaseApiProvider.getApiProviderName(ApiProvider.CUSTOM_REST_API),
-      name: this.model.name,
-      description: this.model.description || `${this.modelName} via Custom REST API`,
-      type: this.model.type,
-      streaming: this.model.streaming,
-      imageInput: this.model.imageInput,
-      maxInputTokens: this.model.maxInputTokens,
-      tools: this.model.tools || [],
-      features: this.model.features || [],
-    };
-
     return models;
   }
 
   async getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse> {
-    // Use OpenAI protocol for embeddings
-    return this.protocol.getEmbeddings(request);
+    const protocol = this.getProtocol();
+    return protocol.getEmbeddings(request);
   }
 
   async stopRequest(requestId: string, modelId: string): Promise<void> {
-    // Custom REST APIs might not support request cancellation
-    logger.debug({ requestId, modelId }, "Stop request called for custom REST API (may not be supported)");
+    const protocol = this.getProtocol();
+    return protocol.stopRequest(requestId);
   }
 
-  private getApiType(): OpenAIApiType {
-    switch (this.protocolType) {
+  private getProtocol(): ModelProtocol {
+    if (!this.model) {
+      throw new Error("Model is not defined for CustomRestApiProvider");
+    }
+
+    const { endpoint, apiKey, modelName } = this.modelSettings!;
+    ok(endpoint, "Endpoint is required in custom settings");
+    ok(apiKey, "API key is required in custom settings");
+
+    switch (this.modelProtocol) {
       case CustomModelProtocol.OPENAI_RESPONSES:
-        return "responses";
+        return new OpenAIProtocol({
+          apiType: "responses",
+          baseURL: endpoint,
+          apiKey: apiKey,
+          modelIdOverride: modelName,
+          connection: this.connection,
+          fileLoader: this.fileLoader,
+        });
+
       case CustomModelProtocol.OPENAI_CHAT_COMPLETIONS:
+        return new OpenAIProtocol({
+          apiType: "completions",
+          baseURL: endpoint,
+          apiKey: apiKey,
+          modelIdOverride: modelName,
+          connection: this.connection,
+          fileLoader: this.fileLoader,
+        });
       default:
-        return "chat";
+        throw new Error(`Unsupported custom model protocol: ${this.modelProtocol}`);
     }
   }
 }

@@ -37,8 +37,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Support for various LLM model Providers:
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
-  - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol
-  - **Custom REST API** - Connect to any OpenAI-compatible API (Deepseek, local models, etc.)
+  - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
@@ -47,7 +46,9 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
-* ~~Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)~~ ✅ **COMPLETED** - Custom REST API provider now available
+* Add [Deepseek](https://api-docs.deepseek.com/) API support
+
+
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Add custom MCP tool support
@@ -56,7 +57,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
-* ~~Add [Deepseek](https://api-docs.deepseek.com/) API support~~ ✅ **COMPLETED** - Now supported via Custom REST API provider
 * Rename `document-processor` to `tasks-processor` service to perform following tasks:
  - add custom code interpreter tool implementation
 ```

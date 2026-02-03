@@ -76,7 +76,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
   private adminApiKey: string;
   private baseUrl: string;
 
-  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader, modelId?: string) {
     super(connection, fileLoader);
 
     this.adminApiKey = connection.OPENAI_API_ADMIN_KEY || "";
@@ -87,6 +87,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     } else {
       this.protocol = new OpenAIProtocol({
+        apiType: modelId ? this.getChatApiType(modelId) : "completions",
         baseURL: this.baseUrl,
         apiKey: this.apiKey,
         connection,
@@ -103,7 +104,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       return this.generateImages(input, messages);
     }
 
-    return this.protocol.completeChat(input, messages, this.getChatApiType(modelId));
+    return this.protocol.completeChat(input, messages);
   }
 
   // Stream response from OpenAI models
@@ -126,7 +127,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       return;
     }
 
-    return this.protocol.streamChatCompletion(input, messages, callbacks, this.getChatApiType(modelId));
+    return this.protocol.streamChatCompletion(input, messages, callbacks);
   }
 
   // Get OpenAI provider information including account details
