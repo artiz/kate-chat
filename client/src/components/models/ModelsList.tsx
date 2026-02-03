@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
-import { IconMessagePlus, IconTestPipe, IconTrash } from "@tabler/icons-react";
+import { IconMessagePlus, IconTestPipe, IconTrash, IconEdit } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
 import { formatTokensLimit, ModelType, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
@@ -12,6 +12,7 @@ interface ModelsListProps {
   onToggleModelStatus: (model: Model, isActive: boolean) => void;
   onOpenTestModal: (model: Model) => void;
   onDeleteModel: (modelId: string) => void;
+  onEditModel?: (model: Model) => void;
   creatingChat: boolean;
 }
 
@@ -21,6 +22,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
   onToggleModelStatus,
   onOpenTestModal,
   onDeleteModel,
+  onEditModel,
   creatingChat,
 }) => {
   const user = useAppSelector(state => state.user.currentUser);
@@ -204,16 +206,27 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                   </Button>
                 </Group>
 
-                {/* Delete button for custom models */}
                 {model.isCustom && (
-                  <Button
-                    leftSection={<IconTrash size={16} />}
-                    variant="subtle"
-                    color="red"
-                    onClick={() => handleDeleteClick(model)}
-                  >
-                    Delete Model
-                  </Button>
+                  <Group grow>
+                    {onEditModel && (
+                      <Button
+                        leftSection={<IconEdit size={16} />}
+                        variant="subtle"
+                        color="blue"
+                        onClick={() => onEditModel(model)}
+                      >
+                        Edit Model
+                      </Button>
+                    )}
+                    <Button
+                      leftSection={<IconTrash size={16} />}
+                      variant="subtle"
+                      color="red"
+                      onClick={() => handleDeleteClick(model)}
+                    >
+                      Delete Model
+                    </Button>
+                  </Group>
                 )}
               </Stack>
             </Card>

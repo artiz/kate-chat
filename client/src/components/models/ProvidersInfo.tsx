@@ -30,7 +30,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
       )}
       <Grid>
         {providers.map(provider => (
-          <Grid.Col key={provider.name} span={{ base: 12, md: 6 }}>
+          <Grid.Col key={provider.name} span={{ base: 12, md: 6, lg: 4 }}>
             <Card withBorder padding="md" radius="md">
               <Stack gap="xs">
                 <Group justify="space-between">
@@ -54,7 +54,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   </Group>
                 </Group>
 
-                <Divider />
+                {provider.details && provider.details.length > 0 ? <Divider /> : null}
 
                 <Table withRowBorders={false} withColumnBorders={false}>
                   <Table.Tbody>

@@ -3,9 +3,17 @@ import { AIService } from "../services/ai/ai.service";
 import { Model, CustomModelProtocol } from "../entities/Model";
 
 import { GqlModelsList, GqlProviderInfo, ProviderDetail, GqlCostsInfo } from "../types/graphql/responses";
-import { TestModelInput, UpdateModelStatusInput, GetCostsInput, CreateCustomModelInput, DeleteModelInput } from "../types/graphql/inputs";
+import {
+  TestModelInput,
+  UpdateModelStatusInput,
+  GetCostsInput,
+  CreateCustomModelInput,
+  DeleteModelInput,
+  UpdateCustomModelInput,
+  TestCustomModelInput,
+} from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { MessageRole, ModelMessage, ModelType } from "../types/ai.types";
+import { CompleteChatRequest, MessageRole, ModelMessage, ModelType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
 import { ApiProvider } from "@/config/ai/common";
@@ -324,11 +332,16 @@ export class ModelResolver extends BaseResolver {
   async createCustomModel(@Arg("input") input: CreateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
     const user = await this.validateContextToken(context);
     try {
-      const { name, modelId, description, endpoint, apiKey, modelName, protocol } = input;
+      const { name, modelId, description, endpoint, apiKey, modelName, protocol, streaming, imageInput } = input;
 
       // Validate protocol
-      if (protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS && protocol !== CustomModelProtocol.OPENAI_RESPONSES) {
-        throw new Error(`Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`);
+      if (
+        protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS &&
+        protocol !== CustomModelProtocol.OPENAI_RESPONSES
+      ) {
+        throw new Error(
+          `Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`
+        );
       }
 
       // Get the repository
@@ -351,8 +364,8 @@ export class ModelResolver extends BaseResolver {
         provider: "Custom",
         apiProvider: ApiProvider.CUSTOM_REST_API,
         type: ModelType.CHAT,
-        streaming: true,
-        imageInput: false,
+        streaming,
+        imageInput: imageInput || false,
         isActive: true,
         isCustom: true,
         user: { id: user.userId },
@@ -368,7 +381,7 @@ export class ModelResolver extends BaseResolver {
       // Save the model
       const savedModel = await modelRepository.save(model);
       logger.info({ modelId: savedModel.id, name: savedModel.name }, "Created custom model");
-      
+
       return savedModel;
     } catch (error) {
       logger.error(error, "Error creating custom model");
@@ -398,10 +411,139 @@ export class ModelResolver extends BaseResolver {
       // Delete the model
       await modelRepository.remove(model);
       logger.info({ modelId: model.id, name: model.name }, "Deleted custom model");
-      
+
       return true;
     } catch (error) {
       logger.error(error, "Error deleting custom model");
+      throw error;
+    }
+  }
+
+  @Mutation(() => Model)
+  @Authorized()
+  async updateCustomModel(@Arg("input") input: UpdateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
+    const user = await this.validateContextToken(context);
+    try {
+      const { id, name, modelId, description, endpoint, apiKey, modelName, protocol, streaming, imageInput } = input;
+
+      // Validate protocol
+      if (
+        protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS &&
+        protocol !== CustomModelProtocol.OPENAI_RESPONSES
+      ) {
+        throw new Error(
+          `Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`
+        );
+      }
+
+      // Get the repository
+      const modelRepository = getRepository(Model);
+
+      // Find the model by ID and ensure it's custom and belongs to the user
+      const model = await modelRepository.findOne({
+        where: { id, user: { id: user.userId }, isCustom: true },
+      });
+
+      if (!model) {
+        throw new Error("Custom model not found or you don't have permission to update it");
+      }
+
+      // Check if another model with same modelId already exists for this user (excluding current one)
+      if (modelId !== model.modelId) {
+        const existingModel = await modelRepository.findOne({
+          where: { modelId, user: { id: user.userId } },
+        });
+
+        if (existingModel) {
+          throw new Error("A model with this ID already exists");
+        }
+      }
+
+      // Update model properties
+      model.name = name;
+      model.modelId = modelId;
+      model.apiProvider = ApiProvider.CUSTOM_REST_API; // Ensure provider is set correctly
+      model.streaming = streaming === undefined ? model.streaming : streaming;
+      model.imageInput = imageInput === undefined ? model.imageInput : imageInput;
+      model.description = description || undefined;
+      model.customSettings = {
+        endpoint,
+        apiKey,
+        modelName,
+        protocol: protocol as CustomModelProtocol,
+        description,
+      };
+
+      // Save the model
+      const savedModel = await modelRepository.save(model);
+      logger.info({ modelId: savedModel.id, name: savedModel.name }, "Updated custom model");
+
+      return savedModel;
+    } catch (error) {
+      logger.error(error, "Error updating custom model");
+      throw error;
+    }
+  }
+
+  @Mutation(() => Message)
+  @Authorized()
+  async testCustomModel(@Arg("input") input: TestCustomModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
+    await this.validateContextToken(context);
+    try {
+      const { endpoint, apiKey, modelName, protocol, text } = input;
+
+      // Validate protocol
+      if (
+        protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS &&
+        protocol !== CustomModelProtocol.OPENAI_RESPONSES
+      ) {
+        throw new Error(
+          `Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`
+        );
+      }
+
+      const connectionParams = {}; // Custom provider uses settings from model object
+
+      // Create a temporary model object for testing
+      const model = new Model();
+      model.apiProvider = ApiProvider.CUSTOM_REST_API;
+      model.customSettings = {
+        endpoint,
+        apiKey,
+        modelName,
+        protocol: protocol as CustomModelProtocol,
+      };
+
+      const request: CompleteChatRequest = {
+        apiProvider: ApiProvider.CUSTOM_REST_API,
+        modelId: modelName,
+        systemPrompt: "You are a helpful assistant.",
+        temperature: 0.7,
+        maxTokens: 100,
+        modelType: ModelType.CHAT,
+      };
+
+      const messages: Message[] = [
+        {
+          role: MessageRole.USER,
+          content: text,
+          id: "00000000-0000-0000-0000-000000000000",
+        },
+      ];
+
+      // Use AIService to complete chat (this will verify connection and protocol)
+      const response = await this.aiService.completeChat(connectionParams, request, messages, undefined, model);
+
+      return {
+        id: "test-result",
+        role: MessageRole.ASSISTANT,
+        content: response.content,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Message;
+    } catch (error) {
+      logger.error(error, "Error testing custom model");
       throw error;
     }
   }

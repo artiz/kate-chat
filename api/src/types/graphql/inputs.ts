@@ -271,6 +271,12 @@ export class CreateCustomModelInput {
 
   @Field()
   protocol: string;
+
+  @Field({ nullable: true })
+  streaming?: boolean;
+
+  @Field({ nullable: true })
+  imageInput?: boolean;
 }
 
 @InputType()
@@ -319,4 +325,55 @@ export class StopMessageGenerationInput {
 
   @Field()
   messageId: string;
+}
+
+@InputType()
+export class UpdateCustomModelInput {
+  @Field()
+  id: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  modelId: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field()
+  endpoint: string;
+
+  @Field()
+  apiKey: string;
+
+  @Field()
+  modelName: string;
+
+  @Field()
+  protocol: string;
+
+  @Field({ nullable: true })
+  streaming?: boolean;
+
+  @Field({ nullable: true })
+  imageInput?: boolean;
+}
+
+@InputType()
+export class TestCustomModelInput {
+  @Field()
+  endpoint: string;
+
+  @Field()
+  apiKey: string;
+
+  @Field()
+  modelName: string;
+
+  @Field()
+  protocol: string;
+
+  @Field()
+  text: string;
 }

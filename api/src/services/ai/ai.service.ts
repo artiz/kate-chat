@@ -144,7 +144,7 @@ export class AIService {
 
     logger.debug({ providers }, `Getting info for providers`);
 
-    return providers.filter(provider => !provider?.hidden);
+    return providers;
   }
 
   /**

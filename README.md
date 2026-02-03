@@ -38,6 +38,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
+- Custom OpenAI-compatible REST API endpoint (Deepseek, Local Models, etc.).
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
@@ -45,9 +46,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 
 ## TODO
-
-* Add [Deepseek](https://api-docs.deepseek.com/) API support
-
 
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.

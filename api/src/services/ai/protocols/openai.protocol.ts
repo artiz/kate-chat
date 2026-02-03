@@ -461,16 +461,18 @@ export class OpenAIProtocol implements ModelProtocol {
     }
 
     do {
-      logger.trace({ ...params }, "invoking streaming chat.completions...");
+      logger.debug({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
+
       for await (const chunk of stream) {
         if (stopped) {
           stream?.controller?.abort();
           break;
         }
 
+        logger.trace(chunk, "got chunk");
         const choice = chunk.choices?.[0];
 
         if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
@@ -524,8 +526,6 @@ export class OpenAIProtocol implements ModelProtocol {
 
           stopped = toolResults.some(tr => tr.stopped);
           break; // break for await to restart the request with new messages
-        } else {
-          stopped = true;
         }
 
         if (choice?.delta?.tool_calls) {
@@ -557,6 +557,10 @@ export class OpenAIProtocol implements ModelProtocol {
               cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
             },
           };
+        }
+
+        if (!stopped && choice?.finish_reason === "stop") {
+          stopped = true;
         }
       } // for await (const chunk of stream)
     } while (!stopped);

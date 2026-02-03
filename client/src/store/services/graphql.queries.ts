@@ -15,6 +15,7 @@ export const BASE_MODEL_FRAGMENT = `
       tools
       features
       description
+      streaming
       customSettings {
         endpoint
         apiKey
@@ -554,5 +555,23 @@ export const CREATE_CUSTOM_MODEL_MUTATION = gql`
 export const DELETE_MODEL_MUTATION = gql`
   mutation DeleteModel($input: DeleteModelInput!) {
     deleteModel(input: $input)
+  }
+`;
+
+export const UPDATE_CUSTOM_MODEL_MUTATION = gql`
+  ${BASE_MODEL_FRAGMENT}
+  mutation UpdateCustomModel($input: UpdateCustomModelInput!) {
+    updateCustomModel(input: $input) {
+      ...BaseModel
+    }
+  }
+`;
+
+export const TEST_CUSTOM_MODEL_MUTATION = gql`
+  ${BASE_MESSAGE_FRAGMENT}
+  mutation TestCustomModel($input: TestCustomModelInput!) {
+    testCustomModel(input: $input) {
+      ...BaseMessage
+    }
   }
 `;

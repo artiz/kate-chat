@@ -64,20 +64,12 @@ export class CustomRestApiProvider extends BaseApiProvider {
   }
 
   async getInfo(): Promise<ProviderInfo> {
-    const details: Record<string, string | number | boolean> = {
-      apiUrl: this.modelSettings?.endpoint || "N/A",
-      modelName: this.model?.name,
-      protocol: this.modelProtocol,
-      configured: true,
-    };
-
     return {
       id: ApiProvider.CUSTOM_REST_API,
       name: BaseApiProvider.getApiProviderName(ApiProvider.CUSTOM_REST_API),
       costsInfoAvailable: false,
       isConnected: true,
-      hidden: true,
-      details,
+      details: {},
     };
   }
 

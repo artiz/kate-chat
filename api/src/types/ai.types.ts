@@ -56,7 +56,6 @@ export interface ProviderInfo {
   id: ApiProvider;
   name: string;
   isConnected: boolean;
-  hidden?: boolean;
   costsInfoAvailable?: boolean;
   details: Record<string, string | number | boolean | undefined>;
 }

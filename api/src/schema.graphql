@@ -168,10 +168,12 @@ input CreateCustomModelInput {
   apiKey: String!
   description: String
   endpoint: String!
+  imageInput: Boolean
   modelId: String!
   modelName: String!
   name: String!
   protocol: String!
+  streaming: Boolean
 }
 
 input CreateMessageInput {
@@ -494,8 +496,10 @@ type Mutation {
   removeDocumentsFromChat(chatId: ID!, documentIds: [ID!]!): RemoveDocumentsFromChatResponse!
   stopMessageGeneration(input: StopMessageGenerationInput!): StopMessageGenerationResponse!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
+  testCustomModel(input: TestCustomModelInput!): Message!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
+  updateCustomModel(input: UpdateCustomModelInput!): Model!
   updateModelStatus(input: UpdateModelStatusInput!): Model!
   updateUser(input: UpdateUserInput!): User!
 }
@@ -558,6 +562,14 @@ type SwitchModelResponse {
   message: Message
 }
 
+input TestCustomModelInput {
+  apiKey: String!
+  endpoint: String!
+  modelName: String!
+  protocol: String!
+  text: String!
+}
+
 input TestModelInput {
   id: String!
   text: String! = "2+2="
@@ -583,6 +595,19 @@ input UpdateChatInput {
   title: String
   tools: [ChatToolInput!]
   topP: Float
+}
+
+input UpdateCustomModelInput {
+  apiKey: String!
+  description: String
+  endpoint: String!
+  id: String!
+  imageInput: Boolean
+  modelId: String!
+  modelName: String!
+  name: String!
+  protocol: String!
+  streaming: Boolean
 }
 
 input UpdateModelStatusInput {
