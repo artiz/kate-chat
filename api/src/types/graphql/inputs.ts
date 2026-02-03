@@ -2,6 +2,8 @@ import { InputType, Field } from "type-graphql";
 import { ToolType } from "../ai.types";
 import { UserSettings, AuthProvider } from "@/entities";
 import { ApiProvider } from "@/config/ai/common";
+import { IsOptional, Validate } from "class-validator";
+import { IsPublicUrl } from "@/utils/validators";
 
 @InputType()
 export class UpdateUserInput {
@@ -250,6 +252,42 @@ export class GetCostsInput {
 }
 
 @InputType()
+export class CreateCustomModelInput {
+  @Field()
+  name: string;
+
+  @Field()
+  modelId: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field()
+  endpoint: string;
+
+  @Field()
+  apiKey: string;
+
+  @Field()
+  modelName: string;
+
+  @Field()
+  protocol: string;
+
+  @Field({ nullable: true })
+  streaming?: boolean;
+
+  @Field({ nullable: true })
+  imageInput?: boolean;
+}
+
+@InputType()
+export class DeleteModelInput {
+  @Field()
+  modelId: string;
+}
+
+@InputType()
 export class GetImagesInput {
   @Field({ nullable: true, defaultValue: 0 })
   offset?: number;
@@ -289,4 +327,60 @@ export class StopMessageGenerationInput {
 
   @Field()
   messageId: string;
+}
+
+@InputType()
+export class UpdateCustomModelInput {
+  @Field()
+  id: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  modelId: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field()
+  endpoint: string;
+
+  @Field({ nullable: true })
+  apiKey?: string;
+
+  @Field()
+  modelName: string;
+
+  @Field()
+  protocol: string;
+
+  @Field({ nullable: true })
+  streaming?: boolean;
+
+  @Field({ nullable: true })
+  imageInput?: boolean;
+}
+
+@InputType()
+export class TestCustomModelInput {
+  @Field()
+  @IsOptional()
+  @Validate(IsPublicUrl)
+  endpoint: string;
+
+  @Field({ nullable: true })
+  apiKey?: string;
+
+  @Field({ nullable: true })
+  modelId?: string;
+
+  @Field()
+  modelName: string;
+
+  @Field()
+  protocol: string;
+
+  @Field()
+  text: string;
 }

@@ -71,6 +71,12 @@ const modelSlice = createSlice({
         };
       }
     },
+    addModel(state, action: PayloadAction<Model>) {
+      state.models.push(action.payload);
+    },
+    removeModel(state, action: PayloadAction<string>) {
+      state.models = state.models.filter(model => model.id !== action.payload);
+    },
   },
   extraReducers: builder => {
     builder.addCase(logout, state => {
@@ -84,6 +90,14 @@ const modelSlice = createSlice({
   },
 });
 
-export const { setModels, setProviders, setModelsAndProviders, setModelLoading, setModelError, updateModel } =
-  modelSlice.actions;
+export const {
+  setModels,
+  setProviders,
+  setModelsAndProviders,
+  setModelLoading,
+  setModelError,
+  updateModel,
+  addModel,
+  removeModel,
+} = modelSlice.actions;
 export default modelSlice.reducer;

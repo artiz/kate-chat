@@ -25,6 +25,7 @@ API provider for the model
 """
 enum ApiProvider {
   AWS_BEDROCK
+  CUSTOM_REST_API
   OPEN_AI
   YANDEX_FM
 }
@@ -163,11 +164,30 @@ input CreateChatInput {
   title: String
 }
 
+input CreateCustomModelInput {
+  apiKey: String!
+  description: String
+  endpoint: String!
+  imageInput: Boolean
+  modelId: String!
+  modelName: String!
+  name: String!
+  protocol: String!
+  streaming: Boolean
+}
+
 input CreateMessageInput {
   chatId: String!
   content: String!
   documentIds: [String!]
   images: [ImageInput!]
+}
+
+type CustomModelSettings {
+  apiKey: String
+  endpoint: String
+  modelName: String
+  protocol: String
 }
 
 """
@@ -182,6 +202,10 @@ type DeleteMessageResponse {
 type DeleteMessageResult {
   id: String!
   linkedToMessageId: String
+}
+
+input DeleteModelInput {
+  modelId: String!
 }
 
 type Document {
@@ -403,6 +427,7 @@ type MessageRelevantChunk {
 type Model {
   apiProvider: ApiProvider!
   createdAt: DateTimeISO!
+  customSettings: CustomModelSettings
   description: String
   features: [ModelFeature!]
   id: ID!
@@ -454,10 +479,12 @@ type Mutation {
   callOther(messageId: ID!, modelId: String!): CallOtherResponse!
   changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
+  createCustomModel(input: CreateCustomModelInput!): Model!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
   deleteDocument(id: ID!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
+  deleteModel(input: DeleteModelInput!): Boolean!
   editMessage(content: String!, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!
   processDocument(force: Boolean, id: ID!): Document!
@@ -468,8 +495,10 @@ type Mutation {
   removeDocumentsFromChat(chatId: ID!, documentIds: [ID!]!): RemoveDocumentsFromChatResponse!
   stopMessageGeneration(input: StopMessageGenerationInput!): StopMessageGenerationResponse!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
+  testCustomModel(input: TestCustomModelInput!): Message!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
+  updateCustomModel(input: UpdateCustomModelInput!): Model!
   updateModelStatus(input: UpdateModelStatusInput!): Model!
   updateUser(input: UpdateUserInput!): User!
 }
@@ -532,6 +561,15 @@ type SwitchModelResponse {
   message: Message
 }
 
+input TestCustomModelInput {
+  apiKey: String
+  endpoint: String!
+  modelId: String
+  modelName: String!
+  protocol: String!
+  text: String!
+}
+
 input TestModelInput {
   id: String!
   text: String! = "2+2="
@@ -557,6 +595,19 @@ input UpdateChatInput {
   title: String
   tools: [ChatToolInput!]
   topP: Float
+}
+
+input UpdateCustomModelInput {
+  apiKey: String
+  description: String
+  endpoint: String!
+  id: String!
+  imageInput: Boolean
+  modelId: String!
+  modelName: String!
+  name: String!
+  protocol: String!
+  streaming: Boolean
 }
 
 input UpdateModelStatusInput {

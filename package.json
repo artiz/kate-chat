@@ -21,7 +21,8 @@
     "migration:generate": "bash scripts/migration-generate.sh \"$@\"",
     "migration:run": "bash scripts/migration-run.sh",
     "migration:revert": "bash scripts/migration-revert.sh",
-    "publish:packages": "npm publish -w packages/katechat-ui"
+    "publish:packages": "npm publish -w packages/katechat-ui",
+    "prepare": "husky"
   },
   "author": "",
   "license": "ISC",

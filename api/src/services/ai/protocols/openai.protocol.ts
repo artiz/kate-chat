@@ -26,6 +26,7 @@ import {
   WEB_SEARCH_TOOL,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
+import { ModelProtocol } from "./common";
 
 const logger = createLogger(__filename);
 
@@ -40,18 +41,25 @@ function genProcessSymbol(): string {
   return symbols[Math.floor(Math.random() * symbols.length)];
 }
 
-export class OpenAIProtocol {
+export class OpenAIProtocol implements ModelProtocol {
+  private apiType: OpenAIApiType;
   private openai: OpenAI;
   private connection?: ConnectionParams;
   private fileLoader?: FileContentLoader;
+  private modelIdOverride?: string;
+
   constructor({
+    apiType,
     baseURL,
     apiKey,
+    modelIdOverride,
     connection,
     fileLoader,
   }: {
+    apiType: OpenAIApiType;
     baseURL: string;
     apiKey: string;
+    modelIdOverride?: string;
     connection?: ConnectionParams;
     fileLoader?: FileContentLoader;
   }) {
@@ -59,9 +67,12 @@ export class OpenAIProtocol {
       logger.warn("API key is not defined.");
     }
 
+    this.apiType = apiType;
+
     // be used in tools
     this.connection = connection;
     this.fileLoader = fileLoader;
+    this.modelIdOverride = modelIdOverride;
 
     this.openai = new OpenAI({
       apiKey,
@@ -74,18 +85,14 @@ export class OpenAIProtocol {
     return this.openai;
   }
 
-  public async completeChat(
-    input: CompleteChatRequest,
-    messages: ModelMessage[] = [],
-    apiType: OpenAIApiType = "completions"
-  ): Promise<ModelResponse> {
+  public async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
     try {
       const response: ModelResponse = {
         type: "text",
         content: "",
       };
 
-      if (apiType === "responses") {
+      if (this.apiType === "responses") {
         const params = await this.formatResponsesRequest(input, messages);
         logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
 
@@ -129,11 +136,10 @@ export class OpenAIProtocol {
   public async streamChatCompletion(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = [],
-    callbacks: StreamCallbacks,
-    apiType: OpenAIApiType = "completions"
+    callbacks: StreamCallbacks
   ): Promise<void> {
     try {
-      if (apiType === "responses") {
+      if (this.apiType === "responses") {
         await this.streamChatResponses(inputRequest, messages, callbacks);
       } else {
         await this.streamChatCompletionLegacy(inputRequest, messages, callbacks);
@@ -150,7 +156,9 @@ export class OpenAIProtocol {
   }
 
   async getEmbeddings(request: GetEmbeddingsRequest, retry: number = 0): Promise<EmbeddingsResponse> {
-    const { modelId, input, dimensions } = request;
+    const { modelId: requestModelId, input, dimensions } = request;
+    const modelId = this.modelIdOverride || requestModelId;
+
     const params: OpenAI.Embeddings.EmbeddingCreateParams = {
       model: modelId,
       input,
@@ -297,7 +305,8 @@ export class OpenAIProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> {
-    const { systemPrompt, modelId, temperature, maxTokens, tools: inputTools } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, tools: inputTools } = inputRequest;
+    const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
@@ -334,7 +343,9 @@ export class OpenAIProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
-    const { systemPrompt, modelId, temperature, maxTokens } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens } = inputRequest;
+    const modelId = this.modelIdOverride || requestModelId;
+
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
       model: modelId,
       input: await this.formatResponsesInput(messages),
@@ -450,16 +461,18 @@ export class OpenAIProtocol {
     }
 
     do {
-      logger.trace({ ...params }, "invoking streaming chat.completions...");
+      logger.debug({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
+
       for await (const chunk of stream) {
         if (stopped) {
           stream?.controller?.abort();
           break;
         }
 
+        logger.trace(chunk, "got chunk");
         const choice = chunk.choices?.[0];
 
         if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
@@ -513,8 +526,6 @@ export class OpenAIProtocol {
 
           stopped = toolResults.some(tr => tr.stopped);
           break; // break for await to restart the request with new messages
-        } else {
-          stopped = true;
         }
 
         if (choice?.delta?.tool_calls) {
@@ -546,6 +557,10 @@ export class OpenAIProtocol {
               cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
             },
           };
+        }
+
+        if (!stopped && choice?.finish_reason === "stop") {
+          stopped = true;
         }
       } // for await (const chunk of stream)
     } while (!stopped);

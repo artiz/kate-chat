@@ -204,7 +204,9 @@ export class DocumentQueueService {
             role: MessageRole.USER,
             content: PROMPT_DOCUMENT_SUMMARY({ content: contentToSummarize }),
           }),
-        ]
+        ],
+        undefined,
+        model
       );
 
       logger.info(`Generated summary for document ${document.id} (${summaryResponse.content.length} characters)`);

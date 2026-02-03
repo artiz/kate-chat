@@ -799,7 +799,7 @@ export class MessagesService {
       // sync call
       try {
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
-        const aiResponse = await this.aiService.completeChat(connection, request, inputMessages, s3Service);
+        const aiResponse = await this.aiService.completeChat(connection, request, inputMessages, s3Service, model);
 
         await processResponse(assistantMessage, aiResponse);
         await completeRequest(assistantMessage);
@@ -895,7 +895,7 @@ export class MessagesService {
     };
 
     this.aiService
-      .streamChatCompletion(connection, request, inputMessages, handleStreaming, s3Service)
+      .streamChatCompletion(connection, request, inputMessages, handleStreaming, s3Service, model)
       .catch((error: unknown) => {
         logger.error(error, "Error streaming AI response");
         return completeRequest({
@@ -993,13 +993,19 @@ export class MessagesService {
         };
 
         // always sync call
-        aiResponse = await this.aiService.completeChat(connection, request, [
-          this.messageRepository.create({
-            ...inputMessage,
-            jsonContent: undefined,
-            content: userInput, // only user input without images and so on
-          }),
-        ]);
+        aiResponse = await this.aiService.completeChat(
+          connection,
+          request,
+          [
+            this.messageRepository.create({
+              ...inputMessage,
+              jsonContent: undefined,
+              content: userInput, // only user input without images and so on
+            }),
+          ],
+          undefined,
+          model
+        );
 
         break;
       } catch (error: unknown) {
@@ -1098,7 +1104,9 @@ export class MessagesService {
           role: MessageRole.USER,
           content: PROMPT_CHAT_TITLE({ question, answer }),
         }),
-      ]
+      ],
+      undefined,
+      model
     );
 
     const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");

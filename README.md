@@ -38,6 +38,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
+- Custom OpenAI-compatible REST API endpoint (Deepseek, Local Models, etc.).
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
@@ -46,7 +47,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
-* Custom models support (enter ARN for Bedrock models, endpoint/api key for OpenAI like API, gpt-oss-20b)
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Add custom MCP tool support
@@ -55,7 +55,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
-* Add [Deepseek](https://api-docs.deepseek.com/) API support
 * Rename `document-processor` to `tasks-processor` service to perform following tasks:
  - add custom code interpreter tool implementation
 ```
@@ -199,6 +198,79 @@ The project consists of several parts:
    - Different models have different pricing tiers
    - Monitor your usage through the [OpenAI dashboard](https://platform.openai.com/usage)
    - Consider setting up usage limits to prevent unexpected charges
+
+
+### Custom REST API Models (Deepseek, Local Models, etc.)
+
+KateChat supports connecting to any OpenAI-compatible REST API endpoint, allowing you to use services like Deepseek, local models running on Ollama, or other third-party providers.
+
+#### Setting Up Custom Models
+
+Custom models are configured per-model through the GraphQL API or database. Each custom model requires the following settings:
+
+1. **Endpoint URL**: The base URL of the API (e.g., `https://api.deepseek.com/v1`)
+2. **API Key**: Your authentication key for the API
+3. **Model Name**: The specific model identifier (e.g., `deepseek-chat`, `llama-3-70b`)
+4. **Protocol**: Choose between:
+   - `OPENAI_CHAT_COMPLETIONS` - Standard OpenAI chat completions API
+   - `OPENAI_RESPONSES` - OpenAI Responses API (for advanced features)
+5. **Description**: Human-readable description of the model
+
+#### Example: Deepseek Configuration
+
+[Deepseek](https://api-docs.deepseek.com/) is a powerful AI model provider with an OpenAI-compatible API:
+
+1. **Get API Key**
+   - Visit [Deepseek Platform](https://platform.deepseek.com/)
+   - Sign up and create an API key
+   - Copy your API key
+
+2. **Configure Custom Model**
+   - Create a new Model entry with:
+     ```
+     apiProvider: CUSTOM_REST_API
+     customSettings: {
+       endpoint: "https://api.deepseek.com/v1"
+       apiKey: "your_deepseek_api_key"
+       modelName: "deepseek-chat"
+       protocol: OPENAI_CHAT_COMPLETIONS
+       description: "Deepseek Chat Model"
+     }
+     ```
+
+#### Example: Local Ollama Models
+
+For running local models with Ollama:
+
+1. **Install Ollama**
+   - Visit [Ollama website](https://ollama.ai/)
+   - Download and install Ollama
+   - Pull a model: `ollama pull llama3`
+
+2. **Configure Custom Model**
+   - Create a new Model entry with:
+     ```
+     apiProvider: CUSTOM_REST_API
+     customSettings: {
+       endpoint: "http://localhost:11434/v1"
+       apiKey: "ollama"  # Ollama doesn't require real auth
+       modelName: "llama3"
+       protocol: OPENAI_CHAT_COMPLETIONS
+       description: "Local Llama 3 via Ollama"
+     }
+     ```
+
+#### Supported Protocols
+
+- **OPENAI_CHAT_COMPLETIONS**: Standard chat completions endpoint (`/chat/completions`)
+  - Best for most OpenAI-compatible APIs
+  - Supports streaming responses
+  - Tool/function calling support (if the underlying API supports it)
+
+- **OPENAI_RESPONSES**: Advanced Responses API
+  - Support for complex multi-modal interactions
+  - Request cancellation support
+  - Web search and code interpreter tools
 
 
 ### Installation

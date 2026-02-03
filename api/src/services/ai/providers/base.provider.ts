@@ -42,6 +42,8 @@ export abstract class BaseApiProvider {
         return "OpenAI";
       case ApiProvider.YANDEX_FM:
         return "Yandex FM";
+      case ApiProvider.CUSTOM_REST_API:
+        return "Custom REST API";
       default:
         throw new Error(`Unsupported API provider: ${apiProvider}`);
     }

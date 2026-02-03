@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
-import { IconMessagePlus, IconTestPipe } from "@tabler/icons-react";
+import { IconMessagePlus, IconTestPipe, IconTrash, IconEdit } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
-import { formatTokensLimit, ModelType, ProviderIcon } from "@katechat/ui";
+import { formatTokensLimit, ModelType, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
 import { Model } from "@/types/graphql";
 
 interface ModelsListProps {
@@ -11,6 +11,8 @@ interface ModelsListProps {
   onCreateChat: (model: Model) => void;
   onToggleModelStatus: (model: Model, isActive: boolean) => void;
   onOpenTestModal: (model: Model) => void;
+  onDeleteModel: (modelId: string) => void;
+  onEditModel?: (model: Model) => void;
   creatingChat: boolean;
 }
 
@@ -19,10 +21,14 @@ export const ModelsList: React.FC<ModelsListProps> = ({
   onCreateChat,
   onToggleModelStatus,
   onOpenTestModal,
+  onDeleteModel,
+  onEditModel,
   creatingChat,
 }) => {
   const user = useAppSelector(state => state.user.currentUser);
   const { providers } = useAppSelector(state => state.models);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [modelToDelete, setModelToDelete] = useState<Model | null>(null);
 
   // Filtering state
   const [providerFilter, setProviderFilter] = useState<string>();
@@ -68,6 +74,24 @@ export const ModelsList: React.FC<ModelsListProps> = ({
       return true;
     });
   }, [models, providerFilter, apiProviderFilter, activeFilter]);
+
+  const handleDeleteClick = (model: Model) => {
+    setModelToDelete(model);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (modelToDelete?.id) {
+      onDeleteModel(modelToDelete.id);
+    }
+    setDeleteConfirmOpen(false);
+    setModelToDelete(null);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+    setModelToDelete(null);
+  };
 
   return (
     <>
@@ -181,6 +205,29 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     Test Request
                   </Button>
                 </Group>
+
+                {model.isCustom && (
+                  <Group grow>
+                    {onEditModel && (
+                      <Button
+                        leftSection={<IconEdit size={16} />}
+                        variant="subtle"
+                        color="blue"
+                        onClick={() => onEditModel(model)}
+                      >
+                        Edit Model
+                      </Button>
+                    )}
+                    <Button
+                      leftSection={<IconTrash size={16} />}
+                      variant="subtle"
+                      color="red"
+                      onClick={() => handleDeleteClick(model)}
+                    >
+                      Delete Model
+                    </Button>
+                  </Group>
+                )}
               </Stack>
             </Card>
           </Grid.Col>
@@ -200,6 +247,17 @@ export const ModelsList: React.FC<ModelsListProps> = ({
           </Grid.Col>
         )}
       </Grid>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteConfirmOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Custom Model"
+        message={`Are you sure you want to delete the custom model "${modelToDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+      />
     </>
   );
 };

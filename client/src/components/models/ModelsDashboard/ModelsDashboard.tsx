@@ -2,28 +2,35 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Title, Text, Card, Group, Stack, Loader, Button, Modal, TextInput, Alert, Table } from "@mantine/core";
 import { DatePicker, DateStringValue } from "@mantine/dates";
-import { IconRefresh, IconAlertCircle } from "@tabler/icons-react";
+import { IconRefresh, IconAlertCircle, IconPlus } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { useMutation, useLazyQuery } from "@apollo/client";
-import { Model, setModelsAndProviders, updateModel } from "@/store/slices/modelSlice";
+import { setModelsAndProviders, updateModel, addModel, removeModel } from "@/store/slices/modelSlice";
 import {
   CREATE_CHAT_MUTATION,
   RELOAD_MODELS_MUTATION,
   UPDATE_MODEL_STATUS_MUTATION,
   TEST_MODEL_MUTATION,
   GET_COSTS_QUERY,
+  CREATE_CUSTOM_MODEL_MUTATION,
+  DELETE_MODEL_MUTATION,
+  UPDATE_CUSTOM_MODEL_MUTATION,
 } from "@/store/services/graphql.queries";
 import { notifications } from "@mantine/notifications";
 import { addChat } from "@/store/slices/chatSlice";
+import { GqlCostsInfo, Message, Model } from "@/types/graphql";
+import { CustomModelProtocol } from "@katechat/ui";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
-import { GqlCostsInfo, Message } from "@/types/graphql";
+import { CustomModelDialog, CustomModelFormData } from "../CustomModelDialog";
 
 export const ModelsDashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { models, providers, loading, error } = useAppSelector(state => state.models);
   const [testModalOpen, setTestModalOpen] = useState(false);
+  const [customModelDialogOpen, setCustomModelDialogOpen] = useState(false);
+  const [editingModel, setEditingModel] = useState<Model | undefined>();
   const [testText, setTestText] = useState("2+2=");
   const [testResult, setTestResult] = useState<Message>();
   const [testError, setTestError] = useState("");
@@ -173,6 +180,108 @@ export const ModelsDashboard: React.FC = () => {
     });
   };
 
+  // Create custom model mutation
+  const [createCustomModel, { loading: creatingCustomModel }] = useMutation(CREATE_CUSTOM_MODEL_MUTATION, {
+    onCompleted: data => {
+      if (data?.createCustomModel) {
+        dispatch(addModel(data.createCustomModel));
+        notifications.show({
+          title: "Success",
+          message: "Custom model created successfully",
+          color: "green",
+        });
+        setCustomModelDialogOpen(false);
+      }
+    },
+    onError: error => {
+      setCustomModelDialogOpen(true);
+    },
+  });
+
+  // Delete model mutation
+  const [deleteModel] = useMutation(DELETE_MODEL_MUTATION, {
+    onCompleted: data => {
+      if (data?.deleteModel) {
+        notifications.show({
+          title: "Success",
+          message: "Model deleted successfully",
+          color: "green",
+        });
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message || "Failed to delete model",
+        color: "red",
+      });
+    },
+  });
+
+  // Update custom model mutation
+  const [updateCustomModel, { loading: updatingCustomModel }] = useMutation(UPDATE_CUSTOM_MODEL_MUTATION, {
+    onCompleted: data => {
+      if (data?.updateCustomModel) {
+        dispatch(updateModel(data.updateCustomModel));
+        notifications.show({
+          title: "Success",
+          message: "Custom model updated successfully",
+          color: "green",
+        });
+        setCustomModelDialogOpen(false);
+        setEditingModel(undefined);
+      }
+    },
+    onError: error => {
+      setCustomModelDialogOpen(true);
+    },
+  });
+
+  // Handle open create dialog
+  const handleOpenCreateDialog = () => {
+    setEditingModel(undefined);
+    setCustomModelDialogOpen(true);
+  };
+
+  // Handle open edit dialog
+  const handleOpenEditDialog = (model: Model) => {
+    setEditingModel(model);
+    setCustomModelDialogOpen(true);
+  };
+
+  // Handle create/update custom model
+  const handleSubmitCustomModel = async (formData: CustomModelFormData) => {
+    if (editingModel) {
+      await updateCustomModel({
+        variables: {
+          input: {
+            id: editingModel.id,
+            ...formData,
+          },
+        },
+      });
+    } else {
+      await createCustomModel({
+        variables: {
+          input: formData,
+        },
+      });
+    }
+  };
+
+  // Handle delete model
+  const handleDeleteModel = async (modelId: string) => {
+    const result = await deleteModel({
+      variables: {
+        input: { modelId },
+      },
+    });
+
+    if (result.data?.deleteModel) {
+      dispatch(removeModel(modelId));
+    }
+  };
+
   // Handle opening test modal
   const handleOpenTestModal = (model: Model) => {
     setCurrentTestingModel(model);
@@ -295,9 +404,14 @@ export const ModelsDashboard: React.FC = () => {
     <>
       <Group justify="space-between" mb="xl">
         <Title order={2}>Available AI Models</Title>
-        <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
-          Reload
-        </Button>
+        <Group>
+          <Button leftSection={<IconPlus size={16} />} onClick={handleOpenCreateDialog} variant="filled">
+            Custom Model
+          </Button>
+          <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
+            Reload
+          </Button>
+        </Group>
       </Group>
 
       {/* Provider Information Cards */}
@@ -309,6 +423,8 @@ export const ModelsDashboard: React.FC = () => {
         onCreateChat={handleCreateChat}
         onToggleModelStatus={handleToggleModelStatus}
         onOpenTestModal={handleOpenTestModal}
+        onDeleteModel={handleDeleteModel}
+        onEditModel={handleOpenEditDialog}
         creatingChat={creatingChat}
       />
 
@@ -458,6 +574,30 @@ export const ModelsDashboard: React.FC = () => {
           )}
         </Stack>
       </Modal>
+
+      {/* Custom Model Dialog */}
+      <CustomModelDialog
+        isOpen={customModelDialogOpen}
+        onClose={() => setCustomModelDialogOpen(false)}
+        onSubmit={handleSubmitCustomModel}
+        isLoading={creatingCustomModel || updatingCustomModel}
+        initialData={
+          editingModel
+            ? {
+                name: editingModel.name,
+                modelId: editingModel.modelId,
+                description: editingModel.customSettings?.description || editingModel.description || "",
+                endpoint: editingModel.customSettings?.endpoint || "",
+                apiKey: editingModel.customSettings?.apiKey || "",
+                modelName: editingModel.customSettings?.modelName || "",
+                protocol: editingModel.customSettings?.protocol || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
+                streaming: editingModel.streaming !== undefined ? editingModel.streaming : true,
+                imageInput: editingModel.imageInput !== undefined ? editingModel.imageInput : false,
+              }
+            : undefined
+        }
+        mode={editingModel ? "edit" : "create"}
+      />
     </>
   );
 };
