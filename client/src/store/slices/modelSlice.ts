@@ -90,6 +90,14 @@ const modelSlice = createSlice({
   },
 });
 
-export const { setModels, setProviders, setModelsAndProviders, setModelLoading, setModelError, updateModel, addModel, removeModel } =
-  modelSlice.actions;
+export const {
+  setModels,
+  setProviders,
+  setModelsAndProviders,
+  setModelLoading,
+  setModelError,
+  updateModel,
+  addModel,
+  removeModel,
+} = modelSlice.actions;
 export default modelSlice.reducer;

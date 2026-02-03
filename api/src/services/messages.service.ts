@@ -993,13 +993,19 @@ export class MessagesService {
         };
 
         // always sync call
-        aiResponse = await this.aiService.completeChat(connection, request, [
-          this.messageRepository.create({
-            ...inputMessage,
-            jsonContent: undefined,
-            content: userInput, // only user input without images and so on
-          }),
-        ], undefined, model);
+        aiResponse = await this.aiService.completeChat(
+          connection,
+          request,
+          [
+            this.messageRepository.create({
+              ...inputMessage,
+              jsonContent: undefined,
+              content: userInput, // only user input without images and so on
+            }),
+          ],
+          undefined,
+          model
+        );
 
         break;
       } catch (error: unknown) {
