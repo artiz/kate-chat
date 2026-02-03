@@ -405,9 +405,11 @@ export const ModelsDashboard: React.FC = () => {
       <Group justify="space-between" mb="xl">
         <Title order={2}>Available AI Models</Title>
         <Group>
-          <Button leftSection={<IconPlus size={16} />} onClick={handleOpenCreateDialog} variant="filled">
-            Custom Model
-          </Button>
+          {providers.some(p => p.id === "CUSTOM_REST_API") && (
+            <Button leftSection={<IconPlus size={16} />} onClick={handleOpenCreateDialog} variant="filled">
+              Custom Model
+            </Button>
+          )}
           <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
             Reload
           </Button>
