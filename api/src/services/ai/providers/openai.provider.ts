@@ -281,7 +281,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
           embeddingModel || isImageGeneration
             ? []
             : apiType === "responses"
-              ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER]
+              ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER, ToolType.MCP]
               : searchAvailable
                 ? [ToolType.WEB_SEARCH]
                 : [];

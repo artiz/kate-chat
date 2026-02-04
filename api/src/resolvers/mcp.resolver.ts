@@ -173,7 +173,7 @@ export class MCPServerResolver extends BaseResolver {
         tools: tools.map(tool => ({
           name: tool.name,
           description: tool.description,
-          inputSchema: tool.inputSchema ? JSON.stringify(tool.inputSchema) : undefined,
+          inputSchema: tool.inputSchema ? JSON.stringify(tool.inputSchema, null, 2) : undefined,
         })),
       };
     } catch (error) {
