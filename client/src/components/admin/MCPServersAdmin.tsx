@@ -326,11 +326,7 @@ export const MCPServersAdmin: React.FC = () => {
   const handleDeleteServer = (server: MCPServer) => {
     modals.openConfirmModal({
       title: "Delete MCP Server",
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete "{server.name}"? This action cannot be undone.
-        </Text>
-      ),
+      children: <Text size="sm">Are you sure you want to delete "{server.name}"? This action cannot be undone.</Text>,
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: () => deleteServer({ variables: { input: { id: server.id } } }),
@@ -393,7 +389,13 @@ export const MCPServersAdmin: React.FC = () => {
         <Title order={2}>MCP Servers</Title>
         <Group>
           <Tooltip label="Refresh">
-            <ActionIcon variant="light" color="blue" size="lg" onClick={() => refetchServers()} loading={serversLoading}>
+            <ActionIcon
+              variant="light"
+              color="blue"
+              size="lg"
+              onClick={() => refetchServers()}
+              loading={serversLoading}
+            >
               <IconRefresh size="1.2rem" />
             </ActionIcon>
           </Tooltip>
@@ -649,7 +651,12 @@ export const MCPServersAdmin: React.FC = () => {
                     <IconTool size="1.2rem" />
                     <Text fw={500}>{tool.name}</Text>
                   </Group>
-                  <Button size="xs" variant="light" leftSection={<IconTestPipe size="1rem" />} onClick={() => handleTestTool(tool)}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    leftSection={<IconTestPipe size="1rem" />}
+                    onClick={() => handleTestTool(tool)}
+                  >
                     Test
                   </Button>
                 </Group>

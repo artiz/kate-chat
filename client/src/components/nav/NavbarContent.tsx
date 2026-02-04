@@ -13,6 +13,7 @@ import {
   Collapse,
   Tooltip,
   Flex,
+  Accordion,
 } from "@mantine/core";
 import {
   IconSettings,
@@ -32,6 +33,7 @@ import { ChatsNavSection } from "./ChatsNavSection";
 import { UserRole } from "@/store/slices/userSlice";
 
 import styles from "./NavbarContent.module.scss";
+import accordionClasses from "./MenuAccordion.module.scss";
 
 interface IProps {
   navbarToggle?: () => void;
@@ -42,9 +44,9 @@ interface IProps {
 const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onToggleExpand }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useLocalStorage<boolean>({
-    key: "advanced-settings-menu-open",
-    defaultValue: false,
+  const [menuOpen, setMenuOpen] = useLocalStorage<string>({
+    key: "settings-menu",
+    defaultValue: "",
   });
 
   // Get chats from Redux store
@@ -80,16 +82,6 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
     navigate(path);
   };
 
-  useEffect(() => {
-    if (chats.length === 0) {
-      setMenuOpen(true);
-    }
-  }, [chats]);
-
-  const toggleMenu = (): void => {
-    setMenuOpen(p => !p);
-  };
-
   return (
     <>
       <AppShell.Section>
@@ -123,13 +115,6 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
             </Group>
 
             <Group>
-              {expanded && (
-                <Tooltip label="Advanced Settings">
-                  <ActionIcon variant="subtle" onClick={toggleMenu} size="lg">
-                    {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
-                  </ActionIcon>
-                </Tooltip>
-              )}
               {onToggleExpand && (
                 <Tooltip label={expanded ? "Collapse Sidebar" : "Expand Sidebar"}>
                   <ActionIcon variant="subtle" onClick={onToggleExpand} size="lg" color="gray">
@@ -139,27 +124,42 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
               )}
             </Group>
           </Flex>
+          <Divider m="0" p="0" />
 
-          <Collapse in={menuOpen || !expanded}>
-            <Divider m="0" />
+          <Stack className={styles.navLinks}>
+            <Accordion
+              multiple
+              p="0"
+              variant="default"
+              chevronSize="lg"
+              classNames={accordionClasses}
+              value={menuOpen?.split(",")}
+              onChange={v => setMenuOpen(v ? v.join(",") : "")}
+            >
+              <Accordion.Item key="settings" value="settings">
+                <Accordion.Control icon={<IconSettings size="16" />}>{expanded ? "Settings" : null}</Accordion.Control>
+                <Accordion.Panel>
+                  <Tooltip label="Models" position="right" disabled={expanded}>
+                    <NavLink
+                      label={expanded ? "Models" : null}
+                      leftSection={<IconRobot size={16} />}
+                      active={location.pathname === "/models"}
+                      onClick={handleSectionClick("/models")}
+                    />
+                  </Tooltip>
+                  <Tooltip label="Settings" position="right" disabled={expanded}>
+                    <NavLink
+                      label={expanded ? "Settings" : null}
+                      leftSection={<IconSettings size={16} />}
+                      active={location.pathname === "/settings"}
+                      onClick={handleSectionClick("/settings")}
+                    />
+                  </Tooltip>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
 
             <Stack gap="0" className={styles.navLinks} align={!expanded ? "center" : "stretch"}>
-              <Tooltip label="Models" position="right" disabled={expanded}>
-                <NavLink
-                  label={expanded ? "Models" : null}
-                  leftSection={<IconRobot size={16} />}
-                  active={location.pathname === "/models"}
-                  onClick={handleSectionClick("/models")}
-                />
-              </Tooltip>
-              <Tooltip label="Settings" position="right" disabled={expanded}>
-                <NavLink
-                  label={expanded ? "Settings" : null}
-                  leftSection={<IconSettings size={16} />}
-                  active={location.pathname === "/settings"}
-                  onClick={handleSectionClick("/settings")}
-                />
-              </Tooltip>
               <Tooltip label="Library" position="right" disabled={expanded}>
                 <NavLink
                   label={expanded ? "Library" : null}
@@ -192,7 +192,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
             </Stack>
 
             <Divider mb="0" />
-          </Collapse>
+          </Stack>
         </Stack>
       </AppShell.Section>
       <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12" p="0">

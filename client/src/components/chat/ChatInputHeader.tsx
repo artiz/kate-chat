@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
-import { IconRobot, IconSettings, IconWorldSearch, IconCloudCode, IconPlugConnected, IconChevronDown } from "@tabler/icons-react";
+import {
+  IconRobot,
+  IconSettings,
+  IconWorldSearch,
+  IconCloudCode,
+  IconPlugConnected,
+  IconChevronDown,
+} from "@tabler/icons-react";
 import { gql, useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
@@ -56,7 +63,8 @@ export const ChatInputHeader = ({
     skip: !selectedModel?.tools?.includes(ToolType.MCP),
   });
 
-  const mcpServers: MCPServerInfo[] = mcpServersData?.getMCPServers?.servers?.filter((s: MCPServerInfo) => s.isActive) || [];
+  const mcpServers: MCPServerInfo[] =
+    mcpServersData?.getMCPServers?.servers?.filter((s: MCPServerInfo) => s.isActive) || [];
 
   useEffect(() => {
     if (chatTools) {
@@ -89,19 +97,19 @@ export const ChatInputHeader = ({
     }
 
     setSelectedTools(tools);
-    
+
     // Build tools array, including MCP servers
     const toolsArray: { type: ToolType; name: string }[] = Array.from(tools)
       .filter(t => t !== ToolType.MCP) // MCP is handled separately
       .map(type => ({ type, name: type as string }));
-    
+
     // Add MCP tools
     if (tools.has(ToolType.MCP)) {
       selectedMcpServers.forEach(serverName => {
         toolsArray.push({ type: ToolType.MCP, name: serverName });
       });
     }
-    
+
     onUpdateChat(chatId, { tools: toolsArray });
   };
 
