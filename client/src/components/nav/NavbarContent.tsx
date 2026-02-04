@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useLocalStorage } from "@mantine/hooks";
 import {
@@ -10,7 +10,6 @@ import {
   AppShell,
   Group,
   ActionIcon,
-  Collapse,
   Tooltip,
   Flex,
   Accordion,
@@ -24,9 +23,15 @@ import {
   IconFile,
   IconFileCv,
   IconMessagePlus,
-  IconSettingsFilled,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
+  IconBrain,
+  IconPlugConnected,
+  IconWifi,
+  IconUser,
+  IconKey,
+  IconUsers,
+  IconBooks,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -53,6 +58,10 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
   const { chats } = useAppSelector(state => state.chats);
   const { providers } = useAppSelector(state => state.models);
   const { appConfig, currentUser } = useAppSelector(state => state.user);
+
+  const isLocalUser = useMemo(() => {
+    return !currentUser?.googleId && !currentUser?.githubId && !currentUser?.microsoftId;
+  }, [currentUser]);
 
   const noActiveProviders = useMemo(() => {
     return providers.length === 0 || !providers.some(provider => provider.isConnected);
@@ -133,9 +142,10 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
               variant="default"
               chevronSize="lg"
               classNames={accordionClasses}
-              value={menuOpen?.split(",")}
+              value={menuOpen?.split(",").filter(Boolean)}
               onChange={v => setMenuOpen(v ? v.join(",") : "")}
             >
+              {/* Settings Section */}
               <Accordion.Item key="settings" value="settings">
                 <Accordion.Control icon={<IconSettings size="16" />}>{expanded ? "Settings" : null}</Accordion.Control>
                 <Accordion.Panel>
@@ -147,49 +157,95 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                       onClick={handleSectionClick("/models")}
                     />
                   </Tooltip>
-                  <Tooltip label="Settings" position="right" disabled={expanded}>
+                  <Tooltip label="AI" position="right" disabled={expanded}>
                     <NavLink
-                      label={expanded ? "Settings" : null}
-                      leftSection={<IconSettings size={16} />}
-                      active={location.pathname === "/settings"}
-                      onClick={handleSectionClick("/settings")}
+                      label={expanded ? "AI" : null}
+                      leftSection={<IconBrain size={16} />}
+                      active={location.pathname === "/ai-settings"}
+                      onClick={handleSectionClick("/ai-settings")}
+                    />
+                  </Tooltip>
+                  {currentUser?.role === UserRole.ADMIN && (
+                    <Tooltip label="MCP Servers" position="right" disabled={expanded}>
+                      <NavLink
+                        label={expanded ? "MCP Servers" : null}
+                        leftSection={<IconPlugConnected size={16} />}
+                        active={location.pathname === "/mcp-servers"}
+                        onClick={handleSectionClick("/mcp-servers")}
+                      />
+                    </Tooltip>
+                  )}
+                  <Tooltip label="Connectivity" position="right" disabled={expanded}>
+                    <NavLink
+                      label={expanded ? "Connectivity" : null}
+                      leftSection={<IconWifi size={16} />}
+                      active={location.pathname === "/connectivity"}
+                      onClick={handleSectionClick("/connectivity")}
                     />
                   </Tooltip>
                 </Accordion.Panel>
               </Accordion.Item>
-            </Accordion>
 
-            <Stack gap="0" className={styles.navLinks} align={!expanded ? "center" : "stretch"}>
-              <Tooltip label="Library" position="right" disabled={expanded}>
-                <NavLink
-                  label={expanded ? "Library" : null}
-                  leftSection={<IconPhoto size={16} />}
-                  active={location.pathname === "/library"}
-                  onClick={handleSectionClick("/library")}
-                />
-              </Tooltip>
-              {appConfig?.ragEnabled && (
-                <Tooltip label="Documents" position="right" disabled={expanded}>
-                  <NavLink
-                    label={expanded ? "Documents" : null}
-                    leftSection={<IconFile size={16} />}
-                    active={location.pathname === "/documents"}
-                    color="blue"
-                    onClick={handleSectionClick("/documents")}
-                  />
-                </Tooltip>
-              )}
-              {currentUser?.role === UserRole.ADMIN && (
-                <Tooltip label="Admin" position="right" disabled={expanded}>
-                  <NavLink
-                    label={expanded ? "Admin" : null}
-                    leftSection={<IconShield size={16} />}
-                    active={location.pathname === "/admin"}
-                    onClick={handleSectionClick("/admin")}
-                  />
-                </Tooltip>
-              )}
-            </Stack>
+              {/* Admin Section */}
+              <Accordion.Item key="admin" value="admin">
+                <Accordion.Control icon={<IconShield size="16" />}>{expanded ? "Admin" : null}</Accordion.Control>
+                <Accordion.Panel>
+                  <Tooltip label="Profile" position="right" disabled={expanded}>
+                    <NavLink
+                      label={expanded ? "Profile" : null}
+                      leftSection={<IconUser size={16} />}
+                      active={location.pathname === "/profile"}
+                      onClick={handleSectionClick("/profile")}
+                    />
+                  </Tooltip>
+                  {isLocalUser && (
+                    <Tooltip label="Password" position="right" disabled={expanded}>
+                      <NavLink
+                        label={expanded ? "Password" : null}
+                        leftSection={<IconKey size={16} />}
+                        active={location.pathname === "/password"}
+                        onClick={handleSectionClick("/password")}
+                      />
+                    </Tooltip>
+                  )}
+                  {currentUser?.role === UserRole.ADMIN && (
+                    <Tooltip label="Users" position="right" disabled={expanded}>
+                      <NavLink
+                        label={expanded ? "Users" : null}
+                        leftSection={<IconUsers size={16} />}
+                        active={location.pathname === "/users"}
+                        onClick={handleSectionClick("/users")}
+                      />
+                    </Tooltip>
+                  )}
+                </Accordion.Panel>
+              </Accordion.Item>
+
+              {/* Library Section */}
+              <Accordion.Item key="library" value="library">
+                <Accordion.Control icon={<IconBooks size="16" />}>{expanded ? "Library" : null}</Accordion.Control>
+                <Accordion.Panel>
+                  <Tooltip label="Media" position="right" disabled={expanded}>
+                    <NavLink
+                      label={expanded ? "Media" : null}
+                      leftSection={<IconPhoto size={16} />}
+                      active={location.pathname === "/library"}
+                      onClick={handleSectionClick("/library")}
+                    />
+                  </Tooltip>
+                  {appConfig?.ragEnabled && (
+                    <Tooltip label="Documents" position="right" disabled={expanded}>
+                      <NavLink
+                        label={expanded ? "Documents" : null}
+                        leftSection={<IconFile size={16} />}
+                        active={location.pathname === "/documents"}
+                        onClick={handleSectionClick("/documents")}
+                      />
+                    </Tooltip>
+                  )}
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
 
             <Divider mb="0" />
           </Stack>
