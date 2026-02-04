@@ -11,6 +11,13 @@
   font-weight: 600 !important;
   font-size: 80%;
 
-  padding: 0.75rem 0 !important;
+  padding: 0.5rem 0 !important;
   margin: 0 !important;
+}
+
+.header {
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-xs) var(--mantine-spacing-xs);
+  font-weight: 600 !important;
+  font-size: 80%;
+  color: var(--mantine-color-dimmed);
 }
