@@ -20,14 +20,18 @@ import { ChatList } from "@/pages/ChatList";
 import { Chat } from "@/pages/Chat";
 import { CreateChat } from "@/pages/CreateChat";
 import { Models } from "@/pages/Models";
-import { Settings } from "@/pages/Settings";
+import { AISettings } from "@/pages/AISettings";
+import { Connectivity } from "@/pages/Connectivity";
+import { MCPServers } from "@/pages/MCPServers";
+import { Profile } from "@/pages/Profile";
+import { Password } from "@/pages/Password";
+import { Users } from "@/pages/Users";
 import { Library } from "@/pages/Library";
-import { Admin } from "@/pages/Admin";
+import { Documents } from "@/pages/Documents";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
-import { Documents } from "@/pages/Documents";
 import { ChatDocuments } from "@/pages/ChatDocuments";
 
 // PrivateRoute component for protected routes
@@ -154,16 +158,18 @@ const AppContent: React.FC = () => {
               <Route path="chat/:id" element={<Chat />} />
               <Route path="chat/:id/documents" element={<ChatDocuments />} />
               <Route path="chat/new" element={<CreateChat />} />
+              {/* Settings section */}
               <Route path="models" element={<Models />} />
-              <Route path="settings" element={<Settings onReloadAppData={refetchInitialData} />} />
+              <Route path="ai-settings" element={<AISettings onReloadAppData={refetchInitialData} />} />
+              <Route path="connectivity" element={<Connectivity onReloadAppData={refetchInitialData} />} />
+              <Route path="mcp-servers" element={<AdminRoute element={<MCPServers />} />} />
+              {/* Admin section */}
+              <Route path="profile" element={<Profile onReloadAppData={refetchInitialData} />} />
+              <Route path="password" element={<Password />} />
+              <Route path="users" element={<AdminRoute element={<Users />} />} />
+              {/* Library section */}
               <Route path="library" element={<Library />} />
               <Route path="documents" element={<Documents />} />
-              <Route path="admin" element={<AdminRoute element={<Admin />} />} />
-            </Route>
-
-            {/* Admin routes */}
-            <Route path="/" element={<AdminRoute element={<MainLayout />} />}>
-              <Route path="admin" element={<Admin />} />
             </Route>
 
             {/* Fallback route */}
