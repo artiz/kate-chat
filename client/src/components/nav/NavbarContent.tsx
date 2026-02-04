@@ -13,6 +13,8 @@ import {
   Tooltip,
   Flex,
   Accordion,
+  Text,
+  Box,
 } from "@mantine/core";
 import {
   IconSettings,
@@ -147,7 +149,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
             >
               {/* Settings Section */}
               <Accordion.Item key="settings" value="settings">
-                <Accordion.Control icon={<IconSettings size="16" />}>{expanded ? "Settings" : null}</Accordion.Control>
+                <Accordion.Control icon={<IconSettings />}>{expanded ? "Settings" : null}</Accordion.Control>
                 <Accordion.Panel>
                   <Tooltip label="Models" position="right" disabled={expanded}>
                     <NavLink
@@ -183,13 +185,14 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                       onClick={handleSectionClick("/connectivity")}
                     />
                   </Tooltip>
-                </Accordion.Panel>
-              </Accordion.Item>
 
-              {/* Admin Section */}
-              <Accordion.Item key="admin" value="admin">
-                <Accordion.Control icon={<IconShield size="16" />}>{expanded ? "Admin" : null}</Accordion.Control>
-                <Accordion.Panel>
+                  {expanded && (
+                    <Group className={accordionClasses.header}>
+                      <IconShield size="16" />
+                      {expanded && <Box>Admin</Box>}
+                    </Group>
+                  )}
+
                   <Tooltip label="Profile" position="right" disabled={expanded}>
                     <NavLink
                       label={expanded ? "Profile" : null}
@@ -218,13 +221,14 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                       />
                     </Tooltip>
                   )}
-                </Accordion.Panel>
-              </Accordion.Item>
 
-              {/* Library Section */}
-              <Accordion.Item key="library" value="library">
-                <Accordion.Control icon={<IconBooks size="16" />}>{expanded ? "Library" : null}</Accordion.Control>
-                <Accordion.Panel>
+                  {expanded && (
+                    <Group className={accordionClasses.header}>
+                      <IconBooks size="16" />
+                      {expanded && <Box>Library</Box>}
+                    </Group>
+                  )}
+
                   <Tooltip label="Media" position="right" disabled={expanded}>
                     <NavLink
                       label={expanded ? "Media" : null}
@@ -246,8 +250,6 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                 </Accordion.Panel>
               </Accordion.Item>
             </Accordion>
-
-            <Divider mb="0" />
           </Stack>
         </Stack>
       </AppShell.Section>

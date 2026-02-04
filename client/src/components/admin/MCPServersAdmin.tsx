@@ -386,7 +386,6 @@ export const MCPServersAdmin: React.FC = () => {
   return (
     <Stack gap="xl">
       <Group justify="space-between" align="center">
-        <Title order={2}>MCP Servers</Title>
         <Group>
           <Tooltip label="Refresh">
             <ActionIcon
@@ -467,7 +466,7 @@ export const MCPServersAdmin: React.FC = () => {
                   <Badge color={server.isActive ? "green" : "red"}>{server.isActive ? "Active" : "Inactive"}</Badge>
                 </Table.Td>
                 <Table.Td>
-                  <Group gap="xs">
+                  <ActionIcon.Group>
                     <Tooltip label="View Tools">
                       <ActionIcon variant="light" color="blue" onClick={() => handleViewTools(server)}>
                         <IconTool size="1rem" />
@@ -483,7 +482,7 @@ export const MCPServersAdmin: React.FC = () => {
                         <IconTrash size="1rem" />
                       </ActionIcon>
                     </Tooltip>
-                  </Group>
+                  </ActionIcon.Group>
                 </Table.Td>
               </Table.Tr>
             ))}

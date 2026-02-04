@@ -131,8 +131,8 @@ export const MainLayout: React.FC = () => {
       <AppShell.Navbar p="0">
         <NavbarContent
           navbarToggle={isMobile ? toggle : undefined}
-          expanded={navbarExpanded}
-          onToggleExpand={() => setNavbarExpanded(v => !v)}
+          expanded={isMobile ? true : navbarExpanded}
+          onToggleExpand={isMobile ? undefined : () => setNavbarExpanded(v => !v)}
         />
       </AppShell.Navbar>
 
