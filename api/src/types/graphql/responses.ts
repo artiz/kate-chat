@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID } from "type-graphql";
-import { User, Chat, Message, Model, Document } from "../../entities";
+import { User, Chat, Message, Model, Document, MCPServer } from "../../entities";
 import { DocumentStatus, MessageRole, MessageType } from "../../types/ai.types";
 import { ApiProvider } from "@/config/ai/common";
 
@@ -394,4 +394,56 @@ export class DocumentsResponse {
 
   @Field()
   hasMore: boolean;
+}
+
+// MCP Server Responses
+@ObjectType()
+export class MCPServerResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => MCPServer, { nullable: true })
+  server?: MCPServer;
+}
+
+@ObjectType()
+export class MCPServersListResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => [MCPServer], { nullable: true })
+  servers?: MCPServer[];
+
+  @Field({ nullable: true })
+  total?: number;
+}
+
+@ObjectType()
+export class MCPToolInfoResponse {
+  @Field()
+  name: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field({ nullable: true })
+  inputSchema?: string;
+}
+
+@ObjectType()
+export class MCPToolsListResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => [MCPToolInfoResponse], { nullable: true })
+  tools?: MCPToolInfoResponse[];
+}
+
+@ObjectType()
+export class MCPToolTestResponse {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field({ nullable: true })
+  result?: string;
 }
