@@ -9,6 +9,7 @@ export * from "./document.resolver";
 export * from "./message.resolver";
 export * from "./user.resolver";
 export * from "./model.resolver";
+export * from "./mcp.resolver";
 
 export type GraphQLContext = {
   tokenPayload?: TokenPayload;
