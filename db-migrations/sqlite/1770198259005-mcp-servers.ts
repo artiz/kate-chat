@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class McpServers1770198259005 implements MigrationInterface {
-  name = "McpServers1770198259005";
+export class MCPServers1770198259005 implements MigrationInterface {
+  name = "MCPServers1770198259005";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

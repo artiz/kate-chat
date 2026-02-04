@@ -34,6 +34,7 @@ import {
 } from "@tabler/icons-react";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 
 // GraphQL queries and mutations
 const GET_MCP_SERVERS = gql`
@@ -323,9 +324,17 @@ export const MCPServersAdmin: React.FC = () => {
   };
 
   const handleDeleteServer = (server: MCPServer) => {
-    if (window.confirm(`Are you sure you want to delete "${server.name}"?`)) {
-      deleteServer({ variables: { input: { id: server.id } } });
-    }
+    modals.openConfirmModal({
+      title: "Delete MCP Server",
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete "{server.name}"? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: "Delete", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: () => deleteServer({ variables: { input: { id: server.id } } }),
+    });
   };
 
   const handleEditServer = (server: MCPServer) => {
