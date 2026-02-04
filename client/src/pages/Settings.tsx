@@ -1,10 +1,19 @@
 import React from "react";
-import { UnifiedSettings } from "@/components/settings";
+import { Container, Title } from "@mantine/core";
+import { ApplicationSettings } from "@/components/settings";
 
 interface IProps {
   onReloadAppData?: () => void;
 }
 
 export const Settings = ({ onReloadAppData }: IProps) => {
-  return <UnifiedSettings onReloadAppData={onReloadAppData} />;
+  return (
+    <Container size="lg" py="xl">
+      <Title order={2} mb="lg">
+        Settings
+      </Title>
+
+      <ApplicationSettings onReloadAppData={onReloadAppData} />
+    </Container>
+  );
 };

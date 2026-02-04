@@ -16,7 +16,11 @@ import {
 } from "@mantine/core";
 import {
   IconSettings,
+  IconRobot,
+  IconPhoto,
+  IconShield,
   IconBrandGithub,
+  IconFile,
   IconFileCv,
   IconMessagePlus,
   IconSettingsFilled,
@@ -25,6 +29,7 @@ import {
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
+import { UserRole } from "@/store/slices/userSlice";
 
 import styles from "./NavbarContent.module.scss";
 
@@ -45,7 +50,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
   // Get chats from Redux store
   const { chats } = useAppSelector(state => state.chats);
   const { providers } = useAppSelector(state => state.models);
-  const { appConfig } = useAppSelector(state => state.user);
+  const { appConfig, currentUser } = useAppSelector(state => state.user);
 
   const noActiveProviders = useMemo(() => {
     return providers.length === 0 || !providers.some(provider => provider.isConnected);
@@ -69,10 +74,10 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
     }
   }, [pristineChat, navigate, navbarToggle]);
 
-  // Handle navigation to settings page
-  const handleSettingsClick = () => {
+  // Handle navigation to models page
+  const handleSectionClick = (path: string) => () => {
     navbarToggle?.();
-    navigate("/settings");
+    navigate(path);
   };
 
   useEffect(() => {
@@ -119,7 +124,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
             <Group>
               {expanded && (
-                <Tooltip label="Settings">
+                <Tooltip label="Advanced Settings">
                   <ActionIcon variant="subtle" onClick={toggleMenu} size="lg">
                     {menuOpen ? <IconSettingsFilled size={24} /> : <IconSettings size={24} />}
                   </ActionIcon>
@@ -139,14 +144,51 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
             <Divider m="0" />
 
             <Stack gap="0" className={styles.navLinks} align={!expanded ? "center" : "stretch"}>
+              <Tooltip label="Models" position="right" disabled={expanded}>
+                <NavLink
+                  label={expanded ? "Models" : null}
+                  leftSection={<IconRobot size={16} />}
+                  active={location.pathname === "/models"}
+                  onClick={handleSectionClick("/models")}
+                />
+              </Tooltip>
               <Tooltip label="Settings" position="right" disabled={expanded}>
                 <NavLink
                   label={expanded ? "Settings" : null}
                   leftSection={<IconSettings size={16} />}
                   active={location.pathname === "/settings"}
-                  onClick={handleSettingsClick}
+                  onClick={handleSectionClick("/settings")}
                 />
               </Tooltip>
+              <Tooltip label="Library" position="right" disabled={expanded}>
+                <NavLink
+                  label={expanded ? "Library" : null}
+                  leftSection={<IconPhoto size={16} />}
+                  active={location.pathname === "/library"}
+                  onClick={handleSectionClick("/library")}
+                />
+              </Tooltip>
+              {appConfig?.ragEnabled && (
+                <Tooltip label="Documents" position="right" disabled={expanded}>
+                  <NavLink
+                    label={expanded ? "Documents" : null}
+                    leftSection={<IconFile size={16} />}
+                    active={location.pathname === "/documents"}
+                    color="blue"
+                    onClick={handleSectionClick("/documents")}
+                  />
+                </Tooltip>
+              )}
+              {currentUser?.role === UserRole.ADMIN && (
+                <Tooltip label="Admin" position="right" disabled={expanded}>
+                  <NavLink
+                    label={expanded ? "Admin" : null}
+                    leftSection={<IconShield size={16} />}
+                    active={location.pathname === "/admin"}
+                    onClick={handleSectionClick("/admin")}
+                  />
+                </Tooltip>
+              )}
             </Stack>
 
             <Divider mb="0" />
