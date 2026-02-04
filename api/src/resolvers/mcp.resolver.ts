@@ -123,10 +123,7 @@ export class MCPServerResolver extends BaseResolver {
 
   @Mutation(() => Boolean)
   @Authorized(UserRole.ADMIN)
-  async deleteMCPServer(
-    @Arg("input") input: DeleteMCPServerInput,
-    @Ctx() context: GraphQLContext
-  ): Promise<boolean> {
+  async deleteMCPServer(@Arg("input") input: DeleteMCPServerInput, @Ctx() context: GraphQLContext): Promise<boolean> {
     const user = await this.validateContextUser(context);
 
     try {
@@ -187,7 +184,10 @@ export class MCPServerResolver extends BaseResolver {
 
   @Mutation(() => MCPToolTestResponse)
   @Authorized(UserRole.ADMIN)
-  async testMCPTool(@Arg("input") input: TestMCPToolInput, @Ctx() context: GraphQLContext): Promise<MCPToolTestResponse> {
+  async testMCPTool(
+    @Arg("input") input: TestMCPToolInput,
+    @Ctx() context: GraphQLContext
+  ): Promise<MCPToolTestResponse> {
     const user = await this.validateContextUser(context);
 
     try {
