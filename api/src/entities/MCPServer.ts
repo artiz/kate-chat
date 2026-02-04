@@ -8,10 +8,10 @@ import { IsPublicUrl } from "../utils/validators";
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
 export enum MCPAuthType {
-  NONE = "none",
-  API_KEY = "api_key",
-  BEARER = "bearer",
-  OAUTH2 = "oauth2",
+  NONE = "NONE",
+  API_KEY = "API_KEY",
+  BEARER = "BEARER",
+  OAUTH2 = "OAUTH2",
 }
 
 registerEnumType(MCPAuthType, {

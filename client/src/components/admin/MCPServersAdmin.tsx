@@ -19,8 +19,6 @@ import {
   Textarea,
   Select,
   Switch,
-  Code,
-  ScrollArea,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -29,12 +27,12 @@ import {
   IconTrash,
   IconEdit,
   IconPlugConnected,
-  IconTestPipe,
   IconTool,
 } from "@tabler/icons-react";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
+import { MCPToolsDialog } from "./MCPToolsDialog";
 
 // GraphQL queries and mutations
 const GET_MCP_SERVERS = gql`
@@ -99,28 +97,6 @@ const DELETE_MCP_SERVER = gql`
   }
 `;
 
-const GET_MCP_SERVER_TOOLS = gql`
-  query GetMCPServerTools($serverId: String!) {
-    getMCPServerTools(serverId: $serverId) {
-      tools {
-        name
-        description
-        inputSchema
-      }
-      error
-    }
-  }
-`;
-
-const TEST_MCP_TOOL = gql`
-  mutation TestMCPTool($input: TestMCPToolInput!) {
-    testMCPTool(input: $input) {
-      result
-      error
-    }
-  }
-`;
-
 interface MCPServer {
   id: string;
   name: string;
@@ -137,27 +113,17 @@ interface MCPServer {
   updatedAt: string;
 }
 
-interface MCPTool {
-  name: string;
-  description?: string;
-  inputSchema?: string;
-}
-
 const AUTH_TYPES = [
-  { value: "none", label: "No Authentication" },
-  { value: "api_key", label: "API Key" },
-  { value: "bearer", label: "Bearer Token" },
+  { value: "NONE", label: "No Authentication" },
+  { value: "API_KEY", label: "API Key" },
+  { value: "BEARER", label: "Bearer Token" },
 ];
 
 export const MCPServersAdmin: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
-  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null);
-  const [selectedTool, setSelectedTool] = useState<MCPTool | null>(null);
-  const [testArgs, setTestArgs] = useState("{}");
-  const [testResult, setTestResult] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -177,16 +143,6 @@ export const MCPServersAdmin: React.FC = () => {
     error: serversError,
     refetch: refetchServers,
   } = useQuery(GET_MCP_SERVERS, {
-    errorPolicy: "all",
-  });
-
-  const {
-    data: toolsData,
-    loading: toolsLoading,
-    refetch: refetchTools,
-  } = useQuery(GET_MCP_SERVER_TOOLS, {
-    variables: { serverId: selectedServer?.id || "" },
-    skip: !selectedServer?.id || !isToolsModalOpen,
     errorPolicy: "all",
   });
 
@@ -251,19 +207,6 @@ export const MCPServersAdmin: React.FC = () => {
     },
   });
 
-  const [testTool, { loading: testLoading }] = useMutation(TEST_MCP_TOOL, {
-    onCompleted: data => {
-      if (data.testMCPTool.error) {
-        setTestResult(`Error: ${data.testMCPTool.error}`);
-      } else {
-        setTestResult(data.testMCPTool.result);
-      }
-    },
-    onError: error => {
-      setTestResult(`Error: ${error.message}`);
-    },
-  });
-
   const resetForm = () => {
     setFormData({
       name: "",
@@ -278,10 +221,10 @@ export const MCPServersAdmin: React.FC = () => {
 
   const handleAddServer = () => {
     const authConfig: Record<string, string> = {};
-    if (formData.authType === "api_key") {
+    if (formData.authType === "API_KEY") {
       authConfig.apiKey = formData.apiKey;
       authConfig.headerName = formData.headerName || "X-API-Key";
-    } else if (formData.authType === "bearer") {
+    } else if (formData.authType === "BEARER") {
       authConfig.bearerToken = formData.bearerToken;
     }
 
@@ -302,10 +245,10 @@ export const MCPServersAdmin: React.FC = () => {
     if (!selectedServer) return;
 
     const authConfig: Record<string, string> = {};
-    if (formData.authType === "api_key") {
+    if (formData.authType === "API_KEY") {
       authConfig.apiKey = formData.apiKey;
       authConfig.headerName = formData.headerName || "X-API-Key";
-    } else if (formData.authType === "bearer") {
+    } else if (formData.authType === "BEARER") {
       authConfig.bearerToken = formData.bearerToken;
     }
 
@@ -350,27 +293,6 @@ export const MCPServersAdmin: React.FC = () => {
   const handleViewTools = (server: MCPServer) => {
     setSelectedServer(server);
     setIsToolsModalOpen(true);
-  };
-
-  const handleTestTool = (tool: MCPTool) => {
-    setSelectedTool(tool);
-    setTestArgs("{}");
-    setTestResult(null);
-    setIsTestModalOpen(true);
-  };
-
-  const handleRunTest = () => {
-    if (!selectedServer || !selectedTool) return;
-
-    testTool({
-      variables: {
-        input: {
-          serverId: selectedServer.id,
-          toolName: selectedTool.name,
-          argsJson: testArgs,
-        },
-      },
-    });
   };
 
   const servers: MCPServer[] = serversData?.getMCPServers?.servers || [];
@@ -517,9 +439,9 @@ export const MCPServersAdmin: React.FC = () => {
             label="Authentication Type"
             data={AUTH_TYPES}
             value={formData.authType}
-            onChange={v => setFormData({ ...formData, authType: v || "none" })}
+            onChange={v => setFormData({ ...formData, authType: v || "NONE" })}
           />
-          {formData.authType === "api_key" && (
+          {formData.authType === "API_KEY" && (
             <>
               <TextInput
                 label="API Key"
@@ -536,7 +458,7 @@ export const MCPServersAdmin: React.FC = () => {
               />
             </>
           )}
-          {formData.authType === "bearer" && (
+          {formData.authType === "BEARER" && (
             <TextInput
               label="Bearer Token"
               placeholder="Your bearer token"
@@ -583,9 +505,9 @@ export const MCPServersAdmin: React.FC = () => {
             label="Authentication Type"
             data={AUTH_TYPES}
             value={formData.authType}
-            onChange={v => setFormData({ ...formData, authType: v || "none" })}
+            onChange={v => setFormData({ ...formData, authType: v || "NONE" })}
           />
-          {formData.authType === "api_key" && (
+          {formData.authType === "API_KEY" && (
             <>
               <TextInput
                 label="API Key"
@@ -602,7 +524,7 @@ export const MCPServersAdmin: React.FC = () => {
               />
             </>
           )}
-          {formData.authType === "bearer" && (
+          {formData.authType === "BEARER" && (
             <TextInput
               label="Bearer Token"
               placeholder="Leave blank to keep existing"
@@ -622,97 +544,8 @@ export const MCPServersAdmin: React.FC = () => {
         </Stack>
       </Modal>
 
-      {/* Tools Modal */}
-      <Modal
-        opened={isToolsModalOpen}
-        onClose={() => setIsToolsModalOpen(false)}
-        title={`Tools - ${selectedServer?.name || ""}`}
-        size="lg"
-      >
-        {toolsLoading ? (
-          <Group justify="center" p="xl">
-            <Loader />
-          </Group>
-        ) : toolsData?.getMCPServerTools?.error ? (
-          <Alert icon={<IconAlertCircle size="1rem" />} color="red">
-            {toolsData.getMCPServerTools.error}
-          </Alert>
-        ) : !toolsData?.getMCPServerTools?.tools?.length ? (
-          <Text c="dimmed" ta="center" p="xl">
-            No tools available from this server
-          </Text>
-        ) : (
-          <Stack gap="md">
-            {toolsData.getMCPServerTools.tools.map((tool: MCPTool) => (
-              <Paper key={tool.name} withBorder p="md">
-                <Group justify="space-between" mb="xs">
-                  <Group>
-                    <IconTool size="1.2rem" />
-                    <Text fw={500}>{tool.name}</Text>
-                  </Group>
-                  <Button
-                    size="xs"
-                    variant="light"
-                    leftSection={<IconTestPipe size="1rem" />}
-                    onClick={() => handleTestTool(tool)}
-                  >
-                    Test
-                  </Button>
-                </Group>
-                {tool.description && (
-                  <Text size="sm" c="dimmed" mb="xs">
-                    {tool.description}
-                  </Text>
-                )}
-                {tool.inputSchema && (
-                  <ScrollArea h={150}>
-                    <Code block style={{ fontSize: "0.75rem" }}>
-                      {tool.inputSchema}
-                    </Code>
-                  </ScrollArea>
-                )}
-              </Paper>
-            ))}
-          </Stack>
-        )}
-      </Modal>
-
-      {/* Test Tool Modal */}
-      <Modal
-        opened={isTestModalOpen}
-        onClose={() => setIsTestModalOpen(false)}
-        title={`Test Tool - ${selectedTool?.name || ""}`}
-        size="lg"
-      >
-        <Stack gap="md">
-          {selectedTool?.description && (
-            <Text size="sm" c="dimmed">
-              {selectedTool.description}
-            </Text>
-          )}
-          <Textarea
-            label="Arguments (JSON)"
-            placeholder="{}"
-            minRows={5}
-            value={testArgs}
-            onChange={e => setTestArgs(e.target.value)}
-            styles={{ input: { fontFamily: "monospace" } }}
-          />
-          <Button onClick={handleRunTest} loading={testLoading} leftSection={<IconTestPipe size="1rem" />}>
-            Run Test
-          </Button>
-          {testResult && (
-            <>
-              <Text fw={500}>Result:</Text>
-              <ScrollArea h={200}>
-                <Code block style={{ whiteSpace: "pre-wrap" }}>
-                  {testResult}
-                </Code>
-              </ScrollArea>
-            </>
-          )}
-        </Stack>
-      </Modal>
+      {/* Tools Dialog */}
+      <MCPToolsDialog opened={isToolsModalOpen} onClose={() => setIsToolsModalOpen(false)} server={selectedServer} />
     </Stack>
   );
 };

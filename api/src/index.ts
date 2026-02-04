@@ -26,6 +26,7 @@ import {
   AdminResolver,
   DocumentResolver,
   CustomModelSettingsResolver,
+  MCPServerResolver,
 } from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 
@@ -79,6 +80,7 @@ async function bootstrap() {
       CustomModelSettingsResolver,
       AdminResolver,
       DocumentResolver,
+      MCPServerResolver,
     ],
     validate: false,
     emitSchemaFile: path.resolve(__dirname, "schema.graphql"),

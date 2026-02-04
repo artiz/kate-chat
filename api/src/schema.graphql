@@ -177,6 +177,14 @@ input CreateCustomModelInput {
   streaming: Boolean
 }
 
+input CreateMCPServerInput {
+  authConfig: MCPAuthConfigInput
+  authType: String
+  description: String
+  name: String!
+  url: String!
+}
+
 input CreateMessageInput {
   chatId: String!
   content: String!
@@ -195,6 +203,10 @@ type CustomModelSettings {
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
 """
 scalar DateTimeISO
+
+input DeleteMCPServerInput {
+  id: String!
+}
 
 type DeleteMessageResponse {
   messages: [DeleteMessageResult!]!
@@ -373,6 +385,75 @@ input LoginInput {
   password: String!
 }
 
+type MCPAuthConfig {
+  apiKey: String
+  bearerToken: String
+  clientId: String
+  clientSecret: String
+  headerName: String
+  tokenUrl: String
+}
+
+input MCPAuthConfigInput {
+  apiKey: String
+  bearerToken: String
+  clientId: String
+  clientSecret: String
+  headerName: String
+  tokenUrl: String
+}
+
+"""
+Authentication type for MCP server
+"""
+enum MCPAuthType {
+  API_KEY
+  BEARER
+  NONE
+  OAUTH2
+}
+
+type MCPServer {
+  authConfig: MCPAuthConfig
+  authType: MCPAuthType!
+  createdAt: DateTimeISO!
+  description: String
+  id: ID!
+  isActive: Boolean!
+  name: String!
+  updatedAt: DateTimeISO!
+  url: String!
+  user: User
+  userId: String
+}
+
+type MCPServerResponse {
+  error: String
+  server: MCPServer
+}
+
+type MCPServersListResponse {
+  error: String
+  servers: [MCPServer!]
+  total: Float
+}
+
+type MCPToolInfoResponse {
+  description: String
+  inputSchema: String
+  name: String!
+}
+
+type MCPToolTestResponse {
+  error: String
+  result: String
+}
+
+type MCPToolsListResponse {
+  error: String
+  tools: [MCPToolInfoResponse!]
+}
+
 type Message {
   chat: Chat!
   chatId: String
@@ -481,9 +562,11 @@ type Mutation {
   changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
   createCustomModel(input: CreateCustomModelInput!): Model!
+  createMCPServer(input: CreateMCPServerInput!): MCPServerResponse!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
   deleteDocument(id: ID!): Boolean!
+  deleteMCPServer(input: DeleteMCPServerInput!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
   deleteModel(input: DeleteModelInput!): Boolean!
   editMessage(content: String!, messageId: ID!): EditMessageResponse!
@@ -497,9 +580,11 @@ type Mutation {
   stopMessageGeneration(input: StopMessageGenerationInput!): StopMessageGenerationResponse!
   switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
   testCustomModel(input: TestCustomModelInput!): Message!
+  testMCPTool(input: TestMCPToolInput!): MCPToolTestResponse!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateCustomModel(input: UpdateCustomModelInput!): Model!
+  updateMCPServer(input: UpdateMCPServerInput!): MCPServerResponse!
   updateModelStatus(input: UpdateModelStatusInput!): Model!
   updateUser(input: UpdateUserInput!): User!
 }
@@ -520,6 +605,8 @@ type Query {
   getChats(input: GetChatsInput): GqlChatsList!
   getCosts(input: GetCostsInput!): GqlCostsInfo!
   getDocuments(input: GetDocumentsInput): DocumentsResponse!
+  getMCPServerTools(serverId: String!): MCPToolsListResponse!
+  getMCPServers: MCPServersListResponse!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
   getUsers(input: GetUsersInput): AdminUsersResponse!
@@ -571,6 +658,12 @@ input TestCustomModelInput {
   text: String!
 }
 
+input TestMCPToolInput {
+  argsJson: String
+  serverId: String!
+  toolName: String!
+}
+
 input TestModelInput {
   id: String!
   text: String! = "2+2="
@@ -610,6 +703,16 @@ input UpdateCustomModelInput {
   name: String!
   protocol: String!
   streaming: Boolean
+}
+
+input UpdateMCPServerInput {
+  authConfig: MCPAuthConfigInput
+  authType: String
+  description: String
+  id: String!
+  isActive: Boolean
+  name: String
+  url: String
 }
 
 input UpdateModelStatusInput {
