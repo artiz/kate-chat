@@ -31,6 +31,7 @@ export interface Model<TUser = User> {
   type?: ModelType;
   isActive?: boolean;
   isCustom?: boolean;
+  streaming?: boolean;
   imageInput?: boolean;
   maxInputTokens?: number;
   description?: string;

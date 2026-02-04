@@ -169,6 +169,7 @@ input CreateCustomModelInput {
   description: String
   endpoint: String!
   imageInput: Boolean
+  maxInputTokens: Float
   modelId: String!
   modelName: String!
   name: String!
@@ -603,6 +604,7 @@ input UpdateCustomModelInput {
   endpoint: String!
   id: String!
   imageInput: Boolean
+  maxInputTokens: Float
   modelId: String!
   modelName: String!
   name: String!

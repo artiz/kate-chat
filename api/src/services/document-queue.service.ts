@@ -10,7 +10,12 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Repository } from "typeorm";
 import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai/prompts";
 import { EmbeddingsService } from "./ai/embeddings.service";
-import { CHARACTERS_PER_TOKEN, SUMMARIZING_OUTPUT_TOKENS, SUMMARIZING_TEMPERATURE } from "@/config/ai/common";
+import {
+  CHARACTERS_PER_TOKEN,
+  MAX_CONTEXT_TOKENS,
+  SUMMARIZING_OUTPUT_TOKENS,
+  SUMMARIZING_TEMPERATURE,
+} from "@/config/ai/common";
 
 const logger = createLogger(__filename);
 
@@ -184,7 +189,7 @@ export class DocumentQueueService {
       // Download markdown content
       const markdownContent = await this.downloadS3Content(s3Service, `${s3key}.parsed.md`);
 
-      const maxContentLength = (model.maxInputTokens || 8 * 1024) * CHARACTERS_PER_TOKEN;
+      const maxContentLength = (model.maxInputTokens || MAX_CONTEXT_TOKENS) * CHARACTERS_PER_TOKEN;
       const contentToSummarize =
         markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
 

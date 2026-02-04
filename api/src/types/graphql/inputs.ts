@@ -279,6 +279,9 @@ export class CreateCustomModelInput {
 
   @Field({ nullable: true })
   imageInput?: boolean;
+
+  @Field({ nullable: true })
+  maxInputTokens?: number;
 }
 
 @InputType()
@@ -360,6 +363,9 @@ export class UpdateCustomModelInput {
 
   @Field({ nullable: true })
   imageInput?: boolean;
+
+  @Field({ nullable: true })
+  maxInputTokens?: number;
 }
 
 @InputType()

@@ -595,6 +595,7 @@ export const ModelsDashboard: React.FC = () => {
                 protocol: editingModel.customSettings?.protocol || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
                 streaming: editingModel.streaming !== undefined ? editingModel.streaming : true,
                 imageInput: editingModel.imageInput !== undefined ? editingModel.imageInput : false,
+                maxInputTokens: editingModel.maxInputTokens || undefined,
               }
             : undefined
         }

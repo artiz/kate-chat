@@ -15,6 +15,7 @@ export const EMBEDDINGS_DIMENSIONS = process.env.DB_TYPE === "mssql" ? 1998 : 30
 
 // https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
 export const CHARACTERS_PER_TOKEN = 3.5;
+export const MAX_CONTEXT_TOKENS = 8 * 1024;
 
 export const SUMMARIZING_OUTPUT_TOKENS = 2000;
 export const SUMMARIZING_TEMPERATURE = 0.25;

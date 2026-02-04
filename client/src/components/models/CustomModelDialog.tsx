@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Modal, TextInput, Select, Button, Stack, Group, Text, Textarea, Divider, Alert, Switch } from "@mantine/core";
+import {
+  Modal,
+  TextInput,
+  Select,
+  Button,
+  Stack,
+  Group,
+  Text,
+  Textarea,
+  Divider,
+  Alert,
+  Switch,
+  NumberInput,
+} from "@mantine/core";
 import { CustomModelProtocol } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useMutation } from "@apollo/client";
@@ -25,6 +38,7 @@ export interface CustomModelFormData {
   protocol: string;
   streaming: boolean;
   imageInput: boolean;
+  maxInputTokens?: number;
 }
 
 export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
@@ -45,6 +59,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
     protocol: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
     streaming: true,
     imageInput: false,
+    maxInputTokens: undefined,
   });
 
   const [testPrompt, setTestPrompt] = useState<string>();
@@ -86,13 +101,15 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           protocol: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
           streaming: true,
           imageInput: false,
+          maxInputTokens: undefined,
         });
+        setTestPrompt("Hey, there!");
       }
       setTestResult(null);
     }
   }, [isOpen, initialData, mode]);
 
-  const updateFormField = (field: keyof CustomModelFormData, value: string | boolean) => {
+  const updateFormField = (field: keyof CustomModelFormData, value: string | boolean | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (testResult) setTestResult(null); // Reset test result on change
   };
@@ -194,17 +211,16 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           />
         </Group>
 
-        <TextInput
-          label="Endpoint URL"
-          placeholder="e.g., https://api.deepseek.com/v1"
-          description="Base URL for the API (without /chat/completions)"
-          required
-          value={formData.endpoint}
-          onChange={e => updateFormField("endpoint", e.target.value)}
-          disabled={isLoading}
-        />
-
         <Group grow align="flex-end">
+          <TextInput
+            label="Endpoint URL"
+            placeholder="e.g., https://api.deepseek.com/v1"
+            description="Base URL for the API (without /chat/completions)"
+            required
+            value={formData.endpoint}
+            onChange={e => updateFormField("endpoint", e.target.value)}
+            disabled={isLoading}
+          />
           <TextInput
             label="API Key"
             placeholder="sk-..."
@@ -214,7 +230,9 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             onChange={e => updateFormField("apiKey", e.target.value)}
             disabled={isLoading}
           />
+        </Group>
 
+        <Group grow align="flex-end">
           <TextInput
             label="Model Name (API)"
             placeholder="e.g., deepseek-chat"
@@ -224,8 +242,6 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             onChange={e => updateFormField("modelName", e.target.value)}
             disabled={isLoading}
           />
-        </Group>
-        <Group grow align="flex-end">
           <Select
             label="Protocol"
             required
@@ -237,19 +253,34 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             onChange={value => updateFormField("protocol", value || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS)}
             disabled={isLoading}
           />
-          <Switch
-            label="Streaming"
-            checked={formData.streaming}
-            onChange={event => updateFormField("streaming", event.currentTarget.checked)}
-            disabled={isLoading}
-            mb="xs"
-          />
-          <Switch
-            label="Image Input"
-            checked={formData.imageInput}
-            onChange={event => updateFormField("imageInput", event.currentTarget.checked)}
-            disabled={isLoading}
-            mb="xs"
+        </Group>
+
+        <Group grow align="flex-end">
+          <Stack>
+            <Switch
+              label="Streaming"
+              checked={formData.streaming}
+              onChange={event => updateFormField("streaming", event.currentTarget.checked)}
+              disabled={isLoading}
+              mb="xs"
+            />
+            <Switch
+              label="Image Input"
+              checked={formData.imageInput}
+              onChange={event => updateFormField("imageInput", event.currentTarget.checked)}
+              disabled={isLoading}
+              mb="xs"
+            />
+          </Stack>
+          <NumberInput
+            label="Max Input Tokens"
+            placeholder="e.g., 8192"
+            description="Maximum number of input tokens the model can handle"
+            value={formData.maxInputTokens}
+            onChange={value => updateFormField("maxInputTokens", value)}
+            min={1}
+            max={2_000_000}
+            step={100}
           />
         </Group>
 

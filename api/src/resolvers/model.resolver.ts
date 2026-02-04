@@ -16,7 +16,7 @@ import { getRepository } from "../config/database";
 import { CompleteChatRequest, MessageRole, ModelType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider, MAX_CONTEXT_TOKENS } from "@/config/ai/common";
 import { getErrorMessage } from "@/utils/errors";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
@@ -333,7 +333,18 @@ export class ModelResolver extends BaseResolver {
   async createCustomModel(@Arg("input") input: CreateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
     const user = await this.validateContextToken(context);
     try {
-      const { name, modelId, description, endpoint, apiKey, modelName, protocol, streaming, imageInput } = input;
+      const {
+        name,
+        modelId,
+        description,
+        endpoint,
+        apiKey,
+        modelName,
+        protocol,
+        streaming,
+        imageInput,
+        maxInputTokens,
+      } = input;
 
       // Validate protocol
       if (
@@ -367,6 +378,7 @@ export class ModelResolver extends BaseResolver {
         type: ModelType.CHAT,
         streaming,
         imageInput: imageInput || false,
+        maxInputTokens: maxInputTokens || MAX_CONTEXT_TOKENS,
         isActive: true,
         isCustom: true,
         user: { id: user.userId },
@@ -465,6 +477,7 @@ export class ModelResolver extends BaseResolver {
       model.apiProvider = ApiProvider.CUSTOM_REST_API; // Ensure provider is set correctly
       model.streaming = streaming === undefined ? model.streaming : streaming;
       model.imageInput = imageInput === undefined ? model.imageInput : imageInput;
+      model.maxInputTokens = input.maxInputTokens === undefined ? model.maxInputTokens : input.maxInputTokens;
       model.description = description || undefined;
 
       ok(model.customSettings, "Custom settings must be defined for custom model");
