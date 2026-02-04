@@ -419,7 +419,6 @@ export class CreateMCPServerInput {
   name: string;
 
   @Field()
-  @IsOptional()
   @Validate(IsPublicUrl)
   url: string;
 
@@ -442,8 +441,7 @@ export class UpdateMCPServerInput {
   name?: string;
 
   @Field({ nullable: true })
-  @IsOptional()
-  @Validate(IsPublicUrl)
+  @Validate(IsPublicUrl, { message: "Invalid URL format" })
   url?: string;
 
   @Field({ nullable: true })
