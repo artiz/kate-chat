@@ -270,6 +270,7 @@ export interface ChatToolOptions {
 export interface ChatTool {
   type: ToolType;
   name?: string;
+  id?: string;
   url?: string;
   options?: ChatToolOptions[];
 }

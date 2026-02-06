@@ -5,6 +5,7 @@ import { Document } from "./Document";
 import { DocumentChunk } from "./DocumentChunk";
 import { Message } from "./Message";
 import { Model, CustomModelSettings, CustomModelProtocol } from "./Model";
+import { MCPServer, MCPAuthType, MCPAuthConfig, MCPToolInfo, MCPTransportType } from "./MCPServer";
 import { AuthProvider, User, UserSettings, UserRole } from "./User";
 
 export {
@@ -21,6 +22,11 @@ export {
   ChatDocument,
   DocumentChunk,
   ChatFile,
+  MCPServer,
+  MCPTransportType,
+  MCPAuthType,
+  MCPAuthConfig,
+  MCPToolInfo,
 };
 
-export const ENTITIES = [User, Model, Chat, Message, Document, ChatDocument, DocumentChunk, ChatFile];
+export const ENTITIES = [User, Model, Chat, Message, Document, ChatDocument, DocumentChunk, ChatFile, MCPServer];

@@ -1,7 +1,12 @@
 import { Tool, ToolResultBlock, ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { YandexWebSearch } from "../tools/yandex.web_search";
+import { MCPClient, parseMCPToolName, MCPToolDefinition } from "../tools/mcp.client";
+import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
+import { createLogger } from "@/utils/logger";
+
+const logger = createLogger(__filename);
 
 export interface BedrockToolCall {
   name: string;
@@ -87,9 +92,79 @@ export const BEDROCK_TOOLS: Record<string, BedrockToolCallable> = {
   [WEB_SEARCH_TOOL_NAME]: WEB_SEARCH_TOOL,
 };
 
+/**
+ * Call an MCP tool through Bedrock
+ */
+export async function callMCPTool(
+  toolName: string,
+  args: Record<string, any>,
+  toolUseId: string,
+  mcpServers: MCPServer[]
+): Promise<ToolResultBlock> {
+  const parsed = parseMCPToolName(toolName);
+  if (!parsed) {
+    return {
+      toolUseId,
+      content: [{ text: `Error: Invalid MCP tool name format: ${toolName}` }],
+      status: "error",
+    };
+  }
+
+  const { serverId: serverName, mcpToolName: originalToolName } = parsed;
+
+  // Find the server by name
+  const server = mcpServers.find(s => s.name === serverName);
+  if (!server) {
+    return {
+      toolUseId,
+      content: [{ text: `Error: MCP server not found: ${serverName}` }],
+      status: "error",
+    };
+  }
+
+  const client = MCPClient.connect(server);
+
+  try {
+    const result = await client.callTool(originalToolName, args);
+
+    // Format the result content
+    const textContent = result.content
+      .map((item: any) => {
+        if (typeof item === "string") return item;
+        if (item.type === "text") return item.text;
+        return JSON.stringify(item);
+      })
+      .join("\n");
+
+    return {
+      toolUseId,
+      content: [{ text: textContent }],
+      status: result.isError ? "error" : undefined,
+    };
+  } catch (error) {
+    logger.error({ error, toolName, serverName }, "Failed to call MCP tool");
+    return {
+      toolUseId,
+      content: [{ text: `Error calling MCP tool: ${error instanceof Error ? error.message : String(error)}` }],
+      status: "error",
+    };
+  } finally {
+    await client.close();
+  }
+}
+
 export function parseToolUse(toolUse: ToolUseBlock): BedrockToolCall {
   const toolUseId = toolUse.toolUseId || "unknown_id";
   const name = toolUse.name || "";
+
+  // Check if it's an MCP tool
+  if (name.startsWith("mcp_")) {
+    return {
+      toolUseId,
+      name,
+      input: typeof toolUse.input === "string" ? JSON.parse(toolUse.input) : toolUse.input || {},
+    };
+  }
 
   const tool = BEDROCK_TOOLS[name];
   if (!tool) {
@@ -110,8 +185,14 @@ export function parseToolUse(toolUse: ToolUseBlock): BedrockToolCall {
 
 export async function callBedrockTool(
   toolCall: BedrockToolCall,
-  connection: ConnectionParams
+  connection: ConnectionParams,
+  mcpServers?: MCPServer[]
 ): Promise<ToolResultBlock> {
+  // Check if it's an MCP tool
+  if (toolCall.name.startsWith("mcp_") && mcpServers) {
+    return callMCPTool(toolCall.name, toolCall.input, toolCall.toolUseId, mcpServers);
+  }
+
   const tool = BEDROCK_TOOLS[toolCall.name];
   if (!tool) {
     return {

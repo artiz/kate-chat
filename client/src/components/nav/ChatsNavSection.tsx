@@ -19,6 +19,7 @@ import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION, GET_CHATS } from "@/store/s
 import { addChats, removeChat, updateChat } from "@/store/slices/chatSlice";
 
 import classes from "./ChatsNavSection.module.scss";
+import accordionClasses from "./MenuAccordion.module.scss";
 import { Chat, GetChatsResponse } from "@/types/graphql";
 import { CHAT_PAGE_SIZE } from "@/lib/config";
 
@@ -311,7 +312,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
       variant="default"
       chevronSize="lg"
       defaultValue={sortedChats.map(block => block.label)}
-      classNames={classes}
+      classNames={accordionClasses}
     >
       {sortedChats.map(block => (
         <Accordion.Item key={block.label} value={block.label}>

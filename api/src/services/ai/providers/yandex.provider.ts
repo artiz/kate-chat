@@ -22,6 +22,7 @@ import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { FileContentLoader } from "@/services/data/s3.service";
+import { notEmpty } from "@/utils/assert";
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
@@ -246,7 +247,7 @@ export class YandexApiProvider extends BaseApiProvider {
           description: model.description || "",
           streaming: true,
           maxInputTokens: model.maxInputTokens,
-          tools: searchAvailable ? [ToolType.WEB_SEARCH] : [],
+          tools: [searchAvailable ? ToolType.WEB_SEARCH : null, ToolType.MCP].filter(notEmpty),
           imageInput: model.imageInput || false,
           type: model.type || ModelType.CHAT,
         };

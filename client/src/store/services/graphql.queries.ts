@@ -50,12 +50,12 @@ export const BASE_CHAT_FRAGMENT = `
             fileName
             status
             downloadUrl
-            
           }
         }
         tools {
           type
           name
+          id
           options { 
             name
             value
@@ -216,6 +216,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       tools {
         type
         name
+        id
       }
       updatedAt
     }

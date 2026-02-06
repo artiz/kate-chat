@@ -1,11 +1,39 @@
-import React, { useEffect, useState } from "react";
-import { ActionIcon, Select, Tooltip, Popover, Box } from "@mantine/core";
-import { IconRobot, IconSettings, IconWorldSearch, IconCloudCode } from "@tabler/icons-react";
+import React, { use, useEffect, useMemo, useState } from "react";
+import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
+import {
+  IconRobot,
+  IconSettings,
+  IconWorldSearch,
+  IconCloudCode,
+  IconPlugConnected,
+  IconPlugConnectedX,
+} from "@tabler/icons-react";
+import { gql, useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
 import { ToolType, ChatTool, Model } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
+import { notEmpty } from "../../../../packages/katechat-ui/src/lib/assert";
+
+// MCP servers query for MCP tool dropdown
+const GET_MCP_SERVERS = gql`
+  query GetMCPServersForChat {
+    getMCPServers {
+      servers {
+        id
+        name
+        isActive
+      }
+    }
+  }
+`;
+
+interface MCPServerInfo {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
 
 interface IHeaderProps {
   chatId?: string;
@@ -29,12 +57,27 @@ export const ChatInputHeader = ({
   onUpdateChat,
 }: IHeaderProps) => {
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
+  const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
+
+  // Query MCP servers when MCP tool is supported
+  const { data: mcpServersData } = useQuery(GET_MCP_SERVERS, {
+    skip: !selectedModel?.tools?.includes(ToolType.MCP),
+  });
+
+  const mcpServers: MCPServerInfo[] =
+    mcpServersData?.getMCPServers?.servers?.filter((s: MCPServerInfo) => s.isActive) || [];
+
+  const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServerInfo) => [s.id, s.name])), [mcpServers]);
 
   useEffect(() => {
     if (chatTools) {
       setSelectedTools(new Set(chatTools.map(tool => tool.type)));
+      // Extract MCP server names from chat tools
+      const mcpTools = chatTools.filter(t => t.type === ToolType.MCP && t.id);
+      setSelectedMcpServers(new Set(mcpTools.map(t => t.id || "").filter(notEmpty)));
     } else {
       setSelectedTools(new Set());
+      setSelectedMcpServers(new Set());
     }
   }, [chatTools]);
 
@@ -57,7 +100,53 @@ export const ChatInputHeader = ({
     }
 
     setSelectedTools(tools);
-    onUpdateChat(chatId, { tools: Array.from(tools).map(type => ({ type, name: type })) });
+
+    // Build tools array, including MCP servers
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
+      .filter(t => t !== ToolType.MCP) // MCP is handled separately
+      .map(type => ({ type, name: type as string }));
+
+    // Add MCP tools
+    if (tools.has(ToolType.MCP)) {
+      selectedMcpServers.forEach(id => {
+        toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
+      });
+    }
+
+    onUpdateChat(chatId, { tools: toolsArray });
+  };
+
+  const handleMcpServerToggle = (serverId: string) => {
+    if (!chatId) return;
+
+    const servers = new Set(selectedMcpServers);
+    if (servers.has(serverId)) {
+      servers.delete(serverId);
+    } else {
+      servers.add(serverId);
+    }
+    setSelectedMcpServers(servers);
+
+    // Enable MCP tool type if any server is selected
+    const tools = new Set(selectedTools || []);
+    if (servers.size > 0) {
+      tools.add(ToolType.MCP);
+    } else {
+      tools.delete(ToolType.MCP);
+    }
+    setSelectedTools(tools);
+
+    // Build tools array
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
+      .filter(t => t !== ToolType.MCP)
+      .map(type => ({ type, name: type as string }));
+
+    // Add MCP tools
+    servers.forEach(id => {
+      toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
+    });
+
+    onUpdateChat(chatId, { tools: toolsArray });
   };
 
   return (
@@ -121,6 +210,48 @@ export const ChatInputHeader = ({
             <IconCloudCode size="1.2rem" />
           </ActionIcon>
         </Tooltip>
+      )}
+
+      {/* MCP Servers dropdown */}
+      {mcpServers.length > 0 && selectedModel?.tools?.includes(ToolType.MCP) && (
+        <Menu position="top" withArrow shadow="md">
+          <Menu.Target>
+            <Tooltip label="MCP Tools">
+              <ActionIcon
+                variant={selectedMcpServers.size > 0 ? "filled" : "default"}
+                color={selectedMcpServers.size > 0 ? "brand" : undefined}
+                disabled={disabled || streaming}
+              >
+                {selectedMcpServers.size > 0 ? (
+                  <IconPlugConnected size="1.2rem" />
+                ) : (
+                  <IconPlugConnectedX size="1.2rem" />
+                )}
+              </ActionIcon>
+            </Tooltip>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>MCP Servers</Menu.Label>
+            {mcpServers.map(server => (
+              <Menu.Item
+                key={server.id}
+                leftSection={
+                  selectedMcpServers.has(server.id) ? (
+                    <IconPlugConnected size="1rem" />
+                  ) : (
+                    <IconPlugConnectedX size="1rem" />
+                  )
+                }
+                onClick={() => handleMcpServerToggle(server.id)}
+                style={{
+                  backgroundColor: selectedMcpServers.has(server.id) ? "var(--mantine-color-brand-light)" : undefined,
+                }}
+              >
+                {server.name}
+              </Menu.Item>
+            ))}
+          </Menu.Dropdown>
+        </Menu>
       )}
     </>
   );
