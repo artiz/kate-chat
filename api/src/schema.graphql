@@ -122,14 +122,15 @@ type ChatResultAnnotation {
 }
 
 type ChatTool {
+  id: String
   name: String!
   options: [ChatToolOptions!]
   type: ToolType!
-  url: String
 }
 
 type ChatToolCall {
   args: String
+  callId: String!
   error: String
   name: String!
   type: String
@@ -142,6 +143,7 @@ type ChatToolCallResult {
 }
 
 input ChatToolInput {
+  id: String
   name: String
   options: [ChatToolOptionsInput!]
   type: ToolType!

@@ -62,7 +62,11 @@ export class YandexWebSearch {
         "Content-Type": "application/json",
         Authorization: `Api-Key ${connection.YANDEX_SEARCH_API_KEY}`,
       },
-    }).then(res => res.json() as Promise<{ rawData: string }>);
+    }).then(res => res.json() as Promise<{ rawData: string; code?: number; message?: string; details?: any[] }>);
+
+    if (response.code && response.code !== 200) {
+      logger.warn({ response }, "Yandex Web Search API error response");
+    }
 
     if (!response.rawData) {
       return [];

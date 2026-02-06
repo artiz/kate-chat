@@ -15,18 +15,20 @@ import {
   ModelMessageContent,
   ChatToolCallResult,
   ChatResponseStatus,
+  ChatTool,
 } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import {
   ChatCompletionToolCall,
-  COMPLETION_API_TOOLS,
-  COMPLETION_API_TOOLS_TO_STATUS,
-  WEB_SEARCH_TOOL,
+  ChatCompletionToolCallable,
+  formatOpenAIMcpTools,
+  CustomWebSearchTool,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
 import { ModelProtocol } from "./common";
+import { MCPServer } from "@/entities";
 
 const logger = createLogger(__filename);
 
@@ -253,7 +255,7 @@ export class OpenAIProtocol implements ModelProtocol {
                 tool_calls: msg.metadata.toolCalls
                   .filter(tc => !tc.type || tc.type === "function")
                   .map(tc => ({
-                    id: tc.name,
+                    id: tc.callId,
                     type: "function" as const,
                     function: {
                       name: tc.name,
@@ -305,7 +307,7 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, tools: inputTools } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, tools, mcpServers } = inputRequest;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -323,20 +325,32 @@ export class OpenAIProtocol implements ModelProtocol {
       params.temperature = 1;
     }
 
-    if (inputTools) {
-      const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [];
-
-      // custom web search tool
-      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
-        tools.push(WEB_SEARCH_TOOL);
-      }
-
-      if (tools.length) {
-        params.tools = tools;
-      }
+    const requestTools = this.formatRequestTools(tools, mcpServers);
+    if (requestTools.length) {
+      params.tools = requestTools;
     }
 
     return params;
+  }
+
+  private formatRequestTools(inputTools?: ChatTool[], mcpServers?: MCPServer[]): ChatCompletionToolCallable[] {
+    if (inputTools?.length) {
+      const tools: ChatCompletionToolCallable[] = [];
+
+      // custom web search tool
+      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
+        tools.push(CustomWebSearchTool);
+      }
+      const mcpTools = formatOpenAIMcpTools(
+        inputTools.filter(t => t.type === ToolType.MCP),
+        mcpServers
+      );
+      tools.push(...mcpTools);
+
+      return tools;
+    }
+
+    return [];
   }
 
   private async formatResponsesRequest(
@@ -460,6 +474,8 @@ export class OpenAIProtocol implements ModelProtocol {
       );
     }
 
+    const callableTools = this.formatRequestTools(input.tools, input.mcpServers);
+
     do {
       logger.debug({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
@@ -478,7 +494,9 @@ export class OpenAIProtocol implements ModelProtocol {
         if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
           const requestedToolCalls = (streamedToolCalls.length ? streamedToolCalls : choice.delta.tool_calls) || [];
           logger.debug({ tool_calls: requestedToolCalls }, "Tool calls requested");
-          const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(this.parseCompletionToolCall);
+          const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(call =>
+            this.parseCompletionToolCall(call, callableTools)
+          );
           const failedCall = toolCalls.find(call => call.error);
 
           if (failedCall) {
@@ -501,7 +519,7 @@ export class OpenAIProtocol implements ModelProtocol {
             break;
           }
 
-          const toolResults = await this.callCompletionTools(toolCalls, callbacks.onProgress);
+          const toolResults = await this.callCompletionTools(toolCalls, callableTools, callbacks.onProgress);
 
           // Add tool calls as last assistant message
           params.messages.push({
@@ -895,6 +913,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
   private callCompletionTools(
     toolCalls: ChatCompletionToolCall[],
+    tools: ChatCompletionToolCallable[],
     onProgress?:
       | ((token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>)
       | undefined
@@ -906,7 +925,7 @@ export class OpenAIProtocol implements ModelProtocol {
     }[]
   > {
     const requests = toolCalls.map(async call => {
-      const tool = COMPLETION_API_TOOLS[call.name || ""];
+      const tool = tools.find(t => t.name === call.name);
       if (!tool) {
         return {
           call,
@@ -931,7 +950,7 @@ export class OpenAIProtocol implements ModelProtocol {
         };
       }
 
-      let status = (call.name && COMPLETION_API_TOOLS_TO_STATUS[call.name]) || ResponseStatus.TOOL_CALL;
+      let status = tool.status || ResponseStatus.TOOL_CALL;
       let detail = call.arguments ? JSON.stringify(call.arguments) : "";
       const stopped = await onProgress?.("", { status, detail });
       if (stopped) {
@@ -953,7 +972,8 @@ export class OpenAIProtocol implements ModelProtocol {
   }
 
   private parseCompletionToolCall(
-    call: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall
+    call: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
+    tools: ChatCompletionToolCallable[]
   ): ChatCompletionToolCall {
     const callId = call.id || "unknown_id";
     if (!call.function || !call.function.name) {
@@ -963,7 +983,8 @@ export class OpenAIProtocol implements ModelProtocol {
       };
     }
     const { name } = call.function;
-    const tool = COMPLETION_API_TOOLS[call.function.name];
+    const tool = tools.find(t => t.name === name);
+
     if (!tool) {
       return {
         callId,

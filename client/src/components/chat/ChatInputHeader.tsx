@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useMemo, useState } from "react";
 import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
 import {
   IconRobot,
@@ -6,10 +6,7 @@ import {
   IconWorldSearch,
   IconCloudCode,
   IconPlugConnected,
-  IconChevronDown,
-  IconPlug,
   IconPlugConnectedX,
-  IconPlugOff,
 } from "@tabler/icons-react";
 import { gql, useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
@@ -17,6 +14,7 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 import { ToolType, ChatTool, Model } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
+import { notEmpty } from "../../../../packages/katechat-ui/src/lib/assert";
 
 // MCP servers query for MCP tool dropdown
 const GET_MCP_SERVERS = gql`
@@ -69,12 +67,14 @@ export const ChatInputHeader = ({
   const mcpServers: MCPServerInfo[] =
     mcpServersData?.getMCPServers?.servers?.filter((s: MCPServerInfo) => s.isActive) || [];
 
+  const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServerInfo) => [s.id, s.name])), [mcpServers]);
+
   useEffect(() => {
     if (chatTools) {
       setSelectedTools(new Set(chatTools.map(tool => tool.type)));
       // Extract MCP server names from chat tools
-      const mcpTools = chatTools.filter(t => t.type === ToolType.MCP);
-      setSelectedMcpServers(new Set(mcpTools.map(t => t.name || "").filter(Boolean)));
+      const mcpTools = chatTools.filter(t => t.type === ToolType.MCP && t.id);
+      setSelectedMcpServers(new Set(mcpTools.map(t => t.id || "").filter(notEmpty)));
     } else {
       setSelectedTools(new Set());
       setSelectedMcpServers(new Set());
@@ -102,28 +102,28 @@ export const ChatInputHeader = ({
     setSelectedTools(tools);
 
     // Build tools array, including MCP servers
-    const toolsArray: { type: ToolType; name: string }[] = Array.from(tools)
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
       .filter(t => t !== ToolType.MCP) // MCP is handled separately
       .map(type => ({ type, name: type as string }));
 
     // Add MCP tools
     if (tools.has(ToolType.MCP)) {
-      selectedMcpServers.forEach(serverName => {
-        toolsArray.push({ type: ToolType.MCP, name: serverName });
+      selectedMcpServers.forEach(id => {
+        toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
       });
     }
 
     onUpdateChat(chatId, { tools: toolsArray });
   };
 
-  const handleMcpServerToggle = (serverName: string) => {
+  const handleMcpServerToggle = (serverId: string) => {
     if (!chatId) return;
 
     const servers = new Set(selectedMcpServers);
-    if (servers.has(serverName)) {
-      servers.delete(serverName);
+    if (servers.has(serverId)) {
+      servers.delete(serverId);
     } else {
-      servers.add(serverName);
+      servers.add(serverId);
     }
     setSelectedMcpServers(servers);
 
@@ -137,13 +137,13 @@ export const ChatInputHeader = ({
     setSelectedTools(tools);
 
     // Build tools array
-    const toolsArray: { type: ToolType; name: string }[] = Array.from(tools)
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
       .filter(t => t !== ToolType.MCP)
       .map(type => ({ type, name: type as string }));
 
     // Add MCP tools
-    servers.forEach(name => {
-      toolsArray.push({ type: ToolType.MCP, name });
+    servers.forEach(id => {
+      toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
     });
 
     onUpdateChat(chatId, { tools: toolsArray });
@@ -236,15 +236,15 @@ export const ChatInputHeader = ({
               <Menu.Item
                 key={server.id}
                 leftSection={
-                  selectedMcpServers.has(server.name) ? (
+                  selectedMcpServers.has(server.id) ? (
                     <IconPlugConnected size="1rem" />
                   ) : (
                     <IconPlugConnectedX size="1rem" />
                   )
                 }
-                onClick={() => handleMcpServerToggle(server.name)}
+                onClick={() => handleMcpServerToggle(server.id)}
                 style={{
-                  backgroundColor: selectedMcpServers.has(server.name) ? "var(--mantine-color-brand-light)" : undefined,
+                  backgroundColor: selectedMcpServers.has(server.id) ? "var(--mantine-color-brand-light)" : undefined,
                 }}
               >
                 {server.name}

@@ -26,7 +26,7 @@ export interface MCPToolDefinition {
 }
 
 export interface MCPToolResult {
-  content: any[];
+  content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string } | Record<string, any>)[];
   isError?: boolean;
 }
 
@@ -106,7 +106,11 @@ export class MCPClient {
               return await result.apply(receiver, args);
             } catch (e: unknown) {
               if (e instanceof Error) {
-                if (e.message?.includes("Session not found") || e.message?.includes("Not connected")) {
+                if (
+                  e.message?.includes("Session not found") ||
+                  e.message?.includes("Not connected") ||
+                  e.message?.includes("fetch failed")
+                ) {
                   if (retryCount < RECONNECT_MAX_ATTEMPTS) {
                     logger.warn({ retryCount }, "MCP connection lost, attempting to reconnect...");
                     retryCount++;
@@ -116,7 +120,7 @@ export class MCPClient {
                 }
               }
 
-              logger.error(e, `Error calling MCP client method, ${String(prop)}`);
+              logger.error(e, `Error calling MCP client method "${String(prop)}"`);
               throw e;
             }
           }
@@ -268,6 +272,8 @@ export class MCPClient {
       arguments: args,
     });
 
+    logger.debug({ toolName, serverId: this.server.id, result }, "Called MCP tool");
+
     return {
       content: Array.isArray(result?.content) ? result.content : [],
       isError: Boolean(result?.isError),
@@ -309,68 +315,18 @@ export class MCPClient {
       ...this.getAuthHeaders(),
     };
   }
-
-  /**
-   * Convert MCP tool definitions to OpenAI tool format
-   */
-  static toOpenAITools(
-    tools: MCPToolDefinition[],
-    serverName: string
-  ): Array<{
-    type: "function";
-    function: {
-      name: string;
-      description?: string;
-      parameters?: Record<string, any>;
-    };
-  }> {
-    return tools.map(tool => ({
-      type: "function" as const,
-      function: {
-        name: `mcp_${serverName}_${tool.name}`,
-        description: tool.description,
-        parameters: tool.inputSchema || { type: "object", properties: {} },
-      },
-    }));
-  }
-
-  /**
-   * Convert MCP tool definitions to Bedrock tool format
-   */
-  static toBedrockTools(
-    tools: MCPToolDefinition[],
-    serverName: string
-  ): Array<{
-    toolSpec: {
-      name: string;
-      description?: string;
-      inputSchema: {
-        json: Record<string, any>;
-      };
-    };
-  }> {
-    return tools.map(tool => ({
-      toolSpec: {
-        name: `mcp_${serverName}_${tool.name}`,
-        description: tool.description,
-        inputSchema: {
-          json: tool.inputSchema || { type: "object", properties: {} },
-        },
-      },
-    }));
-  }
 }
 
 /**
  * Helper to parse MCP tool name back to server and tool parts
  */
-export function parseMCPToolName(toolName: string): { serverName: string; originalToolName: string } | null {
+export function parseMCPToolName(toolName: string): { serverId: string; mcpToolName: string } | null {
   const match = toolName.match(/^mcp_(.+?)_(.+)$/);
   if (!match) {
     return null;
   }
   return {
-    serverName: match[1],
-    originalToolName: match[2],
+    serverId: match[1],
+    mcpToolName: match[2],
   };
 }

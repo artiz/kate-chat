@@ -7,6 +7,7 @@ import {
   IconMatrix,
   IconWorldSearch,
   IconCloudCode,
+  IconPlugConnected,
 } from "@tabler/icons-react";
 import { Model, ToolType } from "@/types/graphql";
 import { ModelType } from "@katechat/ui";
@@ -60,6 +61,11 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
           {tools.has(ToolType.CODE_INTERPRETER) && (
             <Tooltip label="Code interpreter">
               <IconCloudCode size={size} />
+            </Tooltip>
+          )}
+          {tools.has(ToolType.MCP) && (
+            <Tooltip label="MCP">
+              <IconPlugConnected size={size} />
             </Tooltip>
           )}
         </>
