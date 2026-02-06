@@ -38,7 +38,6 @@ import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { notEmpty } from "@/utils/assert";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { BEDROCK_TOOLS, WEB_SEARCH_TOOL_NAME, parseToolUse, callBedrockTool } from "./bedrock.tools";
 import { ApiProvider } from "@/config/ai/common";
@@ -258,6 +257,7 @@ export class BedrockApiProvider extends BaseApiProvider {
             // Tool use detected - notify callback
             const toolCalls = streamedToolUse.map(tu => ({
               name: tu.name || "unknown",
+              callId: tu.toolUseId || tu.name || "unknown",
               args: typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input || {}),
             }));
 

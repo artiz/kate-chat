@@ -3,7 +3,7 @@ import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, T
 import { IconMessagePlus, IconTestPipe, IconTrash, IconEdit } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
-import { formatTokensLimit, ModelType, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
+import { formatTokensLimit, ModelType, ApiProvider, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
 import { Model } from "@/types/graphql";
 
 interface ModelsListProps {
@@ -52,27 +52,31 @@ export const ModelsList: React.FC<ModelsListProps> = ({
 
   // Filtered models based on selections
   const filteredModels = useMemo(() => {
-    return models.filter(model => {
-      // Filter by provider dropdown if selected
-      if (providerFilter && model.provider?.toLowerCase() !== providerFilter.toLowerCase()) {
-        return false;
-      }
+    return models
+      .filter(model => {
+        // Filter by provider dropdown if selected
+        if (providerFilter && model.provider?.toLowerCase() !== providerFilter.toLowerCase()) {
+          return false;
+        }
 
-      // Filter by API provider if selected
-      if (apiProviderFilter && model.apiProvider !== apiProviderFilter) {
-        return false;
-      }
+        // Filter by API provider if selected
+        if (apiProviderFilter && model.apiProvider !== apiProviderFilter) {
+          return false;
+        }
 
-      // Filter by active state if selected
-      if (activeFilter === "active" && !model.isActive) {
-        return false;
-      }
-      if (activeFilter === "inactive" && model.isActive) {
-        return false;
-      }
+        // Filter by active state if selected
+        if (activeFilter === "active" && !model.isActive) {
+          return false;
+        }
+        if (activeFilter === "inactive" && model.isActive) {
+          return false;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) =>
+        b.apiProvider === "CUSTOM_REST_API" ? -1 : a.apiProvider?.localeCompare(b.apiProvider || "") || 0
+      ); // Sort alphabetically by name
   }, [models, providerFilter, apiProviderFilter, activeFilter]);
 
   const handleDeleteClick = (model: Model) => {
@@ -174,7 +178,6 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     <Switch
                       checked={model.isActive}
                       onChange={event => onToggleModelStatus(model, event.currentTarget.checked)}
-                      label="Active"
                       size="md"
                     />
                   </Group>

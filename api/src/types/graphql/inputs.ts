@@ -121,6 +121,9 @@ export class ChatToolInput {
   @Field({ nullable: true })
   name?: string;
 
+  @Field({ nullable: true })
+  id?: string;
+
   @Field(() => [ChatToolOptionsInput], { nullable: true })
   options?: ChatToolOptionsInput[];
 }

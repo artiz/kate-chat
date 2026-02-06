@@ -110,7 +110,7 @@ export async function callMCPTool(
     };
   }
 
-  const { serverName, originalToolName } = parsed;
+  const { serverId: serverName, mcpToolName: originalToolName } = parsed;
 
   // Find the server by name
   const server = mcpServers.find(s => s.name === serverName);

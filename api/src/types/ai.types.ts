@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { Field, ID, ObjectType } from "type-graphql";
 import { ApiProvider } from "@/config/ai/common";
+import { MCPServer } from "@/entities";
 
 export enum MessageType {
   MESSAGE = "message",
@@ -28,6 +29,7 @@ export enum ResponseStatus {
   IN_PROGRESS = "in_progress",
   RAG_SEARCH = "rag_search",
   WEB_SEARCH = "web_search",
+  MCP_CALL = "mcp_call",
   CODE_INTERPRETER = "code_interpreter",
   TOOL_CALL = "tool_call",
   TOOL_CALL_COMPLETED = "tool_call_completed",
@@ -229,6 +231,8 @@ export interface EmbeddingsResponse {
 export class ChatToolCall {
   @Field()
   name: string;
+  @Field()
+  callId: string;
   @Field(() => String, { nullable: true })
   type?: "function" | "custom" | "mcp";
   @Field({ nullable: true })
@@ -295,6 +299,7 @@ export interface CompleteChatRequest {
   topP?: number;
   imagesCount?: number;
   tools?: ChatTool[];
+  mcpServers?: MCPServer[];
 }
 
 export interface GetEmbeddingsRequest {
@@ -332,7 +337,7 @@ export class ChatTool {
   name: string;
 
   @Field({ nullable: true })
-  url?: string;
+  id?: string;
 
   @Field(() => [ChatToolOptions], { nullable: true })
   options?: ChatToolOptions[];

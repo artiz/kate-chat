@@ -7,7 +7,7 @@ import { ChatFile, ChatFileType } from "../entities/ChatFile";
 import { AIService } from "./ai/ai.service";
 import sharp from "sharp";
 import exifReader, { Exif } from "exif-reader";
-import { Chat, DocumentChunk, Model, User } from "@/entities";
+import { Chat, DocumentChunk, MCPServer, Model, User } from "@/entities";
 import { CreateMessageInput, ImageInput } from "@/types/graphql/inputs";
 import {
   ChatResponseStatus,
@@ -20,6 +20,7 @@ import {
   ModelResponse,
   ModelType,
   ResponseStatus,
+  ToolType,
 } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
@@ -67,6 +68,7 @@ export class MessagesService {
   private chatRepository: Repository<Chat>;
   private chatFileRepository: Repository<ChatFile>;
   private modelRepository: Repository<Model>;
+  private mcpServerRepository: Repository<MCPServer>;
 
   private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
@@ -81,6 +83,7 @@ export class MessagesService {
     this.chatRepository = getRepository(Chat);
     this.chatFileRepository = getRepository(ChatFile);
     this.modelRepository = getRepository(Model);
+    this.mcpServerRepository = getRepository(MCPServer);
 
     subscriptionsService.on(CHAT_MESSAGES_CHANNEL, this.handleMessageEvent.bind(this));
   }
@@ -717,6 +720,16 @@ export class MessagesService {
       tools: chat.tools,
     };
 
+    const mcpTools = chat.tools
+      ?.filter(tool => tool.type === ToolType.MCP)
+      ?.map(tool => tool.id)
+      ?.filter(notEmpty);
+    if (mcpTools?.length) {
+      request.mcpServers = await this.mcpServerRepository.find({
+        where: { id: In(mcpTools) },
+      });
+    }
+
     const s3Service = new S3Service(user.toToken());
 
     const completeRequest = async (message: Message): Promise<boolean> => {
@@ -877,10 +890,10 @@ export class MessagesService {
           }
 
           if (status.toolCalls) {
-            const existingCalls = new Set(assistantMessage.metadata.toolCalls?.map(call => call.name) || []);
+            const existingCalls = new Set(assistantMessage.metadata.toolCalls?.map(call => call.callId) || []);
             assistantMessage.metadata.toolCalls = [
               ...(assistantMessage.metadata.toolCalls || []),
-              ...status.toolCalls.filter(call => !existingCalls.has(call.name)),
+              ...status.toolCalls.filter(call => !existingCalls.has(call.callId)),
             ];
           }
 
