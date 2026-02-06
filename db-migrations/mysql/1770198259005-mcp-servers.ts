@@ -10,15 +10,17 @@ export class MCPServers1770198259005 implements MigrationInterface {
         \`name\` varchar(255) NOT NULL,
         \`url\` varchar(1024) NOT NULL,
         \`description\` varchar(1024) NULL,
+        \`transportType\` varchar(50) NOT NULL DEFAULT ('STREAMABLE_HTTP'),
         \`authType\` varchar(50) NOT NULL DEFAULT 'none',
         \`authConfig\` json NULL,
+        \`tools\` json NULL,
         \`isActive\` tinyint(1) NOT NULL DEFAULT 1,
         \`userId\` varchar(36) NULL,
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`),
         CONSTRAINT \`FK_mcp_servers_user\` FOREIGN KEY (\`userId\`) REFERENCES \`users\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION
-      ) ENGINE=InnoDB`
+      ) ENGINE=InnoDB`,
     );
   }
 

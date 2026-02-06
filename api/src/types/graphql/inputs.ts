@@ -426,6 +426,9 @@ export class CreateMCPServerInput {
   description?: string;
 
   @Field({ nullable: true })
+  transportType?: string;
+
+  @Field({ nullable: true })
   authType?: string;
 
   @Field(() => MCPAuthConfigInput, { nullable: true })
@@ -446,6 +449,9 @@ export class UpdateMCPServerInput {
 
   @Field({ nullable: true })
   description?: string;
+
+  @Field({ nullable: true })
+  transportType?: string;
 
   @Field({ nullable: true })
   authType?: string;

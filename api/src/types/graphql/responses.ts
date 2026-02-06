@@ -428,6 +428,9 @@ export class MCPToolInfoResponse {
 
   @Field({ nullable: true })
   inputSchema?: string;
+
+  @Field({ nullable: true })
+  outputSchema?: string;
 }
 
 @ObjectType()

@@ -92,47 +92,6 @@ export const BEDROCK_TOOLS: Record<string, BedrockToolCallable> = {
   [WEB_SEARCH_TOOL_NAME]: WEB_SEARCH_TOOL,
 };
 
-// MCP Tools registry - dynamically populated
-const MCP_TOOLS_CACHE: Map<string, { tools: MCPToolDefinition[]; server: MCPServer; timestamp: number }> = new Map();
-const MCP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Get MCP tools for Bedrock format
- */
-export async function getMCPToolsForBedrock(mcpServers: MCPServer[]): Promise<Tool[]> {
-  const tools: Tool[] = [];
-
-  for (const server of mcpServers) {
-    if (!server.isActive) continue;
-
-    try {
-      // Check cache
-      const cached = MCP_TOOLS_CACHE.get(server.id);
-      if (cached && Date.now() - cached.timestamp < MCP_CACHE_TTL) {
-        tools.push(...MCPClient.toBedrockTools(cached.tools, server.name));
-        continue;
-      }
-
-      // Fetch from server
-      const client = new MCPClient(server);
-      const mcpTools = await client.listTools();
-
-      // Cache the tools
-      MCP_TOOLS_CACHE.set(server.id, {
-        tools: mcpTools,
-        server,
-        timestamp: Date.now(),
-      });
-
-      tools.push(...MCPClient.toBedrockTools(mcpTools, server.name));
-    } catch (error) {
-      logger.error({ error, serverId: server.id }, "Failed to get MCP tools");
-    }
-  }
-
-  return tools;
-}
-
 /**
  * Call an MCP tool through Bedrock
  */
@@ -163,8 +122,9 @@ export async function callMCPTool(
     };
   }
 
+  const client = MCPClient.connect(server);
+
   try {
-    const client = new MCPClient(server);
     const result = await client.callTool(originalToolName, args);
 
     // Format the result content
@@ -188,6 +148,8 @@ export async function callMCPTool(
       content: [{ text: `Error calling MCP tool: ${error instanceof Error ? error.message : String(error)}` }],
       status: "error",
     };
+  } finally {
+    await client.close();
   }
 }
 

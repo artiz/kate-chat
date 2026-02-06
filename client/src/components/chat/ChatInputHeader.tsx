@@ -7,6 +7,9 @@ import {
   IconCloudCode,
   IconPlugConnected,
   IconChevronDown,
+  IconPlug,
+  IconPlugConnectedX,
+  IconPlugOff,
 } from "@tabler/icons-react";
 import { gql, useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
@@ -219,7 +222,11 @@ export const ChatInputHeader = ({
                 color={selectedMcpServers.size > 0 ? "brand" : undefined}
                 disabled={disabled || streaming}
               >
-                <IconPlugConnected size="1.2rem" />
+                {selectedMcpServers.size > 0 ? (
+                  <IconPlugConnected size="1.2rem" />
+                ) : (
+                  <IconPlugConnectedX size="1.2rem" />
+                )}
               </ActionIcon>
             </Tooltip>
           </Menu.Target>
@@ -228,7 +235,13 @@ export const ChatInputHeader = ({
             {mcpServers.map(server => (
               <Menu.Item
                 key={server.id}
-                leftSection={<IconPlugConnected size="1rem" />}
+                leftSection={
+                  selectedMcpServers.has(server.name) ? (
+                    <IconPlugConnected size="1rem" />
+                  ) : (
+                    <IconPlugConnectedX size="1rem" />
+                  )
+                }
                 onClick={() => handleMcpServerToggle(server.name)}
                 style={{
                   backgroundColor: selectedMcpServers.has(server.name) ? "var(--mantine-color-brand-light)" : undefined,

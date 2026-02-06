@@ -18,16 +18,27 @@ import {
   Box,
   Divider,
 } from "@mantine/core";
-import { IconAlertCircle, IconTestPipe, IconTool, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
+import {
+  IconAlertCircle,
+  IconTestPipe,
+  IconTool,
+  IconChevronDown,
+  IconChevronUp,
+  IconRefresh,
+} from "@tabler/icons-react";
 import { gql, useQuery, useMutation } from "@apollo/client";
+import { notifications } from "@mantine/notifications";
 
-const GET_MCP_SERVER_TOOLS = gql`
-  query GetMCPServerTools($serverId: String!) {
-    getMCPServerTools(serverId: $serverId) {
-      tools {
-        name
-        description
-        inputSchema
+const REFETCH_MCP_SERVER_TOOLS = gql`
+  mutation RefetchMcpServerTools($serverId: String!) {
+    refetchMcpServerTools(serverId: $serverId) {
+      server {
+        id
+        tools {
+          name
+          description
+          inputSchema
+        }
       }
       error
     }
@@ -46,6 +57,7 @@ const TEST_MCP_TOOL = gql`
 interface MCPServer {
   id: string;
   name: string;
+  tools?: MCPTool[];
 }
 
 interface MCPTool {
@@ -285,15 +297,6 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
           <IconTool size="1.2rem" />
           <Text fw={500}>{tool.name}</Text>
         </Group>
-        <Button
-          size="xs"
-          variant="light"
-          leftSection={<IconTestPipe size="1rem" />}
-          onClick={handleTest}
-          loading={testLoading}
-        >
-          Test
-        </Button>
       </Group>
 
       {tool.description && (
@@ -318,6 +321,16 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
           No parameters required
         </Text>
       )}
+
+      <Button
+        size="xs"
+        variant="light"
+        leftSection={<IconTestPipe size="1rem" />}
+        onClick={handleTest}
+        loading={testLoading}
+      >
+        Test
+      </Button>
 
       {tool.inputSchema && (
         <Box>
@@ -362,28 +375,61 @@ interface MCPToolsDialogProps {
   opened: boolean;
   onClose: () => void;
   server: MCPServer | null;
+  onToolsRefetched?: () => void;
 }
 
-export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose, server }) => {
-  const { data: toolsData, loading: toolsLoading } = useQuery(GET_MCP_SERVER_TOOLS, {
-    variables: { serverId: server?.id || "" },
-    skip: !server?.id || !opened,
-    errorPolicy: "all",
+export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose, server, onToolsRefetched }) => {
+  const [refetchTools, { loading: refetchLoading }] = useMutation(REFETCH_MCP_SERVER_TOOLS, {
+    onCompleted: data => {
+      if (data.refetchMcpServerTools.error) {
+        notifications.show({
+          title: "Error",
+          message: data.refetchMcpServerTools.error,
+          color: "red",
+        });
+      } else {
+        notifications.show({
+          title: "Success",
+          message: "Tools refreshed successfully",
+          color: "green",
+        });
+        onToolsRefetched?.();
+      }
+    },
+    onError: error => {
+      notifications.show({
+        title: "Error",
+        message: error.message,
+        color: "red",
+      });
+    },
   });
 
-  const tools: MCPTool[] = toolsData?.getMCPServerTools?.tools || [];
+  const tools: MCPTool[] = server?.tools || [];
+
+  const handleRefetchTools = () => {
+    if (server?.id) {
+      refetchTools({ variables: { serverId: server.id } });
+    }
+  };
 
   return (
     <Modal opened={opened} onClose={onClose} title={`Tools - ${server?.name || ""}`} size="lg">
-      {toolsLoading ? (
-        <Group justify="center" p="xl">
-          <Loader />
-        </Group>
-      ) : toolsData?.getMCPServerTools?.error ? (
-        <Alert icon={<IconAlertCircle size="1rem" />} color="red">
-          {toolsData.getMCPServerTools.error}
-        </Alert>
-      ) : !tools.length ? (
+      <Group justify="space-between" mb="md">
+        <Text size="sm" c="dimmed">
+          {tools.length} tool{tools.length !== 1 ? "s" : ""} available
+        </Text>
+        <Button
+          size="xs"
+          variant="light"
+          leftSection={<IconRefresh size="1rem" />}
+          onClick={handleRefetchTools}
+          loading={refetchLoading}
+        >
+          Refetch tools
+        </Button>
+      </Group>
+      {!tools.length ? (
         <Text c="dimmed" ta="center" p="xl">
           No tools available from this server
         </Text>
