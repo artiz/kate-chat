@@ -1,5 +1,5 @@
 import { Resolver, Query, Ctx, Authorized, Arg, Mutation, FieldResolver, Root } from "type-graphql";
-import { MCPServer, MCPAuthType, MCPAuthConfig, UserRole } from "../entities";
+import { MCPServer, MCPAuthType, MCPAuthConfig, MCPTransportType, UserRole } from "../entities";
 import { BaseResolver } from "./base.resolver";
 import {
   MCPServerResponse,
@@ -17,19 +17,45 @@ import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
 import { createLogger } from "@/utils/logger";
 import { MCPClient } from "@/services/ai/tools/mcp.client";
+import { Repository } from "typeorm";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
 @Resolver(() => MCPServer)
 export class MCPServerResolver extends BaseResolver {
+  mcpServerRepository: Repository<MCPServer>;
+
+  constructor() {
+    super();
+
+    this.mcpServerRepository = getRepository(MCPServer);
+  }
+
+  /**
+   * Fetch tools from an MCP server and store them in the database
+   */
+  private async fetchAndStoreTools(server: MCPServer): Promise<MCPServer> {
+    const client = MCPClient.connect(server);
+    const tools = await client.listTools();
+    server.tools = tools.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema ? JSON.stringify(tool.inputSchema, null, 2) : undefined,
+    }));
+    await this.mcpServerRepository.save(server);
+    await client.close(true);
+    logger.debug({ serverId: server.id, toolsCount: server.tools?.length }, "Fetched and stored MCP tools");
+    return server;
+  }
+
   @Query(() => MCPServersListResponse)
   @Authorized(UserRole.ADMIN)
   async getMCPServers(@Ctx() context: GraphQLContext): Promise<MCPServersListResponse> {
     const user = await this.validateContextUser(context);
 
     try {
-      const mcpServerRepository = getRepository(MCPServer);
-      const servers = await mcpServerRepository.find({
+      const servers = await this.mcpServerRepository.find({
         where: { user: { id: user.id } },
         order: { createdAt: "DESC" },
       });
@@ -53,10 +79,8 @@ export class MCPServerResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
 
     try {
-      const mcpServerRepository = getRepository(MCPServer);
-
       // Check if server with same URL already exists for this user
-      const existingServer = await mcpServerRepository.findOne({
+      const existingServer = await this.mcpServerRepository.findOne({
         where: { url: input.url, user: { id: user.id } },
       });
 
@@ -64,18 +88,22 @@ export class MCPServerResolver extends BaseResolver {
         return { error: "An MCP server with this URL already exists" };
       }
 
-      const server = mcpServerRepository.create({
+      const server = this.mcpServerRepository.create({
         name: input.name,
         url: input.url,
         description: input.description,
+        transportType: (input.transportType as MCPTransportType) || MCPTransportType.STREAMABLE_HTTP,
         authType: (input.authType as MCPAuthType) || MCPAuthType.NONE,
         authConfig: input.authConfig as MCPAuthConfig,
         user: { id: user.id },
         isActive: true,
       });
 
-      const savedServer = await mcpServerRepository.save(server);
+      // Save server first to get an ID for the MCP client
+      const savedServer = await this.mcpServerRepository.save(server);
       logger.debug({ serverId: savedServer.id, name: savedServer.name }, "Created MCP server");
+
+      await this.fetchAndStoreTools(savedServer);
 
       return { server: savedServer };
     } catch (error) {
@@ -93,9 +121,7 @@ export class MCPServerResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
 
     try {
-      const mcpServerRepository = getRepository(MCPServer);
-
-      const server = await mcpServerRepository.findOne({
+      const server = await this.mcpServerRepository.findOne({
         where: { id: input.id, user: { id: user.id } },
       });
 
@@ -104,15 +130,24 @@ export class MCPServerResolver extends BaseResolver {
       }
 
       // Update fields if provided
-      if (input.name !== undefined) server.name = input.name;
-      if (input.url !== undefined) server.url = input.url;
-      if (input.description !== undefined) server.description = input.description;
-      if (input.authType !== undefined) server.authType = input.authType as MCPAuthType;
-      if (input.authConfig !== undefined) server.authConfig = input.authConfig as MCPAuthConfig;
-      if (input.isActive !== undefined) server.isActive = input.isActive;
+      const fields: (keyof UpdateMCPServerInput)[] = [
+        "name",
+        "url",
+        "description",
+        "transportType",
+        "authType",
+        "authConfig",
+        "isActive",
+      ];
+      for (const field of fields) {
+        if (input[field] !== undefined) {
+          (server as Record<keyof UpdateMCPServerInput, string | boolean | MCPAuthType | MCPAuthConfig>)[field] =
+            input[field];
+        }
+      }
 
-      const savedServer = await mcpServerRepository.save(server);
-      logger.debug({ serverId: savedServer.id, name: savedServer.name }, "Updated MCP server");
+      const savedServer = await this.mcpServerRepository.save(server);
+      await this.fetchAndStoreTools(savedServer);
 
       return { server: savedServer };
     } catch (error) {
@@ -127,9 +162,7 @@ export class MCPServerResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
 
     try {
-      const mcpServerRepository = getRepository(MCPServer);
-
-      const server = await mcpServerRepository.findOne({
+      const server = await this.mcpServerRepository.findOne({
         where: { id: input.id, user: { id: user.id } },
       });
 
@@ -137,13 +170,39 @@ export class MCPServerResolver extends BaseResolver {
         throw new Error("MCP server not found");
       }
 
-      await mcpServerRepository.remove(server);
+      await this.mcpServerRepository.remove(server);
       logger.debug({ serverId: input.id }, "Deleted MCP server");
 
       return true;
     } catch (error) {
       logger.error(error, "Error deleting MCP server");
       throw error;
+    }
+  }
+
+  @Mutation(() => MCPServerResponse)
+  @Authorized(UserRole.ADMIN)
+  async refetchMcpServerTools(
+    @Arg("serverId") serverId: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<MCPServerResponse> {
+    const user = await this.validateContextUser(context);
+
+    try {
+      const server = await this.mcpServerRepository.findOne({
+        where: { id: serverId, user: { id: user.id } },
+      });
+
+      if (!server) {
+        return { error: "MCP server not found" };
+      }
+
+      const savedServer = await this.fetchAndStoreTools(server);
+
+      return { server: savedServer };
+    } catch (error) {
+      logger.error(error, "Error refetching MCP server tools");
+      return { error: `Failed to refetch tools: ${error instanceof Error ? error.message : String(error)}` };
     }
   }
 
@@ -155,18 +214,17 @@ export class MCPServerResolver extends BaseResolver {
   ): Promise<MCPToolsListResponse> {
     const user = await this.validateContextUser(context);
 
+    const server = await this.mcpServerRepository.findOne({
+      where: { id: serverId, user: { id: user.id } },
+    });
+
+    if (!server) {
+      return { error: "MCP server not found" };
+    }
+
+    const client = MCPClient.connect(server);
+
     try {
-      const mcpServerRepository = getRepository(MCPServer);
-
-      const server = await mcpServerRepository.findOne({
-        where: { id: serverId, user: { id: user.id } },
-      });
-
-      if (!server) {
-        return { error: "MCP server not found" };
-      }
-
-      const client = new MCPClient(server);
       const tools = await client.listTools();
 
       return {
@@ -174,11 +232,14 @@ export class MCPServerResolver extends BaseResolver {
           name: tool.name,
           description: tool.description,
           inputSchema: tool.inputSchema ? JSON.stringify(tool.inputSchema, null, 2) : undefined,
+          outputSchema: tool.outputSchema ? JSON.stringify(tool.outputSchema, null, 2) : undefined,
         })),
       };
     } catch (error) {
       logger.error(error, "Error fetching MCP server tools");
       return { error: `Failed to fetch tools: ${error instanceof Error ? error.message : String(error)}` };
+    } finally {
+      await client.close();
     }
   }
 
@@ -190,25 +251,28 @@ export class MCPServerResolver extends BaseResolver {
   ): Promise<MCPToolTestResponse> {
     const user = await this.validateContextUser(context);
 
+    const server = await this.mcpServerRepository.findOne({
+      where: { id: input.serverId, user: { id: user.id } },
+    });
+
+    if (!server) {
+      return { error: "MCP server not found" };
+    }
+
+    const client = MCPClient.connect(server);
+
     try {
-      const mcpServerRepository = getRepository(MCPServer);
-
-      const server = await mcpServerRepository.findOne({
-        where: { id: input.serverId, user: { id: user.id } },
-      });
-
-      if (!server) {
-        return { error: "MCP server not found" };
-      }
-
-      const client = new MCPClient(server);
       const args = input.argsJson ? JSON.parse(input.argsJson) : {};
       const result = await client.callTool(input.toolName, args);
+
+      await client.close();
 
       return { result: JSON.stringify(result, null, 2) };
     } catch (error) {
       logger.error(error, "Error testing MCP tool");
       return { error: `Failed to test tool: ${error instanceof Error ? error.message : String(error)}` };
+    } finally {
+      await client.close();
     }
   }
 }

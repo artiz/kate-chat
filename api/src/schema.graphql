@@ -182,6 +182,7 @@ input CreateMCPServerInput {
   authType: String
   description: String
   name: String!
+  transportType: String
   url: String!
 }
 
@@ -421,6 +422,8 @@ type MCPServer {
   id: ID!
   isActive: Boolean!
   name: String!
+  tools: [MCPToolInfo!]
+  transportType: MCPTransportType!
   updatedAt: DateTimeISO!
   url: String!
   user: User
@@ -438,10 +441,18 @@ type MCPServersListResponse {
   total: Float
 }
 
+type MCPToolInfo {
+  description: String
+  inputSchema: String
+  name: String!
+  outputSchema: String
+}
+
 type MCPToolInfoResponse {
   description: String
   inputSchema: String
   name: String!
+  outputSchema: String
 }
 
 type MCPToolTestResponse {
@@ -452,6 +463,14 @@ type MCPToolTestResponse {
 type MCPToolsListResponse {
   error: String
   tools: [MCPToolInfoResponse!]
+}
+
+"""
+Transport type for MCP server
+"""
+enum MCPTransportType {
+  HTTP_SSE_LEGACY
+  STREAMABLE_HTTP
 }
 
 type Message {
@@ -572,6 +591,7 @@ type Mutation {
   editMessage(content: String!, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!
   processDocument(force: Boolean, id: ID!): Document!
+  refetchMcpServerTools(serverId: String!): MCPServerResponse!
   register(input: RegisterInput!): AuthResponse!
   reindexDocument(id: ID!): Document!
   reloadChatFileMetadata(id: String!): ChatFile!
@@ -712,6 +732,7 @@ input UpdateMCPServerInput {
   id: String!
   isActive: Boolean
   name: String
+  transportType: String
   url: String
 }
 

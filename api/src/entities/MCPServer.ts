@@ -7,12 +7,21 @@ import { IsPublicUrl } from "../utils/validators";
 
 const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
 
+export enum MCPTransportType {
+  STREAMABLE_HTTP = "STREAMABLE_HTTP",
+  HTTP_SSE_LEGACY = "HTTP_SSE_LEGACY",
+}
+
 export enum MCPAuthType {
   NONE = "NONE",
   API_KEY = "API_KEY",
   BEARER = "BEARER",
   OAUTH2 = "OAUTH2",
 }
+registerEnumType(MCPTransportType, {
+  name: "MCPTransportType",
+  description: "Transport type for MCP server",
+});
 
 registerEnumType(MCPAuthType, {
   name: "MCPAuthType",
@@ -51,6 +60,9 @@ export class MCPToolInfo {
 
   @Field({ nullable: true })
   inputSchema?: string; // JSON string of the input schema
+
+  @Field({ nullable: true })
+  outputSchema?: string; // JSON string of the output schema
 }
 
 @ObjectType()
@@ -74,6 +86,10 @@ export class MCPServer {
   @Column({ nullable: true })
   description?: string;
 
+  @Field(() => MCPTransportType)
+  @Column({ default: MCPTransportType.STREAMABLE_HTTP, transformer: EnumTransformer<MCPTransportType>() })
+  transportType: MCPTransportType;
+
   @Field(() => MCPAuthType)
   @Column({ default: MCPAuthType.NONE, transformer: EnumTransformer<MCPAuthType>() })
   authType: MCPAuthType;
@@ -81,6 +97,10 @@ export class MCPServer {
   @Field(() => MCPAuthConfig, { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<MCPAuthConfig>() })
   authConfig?: MCPAuthConfig;
+
+  @Field(() => [MCPToolInfo], { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<MCPToolInfo[]>() })
+  tools?: MCPToolInfo[];
 
   @Field()
   @Column({ default: true })
