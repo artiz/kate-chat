@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { MantineProvider, ColorSchemeScript, Center, Loader } from "@mantine/core";
 import { notifications, Notifications } from "@mantine/notifications";
+import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
 import { ApolloWrapper } from "../lib/apollo-provider";
 import { theme } from "../theme";
@@ -139,44 +140,46 @@ const AppContent: React.FC = () => {
       defaultColorScheme={colorScheme}
       forceColorScheme={colorScheme === "auto" ? undefined : colorScheme}
     >
-      <Notifications position="top-right" />
-      <ApolloWrapper>
-        {isAuthenticated && isLoading ? (
-          <Center h="100vh">
-            <Loader size="xl" />
-          </Center>
-        ) : (
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
+      <ModalsProvider>
+        <Notifications position="top-right" />
+        <ApolloWrapper>
+          {isAuthenticated && isLoading ? (
+            <Center h="100vh">
+              <Loader size="xl" />
+            </Center>
+          ) : (
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
 
-            {/* Protected routes */}
-            <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>
-              <Route index element={<Navigate to="/chat" replace />} />
-              <Route path="chat" element={<ChatList />} />
-              <Route path="chat/:id" element={<Chat />} />
-              <Route path="chat/:id/documents" element={<ChatDocuments />} />
-              <Route path="chat/new" element={<CreateChat />} />
-              {/* Settings section */}
-              <Route path="models" element={<Models />} />
-              <Route path="ai-settings" element={<AISettings onReloadAppData={refetchInitialData} />} />
-              <Route path="connectivity" element={<Connectivity onReloadAppData={refetchInitialData} />} />
-              <Route path="mcp-servers" element={<AdminRoute element={<MCPServers />} />} />
-              {/* Admin section */}
-              <Route path="profile" element={<Profile onReloadAppData={refetchInitialData} />} />
-              <Route path="password" element={<Password />} />
-              <Route path="users" element={<AdminRoute element={<Users />} />} />
-              {/* Library section */}
-              <Route path="library" element={<Library />} />
-              <Route path="documents" element={<Documents />} />
-            </Route>
+              {/* Protected routes */}
+              <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>
+                <Route index element={<Navigate to="/chat" replace />} />
+                <Route path="chat" element={<ChatList />} />
+                <Route path="chat/:id" element={<Chat />} />
+                <Route path="chat/:id/documents" element={<ChatDocuments />} />
+                <Route path="chat/new" element={<CreateChat />} />
+                {/* Settings section */}
+                <Route path="models" element={<Models />} />
+                <Route path="ai-settings" element={<AISettings onReloadAppData={refetchInitialData} />} />
+                <Route path="connectivity" element={<Connectivity onReloadAppData={refetchInitialData} />} />
+                <Route path="mcp-servers" element={<AdminRoute element={<MCPServers />} />} />
+                {/* Admin section */}
+                <Route path="profile" element={<Profile onReloadAppData={refetchInitialData} />} />
+                <Route path="password" element={<Password />} />
+                <Route path="users" element={<AdminRoute element={<Users />} />} />
+                {/* Library section */}
+                <Route path="library" element={<Library />} />
+                <Route path="documents" element={<Documents />} />
+              </Route>
 
-            {/* Fallback route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        )}
-      </ApolloWrapper>
+              {/* Fallback route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          )}
+        </ApolloWrapper>
+      </ModalsProvider>
     </MantineProvider>
   );
 };
