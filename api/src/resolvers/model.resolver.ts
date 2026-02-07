@@ -487,6 +487,8 @@ export class ModelResolver extends BaseResolver {
 
       if (protocol === CustomModelProtocol.OPENAI_CHAT_COMPLETIONS) {
         model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
+      } else if (protocol === CustomModelProtocol.OPENAI_RESPONSES) {
+        model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
       } else {
         model.tools = [];
       }

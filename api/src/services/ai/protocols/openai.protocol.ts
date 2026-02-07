@@ -24,6 +24,8 @@ import {
   ChatCompletionToolCall,
   ChatCompletionToolCallable,
   formatOpenAIMcpTools,
+  formatResponsesMcpTools,
+  ResponsesMcpToolCallable,
   CustomWebSearchTool,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
@@ -357,7 +359,7 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, mcpServers } = inputRequest;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
@@ -377,9 +379,35 @@ export class OpenAIProtocol implements ModelProtocol {
           search_context_size: "low",
         });
       }
+
       if (inputRequest.tools.find(t => t.type === ToolType.CODE_INTERPRETER)) {
         tools.push({ type: "code_interpreter", container: { type: "auto" } });
       }
+
+      // TODO: Use MCP tools as function tools when OAuth is supported, or check
+      // how to load `authorization` token
+      // const mcpTools = formatResponsesMcpTools(
+      //   inputRequest.tools.filter(t => t.type === ToolType.MCP),
+      //   mcpServers
+      // );
+      // tools.push(...mcpTools);
+      const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);
+
+      inputRequest.tools
+        .filter(t => t.type === ToolType.MCP)
+        .forEach(tool => {
+          const server = serverMap.get(tool.id || tool.name);
+          ok(server);
+
+          tools.push({
+            type: "mcp",
+            server_url: server.url,
+            server_label: "M_" + server.id,
+            server_description: server.description,
+            require_approval: "never", // for now we handle approval
+          });
+        });
+
       if (tools.length) {
         params.tools = tools;
       }
@@ -650,13 +678,15 @@ export class OpenAIProtocol implements ModelProtocol {
       for await (const chunk of stream) {
         if (stopped) break;
 
+        logger.trace(chunk, "got responses chunk");
+
         if (chunk.type == "response.created") {
           stopped = await callbacks.onProgress("", {
             status: ResponseStatus.STARTED,
             requestId: chunk.response.id,
           });
         } else if (chunk.type == "response.output_text.delta") {
-          stopped = await callbacks.onProgress(chunk.delta);
+          stopped = await callbacks.onProgress(chunk.delta, { status: ResponseStatus.IN_PROGRESS });
           fullResponse += chunk.delta;
         } else if (
           chunk.type == "response.web_search_call.in_progress" ||
@@ -667,6 +697,14 @@ export class OpenAIProtocol implements ModelProtocol {
             lastStatus = ResponseStatus.WEB_SEARCH;
             stopped = await callbacks.onProgress("", { status: ResponseStatus.WEB_SEARCH });
           }
+        } else if (
+          chunk.type == "response.mcp_list_tools.in_progress" ||
+          chunk.type == "response.mcp_call.in_progress"
+        ) {
+          stopped = await callbacks.onProgress("", {
+            status: ResponseStatus.MCP_CALL,
+            detail: chunk.type == "response.mcp_list_tools.in_progress" ? "Loading MCP tools..." : undefined,
+          });
         } else if (chunk.type == "response.code_interpreter_call.in_progress") {
           if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
             lastStatus = ResponseStatus.CODE_INTERPRETER;

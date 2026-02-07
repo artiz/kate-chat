@@ -49,13 +49,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ## TODO
 
 #### MCP
-1. Enable tool calls for OpenAI Responses, and extend custom model:
-   ```
-   if (protocol === CustomModelProtocol.OPENAI_CHAT_RESPONSES) {
-        model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
-   }
-   ```
-3. getAuthHeaders usage in MCPClient with OAuthClientProvider like it is implemented in https://github.com/modelcontextprotocol/typescript-sdk/blob/main/examples/client/src/simpleOAuthClient.ts and https://github.com/modelcontextprotocol/typescript-sdk/blob/main/examples/client/src/simpleOAuthClientProvider.ts
+* getAuthHeaders usage in MCPClient with OAuthClientProvider like it is implemented in https://github.com/modelcontextprotocol/typescript-sdk/blob/main/examples/client/src/simpleOAuthClient.ts and https://github.com/modelcontextprotocol/typescript-sdk/blob/main/examples/client/src/simpleOAuthClientProvider.ts
 
 
 
