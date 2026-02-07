@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { YandexWebSearch } from "../tools/yandex.web_search";
+import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
 import { MCPClient, parseMCPToolName, MCPToolDefinition } from "../tools/mcp.client";
 import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
@@ -27,8 +27,6 @@ export type ChatCompletionToolCallable = OpenAI.Chat.Completions.ChatCompletionT
     connection: ConnectionParams
   ) => Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam>;
 };
-
-export const WEB_SEARCH_TOOL_NAME = "internal@web_search";
 
 export const CustomWebSearchTool: ChatCompletionToolCallable = {
   type: "function",

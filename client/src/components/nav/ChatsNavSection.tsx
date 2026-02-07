@@ -55,7 +55,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     return sortItemsBySections(
       chats.filter(chat => !chat.isPristine),
       [
-        { label: "Pinned", selector: chat => !!chat.isPinned },
+        { label: "Pinned", icon: <IconPin />, selector: chat => !!chat.isPinned },
         {
           label: "Today",
           selector: (ch, dt) =>
@@ -316,7 +316,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     >
       {sortedChats.map(block => (
         <Accordion.Item key={block.label} value={block.label}>
-          <Accordion.Control icon={<IconMessage2Code />}>{block.label}</Accordion.Control>
+          <Accordion.Control icon={block.icon || <IconMessage2Code />}>{block.label}</Accordion.Control>
           <Accordion.Panel>
             {block.items.map(chat => (
               <div key={chat.id} className={classes.chatItem}>

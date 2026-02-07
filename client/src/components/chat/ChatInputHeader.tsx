@@ -7,6 +7,9 @@ import {
   IconCloudCode,
   IconPlugConnected,
   IconPlugConnectedX,
+  IconCheckbox,
+  IconSquareCheck,
+  IconSquare,
 } from "@tabler/icons-react";
 import { gql, useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
@@ -236,16 +239,10 @@ export const ChatInputHeader = ({
               <Menu.Item
                 key={server.id}
                 leftSection={
-                  selectedMcpServers.has(server.id) ? (
-                    <IconPlugConnected size="1rem" />
-                  ) : (
-                    <IconPlugConnectedX size="1rem" />
-                  )
+                  selectedMcpServers.has(server.id) ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />
                 }
+                c={selectedMcpServers.has(server.id) ? undefined : "dimmed"}
                 onClick={() => handleMcpServerToggle(server.id)}
-                style={{
-                  backgroundColor: selectedMcpServers.has(server.id) ? "var(--mantine-color-brand-light)" : undefined,
-                }}
               >
                 {server.name}
               </Menu.Item>

@@ -31,8 +31,8 @@ export interface MCPToolResult {
 }
 
 const CLIENTS_CACHE_TIMEOUT_MS = 90_000;
-const RECONNECT_TIMEOUT_MS = 1000;
-const RECONNECT_MAX_ATTEMPTS = 5;
+const RECONNECT_TIMEOUT_MS = 500;
+const RECONNECT_MAX_ATTEMPTS = 7;
 
 /**
  * MCP Client wrapper using the official @modelcontextprotocol/sdk

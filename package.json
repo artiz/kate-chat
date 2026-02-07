@@ -17,6 +17,7 @@
     "build:katechat-ui": "npm run build -w packages/katechat-ui",
     "build:packages": "npm run build -w packages/katechat-ui",
     "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test -w api",
     "format": "npm run format -w client -w api",
     "migration:generate": "bash scripts/migration-generate.sh \"$@\"",
     "migration:run": "bash scripts/migration-run.sh",

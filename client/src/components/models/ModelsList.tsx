@@ -190,14 +190,14 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                   <ModelInfo model={model} size="16" showTools />
                 </Group>
 
-                <Group grow>
+                <Group>
                   <Button
                     leftSection={<IconMessagePlus size={16} />}
                     onClick={() => onCreateChat(model)}
                     loading={creatingChat}
                     disabled={!model.isActive || ![ModelType.CHAT, ModelType.IMAGE_GENERATION].includes(model.type)}
                   >
-                    Start Chat
+                    New Chat
                   </Button>
                   <Button
                     leftSection={<IconTestPipe size={16} />}
@@ -205,32 +205,26 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     onClick={() => onOpenTestModal(model)}
                     disabled={!model.isActive}
                   >
-                    Test Request
+                    Test
                   </Button>
-                </Group>
-
-                {model.isCustom && (
-                  <Group grow>
-                    {onEditModel && (
+                  {model.isCustom && (
+                    <>
+                      {onEditModel && (
+                        <Button leftSection={<IconEdit size={16} />} variant="light" onClick={() => onEditModel(model)}>
+                          Edit
+                        </Button>
+                      )}
                       <Button
-                        leftSection={<IconEdit size={16} />}
-                        variant="subtle"
-                        color="blue"
-                        onClick={() => onEditModel(model)}
+                        leftSection={<IconTrash size={16} />}
+                        variant="light"
+                        color="red"
+                        onClick={() => handleDeleteClick(model)}
                       >
-                        Edit Model
+                        Delete
                       </Button>
-                    )}
-                    <Button
-                      leftSection={<IconTrash size={16} />}
-                      variant="subtle"
-                      color="red"
-                      onClick={() => handleDeleteClick(model)}
-                    >
-                      Delete Model
-                    </Button>
-                  </Group>
-                )}
+                    </>
+                  )}
+                </Group>
               </Stack>
             </Card>
           </Grid.Col>
