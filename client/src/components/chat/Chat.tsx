@@ -30,10 +30,12 @@ import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/servic
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
-import { ChatInputHeader } from "./ChatInputHeader";
+import { ChatInputHeader, getMcpAuthToken } from "./ChatInputHeader";
 
 import classes from "./Chat.module.scss";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
+import { getChatMcpTokens } from "../auth/McpAuthentication";
+import { ChatPluginsContextProvider } from "./ChatPluginsContext";
 
 interface IProps {
   chatId?: string;
@@ -85,6 +87,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, [chatId]);
 
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
+
+  const mcpTokens = useMemo(() => {
+    return getChatMcpTokens(chat?.tools);
+  }, [chat?.tools]);
 
   const chatDocuments = useMemo(() => {
     let docs = (chat?.chatDocuments || []).map((doc: ChatDocument) => doc.document).filter(assert.notEmpty);
@@ -151,7 +157,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     assert.ok(chatId, "Chat is required to send a message");
 
     try {
-      // Convert images to base64
+      // Collect MCP auth tokens for enabled MCP tools
       await createMessage({
         variables: {
           input: {
@@ -159,6 +165,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             content: message?.trim() || "",
             images,
             documentIds: selectedRagDocIds,
+            mcpTokens,
           },
         },
       });
@@ -365,20 +372,21 @@ export const ChatComponent = ({ chatId }: IProps) => {
         />
       </Group>
 
-      <ChatMessagesContainer
-        ref={chatMessagesRef}
-        messages={messages}
-        models={models}
-        addChatMessage={addChatMessage}
-        removeMessages={removeMessages}
-        loadMoreMessages={loadMoreMessages}
-        plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-        detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall]}
-        streaming={streaming}
-        loading={messagesLoading}
-        loadCompleted={loadCompleted}
-      />
-
+      <ChatPluginsContextProvider context={{ mcpTokens }}>
+        <ChatMessagesContainer
+          ref={chatMessagesRef}
+          messages={messages}
+          models={models}
+          addChatMessage={addChatMessage}
+          removeMessages={removeMessages}
+          loadMoreMessages={loadMoreMessages}
+          plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
+          detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall]}
+          streaming={streaming}
+          loading={messagesLoading}
+          loadCompleted={loadCompleted}
+        />
+      </ChatPluginsContextProvider>
       {messagesLimitReached && (
         <Tooltip label={`You have reached the limit of ${appConfig?.maxChatMessages} messages in this chat`}>
           <Text size="xs" c="red" mb="sm">

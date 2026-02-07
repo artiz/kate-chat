@@ -8,6 +8,7 @@ import { MessageRole, PluginProps } from "@katechat/ui";
 import { EDIT_MESSAGE_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import { EditMessageModal } from "./EditMessageModal";
+import { useChatPluginsContext } from "../ChatPluginsContext";
 
 /** Edit Message button - only show on User messages */
 export const EditMessage = ({
@@ -21,6 +22,7 @@ export const EditMessage = ({
   const { role, id, content = "" } = message;
   const [isEdited, setIsEdited] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>("");
+  const messageContext = useChatPluginsContext();
 
   // Edit message mutation
   const [editMessage, { loading: editingMessage }] = useMutation<EditMessageResponse>(EDIT_MESSAGE_MUTATION, {
@@ -69,9 +71,10 @@ export const EditMessage = ({
       variables: {
         messageId: id,
         content: editedContent.trim(),
+        messageContext: messageContext,
       },
     });
-  }, [id, editedContent, editMessage]);
+  }, [id, editedContent, editMessage, messageContext]);
 
   const handleEditMessage = useCallback(() => {
     setIsEdited(true);

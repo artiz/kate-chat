@@ -300,6 +300,23 @@ export interface CompleteChatRequest {
   imagesCount?: number;
   tools?: ChatTool[];
   mcpServers?: MCPServer[];
+  mcpTokens?: MCPAuthToken[];
+}
+
+export class MCPAuthToken {
+  serverId?: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number;
+
+  static of(authToken?: string, serverId?: string): MCPAuthToken | undefined {
+    return authToken
+      ? {
+          serverId,
+          accessToken: authToken,
+        }
+      : undefined;
+  }
 }
 
 export interface GetEmbeddingsRequest {

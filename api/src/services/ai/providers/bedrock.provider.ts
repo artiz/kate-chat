@@ -152,7 +152,7 @@ export class BedrockApiProvider extends BaseApiProvider {
               },
             });
           } else {
-            const result = await callBedrockTool(toolCall, this.connection, requestTools);
+            const result = await callBedrockTool(toolCall, this.connection, requestTools, request.mcpTokens);
             toolResultContent.push({
               toolResult: result,
             });
@@ -327,7 +327,7 @@ export class BedrockApiProvider extends BaseApiProvider {
                   callId: toolCall.toolUseId,
                 });
               } else {
-                const result = await callBedrockTool(toolCall, this.connection, requestTools);
+                const result = await callBedrockTool(toolCall, this.connection, requestTools, request.mcpTokens);
                 toolResultContent.push({
                   toolResult: result,
                 });

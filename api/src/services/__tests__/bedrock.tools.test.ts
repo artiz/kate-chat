@@ -171,7 +171,7 @@ describe("Bedrock Tools", () => {
 
       const result = await callBedrockTool(toolCall, {} as any, tools);
 
-      expect(mockCall).toHaveBeenCalledWith({ arg: "value" }, "test-id", {});
+      expect(mockCall).toHaveBeenCalledWith({ arg: "value" }, "test-id", {}, undefined);
       expect(result.toolUseId).toBe("test-id");
     });
 

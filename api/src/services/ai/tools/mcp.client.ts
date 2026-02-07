@@ -5,8 +5,22 @@ import { MCPServer, MCPAuthType, MCPAuthConfig, MCPTransportType } from "@/entit
 import { createLogger } from "@/utils/logger";
 import { APP_USER_AGENT } from "@/config/application";
 import { ok } from "@/utils/assert";
+import { MCPAuthToken } from "@/types/ai.types";
 
 const logger = createLogger(__filename);
+
+/**
+ * Simple hash function for cache keys (not cryptographic)
+ */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
 
 export interface MCPToolAnnotations {
   title?: string | undefined;
@@ -45,21 +59,35 @@ export class MCPClient {
   private client: Client;
   private transport?: SSEClientTransport | StreamableHTTPClientTransport;
   private closeTimeout: NodeJS.Timeout;
+  private authToken?: MCPAuthToken;
 
   private static readonly CLIENTS_CACHE: Map<string, MCPClient> = new Map();
 
-  public static connect(server: MCPServer): MCPClient {
-    if (MCPClient.CLIENTS_CACHE.has(server.id)) {
-      logger.info({ url: server.url, transportType: server.transportType }, "Found connected MCP server");
-      const client = MCPClient.CLIENTS_CACHE.get(server.id)!;
+  /**
+   * Connect to an MCP server. For OAuth2 servers that require user authentication,
+   * provide the authToken obtained from the client-side OAuth flow.
+   */
+  public static connect(server: MCPServer, authToken?: MCPAuthToken): MCPClient {
+    // For OAuth servers with user tokens, include token hash in cache key to separate sessions per user
+    const cacheKey = authToken ? `${server.id}:${simpleHash(authToken.accessToken)}` : server.id;
+
+    if (MCPClient.CLIENTS_CACHE.has(cacheKey)) {
+      logger.info(
+        { url: server.url, transportType: server.transportType, hasAuth: !!authToken },
+        "Found connected MCP server"
+      );
+      const client = MCPClient.CLIENTS_CACHE.get(cacheKey)!;
       return client.touch();
     }
 
-    logger.info({ url: server.url, transportType: server.transportType }, "Connecting to MCP server");
-    const client = new MCPClient(server);
+    logger.info(
+      { url: server.url, transportType: server.transportType, hasAuth: !!authToken },
+      "Connecting to MCP server"
+    );
+    const client = new MCPClient(server, authToken);
     const close = async (client: MCPClient) =>
       MCPClient.closeClient(client).then(() => {
-        MCPClient.CLIENTS_CACHE.delete(server.id);
+        MCPClient.CLIENTS_CACHE.delete(cacheKey);
       });
     const touch = (client: MCPClient): MCPClient => {
       clearTimeout(client.closeTimeout);
@@ -143,8 +171,9 @@ export class MCPClient {
     }
   }
 
-  private constructor(server: MCPServer) {
+  private constructor(server: MCPServer, oauthToken?: MCPAuthToken) {
     this.server = server;
+    this.authToken = oauthToken;
   }
 
   /**
@@ -290,20 +319,59 @@ export class MCPClient {
       return {};
     }
 
-    if (authType === MCPAuthType.API_KEY && authConfig?.apiKey) {
-      const headerName = authConfig.headerName || "X-API-Key";
-      return { [headerName]: authConfig.apiKey };
+    if (authType === MCPAuthType.API_KEY) {
+      const headerName = authConfig?.headerName || "X-API-Key";
+      ok(this.authToken?.accessToken, "API key is required for API_KEY auth type");
+      return { [headerName]: this.authToken.accessToken };
     }
 
-    if (authType === MCPAuthType.BEARER && authConfig?.bearerToken) {
-      return { Authorization: `Bearer ${authConfig.bearerToken}` };
+    if (authType === MCPAuthType.BEARER) {
+      ok(this.authToken?.accessToken, "Bearer token is required for BEARER auth type");
+      return { Authorization: `Bearer ${this.authToken.accessToken}` };
     }
 
-    if (authType === MCPAuthType.OAUTH2 && authConfig?.bearerToken) {
-      return { Authorization: `Bearer ${authConfig.bearerToken}` };
+    if (authType === MCPAuthType.OAUTH2) {
+      // For OAuth2, prefer user-provided token (for servers requiring user auth)
+      // Fall back to server-configured bearer token (for client credentials flow)
+      if (this.authToken?.accessToken) {
+        logger.debug({ serverId: this.server.id }, "Using user-provided OAuth token");
+        return { Authorization: `Bearer ${this.authToken.accessToken}` };
+      }
     }
 
     return {};
+  }
+
+  /**
+   * Check if the client has a valid OAuth token
+   */
+  public hasValidToken(): boolean {
+    if (!this.authToken?.accessToken) {
+      return false;
+    }
+    if (this.authToken.expiresAt && Date.now() >= this.authToken.expiresAt) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Get OAuth configuration for the server (used by clients to initiate OAuth flow)
+   */
+  public getOAuthConfig(): {
+    authorizationUrl?: string;
+    clientId?: string;
+    scope?: string;
+  } | null {
+    if (this.server.authType !== MCPAuthType.OAUTH2) {
+      return null;
+    }
+    const authConfig = this.server.authConfig;
+    return {
+      authorizationUrl: authConfig?.authorizationUrl,
+      clientId: authConfig?.clientId,
+      scope: authConfig?.scope,
+    };
   }
 
   /**

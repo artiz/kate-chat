@@ -193,6 +193,7 @@ input CreateMessageInput {
   content: String!
   documentIds: [String!]
   images: [ImageInput!]
+  mcpTokens: [MCPAuthTokenInput!]
 }
 
 type CustomModelSettings {
@@ -389,21 +390,28 @@ input LoginInput {
 }
 
 type MCPAuthConfig {
-  apiKey: String
-  bearerToken: String
+  authorizationUrl: String
   clientId: String
   clientSecret: String
   headerName: String
+  scope: String
   tokenUrl: String
 }
 
 input MCPAuthConfigInput {
-  apiKey: String
-  bearerToken: String
+  authorizationUrl: String
   clientId: String
   clientSecret: String
   headerName: String
+  scope: String
   tokenUrl: String
+}
+
+input MCPAuthTokenInput {
+  accessToken: String!
+  expiresAt: Float
+  refreshToken: String
+  serverId: String!
 }
 
 """
@@ -506,6 +514,10 @@ type MessageChatInfo {
   topP: Float
 }
 
+input MessageContext {
+  mcpTokens: [MCPAuthTokenInput!]
+}
+
 type MessageMetadata {
   analysis: String
   annotations: [ChatResultAnnotation!]
@@ -590,10 +602,10 @@ type Mutation {
   deleteMCPServer(input: DeleteMCPServerInput!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
   deleteModel(input: DeleteModelInput!): Boolean!
-  editMessage(content: String!, messageId: ID!): EditMessageResponse!
+  editMessage(content: String!, messageContext: MessageContext, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!
   processDocument(force: Boolean, id: ID!): Document!
-  refetchMcpServerTools(serverId: String!): MCPServerResponse!
+  refetchMcpServerTools(authToken: String, serverId: String!): MCPServerResponse!
   register(input: RegisterInput!): AuthResponse!
   reindexDocument(id: ID!): Document!
   reloadChatFileMetadata(id: String!): ChatFile!
@@ -627,7 +639,7 @@ type Query {
   getChats(input: GetChatsInput): GqlChatsList!
   getCosts(input: GetCostsInput!): GqlCostsInfo!
   getDocuments(input: GetDocumentsInput): DocumentsResponse!
-  getMCPServerTools(serverId: String!): MCPToolsListResponse!
+  getMCPServerTools(authToken: String, serverId: String!): MCPToolsListResponse!
   getMCPServers: MCPServersListResponse!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
@@ -682,6 +694,7 @@ input TestCustomModelInput {
 
 input TestMCPToolInput {
   argsJson: String
+  authToken: String
   serverId: String!
   toolName: String!
 }

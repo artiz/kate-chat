@@ -32,13 +32,7 @@ registerEnumType(MCPAuthType, {
 @InputType("MCPAuthConfigInput")
 export class MCPAuthConfig {
   @Field({ nullable: true })
-  apiKey?: string;
-
-  @Field({ nullable: true })
   headerName?: string; // e.g., "Authorization", "X-API-Key"
-
-  @Field({ nullable: true })
-  bearerToken?: string;
 
   @Field({ nullable: true })
   clientId?: string;
@@ -48,6 +42,12 @@ export class MCPAuthConfig {
 
   @Field({ nullable: true })
   tokenUrl?: string;
+
+  @Field({ nullable: true })
+  authorizationUrl?: string; // OAuth2 authorization URL
+
+  @Field({ nullable: true })
+  scope?: string; // OAuth2 scope
 }
 
 @ObjectType("MCPToolInfo")

@@ -5,7 +5,7 @@ import { MCPClient } from "../tools/mcp.client";
 import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
 import { createLogger } from "@/utils/logger";
-import { ChatTool, ResponseStatus, ToolType } from "@/types/ai.types";
+import { ChatTool, MCPAuthToken, ResponseStatus, ToolType } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 
 // Re-export for backward compatibility
@@ -24,7 +24,12 @@ export type BedrockToolCallable = Tool & {
   name: string;
   mcpToolName?: string; // Original MCP tool name for calling
   status?: ResponseStatus;
-  call: (args: Record<string, any>, toolUseId: string, connection: ConnectionParams) => Promise<ToolResultBlock>;
+  call: (
+    args: Record<string, any>,
+    toolUseId: string,
+    connection: ConnectionParams,
+    mcpTokens?: MCPAuthToken[]
+  ) => Promise<ToolResultBlock>;
 };
 
 export const WEB_SEARCH_TOOL: BedrockToolCallable = {
@@ -103,9 +108,12 @@ async function callMcpTool(
   toolName: string,
   args: Record<string, any>,
   toolUseId: string,
-  server: MCPServer
+  server: MCPServer,
+  mcpTokens?: MCPAuthToken[]
 ): Promise<ToolResultBlock> {
-  const client = MCPClient.connect(server);
+  // Find matching OAuth token for this server
+  const oauthToken = mcpTokens?.find(t => t.serverId === server.id);
+  const client = MCPClient.connect(server, oauthToken);
 
   try {
     const result = await client.callTool(toolName, args);
@@ -169,8 +177,13 @@ export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: MCPServer
               },
             },
 
-            call: (args: Record<string, any>, toolUseId: string) => {
-              return callMcpTool(mcpTool.name, args, toolUseId, server);
+            call: (
+              args: Record<string, any>,
+              toolUseId: string,
+              _connection: ConnectionParams,
+              mcpTokens?: MCPAuthToken[]
+            ) => {
+              return callMcpTool(mcpTool.name, args, toolUseId, server, mcpTokens);
             },
           };
 
@@ -231,7 +244,8 @@ export function parseToolUse(toolUse: ToolUseBlock, tools: BedrockToolCallable[]
 export async function callBedrockTool(
   toolCall: BedrockToolCall,
   connection: ConnectionParams,
-  tools: BedrockToolCallable[]
+  tools: BedrockToolCallable[],
+  mcpTokens?: MCPAuthToken[]
 ): Promise<ToolResultBlock> {
   // Find the tool in the provided tools list by name
   const tool = tools.find(t => t.name === toolCall.name);
@@ -248,7 +262,7 @@ export async function callBedrockTool(
   }
 
   try {
-    return await tool.call(toolCall.input, toolCall.toolUseId, connection);
+    return await tool.call(toolCall.input, toolCall.toolUseId, connection, mcpTokens);
   } catch (error) {
     return {
       toolUseId: toolCall.toolUseId,

@@ -8,7 +8,7 @@ import { AIService } from "./ai/ai.service";
 import sharp from "sharp";
 import exifReader, { Exif } from "exif-reader";
 import { Chat, DocumentChunk, MCPServer, Model, User } from "@/entities";
-import { CreateMessageInput, ImageInput } from "@/types/graphql/inputs";
+import { CreateMessageInput, ImageInput, MessageContext } from "@/types/graphql/inputs";
 import {
   ChatResponseStatus,
   CompleteChatRequest,
@@ -59,6 +59,7 @@ export interface CreateMessageRequest {
   systemPrompt?: string;
   images?: ImageInput[];
   documentIds?: string[];
+  mcpTokens?: { serverId: string; accessToken: string; refreshToken?: string; expiresAt?: number }[];
 }
 
 export class MessagesService {
@@ -236,7 +237,10 @@ export class MessagesService {
     const modelId = chat.modelId || user.defaultModelId;
     if (!modelId) throw new Error("Model must be defined for the chat or user");
 
-    const request: CreateMessageRequest = this.formatMessageRequest(modelId, input.content, chat, user);
+    const request: CreateMessageRequest = {
+      ...this.formatMessageRequest(modelId, input.content, chat, user),
+      mcpTokens: input.mcpTokens,
+    };
     const model = await this.modelRepository.findOne({
       where: {
         modelId,
@@ -366,7 +370,8 @@ export class MessagesService {
     messageId: string,
     newContent: string,
     connection: ConnectionParams,
-    user: User
+    user: User,
+    messageContext?: MessageContext
   ): Promise<Message> {
     // Find the original message
     let originalMessage = await this.messageRepository.findOne({
@@ -439,6 +444,7 @@ export class MessagesService {
       });
 
     const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, originalMessage.content, chat, user);
+    request.mcpTokens = messageContext?.mcpTokens;
 
     // Add the edited user message to context
     contextMessages.push(originalMessage);
@@ -718,6 +724,7 @@ export class MessagesService {
       topP: chat.topP,
       imagesCount: chat.imagesCount,
       tools: chat.tools,
+      mcpTokens: input.mcpTokens,
     };
 
     const mcpTools = chat.tools

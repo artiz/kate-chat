@@ -4,7 +4,7 @@ import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_searc
 import { MCPClient, parseMCPToolName, MCPToolDefinition } from "../tools/mcp.client";
 import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
-import { ChatTool, ResponseStatus } from "@/types/ai.types";
+import { ChatTool, MCPAuthToken, ResponseStatus } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 
@@ -24,7 +24,8 @@ export type ChatCompletionToolCallable = OpenAI.Chat.Completions.ChatCompletionT
   call: (
     args: Record<string, any>,
     callId: string,
-    connection: ConnectionParams
+    connection: ConnectionParams,
+    mcpTokens?: MCPAuthToken[]
   ) => Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam>;
 };
 
@@ -119,8 +120,13 @@ export function formatOpenAIMcpTools(tools?: ChatTool[], mcpServers?: MCPServer[
               parameters: JSON.parse(mcpTool.inputSchema),
             },
 
-            call: (args: Record<string, any>, callId: string) => {
-              return callMcpTool(mcpTool.name, args, callId, server);
+            call: (
+              args: Record<string, any>,
+              callId: string,
+              _connection: ConnectionParams,
+              mcpTokens?: MCPAuthToken[]
+            ) => {
+              return callMcpTool(mcpTool.name, args, callId, server, mcpTokens);
             },
           };
 
@@ -138,9 +144,12 @@ async function callMcpTool(
   toolName: string,
   args: Record<string, any>,
   callId: string,
-  server: MCPServer
+  server: MCPServer,
+  mcpTokens?: MCPAuthToken[]
 ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam> {
-  const client = MCPClient.connect(server);
+  // Find matching OAuth token for this server
+  const oauthToken = mcpTokens?.find(t => t.serverId === server.id);
+  const client = MCPClient.connect(server, oauthToken);
 
   try {
     const result = await client.callTool(toolName, args);

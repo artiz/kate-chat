@@ -18,7 +18,7 @@ import { GraphQLContext } from ".";
 import { createLogger } from "@/utils/logger";
 import { MCPClient } from "@/services/ai/tools/mcp.client";
 import { Repository } from "typeorm";
-import { log } from "console";
+import { MCPAuthToken } from "@/types/ai.types";
 
 const logger = createLogger(__filename);
 
@@ -35,8 +35,8 @@ export class MCPServerResolver extends BaseResolver {
   /**
    * Fetch tools from an MCP server and store them in the database
    */
-  private async fetchAndStoreTools(server: MCPServer): Promise<MCPServer> {
-    const client = MCPClient.connect(server);
+  private async fetchAndStoreTools(server: MCPServer, authToken?: string): Promise<MCPServer> {
+    const client = MCPClient.connect(server, MCPAuthToken.of(authToken, server.id));
     const tools = await client.listTools();
     server.tools = tools.map(tool => ({
       name: tool.name,
@@ -103,7 +103,9 @@ export class MCPServerResolver extends BaseResolver {
       const savedServer = await this.mcpServerRepository.save(server);
       logger.debug({ serverId: savedServer.id, name: savedServer.name }, "Created MCP server");
 
-      await this.fetchAndStoreTools(savedServer);
+      if (savedServer.authType == MCPAuthType.NONE) {
+        await this.fetchAndStoreTools(savedServer);
+      }
 
       return { server: savedServer };
     } catch (error) {
@@ -141,13 +143,29 @@ export class MCPServerResolver extends BaseResolver {
       ];
       for (const field of fields) {
         if (input[field] !== undefined) {
-          (server as Record<keyof UpdateMCPServerInput, string | boolean | MCPAuthType | MCPAuthConfig>)[field] =
-            input[field];
+          if (field === "authConfig") {
+            if (input.authType === MCPAuthType.NONE) {
+              server.authConfig = undefined;
+            } else if (input.authType === MCPAuthType.OAUTH2) {
+              const currentSecret = server.authConfig?.clientSecret;
+              server.authConfig = { ...server.authConfig, ...input.authConfig };
+              if (currentSecret && !server.authConfig.clientSecret) {
+                server.authConfig.clientSecret = currentSecret;
+              }
+            } else {
+              server.authConfig = input.authConfig;
+            }
+          } else {
+            (server as Record<keyof UpdateMCPServerInput, string | boolean | MCPAuthType | MCPAuthConfig>)[field] =
+              input[field];
+          }
         }
       }
 
       const savedServer = await this.mcpServerRepository.save(server);
-      await this.fetchAndStoreTools(savedServer);
+      if (savedServer.authType == MCPAuthType.NONE) {
+        await this.fetchAndStoreTools(savedServer);
+      }
 
       return { server: savedServer };
     } catch (error) {
@@ -184,6 +202,7 @@ export class MCPServerResolver extends BaseResolver {
   @Authorized(UserRole.ADMIN)
   async refetchMcpServerTools(
     @Arg("serverId") serverId: string,
+    @Arg("authToken", { nullable: true }) authToken: string,
     @Ctx() context: GraphQLContext
   ): Promise<MCPServerResponse> {
     const user = await this.validateContextUser(context);
@@ -197,7 +216,7 @@ export class MCPServerResolver extends BaseResolver {
         return { error: "MCP server not found" };
       }
 
-      const savedServer = await this.fetchAndStoreTools(server);
+      const savedServer = await this.fetchAndStoreTools(server, authToken);
 
       return { server: savedServer };
     } catch (error) {
@@ -210,6 +229,7 @@ export class MCPServerResolver extends BaseResolver {
   @Authorized(UserRole.ADMIN)
   async getMCPServerTools(
     @Arg("serverId") serverId: string,
+    @Arg("authToken", { nullable: true }) authToken: string,
     @Ctx() context: GraphQLContext
   ): Promise<MCPToolsListResponse> {
     const user = await this.validateContextUser(context);
@@ -222,7 +242,7 @@ export class MCPServerResolver extends BaseResolver {
       return { error: "MCP server not found" };
     }
 
-    const client = MCPClient.connect(server);
+    const client = MCPClient.connect(server, MCPAuthToken.of(authToken, server.id));
 
     try {
       const tools = await client.listTools();
@@ -259,7 +279,7 @@ export class MCPServerResolver extends BaseResolver {
       return { error: "MCP server not found" };
     }
 
-    const client = MCPClient.connect(server);
+    const client = MCPClient.connect(server, MCPAuthToken.of(input.authToken, input.serverId));
 
     try {
       const args = input.argsJson ? JSON.parse(input.argsJson) : {};
@@ -279,32 +299,6 @@ export class MCPServerResolver extends BaseResolver {
 
 @Resolver(() => MCPAuthConfig)
 export class MCPAuthConfigResolver {
-  @FieldResolver(() => String, { nullable: true })
-  apiKey(@Root() config: MCPAuthConfig): string | undefined {
-    if (!config.apiKey) {
-      return undefined;
-    }
-
-    // Mask the API key
-    if (config.apiKey.length <= 10) {
-      return "********";
-    }
-    return `${config.apiKey.substring(0, 3)}...${config.apiKey.substring(config.apiKey.length - 4)}`;
-  }
-
-  @FieldResolver(() => String, { nullable: true })
-  bearerToken(@Root() config: MCPAuthConfig): string | undefined {
-    if (!config.bearerToken) {
-      return undefined;
-    }
-
-    // Mask the bearer token
-    if (config.bearerToken.length <= 10) {
-      return "********";
-    }
-    return `${config.bearerToken.substring(0, 3)}...${config.bearerToken.substring(config.bearerToken.length - 4)}`;
-  }
-
   @FieldResolver(() => String, { nullable: true })
   clientSecret(@Root() config: MCPAuthConfig): string | undefined {
     if (!config.clientSecret) {

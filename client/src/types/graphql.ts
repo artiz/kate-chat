@@ -349,3 +349,36 @@ export interface StopMessageGenerationResponse {
     messageId?: string;
   };
 }
+
+/**
+ * MCP Authentication configuration
+ */
+export interface MCPAuthConfig {
+  headerName?: string;
+  clientId?: string;
+  clientSecret?: string;
+  tokenUrl?: string;
+  authorizationUrl?: string;
+  scope?: string;
+}
+
+export interface MCPTool {
+  name: string;
+  description?: string;
+  inputSchema?: string;
+  outputSchema?: string;
+}
+
+export interface MCPServer {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  transportType: string;
+  authType: string;
+  authConfig?: MCPAuthConfig;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tools?: MCPTool[];
+}

@@ -17,54 +17,29 @@ import {
   Accordion,
   Box,
   Divider,
+  Select,
+  Tabs,
 } from "@mantine/core";
 import {
-  IconAlertCircle,
   IconTestPipe,
   IconTool,
   IconChevronDown,
   IconChevronUp,
   IconRefresh,
+  IconLock,
+  IconSchema,
 } from "@tabler/icons-react";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-
-const REFETCH_MCP_SERVER_TOOLS = gql`
-  mutation RefetchMcpServerTools($serverId: String!) {
-    refetchMcpServerTools(serverId: $serverId) {
-      server {
-        id
-        tools {
-          name
-          description
-          inputSchema
-        }
-      }
-      error
-    }
-  }
-`;
-
-const TEST_MCP_TOOL = gql`
-  mutation TestMCPTool($input: TestMCPToolInput!) {
-    testMCPTool(input: $input) {
-      result
-      error
-    }
-  }
-`;
-
-interface MCPServer {
-  id: string;
-  name: string;
-  tools?: MCPTool[];
-}
-
-interface MCPTool {
-  name: string;
-  description?: string;
-  inputSchema?: string;
-}
+import {
+  useMcpAuth,
+  requiresAuth,
+  McpTokenModal,
+  getMcpAuthToken,
+  MCPAuthType,
+} from "@/components/auth/McpAuthentication";
+import { REFETCH_MCP_SERVER_TOOLS, TEST_MCP_TOOL } from "@/store/services/graphql.queries";
+import { MCPServer, MCPTool } from "@/types/graphql";
 
 interface SchemaProperty {
   type?: string;
@@ -118,7 +93,8 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [complexValues, setComplexValues] = useState<Record<string, string>>({});
   const [testResult, setTestResult] = useState<string | null>(null);
-  const [showSchema, setShowSchema] = useState(false);
+  const [showInputSchema, setShowInputSchema] = useState(false);
+  const [showOutputSchema, setShowOutputSchema] = useState(false);
 
   const [testTool, { loading: testLoading }] = useMutation(TEST_MCP_TOOL, {
     onCompleted: data => {
@@ -190,6 +166,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
           serverId,
           toolName: tool.name,
           argsJson: JSON.stringify(args),
+          authToken: getMcpAuthToken(serverId)?.accessToken,
         },
       },
     });
@@ -332,26 +309,61 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
         Test
       </Button>
 
-      {tool.inputSchema && (
-        <Box>
+      <Group gap="md" mt="xs">
+        {tool.inputSchema && (
           <Button
             variant="subtle"
             size="xs"
-            onClick={() => setShowSchema(!showSchema)}
-            rightSection={showSchema ? <IconChevronUp size="0.8rem" /> : <IconChevronDown size="0.8rem" />}
+            onClick={() => setShowInputSchema(!showInputSchema)}
+            rightSection={showInputSchema ? <IconChevronUp size="0.8rem" /> : <IconChevronDown size="0.8rem" />}
             p={0}
             h="auto"
           >
-            {showSchema ? "Hide Schema" : "Show Schema"}
+            {showInputSchema ? "Hide Input Schema" : "Show Input Schema"}
           </Button>
-          <Collapse in={showSchema}>
-            <ScrollArea h={120} mt="xs">
+        )}
+        {tool.outputSchema && (
+          <Button
+            variant="subtle"
+            size="xs"
+            onClick={() => setShowOutputSchema(!showOutputSchema)}
+            rightSection={showOutputSchema ? <IconChevronUp size="0.8rem" /> : <IconChevronDown size="0.8rem" />}
+            p={0}
+            h="auto"
+          >
+            {showOutputSchema ? "Hide Output Schema" : "Show Output Schema"}
+          </Button>
+        )}
+      </Group>
+
+      {tool.inputSchema && (
+        <Collapse in={showInputSchema}>
+          <Box mt="xs">
+            <Text size="xs" fw={500} c="dimmed" mb="xs">
+              Input Schema:
+            </Text>
+            <ScrollArea h={120}>
               <Code block style={{ fontSize: "0.7rem" }}>
                 {JSON.stringify(JSON.parse(tool.inputSchema), null, 2)}
               </Code>
             </ScrollArea>
-          </Collapse>
-        </Box>
+          </Box>
+        </Collapse>
+      )}
+
+      {tool.outputSchema && (
+        <Collapse in={showOutputSchema}>
+          <Box mt="xs">
+            <Text size="xs" fw={500} c="dimmed" mb="xs">
+              Output Schema:
+            </Text>
+            <ScrollArea h={120}>
+              <Code block style={{ fontSize: "0.7rem" }}>
+                {JSON.stringify(JSON.parse(tool.outputSchema), null, 2)}
+              </Code>
+            </ScrollArea>
+          </Box>
+        </Collapse>
       )}
 
       {testResult && (
@@ -379,6 +391,25 @@ interface MCPToolsDialogProps {
 }
 
 export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose, server, onToolsRefetched }) => {
+  const [tools, setTools] = useState<MCPTool[]>([]);
+  const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
+
+  // MCP authentication hook
+  const servers = useMemo(() => (server ? [server] : []), [server]);
+
+  // Selected tool
+  const selectedTool = useMemo(() => tools.find(t => t.name === selectedToolName) || null, [tools, selectedToolName]);
+
+  // Tool options for select
+  const toolOptions = useMemo(
+    () => tools.map(t => ({ value: t.name, label: t.name, description: t.description })),
+    [tools]
+  );
+  const mcpAuth = useMcpAuth(servers);
+
+  // Check if auth is needed - use hook's auth status for reactivity
+  const needsAuth = server && requiresAuth(server) && !mcpAuth.authStatus.get(server.id);
+
   const [refetchTools, { loading: refetchLoading }] = useMutation(REFETCH_MCP_SERVER_TOOLS, {
     onCompleted: data => {
       if (data.refetchMcpServerTools.error) {
@@ -393,7 +424,9 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
           message: "Tools refreshed successfully",
           color: "green",
         });
+
         onToolsRefetched?.();
+        setTools(data.refetchMcpServerTools.server.tools);
       }
     },
     onError: error => {
@@ -405,43 +438,137 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
     },
   });
 
-  const tools: MCPTool[] = server?.tools || [];
+  useEffect(() => {
+    if (server) {
+      setTools(server.tools || []);
+      // Auto-select first tool if available
+      if (server.tools?.length && !selectedToolName) {
+        setSelectedToolName(server.tools[0].name);
+      }
+    }
+  }, [server]);
+
+  // Reset selection when dialog closes
+  useEffect(() => {
+    if (!opened) {
+      setSelectedToolName(null);
+    }
+  }, [opened]);
 
   const handleRefetchTools = () => {
     if (server?.id) {
-      refetchTools({ variables: { serverId: server.id } });
+      setTools([]);
+      refetchTools({ variables: { serverId: server.id, authToken: getMcpAuthToken(server.id)?.accessToken } });
     }
   };
 
+  const handleAuthenticate = () => {
+    if (server) {
+      mcpAuth.initiateAuth(server);
+    }
+  };
+
+  const handleReAuthenticate = () => {
+    if (server) {
+      mcpAuth.initiateAuth(server, true);
+    }
+  };
+
+  const handleTokenSubmit = () => {
+    mcpAuth.submitToken();
+  };
+
+  if (!server) return null;
+
   return (
-    <Modal opened={opened} onClose={onClose} title={`Tools - ${server?.name || ""}`} size="lg">
-      <Group justify="space-between" mb="md">
-        <Text size="sm" c="dimmed">
-          {tools.length} tool{tools.length !== 1 ? "s" : ""} available
-        </Text>
-        <Button
-          size="xs"
-          variant="light"
-          leftSection={<IconRefresh size="1rem" />}
-          onClick={handleRefetchTools}
-          loading={refetchLoading}
-        >
-          Refetch tools
-        </Button>
-      </Group>
-      {!tools.length ? (
-        <Text c="dimmed" ta="center" p="xl">
-          No tools available from this server
-        </Text>
-      ) : (
-        <ScrollArea h={500}>
-          <Stack gap="md">
-            {tools.map((tool: MCPTool) => (
-              <ToolCard key={tool.name} tool={tool} serverId={server!.id} />
-            ))}
+    <>
+      <Modal opened={opened} onClose={onClose} title={`Tools - ${server?.name || ""}`} size="lg">
+        {needsAuth ? (
+          <Stack align="center" p="xl" gap="md">
+            <IconLock size="3rem" color="orange" />
+            <Text ta="center" size="lg" fw={500}>
+              Authentication Required
+            </Text>
+            <Text ta="center" c="dimmed" size="sm">
+              This MCP server requires authentication before you can view or test its tools.
+            </Text>
+            <Button leftSection={<IconLock size="1rem" />} onClick={handleAuthenticate}>
+              Authenticate
+            </Button>
           </Stack>
-        </ScrollArea>
-      )}
-    </Modal>
+        ) : (
+          <>
+            <Group justify="space-between" mb="md">
+              <Group>
+                <Text size="sm" c="dimmed">
+                  {tools.length} tool{tools.length !== 1 ? "s" : ""} available
+                </Text>
+              </Group>
+              <Group>
+                {server.authType === MCPAuthType.OAUTH2 ? (
+                  <Button leftSection={<IconLock size="1rem" />} onClick={handleReAuthenticate}>
+                    Re-Authenticate
+                  </Button>
+                ) : null}
+                <Button
+                  size="xs"
+                  variant="light"
+                  leftSection={<IconRefresh size="1rem" />}
+                  onClick={handleRefetchTools}
+                  loading={refetchLoading}
+                >
+                  Refetch tools
+                </Button>
+              </Group>
+            </Group>
+            {!tools.length ? (
+              <Text c="dimmed" ta="center" p="xl">
+                No tools available from this server
+              </Text>
+            ) : (
+              <Stack gap="md">
+                <Select
+                  placeholder="Select a tool to test"
+                  searchable
+                  data={toolOptions}
+                  value={selectedToolName}
+                  onChange={setSelectedToolName}
+                  leftSection={<IconTool size="1rem" />}
+                  renderOption={({ option }) => {
+                    const toolDesc = tools.find(t => t.name === option.value)?.description;
+                    return (
+                      <Stack gap={0}>
+                        <Text size="sm">{option.value}</Text>
+                        {toolDesc && (
+                          <Text size="xs" c="dimmed" lineClamp={1}>
+                            {toolDesc}
+                          </Text>
+                        )}
+                      </Stack>
+                    );
+                  }}
+                />
+
+                {selectedTool && (
+                  <ScrollArea h={450}>
+                    <ToolCard tool={selectedTool} serverId={server!.id} />
+                  </ScrollArea>
+                )}
+              </Stack>
+            )}
+          </>
+        )}
+      </Modal>
+
+      {/* Token Entry Modal */}
+      <McpTokenModal
+        opened={!!mcpAuth.tokenModalServer}
+        server={mcpAuth.tokenModalServer}
+        tokenValue={mcpAuth.tokenValue}
+        onTokenChange={mcpAuth.setTokenValue}
+        onSubmit={handleTokenSubmit}
+        onClose={mcpAuth.closeTokenModal}
+      />
+    </>
   );
 };

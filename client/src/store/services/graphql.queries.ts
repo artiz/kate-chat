@@ -269,8 +269,8 @@ export const CALL_OTHER_MUTATION = gql`
 `;
 
 export const EDIT_MESSAGE_MUTATION = gql`
-  mutation EditMessage($messageId: ID!, $content: String!) {
-    editMessage(messageId: $messageId, content: $content) {
+  mutation EditMessage($messageId: ID!, $content: String!, $messageContext: MessageContext!) {
+    editMessage(messageId: $messageId, content: $content, messageContext: $messageContext) {
       message {
         ...BaseMessage
         linkedMessages {
@@ -572,6 +572,85 @@ export const TEST_CUSTOM_MODEL_MUTATION = gql`
   mutation TestCustomModel($input: TestCustomModelInput!) {
     testCustomModel(input: $input) {
       ...BaseMessage
+    }
+  }
+`;
+
+export const REFETCH_MCP_SERVER_TOOLS = gql`
+  mutation RefetchMcpServerTools($serverId: String!, $authToken: String) {
+    refetchMcpServerTools(serverId: $serverId, authToken: $authToken) {
+      server {
+        id
+        tools {
+          name
+          description
+          inputSchema
+          outputSchema
+        }
+      }
+      error
+    }
+  }
+`;
+
+export const TEST_MCP_TOOL = gql`
+  mutation TestMCPTool($input: TestMCPToolInput!) {
+    testMCPTool(input: $input) {
+      result
+      error
+    }
+  }
+`;
+
+// MCP servers query for MCP tool dropdown
+export const GET_MCP_SERVERS = gql`
+  query GetMCPServersForChat {
+    getMCPServers {
+      servers {
+        id
+        name
+        isActive
+        authType
+        authConfig {
+          clientId
+          authorizationUrl
+          scope
+        }
+      }
+    }
+  }
+`;
+
+export const CREATE_MCP_SERVER = gql`
+  mutation CreateMCPServer($input: CreateMCPServerInput!) {
+    createMCPServer(input: $input) {
+      server {
+        id
+        name
+        url
+        description
+        transportType
+        authType
+        isActive
+      }
+      error
+    }
+  }
+`;
+
+export const UPDATE_MCP_SERVER = gql`
+  mutation UpdateMCPServer($input: UpdateMCPServerInput!) {
+    updateMCPServer(input: $input) {
+      server {
+        id
+        name
+        url
+        description
+        transportType
+        authType
+        isActive
+      }
+      error
     }
   }
 `;

@@ -1,6 +1,6 @@
 import { InputType, Field } from "type-graphql";
 import { ToolType } from "../ai.types";
-import { UserSettings, AuthProvider } from "@/entities";
+import { UserSettings, AuthProvider, MCPAuthConfig, MCPAuthType } from "@/entities";
 import { ApiProvider } from "@/config/ai/common";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
@@ -174,6 +174,21 @@ export class ImageInput {
 }
 
 @InputType()
+export class MCPAuthTokenInput {
+  @Field()
+  serverId: string;
+
+  @Field()
+  accessToken: string;
+
+  @Field({ nullable: true })
+  refreshToken?: string;
+
+  @Field({ nullable: true })
+  expiresAt?: number;
+}
+
+@InputType()
 export class CreateMessageInput {
   @Field()
   chatId: string;
@@ -186,6 +201,15 @@ export class CreateMessageInput {
 
   @Field(() => [String], { nullable: true })
   documentIds?: string[];
+
+  @Field(() => [MCPAuthTokenInput], { nullable: true })
+  mcpTokens?: MCPAuthTokenInput[];
+}
+
+@InputType()
+export class MessageContext {
+  @Field(() => [MCPAuthTokenInput], { nullable: true })
+  mcpTokens?: MCPAuthTokenInput[];
 }
 
 @InputType()
@@ -396,27 +420,6 @@ export class TestCustomModelInput {
 
 // MCP Server Inputs
 @InputType()
-export class MCPAuthConfigInput {
-  @Field({ nullable: true })
-  apiKey?: string;
-
-  @Field({ nullable: true })
-  headerName?: string;
-
-  @Field({ nullable: true })
-  bearerToken?: string;
-
-  @Field({ nullable: true })
-  clientId?: string;
-
-  @Field({ nullable: true })
-  clientSecret?: string;
-
-  @Field({ nullable: true })
-  tokenUrl?: string;
-}
-
-@InputType()
 export class CreateMCPServerInput {
   @Field()
   name: string;
@@ -432,10 +435,10 @@ export class CreateMCPServerInput {
   transportType?: string;
 
   @Field({ nullable: true })
-  authType?: string;
+  authType?: MCPAuthType;
 
-  @Field(() => MCPAuthConfigInput, { nullable: true })
-  authConfig?: MCPAuthConfigInput;
+  @Field(() => MCPAuthConfig, { nullable: true })
+  authConfig?: MCPAuthConfig;
 }
 
 @InputType()
@@ -457,10 +460,10 @@ export class UpdateMCPServerInput {
   transportType?: string;
 
   @Field({ nullable: true })
-  authType?: string;
+  authType?: MCPAuthType;
 
-  @Field(() => MCPAuthConfigInput, { nullable: true })
-  authConfig?: MCPAuthConfigInput;
+  @Field(() => MCPAuthConfig, { nullable: true })
+  authConfig?: MCPAuthConfig;
 
   @Field({ nullable: true })
   isActive?: boolean;
@@ -476,6 +479,9 @@ export class DeleteMCPServerInput {
 export class TestMCPToolInput {
   @Field()
   serverId: string;
+
+  @Field(() => String, { nullable: true })
+  authToken?: string;
 
   @Field()
   toolName: string;

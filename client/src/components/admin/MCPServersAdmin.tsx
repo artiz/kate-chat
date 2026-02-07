@@ -27,14 +27,18 @@ const GET_MCP_SERVERS = gql`
         transportType
         authType
         authConfig {
-          apiKey
           headerName
-          bearerToken
+          clientId
+          clientSecret
+          tokenUrl
+          authorizationUrl
+          scope
         }
         tools {
           name
           description
           inputSchema
+          outputSchema
         }
         isActive
         createdAt
@@ -116,13 +120,9 @@ export const MCPServersAdmin: React.FC = () => {
     setIsToolsModalOpen(true);
   };
 
-  const handleFormDialogClose = () => {
+  const handleServerDialogClose = () => {
     setIsFormDialogOpen(false);
     setSelectedServer(null);
-  };
-
-  const handleFormSuccess = () => {
-    refetchServers();
   };
 
   const { servers = [], error: serversError }: { servers?: MCPServer[]; error?: string } =
@@ -252,9 +252,9 @@ export const MCPServersAdmin: React.FC = () => {
       {/* Add/Edit Server Dialog */}
       <MCPServerFormDialog
         opened={isFormDialogOpen}
-        onClose={handleFormDialogClose}
+        onClose={handleServerDialogClose}
         server={selectedServer}
-        onSuccess={handleFormSuccess}
+        onSuccess={refetchServers}
       />
 
       {/* Tools Dialog */}

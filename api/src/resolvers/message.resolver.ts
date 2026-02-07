@@ -6,6 +6,7 @@ import {
   GetMessagesInput,
   GetImagesInput,
   StopMessageGenerationInput,
+  MessageContext,
 } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from ".";
@@ -268,6 +269,7 @@ export class MessageResolver extends BaseResolver {
   async editMessage(
     @Arg("messageId", () => ID) messageId: string,
     @Arg("content") content: string,
+    @Arg("messageContext", { nullable: true }) messageContext: MessageContext,
     @Ctx() context: GraphQLContext
   ): Promise<EditMessageResponse> {
     try {
@@ -277,7 +279,8 @@ export class MessageResolver extends BaseResolver {
         messageId,
         content,
         this.loadConnectionParams(context, user),
-        user
+        user,
+        messageContext
       );
       return { message };
     } catch (error) {

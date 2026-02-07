@@ -23,7 +23,7 @@ export const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || "";
 export const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID || "";
 export const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET || "";
 export const MICROSOFT_TENANT_ID = process.env.MICROSOFT_TENANT_ID || "common";
-export const CALLBACK_URL_BASE = process.env.CALLBACK_URL_BASE || "http://localhost:3000";
+export const CALLBACK_URL_BASE = process.env.CALLBACK_URL_BASE || "http://localhost:4000";
 export const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // Queue configuration

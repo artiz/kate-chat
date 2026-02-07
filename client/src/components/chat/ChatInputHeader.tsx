@@ -1,5 +1,5 @@
-import React, { use, useEffect, useMemo, useState } from "react";
-import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActionIcon, Select, Tooltip, Popover, Box, Menu, Text } from "@mantine/core";
 import {
   IconRobot,
   IconSettings,
@@ -7,36 +7,23 @@ import {
   IconCloudCode,
   IconPlugConnected,
   IconPlugConnectedX,
-  IconCheckbox,
   IconSquareCheck,
   IconSquare,
+  IconLock,
+  IconKey,
 } from "@tabler/icons-react";
 import { gql, useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
-import { ToolType, ChatTool, Model } from "@/types/graphql";
+import { ToolType, ChatTool, Model, MCPServer } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
-import { notEmpty } from "../../../../packages/katechat-ui/src/lib/assert";
+import { assert } from "@katechat/ui";
+import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
+import { GET_MCP_SERVERS } from "@/store/services/graphql.queries";
 
-// MCP servers query for MCP tool dropdown
-const GET_MCP_SERVERS = gql`
-  query GetMCPServersForChat {
-    getMCPServers {
-      servers {
-        id
-        name
-        isActive
-      }
-    }
-  }
-`;
-
-interface MCPServerInfo {
-  id: string;
-  name: string;
-  isActive: boolean;
-}
+// Re-export for backwards compatibility
+export { getMcpAuthToken } from "@/components/auth/McpAuthentication";
 
 interface IHeaderProps {
   chatId?: string;
@@ -67,22 +54,45 @@ export const ChatInputHeader = ({
     skip: !selectedModel?.tools?.includes(ToolType.MCP),
   });
 
-  const mcpServers: MCPServerInfo[] =
-    mcpServersData?.getMCPServers?.servers?.filter((s: MCPServerInfo) => s.isActive) || [];
+  const mcpServers: MCPServer[] = useMemo(() => {
+    return mcpServersData?.getMCPServers?.servers?.filter((s: MCPServer) => s.isActive) || [];
+  }, [mcpServersData?.getMCPServers?.servers]);
 
-  const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServerInfo) => [s.id, s.name])), [mcpServers]);
+  const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServer) => [s.id, s.name])), [mcpServers]);
+
+  // MCP authentication hook
+  const {
+    submitToken: submitMcpToken,
+    tokenModalServer: mcpTokenModalServer,
+    needsAuthentication: mcpNeedsAuthentication,
+    initiateAuth: mcpInitiateAuth,
+    tokenValue: mcpTokenValue,
+    setTokenValue: mcpSetTokenValue,
+    closeTokenModal: mcpCloseTokenModal,
+    authStatus: mcpAuthStatus,
+  } = useMcpAuth(mcpServers, chatId);
 
   useEffect(() => {
     if (chatTools) {
       setSelectedTools(new Set(chatTools.map(tool => tool.type)));
       // Extract MCP server names from chat tools
       const mcpTools = chatTools.filter(t => t.type === ToolType.MCP && t.id);
-      setSelectedMcpServers(new Set(mcpTools.map(t => t.id || "").filter(notEmpty)));
+      setSelectedMcpServers(new Set(mcpTools.map(t => t.id || "").filter(assert.notEmpty)));
     } else {
       setSelectedTools(new Set());
       setSelectedMcpServers(new Set());
     }
   }, [chatTools]);
+
+  useEffect(() => {
+    const notAuthenticatedServer = mcpServers.find(server => {
+      return selectedMcpServers.has(server.id) && mcpNeedsAuthentication(server);
+    });
+
+    if (notAuthenticatedServer) {
+      mcpInitiateAuth(notAuthenticatedServer);
+    }
+  }, [selectedMcpServers, mcpServers, mcpAuthStatus]);
 
   const handleModelChange = (modelId: string | null) => {
     onUpdateChat(chatId, { modelId: modelId || undefined });
@@ -122,6 +132,21 @@ export const ChatInputHeader = ({
   const handleMcpServerToggle = (serverId: string) => {
     if (!chatId) return;
 
+    // Find the server to check if auth is required
+    const server = mcpServers.find(s => s.id === serverId);
+
+    // If auth is required and user not authenticated, initiate auth flow
+    if (server && mcpNeedsAuthentication(server)) {
+      mcpInitiateAuth(server);
+      return; // Don't toggle yet - wait for auth to complete
+    }
+
+    toggleMcpServer(serverId);
+  };
+
+  const toggleMcpServer = (serverId: string) => {
+    if (!chatId) return;
+
     const servers = new Set(selectedMcpServers);
     if (servers.has(serverId)) {
       servers.delete(serverId);
@@ -150,6 +175,15 @@ export const ChatInputHeader = ({
     });
 
     onUpdateChat(chatId, { tools: toolsArray });
+  };
+
+  const handleTokenSubmit = () => {
+    // Get the serverId before submitToken clears the modal state
+    const serverId = mcpTokenModalServer?.id;
+    if (submitMcpToken() && serverId) {
+      // Token saved, now toggle the server
+      toggleMcpServer(serverId);
+    }
   };
 
   return (
@@ -235,21 +269,46 @@ export const ChatInputHeader = ({
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>MCP Servers</Menu.Label>
-            {mcpServers.map(server => (
-              <Menu.Item
-                key={server.id}
-                leftSection={
-                  selectedMcpServers.has(server.id) ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />
-                }
-                c={selectedMcpServers.has(server.id) ? undefined : "dimmed"}
-                onClick={() => handleMcpServerToggle(server.id)}
-              >
-                {server.name}
-              </Menu.Item>
-            ))}
+            {mcpServers.map(server => {
+              const needsAuth = requiresAuth(server);
+              const isAuthenticated = !needsAuth || mcpAuthStatus.get(server.id);
+              const isSelected = selectedMcpServers.has(server.id);
+
+              return (
+                <Menu.Item
+                  key={server.id}
+                  leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
+                  rightSection={
+                    needsAuth && !isAuthenticated ? (
+                      <Tooltip label={requiresTokenEntry(server) ? "Requires token" : "Requires authentication"}>
+                        {requiresTokenEntry(server) ? (
+                          <IconKey size="0.9rem" color="orange" />
+                        ) : (
+                          <IconLock size="0.9rem" color="orange" />
+                        )}
+                      </Tooltip>
+                    ) : undefined
+                  }
+                  c={isSelected ? undefined : "dimmed"}
+                  onClick={() => handleMcpServerToggle(server.id)}
+                >
+                  {server.name}
+                </Menu.Item>
+              );
+            })}
           </Menu.Dropdown>
         </Menu>
       )}
+
+      {/* Token Entry Modal for API Key / Bearer Token */}
+      <McpTokenModal
+        opened={!!mcpTokenModalServer}
+        server={mcpTokenModalServer}
+        tokenValue={mcpTokenValue}
+        onTokenChange={mcpSetTokenValue}
+        onSubmit={handleTokenSubmit}
+        onClose={mcpCloseTokenModal}
+      />
     </>
   );
 };

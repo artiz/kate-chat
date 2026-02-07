@@ -1,58 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Stack, TextInput, Button, Group, Modal, Textarea, Select } from "@mantine/core";
+import { Stack, TextInput, Button, Group, Modal, Textarea, Select, Switch, Text } from "@mantine/core";
 import { gql, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-
-const CREATE_MCP_SERVER = gql`
-  mutation CreateMCPServer($input: CreateMCPServerInput!) {
-    createMCPServer(input: $input) {
-      server {
-        id
-        name
-        url
-        description
-        transportType
-        authType
-        isActive
-      }
-      error
-    }
-  }
-`;
-
-const UPDATE_MCP_SERVER = gql`
-  mutation UpdateMCPServer($input: UpdateMCPServerInput!) {
-    updateMCPServer(input: $input) {
-      server {
-        id
-        name
-        url
-        description
-        transportType
-        authType
-        isActive
-      }
-      error
-    }
-  }
-`;
-
-export interface MCPServer {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-  transportType: string;
-  authType: string;
-  authConfig?: {
-    apiKey?: string;
-    headerName?: string;
-    bearerToken?: string;
-  };
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { CREATE_MCP_SERVER, UPDATE_MCP_SERVER } from "@/store/services/graphql.queries";
+import { MCPServer } from "@/types/graphql";
 
 interface FormData {
   name: string;
@@ -60,15 +11,20 @@ interface FormData {
   description: string;
   transportType: string;
   authType: string;
-  apiKey: string;
   headerName: string;
-  bearerToken: string;
+  // OAuth2 fields
+  clientId: string;
+  clientSecret: string;
+  tokenUrl: string;
+  authorizationUrl: string;
+  scope: string;
 }
 
 const AUTH_TYPES = [
   { value: "NONE", label: "No Authentication" },
   { value: "API_KEY", label: "API Key" },
   { value: "BEARER", label: "Bearer Token" },
+  { value: "OAUTH2", label: "OAuth 2.0" },
 ];
 
 const TRANSPORT_TYPES = [
@@ -82,9 +38,12 @@ const DEFAULT_FORM_DATA: FormData = {
   description: "",
   transportType: "STREAMABLE_HTTP",
   authType: "NONE",
-  apiKey: "",
   headerName: "",
-  bearerToken: "",
+  clientId: "",
+  clientSecret: "",
+  tokenUrl: "",
+  authorizationUrl: "",
+  scope: "",
 };
 
 interface MCPServerFormDialogProps {
@@ -108,9 +67,12 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened
           description: server.description || "",
           transportType: server.transportType || "STREAMABLE_HTTP",
           authType: server.authType,
-          apiKey: "",
           headerName: server.authConfig?.headerName || "",
-          bearerToken: "",
+          clientId: server.authConfig?.clientId || "",
+          clientSecret: "",
+          tokenUrl: server.authConfig?.tokenUrl || "",
+          authorizationUrl: server.authConfig?.authorizationUrl || "",
+          scope: server.authConfig?.scope || "",
         });
       } else {
         setFormData(DEFAULT_FORM_DATA);
@@ -173,12 +135,16 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened
   });
 
   const handleSubmit = () => {
-    const authConfig: Record<string, string> = {};
+    const authConfig: Record<string, any> = {};
+
     if (formData.authType === "API_KEY") {
-      if (formData.apiKey) authConfig.apiKey = formData.apiKey;
       authConfig.headerName = formData.headerName || "X-API-Key";
-    } else if (formData.authType === "BEARER") {
-      if (formData.bearerToken) authConfig.bearerToken = formData.bearerToken;
+    } else if (formData.authType === "OAUTH2") {
+      if (formData.clientId) authConfig.clientId = formData.clientId;
+      if (formData.clientSecret) authConfig.clientSecret = formData.clientSecret;
+      if (formData.tokenUrl) authConfig.tokenUrl = formData.tokenUrl;
+      if (formData.authorizationUrl) authConfig.authorizationUrl = formData.authorizationUrl;
+      if (formData.scope) authConfig.scope = formData.scope;
     }
 
     const input = {
@@ -244,13 +210,6 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened
         {formData.authType === "API_KEY" && (
           <>
             <TextInput
-              label="API Key"
-              placeholder={isEditMode ? "Leave blank to keep existing" : "Your API key"}
-              type="password"
-              value={formData.apiKey}
-              onChange={e => setFormData({ ...formData, apiKey: e.target.value })}
-            />
-            <TextInput
               label="Header Name"
               placeholder="X-API-Key"
               value={formData.headerName}
@@ -258,14 +217,47 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened
             />
           </>
         )}
-        {formData.authType === "BEARER" && (
-          <TextInput
-            label="Bearer Token"
-            placeholder={isEditMode ? "Leave blank to keep existing" : "Your bearer token"}
-            type="password"
-            value={formData.bearerToken}
-            onChange={e => setFormData({ ...formData, bearerToken: e.target.value })}
-          />
+        {formData.authType === "OAUTH2" && (
+          <>
+            <Text size="sm" c="dimmed" mb="xs">
+              Configure OAuth 2.0 authentication. Enable "Requires User Auth" if each user needs to authorize
+              separately.
+            </Text>
+            <TextInput
+              label="Client ID"
+              placeholder="OAuth application client ID"
+              required
+              value={formData.clientId}
+              onChange={e => setFormData({ ...formData, clientId: e.target.value })}
+            />
+            <TextInput
+              label="Client Secret"
+              placeholder={isEditMode ? "Leave blank to keep existing" : "OAuth client secret (optional for PKCE)"}
+              type="password"
+              value={formData.clientSecret}
+              onChange={e => setFormData({ ...formData, clientSecret: e.target.value })}
+            />
+            <TextInput
+              label="Authorization URL"
+              placeholder="https://provider.com/oauth/authorize"
+              required
+              value={formData.authorizationUrl}
+              onChange={e => setFormData({ ...formData, authorizationUrl: e.target.value })}
+            />
+            <TextInput
+              label="Token URL"
+              placeholder="https://provider.com/oauth/token"
+              required
+              value={formData.tokenUrl}
+              onChange={e => setFormData({ ...formData, tokenUrl: e.target.value })}
+            />
+            <TextInput
+              label="Scope"
+              placeholder="read:user openid"
+              value={formData.scope}
+              onChange={e => setFormData({ ...formData, scope: e.target.value })}
+            />
+          </>
         )}
         <Group justify="flex-end" mt="md">
           <Button variant="light" onClick={onClose}>

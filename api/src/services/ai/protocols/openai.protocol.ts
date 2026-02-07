@@ -16,6 +16,7 @@ import {
   ChatToolCallResult,
   ChatResponseStatus,
   ChatTool,
+  MCPAuthToken,
 } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
@@ -547,7 +548,12 @@ export class OpenAIProtocol implements ModelProtocol {
             break;
           }
 
-          const toolResults = await this.callCompletionTools(toolCalls, callableTools, callbacks.onProgress);
+          const toolResults = await this.callCompletionTools(
+            toolCalls,
+            callableTools,
+            callbacks.onProgress,
+            input.mcpTokens
+          );
 
           // Add tool calls as last assistant message
           params.messages.push({
@@ -954,7 +960,8 @@ export class OpenAIProtocol implements ModelProtocol {
     tools: ChatCompletionToolCallable[],
     onProgress?:
       | ((token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>)
-      | undefined
+      | undefined,
+    mcpTokens?: MCPAuthToken[]
   ): Promise<
     {
       call: ChatCompletionToolCall;
@@ -1002,7 +1009,7 @@ export class OpenAIProtocol implements ModelProtocol {
           stopped,
         };
       }
-      const result = await tool.call(call.arguments || {}, call.callId, this.connection);
+      const result = await tool.call(call.arguments || {}, call.callId, this.connection, mcpTokens);
       return { call, result, stopped };
     });
 
