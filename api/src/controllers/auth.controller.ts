@@ -5,7 +5,7 @@ import { User, MCPServer } from "@/entities";
 import { getRepository } from "@/config/database";
 import { FRONTEND_URL, CALLBACK_URL_BASE } from "@/config/application";
 import { createLogger } from "@/utils/logger";
-import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./mcp-oauth.templates";
+import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./html.templates";
 
 const logger = createLogger(__filename);
 

@@ -224,6 +224,7 @@ export class MessageResolver extends BaseResolver {
   async switchModel(
     @Arg("messageId", () => ID) messageId: string,
     @Arg("modelId") modelId: string,
+    @Arg("messageContext", { nullable: true }) messageContext: MessageContext,
     @Ctx() context: GraphQLContext
   ): Promise<SwitchModelResponse> {
     try {
@@ -233,7 +234,8 @@ export class MessageResolver extends BaseResolver {
         messageId,
         modelId,
         this.loadConnectionParams(context, user),
-        user
+        user,
+        messageContext
       );
       return { message };
     } catch (error) {
@@ -246,6 +248,7 @@ export class MessageResolver extends BaseResolver {
   async callOther(
     @Arg("messageId", () => ID) messageId: string,
     @Arg("modelId") modelId: string,
+    @Arg("messageContext", { nullable: true }) messageContext: MessageContext,
     @Ctx() context: GraphQLContext
   ): Promise<CallOtherResponse> {
     try {
@@ -255,7 +258,8 @@ export class MessageResolver extends BaseResolver {
         messageId,
         modelId,
         this.loadConnectionParams(context, user),
-        user
+        user,
+        messageContext
       );
 
       return { message };

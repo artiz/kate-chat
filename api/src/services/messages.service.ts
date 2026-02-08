@@ -237,10 +237,9 @@ export class MessagesService {
     const modelId = chat.modelId || user.defaultModelId;
     if (!modelId) throw new Error("Model must be defined for the chat or user");
 
-    const request: CreateMessageRequest = {
-      ...this.formatMessageRequest(modelId, input.content, chat, user),
+    const request: CreateMessageRequest = this.formatMessageRequest(modelId, input.content, chat, user, {
       mcpTokens: input.mcpTokens,
-    };
+    });
     const model = await this.modelRepository.findOne({
       where: {
         modelId,
@@ -294,7 +293,8 @@ export class MessagesService {
     messageId: string,
     modelId: string,
     connection: ConnectionParams,
-    user: User
+    user: User,
+    messageContext?: MessageContext
   ): Promise<Message> {
     // Find the original message
     let originalMessage = await this.messageRepository.findOne({
@@ -340,7 +340,7 @@ export class MessagesService {
     // Publish message to Queue
     await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
-    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, "", chat, user);
+    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, "", chat, user, messageContext);
 
     if (documentIds && documentIds.length > 0) {
       if (!userMessage) throw new Error("Original user message not found in context");
@@ -443,8 +443,13 @@ export class MessagesService {
         throw err;
       });
 
-    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, originalMessage.content, chat, user);
-    request.mcpTokens = messageContext?.mcpTokens;
+    const request: CreateMessageRequest = this.formatMessageRequest(
+      model.modelId,
+      originalMessage.content,
+      chat,
+      user,
+      messageContext
+    );
 
     // Add the edited user message to context
     contextMessages.push(originalMessage);
@@ -459,7 +464,8 @@ export class MessagesService {
     messageId: string,
     modelId: string,
     connection: ConnectionParams,
-    user: User
+    user: User,
+    messageContext?: MessageContext
   ): Promise<Message> {
     // Find the original message
     const originalMessage = await this.messageRepository.findOne({
@@ -502,7 +508,13 @@ export class MessagesService {
         throw err;
       });
 
-    const request: CreateMessageRequest = this.formatMessageRequest(model.modelId, originalMessage.content, chat, user);
+    const request: CreateMessageRequest = this.formatMessageRequest(
+      model.modelId,
+      originalMessage.content,
+      chat,
+      user,
+      messageContext
+    );
 
     await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, linkedMessage);
     return linkedMessage;
@@ -1220,7 +1232,13 @@ export class MessagesService {
     return messages.reverse();
   }
 
-  protected formatMessageRequest(modelId: string, content: string, chat: Chat, user: User): CreateMessageRequest {
+  protected formatMessageRequest(
+    modelId: string,
+    content: string,
+    chat: Chat,
+    user: User,
+    messageContext?: MessageContext
+  ): CreateMessageRequest {
     const modelId_ = modelId || chat.modelId || user.defaultModelId;
     if (!modelId_) throw new Error("Model ID is required");
 
@@ -1233,6 +1251,7 @@ export class MessagesService {
       topP: chat.topP ?? user.defaultTopP ?? DEFAULT_TOP_P,
       imagesCount: chat.imagesCount ?? user.defaultImagesCount ?? 1,
       systemPrompt: chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      mcpTokens: messageContext?.mcpTokens,
     };
 
     return request;

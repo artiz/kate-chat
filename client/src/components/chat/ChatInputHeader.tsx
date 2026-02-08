@@ -62,14 +62,14 @@ export const ChatInputHeader = ({
 
   // MCP authentication hook
   const {
-    submitToken: submitMcpToken,
-    tokenModalServer: mcpTokenModalServer,
-    needsAuthentication: mcpNeedsAuthentication,
-    initiateAuth: mcpInitiateAuth,
-    tokenValue: mcpTokenValue,
-    setTokenValue: mcpSetTokenValue,
-    closeTokenModal: mcpCloseTokenModal,
-    authStatus: mcpAuthStatus,
+    mcpSubmitToken,
+    mcpTokenModalServer,
+    mcpNeedsAuthentication,
+    mcpInitiateAuth,
+    mcpTokenValue,
+    mcpSetTokenValue,
+    mcpCloseTokenModal,
+    mcpAuthStatus,
   } = useMcpAuth(mcpServers, chatId);
 
   useEffect(() => {
@@ -180,7 +180,7 @@ export const ChatInputHeader = ({
   const handleTokenSubmit = () => {
     // Get the serverId before submitToken clears the modal state
     const serverId = mcpTokenModalServer?.id;
-    if (submitMcpToken() && serverId) {
+    if (mcpSubmitToken() && serverId) {
       // Token saved, now toggle the server
       toggleMcpServer(serverId);
     }

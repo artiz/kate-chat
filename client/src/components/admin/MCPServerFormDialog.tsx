@@ -138,7 +138,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened
     const authConfig: Record<string, any> = {};
 
     if (formData.authType === "API_KEY") {
-      authConfig.headerName = formData.headerName || "X-API-Key";
+      authConfig.headerName = formData.headerName;
     } else if (formData.authType === "OAUTH2") {
       if (formData.clientId) authConfig.clientId = formData.clientId;
       if (formData.clientSecret) authConfig.clientSecret = formData.clientSecret;

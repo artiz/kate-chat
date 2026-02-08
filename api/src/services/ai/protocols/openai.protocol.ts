@@ -25,13 +25,13 @@ import {
   ChatCompletionToolCall,
   ChatCompletionToolCallable,
   formatOpenAIMcpTools,
-  formatResponsesMcpTools,
-  ResponsesMcpToolCallable,
   CustomWebSearchTool,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
 import { ModelProtocol } from "./common";
-import { MCPServer } from "@/entities";
+import { MCPAuthType, MCPServer } from "@/entities";
+import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
+import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 
 const logger = createLogger(__filename);
 
@@ -42,7 +42,7 @@ export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
 
 function genProcessSymbol(): string {
-  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢"];
+  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢", "🧠", "🦾"];
   return symbols[Math.floor(Math.random() * symbols.length)];
 }
 
@@ -203,6 +203,7 @@ export class OpenAIProtocol implements ModelProtocol {
     type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
     type ChatCompletionContentPartText = OpenAI.Chat.Completions.ChatCompletionContentPartText;
     type ChatCompletionContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
+    const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => modelId.startsWith(prefix));
 
     const parseContent = async (
       body: string | ModelMessageContent[],
@@ -220,7 +221,7 @@ export class OpenAIProtocol implements ModelProtocol {
           continue;
         }
 
-        if (addImages && part.contentType === "image") {
+        if (addImages && part.contentType === "image" && imageInput) {
           if (!this.fileLoader) {
             logger.warn(`File loader is not connected, cannot load image content: ${part.fileName}`);
             continue;
@@ -360,7 +361,7 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, mcpServers } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, mcpServers, mcpTokens } = inputRequest;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
@@ -385,13 +386,6 @@ export class OpenAIProtocol implements ModelProtocol {
         tools.push({ type: "code_interpreter", container: { type: "auto" } });
       }
 
-      // TODO: Use MCP tools as function tools when OAuth is supported, or check
-      // how to load `authorization` token
-      // const mcpTools = formatResponsesMcpTools(
-      //   inputRequest.tools.filter(t => t.type === ToolType.MCP),
-      //   mcpServers
-      // );
-      // tools.push(...mcpTools);
       const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);
 
       inputRequest.tools
@@ -400,13 +394,26 @@ export class OpenAIProtocol implements ModelProtocol {
           const server = serverMap.get(tool.id || tool.name);
           ok(server);
 
-          tools.push({
+          const mcpTool: OpenAI.Responses.Tool.Mcp = {
             type: "mcp",
             server_url: server.url,
             server_label: "M_" + server.id,
             server_description: server.description,
             require_approval: "never", // for now we handle approval
-          });
+          };
+
+          if (server.authType !== MCPAuthType.NONE) {
+            const token = mcpTokens?.find(t => t.serverId === server.id);
+            if (server.authType === MCPAuthType.BEARER || server.authType === MCPAuthType.OAUTH2) {
+              mcpTool.authorization = token?.accessToken;
+            } else if (server.authType === MCPAuthType.API_KEY) {
+              mcpTool.headers = {
+                [server.authConfig?.headerName || MCP_DEFAULT_API_KEY_HEADER]: token?.accessToken || "",
+              };
+            }
+          }
+
+          tools.push(mcpTool);
         });
 
       if (tools.length) {

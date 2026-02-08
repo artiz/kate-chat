@@ -6,6 +6,7 @@ import { createLogger } from "@/utils/logger";
 import { APP_USER_AGENT } from "@/config/application";
 import { ok } from "@/utils/assert";
 import { MCPAuthToken } from "@/types/ai.types";
+import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 
 const logger = createLogger(__filename);
 
@@ -320,7 +321,7 @@ export class MCPClient {
     }
 
     if (authType === MCPAuthType.API_KEY) {
-      const headerName = authConfig?.headerName || "X-API-Key";
+      const headerName = authConfig?.headerName || MCP_DEFAULT_API_KEY_HEADER;
       ok(this.authToken?.accessToken, "API key is required for API_KEY auth type");
       return { [headerName]: this.authToken.accessToken };
     }
@@ -334,7 +335,7 @@ export class MCPClient {
       // For OAuth2, prefer user-provided token (for servers requiring user auth)
       // Fall back to server-configured bearer token (for client credentials flow)
       if (this.authToken?.accessToken) {
-        logger.debug({ serverId: this.server.id }, "Using user-provided OAuth token");
+        ok(this.authToken?.accessToken, "Bearer token is required for OAUTH2 auth type");
         return { Authorization: `Bearer ${this.authToken.accessToken}` };
       }
     }

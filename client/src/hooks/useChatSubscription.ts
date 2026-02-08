@@ -98,6 +98,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     shouldResubscribe: true, // Resubscribe if variables change
     fetchPolicy: "no-cache", // Don't cache subscription data
     onComplete: () => {
+      resetSending();
       setWsConnected(false);
     },
     onData: (
@@ -114,22 +115,17 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
       const data = options.data?.data || {};
 
       setWsConnected(true);
+
       if (data?.newMessage) {
         const response = data.newMessage;
 
         if (response.type === MessageType.MESSAGE) {
           if (response.message) {
             const { message } = response;
-            setTimeout(
-              () =>
-                addChatMessage({
-                  ...message,
-                  streaming: response.streaming,
-                }),
-              0
-            );
-
-            setMessageMetadata(message.metadata);
+            setTimeout(() => {
+              addChatMessage({ ...message, streaming: response.streaming });
+              setMessageMetadata(message.metadata);
+            }, 0);
 
             if (!response.streaming && response.chat && message.role === MessageRole.ASSISTANT && id) {
               // Update chat info in state
@@ -165,6 +161,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     onError: error => {
       console.error(`Subscription error for chat ${id}:`, error);
       setWsConnected(false);
+      resetSending();
     },
   });
 

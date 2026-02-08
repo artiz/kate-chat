@@ -11,6 +11,7 @@ import { CALL_OTHER_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import classes from "./Plugins.module.scss";
 import { ProviderIcon } from "@katechat/ui";
+import { useChatPluginsContext } from "../ChatPluginsContext";
 
 /** Call Others button - only show on parent Assistant messages */
 
@@ -26,6 +27,7 @@ export const CallOtherModel = ({
   const activeModels = useMemo(() => {
     return allModels.filter(m => m.isActive && m.type !== ModelType.EMBEDDING && m.modelId != modelId);
   }, [allModels, modelId]);
+  const messageContext = useChatPluginsContext();
 
   // Call Others mutation
   const [callOther, { loading: callingOthers }] = useMutation<CallOthersResponse>(CALL_OTHER_MUTATION, {});
@@ -43,6 +45,7 @@ export const CallOtherModel = ({
       variables: {
         messageId: id,
         modelId,
+        messageContext,
       },
     })
       .then(res => {

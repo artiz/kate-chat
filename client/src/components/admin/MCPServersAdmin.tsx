@@ -193,38 +193,36 @@ export const MCPServersAdmin: React.FC = () => {
           <Table.Tbody>
             {servers.map((server: any) => (
               <Table.Tr key={server.id}>
-                <Table.Td>
+                <Table.Td valign="top">
                   <Group>
                     <IconPlugConnected size="1.2rem" />
-                    <div>
-                      <Text fw={500}>{server.name}</Text>
-                      {server.description && (
-                        <Text size="xs" c="dimmed">
-                          {server.description}
-                        </Text>
-                      )}
-                    </div>
+                    <Text fw={500}>{server.name}</Text>
+                    {server.description && (
+                      <Text size="xs" c="dimmed">
+                        {server.description}
+                      </Text>
+                    )}
                   </Group>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td valign="top">
                   <Text size="sm" style={{ fontFamily: "monospace" }}>
                     {server.url}
                   </Text>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td valign="top">
                   <Badge variant="light" color="blue">
-                    {server.tools?.length || 0} tools
+                    {server.tools?.length || 0}
                   </Badge>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td valign="top">
                   <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"}>
                     {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
                   </Badge>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td valign="top">
                   <Badge color={server.isActive ? "green" : "red"}>{server.isActive ? "Active" : "Inactive"}</Badge>
                 </Table.Td>
-                <Table.Td>
+                <Table.Td valign="top">
                   <ActionIcon.Group>
                     <Tooltip label="View Tools">
                       <ActionIcon variant="light" color="blue" onClick={() => handleViewTools(server)}>

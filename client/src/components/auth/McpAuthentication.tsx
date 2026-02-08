@@ -129,31 +129,31 @@ export const initiateMcpOAuth = (server: MCPServer): boolean => {
  */
 export interface UseMcpAuthResult {
   /** Map of server ID -> authenticated status */
-  authStatus: Map<string, boolean>;
+  mcpAuthStatus: Map<string, boolean>;
   /** Update auth status for a server */
-  updateAuthStatus: (serverId: string, isAuthenticated: boolean) => void;
+  mcpUpdateAuthStatus: (serverId: string, isAuthenticated: boolean) => void;
   /** Check if server needs authentication */
-  needsAuthentication: (server: MCPServer) => boolean;
+  mcpNeedsAuthentication: (server: MCPServer) => boolean;
   /** Server for which token modal is open */
-  tokenModalServer: MCPServer | null;
+  mcpTokenModalServer: MCPServer | null;
   /** Current token input value */
-  tokenValue: string;
+  mcpTokenValue: string;
   /** Set token value */
-  setTokenValue: (value: string) => void;
+  mcpSetTokenValue: (value: string) => void;
   /** Open token entry modal for a server */
-  openTokenModal: (server: MCPServer) => void;
+  mcpOpenTokenModal: (server: MCPServer) => void;
   /** Close token modal */
-  closeTokenModal: () => void;
+  mcpCloseTokenModal: () => void;
   /** Submit token and store it */
-  submitToken: () => boolean;
+  mcpSubmitToken: () => boolean;
   /** Initiate authentication for a server (OAuth or token modal) */
-  initiateAuth: (server: MCPServer, force?: boolean) => boolean;
+  mcpInitiateAuth: (server: MCPServer, force?: boolean) => boolean;
 }
 
 export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthResult => {
-  const [authStatus, setAuthStatus] = useState<Map<string, boolean>>(new Map());
-  const [tokenModalServer, setTokenModalServer] = useState<MCPServer | null>(null);
-  const [tokenValue, setTokenValue] = useState("");
+  const [mcpAuthStatus, setAuthStatus] = useState<Map<string, boolean>>(new Map());
+  const [mcpTokenModalServer, setTokenModalServer] = useState<MCPServer | null>(null);
+  const [mcpTokenValue, mcpSetTokenValue] = useState("");
 
   // Check auth status for all servers
   useEffect(() => {
@@ -195,45 +195,45 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
     return () => window.removeEventListener("message", handleOAuthMessage);
   }, []);
 
-  const updateAuthStatus = useCallback((serverId: string, isAuthenticated: boolean) => {
+  const mcpUpdateAuthStatus = useCallback((serverId: string, isAuthenticated: boolean) => {
     setAuthStatus(prev => new Map(prev).set(serverId, isAuthenticated));
   }, []);
 
-  const needsAuthentication = useCallback(
+  const mcpNeedsAuthentication = useCallback(
     (server: MCPServer): boolean => {
       if (!requiresAuth(server)) return false;
-      return !authStatus.get(server.id);
+      return !mcpAuthStatus.get(server.id);
     },
-    [authStatus]
+    [mcpAuthStatus]
   );
 
-  const openTokenModal = useCallback((server: MCPServer) => {
+  const mcpOpenTokenModal = useCallback((server: MCPServer) => {
     setTokenModalServer(server);
-    setTokenValue("");
+    mcpSetTokenValue("");
   }, []);
 
-  const closeTokenModal = useCallback(() => {
+  const mcpCloseTokenModal = useCallback(() => {
     setTokenModalServer(null);
-    setTokenValue("");
+    mcpSetTokenValue("");
   }, []);
 
-  const submitToken = useCallback((): boolean => {
-    if (!tokenModalServer || !tokenValue.trim()) return false;
+  const mcpSubmitToken = useCallback((): boolean => {
+    if (!mcpTokenModalServer || !mcpTokenValue.trim()) return false;
 
     // Store the token in localStorage
-    storeMcpToken(tokenModalServer.id, tokenValue.trim());
+    storeMcpToken(mcpTokenModalServer.id, mcpTokenValue.trim());
 
     // Update auth status
-    setAuthStatus(prev => new Map(prev).set(tokenModalServer.id, true));
+    setAuthStatus(prev => new Map(prev).set(mcpTokenModalServer.id, true));
 
     // Close modal
     setTokenModalServer(null);
-    setTokenValue("");
+    mcpSetTokenValue("");
 
     return true;
-  }, [tokenModalServer, tokenValue]);
+  }, [mcpTokenModalServer, mcpTokenValue]);
 
-  const initiateAuth = useCallback(
+  const mcpInitiateAuth = useCallback(
     (server: MCPServer, force: boolean = false): boolean => {
       // If OAuth is required, initiate OAuth flow
       if (requiresOAuth(server) && (force || !hasValidMcpToken(server.id))) {
@@ -242,27 +242,27 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
 
       // If API Key or Bearer token is required, show token entry dialog
       if (requiresTokenEntry(server) && (force || !hasValidMcpToken(server.id))) {
-        openTokenModal(server);
+        mcpOpenTokenModal(server);
         return true;
       }
 
       // Already authenticated or no auth required
       return false;
     },
-    [openTokenModal]
+    [mcpOpenTokenModal]
   );
 
   return {
-    authStatus,
-    updateAuthStatus,
-    needsAuthentication,
-    tokenModalServer,
-    tokenValue,
-    setTokenValue,
-    openTokenModal,
-    closeTokenModal,
-    submitToken,
-    initiateAuth,
+    mcpAuthStatus,
+    mcpUpdateAuthStatus,
+    mcpNeedsAuthentication: mcpNeedsAuthentication,
+    mcpTokenModalServer: mcpTokenModalServer,
+    mcpTokenValue: mcpTokenValue,
+    mcpSetTokenValue: mcpSetTokenValue,
+    mcpOpenTokenModal: mcpOpenTokenModal,
+    mcpCloseTokenModal: mcpCloseTokenModal,
+    mcpSubmitToken: mcpSubmitToken,
+    mcpInitiateAuth: mcpInitiateAuth,
   };
 };
 

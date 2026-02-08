@@ -11,6 +11,8 @@ import {
   Message as ConverseMessage,
   Tool,
   ToolUseBlock,
+  ConverseStreamCommandOutput,
+  ValidationException,
 } from "@aws-sdk/client-bedrock-runtime";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
@@ -48,6 +50,7 @@ import {
 } from "./bedrock.tools";
 import { ApiProvider } from "@/config/ai/common";
 import { FileContentLoader } from "@/services/data";
+import { ok } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
@@ -194,10 +197,11 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     // Format tools from request
     const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+    let inputMessages = messages || [];
 
     do {
       try {
-        const input = await this.formatConverseParams(request, messages, requestTools);
+        const input = await this.formatConverseParams(request, inputMessages, requestTools);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
 
@@ -207,7 +211,18 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
 
         const command = new ConverseStreamCommand(input);
-        const streamResponse = await this.bedrockClient.send(command);
+        let streamResponse: ConverseStreamCommandOutput | undefined = undefined;
+        try {
+          streamResponse = await this.bedrockClient.send(command);
+        } catch (error) {
+          if (error instanceof ValidationException && error.message.includes("Input is too long for requested model")) {
+            if (inputMessages.length) {
+              // Keep only the most recent half of the conversation
+              inputMessages = inputMessages.slice(-Math.floor(inputMessages.length / 2));
+              continue;
+            }
+          }
+        }
 
         let fullResponse = "";
         let reasoningContent = "";

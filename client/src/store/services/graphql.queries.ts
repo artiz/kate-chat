@@ -241,8 +241,8 @@ export const DELETE_MESSAGE_MUTATION = gql`
 `;
 
 export const SWITCH_MODEL_MUTATION = gql`
-  mutation SwitchModel($messageId: ID!, $modelId: String!) {
-    switchModel(messageId: $messageId, modelId: $modelId) {
+  mutation SwitchModel($messageId: ID!, $modelId: String!, $messageContext: MessageContext) {
+    switchModel(messageId: $messageId, modelId: $modelId, messageContext: $messageContext) {
       message {
         ...BaseMessage
         linkedMessages {
@@ -255,8 +255,8 @@ export const SWITCH_MODEL_MUTATION = gql`
 `;
 
 export const CALL_OTHER_MUTATION = gql`
-  mutation CallOther($messageId: ID!, $modelId: String!) {
-    callOther(messageId: $messageId, modelId: $modelId) {
+  mutation CallOther($messageId: ID!, $modelId: String!, $messageContext: MessageContext) {
+    callOther(messageId: $messageId, modelId: $modelId, messageContext: $messageContext) {
       message {
         ...BaseMessage
         linkedMessages {
@@ -269,7 +269,7 @@ export const CALL_OTHER_MUTATION = gql`
 `;
 
 export const EDIT_MESSAGE_MUTATION = gql`
-  mutation EditMessage($messageId: ID!, $content: String!, $messageContext: MessageContext!) {
+  mutation EditMessage($messageId: ID!, $content: String!, $messageContext: MessageContext) {
     editMessage(messageId: $messageId, content: $content, messageContext: $messageContext) {
       message {
         ...BaseMessage

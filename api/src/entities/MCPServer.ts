@@ -18,6 +18,9 @@ export enum MCPAuthType {
   BEARER = "BEARER",
   OAUTH2 = "OAUTH2",
 }
+
+export const MCP_DEFAULT_API_KEY_HEADER = "X-API-Key";
+
 registerEnumType(MCPTransportType, {
   name: "MCPTransportType",
   description: "Transport type for MCP server",

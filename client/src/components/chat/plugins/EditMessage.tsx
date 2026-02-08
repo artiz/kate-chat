@@ -71,7 +71,7 @@ export const EditMessage = ({
       variables: {
         messageId: id,
         content: editedContent.trim(),
-        messageContext: messageContext,
+        messageContext,
       },
     });
   }, [id, editedContent, editMessage, messageContext]);

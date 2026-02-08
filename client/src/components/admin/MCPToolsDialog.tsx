@@ -4,31 +4,19 @@ import {
   Text,
   Group,
   Stack,
-  Loader,
   TextInput,
   NumberInput,
   Button,
-  Alert,
   Modal,
   Textarea,
   Code,
   ScrollArea,
   Collapse,
-  Accordion,
   Box,
   Divider,
   Select,
-  Tabs,
 } from "@mantine/core";
-import {
-  IconTestPipe,
-  IconTool,
-  IconChevronDown,
-  IconChevronUp,
-  IconRefresh,
-  IconLock,
-  IconSchema,
-} from "@tabler/icons-react";
+import { IconTestPipe, IconTool, IconChevronDown, IconChevronUp, IconRefresh, IconLock } from "@tabler/icons-react";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import {
@@ -405,10 +393,18 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
     () => tools.map(t => ({ value: t.name, label: t.name, description: t.description })),
     [tools]
   );
-  const mcpAuth = useMcpAuth(servers);
+  const {
+    mcpSubmitToken,
+    mcpTokenModalServer,
+    mcpInitiateAuth,
+    mcpTokenValue,
+    mcpSetTokenValue,
+    mcpCloseTokenModal,
+    mcpAuthStatus,
+  } = useMcpAuth(servers);
 
   // Check if auth is needed - use hook's auth status for reactivity
-  const needsAuth = server && requiresAuth(server) && !mcpAuth.authStatus.get(server.id);
+  const needsAuth = server && requiresAuth(server) && !mcpAuthStatus.get(server.id);
 
   const [refetchTools, { loading: refetchLoading }] = useMutation(REFETCH_MCP_SERVER_TOOLS, {
     onCompleted: data => {
@@ -464,18 +460,18 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
 
   const handleAuthenticate = () => {
     if (server) {
-      mcpAuth.initiateAuth(server);
+      mcpInitiateAuth(server);
     }
   };
 
   const handleReAuthenticate = () => {
     if (server) {
-      mcpAuth.initiateAuth(server, true);
+      mcpInitiateAuth(server, true);
     }
   };
 
   const handleTokenSubmit = () => {
-    mcpAuth.submitToken();
+    mcpSubmitToken();
   };
 
   if (!server) return null;
@@ -562,12 +558,12 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
 
       {/* Token Entry Modal */}
       <McpTokenModal
-        opened={!!mcpAuth.tokenModalServer}
-        server={mcpAuth.tokenModalServer}
-        tokenValue={mcpAuth.tokenValue}
-        onTokenChange={mcpAuth.setTokenValue}
+        opened={!!mcpTokenModalServer}
+        server={mcpTokenModalServer}
+        tokenValue={mcpTokenValue}
+        onTokenChange={mcpSetTokenValue}
         onSubmit={handleTokenSubmit}
-        onClose={mcpAuth.closeTokenModal}
+        onClose={mcpCloseTokenModal}
       />
     </>
   );
