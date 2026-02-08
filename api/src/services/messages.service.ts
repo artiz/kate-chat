@@ -745,7 +745,11 @@ export class MessagesService {
       ?.filter(notEmpty);
     if (mcpTools?.length) {
       request.mcpServers = await this.mcpServerRepository.find({
-        where: { id: In(mcpTools) },
+        where: {
+          id: In(mcpTools),
+          isActive: true,
+          user: { id: user.id },
+        },
       });
     }
 

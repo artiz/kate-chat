@@ -66,6 +66,14 @@ function parseSchema(schemaStr?: string): ParsedSchema | null {
   }
 }
 
+function dumpSchema(schemaStr: string): string {
+  try {
+    return JSON.stringify(JSON.parse(schemaStr), null, 2);
+  } catch {
+    return schemaStr;
+  }
+}
+
 /**
  * Check if a schema property is a simple type (string, number, boolean)
  */
@@ -332,7 +340,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
             </Text>
             <ScrollArea h={120}>
               <Code block style={{ fontSize: "0.7rem" }}>
-                {JSON.stringify(JSON.parse(tool.inputSchema), null, 2)}
+                {dumpSchema(tool.inputSchema)}
               </Code>
             </ScrollArea>
           </Box>
@@ -347,7 +355,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
             </Text>
             <ScrollArea h={120}>
               <Code block style={{ fontSize: "0.7rem" }}>
-                {JSON.stringify(JSON.parse(tool.outputSchema), null, 2)}
+                {dumpSchema(tool.outputSchema)}
               </Code>
             </ScrollArea>
           </Box>

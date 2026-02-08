@@ -1,8 +1,8 @@
-export const HTML_TEMPLATE = (content: string, script?: string) => `
+export const HTML_TEMPLATE = (title: string, content: string, script?: string) => `
 <!DOCTYPE html>
 <html>
   <head>
-    <title>MCP Authorization Failed</title>
+    <title>${title}</title>
     <style>
       @import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap");
       body { font-family: "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif; background: #d5d5d8; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;  }
@@ -25,6 +25,7 @@ export const HTML_TEMPLATE = (content: string, script?: string) => `
 </html>`;
 
 export const MCP_OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
+  "MCP Authorization Failed",
   `
     <h1 class="error">MCP Authorization Failed</h1>
     <p>{{ERROR_DESCRIPTION}}</p>
@@ -40,6 +41,7 @@ export const MCP_OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
 );
 
 export const MCP_OAUTH_SUCCESS_TEMPLATE = HTML_TEMPLATE(
+  "MCP Authorization Successful",
   `
       <h1>MCP {{SERVER_NAME}} Authorization Successful!</h1>
       <div class="spinner"></div>

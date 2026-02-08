@@ -42,15 +42,15 @@ export class MCPServerResolver extends BaseResolver {
       name: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema ? JSON.stringify(tool.inputSchema, null, 2) : undefined,
+      outputSchema: tool.outputSchema ? JSON.stringify(tool.outputSchema, null, 2) : undefined,
     }));
     await this.mcpServerRepository.save(server);
-    await client.close(true);
+    await client.close();
     logger.debug({ serverId: server.id, toolsCount: server.tools?.length }, "Fetched and stored MCP tools");
     return server;
   }
 
   @Query(() => MCPServersListResponse)
-  @Authorized(UserRole.ADMIN)
   async getMCPServers(@Ctx() context: GraphQLContext): Promise<MCPServersListResponse> {
     const user = await this.validateContextUser(context);
 
@@ -71,7 +71,6 @@ export class MCPServerResolver extends BaseResolver {
   }
 
   @Mutation(() => MCPServerResponse)
-  @Authorized(UserRole.ADMIN)
   async createMCPServer(
     @Arg("input") input: CreateMCPServerInput,
     @Ctx() context: GraphQLContext
@@ -115,7 +114,6 @@ export class MCPServerResolver extends BaseResolver {
   }
 
   @Mutation(() => MCPServerResponse)
-  @Authorized(UserRole.ADMIN)
   async updateMCPServer(
     @Arg("input") input: UpdateMCPServerInput,
     @Ctx() context: GraphQLContext
@@ -175,7 +173,6 @@ export class MCPServerResolver extends BaseResolver {
   }
 
   @Mutation(() => Boolean)
-  @Authorized(UserRole.ADMIN)
   async deleteMCPServer(@Arg("input") input: DeleteMCPServerInput, @Ctx() context: GraphQLContext): Promise<boolean> {
     const user = await this.validateContextUser(context);
 
@@ -199,7 +196,6 @@ export class MCPServerResolver extends BaseResolver {
   }
 
   @Mutation(() => MCPServerResponse)
-  @Authorized(UserRole.ADMIN)
   async refetchMcpServerTools(
     @Arg("serverId") serverId: string,
     @Arg("authToken", { nullable: true }) authToken: string,
@@ -226,7 +222,6 @@ export class MCPServerResolver extends BaseResolver {
   }
 
   @Query(() => MCPToolsListResponse)
-  @Authorized(UserRole.ADMIN)
   async getMCPServerTools(
     @Arg("serverId") serverId: string,
     @Arg("authToken", { nullable: true }) authToken: string,
@@ -264,7 +259,6 @@ export class MCPServerResolver extends BaseResolver {
   }
 
   @Mutation(() => MCPToolTestResponse)
-  @Authorized(UserRole.ADMIN)
   async testMCPTool(
     @Arg("input") input: TestMCPToolInput,
     @Ctx() context: GraphQLContext

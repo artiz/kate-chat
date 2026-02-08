@@ -1,12 +1,12 @@
 import OpenAI from "openai";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
-import { MCPClient, parseMCPToolName, MCPToolDefinition } from "../tools/mcp.client";
 import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
 import { ChatTool, MCPAuthToken, ResponseStatus } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
+import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
+import { MCPClient } from "../tools/mcp.client";
 
 const logger = createLogger(__filename);
 

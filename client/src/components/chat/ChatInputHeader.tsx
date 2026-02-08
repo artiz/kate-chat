@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActionIcon, Select, Tooltip, Popover, Box, Menu, Text } from "@mantine/core";
+import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
 import {
   IconRobot,
   IconSettings,
@@ -12,7 +12,7 @@ import {
   IconLock,
   IconKey,
 } from "@tabler/icons-react";
-import { gql, useQuery } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
 import { ToolType, ChatTool, Model, MCPServer } from "@/types/graphql";

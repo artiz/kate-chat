@@ -13,7 +13,6 @@ import {
   Tooltip,
   Flex,
   Accordion,
-  Text,
   Box,
 } from "@mantine/core";
 import {
@@ -188,8 +187,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
                   {expanded && (
                     <Group className={accordionClasses.header}>
-                      <IconShield size="16" />
-                      {expanded && <Box>Admin</Box>}
+                      <IconShield size="16" /> Admin
                     </Group>
                   )}
 
@@ -224,8 +222,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
                   {expanded && (
                     <Group className={accordionClasses.header}>
-                      <IconBooks size="16" />
-                      {expanded && <Box>Library</Box>}
+                      <IconBooks size="16" /> Library
                     </Group>
                   )}
 

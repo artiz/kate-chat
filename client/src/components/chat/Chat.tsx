@@ -30,12 +30,12 @@ import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/servic
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
-import { ChatInputHeader, getMcpAuthToken } from "./ChatInputHeader";
-
-import classes from "./Chat.module.scss";
+import { ChatInputHeader } from "./ChatInputHeader";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
 import { getChatMcpTokens } from "../auth/McpAuthentication";
 import { ChatPluginsContextProvider } from "./ChatPluginsContext";
+
+import classes from "./Chat.module.scss";
 
 interface IProps {
   chatId?: string;

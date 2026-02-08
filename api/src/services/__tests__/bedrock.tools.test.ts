@@ -2,7 +2,6 @@ import {
   BedrockToolCall,
   BedrockToolCallable,
   WEB_SEARCH_TOOL,
-  WEB_SEARCH_TOOL_NAME,
   parseToolUse,
   callBedrockTool,
   formatBedrockMcpTools,

@@ -513,7 +513,7 @@ export class OpenAIProtocol implements ModelProtocol {
     const callableTools = this.formatRequestTools(input.tools, input.mcpServers);
 
     do {
-      logger.debug({ ...params }, "invoking streaming chat.completions...");
+      logger.trace({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];

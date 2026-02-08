@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
 import { IconMessagePlus, IconTestPipe, IconTrash, IconEdit } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
-import { formatTokensLimit, ModelType, ApiProvider, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
+import { formatTokensLimit, ModelType, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
 import { Model } from "@/types/graphql";
 
 interface ModelsListProps {

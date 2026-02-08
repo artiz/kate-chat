@@ -6,6 +6,7 @@ import { getRepository } from "@/config/database";
 import { FRONTEND_URL, CALLBACK_URL_BASE } from "@/config/application";
 import { createLogger } from "@/utils/logger";
 import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./html.templates";
+import { escapeHtml } from "@/utils/format";
 
 const logger = createLogger(__filename);
 
@@ -68,8 +69,8 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     logger.warn({ error, error_description }, "MCP OAuth error");
     const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
       /\{\{ERROR_DESCRIPTION\}\}/g,
-      String(error_description || error || "Unknown error")
-    ).replace(/\{\{ERROR\}\}/g, String(error));
+      escapeHtml(error_description || error || "Unknown error")
+    ).replace(/\{\{ERROR\}\}/g, escapeHtml(error));
     res.status(400).send(errorHtml);
     return;
   }
@@ -136,7 +137,7 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
       logger.error({ status: tokenResponse.status, error: errorText, serverId }, "Token exchange failed");
       const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
         /\{\{ERROR_DESCRIPTION\}\}/g,
-        `Token exchange failed: ${tokenResponse.status}`
+        `Token exchange failed: ${escapeHtml(tokenResponse.status)}`
       ).replace(/\{\{ERROR\}\}/g, "token_exchange_failed");
       res.status(400).send(errorHtml);
       return;
@@ -163,11 +164,11 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     logger.debug({ serverId, hasRefreshToken: !!refreshToken, expiresIn }, "Token exchange successful");
 
     // Return HTML that stores the access token and notifies parent window
-    const successHtml = MCP_OAUTH_SUCCESS_TEMPLATE.replace(/\{\{SERVER_ID\}\}/g, serverId)
-      .replace(/\{\{SERVER_NAME\}\}/g, server.name)
-      .replace(/\{\{ACCESS_TOKEN\}\}/g, accessToken)
-      .replace(/\{\{REFRESH_TOKEN\}\}/g, refreshToken || "")
-      .replace(/\{\{EXPIRES_AT\}\}/g, expiresAt ? String(expiresAt) : "");
+    const successHtml = MCP_OAUTH_SUCCESS_TEMPLATE.replace(/\{\{SERVER_ID\}\}/g, escapeHtml(serverId))
+      .replace(/\{\{SERVER_NAME\}\}/g, escapeHtml(server.name))
+      .replace(/\{\{ACCESS_TOKEN\}\}/g, escapeHtml(accessToken))
+      .replace(/\{\{REFRESH_TOKEN\}\}/g, escapeHtml(refreshToken || ""))
+      .replace(/\{\{EXPIRES_AT\}\}/g, expiresAt ? escapeHtml(expiresAt) : "");
     res.send(successHtml);
   } catch (err) {
     logger.error(err, "Error during MCP OAuth token exchange");

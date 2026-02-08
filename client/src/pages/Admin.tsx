@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Container, Tabs, Title, Group } from "@mantine/core";
+import { Container, Tabs, Title } from "@mantine/core";
 import { IconDashboard, IconPlugConnected } from "@tabler/icons-react";
 import { AdminDashboard, MCPServersAdmin } from "@/components/admin";
 

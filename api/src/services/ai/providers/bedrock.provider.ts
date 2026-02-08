@@ -50,7 +50,6 @@ import {
 } from "./bedrock.tools";
 import { ApiProvider } from "@/config/ai/common";
 import { FileContentLoader } from "@/services/data";
-import { ok } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 

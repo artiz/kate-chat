@@ -45,7 +45,7 @@ export interface MCPToolResult {
   isError?: boolean;
 }
 
-const CLIENTS_CACHE_TIMEOUT_MS = 90_000;
+const CLIENTS_CACHE_TIMEOUT_MS = 120_000;
 const RECONNECT_TIMEOUT_MS = 500;
 const RECONNECT_MAX_ATTEMPTS = 7;
 
@@ -85,11 +85,27 @@ export class MCPClient {
       { url: server.url, transportType: server.transportType, hasAuth: !!authToken },
       "Connecting to MCP server"
     );
+
     const client = new MCPClient(server, authToken);
-    const close = async (client: MCPClient) =>
-      MCPClient.closeClient(client).then(() => {
-        MCPClient.CLIENTS_CACHE.delete(cacheKey);
-      });
+
+    const close = async (client: MCPClient) => {
+      logger.debug({ server: client.server.id }, "Closing MCP client connection");
+
+      if (client.transport) {
+        try {
+          await client.transport.close();
+          await client.client.close();
+        } catch (e) {
+          logger.warn(e, "Error closing MCP transport");
+        }
+        client.transport = undefined;
+      }
+
+      //t (e.g., client.client.close() and/or transport.terminateSession()/transport.close()) t
+
+      MCPClient.CLIENTS_CACHE.delete(cacheKey);
+    };
+
     const touch = (client: MCPClient): MCPClient => {
       clearTimeout(client.closeTimeout);
       client.closeTimeout = setTimeout(() => {
@@ -113,10 +129,7 @@ export class MCPClient {
         }
 
         if (prop === "close") {
-          return async (force: boolean = false) => {
-            if (force) {
-              return close(target);
-            }
+          return async () => {
             touch(target);
           };
         }
@@ -157,19 +170,8 @@ export class MCPClient {
       },
     });
 
-    MCPClient.CLIENTS_CACHE.set(server.id, proxy as MCPClient);
+    MCPClient.CLIENTS_CACHE.set(cacheKey, proxy as MCPClient);
     return proxy;
-  }
-
-  private static async closeClient(client: MCPClient): Promise<void> {
-    if (client.transport) {
-      try {
-        await client.close();
-      } catch (e) {
-        logger.warn(e, "Error closing MCP transport");
-      }
-      client.transport = undefined;
-    }
   }
 
   private constructor(server: MCPServer, oauthToken?: MCPAuthToken) {
@@ -180,7 +182,7 @@ export class MCPClient {
   /**
    * Close the MCP client connection
    */
-  async close(force: boolean = false): Promise<void> {
+  async close(): Promise<void> {
     // The actual transport close logic is handled in the proxy to ensure cache cleanup
   }
 
@@ -196,11 +198,7 @@ export class MCPClient {
 
     if (force && this.transport) {
       try {
-        if (this.transport instanceof StreamableHTTPClientTransport) {
-          if (this.transport.sessionId) {
-            await this.transport.terminateSession();
-          }
-        }
+        await this.transport.close();
         await this.client.close();
       } catch (e) {
         // eat error for now

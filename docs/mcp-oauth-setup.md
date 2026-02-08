@@ -75,7 +75,6 @@ When a user selects an OAuth-protected MCP server:
 ## Token Storage
 
 OAuth tokens are stored in browser localStorage with keys:
-- `mcp.<server_id>.auth_code` - Authorization code (temporary)
 - `mcp.<server_id>.access_token` - Access token for API calls
 - `mcp.<server_id>.refresh_token` - Refresh token (if provided)
 - `mcp.<server_id>.expires_at` - Token expiration timestamp
