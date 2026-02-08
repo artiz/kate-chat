@@ -222,6 +222,8 @@ export class BedrockApiProvider extends BaseApiProvider {
               continue;
             }
           }
+          // Re-throw if not the specific validation error we handle
+          throw error;
         }
 
         let fullResponse = "";

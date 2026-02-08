@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
-import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { MCPServer, MCPAuthType, MCPAuthConfig, MCPTransportType } from "@/entities";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { MCPServer, MCPAuthType, MCPTransportType } from "@/entities";
 import { createLogger } from "@/utils/logger";
 import { APP_USER_AGENT } from "@/config/application";
 import { ok } from "@/utils/assert";
