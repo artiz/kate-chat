@@ -1,3 +1,5 @@
+import { em } from "@mantine/core";
+
 export const MAX_UPLOAD_FILE_SIZE = 64 * 1024 * 1024; // 64 MB
 export const MAX_IMAGES = 5; // Maximum number of images allowed in a single message
 
@@ -23,3 +25,5 @@ export const SUPPORTED_UPLOAD_FORMATS = [
   "text/html",
   "text/plain",
 ];
+
+export const MOBILE_BREAKPOINT = `(max-width: ${em(750)})`;

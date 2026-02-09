@@ -20,10 +20,11 @@ import { useTheme } from "@katechat/ui";
 import { useAppSelector } from "../store";
 import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
+import { MOBILE_BREAKPOINT } from "@/lib/config";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
-  const isMobile = useMediaQuery(`(max-width: ${em(750)})`);
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { colorScheme, toggleColorScheme } = useTheme();

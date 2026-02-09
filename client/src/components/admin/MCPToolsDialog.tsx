@@ -387,9 +387,16 @@ interface MCPToolsDialogProps {
   onClose: () => void;
   server: MCPServer | null;
   onToolsRefetched?: () => void;
+  fullScreen?: boolean;
 }
 
-export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose, server, onToolsRefetched }) => {
+export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
+  opened,
+  onClose,
+  server,
+  onToolsRefetched,
+  fullScreen,
+}) => {
   const [tools, setTools] = useState<MCPTool[]>([]);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const { token: userToken } = useSelector((state: RootState) => state.auth);
@@ -434,7 +441,9 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
         });
 
         onToolsRefetched?.();
-        setTools(data.refetchMcpServerTools.server.tools);
+        const newTools = data.refetchMcpServerTools.server.tools || [];
+        setTools(newTools);
+        setSelectedToolName(newTools?.[0]?.name);
       }
     },
     onError: error => {
@@ -454,7 +463,7 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
         setSelectedToolName(server.tools[0].name);
       }
     }
-  }, [server]);
+  }, [server, selectedToolName]);
 
   // Reset selection when dialog closes
   useEffect(() => {
@@ -492,7 +501,13 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
 
   return (
     <>
-      <Modal opened={opened} onClose={onClose} title={`Tools - ${server?.name || ""}`} size="lg">
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title={`Tools - ${server?.name || ""}`}
+        size="lg"
+        fullScreen={fullScreen}
+      >
         {needsAuth ? (
           <Stack align="center" p="xl" gap="md">
             <IconLock size="3rem" color="orange" />

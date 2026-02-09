@@ -51,9 +51,16 @@ interface MCPServerFormDialogProps {
   onClose: () => void;
   server?: MCPServer | null; // If provided, it's edit mode
   onSuccess: () => void;
+  fullScreen?: boolean;
 }
 
-export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened, onClose, server, onSuccess }) => {
+export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
+  opened,
+  onClose,
+  server,
+  onSuccess,
+  fullScreen,
+}) => {
   const isEditMode = !!server;
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
 
@@ -172,7 +179,13 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({ opened
   const loading = createLoading || updateLoading;
 
   return (
-    <Modal opened={opened} onClose={onClose} title={isEditMode ? "Edit MCP Server" : "Add MCP Server"} size="lg">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={isEditMode ? "Edit MCP Server" : "Add MCP Server"}
+      size="lg"
+      fullScreen={fullScreen}
+    >
       <Stack gap="md">
         <TextInput
           label="Name"

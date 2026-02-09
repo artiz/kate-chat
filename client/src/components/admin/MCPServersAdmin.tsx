@@ -1,5 +1,20 @@
 import React, { useState } from "react";
-import { Paper, Text, Group, Stack, Badge, Table, Loader, Button, Alert, ActionIcon, Tooltip } from "@mantine/core";
+import {
+  Paper,
+  Text,
+  Group,
+  Stack,
+  Badge,
+  Table,
+  Loader,
+  Button,
+  Alert,
+  ActionIcon,
+  Tooltip,
+  Card,
+  em,
+  Flex,
+} from "@mantine/core";
 import {
   IconPlus,
   IconRefresh,
@@ -12,8 +27,11 @@ import {
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
+import { useMediaQuery } from "@mantine/hooks";
 import { MCPToolsDialog } from "./MCPToolsDialog";
-import { MCPServerFormDialog, MCPServer } from "./MCPServerFormDialog";
+import { MCPServerFormDialog } from "./MCPServerFormDialog";
+import { MCPServer } from "@/types/graphql";
+import { MOBILE_BREAKPOINT } from "@/lib/config";
 
 // GraphQL queries and mutations
 const GET_MCP_SERVERS = gql`
@@ -66,6 +84,7 @@ export const MCPServersAdmin: React.FC = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null);
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
   // Queries
   const {
@@ -179,72 +198,58 @@ export const MCPServersAdmin: React.FC = () => {
           </Button>
         </Paper>
       ) : (
-        <Table striped highlightOnHover withTableBorder>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Name</Table.Th>
-              <Table.Th>URL</Table.Th>
-              <Table.Th>Tools</Table.Th>
-              <Table.Th>Auth</Table.Th>
-              <Table.Th>Status</Table.Th>
-              <Table.Th>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {servers.map((server: any) => (
-              <Table.Tr key={server.id}>
-                <Table.Td valign="top">
-                  <Group>
-                    <IconPlugConnected size="1.2rem" />
-                    <Text fw={500}>{server.name}</Text>
-                    {server.description && (
-                      <Text size="xs" c="dimmed">
-                        {server.description}
-                      </Text>
-                    )}
+        <Flex gap="sm" wrap="wrap">
+          {servers.map((server: any) => (
+            <Card key={server.id} withBorder padding="sm" radius="md">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                  <Group gap="xs">
+                    <IconPlugConnected size="1rem" />
+                    <Text fw={600} size="sm" truncate>
+                      {server.name}
+                    </Text>
                   </Group>
-                </Table.Td>
-                <Table.Td valign="top">
-                  <Text size="sm" style={{ fontFamily: "monospace" }}>
+                  <Text size="xs" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
                     {server.url}
                   </Text>
-                </Table.Td>
-                <Table.Td valign="top">
-                  <Badge variant="light" color="blue">
-                    {server.tools?.length || 0}
-                  </Badge>
-                </Table.Td>
-                <Table.Td valign="top">
-                  <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"}>
-                    {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
-                  </Badge>
-                </Table.Td>
-                <Table.Td valign="top">
-                  <Badge color={server.isActive ? "green" : "red"}>{server.isActive ? "Active" : "Inactive"}</Badge>
-                </Table.Td>
-                <Table.Td valign="top">
-                  <ActionIcon.Group>
-                    <Tooltip label="View Tools">
-                      <ActionIcon variant="light" color="blue" onClick={() => handleViewTools(server)}>
-                        <IconTool size="1rem" />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="Edit">
-                      <ActionIcon variant="light" color="gray" onClick={() => handleEditServer(server)}>
-                        <IconEdit size="1rem" />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label="Delete">
-                      <ActionIcon variant="light" color="red" onClick={() => handleDeleteServer(server)}>
-                        <IconTrash size="1rem" />
-                      </ActionIcon>
-                    </Tooltip>
-                  </ActionIcon.Group>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+                  {server.description && (
+                    <Text size="xs" c="dimmed" lineClamp={2}>
+                      {server.description}
+                    </Text>
+                  )}
+                </Stack>
+                <ActionIcon.Group>
+                  <Tooltip label="View Tools">
+                    <ActionIcon variant="light" color="blue" size="md" onClick={() => handleViewTools(server)}>
+                      <IconTool />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Edit">
+                    <ActionIcon variant="light" color="gray" size="md" onClick={() => handleEditServer(server)}>
+                      <IconEdit />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Delete">
+                    <ActionIcon variant="light" color="red" size="md" onClick={() => handleDeleteServer(server)}>
+                      <IconTrash />
+                    </ActionIcon>
+                  </Tooltip>
+                </ActionIcon.Group>
+              </Group>
+              <Group gap="xs" mt="xs">
+                <Badge variant="light" color="blue" size="xs">
+                  {server.tools?.length || 0} tools
+                </Badge>
+                <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="xs">
+                  {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
+                </Badge>
+                <Badge color={server.isActive ? "green" : "red"} size="xs">
+                  {server.isActive ? "Active" : "Inactive"}
+                </Badge>
+              </Group>
+            </Card>
+          ))}
+        </Flex>
       )}
 
       {/* Add/Edit Server Dialog */}
@@ -253,6 +258,7 @@ export const MCPServersAdmin: React.FC = () => {
         onClose={handleServerDialogClose}
         server={selectedServer}
         onSuccess={refetchServers}
+        fullScreen={isMobile}
       />
 
       {/* Tools Dialog */}
@@ -261,6 +267,7 @@ export const MCPServersAdmin: React.FC = () => {
         onClose={() => setIsToolsModalOpen(false)}
         server={selectedServer}
         onToolsRefetched={refetchServers}
+        fullScreen={isMobile}
       />
     </Stack>
   );
