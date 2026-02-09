@@ -5,8 +5,8 @@ export const CHAT_PAGE_SIZE = 20; // Number of chats to fetch per page
 
 export const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
 
-export const APP_API_URL = process.env.APP_API_URL === "/" ? "" : process.env.APP_API_URL || "http://localhost:4000";
-export const APP_WS_URL = process.env.APP_WS_URL === "/" ? "" : process.env.APP_WS_URL || APP_API_URL;
+export const APP_API_URL = (process.env.APP_API_URL || "http://localhost:4000").replace(/\/+$/, ""); // Ensure it does not end with a single slash
+export const APP_WS_URL = (process.env.APP_WS_URL || APP_API_URL).replace(/\/+$/, ""); // Ensure it does not end with a single slash
 
 export const SUPPORTED_UPLOAD_FORMATS = [
   "image/jpeg",
