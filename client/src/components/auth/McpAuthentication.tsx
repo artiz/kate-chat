@@ -157,27 +157,23 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   const [mcpAuthStatus, setAuthStatus] = useState<Map<string, boolean>>(new Map());
   const [mcpTokenModalServer, setTokenModalServer] = useState<MCPServer | null>(null);
   const [mcpTokenValue, mcpSetTokenValue] = useState("");
-  
+
   // Track the OAuth popup window for source validation
   const oauthPopupRef = useRef<Window | null>(null);
-  
+
   // Track whether we're actively expecting an OAuth callback
   const expectingOAuthCallback = useRef<boolean>(false);
-  
+
   // Track known server IDs for validation
   const knownServerIds = useMemo(() => new Set(servers.map(s => s.id)), [servers]);
 
   // Get the expected origin for postMessage validation
   const expectedOrigin = useMemo(() => {
-    try {
-      // The API sends the callback, so we expect the origin to be window.origin (same origin)
-      // or the API origin if it's different
-      const apiUrl = APP_API_URL || window.location.origin;
-      const url = new URL(apiUrl, window.location.origin);
-      return url.origin;
-    } catch {
-      return window.location.origin;
-    }
+    // The API sends the callback, so we expect the origin to be window.origin (same origin)
+    // or the API origin if it's different
+    const apiUrl = APP_API_URL || window.location.origin;
+    const url = new URL(apiUrl, window.location.origin);
+    return url.origin;
   }, []);
 
   // Check auth status for all servers
@@ -198,25 +194,25 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
       // 1. We're actively expecting an OAuth callback (popup was opened)
       // 2. Origin must match expected API origin OR same-origin
       // 3. Source must be the popup window we opened
-      
+
       if (!expectingOAuthCallback.current) {
         // Not expecting a callback - ignore all OAuth messages
         return;
       }
-      
+
       const originValid = event.origin === expectedOrigin || event.origin === window.location.origin;
       const sourceValid = oauthPopupRef.current && event.source === oauthPopupRef.current;
-      
+
       if (!originValid) {
         console.warn("MCP OAuth: Ignoring message from unexpected origin", event.origin);
         return;
       }
-      
+
       if (!sourceValid) {
         console.warn("MCP OAuth: Ignoring message from unexpected source");
         return;
       }
-      
+
       if (event.data?.type === "mcp-oauth-callback") {
         const { serverId, accessToken, expiresAt } = event.data;
 
@@ -240,7 +236,7 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
 
         // Update auth status
         setAuthStatus(prev => new Map(prev).set(serverId, true));
-        
+
         // Clear the popup reference and expecting flag
         oauthPopupRef.current = null;
         expectingOAuthCallback.current = false;

@@ -36,3 +36,13 @@ export const SQS_ACCESS_KEY_ID = process.env.SQS_ACCESS_KEY_ID;
 export const SQS_SECRET_ACCESS_KEY = process.env.SQS_SECRET_ACCESS_KEY;
 export const SQS_DOCUMENTS_QUEUE = process.env.SQS_DOCUMENTS_QUEUE;
 export const SQS_INDEX_DOCUMENTS_QUEUE = process.env.SQS_INDEX_DOCUMENTS_QUEUE;
+
+// Get the frontend origin for secure postMessage
+export const getFrontendOrigin = (): string => {
+  try {
+    const url = new URL(FRONTEND_URL);
+    return url.origin;
+  } catch {
+    return FRONTEND_URL;
+  }
+};
