@@ -4,6 +4,7 @@ import { APP_API_URL } from "@/lib/config";
 import { ChatTool, MCPServer, ToolType } from "@/types/graphql";
 import { assert } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
+import { notifications } from "@mantine/notifications";
 
 export enum MCPAuthType {
   NONE = "NONE",
@@ -201,25 +202,34 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
       }
 
       const originValid = event.origin === expectedOrigin || event.origin === window.location.origin;
-      const sourceValid = oauthPopupRef.current && event.source === oauthPopupRef.current;
 
       if (!originValid) {
-        console.warn("MCP OAuth: Ignoring message from unexpected origin", event.origin);
-        return;
-      }
-
-      if (!sourceValid) {
-        console.warn("MCP OAuth: Ignoring message from unexpected source");
-        return;
+        return notifications.show({
+          title: "Error",
+          message: "MCP OAuth: Ignoring message from unexpected origin",
+          color: "red",
+        });
       }
 
       if (event.data?.type === "mcp-oauth-callback") {
+        const sourceValid = oauthPopupRef.current && event.source === oauthPopupRef.current;
+        if (!sourceValid) {
+          return notifications.show({
+            title: "Error",
+            message: "MCP OAuth: Ignoring message from unexpected source",
+            color: "red",
+          });
+        }
+
         const { serverId, accessToken, expiresAt } = event.data;
 
         // Validate serverId is known before storing tokens
         if (!knownServerIds.has(serverId)) {
-          console.warn("MCP OAuth: Ignoring callback for unknown server", serverId);
-          return;
+          return notifications.show({
+            title: "Error",
+            message: "MCP OAuth: Ignoring callback for unknown server",
+            color: "red",
+          });
         }
 
         // The server has already exchanged the code for a token and stored it in localStorage
@@ -241,7 +251,12 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
         oauthPopupRef.current = null;
         expectingOAuthCallback.current = false;
       } else if (event.data?.type === "mcp-oauth-error") {
-        console.error("MCP OAuth error", event.data.error);
+        notifications.show({
+          title: "Error",
+          message: `MCP OAuth Error: ${event.data.error || "Unknown error occurred during authentication"}`,
+          color: "red",
+        });
+
         oauthPopupRef.current = null;
         expectingOAuthCallback.current = false;
       }
