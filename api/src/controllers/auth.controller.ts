@@ -1,12 +1,14 @@
 import { Router, Request, Response, NextFunction } from "express";
 import passport from "passport";
-import { generateToken } from "@/utils/jwt";
+import { generateToken, TokenPayload, verifyToken } from "@/utils/jwt";
 import { User, MCPServer } from "@/entities";
 import { getRepository } from "@/config/database";
 import { FRONTEND_URL, CALLBACK_URL_BASE } from "@/config/application";
 import { createLogger } from "@/utils/logger";
 import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
+import { P } from "pino";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -76,19 +78,36 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
   }
 
   if (!code || !state) {
-    res.status(400).send("Missing authorization code or state");
+    const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
+      /\{\{ERROR_DESCRIPTION\}\}/g,
+      "Missing authorization code or state"
+    ).replace(/\{\{ERROR\}\}/g, "missing_code_or_state");
+    res.status(400).send(errorHtml);
     return;
   }
 
-  // State contains the MCP server ID
-  const serverId = String(state);
+  logger.debug({ code, state }, "MCP OAuth callback received with code and state");
 
-  logger.debug({ serverId, codeLength: String(code).length }, "MCP OAuth callback received");
+  const [serverId, userToken] = String(state).split("@");
+  let tokenPayload: TokenPayload | null = null;
+  try {
+    tokenPayload = verifyToken(userToken || "");
+  } catch (error) {
+    logger.warn({ error }, "Invalid user token in MCP OAuth state");
+    const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
+      /\{\{ERROR_DESCRIPTION\}\}/g,
+      "Invalid or expired user token"
+    ).replace(/\{\{ERROR\}\}/g, "invalid_or_expired_user_token");
+    res.status(400).send(errorHtml);
+    return;
+  }
 
   try {
     // Look up the MCP server to get OAuth config
     const mcpServerRepository = getRepository(MCPServer);
-    const server = await mcpServerRepository.findOne({ where: { id: serverId } });
+    const server = await mcpServerRepository.findOne({
+      where: { id: serverId, isActive: true, userId: tokenPayload?.userId },
+    });
 
     if (!server) {
       logger.error({ serverId }, "MCP server not found for OAuth callback");
@@ -113,6 +132,7 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
 
     // Exchange authorization code for access token
     const redirectUri = `${CALLBACK_URL_BASE}/auth/mcp/callback`;
+
     const tokenParams = new URLSearchParams({
       grant_type: "authorization_code",
       code: String(code),

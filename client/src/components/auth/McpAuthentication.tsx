@@ -3,6 +3,7 @@ import { Modal, TextInput, Button, Group, Stack, Text } from "@mantine/core";
 import { APP_API_URL } from "@/lib/config";
 import { ChatTool, MCPServer, ToolType } from "@/types/graphql";
 import { assert } from "@katechat/ui";
+import { User } from "@/store/slices/userSlice";
 
 export enum MCPAuthType {
   NONE = "NONE",
@@ -98,7 +99,7 @@ export const storeMcpToken = (serverId: string, token: string, expiresAt?: numbe
 /**
  * Initiate OAuth flow for an MCP server
  */
-export const initiateMcpOAuth = (server: MCPServer): boolean => {
+export const initiateMcpOAuth = (server: MCPServer, userToken: string): boolean => {
   if (!server.authConfig?.authorizationUrl || !server.authConfig?.clientId) {
     console.error("MCP server OAuth config is incomplete", server);
     return false;
@@ -109,8 +110,9 @@ export const initiateMcpOAuth = (server: MCPServer): boolean => {
     client_id: server.authConfig.clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    state: server.id,
-    ...(server.authConfig.scope && { scope: server.authConfig.scope }),
+    state: `${server.id}@${userToken}`,
+    nonce: crypto.randomUUID().replace(/-/g, ""), // simple nonce for CSRF protection
+    scope: server.authConfig.scope || "",
   });
 
   const authUrl = `${server.authConfig.authorizationUrl}?${params.toString()}`;
@@ -147,7 +149,7 @@ export interface UseMcpAuthResult {
   /** Submit token and store it */
   mcpSubmitToken: () => boolean;
   /** Initiate authentication for a server (OAuth or token modal) */
-  mcpInitiateAuth: (server: MCPServer, force?: boolean) => boolean;
+  mcpInitiateAuth: (server: MCPServer, userToken: string, force?: boolean) => boolean;
 }
 
 export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthResult => {
@@ -234,10 +236,10 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   }, [mcpTokenModalServer, mcpTokenValue]);
 
   const mcpInitiateAuth = useCallback(
-    (server: MCPServer, force: boolean = false): boolean => {
+    (server: MCPServer, userToken: string, force: boolean = false): boolean => {
       // If OAuth is required, initiate OAuth flow
       if (requiresOAuth(server) && (force || !hasValidMcpToken(server.id))) {
-        return initiateMcpOAuth(server);
+        return initiateMcpOAuth(server, userToken);
       }
 
       // If API Key or Bearer token is required, show token entry dialog

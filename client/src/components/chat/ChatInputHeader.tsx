@@ -21,6 +21,8 @@ import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSet
 import { assert } from "@katechat/ui";
 import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
 import { GET_MCP_SERVERS } from "@/store/services/graphql.queries";
+import { RootState } from "@/store";
+import { useSelector } from "react-redux";
 
 // Re-export for backwards compatibility
 export { getMcpAuthToken } from "@/components/auth/McpAuthentication";
@@ -48,6 +50,7 @@ export const ChatInputHeader = ({
 }: IHeaderProps) => {
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
+  const { token: userToken } = useSelector((state: RootState) => state.auth);
 
   // Query MCP servers when MCP tool is supported
   const { data: mcpServersData } = useQuery(GET_MCP_SERVERS, {
@@ -90,7 +93,8 @@ export const ChatInputHeader = ({
     });
 
     if (notAuthenticatedServer) {
-      mcpInitiateAuth(notAuthenticatedServer);
+      assert.ok(userToken);
+      mcpInitiateAuth(notAuthenticatedServer, userToken);
     }
   }, [selectedMcpServers, mcpServers, mcpAuthStatus]);
 
@@ -137,7 +141,8 @@ export const ChatInputHeader = ({
 
     // If auth is required and user not authenticated, initiate auth flow
     if (server && mcpNeedsAuthentication(server)) {
-      mcpInitiateAuth(server);
+      assert.ok(userToken);
+      mcpInitiateAuth(server, userToken);
       return; // Don't toggle yet - wait for auth to complete
     }
 

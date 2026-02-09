@@ -28,6 +28,9 @@ import {
 } from "@/components/auth/McpAuthentication";
 import { REFETCH_MCP_SERVER_TOOLS, TEST_MCP_TOOL } from "@/store/services/graphql.queries";
 import { MCPServer, MCPTool } from "@/types/graphql";
+import { RootState } from "@/store";
+import { useSelector } from "react-redux";
+import { assert } from "@katechat/ui";
 
 interface SchemaProperty {
   type?: string;
@@ -389,6 +392,7 @@ interface MCPToolsDialogProps {
 export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose, server, onToolsRefetched }) => {
   const [tools, setTools] = useState<MCPTool[]>([]);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
+  const { token: userToken } = useSelector((state: RootState) => state.auth);
 
   // MCP authentication hook
   const servers = useMemo(() => (server ? [server] : []), [server]);
@@ -468,13 +472,15 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({ opened, onClose,
 
   const handleAuthenticate = () => {
     if (server) {
-      mcpInitiateAuth(server);
+      assert.ok(userToken);
+      mcpInitiateAuth(server, userToken);
     }
   };
 
   const handleReAuthenticate = () => {
     if (server) {
-      mcpInitiateAuth(server, true);
+      assert.ok(userToken);
+      mcpInitiateAuth(server, userToken, true);
     }
   };
 

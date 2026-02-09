@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Stack, TextInput, Button, Group, Modal, Textarea, Select, Switch, Text } from "@mantine/core";
-import { gql, useMutation } from "@apollo/client";
+import { Stack, TextInput, Button, Group, Modal, Textarea, Select, Text } from "@mantine/core";
+import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { CREATE_MCP_SERVER, UPDATE_MCP_SERVER } from "@/store/services/graphql.queries";
 import { MCPServer } from "@/types/graphql";
