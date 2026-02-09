@@ -5,10 +5,8 @@ import { User, MCPServer } from "@/entities";
 import { getRepository } from "@/config/database";
 import { FRONTEND_URL, CALLBACK_URL_BASE } from "@/config/application";
 import { createLogger } from "@/utils/logger";
-import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./html.templates";
+import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, getFrontendOrigin } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
-import { P } from "pino";
-import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -66,22 +64,30 @@ router.get(
 // MCP OAuth callback - exchanges authorization code for access token and returns HTML that writes token to localStorage
 router.get("/mcp/callback", async (req: Request, res: Response) => {
   const { code, state, error, error_description } = req.query;
+  const frontendOrigin = getFrontendOrigin();
+
+  // Helper to replace frontend origin in templates
+  const replaceOrigin = (html: string) => html.replace(/\{\{FRONTEND_ORIGIN\}\}/g, frontendOrigin);
 
   if (error) {
     logger.warn({ error, error_description }, "MCP OAuth error");
-    const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-      /\{\{ERROR_DESCRIPTION\}\}/g,
-      escapeHtml(error_description || error || "Unknown error")
-    ).replace(/\{\{ERROR\}\}/g, escapeHtml(error));
+    const errorHtml = replaceOrigin(
+      MCP_OAUTH_ERROR_TEMPLATE.replace(
+        /\{\{ERROR_DESCRIPTION\}\}/g,
+        escapeHtml(error_description || error || "Unknown error")
+      ).replace(/\{\{ERROR\}\}/g, escapeHtml(error))
+    );
     res.status(400).send(errorHtml);
     return;
   }
 
   if (!code || !state) {
-    const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-      /\{\{ERROR_DESCRIPTION\}\}/g,
-      "Missing authorization code or state"
-    ).replace(/\{\{ERROR\}\}/g, "missing_code_or_state");
+    const errorHtml = replaceOrigin(
+      MCP_OAUTH_ERROR_TEMPLATE.replace(
+        /\{\{ERROR_DESCRIPTION\}\}/g,
+        "Missing authorization code or state"
+      ).replace(/\{\{ERROR\}\}/g, "missing_code_or_state")
+    );
     res.status(400).send(errorHtml);
     return;
   }
@@ -94,10 +100,12 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     tokenPayload = verifyToken(userToken || "");
   } catch (error) {
     logger.warn({ error }, "Invalid user token in MCP OAuth state");
-    const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-      /\{\{ERROR_DESCRIPTION\}\}/g,
-      "Invalid or expired user token"
-    ).replace(/\{\{ERROR\}\}/g, "invalid_or_expired_user_token");
+    const errorHtml = replaceOrigin(
+      MCP_OAUTH_ERROR_TEMPLATE.replace(
+        /\{\{ERROR_DESCRIPTION\}\}/g,
+        "Invalid or expired user token"
+      ).replace(/\{\{ERROR\}\}/g, "invalid_or_expired_user_token")
+    );
     res.status(400).send(errorHtml);
     return;
   }
@@ -111,9 +119,11 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
 
     if (!server) {
       logger.error({ serverId }, "MCP server not found for OAuth callback");
-      const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(/\{\{ERROR_DESCRIPTION\}\}/g, "MCP server not found").replace(
-        /\{\{ERROR\}\}/g,
-        "server_not_found"
+      const errorHtml = replaceOrigin(
+        MCP_OAUTH_ERROR_TEMPLATE.replace(/\{\{ERROR_DESCRIPTION\}\}/g, "MCP server not found").replace(
+          /\{\{ERROR\}\}/g,
+          "server_not_found"
+        )
       );
       res.status(404).send(errorHtml);
       return;
@@ -122,10 +132,12 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     const { authConfig } = server;
     if (!authConfig?.tokenUrl || !authConfig?.clientId) {
       logger.error({ serverId }, "MCP server OAuth config incomplete - missing tokenUrl or clientId");
-      const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-        /\{\{ERROR_DESCRIPTION\}\}/g,
-        "OAuth configuration incomplete - missing tokenUrl or clientId"
-      ).replace(/\{\{ERROR\}\}/g, "config_incomplete");
+      const errorHtml = replaceOrigin(
+        MCP_OAUTH_ERROR_TEMPLATE.replace(
+          /\{\{ERROR_DESCRIPTION\}\}/g,
+          "OAuth configuration incomplete - missing tokenUrl or clientId"
+        ).replace(/\{\{ERROR\}\}/g, "config_incomplete")
+      );
       res.status(400).send(errorHtml);
       return;
     }
@@ -155,10 +167,12 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       logger.error({ status: tokenResponse.status, error: errorText, serverId }, "Token exchange failed");
-      const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-        /\{\{ERROR_DESCRIPTION\}\}/g,
-        `Token exchange failed: ${escapeHtml(tokenResponse.status)}`
-      ).replace(/\{\{ERROR\}\}/g, "token_exchange_failed");
+      const errorHtml = replaceOrigin(
+        MCP_OAUTH_ERROR_TEMPLATE.replace(
+          /\{\{ERROR_DESCRIPTION\}\}/g,
+          `Token exchange failed: ${escapeHtml(tokenResponse.status)}`
+        ).replace(/\{\{ERROR\}\}/g, "token_exchange_failed")
+      );
       res.status(400).send(errorHtml);
       return;
     }
@@ -170,10 +184,12 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
 
     if (!accessToken) {
       logger.error({ serverId, tokenData }, "No access_token in token response");
-      const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-        /\{\{ERROR_DESCRIPTION\}\}/g,
-        "No access token received"
-      ).replace(/\{\{ERROR\}\}/g, "no_access_token");
+      const errorHtml = replaceOrigin(
+        MCP_OAUTH_ERROR_TEMPLATE.replace(
+          /\{\{ERROR_DESCRIPTION\}\}/g,
+          "No access token received"
+        ).replace(/\{\{ERROR\}\}/g, "no_access_token")
+      );
       res.status(400).send(errorHtml);
       return;
     }
@@ -184,18 +200,22 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     logger.debug({ serverId, hasRefreshToken: !!refreshToken, expiresIn }, "Token exchange successful");
 
     // Return HTML that stores the access token and notifies parent window
-    const successHtml = MCP_OAUTH_SUCCESS_TEMPLATE.replace(/\{\{SERVER_ID\}\}/g, escapeHtml(serverId))
-      .replace(/\{\{SERVER_NAME\}\}/g, escapeHtml(server.name))
-      .replace(/\{\{ACCESS_TOKEN\}\}/g, escapeHtml(accessToken))
-      .replace(/\{\{REFRESH_TOKEN\}\}/g, escapeHtml(refreshToken || ""))
-      .replace(/\{\{EXPIRES_AT\}\}/g, expiresAt ? escapeHtml(expiresAt) : "");
+    const successHtml = replaceOrigin(
+      MCP_OAUTH_SUCCESS_TEMPLATE.replace(/\{\{SERVER_ID\}\}/g, escapeHtml(serverId))
+        .replace(/\{\{SERVER_NAME\}\}/g, escapeHtml(server.name))
+        .replace(/\{\{ACCESS_TOKEN\}\}/g, escapeHtml(accessToken))
+        .replace(/\{\{REFRESH_TOKEN\}\}/g, escapeHtml(refreshToken || ""))
+        .replace(/\{\{EXPIRES_AT\}\}/g, expiresAt ? escapeHtml(expiresAt) : "")
+    );
     res.send(successHtml);
   } catch (err) {
     logger.error(err, "Error during MCP OAuth token exchange");
-    const errorHtml = MCP_OAUTH_ERROR_TEMPLATE.replace(
-      /\{\{ERROR_DESCRIPTION\}\}/g,
-      "Server error during token exchange"
-    ).replace(/\{\{ERROR\}\}/g, "server_error");
+    const errorHtml = replaceOrigin(
+      MCP_OAUTH_ERROR_TEMPLATE.replace(
+        /\{\{ERROR_DESCRIPTION\}\}/g,
+        "Server error during token exchange"
+      ).replace(/\{\{ERROR\}\}/g, "server_error")
+    );
     res.status(500).send(errorHtml);
   }
 });

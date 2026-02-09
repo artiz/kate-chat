@@ -98,11 +98,12 @@ export const storeMcpToken = (serverId: string, token: string, expiresAt?: numbe
 
 /**
  * Initiate OAuth flow for an MCP server
+ * Returns the popup window reference for origin validation
  */
-export const initiateMcpOAuth = (server: MCPServer, userToken: string): boolean => {
+export const initiateMcpOAuth = (server: MCPServer, userToken: string): Window | null => {
   if (!server.authConfig?.authorizationUrl || !server.authConfig?.clientId) {
     console.error("MCP server OAuth config is incomplete", server);
-    return false;
+    return null;
   }
 
   const redirectUri = `${APP_API_URL}/auth/mcp/callback`;
@@ -121,9 +122,9 @@ export const initiateMcpOAuth = (server: MCPServer, userToken: string): boolean 
   const popup = window.open(authUrl, "mcp_oauth", "width=600,height=700,popup=1");
   if (!popup) {
     console.error("Failed to open OAuth popup - please allow popups for this site");
-    return false;
+    return null;
   }
-  return true;
+  return popup;
 };
 
 /**
@@ -156,6 +157,25 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   const [mcpAuthStatus, setAuthStatus] = useState<Map<string, boolean>>(new Map());
   const [mcpTokenModalServer, setTokenModalServer] = useState<MCPServer | null>(null);
   const [mcpTokenValue, mcpSetTokenValue] = useState("");
+  
+  // Track the OAuth popup window for origin validation
+  const oauthPopupRef = React.useRef<Window | null>(null);
+  
+  // Track known server IDs for validation
+  const knownServerIds = React.useMemo(() => new Set(servers.map(s => s.id)), [servers]);
+
+  // Get the expected origin for postMessage validation
+  const expectedOrigin = React.useMemo(() => {
+    try {
+      // The API sends the callback, so we expect the origin to be window.origin (same origin)
+      // or the API origin if it's different
+      const apiUrl = APP_API_URL || window.location.origin;
+      const url = new URL(apiUrl, window.location.origin);
+      return url.origin;
+    } catch {
+      return window.location.origin;
+    }
+  }, []);
 
   // Check auth status for all servers
   useEffect(() => {
@@ -171,8 +191,25 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   // Listen for OAuth callback messages from popup
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
+      // Validate origin - only accept messages from the expected origin (API or same-origin)
+      // When the popup redirects to the callback URL, it runs in the API's origin
+      // The API sets a specific targetOrigin, so we can trust messages from the expected origin
+      if (event.origin !== expectedOrigin && event.origin !== window.location.origin) {
+        // Allow messages from the popup we opened regardless of origin since OAuth can redirect
+        if (oauthPopupRef.current && event.source !== oauthPopupRef.current) {
+          console.warn("MCP OAuth: Ignoring message from unexpected origin/source", event.origin);
+          return;
+        }
+      }
+      
       if (event.data?.type === "mcp-oauth-callback") {
         const { serverId, accessToken, expiresAt } = event.data;
+
+        // Validate serverId is known before storing tokens
+        if (!knownServerIds.has(serverId)) {
+          console.warn("MCP OAuth: Ignoring callback for unknown server", serverId);
+          return;
+        }
 
         // The server has already exchanged the code for a token and stored it in localStorage
         // Just update the auth status
@@ -188,14 +225,18 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
 
         // Update auth status
         setAuthStatus(prev => new Map(prev).set(serverId, true));
+        
+        // Clear the popup reference
+        oauthPopupRef.current = null;
       } else if (event.data?.type === "mcp-oauth-error") {
         console.error("MCP OAuth error", event.data.error);
+        oauthPopupRef.current = null;
       }
     };
 
     window.addEventListener("message", handleOAuthMessage);
     return () => window.removeEventListener("message", handleOAuthMessage);
-  }, []);
+  }, [expectedOrigin, knownServerIds]);
 
   const mcpUpdateAuthStatus = useCallback((serverId: string, isAuthenticated: boolean) => {
     setAuthStatus(prev => new Map(prev).set(serverId, isAuthenticated));
@@ -239,7 +280,12 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
     (server: MCPServer, userToken: string, force: boolean = false): boolean => {
       // If OAuth is required, initiate OAuth flow
       if (requiresOAuth(server) && (force || !hasValidMcpToken(server.id))) {
-        return initiateMcpOAuth(server, userToken);
+        const popup = initiateMcpOAuth(server, userToken);
+        if (popup) {
+          oauthPopupRef.current = popup;
+          return true;
+        }
+        return false;
       }
 
       // If API Key or Bearer token is required, show token entry dialog

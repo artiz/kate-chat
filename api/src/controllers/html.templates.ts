@@ -1,3 +1,5 @@
+import { FRONTEND_URL } from "@/config/application";
+
 export const HTML_TEMPLATE = (title: string, content: string, script?: string) => `
 <!DOCTYPE html>
 <html>
@@ -24,6 +26,16 @@ export const HTML_TEMPLATE = (title: string, content: string, script?: string) =
   </body>
 </html>`;
 
+// Get the frontend origin for secure postMessage
+export const getFrontendOrigin = (): string => {
+  try {
+    const url = new URL(FRONTEND_URL);
+    return url.origin;
+  } catch {
+    return FRONTEND_URL;
+  }
+};
+
 export const MCP_OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
   "MCP Authorization Failed",
   `
@@ -33,7 +45,7 @@ export const MCP_OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
   `,
   `<script>
   if (window.opener) {
-      window.opener.postMessage({ type: 'mcp-oauth-error', error: '{{ERROR}}' }, '*');
+      window.opener.postMessage({ type: 'mcp-oauth-error', error: '{{ERROR}}' }, '{{FRONTEND_ORIGIN}}');
     }
     setTimeout(() => window.close(), 3000);
     </script>
@@ -52,6 +64,7 @@ export const MCP_OAUTH_SUCCESS_TEMPLATE = HTML_TEMPLATE(
       const accessToken = '{{ACCESS_TOKEN}}';
       const refreshToken = '{{REFRESH_TOKEN}}';
       const expiresAt = '{{EXPIRES_AT}}';
+      const frontendOrigin = '{{FRONTEND_ORIGIN}}';
       
       localStorage.setItem('mcp.' + serverId + '.access_token', accessToken);
       if (refreshToken) {
@@ -67,7 +80,7 @@ export const MCP_OAUTH_SUCCESS_TEMPLATE = HTML_TEMPLATE(
           serverId: serverId,
           accessToken: accessToken,
           expiresAt: expiresAt ? parseInt(expiresAt, 10) : undefined
-        }, '*');
+        }, frontendOrigin);
       }
       
       setTimeout(() => window.close(), 1500);
