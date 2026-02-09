@@ -107,17 +107,20 @@ impl<'a> ChatService<'a> {
                 c.title,
                 c.description,
                 c.user_id,
-                c.files,
+                last_bot.content as last_bot_message,
+                last_bot.id as last_bot_message_id,
+                COALESCE(msg_stats.messages_count, 0) as messages_count,
                 c.model_id,
+                c.system_prompt,
+                c.tools,
                 c.temperature,
                 c.max_tokens,
                 c.top_p,
+                c.images_count,
                 c.is_pristine,
+                c.is_pinned,
                 c.created_at,
-                c.updated_at,
-                COALESCE(msg_stats.messages_count, 0) as messages_count,
-                last_bot.content as last_bot_message,
-                last_bot.id as last_bot_message_id
+                c.updated_at
             FROM chats c
             LEFT JOIN (
                 SELECT 
@@ -200,17 +203,20 @@ impl<'a> ChatService<'a> {
                 c.title,
                 c.description,
                 c.user_id,
-                c.files,
+                last_bot.content as last_bot_message,
+                last_bot.id as last_bot_message_id,
+                COALESCE(msg_stats.messages_count, 0) as messages_count,
                 c.model_id,
+                c.system_prompt,
+                c.tools,
                 c.temperature,
                 c.max_tokens,
                 c.top_p,
+                c.images_count,
                 c.is_pristine,
+                c.is_pinned,
                 c.created_at,
-                c.updated_at,
-                COALESCE(msg_stats.messages_count, 0) as messages_count,
-                last_bot.content as last_bot_message,
-                last_bot.id as last_bot_message_id
+                c.updated_at
             FROM chats c
             LEFT JOIN (
                 SELECT 
@@ -291,17 +297,20 @@ impl<'a> ChatService<'a> {
                 c.title,
                 c.description,
                 c.user_id,
-                c.files,
+                last_bot.content as last_bot_message,
+                last_bot.id as last_bot_message_id,
+                COALESCE(msg_stats.messages_count, 0) as messages_count,
                 c.model_id,
+                c.system_prompt,
+                c.tools,
                 c.temperature,
                 c.max_tokens,
                 c.top_p,
+                c.images_count,
                 c.is_pristine,
+                c.is_pinned,
                 c.created_at,
-                c.updated_at,
-                COALESCE(msg_stats.messages_count, 0) as messages_count,
-                last_bot.content as last_bot_message,
-                last_bot.id as last_bot_message_id
+                c.updated_at
             FROM chats c
             LEFT JOIN (
                 SELECT 

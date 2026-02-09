@@ -55,6 +55,7 @@ impl SubscriptionRoot {
                 error: None,
                 message: None,
                 streaming: None,
+                chat: None,
             };
             if let Err(e) = pubsub_clone.publish_to_chat(&chat_id, system_message).await {
                 error!("Failed to send initial system message: {:?}", e);

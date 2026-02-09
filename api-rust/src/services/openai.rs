@@ -357,13 +357,9 @@ impl AIProviderService for OpenAIService {
                                 provider: Some("OpenAI".to_string()),
                                 name: id.to_string(),
                                 description: format!("OpenAI {}", id),
-                                supports_streaming: true,
-                                supports_text_in: true,
-                                supports_text_out: true,
-                                supports_image_in: id.contains("vision") || id.contains("4o"),
-                                supports_image_out: false,
-                                supports_embeddings_in: false,
-                                supports_embeddings_out: false,
+                                type_: "chat".to_string(),
+                                streaming: true,
+                                image_input: id.contains("vision") || id.contains("4o"),
                             },
                         );
                     }

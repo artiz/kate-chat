@@ -56,10 +56,13 @@ pub struct Message {
     pub user_id: Option<String>,
     pub content: String,
     pub role: String,
-    pub model_id: String,
+    pub model_id: Option<String>,
     pub model_name: Option<String>,
     pub json_content: Option<String>,
     pub metadata: Option<String>,
+    pub linked_to_message_id: Option<String>,
+    pub status: Option<String>,
+    pub status_info: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -90,12 +93,15 @@ impl Message {
             user_id,
             content,
             role,
-            model_id,
+            model_id: Some(model_id),
             model_name,
             created_at: now,
             updated_at: now,
             json_content: None,
             metadata: None,
+            linked_to_message_id: None,
+            status: None,
+            status_info: None,
         }
     }
 }
@@ -109,24 +115,29 @@ pub struct GqlMessage {
     pub user: Option<User>,
     pub content: String,
     pub role: String,
-    pub model_id: String,
+    pub model_id: Option<String>,
     pub model_name: Option<String>,
     pub json_content: Option<Vec<ModelMessageContent>>,
     pub metadata: Option<MessageMetadata>,
     pub linked_to_message_id: Option<String>,
     pub linked_messages: Option<Vec<GqlMessage>>,
+    pub status: Option<String>,
+    pub status_info: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(
-    Debug, Serialize, Deserialize, InputObject, Debug, Serialize, Deserialize, InputObject,
-)]
+#[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct CreateMessageInput {
     pub chat_id: String,
     pub content: String,
     pub role: Option<String>,
+    pub model_id: Option<String>,
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<i32>,
+    pub top_p: Option<f32>,
     pub images: Option<Vec<ImageInput>>,
+    pub document_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
@@ -145,8 +156,30 @@ pub struct MessageUsage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct MessageRelevantChunk {
+    pub id: String,
+    pub document_id: String,
+    pub document_name: Option<String>,
+    pub page: f64,
+    pub page_index: Option<f64>,
+    pub content: String,
+    pub relevance: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ChatToolCallResult {
+    pub call_id: Option<String>,
+    pub name: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct MessageMetadata {
-    pub usage: MessageUsage,
+    pub usage: Option<MessageUsage>,
+    pub document_ids: Option<Vec<String>>,
+    pub relevants_chunks: Option<Vec<MessageRelevantChunk>>,
+    pub tools: Option<Vec<ChatToolCallResult>>,
+    pub request_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
@@ -176,8 +209,10 @@ impl From<Message> for GqlMessage {
             metadata: message
                 .metadata
                 .and_then(|meta| serde_json::from_str::<MessageMetadata>(&meta).ok()),
-            linked_to_message_id: None,
+            linked_to_message_id: message.linked_to_message_id,
             linked_messages: None,
+            status: message.status,
+            status_info: message.status_info,
         }
     }
 }
@@ -223,8 +258,20 @@ pub struct EditMessageResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct MessageChatInfo {
+    pub title: Option<String>,
+    pub model_id: Option<String>,
+    pub is_pristine: bool,
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<i32>,
+    pub top_p: Option<f32>,
+    pub images_count: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct GqlNewMessage {
     pub message: Option<GqlMessage>,
+    pub chat: Option<MessageChatInfo>,
     pub error: Option<String>,
     pub streaming: Option<bool>,
     pub r#type: String,

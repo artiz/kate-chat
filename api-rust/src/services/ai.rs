@@ -99,13 +99,9 @@ pub struct AIModelInfo {
     pub provider: Option<String>,
     pub name: String,
     pub description: String,
-    pub supports_streaming: bool,
-    pub supports_text_in: bool,
-    pub supports_text_out: bool,
-    pub supports_image_in: bool,
-    pub supports_image_out: bool,
-    pub supports_embeddings_in: bool,
-    pub supports_embeddings_out: bool,
+    pub type_: String,
+    pub streaming: bool,
+    pub image_input: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

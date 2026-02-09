@@ -266,7 +266,22 @@ impl AIProviderService for BedrockService {
                 .model_id(&request.model_id)
                 .body(Blob::new(body_bytes))
                 .send()
-                .await?;
+                .await
+                .map_err(|e| {
+                    let detail = if let Some(source) = e.source() {
+                        format!("{}: {}", e, source)
+                    } else {
+                        e.to_string()
+                    };
+                    error!(
+                        "Bedrock streaming error for model {}: {}",
+                        request.model_id, detail
+                    );
+                    AppError::Aws(format!(
+                        "Bedrock streaming error for model '{}': {}",
+                        request.model_id, detail
+                    ))
+                })?;
 
             let mut full_response = String::new();
 
@@ -351,10 +366,7 @@ impl AIProviderService for BedrockService {
             {
                 let supports_streaming = model.response_streaming_supported().unwrap_or(false);
 
-                let supports_text_in = model.input_modalities().contains(&ModelModality::Text);
                 let supports_image_in = model.input_modalities().contains(&ModelModality::Image);
-                let supports_text_out = model.output_modalities().contains(&ModelModality::Text);
-                let supports_image_out = model.output_modalities().contains(&ModelModality::Image);
 
                 models.insert(
                     model_id.to_string(),
@@ -363,13 +375,9 @@ impl AIProviderService for BedrockService {
                         provider: Some(provider_name.to_string()),
                         name: model_name.to_string(),
                         description: format!("{} by {}", model_name, provider_name),
-                        supports_streaming,
-                        supports_text_in,
-                        supports_text_out,
-                        supports_image_in,
-                        supports_image_out,
-                        supports_embeddings_in: false,
-                        supports_embeddings_out: false,
+                        type_: "chat".to_string(),
+                        streaming: supports_streaming,
+                        image_input: supports_image_in,
                     },
                 );
             }

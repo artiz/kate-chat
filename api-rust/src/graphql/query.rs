@@ -20,6 +20,7 @@ pub struct GetChatsInput {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub search_term: Option<String>,
+    pub pinned: Option<bool>,
 }
 
 #[derive(InputObject)]
@@ -38,11 +39,15 @@ pub struct GetCostsInput {
 
 #[derive(async_graphql::SimpleObject)]
 pub struct ApplicationConfig {
+    pub current_user: Option<User>,
     pub demo_mode: bool,
     pub max_chat_messages: i32,
     pub max_chats: i32,
     pub max_images: i32,
+    pub rag_enabled: Option<bool>,
+    pub rag_supported: Option<bool>,
     pub s3_connected: bool,
+    pub token: Option<String>,
 }
 
 #[Object]
@@ -58,12 +63,23 @@ impl Query {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let config = &gql_ctx.config;
 
+        let user = gql_ctx.user.clone();
+        let token = if let Some(ref u) = user {
+            crate::utils::jwt::create_token(&u.id, &config.jwt_secret).ok()
+        } else {
+            None
+        };
+
         Ok(ApplicationConfig {
+            current_user: user,
             demo_mode: config.demo_mode,
             max_chat_messages: config.demo_max_chat_messages.unwrap_or(-1),
             max_chats: config.demo_max_chats.unwrap_or(-1),
             max_images: config.demo_max_images.unwrap_or(-1),
+            rag_enabled: Some(false),
+            rag_supported: Some(false),
             s3_connected: config.s3_bucket.is_some(),
+            token,
         })
     }
 
@@ -79,6 +95,7 @@ impl Query {
             limit: Some(20),
             offset: Some(0),
             search_term: None,
+            pinned: None,
         });
 
         let limit = input.limit.unwrap_or(20);
@@ -93,16 +110,43 @@ impl Query {
             None,
         )?;
 
+        let has_more = (offset + limit) < total as i32;
+        let next = if has_more {
+            Some((offset + limit) as f64)
+        } else {
+            None
+        };
+
         Ok(GqlChatsList {
             chats: chats.into_iter().map(GqlChat::from).collect(),
             total: Some(total as i32),
-            has_more: (offset + limit) < total as i32,
+            next,
             error: None,
         })
     }
 
+    /// Find the most recent pristine chat for the current user
+    async fn find_pristine_chat(&self, ctx: &Context<'_>) -> Result<Option<GqlChat>> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let chat_result: Option<Chat> = chats::table
+            .filter(chats::user_id.eq(&user.id))
+            .filter(chats::is_pristine.eq(true))
+            .order(chats::updated_at.desc())
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(chat_result.map(GqlChat::from))
+    }
+
     /// Get chat by ID
-    async fn get_chat_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<Chat>> {
+    async fn get_chat_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<GqlChat>> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -117,7 +161,7 @@ impl Query {
             .optional()
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(chat_result)
+        Ok(chat_result.map(GqlChat::from))
     }
 
     /// Get messages for a chat

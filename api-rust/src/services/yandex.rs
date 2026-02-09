@@ -171,13 +171,9 @@ impl AIProviderService for YandexService {
                 provider: Some("Yandex".to_string()),
                 name: "YandexGPT".to_string(),
                 description: "Yandex Foundation Model for text generation".to_string(),
-                supports_streaming: true,
-                supports_text_in: true,
-                supports_text_out: true,
-                supports_image_in: false,
-                supports_image_out: false,
-                supports_embeddings_in: false,
-                supports_embeddings_out: false,
+                type_: "chat".to_string(),
+                streaming: true,
+                image_input: false,
             },
         );
 
@@ -188,13 +184,9 @@ impl AIProviderService for YandexService {
                 provider: Some("Yandex".to_string()),
                 name: "YandexGPT Lite".to_string(),
                 description: "Lightweight Yandex Foundation Model".to_string(),
-                supports_streaming: true,
-                supports_text_in: true,
-                supports_text_out: true,
-                supports_image_in: false,
-                supports_image_out: false,
-                supports_embeddings_in: false,
-                supports_embeddings_out: false,
+                type_: "chat".to_string(),
+                streaming: true,
+                image_input: false,
             },
         );
 

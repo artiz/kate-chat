@@ -69,6 +69,7 @@ impl Mutation {
             input.last_name,
             None,                                  // Google ID not provided
             None,                                  // GitHub ID not provided
+            None,                                  // Microsoft ID not provided
             Some(AuthProvider::Local.to_string()), // Auth provider
             None,
             user_role_str.to_string(),
@@ -167,7 +168,7 @@ impl Mutation {
     }
 
     /// Create a new chat
-    async fn create_chat(&self, ctx: &Context<'_>, input: CreateChatInput) -> Result<Chat> {
+    async fn create_chat(&self, ctx: &Context<'_>, input: CreateChatInput) -> Result<GqlChat> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -176,10 +177,11 @@ impl Mutation {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         let new_chat = NewChat::new(
-            input.title,
+            input.title.unwrap_or_default(),
             input.description,
             Some(user.id.clone()),
             input.model_id,
+            input.system_prompt,
         );
 
         let chat = diesel::insert_into(chats::table)
@@ -187,7 +189,7 @@ impl Mutation {
             .get_result::<Chat>(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(chat)
+        Ok(GqlChat::from(chat))
     }
 
     /// Update chat
@@ -326,6 +328,7 @@ impl Mutation {
             error: None,
             message: Some(GqlMessage::from(message.clone())),
             streaming: Some(false),
+            chat: None,
         };
 
         if let Err(e) = pubsub.publish_to_chat(&input.chat_id, gql_message).await {
@@ -405,6 +408,7 @@ impl Mutation {
                         error: None,
                         message: Some(GqlMessage::from(ai_message_pub)),
                         streaming: Some(true),
+                        chat: None,
                     };
 
                     if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
@@ -434,6 +438,7 @@ impl Mutation {
                                 error: Some(format!("Database connection error: {:?}", e)),
                                 message: None,
                                 streaming: Some(false),
+                                chat: None,
                             };
 
                             if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
@@ -465,6 +470,7 @@ impl Mutation {
                         error: error_ai_message.content.clone().into(),
                         message: Some(GqlMessage::from(error_ai_message)),
                         streaming: Some(false),
+                        chat: None,
                     };
 
                     if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
@@ -494,6 +500,7 @@ impl Mutation {
                                 error: Some(format!("Database connection error: {:?}", e)),
                                 message: None,
                                 streaming: Some(false),
+                                chat: None,
                             };
                             if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
                                 warn!("Failed to publish error to subscribers: {:?}", e);
@@ -522,6 +529,7 @@ impl Mutation {
                         error: None,
                         message: Some(GqlMessage::from(res_ai_message)),
                         streaming: Some(false),
+                        chat: None,
                     };
 
                     if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
@@ -736,7 +744,7 @@ impl Mutation {
                     user: Some(user.clone()),
                     content: response.content,
                     role: "assistant".to_string(),
-                    model_id: model.model_id.clone(),
+                    model_id: Some(model.model_id.clone()),
                     model_name: Some(model.name.clone()),
                     created_at: timestamp,
                     updated_at: timestamp,
@@ -744,6 +752,8 @@ impl Mutation {
                     metadata: None,
                     linked_to_message_id: None,
                     linked_messages: None,
+                    status: None,
+                    status_info: None,
                 })
             }
             Err(e) => {

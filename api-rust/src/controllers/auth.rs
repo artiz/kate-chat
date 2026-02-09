@@ -235,6 +235,7 @@ pub async fn google_callback(
             last_name.to_string(),
             Some(user_info.id.clone()),
             None,                                   // GitHub ID not provided
+            None,                                   // Microsoft ID not provided
             Some(AuthProvider::Google.to_string()), // Auth provider
             user_info.picture.clone(),              // Avatar URL
             user_role.to_string(),                  // User role
@@ -484,6 +485,7 @@ pub async fn github_callback(
             last_name.to_string(),
             None,                                   // Google ID not provided
             Some(user_info.id.to_string()),         // GitHub ID
+            None,                                   // Microsoft ID not provided
             Some(AuthProvider::GitHub.to_string()), // Auth provider
             user_info.avatar_url.clone(),           // Avatar URL
             user_role.to_string(),                  // User role
