@@ -33,6 +33,7 @@ import {
   IconKey,
   IconUsers,
   IconBooks,
+  IconMessages,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -250,6 +251,20 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
           </Stack>
         </Stack>
       </AppShell.Section>
+
+      {chats?.length > 0 && (
+        <AppShell.Section className={styles.chatsSection}>
+          <Tooltip label="All Chats" position="right" disabled={expanded}>
+            <NavLink
+              label={expanded ? "All Chats" : null}
+              leftSection={<IconMessages />}
+              active={location.pathname === "/chat"}
+              onClick={handleSectionClick("/chat")}
+            />
+          </Tooltip>
+        </AppShell.Section>
+      )}
+
       <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12" p="0">
         <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} onToggleExpand={onToggleExpand} />
       </AppShell.Section>

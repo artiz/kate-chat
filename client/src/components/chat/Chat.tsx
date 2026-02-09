@@ -12,6 +12,8 @@ import {
   MessageRole,
   ImageInput,
   ChatInput,
+  ChatInputRef,
+  DropFilesOverlay,
 } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useChatSubscription, useChatMessages } from "@/hooks";
@@ -49,7 +51,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [sending, setSending] = useState(false);
 
   const chatMessagesRef = useRef<ChatMessagesContainerRef>(null);
+  const chatInputRef = useRef<ChatInputRef>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
@@ -307,8 +311,52 @@ export const ChatComponent = ({ chatId }: IProps) => {
     );
   }, [selectedModel, stopping, messageMetadata?.requestId]);
 
+  const handleDragOver = useCallback((ev: React.DragEvent<HTMLDivElement>) => {
+    ev.preventDefault();
+    if (ev.dataTransfer.types?.includes("Files")) {
+      ev.dataTransfer.dropEffect = "copy";
+      setIsDragging(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((ev: React.DragEvent<HTMLDivElement>) => {
+    ev.preventDefault();
+    if (ev.target === ev.currentTarget) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (ev: React.DragEvent<HTMLDivElement>) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setIsDragging(false);
+      const files =
+        ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length > 0
+          ? Array.from(ev.dataTransfer.files).filter(f => f.size > 0)
+          : [];
+      if (files.length && chatInputRef.current) {
+        chatInputRef.current.handleAddFiles(files);
+      }
+    },
+    [chatInputRef]
+  );
+
   return (
-    <Container size="xl" py="md" className={classes.container}>
+    <Container
+      size="xl"
+      py="md"
+      className={classes.container}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <DropFilesOverlay
+        visible={isDragging}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
       <div className={classes.titleRow}>
         <div className={classes.titleBlock}>
           {isEditingTitle ? (
@@ -396,6 +444,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       )}
 
       <ChatInput
+        ref={chatInputRef}
         loadCompleted={loadCompleted}
         disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
         uploadAllowed={uploadAllowed}

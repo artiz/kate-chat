@@ -3,11 +3,31 @@ import { Link, useNavigate } from "react-router-dom";
 import { Title, Text, Grid, Card, Button, Group, Stack, Divider, Alert } from "@mantine/core";
 import { IconPlus, IconMessage } from "@tabler/icons-react";
 import { ChatMessagePreview } from "@katechat/ui";
-import { useAppSelector } from "@/store";
+import { useQuery } from "@apollo/client";
+import { useAppSelector, useAppDispatch } from "@/store";
+import { addChats } from "@/store/slices/chatSlice";
+import { GET_CHATS } from "@/store/services/graphql.queries";
+import { GetChatsResponse } from "@/types/graphql";
+import { CHAT_PAGE_SIZE } from "@/lib/config";
 
 export const ChatList: React.FC = () => {
   const navigate = useNavigate();
-  const { chats, loading, error } = useAppSelector(state => state.chats);
+  const dispatch = useAppDispatch();
+  const { chats, error, next } = useAppSelector(state => state.chats);
+
+  const { loading: loadingChats, refetch: fetchNextChats } = useQuery<GetChatsResponse>(GET_CHATS, {
+    fetchPolicy: "network-only",
+    skip: true,
+    onCompleted: data => {
+      dispatch(addChats(data.getChats));
+    },
+    variables: {
+      input: {
+        limit: CHAT_PAGE_SIZE,
+        from: next,
+      },
+    },
+  });
 
   const { providers } = useAppSelector(state => state.models);
   const noActiveProviders = useMemo(() => {
@@ -110,6 +130,13 @@ export const ChatList: React.FC = () => {
             </Grid.Col>
           ))}
       </Grid>
+      {next ? (
+        <Group justify="center" mt="md">
+          <Button variant="subtle" size="xs" onClick={() => fetchNextChats()} loading={loadingChats}>
+            Load more...
+          </Button>
+        </Group>
+      ) : null}
     </>
   );
 };

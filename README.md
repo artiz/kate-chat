@@ -48,7 +48,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
-* Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Add MCP calls/Web search info as new details plugins like RAG or CodeInterpreterCall.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).

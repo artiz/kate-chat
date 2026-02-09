@@ -17,12 +17,11 @@ import {
   TextInput,
   Badge,
   ScrollArea,
-  Overlay,
 } from "@mantine/core";
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { assert, parseMarkdown, DeleteConfirmationModal, FileDropzone } from "@katechat/ui";
+import { assert, parseMarkdown, DeleteConfirmationModal, FileDropzone, DropFilesOverlay } from "@katechat/ui";
 
 import { updateChat } from "@/store/slices/chatSlice";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -409,10 +408,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
   return (
     <>
-      <Overlay
-        display={isDragging ? "flex" : "none"}
-        opacity={0.9}
-        zIndex={5}
+      <DropFilesOverlay
+        visible={isDragging}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

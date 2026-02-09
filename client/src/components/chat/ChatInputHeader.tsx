@@ -217,7 +217,7 @@ export const ChatInputHeader = ({
       <Popover position="top" withArrow shadow="md" trapFocus>
         <Popover.Target>
           <Tooltip label="Chat Settings">
-            <ActionIcon disabled={disabled || streaming}>
+            <ActionIcon disabled={disabled || streaming} variant="default">
               <IconSettings size="1.2rem" />
             </ActionIcon>
           </Tooltip>

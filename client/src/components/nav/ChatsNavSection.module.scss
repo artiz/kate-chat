@@ -9,7 +9,7 @@
   :global .mantine-ActionIcon-root {
     position: absolute;
     top: 0.6em;
-    right: 0.5em;
+    right: 1em;
     z-index: 1;
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -25,5 +25,13 @@
 .chatItem:hover {
   :global .mantine-ActionIcon-root {
     opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .chatItem {
+    :global .mantine-ActionIcon-root {
+      opacity: 1;
+    }
   }
 }

@@ -459,11 +459,11 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
     if (server) {
       setTools(server.tools || []);
       // Auto-select first tool if available
-      if (server.tools?.length && !selectedToolName) {
+      if (server.tools?.length) {
         setSelectedToolName(server.tools[0].name);
       }
     }
-  }, [server, selectedToolName]);
+  }, [server?.id, server?.tools]);
 
   // Reset selection when dialog closes
   useEffect(() => {

@@ -1,0 +1,26 @@
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  background: var(--mantine-color-dark-7);
+  opacity: 0.92;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+}
+
+.content {
+  margin: 2rem;
+  padding: 5rem;
+  border: 2px dashed var(--mantine-color-dark-4);
+  border-radius: var(--mantine-radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}

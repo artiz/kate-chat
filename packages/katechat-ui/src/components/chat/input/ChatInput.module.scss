@@ -20,9 +20,54 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
+  transition: all 0.5s ease;
 
   &.promptMode {
     flex-grow: 1;
+    width: 100%;
+    min-width: 200px;
+    max-width: 600px;
+    align-self: center;
+  }
+
+  .promptModeText {
+    opacity: 0;
+    animation: promptFadeInUp 0.8s ease-out forwards;
+    animation-delay: 0.2s;
+    background: linear-gradient(
+      90deg,
+      var(--mantine-color-dimmed) 0%,
+      var(--mantine-color-dark-5) 50%,
+      var(--mantine-color-dimmed) 100%
+    );
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation:
+      promptFadeInUp 0.8s ease-out forwards,
+      promptShimmer 4s ease-in-out 1s infinite;
+  }
+
+  @keyframes promptFadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes promptShimmer {
+    0%,
+    100% {
+      background-position: 0% center;
+    }
+    50% {
+      background-position: 200% center;
+    }
   }
 
   .headerRow {
