@@ -10,6 +10,8 @@ import { APP_USER_AGENT } from "@/config/application";
 
 const logger = createLogger(__filename);
 
+export const WEB_SEARCH_TOOL_NAME = "internal-web_search";
+
 const dispatcher = new Agent({
   connectTimeout: 10_000,
   bodyTimeout: 10_000,
@@ -62,9 +64,13 @@ export class YandexWebSearch {
         "Content-Type": "application/json",
         Authorization: `Api-Key ${connection.YANDEX_SEARCH_API_KEY}`,
       },
-    }).then(res => res.json() as Promise<{ rawData: string }>);
+    }).then(res => res.json() as Promise<{ rawData: string; code?: number; message?: string; details?: any[] }>);
 
     if (!response.rawData) {
+      if (response.code) {
+        logger.warn({ response }, "Yandex Web Search API error response");
+      }
+
       return [];
     }
 

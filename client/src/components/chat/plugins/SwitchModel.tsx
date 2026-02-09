@@ -11,6 +11,7 @@ import { SWITCH_MODEL_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import classes from "./Plugins.module.scss";
 import { ProviderIcon } from "@katechat/ui";
+import { useChatPluginsContext } from "../ChatPluginsContext";
 
 /** Call Others button - only show on parent Assistant messages */
 export const SwitchModel = ({
@@ -25,6 +26,7 @@ export const SwitchModel = ({
   const activeModels = useMemo(() => {
     return allModels.filter(m => m.isActive && m.type !== ModelType.EMBEDDING && m.modelId != modelId);
   }, [allModels, modelId]);
+  const messageContext = useChatPluginsContext();
 
   // Switch model mutation
   const [switchModel, { loading: switchingModel }] = useMutation<SwitchModelResponse>(SWITCH_MODEL_MUTATION, {
@@ -58,6 +60,7 @@ export const SwitchModel = ({
       variables: {
         messageId: id,
         modelId,
+        messageContext,
       },
     });
   };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
 import { IconMessagePlus, IconTestPipe, IconTrash, IconEdit } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
@@ -52,27 +52,31 @@ export const ModelsList: React.FC<ModelsListProps> = ({
 
   // Filtered models based on selections
   const filteredModels = useMemo(() => {
-    return models.filter(model => {
-      // Filter by provider dropdown if selected
-      if (providerFilter && model.provider?.toLowerCase() !== providerFilter.toLowerCase()) {
-        return false;
-      }
+    return models
+      .filter(model => {
+        // Filter by provider dropdown if selected
+        if (providerFilter && model.provider?.toLowerCase() !== providerFilter.toLowerCase()) {
+          return false;
+        }
 
-      // Filter by API provider if selected
-      if (apiProviderFilter && model.apiProvider !== apiProviderFilter) {
-        return false;
-      }
+        // Filter by API provider if selected
+        if (apiProviderFilter && model.apiProvider !== apiProviderFilter) {
+          return false;
+        }
 
-      // Filter by active state if selected
-      if (activeFilter === "active" && !model.isActive) {
-        return false;
-      }
-      if (activeFilter === "inactive" && model.isActive) {
-        return false;
-      }
+        // Filter by active state if selected
+        if (activeFilter === "active" && !model.isActive) {
+          return false;
+        }
+        if (activeFilter === "inactive" && model.isActive) {
+          return false;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) =>
+        b.apiProvider === "CUSTOM_REST_API" ? -1 : a.apiProvider?.localeCompare(b.apiProvider || "") || 0
+      ); // Sort alphabetically by name
   }, [models, providerFilter, apiProviderFilter, activeFilter]);
 
   const handleDeleteClick = (model: Model) => {
@@ -174,7 +178,6 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     <Switch
                       checked={model.isActive}
                       onChange={event => onToggleModelStatus(model, event.currentTarget.checked)}
-                      label="Active"
                       size="md"
                     />
                   </Group>
@@ -187,14 +190,14 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                   <ModelInfo model={model} size="16" showTools />
                 </Group>
 
-                <Group grow>
+                <Group>
                   <Button
                     leftSection={<IconMessagePlus size={16} />}
                     onClick={() => onCreateChat(model)}
                     loading={creatingChat}
                     disabled={!model.isActive || ![ModelType.CHAT, ModelType.IMAGE_GENERATION].includes(model.type)}
                   >
-                    Start Chat
+                    New Chat
                   </Button>
                   <Button
                     leftSection={<IconTestPipe size={16} />}
@@ -202,32 +205,26 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     onClick={() => onOpenTestModal(model)}
                     disabled={!model.isActive}
                   >
-                    Test Request
+                    Test
                   </Button>
-                </Group>
-
-                {model.isCustom && (
-                  <Group grow>
-                    {onEditModel && (
+                  {model.isCustom && (
+                    <>
+                      {onEditModel && (
+                        <Button leftSection={<IconEdit size={16} />} variant="light" onClick={() => onEditModel(model)}>
+                          Edit
+                        </Button>
+                      )}
                       <Button
-                        leftSection={<IconEdit size={16} />}
-                        variant="subtle"
-                        color="blue"
-                        onClick={() => onEditModel(model)}
+                        leftSection={<IconTrash size={16} />}
+                        variant="light"
+                        color="red"
+                        onClick={() => handleDeleteClick(model)}
                       >
-                        Edit Model
+                        Delete
                       </Button>
-                    )}
-                    <Button
-                      leftSection={<IconTrash size={16} />}
-                      variant="subtle"
-                      color="red"
-                      onClick={() => handleDeleteClick(model)}
-                    >
-                      Delete Model
-                    </Button>
-                  </Group>
-                )}
+                    </>
+                  )}
+                </Group>
               </Stack>
             </Card>
           </Grid.Col>

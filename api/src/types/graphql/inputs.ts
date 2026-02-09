@@ -1,6 +1,6 @@
 import { InputType, Field } from "type-graphql";
 import { ToolType } from "../ai.types";
-import { UserSettings, AuthProvider } from "@/entities";
+import { UserSettings, AuthProvider, MCPAuthConfig, MCPAuthType } from "@/entities";
 import { ApiProvider } from "@/config/ai/common";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
@@ -121,6 +121,9 @@ export class ChatToolInput {
   @Field({ nullable: true })
   name?: string;
 
+  @Field({ nullable: true })
+  id?: string;
+
   @Field(() => [ChatToolOptionsInput], { nullable: true })
   options?: ChatToolOptionsInput[];
 }
@@ -171,6 +174,21 @@ export class ImageInput {
 }
 
 @InputType()
+export class MCPAuthTokenInput {
+  @Field()
+  serverId: string;
+
+  @Field()
+  accessToken: string;
+
+  @Field({ nullable: true })
+  refreshToken?: string;
+
+  @Field({ nullable: true })
+  expiresAt?: number;
+}
+
+@InputType()
 export class CreateMessageInput {
   @Field()
   chatId: string;
@@ -183,6 +201,15 @@ export class CreateMessageInput {
 
   @Field(() => [String], { nullable: true })
   documentIds?: string[];
+
+  @Field(() => [MCPAuthTokenInput], { nullable: true })
+  mcpTokens?: MCPAuthTokenInput[];
+}
+
+@InputType()
+export class MessageContext {
+  @Field(() => [MCPAuthTokenInput], { nullable: true })
+  mcpTokens?: MCPAuthTokenInput[];
 }
 
 @InputType()
@@ -389,4 +416,76 @@ export class TestCustomModelInput {
 
   @Field()
   text: string;
+}
+
+// MCP Server Inputs
+@InputType()
+export class CreateMCPServerInput {
+  @Field()
+  name: string;
+
+  @Field()
+  @Validate(IsPublicUrl)
+  url: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field({ nullable: true })
+  transportType?: string;
+
+  @Field({ nullable: true })
+  authType?: MCPAuthType;
+
+  @Field(() => MCPAuthConfig, { nullable: true })
+  authConfig?: MCPAuthConfig;
+}
+
+@InputType()
+export class UpdateMCPServerInput {
+  @Field()
+  id: string;
+
+  @Field({ nullable: true })
+  name?: string;
+
+  @Field({ nullable: true })
+  @Validate(IsPublicUrl, { message: "Invalid URL format" })
+  url?: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field({ nullable: true })
+  transportType?: string;
+
+  @Field({ nullable: true })
+  authType?: MCPAuthType;
+
+  @Field(() => MCPAuthConfig, { nullable: true })
+  authConfig?: MCPAuthConfig;
+
+  @Field({ nullable: true })
+  isActive?: boolean;
+}
+
+@InputType()
+export class DeleteMCPServerInput {
+  @Field()
+  id: string;
+}
+
+@InputType()
+export class TestMCPToolInput {
+  @Field()
+  serverId: string;
+
+  @Field(() => String, { nullable: true })
+  authToken?: string;
+
+  @Field()
+  toolName: string;
+
+  @Field({ nullable: true })
+  argsJson?: string; // JSON string of tool arguments
 }

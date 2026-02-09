@@ -13,7 +13,7 @@ import {
   TestCustomModelInput,
 } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
-import { CompleteChatRequest, MessageRole, ModelType } from "../types/ai.types";
+import { CompleteChatRequest, MessageRole, ModelType, ToolType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
 import { ApiProvider, MAX_CONTEXT_TOKENS } from "@/config/ai/common";
@@ -484,6 +484,15 @@ export class ModelResolver extends BaseResolver {
       model.customSettings.endpoint ||= endpoint;
       model.customSettings.modelName ||= modelName;
       model.customSettings.protocol ||= protocol;
+
+      if (protocol === CustomModelProtocol.OPENAI_CHAT_COMPLETIONS) {
+        model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
+      } else if (protocol === CustomModelProtocol.OPENAI_RESPONSES) {
+        model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
+      } else {
+        model.tools = [];
+      }
+
       // update apiKey only if provided
       if (apiKey) {
         model.customSettings.apiKey = apiKey;

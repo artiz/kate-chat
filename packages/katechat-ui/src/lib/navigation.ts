@@ -7,10 +7,12 @@ interface SortableItem {
 export interface SectionBlock<T = SortableItem> {
   label: string;
   items: T[];
+  icon?: React.ReactNode;
 }
 
 interface SectionBlockSelector {
   label: string;
+  icon?: React.ReactNode;
   selector: false | ((item: SortableItem, date: Date) => boolean);
 }
 
@@ -42,7 +44,7 @@ export function sortItemsBySections<T extends SortableItem>(
     ];
   }
 
-  const result: SectionBlock<T>[] = selectors.map(({ label }) => ({ label, items: [] }));
+  const result: SectionBlock<T>[] = selectors.map(({ label, icon }) => ({ label, items: [], icon }));
   const defaultSectionNnx = selectors.findIndex(section => section.selector === false);
   const defaultSection = defaultSectionNnx !== -1 ? result[defaultSectionNnx] : null;
 

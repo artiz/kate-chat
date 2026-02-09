@@ -15,18 +15,23 @@ import {
   ModelMessageContent,
   ChatToolCallResult,
   ChatResponseStatus,
+  ChatTool,
+  MCPAuthToken,
 } from "@/types/ai.types";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import {
   ChatCompletionToolCall,
-  COMPLETION_API_TOOLS,
-  COMPLETION_API_TOOLS_TO_STATUS,
-  WEB_SEARCH_TOOL,
+  ChatCompletionToolCallable,
+  formatOpenAIMcpTools,
+  CustomWebSearchTool,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
 import { ModelProtocol } from "./common";
+import { MCPAuthType, MCPServer } from "@/entities";
+import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
+import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 
 const logger = createLogger(__filename);
 
@@ -37,7 +42,7 @@ export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
 
 function genProcessSymbol(): string {
-  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢"];
+  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢", "🧠", "🦾"];
   return symbols[Math.floor(Math.random() * symbols.length)];
 }
 
@@ -198,6 +203,7 @@ export class OpenAIProtocol implements ModelProtocol {
     type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
     type ChatCompletionContentPartText = OpenAI.Chat.Completions.ChatCompletionContentPartText;
     type ChatCompletionContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
+    const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => modelId.startsWith(prefix));
 
     const parseContent = async (
       body: string | ModelMessageContent[],
@@ -215,7 +221,7 @@ export class OpenAIProtocol implements ModelProtocol {
           continue;
         }
 
-        if (addImages && part.contentType === "image") {
+        if (addImages && part.contentType === "image" && imageInput) {
           if (!this.fileLoader) {
             logger.warn(`File loader is not connected, cannot load image content: ${part.fileName}`);
             continue;
@@ -253,7 +259,7 @@ export class OpenAIProtocol implements ModelProtocol {
                 tool_calls: msg.metadata.toolCalls
                   .filter(tc => !tc.type || tc.type === "function")
                   .map(tc => ({
-                    id: tc.name,
+                    id: tc.callId,
                     type: "function" as const,
                     function: {
                       name: tc.name,
@@ -305,7 +311,7 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, tools: inputTools } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, tools, mcpServers } = inputRequest;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -323,27 +329,39 @@ export class OpenAIProtocol implements ModelProtocol {
       params.temperature = 1;
     }
 
-    if (inputTools) {
-      const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [];
-
-      // custom web search tool
-      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
-        tools.push(WEB_SEARCH_TOOL);
-      }
-
-      if (tools.length) {
-        params.tools = tools;
-      }
+    const requestTools = this.formatRequestTools(tools, mcpServers);
+    if (requestTools.length) {
+      params.tools = requestTools;
     }
 
     return params;
+  }
+
+  private formatRequestTools(inputTools?: ChatTool[], mcpServers?: MCPServer[]): ChatCompletionToolCallable[] {
+    if (inputTools?.length) {
+      const tools: ChatCompletionToolCallable[] = [];
+
+      // custom web search tool
+      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
+        tools.push(CustomWebSearchTool);
+      }
+      const mcpTools = formatOpenAIMcpTools(
+        inputTools.filter(t => t.type === ToolType.MCP),
+        mcpServers
+      );
+      tools.push(...mcpTools);
+
+      return tools;
+    }
+
+    return [];
   }
 
   private async formatResponsesRequest(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens } = inputRequest;
+    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, mcpServers, mcpTokens } = inputRequest;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
@@ -363,9 +381,41 @@ export class OpenAIProtocol implements ModelProtocol {
           search_context_size: "low",
         });
       }
+
       if (inputRequest.tools.find(t => t.type === ToolType.CODE_INTERPRETER)) {
         tools.push({ type: "code_interpreter", container: { type: "auto" } });
       }
+
+      const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);
+
+      inputRequest.tools
+        .filter(t => t.type === ToolType.MCP)
+        .forEach(tool => {
+          const server = serverMap.get(tool.id || tool.name);
+          ok(server);
+
+          const mcpTool: OpenAI.Responses.Tool.Mcp = {
+            type: "mcp",
+            server_url: server.url,
+            server_label: "M_" + server.id,
+            server_description: server.description,
+            require_approval: "never", // for now we handle approval
+          };
+
+          if (server.authType !== MCPAuthType.NONE) {
+            const token = mcpTokens?.find(t => t.serverId === server.id);
+            if (server.authType === MCPAuthType.BEARER || server.authType === MCPAuthType.OAUTH2) {
+              mcpTool.authorization = token?.accessToken;
+            } else if (server.authType === MCPAuthType.API_KEY) {
+              mcpTool.headers = {
+                [server.authConfig?.headerName || MCP_DEFAULT_API_KEY_HEADER]: token?.accessToken || "",
+              };
+            }
+          }
+
+          tools.push(mcpTool);
+        });
+
       if (tools.length) {
         params.tools = tools;
       }
@@ -460,8 +510,10 @@ export class OpenAIProtocol implements ModelProtocol {
       );
     }
 
+    const callableTools = this.formatRequestTools(input.tools, input.mcpServers);
+
     do {
-      logger.debug({ ...params }, "invoking streaming chat.completions...");
+      logger.trace({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
@@ -478,7 +530,9 @@ export class OpenAIProtocol implements ModelProtocol {
         if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
           const requestedToolCalls = (streamedToolCalls.length ? streamedToolCalls : choice.delta.tool_calls) || [];
           logger.debug({ tool_calls: requestedToolCalls }, "Tool calls requested");
-          const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(this.parseCompletionToolCall);
+          const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(call =>
+            this.parseCompletionToolCall(call, callableTools)
+          );
           const failedCall = toolCalls.find(call => call.error);
 
           if (failedCall) {
@@ -501,7 +555,12 @@ export class OpenAIProtocol implements ModelProtocol {
             break;
           }
 
-          const toolResults = await this.callCompletionTools(toolCalls, callbacks.onProgress);
+          const toolResults = await this.callCompletionTools(
+            toolCalls,
+            callableTools,
+            callbacks.onProgress,
+            input.mcpTokens
+          );
 
           // Add tool calls as last assistant message
           params.messages.push({
@@ -632,13 +691,15 @@ export class OpenAIProtocol implements ModelProtocol {
       for await (const chunk of stream) {
         if (stopped) break;
 
+        logger.trace(chunk, "got responses chunk");
+
         if (chunk.type == "response.created") {
           stopped = await callbacks.onProgress("", {
             status: ResponseStatus.STARTED,
             requestId: chunk.response.id,
           });
         } else if (chunk.type == "response.output_text.delta") {
-          stopped = await callbacks.onProgress(chunk.delta);
+          stopped = await callbacks.onProgress(chunk.delta, { status: ResponseStatus.IN_PROGRESS });
           fullResponse += chunk.delta;
         } else if (
           chunk.type == "response.web_search_call.in_progress" ||
@@ -649,6 +710,14 @@ export class OpenAIProtocol implements ModelProtocol {
             lastStatus = ResponseStatus.WEB_SEARCH;
             stopped = await callbacks.onProgress("", { status: ResponseStatus.WEB_SEARCH });
           }
+        } else if (
+          chunk.type == "response.mcp_list_tools.in_progress" ||
+          chunk.type == "response.mcp_call.in_progress"
+        ) {
+          stopped = await callbacks.onProgress("", {
+            status: ResponseStatus.MCP_CALL,
+            detail: chunk.type == "response.mcp_list_tools.in_progress" ? "Loading MCP tools..." : undefined,
+          });
         } else if (chunk.type == "response.code_interpreter_call.in_progress") {
           if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
             lastStatus = ResponseStatus.CODE_INTERPRETER;
@@ -895,9 +964,11 @@ export class OpenAIProtocol implements ModelProtocol {
 
   private callCompletionTools(
     toolCalls: ChatCompletionToolCall[],
+    tools: ChatCompletionToolCallable[],
     onProgress?:
       | ((token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>)
-      | undefined
+      | undefined,
+    mcpTokens?: MCPAuthToken[]
   ): Promise<
     {
       call: ChatCompletionToolCall;
@@ -906,7 +977,7 @@ export class OpenAIProtocol implements ModelProtocol {
     }[]
   > {
     const requests = toolCalls.map(async call => {
-      const tool = COMPLETION_API_TOOLS[call.name || ""];
+      const tool = tools.find(t => t.name === call.name);
       if (!tool) {
         return {
           call,
@@ -931,7 +1002,7 @@ export class OpenAIProtocol implements ModelProtocol {
         };
       }
 
-      let status = (call.name && COMPLETION_API_TOOLS_TO_STATUS[call.name]) || ResponseStatus.TOOL_CALL;
+      let status = tool.status || ResponseStatus.TOOL_CALL;
       let detail = call.arguments ? JSON.stringify(call.arguments) : "";
       const stopped = await onProgress?.("", { status, detail });
       if (stopped) {
@@ -945,7 +1016,7 @@ export class OpenAIProtocol implements ModelProtocol {
           stopped,
         };
       }
-      const result = await tool.call(call.arguments || {}, call.callId, this.connection);
+      const result = await tool.call(call.arguments || {}, call.callId, this.connection, mcpTokens);
       return { call, result, stopped };
     });
 
@@ -953,7 +1024,8 @@ export class OpenAIProtocol implements ModelProtocol {
   }
 
   private parseCompletionToolCall(
-    call: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall
+    call: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
+    tools: ChatCompletionToolCallable[]
   ): ChatCompletionToolCall {
     const callId = call.id || "unknown_id";
     if (!call.function || !call.function.name) {
@@ -963,7 +1035,8 @@ export class OpenAIProtocol implements ModelProtocol {
       };
     }
     const { name } = call.function;
-    const tool = COMPLETION_API_TOOLS[call.function.name];
+    const tool = tools.find(t => t.name === name);
+
     if (!tool) {
       return {
         callId,

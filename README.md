@@ -39,6 +39,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - Custom OpenAI-compatible REST API endpoint (Deepseek, Local Models, etc.).
+- External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS

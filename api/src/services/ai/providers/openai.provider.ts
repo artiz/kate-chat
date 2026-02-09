@@ -31,6 +31,7 @@ import {
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
+import { notEmpty } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
@@ -281,10 +282,10 @@ export class OpenAIApiProvider extends BaseApiProvider {
           embeddingModel || isImageGeneration
             ? []
             : apiType === "responses"
-              ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER]
-              : searchAvailable
-                ? [ToolType.WEB_SEARCH]
-                : [];
+              ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER, ToolType.MCP]
+              : [searchAvailable ? ToolType.WEB_SEARCH : null, ToolType.CODE_INTERPRETER, ToolType.MCP].filter(
+                  notEmpty
+                );
 
         const features: ModelFeature[] | undefined =
           apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : undefined;

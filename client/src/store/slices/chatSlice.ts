@@ -1,6 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Chat } from "../services/graphql";
-import { GetChatsResponse, MessageChatInfo } from "@/types/graphql";
+import { GetChatsResponse, MessageChatInfo, Chat } from "@/types/graphql";
 import { logout } from "..";
 
 interface ChatsState {

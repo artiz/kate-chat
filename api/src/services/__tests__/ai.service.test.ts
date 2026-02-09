@@ -1,9 +1,8 @@
 process.env.ENABLED_API_PROVIDERS = "AWS_BEDROCK";
 import { ApiProvider } from "../../config/ai/common";
 import { AIService } from "../ai/ai.service";
-import { MessageRole, ModelMessage, ModelType } from "../../types/ai.types";
+import { MessageRole, ModelType } from "../../types/ai.types";
 import { Message } from "../../entities/Message";
-import { error } from "console";
 
 // Mock the BedrockRuntimeClient
 const bedrockClient = {
@@ -46,6 +45,7 @@ jest.mock("@aws-sdk/client-bedrock-runtime", () => {
     ConverseCommand: jest.fn(),
     ConverseStreamCommand: jest.fn(),
     BedrockRuntimeClient: jest.fn().mockImplementation(() => bedrockClient),
+    ValidationException: Error,
   };
 });
 

@@ -11,6 +11,8 @@ import {
   Message as ConverseMessage,
   Tool,
   ToolUseBlock,
+  ConverseStreamCommandOutput,
+  ValidationException,
 } from "@aws-sdk/client-bedrock-runtime";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
@@ -38,9 +40,14 @@ import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { notEmpty } from "@/utils/assert";
 import { YandexWebSearch } from "../tools/yandex.web_search";
-import { BEDROCK_TOOLS, WEB_SEARCH_TOOL_NAME, parseToolUse, callBedrockTool } from "./bedrock.tools";
+import {
+  WEB_SEARCH_TOOL_NAME,
+  parseToolUse,
+  callBedrockTool,
+  formatBedrockRequestTools,
+  BedrockToolCallable,
+} from "./bedrock.tools";
 import { ApiProvider } from "@/config/ai/common";
 import { FileContentLoader } from "@/services/data";
 
@@ -110,9 +117,12 @@ export class BedrockApiProvider extends BaseApiProvider {
     let requestCompleted = false;
     let finalResponse: ModelResponse | undefined;
 
+    // Format tools from request
+    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+
     do {
       // Get provider service and parameters
-      const input = await this.formatConverseParams(request, messages);
+      const input = await this.formatConverseParams(request, messages, requestTools);
       // Append any tool result messages from previous iterations
       if (input.messages) {
         input.messages = [...input.messages, ...conversationMessages];
@@ -134,7 +144,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         // Execute tools and collect results
         const toolResultContent: ContentBlock[] = [];
         for (const call of toolUse) {
-          const toolCall = parseToolUse(call);
+          const toolCall = parseToolUse(call, requestTools);
           if (toolCall.error) {
             toolResultContent.push({
               toolResult: {
@@ -144,7 +154,7 @@ export class BedrockApiProvider extends BaseApiProvider {
               },
             });
           } else {
-            const result = await callBedrockTool(toolCall, this.connection);
+            const result = await callBedrockTool(toolCall, this.connection, requestTools, request.mcpTokens);
             toolResultContent.push({
               toolResult: result,
             });
@@ -184,9 +194,13 @@ export class BedrockApiProvider extends BaseApiProvider {
     const conversationMessages: ConverseMessage[] = [];
     let requestCompleted = false;
 
+    // Format tools from request
+    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+    let inputMessages = messages || [];
+
     do {
       try {
-        const input = await this.formatConverseParams(request, messages);
+        const input = await this.formatConverseParams(request, inputMessages, requestTools);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
 
@@ -196,7 +210,20 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
 
         const command = new ConverseStreamCommand(input);
-        const streamResponse = await this.bedrockClient.send(command);
+        let streamResponse: ConverseStreamCommandOutput | undefined = undefined;
+        try {
+          streamResponse = await this.bedrockClient.send(command);
+        } catch (error) {
+          if (error instanceof ValidationException && error.message.includes("Input is too long for requested model")) {
+            if (inputMessages.length) {
+              // Keep only the most recent half of the conversation
+              inputMessages = inputMessages.slice(-Math.floor(inputMessages.length / 2));
+              continue;
+            }
+          }
+          // Re-throw if not the specific validation error we handle
+          throw error;
+        }
 
         let fullResponse = "";
         let reasoningContent = "";
@@ -258,6 +285,7 @@ export class BedrockApiProvider extends BaseApiProvider {
             // Tool use detected - notify callback
             const toolCalls = streamedToolUse.map(tu => ({
               name: tu.name || "unknown",
+              callId: tu.toolUseId || tu.name || "unknown",
               args: typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input || {}),
             }));
 
@@ -298,7 +326,7 @@ export class BedrockApiProvider extends BaseApiProvider {
             const toolResults: ChatToolCallResult[] = [];
 
             for (const toolUse of streamedToolUse) {
-              const toolCall = parseToolUse(toolUse);
+              const toolCall = parseToolUse(toolUse, requestTools);
 
               if (toolCall.error) {
                 toolResultContent.push({
@@ -315,7 +343,7 @@ export class BedrockApiProvider extends BaseApiProvider {
                   callId: toolCall.toolUseId,
                 });
               } else {
-                const result = await callBedrockTool(toolCall, this.connection);
+                const result = await callBedrockTool(toolCall, this.connection, requestTools, request.mcpTokens);
                 toolResultContent.push({
                   toolResult: result,
                 });
@@ -485,6 +513,15 @@ export class BedrockApiProvider extends BaseApiProvider {
             ? ModelType.EMBEDDING
             : ModelType.CHAT;
 
+        // Enable tools for chat models (web search if available, and MCP)
+        const tools: ToolType[] = [];
+        if (type === ModelType.CHAT) {
+          if (searchAvailable) {
+            tools.push(ToolType.WEB_SEARCH);
+          }
+          tools.push(ToolType.MCP);
+        }
+
         models[modelId] = {
           apiProvider: ApiProvider.AWS_BEDROCK,
           provider: providerName,
@@ -494,7 +531,7 @@ export class BedrockApiProvider extends BaseApiProvider {
           streaming: model.responseStreamingSupported || false,
           imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
           maxInputTokens: modelsInputTokens[model.modelId],
-          tools: searchAvailable ? [ToolType.WEB_SEARCH] : undefined,
+          tools: tools.length > 0 ? tools : undefined,
         };
       }
     }
@@ -739,9 +776,10 @@ export class BedrockApiProvider extends BaseApiProvider {
 
   private async formatConverseParams(
     request: CompleteChatRequest,
-    messages: ModelMessage[] = []
+    messages: ModelMessage[] = [],
+    requestTools: BedrockToolCallable[] = []
   ): Promise<ConverseCommandInput> {
-    const { systemPrompt, modelId, temperature, maxTokens, topP, tools: inputTools } = request;
+    const { systemPrompt, modelId, temperature, maxTokens, topP } = request;
 
     const requestMessages: ConverseMessage[] = [];
 
@@ -823,31 +861,21 @@ export class BedrockApiProvider extends BaseApiProvider {
       command.system = [{ text: systemPrompt }];
     }
 
-    // Add tool configuration if tools are requested
-    if (inputTools && inputTools.length > 0) {
-      const tools: Tool[] = [];
+    // Add tool configuration if tools are provided
+    if (requestTools.length > 0) {
+      const tools: Tool[] = requestTools;
 
-      // Add web search tool if requested
-      if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
-        const webSearchTool = BEDROCK_TOOLS[WEB_SEARCH_TOOL_NAME];
-        if (webSearchTool) {
-          tools.push(webSearchTool);
-        }
-      }
-
-      if (tools.length > 0) {
-        if (modelId?.includes("amazon.nova")) {
-          command.toolConfig = {
-            tools,
-            toolChoice: {
-              tool: { name: tools[0]?.toolSpec?.name || "" },
-            },
-          };
-        } else {
-          command.toolConfig = {
-            tools,
-          };
-        }
+      if (modelId?.includes("amazon.nova")) {
+        command.toolConfig = {
+          tools,
+          toolChoice: {
+            tool: { name: tools[0]?.toolSpec?.name || "" },
+          },
+        };
+      } else {
+        command.toolConfig = {
+          tools,
+        };
       }
     }
 

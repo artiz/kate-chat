@@ -122,14 +122,15 @@ type ChatResultAnnotation {
 }
 
 type ChatTool {
+  id: String
   name: String!
   options: [ChatToolOptions!]
   type: ToolType!
-  url: String
 }
 
 type ChatToolCall {
   args: String
+  callId: String!
   error: String
   name: String!
   type: String
@@ -142,6 +143,7 @@ type ChatToolCallResult {
 }
 
 input ChatToolInput {
+  id: String
   name: String
   options: [ChatToolOptionsInput!]
   type: ToolType!
@@ -177,11 +179,21 @@ input CreateCustomModelInput {
   streaming: Boolean
 }
 
+input CreateMCPServerInput {
+  authConfig: MCPAuthConfigInput
+  authType: String
+  description: String
+  name: String!
+  transportType: String
+  url: String!
+}
+
 input CreateMessageInput {
   chatId: String!
   content: String!
   documentIds: [String!]
   images: [ImageInput!]
+  mcpTokens: [MCPAuthTokenInput!]
 }
 
 type CustomModelSettings {
@@ -195,6 +207,10 @@ type CustomModelSettings {
 A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
 """
 scalar DateTimeISO
+
+input DeleteMCPServerInput {
+  id: String!
+}
 
 type DeleteMessageResponse {
   messages: [DeleteMessageResult!]!
@@ -373,6 +389,100 @@ input LoginInput {
   password: String!
 }
 
+type MCPAuthConfig {
+  authorizationUrl: String
+  clientId: String
+  clientSecret: String
+  headerName: String
+  scope: String
+  tokenUrl: String
+}
+
+input MCPAuthConfigInput {
+  authorizationUrl: String
+  clientId: String
+  clientSecret: String
+  headerName: String
+  scope: String
+  tokenUrl: String
+}
+
+input MCPAuthTokenInput {
+  accessToken: String!
+  expiresAt: Float
+  refreshToken: String
+  serverId: String!
+}
+
+"""
+Authentication type for MCP server
+"""
+enum MCPAuthType {
+  API_KEY
+  BEARER
+  NONE
+  OAUTH2
+}
+
+type MCPServer {
+  authConfig: MCPAuthConfig
+  authType: MCPAuthType!
+  createdAt: DateTimeISO!
+  description: String
+  id: ID!
+  isActive: Boolean!
+  name: String!
+  tools: [MCPToolInfo!]
+  transportType: MCPTransportType!
+  updatedAt: DateTimeISO!
+  url: String!
+  user: User
+  userId: String
+}
+
+type MCPServerResponse {
+  error: String
+  server: MCPServer
+}
+
+type MCPServersListResponse {
+  error: String
+  servers: [MCPServer!]
+  total: Float
+}
+
+type MCPToolInfo {
+  description: String
+  inputSchema: String
+  name: String!
+  outputSchema: String
+}
+
+type MCPToolInfoResponse {
+  description: String
+  inputSchema: String
+  name: String!
+  outputSchema: String
+}
+
+type MCPToolTestResponse {
+  error: String
+  result: String
+}
+
+type MCPToolsListResponse {
+  error: String
+  tools: [MCPToolInfoResponse!]
+}
+
+"""
+Transport type for MCP server
+"""
+enum MCPTransportType {
+  HTTP_SSE_LEGACY
+  STREAMABLE_HTTP
+}
+
 type Message {
   chat: Chat!
   chatId: String
@@ -402,6 +512,10 @@ type MessageChatInfo {
   temperature: Float
   title: String
   topP: Float
+}
+
+input MessageContext {
+  mcpTokens: [MCPAuthTokenInput!]
 }
 
 type MessageMetadata {
@@ -477,29 +591,34 @@ enum ModelType {
 
 type Mutation {
   addDocumentsToChat(chatId: ID!, documentIds: [ID!]!): AddDocumentsToChatResponse!
-  callOther(messageId: ID!, modelId: String!): CallOtherResponse!
+  callOther(messageContext: MessageContext, messageId: ID!, modelId: String!): CallOtherResponse!
   changePassword(input: ChangePasswordInput!): ID!
   createChat(input: CreateChatInput!): Chat!
   createCustomModel(input: CreateCustomModelInput!): Model!
+  createMCPServer(input: CreateMCPServerInput!): MCPServerResponse!
   createMessage(input: CreateMessageInput!): Message!
   deleteChat(id: ID!): Boolean!
   deleteDocument(id: ID!): Boolean!
+  deleteMCPServer(input: DeleteMCPServerInput!): Boolean!
   deleteMessage(deleteFollowing: Boolean, id: ID!): DeleteMessageResponse!
   deleteModel(input: DeleteModelInput!): Boolean!
-  editMessage(content: String!, messageId: ID!): EditMessageResponse!
+  editMessage(content: String!, messageContext: MessageContext, messageId: ID!): EditMessageResponse!
   login(input: LoginInput!): AuthResponse!
   processDocument(force: Boolean, id: ID!): Document!
+  refetchMcpServerTools(authToken: String, serverId: String!): MCPServerResponse!
   register(input: RegisterInput!): AuthResponse!
   reindexDocument(id: ID!): Document!
   reloadChatFileMetadata(id: String!): ChatFile!
   reloadModels: GqlModelsList!
   removeDocumentsFromChat(chatId: ID!, documentIds: [ID!]!): RemoveDocumentsFromChatResponse!
   stopMessageGeneration(input: StopMessageGenerationInput!): StopMessageGenerationResponse!
-  switchModel(messageId: ID!, modelId: String!): SwitchModelResponse!
+  switchModel(messageContext: MessageContext, messageId: ID!, modelId: String!): SwitchModelResponse!
   testCustomModel(input: TestCustomModelInput!): Message!
+  testMCPTool(input: TestMCPToolInput!): MCPToolTestResponse!
   testModel(input: TestModelInput!): Message!
   updateChat(id: ID!, input: UpdateChatInput!): Chat!
   updateCustomModel(input: UpdateCustomModelInput!): Model!
+  updateMCPServer(input: UpdateMCPServerInput!): MCPServerResponse!
   updateModelStatus(input: UpdateModelStatusInput!): Model!
   updateUser(input: UpdateUserInput!): User!
 }
@@ -520,6 +639,8 @@ type Query {
   getChats(input: GetChatsInput): GqlChatsList!
   getCosts(input: GetCostsInput!): GqlCostsInfo!
   getDocuments(input: GetDocumentsInput): DocumentsResponse!
+  getMCPServerTools(authToken: String, serverId: String!): MCPToolsListResponse!
+  getMCPServers: MCPServersListResponse!
   getMessageById(id: String!): Message
   getModels: GqlModelsList!
   getUsers(input: GetUsersInput): AdminUsersResponse!
@@ -571,6 +692,13 @@ input TestCustomModelInput {
   text: String!
 }
 
+input TestMCPToolInput {
+  argsJson: String
+  authToken: String
+  serverId: String!
+  toolName: String!
+}
+
 input TestModelInput {
   id: String!
   text: String! = "2+2="
@@ -610,6 +738,17 @@ input UpdateCustomModelInput {
   name: String!
   protocol: String!
   streaming: Boolean
+}
+
+input UpdateMCPServerInput {
+  authConfig: MCPAuthConfigInput
+  authType: String
+  description: String
+  id: String!
+  isActive: Boolean
+  name: String
+  transportType: String
+  url: String
 }
 
 input UpdateModelStatusInput {

@@ -1,11 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { ActionIcon, Select, Tooltip, Popover, Box } from "@mantine/core";
-import { IconRobot, IconSettings, IconWorldSearch, IconCloudCode } from "@tabler/icons-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
+import {
+  IconRobot,
+  IconSettings,
+  IconWorldSearch,
+  IconCloudCode,
+  IconPlugConnected,
+  IconPlugConnectedX,
+  IconSquareCheck,
+  IconSquare,
+  IconLock,
+  IconKey,
+} from "@tabler/icons-react";
+import { useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
-import { ToolType, ChatTool, Model } from "@/types/graphql";
+import { ToolType, ChatTool, Model, MCPServer } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
+import { assert } from "@katechat/ui";
+import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
+import { GET_MCP_SERVERS } from "@/store/services/graphql.queries";
+import { RootState } from "@/store";
+import { useSelector } from "react-redux";
+
+// Re-export for backwards compatibility
+export { getMcpAuthToken } from "@/components/auth/McpAuthentication";
 
 interface IHeaderProps {
   chatId?: string;
@@ -29,14 +49,54 @@ export const ChatInputHeader = ({
   onUpdateChat,
 }: IHeaderProps) => {
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
+  const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
+  const { token: userToken } = useSelector((state: RootState) => state.auth);
+
+  // Query MCP servers when MCP tool is supported
+  const { data: mcpServersData } = useQuery(GET_MCP_SERVERS, {
+    skip: !selectedModel?.tools?.includes(ToolType.MCP),
+  });
+
+  const mcpServers: MCPServer[] = useMemo(() => {
+    return mcpServersData?.getMCPServers?.servers?.filter((s: MCPServer) => s.isActive) || [];
+  }, [mcpServersData?.getMCPServers?.servers]);
+
+  const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServer) => [s.id, s.name])), [mcpServers]);
+
+  // MCP authentication hook
+  const {
+    mcpSubmitToken,
+    mcpTokenModalServer,
+    mcpNeedsAuthentication,
+    mcpInitiateAuth,
+    mcpTokenValue,
+    mcpSetTokenValue,
+    mcpCloseTokenModal,
+    mcpAuthStatus,
+  } = useMcpAuth(mcpServers, chatId);
 
   useEffect(() => {
     if (chatTools) {
       setSelectedTools(new Set(chatTools.map(tool => tool.type)));
+      // Extract MCP server names from chat tools
+      const mcpTools = chatTools.filter(t => t.type === ToolType.MCP && t.id);
+      setSelectedMcpServers(new Set(mcpTools.map(t => t.id || "").filter(assert.notEmpty)));
     } else {
       setSelectedTools(new Set());
+      setSelectedMcpServers(new Set());
     }
   }, [chatTools]);
+
+  useEffect(() => {
+    const notAuthenticatedServer = mcpServers.find(server => {
+      return selectedMcpServers.has(server.id) && mcpNeedsAuthentication(server);
+    });
+
+    if (notAuthenticatedServer) {
+      assert.ok(userToken);
+      mcpInitiateAuth(notAuthenticatedServer, userToken);
+    }
+  }, [selectedMcpServers, mcpServers, mcpAuthStatus]);
 
   const handleModelChange = (modelId: string | null) => {
     onUpdateChat(chatId, { modelId: modelId || undefined });
@@ -57,7 +117,78 @@ export const ChatInputHeader = ({
     }
 
     setSelectedTools(tools);
-    onUpdateChat(chatId, { tools: Array.from(tools).map(type => ({ type, name: type })) });
+
+    // Build tools array, including MCP servers
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
+      .filter(t => t !== ToolType.MCP) // MCP is handled separately
+      .map(type => ({ type, name: type as string }));
+
+    // Add MCP tools
+    if (tools.has(ToolType.MCP)) {
+      selectedMcpServers.forEach(id => {
+        toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
+      });
+    }
+
+    onUpdateChat(chatId, { tools: toolsArray });
+  };
+
+  const handleMcpServerToggle = (serverId: string) => {
+    if (!chatId) return;
+
+    // Find the server to check if auth is required
+    const server = mcpServers.find(s => s.id === serverId);
+
+    // If auth is required and user not authenticated, initiate auth flow
+    if (server && mcpNeedsAuthentication(server)) {
+      assert.ok(userToken);
+      mcpInitiateAuth(server, userToken);
+      return; // Don't toggle yet - wait for auth to complete
+    }
+
+    toggleMcpServer(serverId);
+  };
+
+  const toggleMcpServer = (serverId: string) => {
+    if (!chatId) return;
+
+    const servers = new Set(selectedMcpServers);
+    if (servers.has(serverId)) {
+      servers.delete(serverId);
+    } else {
+      servers.add(serverId);
+    }
+    setSelectedMcpServers(servers);
+
+    // Enable MCP tool type if any server is selected
+    const tools = new Set(selectedTools || []);
+    if (servers.size > 0) {
+      tools.add(ToolType.MCP);
+    } else {
+      tools.delete(ToolType.MCP);
+    }
+    setSelectedTools(tools);
+
+    // Build tools array
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
+      .filter(t => t !== ToolType.MCP)
+      .map(type => ({ type, name: type as string }));
+
+    // Add MCP tools
+    servers.forEach(id => {
+      toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
+    });
+
+    onUpdateChat(chatId, { tools: toolsArray });
+  };
+
+  const handleTokenSubmit = () => {
+    // Get the serverId before submitToken clears the modal state
+    const serverId = mcpTokenModalServer?.id;
+    if (mcpSubmitToken() && serverId) {
+      // Token saved, now toggle the server
+      toggleMcpServer(serverId);
+    }
   };
 
   return (
@@ -122,6 +253,67 @@ export const ChatInputHeader = ({
           </ActionIcon>
         </Tooltip>
       )}
+
+      {/* MCP Servers dropdown */}
+      {mcpServers.length > 0 && selectedModel?.tools?.includes(ToolType.MCP) && (
+        <Menu position="top" withArrow shadow="md">
+          <Menu.Target>
+            <Tooltip label="MCP Tools">
+              <ActionIcon
+                variant={selectedMcpServers.size > 0 ? "filled" : "default"}
+                color={selectedMcpServers.size > 0 ? "brand" : undefined}
+                disabled={disabled || streaming}
+              >
+                {selectedMcpServers.size > 0 ? (
+                  <IconPlugConnected size="1.2rem" />
+                ) : (
+                  <IconPlugConnectedX size="1.2rem" />
+                )}
+              </ActionIcon>
+            </Tooltip>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>MCP Servers</Menu.Label>
+            {mcpServers.map(server => {
+              const needsAuth = requiresAuth(server);
+              const isAuthenticated = !needsAuth || mcpAuthStatus.get(server.id);
+              const isSelected = selectedMcpServers.has(server.id);
+
+              return (
+                <Menu.Item
+                  key={server.id}
+                  leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
+                  rightSection={
+                    needsAuth && !isAuthenticated ? (
+                      <Tooltip label={requiresTokenEntry(server) ? "Requires token" : "Requires authentication"}>
+                        {requiresTokenEntry(server) ? (
+                          <IconKey size="0.9rem" color="orange" />
+                        ) : (
+                          <IconLock size="0.9rem" color="orange" />
+                        )}
+                      </Tooltip>
+                    ) : undefined
+                  }
+                  c={isSelected ? undefined : "dimmed"}
+                  onClick={() => handleMcpServerToggle(server.id)}
+                >
+                  {server.name}
+                </Menu.Item>
+              );
+            })}
+          </Menu.Dropdown>
+        </Menu>
+      )}
+
+      {/* Token Entry Modal for API Key / Bearer Token */}
+      <McpTokenModal
+        opened={!!mcpTokenModalServer}
+        server={mcpTokenModalServer}
+        tokenValue={mcpTokenValue}
+        onTokenChange={mcpSetTokenValue}
+        onSubmit={handleTokenSubmit}
+        onClose={mcpCloseTokenModal}
+      />
     </>
   );
 };
