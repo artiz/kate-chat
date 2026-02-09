@@ -161,6 +161,9 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   // Track the OAuth popup window for source validation
   const oauthPopupRef = useRef<Window | null>(null);
   
+  // Track whether we're actively expecting an OAuth callback
+  const expectingOAuthCallback = useRef<boolean>(false);
+  
   // Track known server IDs for validation
   const knownServerIds = useMemo(() => new Set(servers.map(s => s.id)), [servers]);
 
@@ -191,11 +194,18 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   // Listen for OAuth callback messages from popup
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      // Security validation: Only accept messages that meet ALL criteria:
-      // 1. Origin must match expected API origin OR same-origin
-      // 2. Source must be the popup window we opened (if we have a reference)
+      // Security validation: Only accept messages when ALL criteria are met:
+      // 1. We're actively expecting an OAuth callback (popup was opened)
+      // 2. Origin must match expected API origin OR same-origin
+      // 3. Source must be the popup window we opened
+      
+      if (!expectingOAuthCallback.current) {
+        // Not expecting a callback - ignore all OAuth messages
+        return;
+      }
+      
       const originValid = event.origin === expectedOrigin || event.origin === window.location.origin;
-      const sourceValid = !oauthPopupRef.current || event.source === oauthPopupRef.current;
+      const sourceValid = oauthPopupRef.current && event.source === oauthPopupRef.current;
       
       if (!originValid) {
         console.warn("MCP OAuth: Ignoring message from unexpected origin", event.origin);
@@ -231,11 +241,13 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
         // Update auth status
         setAuthStatus(prev => new Map(prev).set(serverId, true));
         
-        // Clear the popup reference
+        // Clear the popup reference and expecting flag
         oauthPopupRef.current = null;
+        expectingOAuthCallback.current = false;
       } else if (event.data?.type === "mcp-oauth-error") {
         console.error("MCP OAuth error", event.data.error);
         oauthPopupRef.current = null;
+        expectingOAuthCallback.current = false;
       }
     };
 
@@ -288,6 +300,7 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
         const popup = initiateMcpOAuth(server, userToken);
         if (popup) {
           oauthPopupRef.current = popup;
+          expectingOAuthCallback.current = true;
           return true;
         }
         return false;
