@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Modal, TextInput, Button, Group, Stack, Text } from "@mantine/core";
 import { APP_API_URL } from "@/lib/config";
 import { ChatTool, MCPServer, ToolType } from "@/types/graphql";
@@ -158,14 +158,14 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   const [mcpTokenModalServer, setTokenModalServer] = useState<MCPServer | null>(null);
   const [mcpTokenValue, mcpSetTokenValue] = useState("");
   
-  // Track the OAuth popup window for origin validation
-  const oauthPopupRef = React.useRef<Window | null>(null);
+  // Track the OAuth popup window for source validation
+  const oauthPopupRef = useRef<Window | null>(null);
   
   // Track known server IDs for validation
-  const knownServerIds = React.useMemo(() => new Set(servers.map(s => s.id)), [servers]);
+  const knownServerIds = useMemo(() => new Set(servers.map(s => s.id)), [servers]);
 
   // Get the expected origin for postMessage validation
-  const expectedOrigin = React.useMemo(() => {
+  const expectedOrigin = useMemo(() => {
     try {
       // The API sends the callback, so we expect the origin to be window.origin (same origin)
       // or the API origin if it's different
@@ -191,15 +191,20 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
   // Listen for OAuth callback messages from popup
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
-      // Validate origin - only accept messages from the expected origin (API or same-origin)
-      // When the popup redirects to the callback URL, it runs in the API's origin
-      // The API sets a specific targetOrigin, so we can trust messages from the expected origin
-      if (event.origin !== expectedOrigin && event.origin !== window.location.origin) {
-        // Allow messages from the popup we opened regardless of origin since OAuth can redirect
-        if (oauthPopupRef.current && event.source !== oauthPopupRef.current) {
-          console.warn("MCP OAuth: Ignoring message from unexpected origin/source", event.origin);
-          return;
-        }
+      // Security validation: Only accept messages that meet ALL criteria:
+      // 1. Origin must match expected API origin OR same-origin
+      // 2. Source must be the popup window we opened (if we have a reference)
+      const originValid = event.origin === expectedOrigin || event.origin === window.location.origin;
+      const sourceValid = !oauthPopupRef.current || event.source === oauthPopupRef.current;
+      
+      if (!originValid) {
+        console.warn("MCP OAuth: Ignoring message from unexpected origin", event.origin);
+        return;
+      }
+      
+      if (!sourceValid) {
+        console.warn("MCP OAuth: Ignoring message from unexpected source");
+        return;
       }
       
       if (event.data?.type === "mcp-oauth-callback") {
