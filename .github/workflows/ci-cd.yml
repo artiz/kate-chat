@@ -164,8 +164,8 @@ jobs:
       id: build-app
       if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true'
       env:
-        APP_API_URL: "/"
-        APP_WS_URL: "/"
+        APP_API_URL: ${{ vars.DOMAIN_URL || '/' }}
+        APP_WS_URL: ${{ vars.DOMAIN_URL || '/' }}
         RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
         COMMIT_SHA: ${{ github.sha }}
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
