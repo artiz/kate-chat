@@ -299,7 +299,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
   }
   if (chats?.length === 0) {
     return (
-      <Text c="dimmed" size="sm" ta="center">
+      <Text c="dimmed" size="sm" ta="center" m="lg">
         No chats yet
       </Text>
     );

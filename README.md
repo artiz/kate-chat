@@ -50,9 +50,8 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 * Finish drag & drop support to allow dropping into the chat window (katechat/ui)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
-* Add custom MCP tool support
-   - OpenAI - [MCP](https://platform.openai.com/docs/guides/tools-connectors-mcp?quickstart-panels=remote-mcp)
-   - Bedrock - custom wrapper 
+* Add MCP calls/Web search info as new details plugins like RAG or CodeInterpreterCall.
+* Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
 * Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
@@ -91,7 +90,6 @@ def code_interpreter_handler(event, context):
 * Add SerpApi for Web Search (new setting in UI)
 * Python API (FastAPI)
 * MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
-* Rust API sync: add images generation support, Library, admin API
 
 ## Tech Stack
 
