@@ -80,12 +80,8 @@ const modelSlice = createSlice({
   },
   extraReducers: builder => {
     builder.addCase(logout, state => {
-      state.models = [];
-      state.providers = [];
-      state.loading = false;
-      state.error = null;
-      state.costsInfo = undefined;
-      state.costsLoading = false;
+      state = initialState;
+      return initialState;
     });
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, use } from "react";
 import { useApolloClient, useMutation } from "@apollo/client";
 import {
   Container,
@@ -34,6 +34,7 @@ import { GET_ALL_IMAGES, RELOAD_CHAT_FILE_METADATA } from "../../store/services/
 import { GetAllImagesResponse, GetImagesInput, LibraryImage } from "@/types/graphql";
 import { notifications } from "@mantine/notifications";
 import { Link } from "react-router-dom";
+import { useAppSelector } from "@/store";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -153,6 +154,7 @@ export const ImageLibrary: React.FC = () => {
   const client = useApolloClient();
   const navigate = useNavigate();
   const [opened, { open, close }] = useDisclosure(false);
+  const { currentUser } = useAppSelector(state => state.user);
   const [reloadMetadata] = useMutation(RELOAD_CHAT_FILE_METADATA);
 
   const [images, setImages] = useState<LibraryImage[]>([]);
@@ -162,6 +164,10 @@ export const ImageLibrary: React.FC = () => {
   const [reloadingIds, setReloadingIds] = useState<Set<string>>(new Set());
 
   const resetSelectedImage = () => setSelectedImage(undefined);
+
+  useEffect(() => {
+    setImages([]);
+  }, [currentUser?.id]);
 
   const handleReloadInfo = async (e: React.MouseEvent, imageId: string) => {
     e.stopPropagation();

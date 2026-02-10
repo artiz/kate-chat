@@ -93,10 +93,8 @@ const userSlice = createSlice({
   },
   extraReducers: builder => {
     builder.addCase(logout, state => {
-      state.currentUser = null;
-      state.error = undefined;
-      state.loading = false;
-      state.appConfig = undefined;
+      state = initialState;
+      return initialState;
     });
   },
 });

@@ -24,7 +24,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
         <Alert color="yellow" title="No Active Providers">
           <Text size="sm">
             No active AI providers connected. Please configure at least one provider on the{" "}
-            <Link to="/settings">settings</Link> page.
+            <Link to="/connectivity">connectivity</Link> page.
           </Text>
         </Alert>
       )}
@@ -101,7 +101,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     {process.env.NODE_ENV !== "development" && (
                       <Text size="sm">
                         AWS Bedrock requires AWS credentials. Please setup connection credentials on{" "}
-                        <Link to="/settings">settings</Link> page.
+                        <Link to="/connectivity">connectivity</Link> page.
                       </Text>
                     )}
                   </Alert>
@@ -122,7 +122,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     {process.env.NODE_ENV !== "development" && (
                       <Text size="sm">
                         OpenAI requires an API key. Please setup connection credentials on{" "}
-                        <Link to="/settings">settings</Link> page.
+                        <Link to="/connectivity">connectivity</Link> page.
                       </Text>
                     )}
                   </Alert>
@@ -143,7 +143,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     {process.env.NODE_ENV !== "development" && (
                       <Text size="sm">
                         Yandex requires an API key. Please setup connection credentials on{" "}
-                        <Link to="/settings">settings</Link> page.
+                        <Link to="/connectivity">connectivity</Link> page.
                       </Text>
                     )}
                   </Alert>
