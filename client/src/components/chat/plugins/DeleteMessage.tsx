@@ -84,8 +84,8 @@ export const DeleteMessage = ({
           className="delete-message-btn"
           data-message-id={id}
           size="sm"
-          color="red.4"
-          variant="transparent"
+          variant="subtle"
+          color="gray"
           disabled={disabled || streaming || deletingMessage}
           onClick={handleDeleteClick}
         >

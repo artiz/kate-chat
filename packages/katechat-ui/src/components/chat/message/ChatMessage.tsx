@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box } from "@mantine/core";
+import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
-import { IconRobot, IconUser } from "@tabler/icons-react";
+import { IconInfoSquare, IconInfoSquareFilled, IconRobot, IconUser } from "@tabler/icons-react";
 import { MessageRole, Model, Message } from "@/core";
 import { ProviderIcon, LinkedChatMessage, MessageStatus } from "@/components";
 import { debounce } from "lodash";
@@ -178,25 +178,30 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <div>{content}</div>
           )}
 
-          {details && (
-            <Box mt="md">
-              <Group mb={5}>
-                <Button onClick={toggleDetails} p="xs" variant="light" size="xs">
-                  Details
-                </Button>
-              </Group>
-
-              <Collapse in={showDetails}>
-                <div className="katechat-message-content-details">{details}</div>
-              </Collapse>
-            </Box>
-          )}
-
           <div className="katechat-message-footer">
             <CopyMessageButton messageId={id} messageIndex={index} />
 
+            {details && (
+              <Tooltip label="Details" position="top" withArrow>
+                <ActionIcon
+                  className="edit-message-btn"
+                  data-message-id={id}
+                  size="sm"
+                  variant="subtle"
+                  color="gray"
+                  disabled={disabled}
+                  onClick={toggleDetails}
+                >
+                  {showDetails ? <IconInfoSquareFilled /> : <IconInfoSquare />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+
             {plugins}
           </div>
+          <Collapse in={showDetails}>
+            <div className="katechat-message-content-details">{details}</div>
+          </Collapse>
         </div>
       </>
     );

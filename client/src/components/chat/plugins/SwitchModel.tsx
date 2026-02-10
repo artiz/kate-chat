@@ -68,7 +68,7 @@ export const SwitchModel = ({
   return role === MessageRole.ASSISTANT || role === MessageRole.ERROR ? (
     <Menu shadow="md" width={200}>
       <Menu.Target>
-        <ActionIcon size="sm" color="gray" variant="transparent" disabled={disabled || streaming || switchingModel}>
+        <ActionIcon size="sm" color="gray" variant="subtle" disabled={disabled || streaming || switchingModel}>
           <Tooltip label={`Switch model: ${modelName}`} position="top" withArrow>
             <IconRefresh />
           </Tooltip>

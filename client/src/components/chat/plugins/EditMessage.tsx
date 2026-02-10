@@ -88,8 +88,8 @@ export const EditMessage = ({
           className="edit-message-btn"
           data-message-id={id}
           size="sm"
-          color="blue.4"
-          variant="transparent"
+          variant="subtle"
+          color="gray"
           disabled={disabled}
           onClick={handleEditMessage}
         >

@@ -114,6 +114,8 @@ c {
     display: flex;
     flex-direction: column;
     gap: 0;
+    border-top: 1px dashed var(--mantine-color-gray-7);
+    padding-top: 0.5rem;
 
     ol,
     ul {
@@ -123,7 +125,6 @@ c {
 
     .message-details-header {
       margin-bottom: var(--mantine-spacing-md);
-      margin-left: 1rem;
 
       svg {
         color: var(--mantine-color-gray-7);
@@ -133,7 +134,7 @@ c {
     .message-details-content {
       padding-left: var(--mantine-spacing-md);
       border-left: 1px solid var(--mantine-color-gray-7);
-      margin-left: 1.5rem;
+      margin-left: 0.5rem;
     }
   }
 
@@ -389,6 +390,17 @@ c {
 
     thead tr {
       background-color: var(--mantine-color-blue-1);
+    }
+  }
+
+  .katechat-message-content-details {
+    border-color: var(--mantine-color-gray-5);
+
+    .message-details-header svg {
+      color: var(--mantine-color-gray-5);
+    }
+    .message-details-content {
+      border-color: var(--mantine-color-gray-5);
     }
   }
 }

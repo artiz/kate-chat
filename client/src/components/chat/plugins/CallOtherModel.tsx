@@ -73,7 +73,7 @@ export const CallOtherModel = ({
   return role === MessageRole.ASSISTANT ? (
     <Menu shadow="md" width={200}>
       <Menu.Target>
-        <ActionIcon size="sm" color="gray" variant="transparent" disabled={disabled || streaming || callingOthers}>
+        <ActionIcon size="sm" color="gray" variant="subtle" disabled={disabled || streaming || callingOthers}>
           <Tooltip label="Call other model" position="top" withArrow>
             <IconMoodPlus />
           </Tooltip>
