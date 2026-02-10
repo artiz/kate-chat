@@ -478,12 +478,12 @@ export class ModelResolver extends BaseResolver {
       model.streaming = streaming === undefined ? model.streaming : streaming;
       model.imageInput = imageInput === undefined ? model.imageInput : imageInput;
       model.maxInputTokens = input.maxInputTokens === undefined ? model.maxInputTokens : input.maxInputTokens;
-      model.description = description || undefined;
+      model.description = input.description === undefined ? model.description : input.description;
 
       ok(model.customSettings, "Custom settings must be defined for custom model");
-      model.customSettings.endpoint ||= endpoint;
-      model.customSettings.modelName ||= modelName;
-      model.customSettings.protocol ||= protocol;
+      model.customSettings.endpoint = input.endpoint;
+      model.customSettings.modelName = input.modelName;
+      model.customSettings.protocol = input.protocol as CustomModelProtocol;
 
       if (protocol === CustomModelProtocol.OPENAI_CHAT_COMPLETIONS) {
         model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
@@ -500,7 +500,6 @@ export class ModelResolver extends BaseResolver {
 
       // Save the model
       const savedModel = await modelRepository.save(model);
-      logger.debug({ modelId: savedModel.id, name: savedModel.name }, "Updated custom model");
 
       return savedModel;
     } catch (error) {

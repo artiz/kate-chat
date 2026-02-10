@@ -6,6 +6,10 @@
   flex-direction: column;
   gap: 0.5rem;
   position: relative;
+
+  &.promptMode {
+    height: calc(90vh - var(--app-shell-header-height) * var(--mantine-scale));
+  }
 }
 
 .titleRow {

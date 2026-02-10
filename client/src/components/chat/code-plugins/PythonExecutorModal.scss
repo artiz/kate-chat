@@ -1,0 +1,95 @@
+.python-executor-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.python-executor-editor {
+  flex: 0 0 auto;
+}
+
+.python-executor-output {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.python-executor-output-scroll {
+  flex: 1;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+  min-height: 120px;
+}
+
+.python-executor-output-content {
+  padding: 0.75rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+
+  pre {
+    margin: 0;
+    padding: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .output-line {
+    color: var(--mantine-color-text);
+  }
+
+  .output-error {
+    color: var(--mantine-color-red-5);
+  }
+
+  .output-result {
+    color: var(--mantine-color-teal-5);
+  }
+
+  .output-info {
+    color: var(--mantine-color-dimmed);
+    font-style: italic;
+  }
+
+  .output-prompt {
+    color: var(--mantine-color-yellow-5);
+  }
+
+  .python-input-inline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 0.25rem;
+
+    .python-input-caret {
+      color: var(--mantine-color-teal-5);
+      font-weight: bold;
+      white-space: pre;
+    }
+
+    .python-input-field {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--mantine-color-teal-7);
+      outline: none;
+      color: var(--mantine-color-text);
+      font-family: monospace;
+      font-size: inherit;
+      padding: 0.15rem 0.25rem;
+      caret-color: var(--mantine-color-teal-5);
+
+      &::placeholder {
+        color: var(--mantine-color-dimmed);
+        font-style: italic;
+      }
+    }
+  }
+}

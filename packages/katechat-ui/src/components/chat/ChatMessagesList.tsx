@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { notEmpty, ok } from "@/lib/assert";
-import { Message, Model, PluginProps } from "@/core";
+import { Message, Model, PluginProps, CodePlugin } from "@/core";
 import { ChatMessage } from "./message/ChatMessage";
 import { ImagePopup } from "../modal/ImagePopup";
 
@@ -12,6 +12,7 @@ interface ChatMessagesProps {
   onAddMessage?: (message: Message) => void;
   plugins?: React.FC<PluginProps<Message>>[];
   detailsPlugins?: ((message: Message) => React.ReactNode)[];
+  codePlugins?: Record<string, CodePlugin>;
   models: Model[];
 }
 
@@ -21,6 +22,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
   onAddMessage,
   plugins = [],
   detailsPlugins = [],
+  codePlugins,
   models = [],
 }) => {
   const componentRef = useRef<HTMLDivElement>(null);
@@ -50,7 +52,14 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
       if (!e.target) return;
 
       // common clicks logic to simplify code in ChatMessage component
-      const classesToFind = ["code-copy-btn", "code-toggle-all", "copy-message-btn", "code-header", "message-image"];
+      const classesToFind = [
+        "code-run-btn",
+        "code-copy-btn",
+        "code-toggle-all",
+        "copy-message-btn",
+        "code-header",
+        "message-image",
+      ];
 
       let el: HTMLElement = e.target as HTMLElement;
       for (const cls of classesToFind) {
@@ -77,8 +86,22 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
         }
       };
 
+      // execute code block
+      if (target.classList.contains("code-run-btn")) {
+        const lang = target.dataset["lang"];
+        if (lang && codePlugins?.[lang]) {
+          const codeBlock = target.closest(".code-header")?.nextElementSibling;
+          const codeDataEl = codeBlock?.querySelector(".code-data") as HTMLElement;
+          if (codeDataEl) {
+            const code = decodeURIComponent(codeDataEl.dataset.code || "").trim();
+            if (code) {
+              codePlugins[lang].execute(code, lang);
+            }
+          }
+        }
+      }
       // copy code block
-      if (target.classList.contains("code-copy-btn")) {
+      else if (target.classList.contains("code-copy-btn")) {
         const data = target.parentElement?.parentElement?.nextElementSibling?.querySelector(
           ".code-data"
         ) as HTMLElement;
@@ -160,7 +183,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
         setImageFileName(fileName);
       }
     },
-    [messages]
+    [messages, codePlugins]
   );
 
   const pluginsLoader = useCallback(
@@ -204,6 +227,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
             pluginsLoader={pluginsLoader}
             messageDetailsLoader={messageDetailsLoader}
             models={models}
+            codePlugins={codePlugins}
           />
         ))}
       </Stack>

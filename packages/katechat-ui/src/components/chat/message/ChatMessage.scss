@@ -229,6 +229,9 @@ c {
 
     .code-header-actions {
       align-content: flex-end;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
     }
 
     .action-btn {
@@ -242,6 +245,14 @@ c {
       cursor: pointer;
     }
 
+    .code-run-btn {
+      color: var(--mantine-color-teal-6);
+
+      &:hover {
+        color: var(--mantine-color-teal-4);
+      }
+    }
+
     &.collapsed {
       border-bottom-right-radius: 0.25em;
       border-bottom-left-radius: 0.25em;
@@ -252,7 +263,8 @@ c {
         }
       }
 
-      .code-copy-btn {
+      .code-copy-btn,
+      .code-run-btn {
         display: none;
       }
     }
@@ -365,6 +377,14 @@ c {
       background-color: var(--mantine-color-gray-3);
       &:hover {
         background-color: var(--mantine-color-gray-4);
+      }
+
+      .code-run-btn {
+        color: var(--mantine-color-teal-7);
+
+        &:hover {
+          color: var(--mantine-color-teal-6);
+        }
       }
     }
 

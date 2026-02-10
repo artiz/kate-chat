@@ -28,6 +28,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Request cancellation to stop reasoning or web search
 - Parallel call for assistant message against other models to [compare results](#screenshots)
 - Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
+- Client-side Python code [execution](#python-code-run-in-browser) with [Pyodide](https://pyodide.org/) 
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
   * Voice-to-voice demo for OpenAI realtime WebRTC API.
@@ -38,10 +39,10 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
-- Custom OpenAI-compatible REST API endpoint (Deepseek, Local Models, etc.).
+- Custom OpenAI-compatible REST API endpoint (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
-- RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
+- RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
@@ -54,37 +55,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
-* Rename `document-processor` to `tasks-processor` service to perform following tasks:
- - add custom code interpreter tool implementation
-```
-from services.code_executor import CodeExecutor
-# Constants
-ALLOWED_MODULES = {
-    'pandas', 'numpy', 'matplotlib', 'PIL', 'cv2', 'moviepy','json', 'csv', 'datetime', 'math', 
-    'openpyxl', 'scipy', 'seaborn', 'networkx', 'tiktoken', 'scikit-learn', 'plotly', 
-    'bokeh', 'beautifulsoup4', 'sqlalchemy', 'scapy', 'dpkt', 'pytesseract', 'python-docx','python-pptx',
-    'manim', 'importlib-metadata', 'schemdraw'
-}
-
-def code_interpreter_handler(event, context):
-      executor = CodeExecutor()
-
-      code = event.get('code')
-      input_files = event.get('input_files', [])
-      chat_session_id = event.get('chat_session_id')
-      available_tokens = event.get('available_tokens', 16000)
-
-      if not code:
-         return {
-               'statusCode': 400,
-               'body': json.dumps({'error': 'No code provided'})
-         }
-
-      file_metadata = executor.download_input_files(input_files)
-      result = executor.execute_code(code, file_metadata, chat_session_id, available_tokens)
-
-      return result
-```        
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * Add SerpApi for Web Search (new setting in UI)
 * Python API (FastAPI)
@@ -451,6 +421,9 @@ Authentication is handled via JWT tokens. When a user logs in or registers, they
 
 ### RAG (Retrieval-Augmented Generation)
 ![image](docs/screenshots/rag.png)
+
+### Python Code Run in browser
+![image](docs/screenshots/python-code-executor.png)
 
 ## Contributing
 

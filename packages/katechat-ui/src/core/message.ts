@@ -61,3 +61,11 @@ export interface ImageInput {
   mimeType: string;
   bytesBase64: string;
 }
+
+/** Plugin for executing code blocks of a specific language (e.g. Python via Pyodide) */
+export interface CodePlugin {
+  /** Human-readable label for the execute button, e.g. "Run Python" */
+  label: string;
+  /** Called when the user clicks Execute on a code block */
+  execute: (code: string, language: string) => void;
+}

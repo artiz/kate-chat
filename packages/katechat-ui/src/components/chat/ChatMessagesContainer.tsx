@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Group, Loader } from "@mantine/core";
 import { IconCircleChevronDown } from "@tabler/icons-react";
-import { Message, Model, PluginProps } from "@/core";
+import { Message, Model, PluginProps, CodePlugin } from "@/core";
 import { useIntersectionObserver } from "@/hooks";
 import { ChatMessagesList } from "./ChatMessagesList";
 
@@ -15,6 +15,7 @@ interface IProps {
   loadMoreMessages?: () => void;
   plugins?: React.FC<PluginProps<Message>>[];
   detailsPlugins?: ((message: Message) => React.ReactNode)[];
+  codePlugins?: Record<string, CodePlugin>;
   streaming?: boolean;
   loading?: boolean;
   loadCompleted?: boolean;
@@ -34,6 +35,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       loadMoreMessages,
       plugins,
       detailsPlugins,
+      codePlugins,
       streaming = false,
       loadCompleted = true,
       loading = false,
@@ -133,6 +135,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
                 models={models}
                 plugins={plugins}
                 detailsPlugins={detailsPlugins}
+                codePlugins={codePlugins}
               />
             )}
           </div>

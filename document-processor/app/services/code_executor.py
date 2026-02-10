@@ -29,6 +29,43 @@ def temporary_environment():
 
 
 class CodeExecutor:
+    """
+    Service to execute user-provided code in a controlled environment, capture outputs, context, and handle file interactions with S3.
+    
+    Usage:
+    
+    ```
+    from services.code_executor import CodeExecutor
+    # Constants
+    ALLOWED_MODULES = {
+        'pandas', 'numpy', 'matplotlib', 'PIL', 'cv2', 'moviepy','json', 'csv', 'datetime', 'math', 
+        'openpyxl', 'scipy', 'seaborn', 'networkx', 'tiktoken', 'scikit-learn', 'plotly', 
+        'bokeh', 'beautifulsoup4', 'sqlalchemy', 'scapy', 'dpkt', 'pytesseract', 'python-docx','python-pptx',
+        'manim', 'importlib-metadata', 'schemdraw'
+    }
+
+    def code_interpreter_handler(event, context):
+        executor = CodeExecutor()
+
+        code = event.get('code')
+        input_files = event.get('input_files', [])
+        chat_session_id = event.get('chat_session_id')
+        available_tokens = event.get('available_tokens', 16000)
+
+        if not code:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'No code provided'})
+            }
+
+        file_metadata = executor.download_input_files(input_files)
+        result = executor.execute_code(code, file_metadata, chat_session_id, available_tokens)
+
+        return result
+    ```        
+
+    
+    """
     def __init__(self):
         self.s3_client = boto3.client("s3")
         self.output_bucket = os.environ["OUTPUT_BUCKET"]

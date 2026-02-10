@@ -34,6 +34,7 @@ import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 import { WebSearchCall } from "./message-details-plugins/WebSearch";
 import { MCPCall } from "./message-details-plugins/MCP";
+import { useCodePlugins } from "./code-plugins";
 import { ChatInputHeader } from "./ChatInputHeader";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
 import { getChatMcpTokens } from "../auth/McpAuthentication";
@@ -48,6 +49,7 @@ interface IProps {
 export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const { codePlugins, PythonCodeModal } = useCodePlugins();
   const [editedTitle, setEditedTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [sending, setSending] = useState(false);
@@ -348,7 +350,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     <Container
       size="xl"
       py="md"
-      className={classes.container}
+      className={[classes.container, messages?.length === 0 ? classes.promptMode : ""].join(" ")}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -360,34 +362,38 @@ export const ChatComponent = ({ chatId }: IProps) => {
         onDrop={handleDrop}
       />
       <div className={classes.titleRow}>
-        <div className={classes.titleBlock}>
-          {isEditingTitle ? (
-            <TextInput
-              value={editedTitle}
-              onChange={e => setEditedTitle(e.currentTarget.value)}
-              onKeyUp={handleEditTitleKeyUp}
-              rightSection={
-                <ActionIcon type="submit" size="sm" color="blue" onClick={handleTitleUpdate}>
-                  <IconCheck size={16} />
+        {chat?.isPristine ? (
+          <div />
+        ) : (
+          <div className={classes.titleBlock}>
+            {isEditingTitle ? (
+              <TextInput
+                value={editedTitle}
+                onChange={e => setEditedTitle(e.currentTarget.value)}
+                onKeyUp={handleEditTitleKeyUp}
+                rightSection={
+                  <ActionIcon type="submit" size="sm" color="blue" onClick={handleTitleUpdate}>
+                    <IconCheck size={16} />
+                  </ActionIcon>
+                }
+                onBlur={handleTitleBlur}
+                ref={titleRef}
+              />
+            ) : (
+              <Group gap="xs" className={classes.title}>
+                <Title order={4} className={classes.titleText}>
+                  {chat?.title || "Untitled Chat"}
+                </Title>
+
+                <ActionIcon onClick={handleTitleEdit} size="md" variant="subtle" className={classes.editTitleButton}>
+                  <IconEdit size={16} />
                 </ActionIcon>
-              }
-              onBlur={handleTitleBlur}
-              ref={titleRef}
-            />
-          ) : (
-            <Group gap="xs" className={classes.title}>
-              <Title order={4} className={classes.titleText}>
-                {chat?.title || "Untitled Chat"}
-              </Title>
+              </Group>
+            )}
 
-              <ActionIcon onClick={handleTitleEdit} size="md" variant="subtle" className={classes.editTitleButton}>
-                <IconEdit size={16} />
-              </ActionIcon>
-            </Group>
-          )}
-
-          {isExternalChat && chat?.user ? `Owner: ${chat.user.firstName} ${chat.user.lastName}` : null}
-        </div>
+            {isExternalChat && chat?.user ? `Owner: ${chat.user.firstName} ${chat.user.lastName}` : null}
+          </div>
+        )}
 
         <div className={classes.actionsBlock}>
           <div className={classes.wsStatus}>
@@ -432,6 +438,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           loadMoreMessages={loadMoreMessages}
           plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
           detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall, WebSearchCall, MCPCall]}
+          codePlugins={codePlugins}
           streaming={streaming}
           loading={messagesLoading}
           loadCompleted={loadCompleted}
@@ -486,6 +493,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
         onSendMessage={handleSendMessage}
         onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />
+
+      {PythonCodeModal}
     </Container>
   );
 };

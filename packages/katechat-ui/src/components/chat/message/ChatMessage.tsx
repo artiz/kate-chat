@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
 import { Carousel } from "@mantine/carousel";
 import { IconInfoSquare, IconInfoSquareFilled, IconRobot, IconUser } from "@tabler/icons-react";
-import { MessageRole, Model, Message } from "@/core";
+import { MessageRole, Model, Message, CodePlugin } from "@/core";
 import { ProviderIcon, LinkedChatMessage, MessageStatus } from "@/components";
 import { debounce } from "lodash";
 import { CopyMessageButton } from "./controls/CopyMessageButton";
@@ -17,10 +17,11 @@ interface ChatMessageProps {
   pluginsLoader?: (message: Message) => React.ReactNode;
   messageDetailsLoader?: (message: Message) => React.ReactNode;
   models?: Model[];
+  codePlugins?: Record<string, CodePlugin>;
 }
 
 export const ChatMessage = (props: ChatMessageProps) => {
-  const { message, index, disabled = false, pluginsLoader, messageDetailsLoader, models } = props;
+  const { message, index, disabled = false, pluginsLoader, messageDetailsLoader, models, codePlugins } = props;
 
   const {
     role,
@@ -62,6 +63,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
         </span>
 
         <div class="code-header-actions">
+            <EXECUTE_BTN>
             <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn">
                 <div class="copy-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -98,11 +100,24 @@ export const ChatMessage = (props: ChatMessageProps) => {
       componentRef.current.querySelectorAll("pre").forEach(pre => {
         if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
           const data = pre.querySelector(".code-data");
+          const lang = data?.getAttribute("data-lang") || "plaintext";
           const block = document.createElement("div");
           const header = document.createElement("div");
           block.className = "code-block";
           header.className = "code-header";
-          header.innerHTML = codeHeaderTemplate.replaceAll("<LANG>", data?.getAttribute("data-lang") || "plaintext");
+
+          const plugin = codePlugins?.[lang];
+          const executeBtn = plugin
+            ? `<div type="button" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="icon icon-tabler icons-tabler-filled icon-tabler-player-play">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                    <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
+                </svg>
+                <span>${plugin.label}</span>
+              </div>`
+            : "";
+
+          header.innerHTML = codeHeaderTemplate.replaceAll("<LANG>", lang).replace("<EXECUTE_BTN>", executeBtn);
 
           pre.parentNode?.insertBefore(header, pre);
           pre.parentNode?.insertBefore(block, pre);
