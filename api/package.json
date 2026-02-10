@@ -48,6 +48,7 @@
     "exif-reader": "^2.0.3",
     "express": "^5.2.0",
     "express-session": "^1.18.1",
+    "express-static-gzip": "^3.0.0",
     "fast-xml-parser": "^5.3.4",
     "finalhandler": "^2.1.0",
     "formidable": "^3.5.4",

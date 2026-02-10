@@ -7,6 +7,7 @@ import { createServer } from "http";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+import expressStaticGzip from "express-static-gzip";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
 import passport from "passport";
@@ -140,15 +141,68 @@ async function bootstrap() {
   }
   app.get("/esbuild", esbuildStub);
 
+  // Set up HTTP GraphQL endpoint (must be before static handler)
+  app.use(
+    "/graphql",
+    createHandler({
+      schema,
+      context: req => {
+        // Use the user from the request (set by authMiddleware)
+        return {
+          tokenPayload: req.raw.tokenPayload,
+          connectionParams: req.raw.connectionParams || {},
+          subscriptionsService,
+          sqsService,
+          messagesService,
+        };
+      },
+      formatError: (error: GraphQLError | Error) => {
+        // logger.error(error, "GraphQL error");
+        if (error instanceof GraphQLError) {
+          return error;
+        }
+
+        return {
+          message: error.message,
+          name: error.name || "InternalServerError",
+          extensions: {
+            cause: error.cause,
+          },
+          locations: error.stack
+            ? error.stack.split("\n").map(line => {
+                const match = line.match(/at (.+):(\d+):(\d+)/);
+                return match ? { line: parseInt(match[2], 10), column: parseInt(match[3], 10) } : undefined;
+              })
+            : undefined,
+        };
+      },
+    })
+  );
+
   const clientDir = fs.existsSync(path.join(__dirname, "client"))
     ? path.join(__dirname, "client")
     : path.join(__dirname, "..", "client");
-  const staticHandler = express.static(clientDir, {
-    index: "index.html",
-    etag: true,
+
+  const staticHandler = expressStaticGzip(clientDir, {
+    enableBrotli: true,
+    orderPreference: ["br", "gz"],
+    index: false,
+    serveStatic: {
+      etag: true,
+    },
   });
   app.use("/", staticHandler);
-  app.use("/*path", staticHandler);
+  // SPA fallback: serve index.html for root and client-side routes
+  const serveIndex = (req: Request, res: Response, next: NextFunction) => {
+    const indexPath = path.join(clientDir, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  };
+  app.get("/", serveIndex);
+  app.use("/*path", serveIndex);
 
   // last one - error handler
   const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -218,44 +272,6 @@ async function bootstrap() {
       },
     },
     wsServer
-  );
-
-  // Set up HTTP GraphQL endpoint
-  app.use(
-    "/graphql",
-    createHandler({
-      schema,
-      context: req => {
-        // Use the user from the request (set by authMiddleware)
-        return {
-          tokenPayload: req.raw.tokenPayload,
-          connectionParams: req.raw.connectionParams || {},
-          subscriptionsService,
-          sqsService,
-          messagesService,
-        };
-      },
-      formatError: (error: GraphQLError | Error) => {
-        // logger.error(error, "GraphQL error");
-        if (error instanceof GraphQLError) {
-          return error;
-        }
-
-        return {
-          message: error.message,
-          name: error.name || "InternalServerError",
-          extensions: {
-            cause: error.cause,
-          },
-          locations: error.stack
-            ? error.stack.split("\n").map(line => {
-                const match = line.match(/at (.+):(\d+):(\d+)/);
-                return match ? { line: parseInt(match[2], 10), column: parseInt(match[3], 10) } : undefined;
-              })
-            : undefined,
-        };
-      },
-    })
   );
 
   // Start the server
