@@ -1,8 +1,8 @@
 export const MAX_INPUT_JSON = process.env.MAX_INPUT_JSON || "50mb";
 export const DEMO_MODE = ["1", "true", "y", "yes"].includes(process.env.DEMO_MODE?.toLowerCase() || "");
-export const DEMO_MAX_CHAT_MESSAGES = +(process.env.DEMO_MAX_CHAT_MESSAGES || 100);
-export const DEMO_MAX_CHATS = +(process.env.DEMO_MAX_CHATS || 50);
-export const DEMO_MAX_IMAGES = +(process.env.DEMO_MAX_IMAGES || 10);
+export const DEMO_MAX_CHAT_MESSAGES = +(process.env.DEMO_MAX_CHAT_MESSAGES || 20);
+export const DEMO_MAX_CHATS = +(process.env.DEMO_MAX_CHATS || 10);
+export const DEMO_MAX_IMAGES = +(process.env.DEMO_MAX_IMAGES || 5);
 
 // Services configuration
 export const APP_USER_AGENT = process.env.APP_USER_AGENT || "KateChat/1.0 (+https://katechat.tech/)";

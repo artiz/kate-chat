@@ -22,6 +22,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
 import { ok } from "assert";
+import { DEMO_MODE } from "@/config/application";
 
 const logger = createLogger(__filename);
 const MAX_TEST_TEXT_LENGTH = 256;
@@ -102,6 +103,12 @@ export class ModelResolver extends BaseResolver {
       // Save models to database
       const outModels: Model[] = [];
       for (const [modelId, info] of Object.entries(aiModels)) {
+        // skip image generation models in demo mode to minimize costs and avoid inappropriate content
+        if (DEMO_MODE && info.type === ModelType.IMAGE_GENERATION) {
+          logger.info({ modelId, name: info.name }, "Skipping image generation model in demo mode");
+          continue;
+        }
+
         // Create new model
         const model = modelRepository.create({
           ...info,

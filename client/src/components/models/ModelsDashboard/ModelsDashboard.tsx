@@ -403,7 +403,7 @@ export const ModelsDashboard: React.FC = () => {
   return (
     <>
       <Group justify="space-between" mb="xl">
-        <Title order={2}>Available AI Models</Title>
+        <Title order={2}>AI Models</Title>
         <Group>
           {providers.some(p => p.id === "CUSTOM_REST_API") && (
             <Button leftSection={<IconPlus size={16} />} onClick={handleOpenCreateDialog} variant="filled">

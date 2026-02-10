@@ -412,7 +412,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     const accessKey = this.connection.AWS_BEDROCK_ACCESS_KEY_ID;
 
     const details: Record<string, string | number | boolean | undefined> = {
-      credentialsValid: "N/A",
+      available: isConnected,
     };
 
     if (region) details.region = region;
@@ -423,13 +423,12 @@ export class BedrockApiProvider extends BaseApiProvider {
       try {
         // Test credentials by attempting to make a simple API call
         const creds = await this.bedrockManagementClient.config.credentials();
-        details.credentialsValid = true;
+        details.status = "OK";
         if (creds.accountId) details.accountId = creds.accountId;
         if (creds.expiration) details.expiration = creds.expiration?.toISOString();
       } catch (error) {
         logger.error(error, "Error validating AWS credentials");
-        details.credentialsValid = false;
-        details.errorMessage = getErrorMessage(error);
+        details.status = `Connection check failed: ${getErrorMessage(error)}`;
       }
     }
 

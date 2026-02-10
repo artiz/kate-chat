@@ -136,18 +136,17 @@ export class OpenAIApiProvider extends BaseApiProvider {
     const isConnected = !!this.apiKey;
     const details: Record<string, string | number | boolean> = {
       apiUrl: this.baseUrl,
-      configured: isConnected,
-      credentialsValid: "N/A",
+      available: isConnected,
     };
 
     if (isConnected && checkConnection) {
       try {
         // Fetch models
         await this.protocol.api.models.list();
-        details.credentialsValid = true;
+        details.status = "OK";
       } catch (error) {
         logger.warn(error, "Error fetching OpenAI models information");
-        details.credentialsValid = false;
+        details.status = `Connection check failed: ${getErrorMessage(error)}`;
       }
     }
 

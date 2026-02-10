@@ -23,6 +23,9 @@ import { YandexWebSearch } from "../tools/yandex.web_search";
 import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { FileContentLoader } from "@/services/data/s3.service";
 import { notEmpty } from "@/utils/assert";
+import { ca } from "zod/dist/types/v4/locales";
+import e from "express";
+import { getErrorMessage } from "@/utils/errors";
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
@@ -216,10 +219,22 @@ export class YandexApiProvider extends BaseApiProvider {
     const isConnected = !!this.apiKey;
 
     const details: Record<string, string | number | boolean | undefined> = {
-      configured: isConnected,
-      credentialsValid: "N/A",
+      available: isConnected,
       folderId: this.folderId || "N/A",
     };
+
+    if (checkConnection && isConnected) {
+      try {
+        const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
+        if (!searchAvailable) {
+          details.status = "Yandex Web Search tool is not available with the provided credentials.";
+        } else {
+          details.status = "OK";
+        }
+      } catch (error) {
+        details.status = `Connection check failed: ${getErrorMessage(error)}`;
+      }
+    }
 
     return {
       id: ApiProvider.YANDEX_FM,

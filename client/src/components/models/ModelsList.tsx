@@ -191,22 +191,26 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                 </Group>
 
                 <Group>
-                  <Button
-                    leftSection={<IconMessagePlus size={16} />}
-                    onClick={() => onCreateChat(model)}
-                    loading={creatingChat}
-                    disabled={!model.isActive || ![ModelType.CHAT, ModelType.IMAGE_GENERATION].includes(model.type)}
-                  >
-                    New Chat
-                  </Button>
-                  <Button
-                    leftSection={<IconTestPipe size={16} />}
-                    variant="light"
-                    onClick={() => onOpenTestModal(model)}
-                    disabled={!model.isActive}
-                  >
-                    Test
-                  </Button>
+                  {[ModelType.CHAT, ModelType.IMAGE_GENERATION].includes(model.type) && (
+                    <Button
+                      leftSection={<IconMessagePlus size={16} />}
+                      onClick={() => onCreateChat(model)}
+                      loading={creatingChat}
+                      disabled={!model.isActive}
+                    >
+                      New Chat
+                    </Button>
+                  )}
+                  {[ModelType.CHAT, ModelType.EMBEDDING].includes(model.type) && (
+                    <Button
+                      leftSection={<IconTestPipe size={16} />}
+                      variant="light"
+                      onClick={() => onOpenTestModal(model)}
+                      disabled={!model.isActive}
+                    >
+                      Test
+                    </Button>
+                  )}
                   {model.isCustom && (
                     <>
                       {onEditModel && (
