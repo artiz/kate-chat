@@ -581,7 +581,16 @@ export class OpenAIProtocol implements ModelProtocol {
             })
             .filter(notEmpty);
 
-          await callbacks.onProgress("", { status: ResponseStatus.TOOL_CALL_COMPLETED, tools });
+          await callbacks.onProgress("", {
+            status: ResponseStatus.TOOL_CALL_COMPLETED,
+            tools,
+            toolCalls: toolCalls.map(tc => ({
+              name: tc.name || "unknown",
+              type: tc.type,
+              callId: tc.callId,
+              args: tc.arguments ? JSON.stringify(tc.arguments) : undefined,
+            })),
+          });
 
           stopped = toolResults.some(tr => tr.stopped);
           break; // break for await to restart the request with new messages

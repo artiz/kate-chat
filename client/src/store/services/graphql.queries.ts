@@ -140,6 +140,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       status
       metadata {
         documentIds
+        requestId
         usage {
           inputTokens
           outputTokens
@@ -155,6 +156,11 @@ export const BASE_MESSAGE_FRAGMENT = `
         tools {
           name
           content
+        }
+        toolCalls {
+          name
+          type
+          args
         }
       }
     }

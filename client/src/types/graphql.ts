@@ -240,6 +240,14 @@ export interface ChatToolCallResult {
   callId?: string;
 }
 
+export interface ChatToolCall {
+  name: string;
+  callId: string;
+  type?: "function" | "custom" | "mcp";
+  error?: string;
+  args?: string;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -249,6 +257,7 @@ export interface MessageMetadata {
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
   tools?: ChatToolCallResult[];
+  toolCalls?: ChatToolCall[];
   requestId?: string;
 }
 

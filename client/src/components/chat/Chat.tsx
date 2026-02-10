@@ -32,6 +32,8 @@ import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/servic
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
+import { WebSearchCall } from "./message-details-plugins/WebSearch";
+import { MCPCall } from "./message-details-plugins/MCP";
 import { ChatInputHeader } from "./ChatInputHeader";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
 import { getChatMcpTokens } from "../auth/McpAuthentication";
@@ -429,7 +431,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           removeMessages={removeMessages}
           loadMoreMessages={loadMoreMessages}
           plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-          detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall]}
+          detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall, WebSearchCall, MCPCall]}
           streaming={streaming}
           loading={messagesLoading}
           loadCompleted={loadCompleted}

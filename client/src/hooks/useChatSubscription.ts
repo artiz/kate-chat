@@ -21,9 +21,6 @@ const NEW_MESSAGE_SUBSCRIPTION = gql`
         linkedMessages {
           ...BaseMessage
         }
-        metadata {
-          requestId
-        }
       }
       chat {
         title
