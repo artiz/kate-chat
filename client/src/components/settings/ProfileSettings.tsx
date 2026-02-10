@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useMemo } from "react";
 import { Paper, TextInput, Button, Group, Stack, Text, SegmentedControl } from "@mantine/core";
 import { useTheme } from "@katechat/ui";
 import { UpdateUserInput, User } from "@/store/slices/userSlice";
@@ -21,7 +21,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
   const { colorScheme, setColorScheme } = useTheme();
 
   const isLocalUser = React.useMemo(() => {
-    return !user?.googleId && !user?.githubId;
+    return !user?.authProvider || user?.authProvider === "local";
   }, [user]);
 
   // Update when user changes
@@ -31,6 +31,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
       setLastName(user.lastName || "");
       setEmail(user.email || "");
     }
+  }, [user]);
+
+  const provider = useMemo(() => {
+    if (!user) return "Unknown";
+
+    return user.authProvider || "Local";
   }, [user]);
 
   // Handle profile update
@@ -88,6 +94,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
             value={email}
             onChange={e => setEmail(e.target.value)}
             required={isLocalUser ? true : undefined}
+            description={`Provider: ${provider}`}
           />
 
           <Group justify="right" mt="md">

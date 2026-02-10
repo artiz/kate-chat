@@ -97,9 +97,7 @@ export const FULL_USER_FRAGMENT = `
       defaultImagesCount
       documentsEmbeddingsModelId
       documentSummarizationModelId
-      googleId
-      githubId
-      microsoftId
+      authProvider
       avatarUrl
       role
       settings {

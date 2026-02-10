@@ -14,7 +14,16 @@ import {
   em,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
-import { IconLogout, IconSettings, IconChevronRight, IconSun, IconMoon } from "@tabler/icons-react";
+import {
+  IconLogout,
+  IconSettings,
+  IconChevronRight,
+  IconSun,
+  IconMoon,
+  IconUser,
+  IconWifi,
+  IconRobot,
+} from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useTheme } from "@katechat/ui";
 import { useAppSelector } from "../store";
@@ -116,9 +125,18 @@ export const MainLayout: React.FC = () => {
               </Menu.Target>
 
               <Menu.Dropdown>
-                <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => navigate("/settings")}>
-                  Settings
+                <Menu.Item leftSection={<IconUser size={14} />} onClick={() => navigate("/profile")}>
+                  Profile
                 </Menu.Item>
+
+                <Menu.Item leftSection={<IconWifi size={14} />} onClick={() => navigate("/connectivity")}>
+                  Connectivity Settings
+                </Menu.Item>
+
+                <Menu.Item leftSection={<IconRobot size={14} />} onClick={() => navigate("/models")}>
+                  Models
+                </Menu.Item>
+
                 <Divider />
                 <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout} color="red">
                   Logout

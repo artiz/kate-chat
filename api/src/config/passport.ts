@@ -120,84 +120,132 @@ export const configurePassport = () => {
 
   // Configure GitHub OAuth Strategy
   if (GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET) {
-    passport.use(
-      new GitHubStrategy(
-        {
-          clientID: GITHUB_CLIENT_ID,
-          clientSecret: GITHUB_CLIENT_SECRET,
-          callbackURL: `${CALLBACK_URL_BASE}/auth/github/callback`,
-          scope: ["user:email"], // Request email scope
-        },
-        async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {
-          try {
-            // Check if user exists by githubId
-            let user = await userRepository.findOne({
-              where: { githubId: profile.id },
-            });
-            // For GitHub, we need to extract email from the profile
-            const email = profile.emails?.[0]?.value;
-            const avatarUrl = profile.photos?.[0]?.value || undefined;
+    const githubStrategy = new GitHubStrategy(
+      {
+        clientID: GITHUB_CLIENT_ID,
+        clientSecret: GITHUB_CLIENT_SECRET,
+        callbackURL: `${CALLBACK_URL_BASE}/auth/github/callback`,
+        scope: ["user:email"], // Request email scope
+      },
+      async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {
+        try {
+          // Check if user exists by githubId
+          let user = await userRepository.findOne({
+            where: { githubId: profile.id },
+          });
+          // For GitHub, we need to extract email from the profile
+          const email = profile.emails?.[0]?.value;
+          const avatarUrl = profile.photos?.[0]?.value || undefined;
 
-            // If user doesn't exist, check if there's a user with the same email
-            if (!user && email) {
-              user = await userRepository.findOne({ where: { email } });
+          // If user doesn't exist, check if there's a user with the same email
+          if (!user && email) {
+            user = await userRepository.findOne({ where: { email } });
 
-              // If user exists with the email, update with githubId
-              if (user) {
-                user.githubId = profile.id;
-                user.authProvider = AuthProvider.GITHUB;
-                user.password = ""; // No password for OAuth users
-                user.avatarUrl = user.avatarUrl || avatarUrl;
-                user = await userRepository.save(user);
-                logger.info({ userId: user.id }, "User linked with GitHub account");
-              }
-            }
-
-            // If no user exists, create a new one
-            if (!user) {
-              if (!email) {
-                logger.error({ profileId: profile.id }, "No email provided from GitHub");
-                return done(new Error("No email provided by GitHub"), false);
-              }
-
-              // GitHub profiles are structured differently than Google's
-              const displayName = profile.displayName || profile.username || "User";
-              const nameParts = displayName.split(" ");
-              const firstName = nameParts[0] || "User";
-              const lastName = nameParts.slice(1).join(" ") || "";
-
-              // Determine user role
-              const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
-
-              user = userRepository.create({
-                email,
-                githubId: profile.id,
-                firstName,
-                lastName,
-                avatarUrl,
-                role,
-                authProvider: AuthProvider.GITHUB,
-                defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
-              });
-
+            // If user exists with the email, update with githubId
+            if (user) {
+              user.githubId = profile.id;
+              user.authProvider = AuthProvider.GITHUB;
+              user.password = ""; // No password for OAuth users
+              user.avatarUrl = user.avatarUrl || avatarUrl;
               user = await userRepository.save(user);
-              logger.info({ userId: user.id }, "New user created via GitHub OAuth");
+              logger.info({ userId: user.id }, "User linked with GitHub account");
             }
-
-            // Update user role if they are in admin emails list
-            if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
-              user.role = UserRole.ADMIN;
-              user = await userRepository.save(user);
-            }
-
-            done(null, user);
-          } catch (error) {
-            logger.error(error, "Error during GitHub OAuth authentication");
-            done(error, false);
           }
+
+          // If no user exists, create a new one
+          if (!user) {
+            if (!email) {
+              logger.error({ profileId: profile.id }, "No email provided from GitHub");
+              return done(new Error("No email provided by GitHub"), false);
+            }
+
+            // GitHub profiles are structured differently than Google's
+            const displayName = profile.displayName || profile.username || "User";
+            const nameParts = displayName.split(" ");
+            const firstName = nameParts[0] || "User";
+            const lastName = nameParts.slice(1).join(" ") || "";
+
+            // Determine user role
+            const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
+
+            user = userRepository.create({
+              email,
+              githubId: profile.id,
+              firstName,
+              lastName,
+              avatarUrl,
+              role,
+              authProvider: AuthProvider.GITHUB,
+              defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
+            });
+
+            user = await userRepository.save(user);
+            logger.info({ userId: user.id }, "New user created via GitHub OAuth");
+          }
+
+          // Update user role if they are in admin emails list
+          if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+            user.role = UserRole.ADMIN;
+            user = await userRepository.save(user);
+          }
+
+          done(null, user);
+        } catch (error) {
+          logger.error(error, "Error during GitHub OAuth authentication");
+          done(error, false);
         }
-      )
+      }
     );
+
+    // Override userProfile to use modern fetch (oauth@0.10.2 has issues with Node 22)
+    githubStrategy.userProfile = function (accessToken: string, done: (err: Error | null, profile?: any) => void) {
+      const userProfileURL = "https://api.github.com/user";
+      const userEmailURL = "https://api.github.com/user/emails";
+      const headers = {
+        Authorization: `Bearer ${accessToken}`,
+        "User-Agent": "KateChat OAuth Client",
+        Accept: "application/json",
+      };
+
+      fetch(userProfileURL, { headers })
+        .then(async res => {
+          if (!res.ok) {
+            const text = await res.text();
+            logger.error({ status: res.status, body: text }, "GitHub profile fetch failed");
+            return done(new Error(`Failed to fetch user profile: ${res.status}`));
+          }
+          const json: any = await res.json();
+          const profile: any = {
+            provider: "github",
+            id: String(json.id),
+            username: json.login,
+            displayName: json.name || json.login,
+            profileUrl: json.html_url,
+            photos: json.avatar_url ? [{ value: json.avatar_url }] : [],
+            emails: [],
+            _raw: JSON.stringify(json),
+            _json: json,
+          };
+
+          // Fetch emails
+          return fetch(userEmailURL, { headers }).then(async emailRes => {
+            if (emailRes.ok) {
+              const emails: any[] = (await emailRes.json()) as any[];
+              const primary = emails.find((e: any) => e.primary);
+              if (primary) {
+                profile.emails = [{ value: primary.email }];
+              }
+            }
+            done(null, profile);
+          });
+        })
+        .catch(err => {
+          logger.error(err, "GitHub profile fetch error");
+          done(new Error("Failed to fetch user profile"));
+        });
+    };
+
+    passport.use(githubStrategy);
   }
 
   // Configure Microsoft OAuth Strategy

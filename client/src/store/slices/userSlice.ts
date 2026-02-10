@@ -35,9 +35,7 @@ export interface User extends BaseUser {
   defaultImagesCount?: number;
   documentsEmbeddingsModelId?: string;
   documentSummarizationModelId?: string;
-  githubId?: string;
-  googleId?: string;
-  microsoftId?: string;
+  authProvider?: string;
   settings?: UserSettings;
   createdAt?: string;
 }

@@ -62,7 +62,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
   const { appConfig, currentUser } = useAppSelector(state => state.user);
 
   const isLocalUser = useMemo(() => {
-    return !currentUser?.googleId && !currentUser?.githubId && !currentUser?.microsoftId;
+    return !currentUser?.authProvider || currentUser?.authProvider === "local";
   }, [currentUser]);
 
   const noActiveProviders = useMemo(() => {
