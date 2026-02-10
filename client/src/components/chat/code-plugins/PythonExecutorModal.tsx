@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Modal, Button, Group, Text, Loader, ScrollArea, Box, Textarea, ActionIcon, Tooltip } from "@mantine/core";
-import { IconPlayerPlay, IconTrash, IconDownload } from "@tabler/icons-react";
+import { IconPlayerPlay, IconTrash, IconDownload, IconCopy, IconCheck } from "@tabler/icons-react";
 
 import "./PythonExecutorModal.scss";
 
@@ -13,8 +13,9 @@ interface PythonExecutorModalProps {
 }
 
 interface OutputEntry {
-  type: "stdout" | "stderr" | "result" | "info" | "input-prompt";
+  type: "stdout" | "stderr" | "result" | "info" | "input-prompt" | "image";
   text: string;
+  dataUrl?: string;
 }
 
 // Pyodide typings (minimal)
@@ -30,6 +31,7 @@ interface PyodideInterface {
 // Global pyodide cache to avoid reloading across modal opens
 let pyodideInstance: PyodideInterface | null = null;
 let pyodideLoadPromise: Promise<PyodideInterface> | null = null;
+let matplotlibPatched = false;
 
 async function loadPyodideRuntime(): Promise<PyodideInterface> {
   if (pyodideInstance) return pyodideInstance;
@@ -53,11 +55,92 @@ async function loadPyodideRuntime(): Promise<PyodideInterface> {
 
     const pyodide = await loadPyodide({ indexURL: PYODIDE_CDN });
     pyodideInstance = pyodide;
+
+    // One-time: patch builtins.input to use a JS callback
+    pyodide.runPython(`
+import builtins
+from pyodide.ffi import run_sync
+
+_original_input = builtins.input
+
+def _browser_input(prompt=""):
+    return run_sync(__js_input__(prompt))
+
+builtins.input = _browser_input
+`);
+
     return pyodide;
   })();
 
   return pyodideLoadPromise;
 }
+
+/** Pre-load and patch matplotlib (once, after first import) */
+async function ensureMatplotlibPatched(pyodide: PyodideInterface): Promise<void> {
+  if (matplotlibPatched) return;
+  matplotlibPatched = true;
+
+  // Pre-install matplotlib so the font cache builds now, not during user code
+  try {
+    await pyodide.loadPackagesFromImports("import matplotlib");
+  } catch {
+    // not critical
+  }
+
+  pyodide.runPython(`
+import matplotlib
+matplotlib.use('agg')
+import matplotlib.pyplot as _plt
+
+_original_show = _plt.show
+
+def _browser_show(*args, **kwargs):
+    import io, base64
+    for fig_num in _plt.get_fignums():
+        fig = _plt.figure(fig_num)
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+        buf.seek(0)
+        data = base64.b64encode(buf.read()).decode('utf-8')
+        __js_show_image__('data:image/png;base64,' + data)
+        buf.close()
+    _plt.close('all')
+
+_plt.show = _browser_show
+del _original_show
+`);
+}
+
+/** Small button to copy a data-URL image to clipboard */
+const CopyImageButton: React.FC<{ dataUrl: string }> = ({ dataUrl }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback: do nothing
+    }
+  }, [dataUrl]);
+
+  return (
+    <Tooltip label={copied ? "Copied!" : "Copy image"} withArrow>
+      <ActionIcon
+        className="copy-image-btn"
+        size="sm"
+        variant="filled"
+        color={copied ? "teal" : "gray"}
+        onClick={handleCopy}
+      >
+        {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+      </ActionIcon>
+    </Tooltip>
+  );
+};
 
 export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened, onClose, initialCode }) => {
   const [code, setCode] = useState(initialCode);
@@ -91,7 +174,8 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
 
     setLoading(true);
     loadPyodideRuntime()
-      .then(() => {
+      .then(async pyodide => {
+        await ensureMatplotlibPatched(pyodide);
         setPyodideReady(true);
         setLoading(false);
       })
@@ -145,7 +229,12 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         },
       });
 
-      // Provide a JS function for Python's input() to call
+      // Set up JS callbacks that the Python patches reference
+      const jsShowImage = (dataUrl: string) => {
+        setOutput(prev => [...prev, { type: "image", text: "[matplotlib figure]", dataUrl }]);
+      };
+      pyodideInstance.globals.set("__js_show_image__", jsShowImage);
+
       const jsInputHandler = (promptText?: string): Promise<string> => {
         return new Promise<string>(resolve => {
           if (promptText) {
@@ -155,21 +244,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
           setWaitingForInput(true);
         });
       };
-
       pyodideInstance.globals.set("__js_input__", jsInputHandler);
-
-      // Patch builtins.input to use our JS handler
-      pyodideInstance.runPython(`
-import builtins
-from pyodide.ffi import run_sync
-
-_original_input = builtins.input
-
-def _browser_input(prompt=""):
-    return run_sync(__js_input__(prompt))
-
-builtins.input = _browser_input
-`);
 
       // Auto-install imports
       try {
@@ -191,17 +266,7 @@ builtins.input = _browser_input
       inputResolveRef.current = null;
       runningRef.current = false;
 
-      // Restore original input
-      try {
-        pyodideInstance?.runPython(`
-import builtins
-if hasattr(builtins, '_original_input'):
-    builtins.input = builtins._original_input
-`);
-        pyodideInstance?.globals.delete("__js_input__");
-      } catch {
-        // ignore cleanup errors
-      }
+      // Cleanup: reset waiting state (keep patches — they are one-time permanent)
     }
   }, [code]);
 
@@ -234,6 +299,7 @@ if hasattr(builtins, '_original_input'):
     <Modal
       opened={opened}
       onClose={onClose}
+      fullScreen
       title={
         <Group gap="xs">
           <Text fw={600}>Python Executor</Text>
@@ -245,10 +311,8 @@ if hasattr(builtins, '_original_input'):
           )}
         </Group>
       }
-      size="xl"
-      fullScreen={false}
       styles={{
-        content: { height: "80vh", display: "flex", flexDirection: "column" },
+        content: { display: "flex", flexDirection: "column" },
         body: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" },
       }}
     >
@@ -318,20 +382,27 @@ if hasattr(builtins, '_original_input'):
                   Output will appear here...
                 </Text>
               )}
-              {output.map((entry, idx) => (
-                <pre
-                  key={idx}
-                  className={[
-                    "output-line",
-                    entry.type === "stderr" ? "output-error" : "",
-                    entry.type === "result" ? "output-result" : "",
-                    entry.type === "info" ? "output-info" : "",
-                    entry.type === "input-prompt" ? "output-prompt" : "",
-                  ].join(" ")}
-                >
-                  {entry.text}
-                </pre>
-              ))}
+              {output.map((entry, idx) =>
+                entry.type === "image" && entry.dataUrl ? (
+                  <div key={idx} className="output-image">
+                    <img src={entry.dataUrl} alt="matplotlib figure" />
+                    <CopyImageButton dataUrl={entry.dataUrl} />
+                  </div>
+                ) : (
+                  <pre
+                    key={idx}
+                    className={[
+                      "output-line",
+                      entry.type === "stderr" ? "output-error" : "",
+                      entry.type === "result" ? "output-result" : "",
+                      entry.type === "info" ? "output-info" : "",
+                      entry.type === "input-prompt" ? "output-prompt" : "",
+                    ].join(" ")}
+                  >
+                    {entry.text}
+                  </pre>
+                )
+              )}
               {waitingForInput && (
                 <div className="python-input-inline">
                   <span className="python-input-caret">&gt;&gt;&gt; </span>
