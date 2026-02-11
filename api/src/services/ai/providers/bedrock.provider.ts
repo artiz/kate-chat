@@ -48,7 +48,7 @@ import {
   formatBedrockRequestTools,
   BedrockToolCallable,
 } from "./bedrock.tools";
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/global-config";
 import { FileContentLoader } from "@/services/data";
 
 const logger = createLogger(__filename);

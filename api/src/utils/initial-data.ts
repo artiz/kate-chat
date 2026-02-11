@@ -1,5 +1,5 @@
 import { getRepository } from "@/config/database";
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/global-config";
 import { globalConfig, InitialCustomModel, InitialMCPServer } from "@/global-config";
 import { MCPAuthConfig, MCPAuthType, MCPServer, MCPTransportType, Model, ModelType } from "@/entities";
 import { CustomModelProtocol } from "@/entities/Model";

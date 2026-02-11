@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { Field, ID, ObjectType } from "type-graphql";
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/global-config";
 import { MCPServer } from "@/entities";
 
 export enum MessageType {

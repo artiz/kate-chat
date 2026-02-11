@@ -1,7 +1,7 @@
 import { InputType, Field } from "type-graphql";
 import { ToolType } from "../ai.types";
 import { UserSettings, AuthProvider, MCPAuthConfig, MCPAuthType } from "@/entities";
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/global-config";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
 

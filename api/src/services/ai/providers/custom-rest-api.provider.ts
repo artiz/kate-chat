@@ -12,7 +12,7 @@ import {
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/global-config";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { FileContentLoader } from "@/services/data";
 import { Model } from "@/entities";

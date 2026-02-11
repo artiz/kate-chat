@@ -1,4 +1,4 @@
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/global-config";
 import {
   AIModelInfo,
   EmbeddingsResponse,
