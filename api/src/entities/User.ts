@@ -5,8 +5,7 @@ import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { ConnectionParams } from "../middleware/auth.middleware";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "../config/ai/common";
-import { globalConfig } from "@/global-config";
+import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/global-config";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -20,7 +19,7 @@ export enum UserRole {
   ADMIN = "admin",
 }
 
-const DB_TYPE = globalConfig.values.env.db.type;
+const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType("UserSettings")

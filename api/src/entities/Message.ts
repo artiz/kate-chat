@@ -14,9 +14,8 @@ import { ChatFile } from "./ChatFile";
 import { User } from "./User";
 import { MessageRole, ModelMessageContent, MessageMetadata, ResponseStatus } from "../types/ai.types";
 import { JSONTransformer } from "../utils/db";
-import { globalConfig } from "@/global-config";
 
-const DB_TYPE = globalConfig.values.env.db.type;
+const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()

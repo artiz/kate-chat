@@ -4,11 +4,10 @@ import { Validate, IsOptional } from "class-validator";
 import { ModelFeature, ModelType, ToolType } from "../types/ai.types";
 import { User } from "./User";
 import { EnumTransformer, JSONTransformer } from "../utils/db";
-import { ApiProvider } from "../config/ai/common";
-import { globalConfig } from "@/global-config";
+import { ApiProvider } from "@/global-config";
 import { IsPublicUrl } from "../utils/validators";
 
-const DB_TYPE = globalConfig.values.env.db.type;
+const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 export enum CustomModelProtocol {

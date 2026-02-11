@@ -2,10 +2,9 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, Index, JoinColumn } 
 import { Field, ID, ObjectType } from "type-graphql";
 import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
-import { EMBEDDINGS_DIMENSIONS } from "../config/ai/common";
-import { globalConfig } from "@/global-config";
+import { EMBEDDINGS_DIMENSIONS } from "@/global-config";
 
-const DB_TYPE = globalConfig.values.env.db.type;
+const DB_TYPE = process.env.DB_TYPE;
 const VECTOR_TYPE = DB_TYPE !== "sqlite" ? "vector" : "text";
 const VECTOR_LENGTH = DB_TYPE !== "sqlite" ? EMBEDDINGS_DIMENSIONS : undefined;
 

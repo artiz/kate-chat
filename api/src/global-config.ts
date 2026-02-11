@@ -2,8 +2,21 @@ import fs from "fs";
 import path from "path";
 import { config as loadEnv } from "dotenv";
 
-export type AvailableProvider = "AWS_BEDROCK" | "OPEN_AI" | "YANDEX_FM" | "CUSTOM_REST_API";
-const DEFAULT_PROVIDERS: AvailableProvider[] = ["AWS_BEDROCK", "OPEN_AI", "YANDEX_FM", "CUSTOM_REST_API"];
+// must be in sync with packages/katechat-ui/src/core/ai.ts
+export enum ApiProvider {
+  AWS_BEDROCK = "AWS_BEDROCK",
+  OPEN_AI = "OPEN_AI",
+  YANDEX_FM = "YANDEX_FM",
+  CUSTOM_REST_API = "CUSTOM_REST_API",
+}
+
+export type AvailableProvider = `${ApiProvider}`;
+const DEFAULT_PROVIDERS: AvailableProvider[] = [
+  ApiProvider.AWS_BEDROCK,
+  ApiProvider.OPEN_AI,
+  ApiProvider.YANDEX_FM,
+  ApiProvider.CUSTOM_REST_API,
+];
 
 export interface InitialCustomModel {
   name: string;
@@ -61,11 +74,12 @@ export interface GlobalConfigShape {
     userAgent: string;
     maxInputJson: string;
     queueMessageExpirationSec: number;
+    allowedOrigins: string;
+    redisUrl?: string;
   };
-  env: {
+  runtime: {
     port: number;
     nodeEnv: string;
-    allowedOrigins: string;
     logLevel: string;
     callbackUrlBase: string;
     frontendUrl: string;
@@ -73,58 +87,57 @@ export interface GlobalConfigShape {
     jwtExpiration?: string;
     sessionSecret: string;
     recaptchaSecretKey: string;
-    oauth: {
-      googleClientId?: string;
-      googleClientSecret?: string;
-      githubClientId?: string;
-      githubClientSecret?: string;
-      microsoftClientId?: string;
-      microsoftClientSecret?: string;
-      microsoftTenantId?: string;
-    };
-    db: {
-      type: string;
-      url?: string;
-      host?: string;
-      username?: string;
-      password?: string;
-      name?: string;
-      ssl?: boolean;
-      migrationsPath?: string;
-      logging?: boolean;
-    };
-    s3: {
-      endpoint?: string;
-      region?: string;
-      accessKeyId?: string;
-      secretAccessKey?: string;
-      bucketName?: string;
-      profile?: string;
-    };
-    bedrock: {
-      endpoint?: string;
-      region?: string;
-      accessKeyId?: string;
-      secretAccessKey?: string;
-    };
-    openai: {
-      apiKey?: string;
-      adminApiKey?: string;
-      apiUrl?: string;
-    };
-    yandex: {
-      apiKey?: string;
-      apiFolder?: string;
-    };
-    sqs: {
-      endpoint?: string;
-      region?: string;
-      accessKeyId?: string;
-      secretAccessKey?: string;
-      documentsQueue?: string;
-      indexDocumentsQueue?: string;
-    };
-    redisUrl?: string;
+  };
+  oauth: {
+    googleClientId?: string;
+    googleClientSecret?: string;
+    githubClientId?: string;
+    githubClientSecret?: string;
+    microsoftClientId?: string;
+    microsoftClientSecret?: string;
+    microsoftTenantId?: string;
+  };
+  db: {
+    type: string;
+    url?: string;
+    host?: string;
+    username?: string;
+    password?: string;
+    name?: string;
+    ssl?: boolean;
+    migrationsPath?: string;
+    logging?: boolean;
+  };
+  s3: {
+    endpoint?: string;
+    region?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    bucketName?: string;
+    profile?: string;
+  };
+  bedrock: {
+    endpoint?: string;
+    region?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+  };
+  openai: {
+    apiKey?: string;
+    adminApiKey?: string;
+    apiUrl?: string;
+  };
+  yandex: {
+    apiKey?: string;
+    apiFolder?: string;
+  };
+  sqs: {
+    endpoint?: string;
+    region?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+    documentsQueue?: string;
+    indexDocumentsQueue?: string;
   };
   initial?: {
     models?: InitialCustomModel[];
@@ -181,6 +194,11 @@ export class GlobalConfig {
 
   private buildDefaults(): GlobalConfigShape {
     const adminEmails = process.env.DEFAULT_ADMIN_EMAILS?.split(",").map(email => email.trim()).filter(Boolean) || [];
+    const dbType =
+      process.env.DB_TYPE === "sqlite" || process.env.DB_TYPE === "better-sqlite3" || !process.env.DB_TYPE
+        ? "sqlite"
+        : process.env.DB_TYPE;
+
     return {
       demo: {
         enabled: ["1", "true", "y", "yes"].includes((process.env.DEMO_MODE || "false").toLowerCase()),
@@ -206,14 +224,12 @@ export class GlobalConfig {
         defaultMaxTokens: 2048,
         defaultTopP: 0.9,
         contextMessagesLimit: 100,
-        embeddingsDimensions: process.env.DB_TYPE === "mssql" ? 1998 : 3072,
+        embeddingsDimensions: dbType === "mssql" ? 1998 : 3072,
         charactersPerToken: 3.5,
         maxContextTokens: 8 * 1024,
         summarizingOutputTokens: 2000,
         summarizingTemperature: 0.25,
-        ragQueryChunksLimit: process.env.RAG_QUERY_CHUNKS_LIMIT
-          ? parseInt(process.env.RAG_QUERY_CHUNKS_LIMIT, 10)
-          : 10,
+        ragQueryChunksLimit: process.env.RAG_QUERY_CHUNKS_LIMIT ? parseInt(process.env.RAG_QUERY_CHUNKS_LIMIT, 10) : 10,
         ragLoadFullPages: ["1", "true", "y", "yes"].includes((process.env.RAG_LOAD_FULL_PAGES || "yes").toLowerCase()),
       },
       admin: {
@@ -223,11 +239,12 @@ export class GlobalConfig {
         userAgent: process.env.APP_USER_AGENT || "KateChat/1.0 (+https://katechat.tech/)",
         maxInputJson: process.env.MAX_INPUT_JSON || "50mb",
         queueMessageExpirationSec: +(process.env.QUEUE_MESSAGE_EXPIRATION_SEC || 300),
+        allowedOrigins: process.env.ALLOWED_ORIGINS || "",
+        redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
       },
-      env: {
+      runtime: {
         port: +(process.env.PORT || 4000),
         nodeEnv: process.env.NODE_ENV || "development",
-        allowedOrigins: process.env.ALLOWED_ORIGINS || "",
         logLevel: process.env.LOG_LEVEL || "info",
         callbackUrlBase: process.env.CALLBACK_URL_BASE || "http://localhost:4000",
         frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -235,61 +252,57 @@ export class GlobalConfig {
         jwtExpiration: process.env.JWT_EXPIRATION,
         sessionSecret: process.env.SESSION_SECRET || "katechat-secret",
         recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY || "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe",
-        oauth: {
-          googleClientId: process.env.GOOGLE_CLIENT_ID || "",
-          googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-          githubClientId: process.env.GITHUB_CLIENT_ID || "",
-          githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-          microsoftClientId: process.env.MICROSOFT_CLIENT_ID || "",
-          microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET || "",
-          microsoftTenantId: process.env.MICROSOFT_TENANT_ID || "common",
-        },
-        db: {
-          type:
-            process.env.DB_TYPE === "sqlite" || process.env.DB_TYPE === "better-sqlite3" || !process.env.DB_TYPE
-              ? "sqlite"
-              : process.env.DB_TYPE,
-          url: process.env.DB_URL,
-          host: process.env.DB_HOST,
-          username: process.env.DB_USERNAME,
-          password: process.env.DB_PASSWORD,
-          name: process.env.DB_NAME || "katechat.sqlite",
-          ssl: ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || ""),
-          migrationsPath: process.env.DB_MIGRATIONS_PATH,
-          logging: !!process.env.DB_LOGGING,
-        },
-        s3: {
-          endpoint: process.env.S3_ENDPOINT,
-          region: process.env.S3_REGION,
-          accessKeyId: process.env.S3_ACCESS_KEY_ID,
-          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-          bucketName: process.env.S3_FILES_BUCKET_NAME,
-          profile: process.env.S3_AWS_PROFILE,
-        },
-        bedrock: {
-          endpoint: process.env.AWS_BEDROCK_ENDPOINT,
-          region: process.env.AWS_BEDROCK_REGION,
-          accessKeyId: process.env.AWS_BEDROCK_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
-        },
-        openai: {
-          apiKey: process.env.OPENAI_API_KEY,
-          adminApiKey: process.env.OPENAI_API_ADMIN_KEY,
-          apiUrl: process.env.OPENAI_API_URL,
-        },
-        yandex: {
-          apiKey: process.env.YANDEX_FM_API_KEY,
-          apiFolder: process.env.YANDEX_FM_API_FOLDER,
-        },
-        sqs: {
-          endpoint: process.env.SQS_ENDPOINT,
-          region: process.env.SQS_REGION,
-          accessKeyId: process.env.SQS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.SQS_SECRET_ACCESS_KEY,
-          documentsQueue: process.env.SQS_DOCUMENTS_QUEUE,
-          indexDocumentsQueue: process.env.SQS_INDEX_DOCUMENTS_QUEUE,
-        },
-        redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+      },
+      oauth: {
+        googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+        googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+        githubClientId: process.env.GITHUB_CLIENT_ID || "",
+        githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+        microsoftClientId: process.env.MICROSOFT_CLIENT_ID || "",
+        microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET || "",
+        microsoftTenantId: process.env.MICROSOFT_TENANT_ID || "common",
+      },
+      db: {
+        type: dbType,
+        url: process.env.DB_URL,
+        host: process.env.DB_HOST,
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        name: process.env.DB_NAME || "katechat.sqlite",
+        ssl: ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || ""),
+        migrationsPath: process.env.DB_MIGRATIONS_PATH,
+        logging: !!process.env.DB_LOGGING,
+      },
+      s3: {
+        endpoint: process.env.S3_ENDPOINT,
+        region: process.env.S3_REGION,
+        accessKeyId: process.env.S3_ACCESS_KEY_ID,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+        bucketName: process.env.S3_FILES_BUCKET_NAME,
+        profile: process.env.S3_AWS_PROFILE,
+      },
+      bedrock: {
+        endpoint: process.env.AWS_BEDROCK_ENDPOINT,
+        region: process.env.AWS_BEDROCK_REGION,
+        accessKeyId: process.env.AWS_BEDROCK_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
+      },
+      openai: {
+        apiKey: process.env.OPENAI_API_KEY,
+        adminApiKey: process.env.OPENAI_API_ADMIN_KEY,
+        apiUrl: process.env.OPENAI_API_URL,
+      },
+      yandex: {
+        apiKey: process.env.YANDEX_FM_API_KEY,
+        apiFolder: process.env.YANDEX_FM_API_FOLDER,
+      },
+      sqs: {
+        endpoint: process.env.SQS_ENDPOINT,
+        region: process.env.SQS_REGION,
+        accessKeyId: process.env.SQS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.SQS_SECRET_ACCESS_KEY,
+        documentsQueue: process.env.SQS_DOCUMENTS_QUEUE,
+        indexDocumentsQueue: process.env.SQS_INDEX_DOCUMENTS_QUEUE,
       },
       initial: {
         models: [],
@@ -320,3 +333,42 @@ export class GlobalConfig {
 }
 
 export const globalConfig = GlobalConfig.getInstance();
+
+export const aiDefaults = globalConfig.values.ai;
+export const ENABLED_API_PROVIDERS: ApiProvider[] =
+  globalConfig.values.providers.enabled.length === 1 &&
+  (globalConfig.values.providers.enabled as string[])[0] === "*"
+    ? Object.values(ApiProvider)
+    : (globalConfig.values.providers.enabled as ApiProvider[]);
+
+export const DEFAULT_TEMPERATURE = aiDefaults.defaultTemperature;
+export const DEFAULT_MAX_TOKENS = aiDefaults.defaultMaxTokens;
+export const DEFAULT_TOP_P = aiDefaults.defaultTopP;
+export const CONTEXT_MESSAGES_LIMIT = aiDefaults.contextMessagesLimit;
+export const EMBEDDINGS_DIMENSIONS = aiDefaults.embeddingsDimensions ?? (globalConfig.values.db.type === "mssql" ? 1998 : 3072);
+export const CHARACTERS_PER_TOKEN = aiDefaults.charactersPerToken;
+export const MAX_CONTEXT_TOKENS = aiDefaults.maxContextTokens;
+export const SUMMARIZING_OUTPUT_TOKENS = aiDefaults.summarizingOutputTokens;
+export const SUMMARIZING_TEMPERATURE = aiDefaults.summarizingTemperature;
+export const RAG_QUERY_CHUNKS_LIMIT = aiDefaults.ragQueryChunksLimit;
+export const RAG_LOAD_FULL_PAGES = aiDefaults.ragLoadFullPages;
+
+export const MAX_INPUT_JSON = globalConfig.values.app.maxInputJson;
+export const DEMO_MODE = globalConfig.values.demo.enabled;
+export const DEMO_MAX_CHAT_MESSAGES = globalConfig.values.demo.maxChatMessages;
+export const DEMO_MAX_CHATS = globalConfig.values.demo.maxChats;
+export const DEMO_MAX_IMAGES = globalConfig.values.demo.maxImages;
+export const APP_USER_AGENT = globalConfig.values.app.userAgent;
+export const DEFAULT_ADMIN_EMAILS = globalConfig.values.admin.defaultEmails;
+export const RECAPTCHA_SECRET_KEY = globalConfig.values.runtime.recaptchaSecretKey;
+export const CALLBACK_URL_BASE = globalConfig.values.runtime.callbackUrlBase;
+export const FRONTEND_URL = globalConfig.values.runtime.frontendUrl;
+export const QUEUE_MESSAGE_EXPIRATION_SEC = globalConfig.values.app.queueMessageExpirationSec;
+export const REDIS_URL = globalConfig.values.app.redisUrl || "redis://localhost:6379";
+export const GOOGLE_CLIENT_ID = globalConfig.values.oauth.googleClientId || "";
+export const GOOGLE_CLIENT_SECRET = globalConfig.values.oauth.googleClientSecret || "";
+export const GITHUB_CLIENT_ID = globalConfig.values.oauth.githubClientId || "";
+export const GITHUB_CLIENT_SECRET = globalConfig.values.oauth.githubClientSecret || "";
+export const MICROSOFT_CLIENT_ID = globalConfig.values.oauth.microsoftClientId || "";
+export const MICROSOFT_CLIENT_SECRET = globalConfig.values.oauth.microsoftClientSecret || "";
+export const MICROSOFT_TENANT_ID = globalConfig.values.oauth.microsoftTenantId || "common";

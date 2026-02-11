@@ -4,9 +4,8 @@ import { IsOptional, Validate } from "class-validator";
 import { User } from "./User";
 import { JSONTransformer, EnumTransformer } from "../utils/db";
 import { IsPublicUrl } from "../utils/validators";
-import { globalConfig } from "@/global-config";
 
-const DB_TYPE = globalConfig.values.env.db.type;
+const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 export enum MCPTransportType {
