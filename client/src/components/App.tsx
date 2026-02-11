@@ -5,7 +5,7 @@ import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
 import { ApolloWrapper } from "../lib/apollo-provider";
-import { theme } from "../theme";
+import { createAppTheme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
@@ -61,6 +61,7 @@ const AppContent: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, token } = useAppSelector(state => state.auth);
+  const mantineTheme = React.useMemo(() => createAppTheme(), []);
 
   // Get theme from context
   const { colorScheme } = useTheme();
@@ -136,7 +137,7 @@ const AppContent: React.FC = () => {
 
   return (
     <MantineProvider
-      theme={theme}
+      theme={mantineTheme}
       defaultColorScheme={colorScheme}
       forceColorScheme={colorScheme === "auto" ? undefined : colorScheme}
     >

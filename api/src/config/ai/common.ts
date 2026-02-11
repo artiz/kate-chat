@@ -1,3 +1,5 @@
+import { globalConfig } from "@/global-config";
+
 // must be in sync with packages/katechat-ui/src/core/ai.ts
 export enum ApiProvider {
   AWS_BEDROCK = "AWS_BEDROCK",
@@ -9,29 +11,29 @@ export enum ApiProvider {
   // ANTHROPIC = "ANTHROPIC"
 }
 
-export const DEFAULT_TEMPERATURE = 0.7;
-export const DEFAULT_MAX_TOKENS = 2048;
-export const DEFAULT_TOP_P = 0.9;
+const cfg = globalConfig.values;
 
-export const CONTEXT_MESSAGES_LIMIT = 100;
-export const EMBEDDINGS_DIMENSIONS = process.env.DB_TYPE === "mssql" ? 1998 : 3072;
+export const DEFAULT_TEMPERATURE = cfg.ai.defaultTemperature;
+export const DEFAULT_MAX_TOKENS = cfg.ai.defaultMaxTokens;
+export const DEFAULT_TOP_P = cfg.ai.defaultTopP;
+
+export const CONTEXT_MESSAGES_LIMIT = cfg.ai.contextMessagesLimit;
+export const EMBEDDINGS_DIMENSIONS = cfg.ai.embeddingsDimensions ?? (cfg.env.db.type === "mssql" ? 1998 : 3072);
 
 // https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
-export const CHARACTERS_PER_TOKEN = 3.5;
-export const MAX_CONTEXT_TOKENS = 8 * 1024;
+export const CHARACTERS_PER_TOKEN = cfg.ai.charactersPerToken;
+export const MAX_CONTEXT_TOKENS = cfg.ai.maxContextTokens;
 
-export const SUMMARIZING_OUTPUT_TOKENS = 2000;
-export const SUMMARIZING_TEMPERATURE = 0.25;
+export const SUMMARIZING_OUTPUT_TOKENS = cfg.ai.summarizingOutputTokens;
+export const SUMMARIZING_TEMPERATURE = cfg.ai.summarizingTemperature;
 
-export const RAG_QUERY_CHUNKS_LIMIT = process.env.RAG_QUERY_CHUNKS_LIMIT
-  ? parseInt(process.env.RAG_QUERY_CHUNKS_LIMIT, 10)
-  : 10;
-export const RAG_LOAD_FULL_PAGES = ["1", "true", "y", "yes"].includes(
-  (process.env.RAG_LOAD_FULL_PAGES || "yes").toLowerCase()
-);
+export const RAG_QUERY_CHUNKS_LIMIT = cfg.ai.ragQueryChunksLimit;
+export const RAG_LOAD_FULL_PAGES = cfg.ai.ragLoadFullPages;
 
 export const ENABLED_API_PROVIDERS: ApiProvider[] = (() => {
   const allIds: ApiProvider[] = Object.values(ApiProvider);
-  const enabledIds = new Set(process.env.ENABLED_API_PROVIDERS?.split(",")?.map(id => id.trim().toUpperCase()) || []);
-  return process.env.ENABLED_API_PROVIDERS === "*" ? allIds : allIds.filter(id => enabledIds.has(id));
+  const enabledList = cfg.providers.enabled || [];
+  const hasWildcard = enabledList.length === 1 && (enabledList as string[])[0] === "*";
+  const enabledIds = new Set(enabledList.map(id => id.toString().trim().toUpperCase()));
+  return hasWildcard ? allIds : allIds.filter(id => enabledIds.has(id));
 })();

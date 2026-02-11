@@ -40,11 +40,13 @@ import { MessagesService } from "@/services/messages.service";
 import { HttpError } from "./types/exceptions";
 import { SQSService, SubscriptionsService } from "./services/messaging";
 import { servicesMiddleware } from "./middleware/services.middleware";
+import { globalConfig } from "./global-config";
 
 // Load environment variables
 config();
 
-const isProd = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
+const cfg = globalConfig.values;
+const isProd = cfg.env.nodeEnv === "production" || cfg.env.nodeEnv === "staging";
 const logger = createLogger("server");
 
 let subscriptionsService: SubscriptionsService | undefined;
@@ -89,7 +91,7 @@ async function bootstrap() {
   });
 
   // Create Express application
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim());
+  const allowedOrigins = (cfg.env.allowedOrigins || "").split(",").map(o => o.trim());
 
   const app = express();
   app.use(
@@ -105,7 +107,7 @@ async function bootstrap() {
   // Set up session and passport
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || "katechat-secret",
+      secret: cfg.env.sessionSecret || "katechat-secret",
       httpOnly: true,
       secure: isProd,
       name: "user-session",
@@ -274,7 +276,7 @@ async function bootstrap() {
   );
 
   // Start the server
-  const PORT = process.env.PORT || 4000;
+  const PORT = cfg.env.port || 4000;
   httpServer.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}, origins: ${allowedOrigins.join(", ")}`);
     logger.info(`GraphQL endpoint: http://localhost:${PORT}/graphql`);

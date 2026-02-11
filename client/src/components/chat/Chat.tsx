@@ -39,6 +39,7 @@ import { ChatInputHeader } from "./ChatInputHeader";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
 import { getChatMcpTokens } from "../auth/McpAuthentication";
 import { ChatPluginsContextProvider } from "./ChatPluginsContext";
+import { getClientConfig } from "@/global-config";
 
 import classes from "./Chat.module.scss";
 
@@ -62,6 +63,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
+  const { aiUsageAlert } = getClientConfig();
 
   const [selectedRagDocIds, setSelectedRagDocIds] = useState<string[]>([]);
 
@@ -309,6 +311,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.ragEnabled || selectedModel?.imageInput;
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
 
+  const maxImagesAllowed = useMemo(() => {
+    if (!selectedModel?.imageInput) return 0;
+    if (typeof appConfig?.maxImages === "number" && appConfig.maxImages >= 0) {
+      return appConfig.maxImages;
+    }
+    return MAX_IMAGES;
+  }, [appConfig?.maxImages, selectedModel?.imageInput]);
+
   const requestStoppable = useMemo(() => {
     return (
       !stopping && messageMetadata?.requestId && selectedModel?.features?.includes(ModelFeature.REQUEST_CANCELLATION)
@@ -487,12 +497,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </>
         }
         uploadFormats={SUPPORTED_UPLOAD_FORMATS}
-        maxImagesCount={selectedModel?.imageInput ? MAX_IMAGES : 0}
+        maxImagesCount={maxImagesAllowed}
         maxUploadFileSize={MAX_UPLOAD_FILE_SIZE}
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}
         onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />
+
+      {aiUsageAlert && (
+        <Text size="xs" c="dimmed" mt="xs" ta="center">
+          {aiUsageAlert}
+        </Text>
+      )}
 
       {PythonCodeModal}
     </Container>

@@ -1,0 +1,58 @@
+{
+  "demo": {
+    "enabled": false,
+    "maxChatMessages": 50,
+    "maxChats": 20,
+    "maxImages": 5
+  },
+  "providers": {
+    "enabled": ["OPEN_AI", "AWS_BEDROCK", "YANDEX_FM", "CUSTOM_REST_API"]
+  },
+  "features": {
+    "imagesGeneration": true,
+    "rag": true,
+    "mcp": true
+  },
+  "ai": {
+    "defaultTemperature": 0.7,
+    "defaultMaxTokens": 2048,
+    "defaultTopP": 0.9,
+    "contextMessagesLimit": 100,
+    "embeddingsDimensions": 3072,
+    "charactersPerToken": 3.5,
+    "maxContextTokens": 8192,
+    "summarizingOutputTokens": 2000,
+    "summarizingTemperature": 0.25,
+    "ragQueryChunksLimit": 10,
+    "ragLoadFullPages": true
+  },
+  "admin": {
+    "defaultEmails": ["admin@example.com"]
+  },
+  "app": {
+    "userAgent": "KateChat/1.0 (+https://katechat.tech/)",
+    "maxInputJson": "50mb",
+    "queueMessageExpirationSec": 300
+  },
+  "initial": {
+    "models": [
+      {
+        "name": "DeepSeek Chat",
+        "modelId": "deepseek-chat",
+        "apiProvider": "CUSTOM_REST_API",
+        "protocol": "OPENAI_CHAT_COMPLETIONS",
+        "baseUrl": "https://api.deepseek.com/v1",
+        "apiKeyEnv": "DEEPSEEK_API_KEY"
+      }
+    ],
+    "mcpServers": [
+      {
+        "name": "Demo MCP",
+        "url": "https://example.com/mcp",
+        "description": "Sample MCP server entry",
+        "authType": "API_KEY",
+        "tokenEnv": "MCP_DEMO_TOKEN"
+      }
+    ]
+  }
+}

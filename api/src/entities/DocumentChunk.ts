@@ -3,9 +3,11 @@ import { Field, ID, ObjectType } from "type-graphql";
 import { EmbeddingTransformer } from "../config/database";
 import { Document } from "./Document";
 import { EMBEDDINGS_DIMENSIONS } from "../config/ai/common";
+import { globalConfig } from "@/global-config";
 
-const VECTOR_TYPE = process.env.DB_TYPE !== "sqlite" ? "vector" : "text";
-const VECTOR_LENGTH = process.env.DB_TYPE !== "sqlite" ? EMBEDDINGS_DIMENSIONS : undefined;
+const DB_TYPE = globalConfig.values.env.db.type;
+const VECTOR_TYPE = DB_TYPE !== "sqlite" ? "vector" : "text";
+const VECTOR_LENGTH = DB_TYPE !== "sqlite" ? EMBEDDINGS_DIMENSIONS : undefined;
 
 @ObjectType()
 @Entity("document_chunks")

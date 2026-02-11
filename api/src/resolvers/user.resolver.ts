@@ -9,6 +9,8 @@ import { verifyRecaptchaToken } from "@/utils/recaptcha";
 import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
+import { ensureInitialUserAssets } from "@/utils/initial-data";
+import { globalConfig } from "@/global-config";
 
 import {
   DEMO_MODE,
@@ -24,13 +26,14 @@ export class UserResolver extends BaseResolver {
   @Query(() => ApplicationConfig, { nullable: true })
   async appConfig(@Ctx() context: GraphQLContext): Promise<ApplicationConfig> {
     const user = await this.loadUserFromContext(context);
+    const env = globalConfig.values.env;
     const s3settings = {
       ...(user?.settings || {}),
-      s3endpoint: process.env.S3_ENDPOINT || "",
-      s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME || "",
-      s3AccessKeyId: process.env.S3_ACCESS_KEY_ID || "",
-      s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-      s3Profile: process.env.S3_AWS_PROFILE || "",
+      s3endpoint: env.s3.endpoint || "",
+      s3FilesBucketName: env.s3.bucketName || "",
+      s3AccessKeyId: env.s3.accessKeyId || "",
+      s3SecretAccessKey: env.s3.secretAccessKey,
+      s3Profile: env.s3.profile || "",
     };
 
     // Generate JWT token
@@ -43,11 +46,14 @@ export class UserResolver extends BaseResolver {
       : undefined;
 
     const demoMode = user?.isAdmin() ? false : DEMO_MODE;
+    const features = globalConfig.values.features;
     const s3Connected = Boolean(
       s3settings.s3FilesBucketName &&
         ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
     );
-    const ragSupported = Boolean(!demoMode && s3Connected && ["sqlite", "postgres", "mssql"].includes(DB_TYPE));
+    const ragSupported = Boolean(
+      features.rag && !demoMode && s3Connected && ["sqlite", "postgres", "mssql"].includes(DB_TYPE)
+    );
 
     const ragEnabled = Boolean(
       ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
@@ -59,10 +65,10 @@ export class UserResolver extends BaseResolver {
       demoMode,
       s3Connected,
       ragSupported,
-      ragEnabled,
+      ragEnabled: features.rag ? ragEnabled : false,
       maxChats: demoMode ? DEMO_MAX_CHATS : -1,
       maxChatMessages: demoMode ? DEMO_MAX_CHAT_MESSAGES : -1,
-      maxImages: demoMode ? DEMO_MAX_IMAGES : -1,
+      maxImages: features.imagesGeneration ? (demoMode ? DEMO_MAX_IMAGES : -1) : 0,
     };
   }
 
@@ -108,6 +114,7 @@ export class UserResolver extends BaseResolver {
     });
 
     const savedUser = await this.userRepository.save(user);
+    await ensureInitialUserAssets(savedUser);
 
     // Generate JWT token
     const token = generateToken({

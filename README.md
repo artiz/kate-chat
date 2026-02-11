@@ -86,6 +86,19 @@ The project consists of several parts:
 3. Database - any TypeORM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
 4. Redis - for message queue and caching (optional, but recommended for production)
 
+## Customization
+
+- The API configuration is centralized in `api/src/global-config.ts`. Defaults are merged with an optional `customization.json`
+  placed in the API folder or its parent (use the provided `api/customization.example.json` as a template).
+- Supported overrides: demo limits, enabled AI providers, feature flags (images generation, RAG, MCP), AI defaults
+  (temperature, max tokens, top_p, context and summarization limits), admin emails, app defaults, and optional initial
+  custom models/MCP servers (API keys pulled from env vars such as `DEEPSEEK_API_KEY`).
+- Only deployment/security values are loaded from `.env`: `PORT`, `NODE_ENV`, `ALLOWED_ORIGINS`, `LOG_LEVEL`,
+  `CALLBACK_URL_BASE`, `FRONTEND_URL`, `JWT_SECRET`, `SESSION_SECRET`, `RECAPTCHA_SECRET_KEY`, OAuth client secrets,
+  DB/S3/SQS/AWS Bedrock/OpenAI/Yandex credentials.
+- The client reads `customization.json` (current or parent folder; see `client/customization.example.json`) to override
+  brand colors, font family, app title, footer links, and the chat AI-usage notice without changing code.
+
 ## Getting Started
 
 ### Prerequisites

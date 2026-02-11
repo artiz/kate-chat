@@ -20,6 +20,7 @@ import {
   DEFAULT_ADMIN_EMAILS,
 } from "./application";
 import { VerifyCallback } from "passport-oauth2";
+import { ensureInitialUserAssets } from "@/utils/initial-data";
 
 // Load environment variables
 
@@ -100,6 +101,7 @@ export const configurePassport = () => {
 
               user = await userRepository.save(user);
               logger.info({ userId: user.id }, "New user created via Google OAuth");
+              await ensureInitialUserAssets(user);
             }
 
             // Update user role if they are in admin emails list
@@ -181,6 +183,7 @@ export const configurePassport = () => {
 
             user = await userRepository.save(user);
             logger.info({ userId: user.id }, "New user created via GitHub OAuth");
+            await ensureInitialUserAssets(user);
           }
 
           // Update user role if they are in admin emails list
@@ -339,6 +342,7 @@ export const configurePassport = () => {
 
               user = await userRepository.save(user);
               logger.info({ userId: user.id }, "New user created via Microsoft OAuth");
+              await ensureInitialUserAssets(user);
             }
 
             // Update user role if they are in admin emails list

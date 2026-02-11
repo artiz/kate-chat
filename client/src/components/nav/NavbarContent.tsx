@@ -34,10 +34,13 @@ import {
   IconUsers,
   IconBooks,
   IconMessages,
+  IconNetwork,
+  IconLink,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
 import { UserRole } from "@/store/slices/userSlice";
+import { getClientNavLinks, NavLinkIcon } from "@/global-config";
 
 import styles from "./NavbarContent.module.scss";
 import accordionClasses from "./MenuAccordion.module.scss";
@@ -60,6 +63,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
   const { chats } = useAppSelector(state => state.chats);
   const { providers } = useAppSelector(state => state.models);
   const { appConfig, currentUser } = useAppSelector(state => state.user);
+  const navLinks = useMemo(() => getClientNavLinks(), []);
 
   const isLocalUser = useMemo(() => {
     return !currentUser?.authProvider || currentUser?.authProvider === "local";
@@ -92,6 +96,23 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
     navbarToggle?.();
     navigate(path);
   };
+
+  const renderNavIcon = useCallback(
+    (icon: NavLinkIcon) => {
+      switch (icon) {
+        case "cv":
+          return <IconFileCv size={24} />;
+        case "github":
+          return <IconBrandGithub size={24} />;
+        case "network":
+          return <IconNetwork size={24} />;
+        case "link":
+        default:
+          return <IconLink size={24} />;
+      }
+    },
+    []
+  );
 
   return (
     <>
@@ -270,23 +291,13 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
       </AppShell.Section>
       <AppShell.Section p="sm">
         <Group justify={expanded ? "flex-start" : "center"} gap="xs">
-          <Tooltip label="Project GitHub Repository" position="right">
-            <ActionIcon
-              component="a"
-              variant="subtle"
-              href="https://github.com/artiz/kate-chat"
-              target="_blank"
-              color="dark"
-            >
-              <IconBrandGithub size={24} />
-            </ActionIcon>
-          </Tooltip>
-
-          <Tooltip label="Author's CV" position="right">
-            <ActionIcon component="a" variant="subtle" href="https://artiz.github.io/" target="_blank" color="indigo">
-              <IconFileCv size={24} />
-            </ActionIcon>
-          </Tooltip>
+          {navLinks.map(link => (
+            <Tooltip key={link.url} label={link.tooltip} position="right">
+              <ActionIcon component="a" variant="subtle" href={link.url} target="_blank" color={link.color || "dark"}>
+                {renderNavIcon(link.icon)}
+              </ActionIcon>
+            </Tooltip>
+          ))}
         </Group>
       </AppShell.Section>
     </>

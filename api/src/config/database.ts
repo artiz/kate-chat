@@ -5,20 +5,20 @@ import { load as sqliteVecLoad } from "sqlite-vec";
 import { ENTITIES } from "../entities";
 import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
+import { globalConfig } from "@/global-config";
 
-const logging = !!process.env.DB_LOGGING;
+const cfg = globalConfig.values;
+const dbEnv = cfg.env.db;
 
-export const DB_TYPE =
-  process.env.DB_TYPE === "sqlite" || process.env.DB_TYPE === "better-sqlite3" || !process.env.DB_TYPE
-    ? "sqlite"
-    : process.env.DB_TYPE;
+const logging = !!dbEnv.logging;
 
-export const DB_MIGRATIONS_PATH =
-  process.env.DB_MIGRATIONS_PATH || path.join(__dirname, `../../../db-migrations/${DB_TYPE}/*-*.ts`);
+export const DB_TYPE = dbEnv.type;
+
+export const DB_MIGRATIONS_PATH = dbEnv.migrationsPath || path.join(__dirname, `../../../db-migrations/${DB_TYPE}/*-*.ts`);
 
 let dbOptions: DataSourceOptions = {
   type: "better-sqlite3",
-  database: process.env.DB_NAME || "katechat.sqlite",
+  database: dbEnv.name || "katechat.sqlite",
   prepareDatabase: db => sqliteVecLoad(db),
 };
 
@@ -26,25 +26,23 @@ if (DB_TYPE === "mysql") {
   dbOptions = {
     type: "mysql",
     charset: "UTF8_GENERAL_CI",
-    url: process.env.DB_URL,
+    url: dbEnv.url,
   };
 } else if (DB_TYPE === "postgres") {
-  const ssl = ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || "");
-
   dbOptions = {
     type: "postgres",
-    url: process.env.DB_URL,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    ssl: ssl ? { rejectUnauthorized: false } : false,
+    url: dbEnv.url,
+    username: dbEnv.username,
+    password: dbEnv.password,
+    ssl: dbEnv.ssl ? { rejectUnauthorized: false } : false,
   };
 } else if (DB_TYPE === "mssql") {
   dbOptions = {
     type: "mssql",
-    host: process.env.DB_HOST,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: dbEnv.host,
+    username: dbEnv.username,
+    password: dbEnv.password,
+    database: dbEnv.name,
     options: {
       encrypt: true,
       trustServerCertificate: true,
@@ -124,7 +122,7 @@ export const formatDateCeil =
     : (date: Date) => date;
 
 export function EmbeddingTransformer(dimensions: number) {
-  if (process.env.DB_TYPE === "postgres") {
+  if (DB_TYPE === "postgres") {
     return {
       to: (value: number[]) =>
         pgvector.toSql(value.length === dimensions ? value : value.concat(Array(dimensions - value.length).fill(0))),
@@ -133,7 +131,7 @@ export function EmbeddingTransformer(dimensions: number) {
     };
   }
 
-  if (process.env.DB_TYPE === "mssql") {
+  if (DB_TYPE === "mssql") {
     return {
       to: (value: number[]) => JSON.stringify(value),
       from: (value: string | null | undefined) => (typeof value === "string" ? JSON.parse(value) : value),

@@ -9,6 +9,7 @@ import { logout, useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { OAuthButtons } from "../components/auth";
 import { setUser } from "@/store/slices/userSlice";
+import { getClientConfig } from "@/global-config";
 
 // Login mutation is imported from graphql.ts
 
@@ -16,6 +17,7 @@ const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const { appTitle } = getClientConfig();
 
   // If already authenticated, redirect to chat
   useEffect(() => {
@@ -70,7 +72,7 @@ const Login: React.FC = () => {
   return (
     <Container size="sm" my={40}>
       <Title ta="center" fw={900}>
-        Welcome to KateChat!
+        Welcome to {appTitle}!
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
         Sign in to access your AI chats

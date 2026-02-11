@@ -30,6 +30,7 @@ import { useAppSelector } from "../store";
 import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
+import { getClientConfig } from "@/global-config";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
@@ -44,6 +45,7 @@ export const MainLayout: React.FC = () => {
     key: "navbar-expanded",
     defaultValue: true,
   });
+  const { appTitle } = getClientConfig();
 
   // Handle logout
   const handleLogout = () => {
@@ -74,7 +76,7 @@ export const MainLayout: React.FC = () => {
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
             <Text size="lg" fw={700}>
-              KateChat
+              {appTitle}
             </Text>
             {appConfig?.demoMode && (
               <Tooltip

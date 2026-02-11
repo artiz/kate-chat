@@ -1,8 +1,10 @@
 import path from "path";
 import pino, { LoggerOptions } from "pino";
+import { globalConfig } from "@/global-config";
 
-const isProd = process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging";
-const level = process.env.LOG_LEVEL || (isProd ? "info" : "debug");
+const cfg = globalConfig.values;
+const isProd = cfg.env.nodeEnv === "production" || cfg.env.nodeEnv === "staging";
+const level = cfg.env.logLevel || (isProd ? "info" : "debug");
 
 const redactPaths = [
   "connectionParams",
