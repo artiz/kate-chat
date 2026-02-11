@@ -34,15 +34,11 @@ import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
-import {
-  CONTEXT_MESSAGES_LIMIT,
-  DEFAULT_MAX_TOKENS,
-  DEFAULT_TEMPERATURE,
-  DEFAULT_TOP_P,
-  RAG_LOAD_FULL_PAGES,
-  RAG_QUERY_CHUNKS_LIMIT,
-} from "@/config/ai/common";
 import e from "express";
+import { globalConfig } from "@/global-config";
+
+const cfg = globalConfig.config;
+const ai = cfg.ai;
 
 const logger = createLogger(__filename);
 
@@ -984,8 +980,8 @@ export class MessagesService {
     inputMessage: Message,
     ragMessage: Message
   ): Promise<void> {
-    let chunksLimit = RAG_QUERY_CHUNKS_LIMIT;
-    let loadFullPage = RAG_LOAD_FULL_PAGES;
+    let chunksLimit = ai.ragQueryChunksLimit;
+    let loadFullPage = ai.ragLoadFullPages;
     let aiResponse: ModelResponse | undefined = undefined;
     let chunks: DocumentChunk[] = [];
     let ragRequest: string = "";
@@ -1252,7 +1248,7 @@ export class MessagesService {
         .andWhere("message.id <> :id", { id: currentMessage.id });
     }
 
-    const messages = await query.orderBy("message.createdAt", "DESC").take(CONTEXT_MESSAGES_LIMIT).getMany();
+    const messages = await query.orderBy("message.createdAt", "DESC").take(ai.contextMessagesLimit).getMany();
     return messages.reverse();
   }
 
@@ -1270,9 +1266,9 @@ export class MessagesService {
       chatId: chat.id,
       modelId: modelId_,
       content,
-      temperature: chat.temperature ?? user.defaultTemperature ?? DEFAULT_TEMPERATURE,
-      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
-      topP: chat.topP ?? user.defaultTopP ?? DEFAULT_TOP_P,
+      temperature: chat.temperature ?? user.defaultTemperature ?? ai.defaultTemperature,
+      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? ai.defaultMaxTokens,
+      topP: chat.topP ?? user.defaultTopP ?? ai.defaultTopP,
       imagesCount: chat.imagesCount ?? user.defaultImagesCount ?? 1,
       systemPrompt: chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
       mcpTokens: messageContext?.mcpTokens,

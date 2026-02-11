@@ -16,8 +16,9 @@ import { getRepository } from "../config/database";
 import { CompleteChatRequest, MessageRole, ModelType, ToolType } from "../types/ai.types";
 import { Message } from "../entities/Message";
 import { createLogger } from "@/utils/logger";
-import { ApiProvider, MAX_CONTEXT_TOKENS } from "@/config/ai/common";
+import { ApiProvider, globalConfig } from "@/global-config";
 import { getErrorMessage } from "@/utils/errors";
+const ai = globalConfig.config.ai;
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
@@ -385,7 +386,7 @@ export class ModelResolver extends BaseResolver {
         type: ModelType.CHAT,
         streaming,
         imageInput: imageInput || false,
-        maxInputTokens: maxInputTokens || MAX_CONTEXT_TOKENS,
+        maxInputTokens: maxInputTokens || ai.maxContextTokens,
         isActive: true,
         isCustom: true,
         user: { id: user.userId },

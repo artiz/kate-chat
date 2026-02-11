@@ -35,7 +35,7 @@ import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
-import { MAX_INPUT_JSON } from "./config/application";
+import { globalConfig } from "./global-config";
 import { MessagesService } from "@/services/messages.service";
 import { HttpError } from "./types/exceptions";
 import { SQSService, SubscriptionsService } from "./services/messaging";
@@ -101,7 +101,8 @@ async function bootstrap() {
       maxAge: 86_400, // 24 hours in seconds without subsequent OPTIONS requests
     })
   );
-  app.use(express.json({ limit: MAX_INPUT_JSON }));
+  const cfg = globalConfig.config;
+  app.use(express.json({ limit: cfg.app.maxInputJson }));
   app.use(cookieParser());
 
   // Set up session and passport

@@ -4,12 +4,14 @@ import { createClient, RedisClientType } from "redis";
 import { Message } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { ok } from "@/utils/assert";
-import { QUEUE_MESSAGE_EXPIRATION_SEC, REDIS_URL } from "@/config/application";
 import { MessageRole } from "@/types/ai.types";
 import { Document } from "@/entities/Document";
 import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/responses";
 import { Chat } from "@/entities";
 import EventEmitter from "events";
+import { globalConfig } from "@/global-config";
+
+const appCfg = globalConfig.config.app;
 
 // Topics for PubSub
 export const NEW_MESSAGE = "NEW_MESSAGE";
@@ -48,14 +50,14 @@ export class SubscriptionsService extends EventEmitter {
     // init Redis client for storing messages and PubSub
     // NOTE: Redis connection is optional - application works without Redis
     // but will not share messages between multiple instances
-    if (!REDIS_URL) {
+    if (!appCfg.redisUrl) {
       logger.warn("Redis URL not configured - multi-instance support disabled");
       return;
     }
 
     try {
       const client: RedisClientType = createClient({
-        url: REDIS_URL,
+        url: appCfg.redisUrl,
         socket: {
           reconnectStrategy: (retries: number) => {
             if (retries > 5) {
@@ -204,7 +206,7 @@ export class SubscriptionsService extends EventEmitter {
       await this.redisClient.set(
         `message:${messageId}`,
         JSON.stringify({ message, chat }),
-        { EX: QUEUE_MESSAGE_EXPIRATION_SEC } // message expiration to prevent stale data
+        { EX: appCfg.queueMessageExpirationSec } // message expiration to prevent stale data
       );
 
       // Broadcast message to all clients using Redis PubSub

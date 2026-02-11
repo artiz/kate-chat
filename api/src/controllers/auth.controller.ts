@@ -3,12 +3,13 @@ import passport from "passport";
 import { generateToken, TokenPayload, verifyToken } from "@/utils/jwt";
 import { User, MCPServer } from "@/entities";
 import { getRepository } from "@/config/database";
-import { FRONTEND_URL, CALLBACK_URL_BASE } from "@/config/application";
 import { createLogger } from "@/utils/logger";
 import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
+const runtimeCfg = globalConfig.config.runtime;
 
 // Create a router for auth routes
 export const router = Router();
@@ -31,7 +32,7 @@ const handleAuthResponse = (req: Request, res: Response) => {
   });
 
   // Redirect to the frontend with the token
-  res.redirect(`${FRONTEND_URL}/oauth-callback?token=${token}`);
+  res.redirect(`${runtimeCfg.frontendUrl}/oauth-callback?token=${token}`);
 };
 
 // Google OAuth routes
@@ -130,7 +131,7 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     }
 
     // Exchange authorization code for access token
-    const redirectUri = `${CALLBACK_URL_BASE}/auth/mcp/callback`;
+    const redirectUri = `${runtimeCfg.callbackUrlBase}/auth/mcp/callback`;
 
     const tokenParams = new URLSearchParams({
       grant_type: "authorization_code",

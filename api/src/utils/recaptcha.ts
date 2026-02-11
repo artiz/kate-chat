@@ -1,6 +1,10 @@
 import { fetch } from "undici";
-import { RECAPTCHA_SECRET_KEY, RECAPTCHA_VERIFY_URL, RECAPTCHA_SCORE_THRESHOLD } from "../config/application";
+import { globalConfig } from "@/global-config";
 import { logger } from "./logger";
+
+const RECAPTCHA_SECRET_KEY = globalConfig.config.runtime.recaptchaSecretKey;
+const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
+const RECAPTCHA_SCORE_THRESHOLD = 0.5;
 
 interface RecaptchaResponse {
   success: boolean;

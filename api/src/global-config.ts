@@ -171,14 +171,14 @@ function mergeDeep<T>(target: T, source: Partial<T>): T {
 
 export class GlobalConfig {
   private static instance: GlobalConfig;
-  private readonly config: GlobalConfigShape;
+  private readonly cfg: GlobalConfigShape;
 
   private constructor() {
     loadEnv();
 
     const defaults = this.buildDefaults();
     const customization = this.loadCustomization();
-    this.config = mergeDeep(defaults, customization);
+    this.cfg = mergeDeep(defaults, customization);
   }
 
   static getInstance(): GlobalConfig {
@@ -188,8 +188,12 @@ export class GlobalConfig {
     return this.instance;
   }
 
-  get values(): GlobalConfigShape {
-    return this.config;
+  static get config(): GlobalConfigShape {
+    return this.getInstance().cfg;
+  }
+
+  get config(): GlobalConfigShape {
+    return this.cfg;
   }
 
   private buildDefaults(): GlobalConfigShape {
@@ -333,42 +337,3 @@ export class GlobalConfig {
 }
 
 export const globalConfig = GlobalConfig.getInstance();
-
-export const aiDefaults = globalConfig.values.ai;
-export const ENABLED_API_PROVIDERS: ApiProvider[] =
-  globalConfig.values.providers.enabled.length === 1 &&
-  (globalConfig.values.providers.enabled as string[])[0] === "*"
-    ? Object.values(ApiProvider)
-    : (globalConfig.values.providers.enabled as ApiProvider[]);
-
-export const DEFAULT_TEMPERATURE = aiDefaults.defaultTemperature;
-export const DEFAULT_MAX_TOKENS = aiDefaults.defaultMaxTokens;
-export const DEFAULT_TOP_P = aiDefaults.defaultTopP;
-export const CONTEXT_MESSAGES_LIMIT = aiDefaults.contextMessagesLimit;
-export const EMBEDDINGS_DIMENSIONS = aiDefaults.embeddingsDimensions ?? (globalConfig.values.db.type === "mssql" ? 1998 : 3072);
-export const CHARACTERS_PER_TOKEN = aiDefaults.charactersPerToken;
-export const MAX_CONTEXT_TOKENS = aiDefaults.maxContextTokens;
-export const SUMMARIZING_OUTPUT_TOKENS = aiDefaults.summarizingOutputTokens;
-export const SUMMARIZING_TEMPERATURE = aiDefaults.summarizingTemperature;
-export const RAG_QUERY_CHUNKS_LIMIT = aiDefaults.ragQueryChunksLimit;
-export const RAG_LOAD_FULL_PAGES = aiDefaults.ragLoadFullPages;
-
-export const MAX_INPUT_JSON = globalConfig.values.app.maxInputJson;
-export const DEMO_MODE = globalConfig.values.demo.enabled;
-export const DEMO_MAX_CHAT_MESSAGES = globalConfig.values.demo.maxChatMessages;
-export const DEMO_MAX_CHATS = globalConfig.values.demo.maxChats;
-export const DEMO_MAX_IMAGES = globalConfig.values.demo.maxImages;
-export const APP_USER_AGENT = globalConfig.values.app.userAgent;
-export const DEFAULT_ADMIN_EMAILS = globalConfig.values.admin.defaultEmails;
-export const RECAPTCHA_SECRET_KEY = globalConfig.values.runtime.recaptchaSecretKey;
-export const CALLBACK_URL_BASE = globalConfig.values.runtime.callbackUrlBase;
-export const FRONTEND_URL = globalConfig.values.runtime.frontendUrl;
-export const QUEUE_MESSAGE_EXPIRATION_SEC = globalConfig.values.app.queueMessageExpirationSec;
-export const REDIS_URL = globalConfig.values.app.redisUrl || "redis://localhost:6379";
-export const GOOGLE_CLIENT_ID = globalConfig.values.oauth.googleClientId || "";
-export const GOOGLE_CLIENT_SECRET = globalConfig.values.oauth.googleClientSecret || "";
-export const GITHUB_CLIENT_ID = globalConfig.values.oauth.githubClientId || "";
-export const GITHUB_CLIENT_SECRET = globalConfig.values.oauth.githubClientSecret || "";
-export const MICROSOFT_CLIENT_ID = globalConfig.values.oauth.microsoftClientId || "";
-export const MICROSOFT_CLIENT_SECRET = globalConfig.values.oauth.microsoftClientSecret || "";
-export const MICROSOFT_TENANT_ID = globalConfig.values.oauth.microsoftTenantId || "common";

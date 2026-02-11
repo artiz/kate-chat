@@ -7,8 +7,10 @@ import { AddDocumentsToChatResponse, GqlChatsList, RemoveDocumentsFromChatRespon
 import { Message, Document, Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
 import { ChatsService } from "@/services/chats.service";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/config/ai/common";
+import { globalConfig } from "@/global-config";
 import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
+
+const aiConfig = globalConfig.config.ai;
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
@@ -64,9 +66,9 @@ export class ChatResolver extends BaseResolver {
       title: input.title || "",
       user,
       systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
-      temperature: user.defaultTemperature ?? DEFAULT_TEMPERATURE,
-      maxTokens: user.defaultMaxTokens ?? DEFAULT_MAX_TOKENS,
-      topP: user.defaultTopP ?? DEFAULT_TOP_P,
+      temperature: user.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.defaultTopP ?? aiConfig.defaultTopP,
       imagesCount: user.defaultImagesCount ?? 1,
       isPristine: true,
     });

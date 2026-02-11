@@ -5,7 +5,7 @@ import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { ConnectionParams } from "../middleware/auth.middleware";
-import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE, DEFAULT_TOP_P } from "@/global-config";
+import { globalConfig } from "@/global-config";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -21,6 +21,7 @@ export enum UserRole {
 
 const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
+const aiDefaults = globalConfig.config.ai;
 
 @ObjectType("UserSettings")
 @InputType("UserSettingsInput")
@@ -103,15 +104,15 @@ export class User {
   defaultSystemPrompt?: string;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, default: DEFAULT_TEMPERATURE, type: "float" })
+  @Column({ nullable: true, default: aiDefaults.defaultTemperature, type: "float" })
   defaultTemperature?: number;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, default: DEFAULT_MAX_TOKENS, type: "integer" })
+  @Column({ nullable: true, default: aiDefaults.defaultMaxTokens, type: "integer" })
   defaultMaxTokens?: number;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, default: DEFAULT_TOP_P, type: "float" })
+  @Column({ nullable: true, default: aiDefaults.defaultTopP, type: "float" })
   defaultTopP?: number;
 
   @Field({ nullable: true })
