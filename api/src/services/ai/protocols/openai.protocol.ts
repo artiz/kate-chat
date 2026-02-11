@@ -82,8 +82,10 @@ export class OpenAIProtocol implements ModelProtocol {
     this.openai = new OpenAI({
       apiKey,
       baseURL,
-      maxRetries: 10,
+      maxRetries: 3,
     });
+
+    logger.debug({ baseURL, modelIdOverride }, "OpenAIProtocol initialized");
   }
 
   get api(): OpenAI {

@@ -587,6 +587,7 @@ enum ModelType {
   IMAGE_GENERATION
   OTHER
   REALTIME
+  VIDEO_GENERATION
 }
 
 type Mutation {

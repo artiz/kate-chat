@@ -12,6 +12,7 @@ export enum ModelType {
   CHAT = "chat",
   EMBEDDING = "embedding",
   IMAGE_GENERATION = "image_generation",
+  VIDEO_GENERATION = "video_generation",
   AUDIO_GENERATION = "audio_generation",
   REALTIME = "realtime",
   OTHER = "other",

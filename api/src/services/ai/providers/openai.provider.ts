@@ -25,8 +25,10 @@ import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
+  OPENAI_MODELS_IMAGES_GENERATION,
   OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
   OPENAI_MODELS_SUPPORT_RESPONSES_API,
+  OPENAI_MODELS_VIDEO_GENERATION,
   OPENAI_NON_CHAT_MODELS,
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "../tools/yandex.web_search";
@@ -266,8 +268,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
       for (const model of response.data) {
         const nonChatModel = OPENAI_NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
         const embeddingModel = model.id.startsWith("text-embedding");
-        const isImageGeneration =
-          model.id.startsWith("dall-e") || model.id.startsWith("gpt-image") || model.id.startsWith("chatgpt-image");
+        const isImageGeneration = OPENAI_MODELS_IMAGES_GENERATION.some(prefix => model.id.startsWith(prefix));
+        const isVideoGeneration = OPENAI_MODELS_VIDEO_GENERATION.some(prefix => model.id.startsWith(prefix));
         const isRealtime = model.id.includes("-realtime");
 
         const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => model.id.startsWith(prefix));
@@ -278,7 +280,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
         const apiType = this.getChatApiType(model.id);
         const tools =
-          embeddingModel || isImageGeneration
+          embeddingModel || isImageGeneration || isVideoGeneration
             ? []
             : apiType === "responses"
               ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER, ToolType.MCP]
@@ -293,9 +295,11 @@ export class OpenAIApiProvider extends BaseApiProvider {
           ? ModelType.EMBEDDING
           : isImageGeneration
             ? ModelType.IMAGE_GENERATION
-            : isRealtime
-              ? ModelType.REALTIME
-              : ModelType.CHAT;
+            : isVideoGeneration
+              ? ModelType.VIDEO_GENERATION
+              : isRealtime
+                ? ModelType.REALTIME
+                : ModelType.CHAT;
 
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||

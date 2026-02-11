@@ -270,28 +270,20 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
       </AppShell.Section>
       <AppShell.Section p="sm">
         <Group justify={expanded ? "flex-start" : "center"} gap="xs">
-          <Tooltip label="Project GitHub Repository" position="right" disabled={expanded}>
+          <Tooltip label="Project GitHub Repository" position="right">
             <ActionIcon
               component="a"
               variant="subtle"
               href="https://github.com/artiz/kate-chat"
               target="_blank"
               color="dark"
-              title="Project GitHub Repository"
             >
               <IconBrandGithub size={24} />
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip label="Author's CV" position="right" disabled={expanded}>
-            <ActionIcon
-              component="a"
-              variant="subtle"
-              href="https://artiz.github.io/"
-              target="_blank"
-              color="indigo"
-              title="Author's CV"
-            >
+          <Tooltip label="Author's CV" position="right">
+            <ActionIcon component="a" variant="subtle" href="https://artiz.github.io/" target="_blank" color="indigo">
               <IconFileCv size={24} />
             </ActionIcon>
           </Tooltip>

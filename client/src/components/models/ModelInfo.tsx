@@ -8,6 +8,8 @@ import {
   IconWorldSearch,
   IconCloudCode,
   IconPlugConnected,
+  IconVideo,
+  IconMicrophone,
 } from "@tabler/icons-react";
 import { Model, ToolType } from "@/types/graphql";
 import { ModelType } from "@katechat/ui";
@@ -47,6 +49,16 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
       {model.type === ModelType.IMAGE_GENERATION && (
         <Tooltip label="Images generation">
           <IconPhotoAi size={size} />
+        </Tooltip>
+      )}
+      {model.type === ModelType.VIDEO_GENERATION && (
+        <Tooltip label="Video generation">
+          <IconVideo size={size} />
+        </Tooltip>
+      )}
+      {model.type === ModelType.REALTIME && (
+        <Tooltip label="Realtime audio model">
+          <IconMicrophone size={size} />
         </Tooltip>
       )}
 

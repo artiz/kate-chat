@@ -47,6 +47,10 @@ export const OPENAI_MODELS_SUPPORT_IMAGES_INPUT = [
   "gpt-image",
 ];
 
+export const OPENAI_MODELS_IMAGES_GENERATION = ["dall-e", "chatgpt-image", "gpt-image"];
+
+export const OPENAI_MODELS_VIDEO_GENERATION = ["sora-2", "sora-2-pro"];
+
 export const OPENAI_MODEL_MAX_INPUT_TOKENS: { [key: string]: number } = {
   "gpt-5": 400_000,
   "gpt-4": 8192,
