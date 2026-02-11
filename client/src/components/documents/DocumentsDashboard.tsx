@@ -35,10 +35,11 @@ import {
   REMOVE_FROM_CHAT_MUTATION,
 } from "@/store/services/graphql.queries";
 import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForChatResponse } from "@/types/graphql";
-import { MAX_UPLOAD_FILE_SIZE, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
+import { MAX_UPLOAD_FILE_SIZE, MOBILE_BREAKPOINT, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
 import { getStatusColor } from "@/types/ai";
+import { useMediaQuery } from "@mantine/hooks";
 
 interface IProps {
   chatId?: string;
@@ -61,6 +62,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const itemsPerPage = 10;
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
   const { uploadDocuments, uploadingDocs, uploadLoading, stopUpload } = useDocumentsUpload();
 
@@ -169,11 +171,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
   const [reindexDocument, { loading: reindexLoading }] = useMutation(REINDEX_DOCUMENT_MUTATION, {
     onCompleted: () => {
-      notifications.show({
-        title: "Reindex Requested",
-        message: "Document reindexing has been triggered.",
-        color: "green",
-      });
       refetch();
     },
     onError: error => {
@@ -187,11 +184,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
   const [deleteDocument, { loading: deleteLoading }] = useMutation(DELETE_DOCUMENT_MUTATION, {
     onCompleted: () => {
-      notifications.show({
-        title: "Document Deleted",
-        message: "Document has been successfully deleted.",
-        color: "green",
-      });
       refetch();
     },
     onError: error => {
@@ -238,11 +230,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
           color: "red",
         });
       } else {
-        notifications.show({
-          title: "Document(s) Removed",
-          message: "Document(s) has been successfully removed from chat.",
-          color: "green",
-        });
         dispatch(updateChat(chat));
         setChat(chat);
       }
@@ -490,9 +477,10 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                 <Modal
                   opened={!!summaryDocument}
                   onClose={() => setSummaryDocument(undefined)}
-                  title="Document Info"
+                  title={summaryDocument?.fileName || "Document Info"}
                   centered
                   size="xl"
+                  fullScreen={isMobile}
                 >
                   <Stack gap="sm">
                     <Group>

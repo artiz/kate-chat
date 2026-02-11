@@ -607,7 +607,7 @@ export const TEST_MCP_TOOL = gql`
 `;
 
 // MCP servers query for MCP tool dropdown
-export const GET_MCP_SERVERS = gql`
+export const GET_MCP_SERVERS_FOR_CHAT = gql`
   query GetMCPServersForChat {
     getMCPServers {
       servers {
@@ -656,5 +656,46 @@ export const UPDATE_MCP_SERVER = gql`
       }
       error
     }
+  }
+`;
+
+// GraphQL queries and mutations
+export const GET_MCP_SERVERS = gql`
+  query GetMCPServers {
+    getMCPServers {
+      servers {
+        id
+        name
+        url
+        description
+        transportType
+        authType
+        authConfig {
+          headerName
+          clientId
+          clientSecret
+          tokenUrl
+          authorizationUrl
+          scope
+        }
+        tools {
+          name
+          description
+          inputSchema
+          outputSchema
+        }
+        isActive
+        createdAt
+        updatedAt
+      }
+      total
+      error
+    }
+  }
+`;
+
+export const DELETE_MCP_SERVER = gql`
+  mutation DeleteMCPServer($input: DeleteMCPServerInput!) {
+    deleteMCPServer(input: $input)
   }
 `;

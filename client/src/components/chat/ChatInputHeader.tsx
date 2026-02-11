@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActionIcon, Select, Tooltip, Popover, Box, Menu } from "@mantine/core";
+import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button } from "@mantine/core";
 import {
   IconRobot,
   IconSettings,
@@ -20,9 +20,11 @@ import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
 import { assert } from "@katechat/ui";
 import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
-import { GET_MCP_SERVERS } from "@/store/services/graphql.queries";
+import { GET_MCP_SERVERS_FOR_CHAT } from "@/store/services/graphql.queries";
 import { RootState } from "@/store";
 import { useSelector } from "react-redux";
+import { MOBILE_BREAKPOINT } from "@/lib/config";
+import { useMediaQuery, useDisclosure } from "@mantine/hooks";
 
 // Re-export for backwards compatibility
 export { getMcpAuthToken } from "@/components/auth/McpAuthentication";
@@ -48,12 +50,14 @@ export const ChatInputHeader = ({
   selectedModel,
   onUpdateChat,
 }: IHeaderProps) => {
+  const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
   const { token: userToken } = useSelector((state: RootState) => state.auth);
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
   // Query MCP servers when MCP tool is supported
-  const { data: mcpServersData } = useQuery(GET_MCP_SERVERS, {
+  const { data: mcpServersData } = useQuery(GET_MCP_SERVERS_FOR_CHAT, {
     skip: !selectedModel?.tools?.includes(ToolType.MCP),
   });
 
@@ -214,18 +218,25 @@ export const ChatInputHeader = ({
         </Box>
       )}
 
-      <Popover position="top" withArrow shadow="md" trapFocus>
-        <Popover.Target>
-          <Tooltip label="Chat Settings">
-            <ActionIcon disabled={disabled || streaming} variant="default">
-              <IconSettings size="1.2rem" />
-            </ActionIcon>
-          </Tooltip>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
-        </Popover.Dropdown>
-      </Popover>
+      <Tooltip label="Chat Settings">
+        <ActionIcon disabled={disabled || streaming} variant="default" onClick={openSettings}>
+          <IconSettings size="1.2rem" />
+        </ActionIcon>
+      </Tooltip>
+      <Modal
+        opened={settingsOpened}
+        onClose={closeSettings}
+        title="Chat Settings"
+        fullScreen={isMobile}
+        size="lg"
+        yOffset="auto"
+        styles={{ content: { marginTop: "auto", marginBottom: "1rem" } }}
+      >
+        <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
+        <Button mt="md" onClick={closeSettings}>
+          Close
+        </Button>
+      </Modal>
 
       {/* Tool buttons */}
       {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (

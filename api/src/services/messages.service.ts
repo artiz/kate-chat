@@ -191,6 +191,26 @@ export class MessagesService {
       if (metadata.exif) {
         try {
           exif = exifReader(metadata.exif);
+          // fix possible serialization issues
+          const bufferTags = [
+            "OECF",
+            "ExifVersion",
+            "ComponentsConfiguration",
+            "MakerNote",
+            "UserComment",
+            "SpatialFrequencyResponse",
+            "FileSource",
+            "SceneType",
+            "CFAPattern",
+            "DeviceSettingDescription",
+            "SourceExposureTimesOfCompositeImage",
+          ];
+
+          for (const tag of bufferTags) {
+            if (exif.Photo?.[tag]) {
+              (exif.Photo[tag] as any) = Buffer.from(exif.Photo[tag] as Buffer).toString("utf-8");
+            }
+          }
         } catch (e) {}
       }
 

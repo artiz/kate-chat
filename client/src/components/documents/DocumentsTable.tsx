@@ -6,17 +6,28 @@ import {
   IconTrash,
   IconMessage2Plus,
   IconMessageMinus,
-  IconFileCheckFilled,
   IconFileStack,
   IconMarkdown,
+  IconFileBarcode,
+  IconFileUpload,
+  IconCloudUpload,
+  IconFileAlert,
+  IconFileShredder,
+  IconFileTextAi,
+  IconFiles,
+  IconFileAnalytics,
+  IconFileBroken,
+  IconFileAi,
 } from "@tabler/icons-react";
 import { formatFileSize } from "@katechat/ui";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
 import { Document } from "@/types/graphql";
+import { MOBILE_BREAKPOINT } from "@/lib/config";
+import { useMediaQuery } from "@mantine/hooks";
 
 interface DocumentsTableProps {
   documents: Document[];
-  chatDocumentsMap: Record<string, Document>;
+  chatDocumentsMap?: Record<string, Document>;
   chatId?: string;
   onAddToChat: (doc: Document) => void;
   onRemoveFromChat: (doc: Document) => void;
@@ -28,7 +39,7 @@ interface DocumentsTableProps {
 
 export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   documents,
-  chatDocumentsMap,
+  chatDocumentsMap = {},
   chatId,
   onAddToChat,
   onRemoveFromChat,
@@ -37,6 +48,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onViewSummary,
   disableActions = false,
 }) => {
+  const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   if (documents.length === 0) {
     return (
       <Text ta="center" c="dimmed" py="xl">
@@ -67,11 +79,39 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
     );
   }
 
+  const getStatusIcon = (status?: DocumentStatus): React.ReactNode => {
+    const size = isMobile ? 16 : 20;
+    switch (status) {
+      case DocumentStatus.READY:
+        return <IconFileTextAi size={size} />;
+      case DocumentStatus.UPLOAD:
+        return <IconFileUpload size={size} />;
+      case DocumentStatus.STORAGE_UPLOAD:
+        return <IconCloudUpload size={size} />;
+      case DocumentStatus.BATCHING:
+        return <IconFiles size={size} />;
+      case DocumentStatus.PARSING:
+        return <IconFileAnalytics size={size} />;
+      case DocumentStatus.CHUNKING:
+        return <IconFileStack size={size} />;
+      case DocumentStatus.EMBEDDING:
+        return <IconFileBarcode size={size} />;
+      case DocumentStatus.SUMMARIZING:
+        return <IconFileAi size={size} />;
+      case DocumentStatus.ERROR:
+        return <IconFileAlert size={size} />;
+      case DocumentStatus.DELETING:
+        return <IconFileShredder size={size} />;
+      default:
+        return <IconFileBroken size={size} />;
+    }
+  };
+
   return (
-    <Table striped highlightOnHover withTableBorder style={{ tableLayout: "fixed", width: "100%" }}>
+    <Table striped highlightOnHover horizontalSpacing="xs" style={{ tableLayout: "fixed", width: "100%" }}>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th style={{ width: "40%" }}>File Name</Table.Th>
+          <Table.Th style={{ width: "45%" }}>File Name</Table.Th>
           <Table.Th visibleFrom="lg">Size</Table.Th>
           <Table.Th>Status</Table.Th>
           <Table.Th>Actions</Table.Th>
@@ -107,13 +147,13 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
               <Text>{formatFileSize(doc.fileSize || 0)}</Text>
             </Table.Td>
             <Table.Td>
-              <Badge
-                color={getStatusColor(doc.status)}
-                variant="light"
-                leftSection={chatDocumentsMap[doc.id] ? <IconFileCheckFilled size="16" /> : <IconFile size="16" />}
-              >
-                {doc.status}
-                {doc.status != DocumentStatus.ERROR ? `: ${((doc.statusProgress ?? 0) * 100).toFixed(2)}%` : ""}
+              <Badge color={getStatusColor(doc.status)} leftSection={getStatusIcon(doc.status)}>
+                {isMobile ? null : (
+                  <>
+                    {doc.status}
+                    {doc.status != DocumentStatus.ERROR ? `: ${((doc.statusProgress ?? 0) * 100).toFixed(2)}%` : ""}
+                  </>
+                )}
               </Badge>
             </Table.Td>
 

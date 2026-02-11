@@ -32,47 +32,7 @@ import { MCPToolsDialog } from "./MCPToolsDialog";
 import { MCPServerFormDialog } from "./MCPServerFormDialog";
 import { MCPServer } from "@/types/graphql";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
-
-// GraphQL queries and mutations
-const GET_MCP_SERVERS = gql`
-  query GetMCPServers {
-    getMCPServers {
-      servers {
-        id
-        name
-        url
-        description
-        transportType
-        authType
-        authConfig {
-          headerName
-          clientId
-          clientSecret
-          tokenUrl
-          authorizationUrl
-          scope
-        }
-        tools {
-          name
-          description
-          inputSchema
-          outputSchema
-        }
-        isActive
-        createdAt
-        updatedAt
-      }
-      total
-      error
-    }
-  }
-`;
-
-const DELETE_MCP_SERVER = gql`
-  mutation DeleteMCPServer($input: DeleteMCPServerInput!) {
-    deleteMCPServer(input: $input)
-  }
-`;
+import { DELETE_MCP_SERVER, GET_MCP_SERVERS } from "@/store/services/graphql.queries";
 
 const AUTH_TYPES = [
   { value: "NONE", label: "No Authentication" },
@@ -98,11 +58,6 @@ export const MCPServersAdmin: React.FC = () => {
   // Mutations
   const [deleteServer] = useMutation(DELETE_MCP_SERVER, {
     onCompleted: () => {
-      notifications.show({
-        title: "Success",
-        message: "MCP server deleted successfully",
-        color: "green",
-      });
       refetchServers();
     },
     onError: error => {
@@ -205,11 +160,11 @@ export const MCPServersAdmin: React.FC = () => {
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                   <Group gap="xs">
                     <IconPlugConnected size="1rem" />
-                    <Text fw={600} size="sm" truncate>
+                    <Text fw={600} truncate>
                       {server.name}
                     </Text>
                   </Group>
-                  <Text size="xs" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                  <Text size="sm" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
                     {server.url}
                   </Text>
                   {server.description && (
@@ -220,18 +175,18 @@ export const MCPServersAdmin: React.FC = () => {
                 </Stack>
                 <ActionIcon.Group>
                   <Tooltip label="View Tools">
-                    <ActionIcon variant="light" color="blue" size="md" onClick={() => handleViewTools(server)}>
-                      <IconTool />
+                    <ActionIcon variant="light" color="blue" size="lg" onClick={() => handleViewTools(server)}>
+                      <IconTool size="20" />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Edit">
-                    <ActionIcon variant="light" color="gray" size="md" onClick={() => handleEditServer(server)}>
-                      <IconEdit />
+                    <ActionIcon variant="light" color="gray" size="lg" onClick={() => handleEditServer(server)}>
+                      <IconEdit size="20" />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Delete">
-                    <ActionIcon variant="light" color="red" size="md" onClick={() => handleDeleteServer(server)}>
-                      <IconTrash />
+                    <ActionIcon variant="light" color="red" size="lg" onClick={() => handleDeleteServer(server)}>
+                      <IconTrash size="20" />
                     </ActionIcon>
                   </Tooltip>
                 </ActionIcon.Group>

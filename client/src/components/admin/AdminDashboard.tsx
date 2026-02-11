@@ -168,8 +168,8 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <Stack gap="xl">
-      <Group justify="space-between" align="center">
+    <Stack gap="md">
+      <Group justify="space-between" align="flex-start">
         <Title order={2} mb="lg">
           Admin Dashboard
         </Title>
@@ -189,7 +189,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Stats Cards */}
       <Grid>
         <Grid.Col span={{ base: 12, sm: 4 }}>
-          <Card withBorder p="lg">
+          <Card withBorder p="md">
             <Group justify="space-between">
               <div>
                 <Text c="dimmed" size="sm" fw={500} tt="uppercase">
@@ -205,7 +205,7 @@ export const AdminDashboard: React.FC = () => {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 4 }}>
-          <Card withBorder p="lg">
+          <Card withBorder p="md">
             <Group justify="space-between">
               <div>
                 <Text c="dimmed" size="sm" fw={500} tt="uppercase">
@@ -221,7 +221,7 @@ export const AdminDashboard: React.FC = () => {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 4 }}>
-          <Card withBorder p="lg">
+          <Card withBorder p="md">
             <Group justify="space-between">
               <div>
                 <Text c="dimmed" size="sm" fw={500} tt="uppercase">
@@ -238,7 +238,7 @@ export const AdminDashboard: React.FC = () => {
       </Grid>
 
       {/* Users Management */}
-      <Paper withBorder p="lg">
+      <Paper withBorder p="md">
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Title order={2}>Users Management</Title>
@@ -263,20 +263,22 @@ export const AdminDashboard: React.FC = () => {
             </Group>
           ) : users && users.users.length > 0 ? (
             <>
-              <Table striped highlightOnHover withTableBorder>
+              <Table striped highlightOnHover horizontalSpacing="sm" style={{ tableLayout: "fixed", width: "100%" }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>User</Table.Th>
-                    <Table.Th>Email</Table.Th>
-                    <Table.Th>Role</Table.Th>
-                    <Table.Th>Models/Chats</Table.Th>
-                    <Table.Th>Joined</Table.Th>
+                    <Table.Th visibleFrom="lg" w="30%">
+                      Name
+                    </Table.Th>
+                    <Table.Th w="30%">Email</Table.Th>
+                    <Table.Th visibleFrom="lg">Role</Table.Th>
+                    <Table.Th visibleFrom="lg">Models/Chats</Table.Th>
+                    <Table.Th visibleFrom="lg">Joined</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {users.users.map(user => (
                     <Table.Tr key={user.id}>
-                      <Table.Td>
+                      <Table.Td visibleFrom="lg">
                         <Group>
                           <Avatar color="gray" radius="xl" src={user.avatarUrl} />
                           <Text fw={500}>
@@ -285,9 +287,12 @@ export const AdminDashboard: React.FC = () => {
                         </Group>
                       </Table.Td>
                       <Table.Td>
-                        <Text>{user.email}</Text>
+                        <Group gap="xs">
+                          <Avatar color="gray" size="sm" radius="xl" src={user.avatarUrl} hiddenFrom="lg" />
+                          <Text>{user.email}</Text>
+                        </Group>
                       </Table.Td>
-                      <Table.Td>
+                      <Table.Td visibleFrom="lg">
                         <Badge
                           color={user.role === UserRole.ADMIN ? "red" : "blue"}
                           variant="light"
@@ -298,12 +303,10 @@ export const AdminDashboard: React.FC = () => {
                           {user.role}
                         </Badge>
                       </Table.Td>
-                      <Table.Td>
-                        <Text>
-                          {user.modelsCount || 0}/{user.chatsCount || 0}
-                        </Text>
+                      <Table.Td visibleFrom="lg">
+                        {user.modelsCount || 0}/{user.chatsCount || 0}
                       </Table.Td>
-                      <Table.Td>
+                      <Table.Td visibleFrom="lg">
                         <Text size="sm">{new Date(user.createdAt).toLocaleDateString()}</Text>
                       </Table.Td>
                     </Table.Tr>

@@ -13,6 +13,7 @@ import {
   Button,
   Divider,
   Flex,
+  Grid,
 } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import classes from "./ChatSettings.module.scss";
@@ -114,13 +115,9 @@ export function ChatSettings({
 
   return (
     <Box className={classes.settingsPanel}>
-      <Group mb="md" justify="space-between">
-        <Title order={4}>Chat Settings</Title>
-      </Group>
-
       <Stack gap="md">
         <div>
-          <Group mb={5} justify="space-between">
+          <Group mb="md" justify="space-between">
             <Text size="sm" fw={500}>
               System Prompt{" "}
               <Tooltip label="The initial prompt that sets the behavior of the AI assistant in this chat.">
@@ -140,13 +137,14 @@ export function ChatSettings({
             value={systemPromptValue || ""}
             autosize
             rows={4}
+            maxRows={10}
             onChange={handleSystemPromptChange}
           />
         </div>
 
-        <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
-          <div>
-            <Group p="apart" mb={5}>
+        <Grid gutter="lg">
+          <Box m="md" miw="140px">
+            <Group p="apart" mb="md">
               <Text size="sm">Temperature</Text>
               <Group gap={5}>
                 <Text size="sm" c="dimmed">
@@ -172,10 +170,10 @@ export function ChatSettings({
                 { value: 1, label: "1" },
               ]}
             />
-          </div>
+          </Box>
 
-          <div>
-            <Group p="apart" mb={5}>
+          <Box m="md" miw="140px">
+            <Group p="apart" mb="md">
               <Text size="sm">Top P</Text>
               <Group gap={5}>
                 <Text size="sm" c="dimmed">
@@ -201,12 +199,10 @@ export function ChatSettings({
                 { value: 1, label: "1" },
               ]}
             />
-          </div>
-        </Flex>
-        <Divider my="xs" />
-        <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
-          <div>
-            <Group p="apart" mb={5}>
+          </Box>
+
+          <Box m="md" miw="140px">
+            <Group p="apart" mb="md">
               <Text size="sm">Images Count</Text>
               <Group gap={5}>
                 <Text size="sm" c="dimmed">
@@ -232,10 +228,10 @@ export function ChatSettings({
                 { value: 10, label: "10" },
               ]}
             />
-          </div>
+          </Box>
 
-          <div>
-            <Group p="apart" mb={5}>
+          <Box m="md" miw="140px">
+            <Group p="apart" mb="md">
               <Text size="sm">Max Tokens</Text>
               <Tooltip label="Maximum number of tokens to generate. A token is about 4 characters or 0.75 words.">
                 <ActionIcon size="xs" variant="subtle">
@@ -249,10 +245,10 @@ export function ChatSettings({
               min={1}
               max={2_000_000}
               step={100}
-              size="sm"
+              size="xs"
             />
-          </div>
-        </Flex>
+          </Box>
+        </Grid>
       </Stack>
     </Box>
   );
