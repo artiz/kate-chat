@@ -54,7 +54,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <span class="header-toggle">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="icon icon-tabler icons-tabler-outline icon-tabler-chevron-right">
+                    class="icon icon-tabler icons-tabler-outline">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M9 6l6 6l-6 6" />
                 </svg>
@@ -64,11 +64,25 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
         <div class="code-header-actions">
             <EXECUTE_BTN>
-            <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn">
+
+            <div type="button" class="action-btn mantine-focus-auto mantine-active code-download-btn" data-lang="<LANG>">
+              <div class="download-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" 
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
+                      class="icon icon-tabler icons-tabler-outline">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" />
+                      <path d="M12 4l0 12" />
+                  </svg>
+              </div>
+              <span class="action-btn-label">Download</span>
+            </div>
+
+            <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn" data-lang="<LANG>">
                 <div class="copy-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="icon icon-tabler icons-tabler-outline icon-tabler-copy">
+                        class="icon icon-tabler icons-tabler-outline">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                         <path
                             d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
@@ -79,7 +93,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                 <div class="check-icon" style="display: none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="icon icon-tabler icons-tabler-outline icon-tabler-copy-check">
+                        class="icon icon-tabler icons-tabler-outline">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                         <path stroke="none" d="M0 0h24v24H0z" />
                         <path
@@ -88,9 +102,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
                         <path d="M11 14l2 2l4 -4" />
                     </svg>
                 </div>
-                <span>Copy</span>
+                <span class="action-btn-label">Copy</span>
             </div>
-                </div>
+      </div>
   `;
 
   const processCodeElements = useCallback(
@@ -108,12 +122,12 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
           const plugin = codePlugins?.[lang];
           const executeBtn = plugin
-            ? `<div type="button" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
+            ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="icon icon-tabler icons-tabler-filled icon-tabler-player-play">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
                 </svg>
-                <span>${plugin.label}</span>
+                <span class="action-btn-label">${plugin.label}</span>
               </div>`
             : "";
 

@@ -23,32 +23,7 @@
   }
 }
 
-@media (max-width: 1280px) {
-  .katechat-message {
-    flex-direction: column;
-    position: relative;
-
-    .katechat-message-linked-toggle {
-      position: absolute;
-      right: 0.5rem;
-      top: 0.5rem;
-      display: flex;
-      z-index: 5;
-    }
-
-    .katechat-message-main,
-    .katechat-message-linked {
-      width: 100%;
-      margin: 0;
-      border-radius: 0;
-    }
-
-    .hidden {
-      display: none;
-    }
-  }
-}
-c {
+.katechat-message-linked {
   width: 100%;
   overflow-x: hidden;
   display: flex;
@@ -243,6 +218,15 @@ c {
       width: fit-content;
       gap: 0.25rem;
       cursor: pointer;
+      color: var(--mantine-color-dimmed);
+
+      &:hover {
+        color: var(--mantine-color-text);
+      }
+    }
+
+    .action-btn-label {
+      display: none;
     }
 
     .code-run-btn {
@@ -379,6 +363,13 @@ c {
         background-color: var(--mantine-color-gray-4);
       }
 
+      .action-btn {
+        color: var(--mantine-color-dark-9);
+        &:hover {
+          color: var(--mantine-color-dark-6);
+        }
+      }
+
       .code-run-btn {
         color: var(--mantine-color-teal-7);
 
@@ -421,6 +412,42 @@ c {
     }
     .message-details-content {
       border-color: var(--mantine-color-gray-5);
+    }
+  }
+}
+
+@media (min-width: 720px) {
+  .katechat-message {
+    .code-header {
+      .action-btn-label {
+        display: inline-block;
+      }
+    }
+  }
+}
+
+@media (max-width: 1280px) {
+  .katechat-message {
+    flex-direction: column;
+    position: relative;
+
+    .katechat-message-linked-toggle {
+      position: absolute;
+      right: 0.5rem;
+      top: 0.5rem;
+      display: flex;
+      z-index: 5;
+    }
+
+    .katechat-message-main,
+    .katechat-message-linked {
+      width: 100%;
+      margin: 0;
+      border-radius: 0;
+    }
+
+    .hidden {
+      display: none;
     }
   }
 }

@@ -5,6 +5,7 @@ import { notEmpty, ok } from "@/lib/assert";
 import { Message, Model, PluginProps, CodePlugin } from "@/core";
 import { ChatMessage } from "./message/ChatMessage";
 import { ImagePopup } from "../modal/ImagePopup";
+import { getProgrammingLanguageExt } from "@/lib";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -55,6 +56,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
       const classesToFind = [
         "code-run-btn",
         "code-copy-btn",
+        "code-download-btn",
         "code-toggle-all",
         "copy-message-btn",
         "code-header",
@@ -87,16 +89,43 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
       };
 
       // execute code block
-      if (target.classList.contains("code-run-btn")) {
+      if (target.classList.contains("code-run-btn") || target.classList.contains("code-download-btn")) {
         const lang = target.dataset["lang"];
-        if (lang && codePlugins?.[lang]) {
-          const codeBlock = target.closest(".code-header")?.nextElementSibling;
-          const codeDataEl = codeBlock?.querySelector(".code-data") as HTMLElement;
-          if (codeDataEl) {
-            const code = decodeURIComponent(codeDataEl.dataset.code || "").trim();
-            if (code) {
-              codePlugins[lang].execute(code, lang);
+        const run = target.classList.contains("code-run-btn");
+
+        const codeBlock = target.closest(".code-header")?.nextElementSibling;
+        const codeDataEl = codeBlock?.querySelector(".code-data") as HTMLElement;
+
+        if (codeDataEl) {
+          const code = decodeURIComponent(codeDataEl.dataset.code || "").trim();
+
+          if (!code) {
+            return notifications.show({
+              title: "Error",
+              message: "Code block is empty",
+              color: "red",
+            });
+          }
+
+          if (run) {
+            if (!lang) {
+              return notifications.show({
+                title: "Error",
+                message: "Language is not specified for this code block",
+                color: "red",
+              });
             }
+
+            codePlugins?.[lang]?.execute(code, lang);
+          } else {
+            const fileName = `code.${getProgrammingLanguageExt(lang || "txt")}`;
+            const blob = new Blob([code], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
           }
         }
       }

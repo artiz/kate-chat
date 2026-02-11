@@ -136,7 +136,7 @@ const CopyImageButton: React.FC<{ dataUrl: string }> = ({ dataUrl }) => {
         color={copied ? "teal" : "gray"}
         onClick={handleCopy}
       >
-        {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+        {copied ? <IconCheck size={20} /> : <IconCopy size={20} />}
       </ActionIcon>
     </Tooltip>
   );
@@ -362,12 +362,12 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
                 <>
                   <Tooltip label="Download output">
                     <ActionIcon size="sm" variant="subtle" color="gray" onClick={downloadOutput}>
-                      <IconDownload size={14} />
+                      <IconDownload size={20} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Clear output">
                     <ActionIcon size="sm" variant="subtle" color="gray" onClick={clearOutput}>
-                      <IconTrash size={14} />
+                      <IconTrash size={20} />
                     </ActionIcon>
                   </Tooltip>
                 </>
