@@ -84,7 +84,6 @@ async function bootstrap() {
       MCPServerResolver,
     ],
     validate: false,
-    emitSchemaFile: path.resolve(__dirname, "schema.graphql"),
     pubSub: schemaPubSub,
     authChecker: graphQlAuthChecker,
   });

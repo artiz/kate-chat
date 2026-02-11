@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { MessageRole, MessageType } from "@katechat/ui";
+import { MessageRole, MessageType, parseMarkdown } from "@katechat/ui";
 import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql.queries";
 import { Message, MessageChatInfo, MessageMetadata } from "@/types/graphql";
 import { updateChatInfo } from "@/store/slices/chatSlice";
@@ -131,7 +131,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
                   id,
                   isPristine: false,
                   lastBotMessage: message.content,
-                  lastBotMessageHtml: message.html,
+                  lastBotMessageHtml: message.html || parseMarkdown(message.content || ""),
                   ...response.chat,
                 })
               );

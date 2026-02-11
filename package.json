@@ -43,7 +43,7 @@
     "lint-staged": "^16.0.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,css,scss,graphql,html}": [
+    "*.{ts,tsx,js,jsx,json,css,scss,html}": [
       "prettier --write"
     ],
     "*.rs": [

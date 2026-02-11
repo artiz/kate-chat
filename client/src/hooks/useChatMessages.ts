@@ -153,7 +153,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           ...chat,
           lastBotMessage: lastMsg?.content || "...",
           lastBotMessageId: lastMsg?.id || undefined,
-          lastBotMessageHtml: lastMsg?.html || undefined,
+          lastBotMessageHtml: lastMsg?.html || parseMarkdown(lastMsg?.content || "..."),
         });
       }
     };

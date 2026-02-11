@@ -514,6 +514,8 @@ export class OpenAIProtocol implements ModelProtocol {
 
     const callableTools = this.formatRequestTools(input.tools, input.mcpServers);
 
+    const cyclesLimit = 100; // to prevent infinite loops in case of bugs
+    let cycleNo = 0;
     do {
       logger.trace({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
@@ -629,11 +631,11 @@ export class OpenAIProtocol implements ModelProtocol {
           };
         }
 
-        if (!stopped && choice?.finish_reason === "stop") {
+        if (!stopped && choice?.finish_reason) {
           stopped = true;
         }
       } // for await (const chunk of stream)
-    } while (!stopped);
+    } while (!stopped && cycleNo++ < cyclesLimit);
 
     await callbacks.onComplete(
       {
