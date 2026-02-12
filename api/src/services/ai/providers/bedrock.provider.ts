@@ -21,20 +21,17 @@ import {
   AIModelInfo,
   ModelResponse,
   StreamCallbacks,
-  ProviderInfo,
   UsageCostInfo,
   ServiceCostInfo,
   CompleteChatRequest,
   MessageMetadata,
-  ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
-  MessageRole,
   ModelMessage,
-  ResponseStatus,
-  ToolType,
+  ProviderInfo,
   ChatToolCallResult,
 } from "@/types/ai.types";
+import { ApiProvider, ToolType, ModelType, MessageRole, ResponseStatus } from "@/types/api";
 import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
@@ -48,7 +45,7 @@ import {
   formatBedrockRequestTools,
   BedrockToolCallable,
 } from "./bedrock.tools";
-import { ApiProvider } from "@/config/ai/common";
+
 import { FileContentLoader } from "@/services/data";
 
 const logger = createLogger(__filename);
@@ -79,21 +76,21 @@ export class BedrockApiProvider extends BaseApiProvider {
   constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
     super(connection, fileLoader);
 
-    if (!connection.AWS_BEDROCK_PROFILE && !connection.AWS_BEDROCK_ACCESS_KEY_ID) {
+    if (!connection.awsBedrockProfile && !connection.awsBedrockAccessKeyId) {
       logger.warn("AWS_BEDROCK_PROFILE/AWS_BEDROCK_ACCESS_KEY_ID is not set. Skipping AWS Bedrock initialization.");
       return;
     }
 
-    const config = connection.AWS_BEDROCK_PROFILE
+    const config = connection.awsBedrockProfile
       ? {
-          region: connection.AWS_BEDROCK_REGION,
-          profile: connection.AWS_BEDROCK_PROFILE,
+          region: connection.awsBedrockRegion,
+          profile: connection.awsBedrockProfile,
         } // Use AWS profile if set
       : {
-          region: connection.AWS_BEDROCK_REGION,
+          region: connection.awsBedrockRegion,
           credentials: {
-            accessKeyId: connection.AWS_BEDROCK_ACCESS_KEY_ID || "",
-            secretAccessKey: connection.AWS_BEDROCK_SECRET_ACCESS_KEY || "",
+            accessKeyId: connection.awsBedrockAccessKeyId || "",
+            secretAccessKey: connection.awsBedrockSecretAccessKey || "",
           },
         };
 
@@ -399,6 +396,9 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
       } catch (e: unknown) {
         logger.error(e, "InvokeModelWithResponseStreamCommand failed");
+        if ("$response" in (e as any)) {
+          logger.error({ response: (e as any).$response }, "Detailed error response from AWS Bedrock");
+        }
         await callbacks.onError(e instanceof Error ? e : new Error(getErrorMessage(e)));
         requestCompleted = true;
       }
@@ -407,9 +407,9 @@ export class BedrockApiProvider extends BaseApiProvider {
 
   public async getInfo(checkConnection = false): Promise<ProviderInfo> {
     const isConnected = !!this.bedrockClient;
-    const region = this.connection.AWS_BEDROCK_REGION;
-    const profile = this.connection.AWS_BEDROCK_PROFILE;
-    const accessKey = this.connection.AWS_BEDROCK_ACCESS_KEY_ID;
+    const region = this.connection.awsBedrockRegion;
+    const profile = this.connection.awsBedrockProfile;
+    const accessKey = this.connection.awsBedrockAccessKeyId;
 
     const details: Record<string, string | number | boolean | undefined> = {
       available: isConnected,
@@ -444,7 +444,7 @@ export class BedrockApiProvider extends BaseApiProvider {
   // Helper method to get all supported models with their metadata
   public async getModels(): Promise<Record<string, AIModelInfo>> {
     // no AWS connection
-    if (!this.connection.AWS_BEDROCK_ACCESS_KEY_ID && !this.connection.AWS_BEDROCK_PROFILE) {
+    if (!this.connection.awsBedrockAccessKeyId && !this.connection.awsBedrockProfile) {
       logger.warn("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");
       return {};
     }
@@ -545,7 +545,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       costs: [],
     };
 
-    if (!this.connection.AWS_BEDROCK_ACCESS_KEY_ID && !this.connection.AWS_BEDROCK_PROFILE) {
+    if (!this.connection.awsBedrockAccessKeyId && !this.connection.awsBedrockProfile) {
       result.error =
         "AWS credentials are not set. Set AWS_BEDROCK_ACCESS_KEY_ID and AWS_BEDROCK_SECRET_ACCESS_KEY or AWS_BEDROCK_PROFILE in config.";
       return result;
@@ -554,7 +554,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     try {
       // Create Cost Explorer client using the same region/credentials as Bedrock
       const costExplorerClient = new CostExplorerClient({
-        region: this.connection.AWS_BEDROCK_REGION,
+        region: this.connection.awsBedrockRegion,
         credentials: await this.bedrockClient.config.credentials(),
       });
 

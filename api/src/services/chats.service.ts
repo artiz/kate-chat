@@ -5,7 +5,7 @@ import { getRepository } from "@/config/database";
 import { GetChatsInput } from "@/types/graphql/inputs";
 import { GqlChatsList } from "@/types/graphql/responses";
 import { TokenPayload } from "@/utils/jwt";
-import { MessageRole } from "@/types/ai.types";
+import { MessageRole } from "@/types/api";
 
 export class ChatsService {
   private chatRepository: Repository<Chat>;

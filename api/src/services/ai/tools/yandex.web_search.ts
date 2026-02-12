@@ -1,12 +1,11 @@
 import { Agent, fetch } from "undici";
 import { WEB_SEARCH_TEST_QUERY } from "@/config/ai/prompts";
-import { YANDEX_SEARCH_API_URL } from "@/config/ai/yandex";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { createLogger } from "@/utils/logger";
 import { SearchRequest, SearchResult, SearchSortMode } from "./web_search";
 import { XMLParser } from "fast-xml-parser";
 import { stripHtml } from "@/utils/format";
-import { APP_USER_AGENT } from "@/config/application";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
@@ -21,7 +20,7 @@ const dispatcher = new Agent({
 
 export class YandexWebSearch {
   public static async isAvailable(connection: ConnectionParams): Promise<boolean> {
-    if (!connection.YANDEX_SEARCH_API_KEY || !connection.YANDEX_SEARCH_API_FOLDER) {
+    if (!connection.yandexSearchApiKey || !connection.yandexSearchApiFolder) {
       return false;
     }
 
@@ -38,7 +37,7 @@ export class YandexWebSearch {
         searchType: "SEARCH_TYPE_COM",
         queryText: request.query,
       },
-      folderId: connection.YANDEX_SEARCH_API_FOLDER,
+      folderId: connection.yandexSearchApiFolder,
       sortSpec:
         request.sortMode != null
           ? {
@@ -51,18 +50,18 @@ export class YandexWebSearch {
       region: request.region,
       l10n: "LOCALIZATION_EN",
       responseFormat: "FORMAT_XML",
-      userAgent: APP_USER_AGENT,
+      userAgent: globalConfig.app.userAgent,
     };
 
     logger.trace(data, "Yandex Web Search request");
 
-    const response = await fetch(YANDEX_SEARCH_API_URL, {
+    const response = await fetch(globalConfig.yandex.searchApiUrl, {
       method: "POST",
       dispatcher,
       body: JSON.stringify(data),
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Api-Key ${connection.YANDEX_SEARCH_API_KEY}`,
+        Authorization: `Api-Key ${connection.yandexSearchApiKey}`,
       },
     }).then(res => res.json() as Promise<{ rawData: string; code?: number; message?: string; details?: any[] }>);
 

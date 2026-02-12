@@ -8,8 +8,8 @@ import {
   formatBedrockRequestTools,
 } from "../ai/providers/bedrock.tools";
 import { ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
-import { ResponseStatus, ToolType } from "../../types/ai.types";
-import { MCPServer, MCPTransportType, MCPAuthType } from "../../entities";
+import { MCPAuthType, MCPTransportType, ResponseStatus, ToolType } from "../../types/api";
+import { MCPServer } from "../../entities";
 
 // Mock the MCP client
 jest.mock("../ai/tools/mcp.client", () => ({

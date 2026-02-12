@@ -14,8 +14,9 @@ import { JSONTransformer } from "../utils/db";
 import { ChatDocument } from "./ChatDocument";
 import { ChatFile } from "./ChatFile";
 import { ChatTool } from "../types/ai.types";
+import { DB_TYPE } from "../config/env";
 
-const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
+const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()
 @Entity("chats")

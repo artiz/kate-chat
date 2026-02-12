@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
-import { ChatTool, MCPAuthToken, ResponseStatus } from "@/types/ai.types";
+import { ChatTool, IMCPServer, MCPAuthToken } from "@/types/ai.types";
+import { ResponseStatus } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
@@ -94,7 +94,7 @@ export const CustomWebSearchTool: ChatCompletionToolCallable = {
 /**
  * Convert MCP tool definitions to OpenAI tool format
  */
-export function formatOpenAIMcpTools(tools?: ChatTool[], mcpServers?: MCPServer[]): ChatCompletionToolCallable[] {
+export function formatOpenAIMcpTools(tools?: ChatTool[], mcpServers?: IMCPServer[]): ChatCompletionToolCallable[] {
   if (!tools?.length || !mcpServers?.length) {
     return [];
   }
@@ -144,7 +144,7 @@ async function callMcpTool(
   toolName: string,
   args: Record<string, any>,
   callId: string,
-  server: MCPServer,
+  server: IMCPServer,
   mcpTokens?: MCPAuthToken[]
 ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam> {
   // Find matching OAuth token for this server

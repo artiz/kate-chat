@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button } from "@mantine/core";
+import React, { use, useEffect, useMemo, useState } from "react";
+import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button, Group } from "@mantine/core";
 import {
   IconRobot,
   IconSettings,
@@ -11,6 +11,7 @@ import {
   IconSquare,
   IconLock,
   IconKey,
+  IconArrowDown,
 } from "@tabler/icons-react";
 import { useQuery } from "@apollo/client";
 import { ChatSettings } from "./ChatSettings";
@@ -24,7 +25,7 @@ import { GET_MCP_SERVERS_FOR_CHAT } from "@/store/services/graphql.queries";
 import { RootState } from "@/store";
 import { useSelector } from "react-redux";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
-import { useMediaQuery, useDisclosure } from "@mantine/hooks";
+import { useMediaQuery, useDisclosure, useLocalStorage } from "@mantine/hooks";
 
 // Re-export for backwards compatibility
 export { getMcpAuthToken } from "@/components/auth/McpAuthentication";
@@ -38,6 +39,7 @@ interface IHeaderProps {
   models: Model[];
   selectedModel?: Model;
   onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
+  onAutoScroll?: (value: boolean) => void;
 }
 
 export const ChatInputHeader = ({
@@ -49,11 +51,14 @@ export const ChatInputHeader = ({
   models,
   selectedModel,
   onUpdateChat,
+  onAutoScroll,
 }: IHeaderProps) => {
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
   const { token: userToken } = useSelector((state: RootState) => state.auth);
+  const [autoScroll, setAutoScroll] = useLocalStorage<boolean>({ key: "chat-auto-scroll", defaultValue: true });
+
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
   // Query MCP servers when MCP tool is supported
@@ -66,6 +71,10 @@ export const ChatInputHeader = ({
   }, [mcpServersData?.getMCPServers?.servers]);
 
   const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServer) => [s.id, s.name])), [mcpServers]);
+
+  useEffect(() => {
+    onAutoScroll?.(autoScroll);
+  }, [autoScroll, setAutoScroll]);
 
   // MCP authentication hook
   const {
@@ -196,125 +205,127 @@ export const ChatInputHeader = ({
   };
 
   return (
-    <>
-      <IconRobot size={20} />
-      <Select
-        data={models.map(model => ({
-          value: model.modelId,
-          label: `${model.provider}: ${model.name}`,
-        }))}
-        searchable
-        value={selectedModel?.modelId || ""}
-        onChange={handleModelChange}
-        placeholder="Select a model"
-        size="xs"
-        clearable={false}
-        style={{ maxWidth: "50%" }}
-        disabled={disabled}
-      />
-      {selectedModel && (
-        <Box visibleFrom="xs">
-          <ModelInfo model={selectedModel} size="18" />
-        </Box>
-      )}
+    <Group justify="space-between" align="center" style={{ flex: 1 }}>
+      <Group>
+        <IconRobot size={20} />
+        <Select
+          data={models.map(model => ({
+            value: model.modelId,
+            label: `${model.provider}: ${model.name}`,
+          }))}
+          searchable
+          value={selectedModel?.modelId || ""}
+          onChange={handleModelChange}
+          placeholder="Select a model"
+          size="xs"
+          clearable={false}
+          style={{ maxWidth: "50%" }}
+          disabled={disabled}
+        />
+        {selectedModel && (
+          <Box visibleFrom="xs">
+            <ModelInfo model={selectedModel} size="18" />
+          </Box>
+        )}
 
-      <Tooltip label="Chat Settings">
-        <ActionIcon disabled={disabled || streaming} variant="default" onClick={openSettings}>
-          <IconSettings size="1.2rem" />
-        </ActionIcon>
-      </Tooltip>
-      <Modal
-        opened={settingsOpened}
-        onClose={closeSettings}
-        title="Chat Settings"
-        fullScreen={isMobile}
-        size="lg"
-        yOffset="auto"
-        styles={{ content: { marginTop: "auto", marginBottom: "1rem" } }}
-      >
-        <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
-        <Button mt="md" onClick={closeSettings}>
-          Close
-        </Button>
-      </Modal>
-
-      {/* Tool buttons */}
-      {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
-        <Tooltip label="Web Search">
-          <ActionIcon
-            variant={selectedTools?.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
-            color={selectedTools?.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
-            onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
-            disabled={disabled || streaming}
-          >
-            <IconWorldSearch size="1.2rem" />
+        <Tooltip label="Chat Settings">
+          <ActionIcon disabled={disabled || streaming} variant="default" onClick={openSettings}>
+            <IconSettings size="1.2rem" />
           </ActionIcon>
         </Tooltip>
-      )}
+        <Modal
+          opened={settingsOpened}
+          onClose={closeSettings}
+          title="Chat Settings"
+          fullScreen={isMobile}
+          size="lg"
+          yOffset="auto"
+          styles={{ content: { marginTop: "auto", marginBottom: "1rem" } }}
+        >
+          <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
+          <Button mt="md" onClick={closeSettings}>
+            Close
+          </Button>
+        </Modal>
 
-      {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
-        <Tooltip label="Code Interpreter">
-          <ActionIcon
-            variant={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
-            color={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
-            onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
-            disabled={disabled || streaming}
-          >
-            <IconCloudCode size="1.2rem" />
-          </ActionIcon>
-        </Tooltip>
-      )}
+        {/* Tool buttons */}
+        {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
+          <Tooltip label="Web Search">
+            <ActionIcon
+              variant={selectedTools?.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
+              color={selectedTools?.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
+              onClick={() => handleToolToggle(ToolType.WEB_SEARCH)}
+              disabled={disabled || streaming}
+            >
+              <IconWorldSearch size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
-      {/* MCP Servers dropdown */}
-      {mcpServers.length > 0 && selectedModel?.tools?.includes(ToolType.MCP) && (
-        <Menu position="top" withArrow shadow="md">
-          <Menu.Target>
-            <Tooltip label="MCP Tools">
-              <ActionIcon
-                variant={selectedMcpServers.size > 0 ? "filled" : "default"}
-                color={selectedMcpServers.size > 0 ? "brand" : undefined}
-                disabled={disabled || streaming}
-              >
-                {selectedMcpServers.size > 0 ? (
-                  <IconPlugConnected size="1.2rem" />
-                ) : (
-                  <IconPlugConnectedX size="1.2rem" />
-                )}
-              </ActionIcon>
-            </Tooltip>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Label>MCP Servers</Menu.Label>
-            {mcpServers.map(server => {
-              const needsAuth = requiresAuth(server);
-              const isAuthenticated = !needsAuth || mcpAuthStatus.get(server.id);
-              const isSelected = selectedMcpServers.has(server.id);
+        {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
+          <Tooltip label="Code Interpreter">
+            <ActionIcon
+              variant={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
+              color={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
+              onClick={() => handleToolToggle(ToolType.CODE_INTERPRETER)}
+              disabled={disabled || streaming}
+            >
+              <IconCloudCode size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
-              return (
-                <Menu.Item
-                  key={server.id}
-                  leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
-                  rightSection={
-                    needsAuth && !isAuthenticated ? (
-                      <Tooltip label={requiresTokenEntry(server) ? "Requires token" : "Requires authentication"}>
-                        {requiresTokenEntry(server) ? (
-                          <IconKey size="0.9rem" color="orange" />
-                        ) : (
-                          <IconLock size="0.9rem" color="orange" />
-                        )}
-                      </Tooltip>
-                    ) : undefined
-                  }
-                  c={isSelected ? undefined : "dimmed"}
-                  onClick={() => handleMcpServerToggle(server.id)}
+        {/* MCP Servers dropdown */}
+        {mcpServers.length > 0 && selectedModel?.tools?.includes(ToolType.MCP) && (
+          <Menu position="top" withArrow shadow="md">
+            <Menu.Target>
+              <Tooltip label="MCP Tools">
+                <ActionIcon
+                  variant={selectedMcpServers.size > 0 ? "filled" : "default"}
+                  color={selectedMcpServers.size > 0 ? "brand" : undefined}
+                  disabled={disabled || streaming}
                 >
-                  {server.name}
-                </Menu.Item>
-              );
-            })}
-          </Menu.Dropdown>
-        </Menu>
-      )}
+                  {selectedMcpServers.size > 0 ? (
+                    <IconPlugConnected size="1.2rem" />
+                  ) : (
+                    <IconPlugConnectedX size="1.2rem" />
+                  )}
+                </ActionIcon>
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>MCP Servers</Menu.Label>
+              {mcpServers.map(server => {
+                const needsAuth = requiresAuth(server);
+                const isAuthenticated = !needsAuth || mcpAuthStatus.get(server.id);
+                const isSelected = selectedMcpServers.has(server.id);
+
+                return (
+                  <Menu.Item
+                    key={server.id}
+                    leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
+                    rightSection={
+                      needsAuth && !isAuthenticated ? (
+                        <Tooltip label={requiresTokenEntry(server) ? "Requires token" : "Requires authentication"}>
+                          {requiresTokenEntry(server) ? (
+                            <IconKey size="0.9rem" color="orange" />
+                          ) : (
+                            <IconLock size="0.9rem" color="orange" />
+                          )}
+                        </Tooltip>
+                      ) : undefined
+                    }
+                    c={isSelected ? undefined : "dimmed"}
+                    onClick={() => handleMcpServerToggle(server.id)}
+                  >
+                    {server.name}
+                  </Menu.Item>
+                );
+              })}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </Group>
 
       {/* Token Entry Modal for API Key / Bearer Token */}
       <McpTokenModal
@@ -325,6 +336,19 @@ export const ChatInputHeader = ({
         onSubmit={handleTokenSubmit}
         onClose={mcpCloseTokenModal}
       />
-    </>
+      <Group>
+        {onAutoScroll && (
+          <Tooltip label="Auto-Scroll">
+            <ActionIcon
+              variant={autoScroll ? "filled" : "default"}
+              color={autoScroll ? "brand" : undefined}
+              onClick={() => setAutoScroll?.(!autoScroll)}
+            >
+              <IconArrowDown size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </Group>
+    </Group>
   );
 };

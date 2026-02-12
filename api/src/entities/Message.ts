@@ -12,10 +12,12 @@ import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { ChatFile } from "./ChatFile";
 import { User } from "./User";
-import { MessageRole, ModelMessageContent, MessageMetadata, ResponseStatus } from "../types/ai.types";
+import { MessageRole, ResponseStatus } from "../types/api";
 import { JSONTransformer } from "../utils/db";
+import { MessageMetadata, ModelMessageContent } from "../types/ai.types";
+import { DB_TYPE } from "../config/env";
 
-const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
+const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()
 @Entity("messages")
@@ -72,7 +74,7 @@ export class Message {
   userId?: string;
 
   @Field(() => Message)
-  @ManyToOne(() => Message, { onDelete: process.env.DB_TYPE == "mssql" ? undefined : "CASCADE", lazy: true })
+  @ManyToOne(() => Message, { onDelete: DB_TYPE == "mssql" ? undefined : "CASCADE", lazy: true })
   linkedToMessage?: Message;
 
   @Field({ nullable: true })

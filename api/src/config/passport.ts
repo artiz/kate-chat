@@ -1,30 +1,27 @@
-import passport, { use } from "passport";
+import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
+import { VerifyCallback } from "passport-oauth2";
 import { Repository } from "typeorm";
 import { fetch } from "undici";
 import { User, AuthProvider, UserRole } from "../entities/User";
 import { getRepository } from "./database";
-import { DEFAULT_CHAT_PROMPT } from "./ai/prompts";
 import { logger } from "../utils/logger";
-import {
-  CALLBACK_URL_BASE,
-  GITHUB_CLIENT_ID,
-  GITHUB_CLIENT_SECRET,
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  MICROSOFT_CLIENT_ID,
-  MICROSOFT_CLIENT_SECRET,
-  MICROSOFT_TENANT_ID,
-  DEFAULT_ADMIN_EMAILS,
-} from "./application";
-import { VerifyCallback } from "passport-oauth2";
+import { globalConfig } from "@/global-config";
+import { ensureInitialUserAssets } from "@/utils/initial-data";
 
-// Load environment variables
+const userDefaults = {
+  defaultSystemPrompt: globalConfig.ai.defaultSystemPrompt,
+  defaultTemperature: globalConfig.ai.defaultTemperature,
+  defaultMaxTokens: globalConfig.ai.defaultMaxTokens,
+  defaultTopP: globalConfig.ai.defaultTopP,
+  defaultImagesCount: 1,
+};
 
 export const configurePassport = () => {
   const userRepository: Repository<User> = getRepository(User);
+  const { oauth, runtime } = globalConfig;
 
   // Serialize user to the session
   passport.serializeUser((user: any, done) => {
@@ -42,13 +39,13 @@ export const configurePassport = () => {
   });
 
   // Configure Google OAuth Strategy
-  if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+  if (oauth.google.enabled) {
     passport.use(
       new GoogleStrategy(
         {
-          clientID: GOOGLE_CLIENT_ID,
-          clientSecret: GOOGLE_CLIENT_SECRET,
-          callbackURL: `${CALLBACK_URL_BASE}/auth/google/callback`,
+          clientID: oauth.google.clientId,
+          clientSecret: oauth.google.clientSecret,
+          callbackURL: `${runtime.callbackUrlBase}/auth/google/callback`,
         },
         async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {
           try {
@@ -86,7 +83,9 @@ export const configurePassport = () => {
               const lastName = profile.name?.familyName || "";
 
               // Determine user role
-              const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
+              const role = globalConfig.app.defaultAdminEmails.includes(email.toLowerCase())
+                ? UserRole.ADMIN
+                : UserRole.USER;
               user = userRepository.create({
                 email,
                 googleId: profile.id,
@@ -95,15 +94,19 @@ export const configurePassport = () => {
                 avatarUrl,
                 role,
                 authProvider: AuthProvider.GOOGLE,
-                defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
+                ...userDefaults,
               });
 
               user = await userRepository.save(user);
               logger.info({ userId: user.id }, "New user created via Google OAuth");
+              await ensureInitialUserAssets(user);
             }
 
             // Update user role if they are in admin emails list
-            if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+            if (
+              globalConfig.app.defaultAdminEmails.includes(user.email.toLowerCase()) &&
+              user.role !== UserRole.ADMIN
+            ) {
               user.role = UserRole.ADMIN;
               user = await userRepository.save(user);
             }
@@ -119,12 +122,12 @@ export const configurePassport = () => {
   }
 
   // Configure GitHub OAuth Strategy
-  if (GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET) {
+  if (oauth.github.enabled) {
     const githubStrategy = new GitHubStrategy(
       {
-        clientID: GITHUB_CLIENT_ID,
-        clientSecret: GITHUB_CLIENT_SECRET,
-        callbackURL: `${CALLBACK_URL_BASE}/auth/github/callback`,
+        clientID: oauth.github.clientId,
+        clientSecret: oauth.github.clientSecret,
+        callbackURL: `${runtime.callbackUrlBase}/auth/github/callback`,
         scope: ["user:email"], // Request email scope
       },
       async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {
@@ -166,7 +169,9 @@ export const configurePassport = () => {
             const lastName = nameParts.slice(1).join(" ") || "";
 
             // Determine user role
-            const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
+            const role = globalConfig.app.defaultAdminEmails.includes(email.toLowerCase())
+              ? UserRole.ADMIN
+              : UserRole.USER;
 
             user = userRepository.create({
               email,
@@ -176,15 +181,16 @@ export const configurePassport = () => {
               avatarUrl,
               role,
               authProvider: AuthProvider.GITHUB,
-              defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
+              ...userDefaults,
             });
 
             user = await userRepository.save(user);
             logger.info({ userId: user.id }, "New user created via GitHub OAuth");
+            await ensureInitialUserAssets(user);
           }
 
           // Update user role if they are in admin emails list
-          if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+          if (globalConfig.app.defaultAdminEmails.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
             user.role = UserRole.ADMIN;
             user = await userRepository.save(user);
           }
@@ -203,7 +209,7 @@ export const configurePassport = () => {
       const userEmailURL = "https://api.github.com/user/emails";
       const headers = {
         Authorization: `Bearer ${accessToken}`,
-        "User-Agent": "KateChat OAuth Client",
+        "User-Agent": globalConfig.app.userAgent,
         Accept: "application/json",
       };
 
@@ -249,19 +255,19 @@ export const configurePassport = () => {
   }
 
   // Configure Microsoft OAuth Strategy
-  if (MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET) {
+  if (oauth.microsoft.enabled) {
     passport.use(
       "microsoft",
       new OAuth2Strategy(
         {
-          authorizationURL: `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize`,
-          tokenURL: `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`,
-          clientID: MICROSOFT_CLIENT_ID,
-          clientSecret: MICROSOFT_CLIENT_SECRET,
-          callbackURL: `${CALLBACK_URL_BASE}/auth/microsoft/callback`,
+          authorizationURL: `https://login.microsoftonline.com/${oauth.microsoft.tenantId}/oauth2/v2.0/authorize`,
+          tokenURL: `https://login.microsoftonline.com/${oauth.microsoft.tenantId}/oauth2/v2.0/token`,
+          clientID: oauth.microsoft.clientId,
+          clientSecret: oauth.microsoft.clientSecret,
+          callbackURL: `${runtime.callbackUrlBase}/auth/microsoft/callback`,
           scope: ["User.Read"],
           customHeaders: {
-            "User-Agent": "KateChat OAuth Client",
+            "User-Agent": globalConfig.app.userAgent,
           },
         },
         async (accessToken: string, refreshToken: string, profile: any, done: VerifyCallback) => {
@@ -325,7 +331,9 @@ export const configurePassport = () => {
               // https://graph.microsoft.com/v1.0/me/photo/$value
 
               // Determine user role
-              const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
+              const role = globalConfig.app.defaultAdminEmails.includes(email.toLowerCase())
+                ? UserRole.ADMIN
+                : UserRole.USER;
 
               user = userRepository.create({
                 email,
@@ -334,15 +342,19 @@ export const configurePassport = () => {
                 lastName,
                 role,
                 authProvider: AuthProvider.MICROSOFT,
-                defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
+                ...userDefaults,
               });
 
               user = await userRepository.save(user);
               logger.info({ userId: user.id }, "New user created via Microsoft OAuth");
+              await ensureInitialUserAssets(user);
             }
 
             // Update user role if they are in admin emails list
-            if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+            if (
+              globalConfig.app.defaultAdminEmails.includes(user.email.toLowerCase()) &&
+              user.role !== UserRole.ADMIN
+            ) {
               user.role = UserRole.ADMIN;
               user = await userRepository.save(user);
             }

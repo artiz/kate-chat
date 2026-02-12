@@ -3,25 +3,22 @@ import { fetch, Agent } from "undici";
 import {
   AIModelInfo,
   ModelResponse,
-  ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
   ServiceCostInfo,
   CompleteChatRequest,
-  ModelType,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
-  ToolType,
   ModelMessage,
-  ModelFeature,
+  ProviderInfo,
 } from "@/types/ai.types";
-import { MessageRole } from "@/types/ai.types";
+import { ApiProvider, MessageRole, ModelType, ToolType, ModelFeature } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
-import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
+import { globalConfig } from "@/global-config";
 import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
@@ -31,9 +28,10 @@ import {
   OPENAI_MODELS_VIDEO_GENERATION,
   OPENAI_NON_CHAT_MODELS,
 } from "@/config/ai/openai";
-import { YandexWebSearch } from "../tools/yandex.web_search";
+import { YandexWebSearch } from "@/services/ai/tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
 import { notEmpty } from "@/utils/assert";
+import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
 
 const logger = createLogger(__filename);
 
@@ -82,10 +80,9 @@ export class OpenAIApiProvider extends BaseApiProvider {
   constructor(connection: ConnectionParams, fileLoader?: FileContentLoader, modelId?: string) {
     super(connection, fileLoader);
 
-    this.adminApiKey = connection.OPENAI_API_ADMIN_KEY || "";
-    this.baseUrl = process.env.OPENAI_API_URL || "https://api.openai.com/v1";
-
-    this.apiKey = connection.OPENAI_API_KEY || "";
+    this.adminApiKey = connection.openAiApiAdminKey || "";
+    this.baseUrl = globalConfig.openai.apiUrl || "https://api.openai.com/v1";
+    this.apiKey = connection.openAiApiKey || "";
     if (!this.apiKey) {
       logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     } else {

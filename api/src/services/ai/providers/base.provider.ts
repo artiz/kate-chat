@@ -1,14 +1,14 @@
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/types/api";
 import {
   AIModelInfo,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
   CompleteChatRequest,
   ModelResponse,
-  ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
   ModelMessage,
+  ProviderInfo,
 } from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { FileContentLoader } from "@/services/data/s3.service";

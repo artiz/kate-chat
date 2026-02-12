@@ -3,19 +3,16 @@ import { SubscriptionsService } from "./messaging/subscriptions.service";
 import { AIService } from "./ai/ai.service";
 import { getRepository } from "@/config/database";
 import { Document, Message, Model, User } from "@/entities";
-import { DocumentStatus, MessageRole, ModelMessageContent, ParsedJsonDocument } from "@/types/ai.types";
+import { DocumentStatus, MessageRole } from "@/types/api";
 import { S3Service } from "./data";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Repository } from "typeorm";
 import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai/prompts";
 import { EmbeddingsService } from "./ai/embeddings.service";
-import {
-  CHARACTERS_PER_TOKEN,
-  MAX_CONTEXT_TOKENS,
-  SUMMARIZING_OUTPUT_TOKENS,
-  SUMMARIZING_TEMPERATURE,
-} from "@/config/ai/common";
+import { getUserConnectionInfo } from "@/config/auth";
+import { globalConfig } from "@/global-config";
+import { ParsedJsonDocument } from "@/types/ai.types";
 
 const logger = createLogger(__filename);
 
@@ -72,7 +69,7 @@ export class DocumentQueueService {
       }
 
       // Create connection params for AI service
-      const connection = User.getConnectionInfo(document.owner);
+      const connection = getUserConnectionInfo(document.owner);
 
       // Download chunked JSON from S3
       const s3Service = new S3Service(document.owner?.toToken());
@@ -189,7 +186,8 @@ export class DocumentQueueService {
       // Download markdown content
       const markdownContent = await this.downloadS3Content(s3Service, `${s3key}.parsed.md`);
 
-      const maxContentLength = (model.maxInputTokens || MAX_CONTEXT_TOKENS) * CHARACTERS_PER_TOKEN;
+      const maxContentLength =
+        (model.maxInputTokens || globalConfig.ai.maxContextTokens) * globalConfig.ai.charactersPerToken;
       const contentToSummarize =
         markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
 
@@ -200,8 +198,8 @@ export class DocumentQueueService {
           modelId,
           modelType: model.type,
           apiProvider: model.apiProvider,
-          maxTokens: SUMMARIZING_OUTPUT_TOKENS,
-          temperature: SUMMARIZING_TEMPERATURE,
+          maxTokens: globalConfig.ai.summarizingOutputTokens,
+          temperature: globalConfig.ai.summarizingTemperature,
         },
         [
           this.messageRepo.create({

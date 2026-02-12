@@ -11,18 +11,18 @@ import {
   DeleteModelInput,
   UpdateCustomModelInput,
   TestCustomModelInput,
-} from "../types/graphql/inputs";
-import { getRepository } from "../config/database";
-import { CompleteChatRequest, MessageRole, ModelType, ToolType } from "../types/ai.types";
-import { Message } from "../entities/Message";
+} from "@/types/graphql/inputs";
+import { getRepository } from "@/config/database";
+import { CompleteChatRequest } from "@/types/ai.types";
+import { ApiProvider, ModelType, MessageRole, ToolType } from "@/types/api";
+import { ok } from "@/utils/assert";
+import { Message } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
-import { ApiProvider, MAX_CONTEXT_TOKENS } from "@/config/ai/common";
+import { globalConfig } from "@/global-config";
 import { getErrorMessage } from "@/utils/errors";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
-import { ok } from "assert";
-import { DEMO_MODE } from "@/config/application";
 
 const logger = createLogger(__filename);
 const MAX_TEST_TEXT_LENGTH = 256;
@@ -103,9 +103,12 @@ export class ModelResolver extends BaseResolver {
       // Save models to database
       const outModels: Model[] = [];
       for (const [modelId, info] of Object.entries(aiModels)) {
-        // skip image generation models in demo mode to minimize costs and avoid inappropriate content
-        if (DEMO_MODE && info.type === ModelType.IMAGE_GENERATION) {
+        if (!globalConfig.features.imagesGeneration && info.type === ModelType.IMAGE_GENERATION) {
           logger.info({ modelId, name: info.name }, "Skipping image generation model in demo mode");
+          continue;
+        }
+        if (!globalConfig.features.videoGeneration && info.type === ModelType.VIDEO_GENERATION) {
+          logger.info({ modelId, name: info.name }, "Skipping video generation model in demo mode");
           continue;
         }
 
@@ -385,7 +388,7 @@ export class ModelResolver extends BaseResolver {
         type: ModelType.CHAT,
         streaming,
         imageInput: imageInput || false,
-        maxInputTokens: maxInputTokens || MAX_CONTEXT_TOKENS,
+        maxInputTokens: maxInputTokens || globalConfig.ai.maxContextTokens,
         isActive: true,
         isCustom: true,
         user: { id: user.userId },

@@ -11,6 +11,7 @@ import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recapt
 import { RECAPTCHA_SITE_KEY } from "../lib/config";
 import { OAuthButtons } from "../components/auth";
 import { setUser } from "@/store/slices/userSlice";
+import { getClientConfig } from "@/global-config";
 
 // Registration mutation is imported from graphql.ts
 
@@ -36,6 +37,7 @@ const RegisterForm: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const { appTitle } = getClientConfig();
 
   // If already authenticated, redirect to chat
   useEffect(() => {
@@ -127,7 +129,7 @@ const RegisterForm: React.FC = () => {
         Create an Account
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
-        Register to start using KateChat
+        Register to start using {appTitle}
       </Text>
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">

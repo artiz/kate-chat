@@ -19,6 +19,7 @@ interface IProps {
   streaming?: boolean;
   loading?: boolean;
   loadCompleted?: boolean;
+  autoScroll?: boolean;
 }
 
 export interface ChatMessagesContainerRef {
@@ -39,6 +40,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       streaming = false,
       loadCompleted = true,
       loading = false,
+      autoScroll = true,
     },
     ref
   ) => {
@@ -60,15 +62,17 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       [scrollToBottom]
     );
 
-    const autoScroll = useCallback(() => {
+    const handleAutoScroll = useCallback(() => {
       if (!showAnchorButton) {
         scrollToBottom();
       }
     }, [scrollToBottom, showAnchorButton]);
 
     useEffect(() => {
-      autoScroll();
-    }, [messages, autoScroll]);
+      if (autoScroll) {
+        handleAutoScroll();
+      }
+    }, [messages, handleAutoScroll, autoScroll]);
 
     const handleScroll = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
@@ -100,7 +104,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
         setShowAnchorButton(false);
         setTimeout(scrollToBottom, 200);
       }
-    }, [loadCompleted]);
+    }, [loadCompleted, autoScroll]);
 
     const firstMessageRef = useIntersectionObserver<HTMLDivElement>(
       () => loadMoreMessages?.(),

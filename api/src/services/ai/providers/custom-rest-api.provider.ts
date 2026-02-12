@@ -1,18 +1,18 @@
 import {
   AIModelInfo,
   ModelResponse,
-  ProviderInfo,
   StreamCallbacks,
   UsageCostInfo,
   CompleteChatRequest,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   ModelMessage,
+  ProviderInfo,
 } from "@/types/ai.types";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
-import { ApiProvider } from "@/config/ai/common";
+import { ApiProvider } from "@/types/api";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { FileContentLoader } from "@/services/data";
 import { Model } from "@/entities";

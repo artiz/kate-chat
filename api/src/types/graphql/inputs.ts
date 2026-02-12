@@ -1,9 +1,8 @@
 import { InputType, Field } from "type-graphql";
-import { ToolType } from "../ai.types";
-import { UserSettings, AuthProvider, MCPAuthConfig, MCPAuthType } from "@/entities";
-import { ApiProvider } from "@/config/ai/common";
+import { UserSettings, AuthProvider, MCPAuthConfig } from "@/entities";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
+import { ApiProvider, MCPAuthType, ToolType } from "../api";
 
 @InputType()
 export class UpdateUserInput {

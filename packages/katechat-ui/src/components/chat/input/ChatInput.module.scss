@@ -20,7 +20,8 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  transition: all 0.5s ease;
+  align-self: stretch;
+  transition: all 0.75s ease;
 
   &.promptMode {
     flex-grow: 1;
@@ -32,6 +33,9 @@
 
   .promptModeText {
     opacity: 0;
+    transition:
+      opacity 0.3s ease-out,
+      transform 0.3s ease-out;
     animation: promptFadeInUp 0.8s ease-out forwards;
     animation-delay: 0.2s;
     background: linear-gradient(
@@ -71,6 +75,7 @@
   }
 
   .headerRow {
+    flex: 1;
     padding: 0.5rem 0;
     border-top-left-radius: var(--mantine-radius-md);
     border-top-right-radius: var(--mantine-radius-md);

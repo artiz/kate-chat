@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
-import { IconX, IconEdit, IconCheck } from "@tabler/icons-react";
+import { IconEdit, IconCheck, IconArrowLeft } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import {
   assert,
@@ -39,6 +39,7 @@ import { ChatInputHeader } from "./ChatInputHeader";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
 import { getChatMcpTokens } from "../auth/McpAuthentication";
 import { ChatPluginsContextProvider } from "./ChatPluginsContext";
+import { getClientConfig } from "@/global-config";
 
 import classes from "./Chat.module.scss";
 
@@ -62,8 +63,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const allModels = useAppSelector(state => state.models.models);
   const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
+  const { aiUsageAlert } = getClientConfig();
 
   const [selectedRagDocIds, setSelectedRagDocIds] = useState<string[]>([]);
+  const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
   const {
     messages,
@@ -120,6 +123,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
     return docs;
   }, [chat?.chatDocuments, uploadingDocs]);
+
+  const handleAutoScroll = useCallback((enabled: boolean) => {
+    setAutoScroll(enabled);
+    if (enabled) {
+      chatMessagesRef.current?.scrollToBottom();
+    }
+  }, []);
 
   // #region Send message
   const [createMessage] = useMutation<CreateMessageResponse>(CREATE_MESSAGE, {
@@ -179,9 +189,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
       });
 
       // Scroll chat to bottom after sending message
-      setTimeout(() => {
-        chatMessagesRef.current?.scrollToBottom();
-      }, 250);
+      if (autoScroll) {
+        setTimeout(() => {
+          chatMessagesRef.current?.scrollToBottom();
+        }, 250);
+      }
     } catch (error) {
       notifications.show({
         title: "Error",
@@ -309,6 +321,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.ragEnabled || selectedModel?.imageInput;
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
 
+  const maxImagesAllowed = useMemo(() => {
+    if (!selectedModel?.imageInput) return 0;
+    if (typeof appConfig?.maxImages === "number" && appConfig.maxImages >= 0) {
+      return appConfig.maxImages;
+    }
+    return MAX_IMAGES;
+  }, [appConfig?.maxImages, selectedModel?.imageInput]);
+
   const requestStoppable = useMemo(() => {
     return (
       !stopping && messageMetadata?.requestId && selectedModel?.features?.includes(ModelFeature.REQUEST_CANCELLATION)
@@ -400,9 +420,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <div className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
             <div className={classes.wsStatusText}>{wsConnected ? "Connected" : "Connecting..."}</div>
           </div>
-          <ActionIcon onClick={() => navigate("/chat")}>
-            <IconX size="1.2rem" />
-          </ActionIcon>
+          <Tooltip label="Back to chats list">
+            <ActionIcon onClick={() => navigate("/chat")}>
+              <IconArrowLeft size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
         </div>
       </div>
 
@@ -433,6 +455,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           ref={chatMessagesRef}
           messages={messages}
           models={models}
+          autoScroll={autoScroll}
           addChatMessage={addChatMessage}
           removeMessages={removeMessages}
           loadMoreMessages={loadMoreMessages}
@@ -471,6 +494,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             models={models}
             selectedModel={selectedModel}
             onUpdateChat={updateChat}
+            onAutoScroll={handleAutoScroll}
           />
         }
         inputPlugins={
@@ -487,12 +511,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
           </>
         }
         uploadFormats={SUPPORTED_UPLOAD_FORMATS}
-        maxImagesCount={selectedModel?.imageInput ? MAX_IMAGES : 0}
+        maxImagesCount={maxImagesAllowed}
         maxUploadFileSize={MAX_UPLOAD_FILE_SIZE}
         onDocumentsUpload={handleAddDocuments}
         onSendMessage={handleSendMessage}
         onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />
+
+      {aiUsageAlert && loadCompleted && messages?.length ? (
+        <Text size="xs" c="dimmed" mt="0" mb="0" ta="center">
+          {aiUsageAlert}
+        </Text>
+      ) : null}
 
       {PythonCodeModal}
     </Container>

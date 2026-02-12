@@ -15,17 +15,21 @@ if (!container) throw new Error("Root element not found");
 
 const root = createRoot(container);
 
-root.render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <BrowserRouter
-        future={{
-          v7_relativeSplatPath: true,
-          v7_startTransition: true,
-        }}
-      >
-        <App />
-      </BrowserRouter>
-    </Provider>
-  </React.StrictMode>
-);
+async function bootstrap() {
+  root.render(
+    <React.StrictMode>
+      <Provider store={store}>
+        <BrowserRouter
+          future={{
+            v7_relativeSplatPath: true,
+            v7_startTransition: true,
+          }}
+        >
+          <App />
+        </BrowserRouter>
+      </Provider>
+    </React.StrictMode>
+  );
+}
+
+bootstrap();

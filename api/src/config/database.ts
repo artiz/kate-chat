@@ -1,24 +1,17 @@
 import { DataSource, DataSourceOptions, ObjectLiteral, QueryFailedError, Repository, Migration } from "typeorm";
-import path from "path";
-import pgvector from "pgvector";
+import _ from "lodash";
 import { load as sqliteVecLoad } from "sqlite-vec";
-import { ENTITIES } from "../entities";
 import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
+import { globalConfig } from "../global-config";
+import { ENTITIES } from "../entities";
+import { DB_TYPE } from "./env";
 
-const logging = !!process.env.DB_LOGGING;
-
-export const DB_TYPE =
-  process.env.DB_TYPE === "sqlite" || process.env.DB_TYPE === "better-sqlite3" || !process.env.DB_TYPE
-    ? "sqlite"
-    : process.env.DB_TYPE;
-
-export const DB_MIGRATIONS_PATH =
-  process.env.DB_MIGRATIONS_PATH || path.join(__dirname, `../../../db-migrations/${DB_TYPE}/*-*.ts`);
+const dbConfig = globalConfig.db;
 
 let dbOptions: DataSourceOptions = {
   type: "better-sqlite3",
-  database: process.env.DB_NAME || "katechat.sqlite",
+  database: dbConfig.name || "katechat.sqlite",
   prepareDatabase: db => sqliteVecLoad(db),
 };
 
@@ -26,25 +19,23 @@ if (DB_TYPE === "mysql") {
   dbOptions = {
     type: "mysql",
     charset: "UTF8_GENERAL_CI",
-    url: process.env.DB_URL,
+    url: dbConfig.url,
   };
 } else if (DB_TYPE === "postgres") {
-  const ssl = ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || "");
-
   dbOptions = {
     type: "postgres",
-    url: process.env.DB_URL,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    ssl: ssl ? { rejectUnauthorized: false } : false,
+    url: dbConfig.url,
+    username: dbConfig.username,
+    password: dbConfig.password,
+    ssl: dbConfig.ssl ? { rejectUnauthorized: false } : false,
   };
 } else if (DB_TYPE === "mssql") {
   dbOptions = {
     type: "mssql",
-    host: process.env.DB_HOST,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: dbConfig.host,
+    username: dbConfig.username,
+    password: dbConfig.password,
+    database: dbConfig.name,
     options: {
       encrypt: true,
       trustServerCertificate: true,
@@ -54,7 +45,7 @@ if (DB_TYPE === "mysql") {
   throw new Error(`Unsupported DB_TYPE: ${DB_TYPE}`);
 }
 
-logger.debug({ ...dbOptions, DB_MIGRATIONS_PATH }, "Database connection options");
+logger.debug(_.pick(dbConfig, ["type", "host", "database"]), "Database connection options");
 
 // Create TypeORM data source
 export const AppDataSource = new DataSource({
@@ -62,10 +53,10 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   migrationsRun: true,
   migrationsTableName: "migrations",
-  logger: logging ? new TypeORMPinoLogger() : undefined,
-  logging,
+  logger: dbConfig.logging ? new TypeORMPinoLogger() : undefined,
+  logging: dbConfig.logging ? ["error", "warn", "info"] : false,
   entities: ENTITIES,
-  migrations: [DB_MIGRATIONS_PATH],
+  migrations: [dbConfig.migrationsPath],
 });
 
 // Helper function to get a repository from the data source
@@ -88,7 +79,10 @@ export async function initializeDatabase() {
     } catch (err) {
       logger.warn("Migrations table does not exist yet. Skipping migrations list.");
     }
-    logger.info({ logging, migrations, DB_MIGRATIONS_PATH }, "Database connection established");
+    logger.info(
+      { logging: dbConfig.logging, migrations, migrationsPath: dbConfig.migrationsPath },
+      "Database connection established"
+    );
 
     return true;
   } catch (error) {
@@ -103,46 +97,4 @@ export async function initializeDatabase() {
 
     return false;
   }
-}
-
-export const formatDateFloor =
-  DB_TYPE === "sqlite"
-    ? (date: Date) => {
-        const d = new Date(date);
-        d.setMilliseconds(d.getMilliseconds() - 1); // SQLite requires a small adjustment to avoid precision issues
-        return d;
-      }
-    : (date: Date) => date;
-
-export const formatDateCeil =
-  DB_TYPE === "sqlite"
-    ? (date: Date) => {
-        const d = new Date(date);
-        d.setMilliseconds(d.getMilliseconds() + 1); // SQLite requires a small adjustment to avoid precision issues
-        return d;
-      }
-    : (date: Date) => date;
-
-export function EmbeddingTransformer(dimensions: number) {
-  if (process.env.DB_TYPE === "postgres") {
-    return {
-      to: (value: number[]) =>
-        pgvector.toSql(value.length === dimensions ? value : value.concat(Array(dimensions - value.length).fill(0))),
-      from: (value: string | null | undefined) =>
-        typeof value === "string" ? (pgvector.fromSql(value) as number[]) : value,
-    };
-  }
-
-  if (process.env.DB_TYPE === "mssql") {
-    return {
-      to: (value: number[]) => JSON.stringify(value),
-      from: (value: string | null | undefined) => (typeof value === "string" ? JSON.parse(value) : value),
-    };
-  }
-
-  return {
-    to: (value: number[]) => value?.join(","),
-    from: (value: string | null | undefined) =>
-      typeof value === "string" ? (value.split(",").map(Number) as number[]) : undefined,
-  };
 }

@@ -1,14 +1,6 @@
 import { createLogger } from "@/utils/logger";
 import { DocumentQueueService } from "../document-queue.service";
 import {
-  SQS_ACCESS_KEY_ID,
-  SQS_DOCUMENTS_QUEUE,
-  SQS_INDEX_DOCUMENTS_QUEUE,
-  SQS_ENDPOINT,
-  SQS_REGION,
-  SQS_SECRET_ACCESS_KEY,
-} from "@/config/application";
-import {
   SQSClient,
   ReceiveMessageCommand,
   DeleteMessageCommand,
@@ -16,11 +8,13 @@ import {
   Message,
   ListQueuesCommand,
 } from "@aws-sdk/client-sqs";
+import { globalConfig } from "@/global-config";
 import { SubscriptionsService } from "./subscriptions.service";
+import { ok } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 
-export class SQSService {
+export class DocumentSqsService {
   private sqs: SQSClient;
   private outputQueueUrl: string;
   private indexQueueUrl: string;
@@ -29,35 +23,41 @@ export class SQSService {
   private pollInterval?: NodeJS.Timeout;
 
   constructor(subscriptionsService: SubscriptionsService) {
-    this.outputQueueUrl = SQS_DOCUMENTS_QUEUE || "";
-    this.indexQueueUrl = SQS_INDEX_DOCUMENTS_QUEUE || "";
-    this.documentQueueService = new DocumentQueueService(subscriptionsService);
+    const { documentsQueue, indexDocumentsQueue, endpoint, accessKeyId, region } = globalConfig.sqs;
 
-    // Initialize SQS client
-    logger.info({ SQS_ENDPOINT, SQS_ACCESS_KEY_ID, SQS_REGION }, "Initializing SQS client");
-    this.sqs = new SQSClient({
-      endpoint: SQS_ENDPOINT || undefined,
-      region: SQS_REGION || "us-east-1",
-      credentials:
-        SQS_ACCESS_KEY_ID && SQS_SECRET_ACCESS_KEY
-          ? {
-              accessKeyId: SQS_ACCESS_KEY_ID,
-              secretAccessKey: SQS_SECRET_ACCESS_KEY,
-            }
-          : undefined,
-    });
+    if (globalConfig.features.rag) {
+      ok(documentsQueue, "SQS_DOCUMENTS_QUEUE must be configured");
+      ok(indexDocumentsQueue, "SQS_INDEX_DOCUMENTS_QUEUE must be configured");
+      this.outputQueueUrl = documentsQueue;
+      this.indexQueueUrl = indexDocumentsQueue;
+      this.documentQueueService = new DocumentQueueService(subscriptionsService);
+
+      logger.info({ endpoint, accessKeyId, region }, "Initializing Documents SQS client");
+    }
   }
 
   async startup(): Promise<void> {
-    if (!this.indexQueueUrl) {
-      logger.warn("SQS_INDEX_DOCUMENTS_QUEUE not configured, skipping SQS listener");
-      return;
+    if (globalConfig.features.rag) {
+      const { endpoint, accessKeyId, secretAccessKey, region } = globalConfig.sqs;
+
+      this.sqs = new SQSClient({
+        endpoint,
+        region,
+        credentials:
+          accessKeyId && secretAccessKey
+            ? {
+                accessKeyId,
+                secretAccessKey,
+              }
+            : undefined,
+      });
+
+      this.polling = true;
+      this.startDocumentIndexQueuePoll();
+      logger.info(`Documents SQS Service started, polling queue: ${this.indexQueueUrl}`);
+    } else {
+      logger.warn("RAG not configured, skipping indexing SQS listener");
     }
-
-    this.polling = true;
-    this.startPolling();
-
-    logger.info(`API SQS Service started, polling queue: ${this.indexQueueUrl}`);
   }
 
   async shutdown(): Promise<void> {
@@ -67,7 +67,7 @@ export class SQSService {
     if (this.pollInterval) {
       clearTimeout(this.pollInterval);
     }
-    logger.info("API SQS Service stopped");
+    logger.info("Documents SQS Service stopped");
   }
 
   /**
@@ -80,12 +80,8 @@ export class SQSService {
   ): Promise<string | undefined> {
     const queueUrl = indexQueue ? this.indexQueueUrl : this.outputQueueUrl;
 
-    if (!queueUrl) {
-      logger.warn(`SQS queue ${queueUrl} not configured, message not sent`);
-      return;
-    }
     if (!this.sqs) {
-      throw new Error("SQS client not initialized.");
+      throw new Error("Documents SQS client was not started.");
     }
 
     try {
@@ -104,12 +100,12 @@ export class SQSService {
           messageLength: messageBody.length,
           delaySeconds,
         },
-        "Sent SQS message"
+        "Sent Document SQS message"
       );
 
       return result.MessageId;
     } catch (error) {
-      logger.error(error, "Failed to send SQS message");
+      logger.error(error, "Failed to send Document SQS message");
       throw error;
     }
   }
@@ -134,7 +130,7 @@ export class SQSService {
     return this.sendMessage(messageBody, delaySeconds);
   }
 
-  private startPolling(): void {
+  private startDocumentIndexQueuePoll(): void {
     if (!this.sqs || !this.polling) return;
 
     let failedRetries = 0;
@@ -150,16 +146,16 @@ export class SQSService {
 
       try {
         const response = await this.sqs.send(cmd);
-        logger.trace({ queues: response.QueueUrls }, "Fetched SQS queue list");
+        logger.trace({ queues: response.QueueUrls }, "Fetched Documents SQS queue list");
 
         if (!response.QueueUrls?.includes(this.indexQueueUrl)) {
-          logger.info(`SQS queue ${this.indexQueueUrl} does not exist or is not accessible`);
+          logger.info(`SQS documents indexing queue ${this.indexQueueUrl} does not exist or is not accessible`);
           clearTimeout(this.pollInterval);
           this.pollInterval = setTimeout(poll, 3000);
           return;
         }
         if (!response.QueueUrls?.includes(this.outputQueueUrl)) {
-          logger.info(`SQS processing queue ${this.outputQueueUrl} does not exist or is not accessible`);
+          logger.info(`SQS documents processing queue ${this.outputQueueUrl} does not exist or is not accessible`);
           clearTimeout(this.pollInterval);
           this.pollInterval = setTimeout(poll, 3000);
           return;
@@ -185,14 +181,14 @@ export class SQSService {
               await this.deleteMessage(message);
             }
           } catch (error) {
-            logger.error(error, "Error processing message");
+            logger.error(error, "Error processing Document SQS message");
             // Message will become visible again after timeout
           }
         }
 
         failedRetries = 0; // Reset on success
       } catch (error) {
-        logger.error(error, `Error polling SQS on ${this.indexQueueUrl}`);
+        logger.error(error, `Error polling Document SQS on ${this.indexQueueUrl}`);
         failedRetries++;
       }
 
@@ -215,7 +211,7 @@ export class SQSService {
 
     try {
       const command = JSON.parse(message.Body);
-      logger.info(`Processing SQS message: ${command.command} for document ${command.documentId}`);
+      logger.info(`Processing DocumentSQS message: ${command.command} for document ${command.documentId}`);
 
       if (command.command === "index_document") {
         this.documentQueueService
@@ -230,7 +226,7 @@ export class SQSService {
       logger.info(`Skip command: ${command.command}`);
       return false;
     } catch (error) {
-      logger.error(error, "Error handling SQS message");
+      logger.error(error, "Error handling Document SQS message");
       throw error;
     }
   }

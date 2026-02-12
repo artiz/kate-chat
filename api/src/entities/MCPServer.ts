@@ -4,20 +4,11 @@ import { IsOptional, Validate } from "class-validator";
 import { User } from "./User";
 import { JSONTransformer, EnumTransformer } from "../utils/db";
 import { IsPublicUrl } from "../utils/validators";
+import { IMCPAuthConfig, IMCPServer, IMCPToolInfo } from "../types/ai.types";
+import { MCPAuthType, MCPTransportType } from "../types/api";
+import { DB_TYPE } from "../config/env";
 
-const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
-
-export enum MCPTransportType {
-  STREAMABLE_HTTP = "STREAMABLE_HTTP",
-  HTTP_SSE_LEGACY = "HTTP_SSE_LEGACY",
-}
-
-export enum MCPAuthType {
-  NONE = "NONE",
-  API_KEY = "API_KEY",
-  BEARER = "BEARER",
-  OAUTH2 = "OAUTH2",
-}
+const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 export const MCP_DEFAULT_API_KEY_HEADER = "X-API-Key";
 
@@ -33,7 +24,7 @@ registerEnumType(MCPAuthType, {
 
 @ObjectType("MCPAuthConfig")
 @InputType("MCPAuthConfigInput")
-export class MCPAuthConfig {
+export class MCPAuthConfig implements IMCPAuthConfig {
   @Field({ nullable: true })
   headerName?: string; // e.g., "Authorization", "X-API-Key"
 
@@ -54,7 +45,7 @@ export class MCPAuthConfig {
 }
 
 @ObjectType("MCPToolInfo")
-export class MCPToolInfo {
+export class MCPToolInfo implements IMCPToolInfo {
   @Field()
   name: string;
 
@@ -70,7 +61,7 @@ export class MCPToolInfo {
 
 @ObjectType()
 @Entity("mcp_servers")
-export class MCPServer {
+export class MCPServer implements IMCPServer {
   @Field(() => ID)
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -110,7 +101,7 @@ export class MCPServer {
   isActive: boolean;
 
   @Field(() => User, { nullable: true })
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   user: User;
 
   @Field({ nullable: true })

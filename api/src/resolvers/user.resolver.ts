@@ -9,28 +9,22 @@ import { verifyRecaptchaToken } from "@/utils/recaptcha";
 import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
-
-import {
-  DEMO_MODE,
-  DEFAULT_ADMIN_EMAILS,
-  DEMO_MAX_CHATS,
-  DEMO_MAX_CHAT_MESSAGES,
-  DEMO_MAX_IMAGES,
-} from "@/config/application";
-import { DB_TYPE } from "@/config/database";
+import { ensureInitialUserAssets } from "@/utils/initial-data";
+import { globalConfig } from "@/global-config";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
   @Query(() => ApplicationConfig, { nullable: true })
   async appConfig(@Ctx() context: GraphQLContext): Promise<ApplicationConfig> {
     const user = await this.loadUserFromContext(context);
+
     const s3settings = {
       ...(user?.settings || {}),
-      s3endpoint: process.env.S3_ENDPOINT || "",
-      s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME || "",
-      s3AccessKeyId: process.env.S3_ACCESS_KEY_ID || "",
-      s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-      s3Profile: process.env.S3_AWS_PROFILE || "",
+      s3endpoint: globalConfig.s3.endpoint || "",
+      s3FilesBucketName: globalConfig.s3.filesBucketName || "",
+      s3AccessKeyId: globalConfig.s3.accessKeyId || "",
+      s3SecretAccessKey: globalConfig.s3.secretAccessKey,
+      s3Profile: globalConfig.s3.profile || "",
     };
 
     // Generate JWT token
@@ -42,12 +36,16 @@ export class UserResolver extends BaseResolver {
         })
       : undefined;
 
-    const demoMode = user?.isAdmin() ? false : DEMO_MODE;
+    const demoMode = user?.isAdmin() ? false : globalConfig.demo.enabled;
+    const features = globalConfig.features;
+
     const s3Connected = Boolean(
       s3settings.s3FilesBucketName &&
         ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
     );
-    const ragSupported = Boolean(!demoMode && s3Connected && ["sqlite", "postgres", "mssql"].includes(DB_TYPE));
+    const ragSupported = Boolean(
+      features.rag && s3Connected && ["sqlite", "postgres", "mssql"].includes(globalConfig.db.type)
+    );
 
     const ragEnabled = Boolean(
       ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
@@ -59,10 +57,10 @@ export class UserResolver extends BaseResolver {
       demoMode,
       s3Connected,
       ragSupported,
-      ragEnabled,
-      maxChats: demoMode ? DEMO_MAX_CHATS : -1,
-      maxChatMessages: demoMode ? DEMO_MAX_CHAT_MESSAGES : -1,
-      maxImages: demoMode ? DEMO_MAX_IMAGES : -1,
+      ragEnabled: features.rag ? ragEnabled : false,
+      maxChats: demoMode ? globalConfig.demo.maxChats : -1,
+      maxChatMessages: demoMode ? globalConfig.demo.maxChatMessages : -1,
+      maxImages: features.imagesGeneration ? (demoMode ? globalConfig.demo.maxImages : -1) : 0,
     };
   }
 
@@ -93,7 +91,7 @@ export class UserResolver extends BaseResolver {
     const hashedPassword = authProvider ? "" : await bcrypt.hash(password, 12);
 
     // Determine user role
-    const role = DEFAULT_ADMIN_EMAILS.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
+    const role = globalConfig.app.defaultAdminEmails.includes(email.toLowerCase()) ? UserRole.ADMIN : UserRole.USER;
 
     // Create new user
     const user = this.userRepository.create({
@@ -108,6 +106,7 @@ export class UserResolver extends BaseResolver {
     });
 
     const savedUser = await this.userRepository.save(user);
+    await ensureInitialUserAssets(savedUser);
 
     // Generate JWT token
     const token = generateToken({
@@ -171,7 +170,7 @@ export class UserResolver extends BaseResolver {
     }
 
     // Update user role if they are in admin emails list
-    if (DEFAULT_ADMIN_EMAILS.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
+    if (globalConfig.app.defaultAdminEmails.includes(user.email.toLowerCase()) && user.role !== UserRole.ADMIN) {
       user.role = UserRole.ADMIN;
       await this.userRepository.save(user);
     }

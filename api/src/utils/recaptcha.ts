@@ -1,6 +1,9 @@
 import { fetch } from "undici";
-import { RECAPTCHA_SECRET_KEY, RECAPTCHA_VERIFY_URL, RECAPTCHA_SCORE_THRESHOLD } from "../config/application";
+import { globalConfig } from "@/global-config";
 import { logger } from "./logger";
+
+const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
+const RECAPTCHA_SCORE_THRESHOLD = 0.5;
 
 interface RecaptchaResponse {
   success: boolean;
@@ -24,7 +27,7 @@ export const verifyRecaptchaToken = async (token: string, expectedAction: string
     return false;
   }
 
-  if (!RECAPTCHA_SECRET_KEY || RECAPTCHA_SECRET_KEY === "YOUR_RECAPTCHA_SECRET_KEY") {
+  if (!globalConfig.runtime.recaptchaSecretKey) {
     logger.warn("reCAPTCHA secret key not configured, skipping verification");
     return true; // Skip verification in development mode
   }
@@ -32,7 +35,7 @@ export const verifyRecaptchaToken = async (token: string, expectedAction: string
   try {
     // Send verification request to Google
     const params = new URLSearchParams({
-      secret: RECAPTCHA_SECRET_KEY,
+      secret: globalConfig.runtime.recaptchaSecretKey,
       response: token,
     });
     const response = await fetch(RECAPTCHA_VERIFY_URL, {

@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 import { UserRole } from "@/entities";
+import { globalConfig } from "@/global-config";
 
-const JWT_SECRET = process.env.JWT_SECRET || "";
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || "7200"; // 2 hour in seconds
+const runtime = globalConfig.runtime;
 
-if (!JWT_SECRET) {
+if (!runtime.jwtSecret) {
   throw new Error("JWT_SECRET environment variable is not set");
 }
 
@@ -15,11 +15,11 @@ export interface TokenPayload {
 }
 
 export function generateToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: parseInt(JWT_EXPIRATION, 10) });
+  return jwt.sign(payload, runtime.jwtSecret, { expiresIn: runtime.jwtExpirationSec });
 }
 
 export function verifyToken(token: string): TokenPayload | null {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  return jwt.verify(token, runtime.jwtSecret) as TokenPayload;
 }
 
 export function isAdmin(token?: TokenPayload): boolean {

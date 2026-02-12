@@ -7,7 +7,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { TokenPayload } from "@/utils/jwt";
 import { GraphQLContext } from ".";
 import { MessagesService } from "@/services/messages.service";
-import { SQSService } from "@/services/messaging";
+import { DocumentSqsService } from "@/services/messaging";
 
 export class BaseResolver {
   protected userRepository: Repository<User>;
@@ -70,14 +70,14 @@ export class BaseResolver {
   protected loadConnectionParams(context: GraphQLContext, user: User): ConnectionParams {
     const params: ConnectionParams = context.connectionParams || {};
     if (user?.settings) {
-      params.AWS_BEDROCK_REGION ||= user.settings.awsBedrockRegion;
-      params.AWS_BEDROCK_PROFILE ||= user.settings.awsBedrockProfile;
-      params.AWS_BEDROCK_ACCESS_KEY_ID ||= user.settings.awsBedrockAccessKeyId;
-      params.AWS_BEDROCK_SECRET_ACCESS_KEY ||= user.settings.awsBedrockSecretAccessKey;
-      params.OPENAI_API_KEY ||= user.settings.openaiApiKey;
-      params.OPENAI_API_ADMIN_KEY ||= user.settings.openaiApiAdminKey;
-      params.YANDEX_FM_API_KEY ||= user.settings.yandexFmApiKey;
-      params.YANDEX_FM_API_FOLDER ||= user.settings.yandexFmApiFolderId;
+      params.awsBedrockRegion ||= user.settings.awsBedrockRegion;
+      params.awsBedrockProfile ||= user.settings.awsBedrockProfile;
+      params.awsBedrockAccessKeyId ||= user.settings.awsBedrockAccessKeyId;
+      params.awsBedrockSecretAccessKey ||= user.settings.awsBedrockSecretAccessKey;
+      params.openAiApiKey ||= user.settings.openaiApiKey;
+      params.openAiApiAdminKey ||= user.settings.openaiApiAdminKey;
+      params.yandexFmApiKey ||= user.settings.yandexFmApiKey;
+      params.yandexFmApiFolder ||= user.settings.yandexFmApiFolderId;
     }
     return params;
   }
@@ -94,7 +94,7 @@ export class BaseResolver {
     return messagesService;
   }
 
-  protected getSqsService(context: GraphQLContext): SQSService {
+  protected getSqsService(context: GraphQLContext): DocumentSqsService {
     const sqsService = context.sqsService;
     if (!sqsService) {
       throw new GraphQLError("SqsService not available in context", {

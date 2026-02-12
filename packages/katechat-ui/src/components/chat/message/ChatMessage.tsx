@@ -113,10 +113,10 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
       componentRef.current.querySelectorAll("pre").forEach(pre => {
         if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
+          const header = pre.querySelector(".code-header") || document.createElement("div");
           const data = pre.querySelector(".code-data");
           const lang = data?.getAttribute("data-lang") || "plaintext";
           const block = document.createElement("div");
-          const header = document.createElement("div");
           block.className = "code-block";
           header.className = "code-header";
 
@@ -173,7 +173,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
     return (
       <>
-        <Group align="center">
+        <Group align="center" pt="sm">
           <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
             {isUserMessage ? (
               <IconUser />
@@ -183,16 +183,16 @@ export const ChatMessage = (props: ChatMessageProps) => {
               <IconRobot />
             )}
           </Avatar>
-          <Group gap="xs">
+          <Group gap="sm">
             <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
               {username}
             </Text>
-            <Text size="xs" c="dimmed">
+            <Text size="sm" c="dimmed">
               {timestamp}
             </Text>
             {status && <MessageStatus status={status} />}
             {statusInfo && (
-              <Text size="xs" c="dimmed">
+              <Text size="sm" c="dimmed">
                 {statusInfo}
               </Text>
             )}

@@ -1,13 +1,13 @@
 import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
 import { Field, ID, ObjectType, registerEnumType, InputType } from "type-graphql";
 import { Validate, IsOptional } from "class-validator";
-import { ModelFeature, ModelType, ToolType } from "../types/ai.types";
+import { ApiProvider, ModelFeature, ModelType, ToolType } from "../types/api";
 import { User } from "./User";
 import { EnumTransformer, JSONTransformer } from "../utils/db";
-import { ApiProvider } from "../config/ai/common";
 import { IsPublicUrl } from "../utils/validators";
+import { DB_TYPE } from "../config/env";
 
-const JSON_COLUMN_TYPE = process.env.DB_TYPE == "mssql" ? "ntext" : "json";
+const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 export enum CustomModelProtocol {
   OPENAI_CHAT_COMPLETIONS = "OPENAI_CHAT_COMPLETIONS",

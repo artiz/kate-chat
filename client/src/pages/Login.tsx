@@ -3,12 +3,26 @@ import { useMutation } from "@apollo/client";
 import { useForm } from "@mantine/form";
 import { useNavigate } from "react-router-dom";
 import { LOGIN_MUTATION } from "../store/services/graphql.queries";
-import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper, Text, Anchor } from "@mantine/core";
+import {
+  TextInput,
+  PasswordInput,
+  Button,
+  Group,
+  Stack,
+  Container,
+  Title,
+  Paper,
+  Text,
+  Anchor,
+  Loader,
+  Center,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { logout, useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { OAuthButtons } from "../components/auth";
 import { setUser } from "@/store/slices/userSlice";
+import { getClientConfig } from "@/global-config";
 
 // Login mutation is imported from graphql.ts
 
@@ -16,6 +30,8 @@ const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const [loggingIn, setLoggingIn] = React.useState(false);
+  const { appTitle } = getClientConfig();
 
   // If already authenticated, redirect to chat
   useEffect(() => {
@@ -70,7 +86,7 @@ const Login: React.FC = () => {
   return (
     <Container size="sm" my={40}>
       <Title ta="center" fw={900}>
-        Welcome to KateChat!
+        Welcome to {appTitle}!
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
         Sign in to access your AI chats
@@ -84,24 +100,27 @@ const Login: React.FC = () => {
             <PasswordInput label="Password" placeholder="Your password" required {...form.getInputProps("password")} />
           </Stack>
 
-          <Group justify="space-between" mt="lg">
+          {/* <Group justify="space-between" mt="lg">
             <Anchor component="button" type="button" c="dimmed" size="sm">
               Forgot password?
             </Anchor>
-          </Group>
+          </Group> */}
 
-          <Button type="submit" fullWidth mt="xl" loading={loading}>
+          <Button type="submit" fullWidth mt="xl" loading={loading} disabled={loggingIn}>
             Sign in
           </Button>
 
-          <OAuthButtons variant="light" />
+          <OAuthButtons variant="light" onLogin={() => setLoggingIn(true)} />
+          <Center mt="md">{loggingIn && <Loader size="md" />}</Center>
 
-          <Text ta="center" mt="md">
-            Don't have an account?{" "}
-            <Anchor component="button" type="button" onClick={() => navigate("/register")}>
-              Register
-            </Anchor>
-          </Text>
+          {!loggingIn && (
+            <Text ta="center" mt="md">
+              Don't have an account?{" "}
+              <Anchor component="button" type="button" onClick={() => navigate("/register")} disabled={loggingIn}>
+                Register
+              </Anchor>
+            </Text>
+          )}
         </form>
       </Paper>
     </Container>

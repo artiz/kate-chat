@@ -1,4 +1,4 @@
-import { getFrontendOrigin } from "@/config/application";
+import { getFrontendOrigin } from "@/global-config";
 
 export const HTML_TEMPLATE = (title: string, content: string, script?: string) =>
   `
