@@ -1,7 +1,7 @@
 process.env.ENABLED_API_PROVIDERS = "AWS_BEDROCK";
-import { ApiProvider } from "../../config/ai/common";
+
+import { ApiProvider, MessageRole, ModelType } from "../../types/api";
 import { AIService } from "../ai/ai.service";
-import { MessageRole, ModelType } from "../../types/ai.types";
 import { Message } from "../../entities/Message";
 
 // Mock the BedrockRuntimeClient
@@ -83,8 +83,8 @@ describe("AIService", () => {
 
       const response = await aiService.completeChat(
         {
-          AWS_BEDROCK_REGION: "aws-region",
-          AWS_BEDROCK_PROFILE: "default",
+          awsBedrockRegion: "aws-region",
+          awsBedrockProfile: "default",
         },
         { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages
@@ -122,8 +122,8 @@ describe("AIService", () => {
 
       const response = await aiService.completeChat(
         {
-          AWS_BEDROCK_REGION: "aws-region",
-          AWS_BEDROCK_PROFILE: "default",
+          awsBedrockRegion: "aws-region",
+          awsBedrockProfile: "default",
         },
         { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages
@@ -153,8 +153,8 @@ describe("AIService", () => {
 
       const response = await aiService.completeChat(
         {
-          AWS_BEDROCK_REGION: "aws-region",
-          AWS_BEDROCK_PROFILE: "default",
+          awsBedrockRegion: "aws-region",
+          awsBedrockProfile: "default",
         },
         { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages
@@ -207,8 +207,8 @@ describe("AIService", () => {
 
       await aiService.streamChatCompletion(
         {
-          AWS_BEDROCK_REGION: "us-west-2",
-          AWS_BEDROCK_PROFILE: "default",
+          awsBedrockRegion: "us-west-2",
+          awsBedrockProfile: "default",
         },
         { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages,
@@ -259,8 +259,8 @@ describe("AIService", () => {
 
       await aiService.streamChatCompletion(
         {
-          AWS_BEDROCK_REGION: "aws-region",
-          AWS_BEDROCK_PROFILE: "default",
+          awsBedrockRegion: "aws-region",
+          awsBedrockProfile: "default",
         },
         { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages,
@@ -307,8 +307,8 @@ describe("AIService", () => {
 
       await aiService.streamChatCompletion(
         {
-          AWS_BEDROCK_REGION: "us-west-2",
-          AWS_BEDROCK_PROFILE: "default",
+          awsBedrockRegion: "us-west-2",
+          awsBedrockProfile: "default",
         },
         { apiProvider: ApiProvider.AWS_BEDROCK, modelId, modelType: ModelType.CHAT },
         messages,

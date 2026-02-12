@@ -1,7 +1,6 @@
 import { ObjectType, Field, ID } from "type-graphql";
-import { User, Chat, Message, Model, Document, MCPServer } from "../../entities";
-import { DocumentStatus, MessageRole, MessageType } from "../../types/ai.types";
-import { ApiProvider } from "@/global-config";
+import { User, Chat, Message, Model, Document, MCPServer } from "@/entities";
+import { ApiProvider, DocumentStatus, MessageRole, MessageType } from "../api";
 
 @ObjectType()
 export class UserResponse {

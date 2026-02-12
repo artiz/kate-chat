@@ -1,16 +1,19 @@
 {
+  "app": {
+    "name": "Matrix",
+    "userAgent": "Matrix/1.0",
+    "maxInputJson": "50mb",
+    "queueMessageExpirationSec": 300
+  },
   "demo": {
-    "enabled": false,
-    "maxChatMessages": 50,
-    "maxChats": 20,
-    "maxImages": 5
+    "enabled": false
   },
   "providers": {
-    "enabled": ["OPEN_AI", "AWS_BEDROCK", "YANDEX_FM", "CUSTOM_REST_API"]
+    "enabled": ["OPEN_AI", "CUSTOM_REST_API"]
   },
   "features": {
     "imagesGeneration": true,
-    "rag": true,
+    "rag": false,
     "mcp": true
   },
   "ai": {
@@ -18,7 +21,6 @@
     "defaultMaxTokens": 2048,
     "defaultTopP": 0.9,
     "contextMessagesLimit": 100,
-    "embeddingsDimensions": 3072,
     "charactersPerToken": 3.5,
     "maxContextTokens": 8192,
     "summarizingOutputTokens": 2000,
@@ -29,16 +31,12 @@
   "admin": {
     "defaultEmails": ["admin@example.com"]
   },
-  "app": {
-    "userAgent": "KateChat/1.0 (+https://katechat.tech/)",
-    "maxInputJson": "50mb",
-    "queueMessageExpirationSec": 300
-  },
   "initial": {
     "models": [
       {
         "name": "DeepSeek Chat",
-        "modelId": "deepseek-chat",
+        "modelId": "custom:deepseek-chat",
+        "modelName": "deepseek-chat",
         "apiProvider": "CUSTOM_REST_API",
         "protocol": "OPENAI_CHAT_COMPLETIONS",
         "baseUrl": "https://api.deepseek.com/v1",

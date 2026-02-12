@@ -8,7 +8,7 @@ import { PythonExecutorModal } from "./PythonExecutorModal";
  */
 export function useCodePlugins(): {
   codePlugins: Record<string, CodePlugin>;
-  PythonModal: React.ReactNode;
+  PythonCodeModal: React.ReactNode;
 } {
   const [opened, setOpened] = useState(false);
   const [initialCode, setInitialCode] = useState("");

@@ -11,13 +11,13 @@ import {
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
 import { createLogger } from "@/utils/logger";
 import { UserSettings } from "@/entities";
 import { getRepository } from "@/config/database";
 import { User } from "@/entities";
 import { TokenPayload } from "@/utils/jwt";
 import { ok } from "@/utils/assert";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
@@ -36,12 +36,12 @@ export class S3Service implements FileContentLoader {
 
   constructor(token?: TokenPayload) {
     const envSettings: UserSettings = {
-      s3FilesBucketName: process.env.S3_FILES_BUCKET_NAME,
-      s3Endpoint: process.env.S3_ENDPOINT,
-      s3Region: process.env.S3_REGION,
-      s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
-      s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-      s3Profile: process.env.S3_AWS_PROFILE,
+      s3FilesBucketName: globalConfig.s3.filesBucketName,
+      s3Endpoint: globalConfig.s3.endpoint,
+      s3Region: globalConfig.s3.region,
+      s3AccessKeyId: globalConfig.s3.accessKeyId,
+      s3SecretAccessKey: globalConfig.s3.secretAccessKey,
+      s3Profile: globalConfig.s3.profile,
     };
 
     const init = (settings: UserSettings) => {

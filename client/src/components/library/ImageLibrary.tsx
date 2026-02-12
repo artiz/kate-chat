@@ -89,7 +89,7 @@ const ImageCard: React.FC<{
 
   return (
     <Grid.Col key={image.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
-      <Card shadow="0" padding="xs" radius="0" style={cardStyle}>
+      <Card shadow="0" padding="sm" radius="0" style={cardStyle}>
         <Card.Section>
           <Box pos="relative">
             <Image
@@ -113,7 +113,7 @@ const ImageCard: React.FC<{
           </Box>
         </Card.Section>
 
-        <Stack gap="xs" mt="xs">
+        <Stack gap="sm" mt="md">
           <Group justify="space-between" align="flex-start">
             {image.role === "user" ? (
               <IconUserUp size={16} color={textColor} />
@@ -125,7 +125,7 @@ const ImageCard: React.FC<{
             </Badge>
           </Group>
 
-          <Group gap="xs" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap">
             <IconCalendar size={14} color={textColor} />
             <Text size="xs" c={textColor || "dimmed"}>
               {formatDate(image.createdAt)}
@@ -298,7 +298,7 @@ export const ImageLibrary: React.FC = () => {
             </Stack>
           </Center>
         ) : (
-          <Grid gutter="xs">
+          <Grid gutter="sm">
             {images.map(image => (
               <ImageCard
                 key={image.id}

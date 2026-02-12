@@ -1,13 +1,14 @@
 import pgvector from "pgvector";
 import { createLogger } from "@/utils/logger";
 import { AIService } from "./ai.service";
-import { AppDataSource, DB_TYPE, getRepository } from "@/config/database";
+import { AppDataSource, getRepository } from "@/config/database";
 import { Document, DocumentChunk, Model, User } from "@/entities";
 import { ParsedDocumentChunk } from "@/types/ai.types";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { In, Repository } from "typeorm";
-import { EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
 import { notEmpty, ok } from "@/utils/assert";
+import { globalConfig } from "@/global-config";
+import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
 
 const logger = createLogger(__filename);
 
@@ -41,7 +42,7 @@ export class EmbeddingsService {
 
     if (entity && entity.modelId === model.modelId) {
       let embedding = entity?.embedding;
-      if (DB_TYPE === "sqlite") {
+      if (globalConfig.db.type === "sqlite") {
         const runner = AppDataSource.createQueryRunner();
         try {
           const rows = await runner.manager.query<{ rowid: number }[]>(
@@ -90,7 +91,7 @@ export class EmbeddingsService {
     entity = await this.documentChunksRepo.save(entity);
 
     // SQLite specific
-    if (DB_TYPE === "sqlite") {
+    if (globalConfig.db.type === "sqlite") {
       const runner = AppDataSource.createQueryRunner();
       try {
         const rows = await runner.manager.query<{ rowid: number }[]>(
@@ -162,7 +163,7 @@ export class EmbeddingsService {
 
       const documentIds = documents.map(doc => doc.id);
 
-      if (DB_TYPE === "sqlite") {
+      if (globalConfig.db.type === "sqlite") {
         const runner = AppDataSource.createQueryRunner();
         try {
           const chunks = await runner.manager.query<(DocumentChunk & { rowid: number; distance: number })[]>(
@@ -182,7 +183,7 @@ export class EmbeddingsService {
         } finally {
           runner.release();
         }
-      } else if (DB_TYPE === "postgres") {
+      } else if (globalConfig.db.type === "postgres") {
         const chunks = await this.documentChunksRepo
           .createQueryBuilder("document_chunk")
           .leftJoinAndSelect("document_chunk.document", "document")
@@ -193,7 +194,7 @@ export class EmbeddingsService {
           .getMany();
 
         documentsChunks.push(...chunks);
-      } else if (DB_TYPE === "mssql") {
+      } else if (globalConfig.db.type === "mssql") {
         const runner = AppDataSource.createQueryRunner();
         try {
           const chunks = await runner.manager.query<(DocumentChunk & { distance: number })[]>(
@@ -213,15 +214,16 @@ export class EmbeddingsService {
           runner.release();
         }
       } else {
-        logger.warn(`Unsupported embeddings database type: ${DB_TYPE}`);
+        logger.warn(`Unsupported embeddings database type: ${globalConfig.db.type}`);
       }
 
       if (loadFullPage) {
         const loadedChunkIds = new Set(documentsChunks.map(c => c.id));
         for (var docId of documentIds) {
+          // TODO: optimize with single query to get all chunks for all pages
           const chunkPages = new Set(
             documentsChunks
-              .filter(c => c.documentId === docId)
+              .filter(c => c.documentId === docId && c.document?.pagesCount > 1)
               .map(c => c.page)
               .filter(p => p > 0)
           );

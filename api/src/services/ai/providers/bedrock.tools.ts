@@ -5,7 +5,8 @@ import { MCPClient } from "../tools/mcp.client";
 import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
 import { createLogger } from "@/utils/logger";
-import { ChatTool, MCPAuthToken, ResponseStatus, ToolType } from "@/types/ai.types";
+import { ResponseStatus, ToolType } from "@/types/api";
+import { ChatTool, IMCPServer, MCPAuthToken } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 
 // Re-export for backward compatibility
@@ -108,7 +109,7 @@ async function callMcpTool(
   toolName: string,
   args: Record<string, any>,
   toolUseId: string,
-  server: MCPServer,
+  server: IMCPServer,
   mcpTokens?: MCPAuthToken[]
 ): Promise<ToolResultBlock> {
   // Find matching OAuth token for this server
@@ -149,7 +150,7 @@ async function callMcpTool(
 /**
  * Convert MCP tool definitions to Bedrock tool format (similar to formatOpenAIMcpTools)
  */
-export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: MCPServer[]): BedrockToolCallable[] {
+export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: IMCPServer[]): BedrockToolCallable[] {
   if (!tools?.length || !mcpServers?.length) {
     return [];
   }
@@ -197,7 +198,7 @@ export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: MCPServer
 /**
  * Format request tools for Bedrock (combines web search and MCP tools)
  */
-export function formatBedrockRequestTools(inputTools?: ChatTool[], mcpServers?: MCPServer[]): BedrockToolCallable[] {
+export function formatBedrockRequestTools(inputTools?: ChatTool[], mcpServers?: IMCPServer[]): BedrockToolCallable[] {
   if (!inputTools?.length) {
     return [];
   }

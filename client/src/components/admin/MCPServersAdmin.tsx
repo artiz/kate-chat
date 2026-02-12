@@ -158,7 +158,7 @@ export const MCPServersAdmin: React.FC = () => {
             <Card key={server.id} withBorder padding="sm" radius="md">
               <Group justify="space-between" align="flex-start" wrap="nowrap">
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                  <Group gap="xs">
+                  <Group gap="sm">
                     <IconPlugConnected size="1rem" />
                     <Text fw={600} truncate>
                       {server.name}
@@ -168,7 +168,7 @@ export const MCPServersAdmin: React.FC = () => {
                     {server.url}
                   </Text>
                   {server.description && (
-                    <Text size="xs" c="dimmed" lineClamp={2}>
+                    <Text size="sm" c="dimmed" lineClamp={2}>
                       {server.description}
                     </Text>
                   )}
@@ -191,14 +191,14 @@ export const MCPServersAdmin: React.FC = () => {
                   </Tooltip>
                 </ActionIcon.Group>
               </Group>
-              <Group gap="xs" mt="xs">
-                <Badge variant="light" color="blue" size="xs">
+              <Group gap="sm" mt="sm">
+                <Badge variant="light" color="blue" size="sm">
                   {server.tools?.length || 0} tools
                 </Badge>
-                <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="xs">
+                <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="sm">
                   {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
                 </Badge>
-                <Badge color={server.isActive ? "green" : "red"} size="xs">
+                <Badge color={server.isActive ? "green" : "red"} size="sm">
                   {server.isActive ? "Active" : "Inactive"}
                 </Badge>
               </Group>

@@ -32,15 +32,18 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
   const [imageFileName, setImageFileName] = useState<string | undefined>();
   const [updatedMessages, setUpdatedMessages] = useState<Set<string>>(new Set());
 
-  const addEditedMessage = (messageId: string) => setUpdatedMessages(prev => new Set(prev).add(messageId));
+  const addEditedMessage = useCallback(
+    (messageId: string) => setUpdatedMessages(prev => new Set(prev).add(messageId)),
+    []
+  );
 
-  const clearEditedMessage = (messageId: string) => {
+  const clearEditedMessage = useCallback((messageId: string) => {
     setUpdatedMessages(prev => {
       const set = new Set(prev);
       set.delete(messageId);
       return set;
     });
-  };
+  }, []);
 
   const resetSelectedImage = () => {
     setImageToShow(undefined);

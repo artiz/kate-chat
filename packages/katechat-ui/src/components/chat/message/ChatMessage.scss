@@ -6,7 +6,7 @@
 
   .katechat-message-main,
   .katechat-message-linked {
-    padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
     flex-grow: 1;
     width: 50%;
     display: flex;
@@ -15,7 +15,7 @@
   }
 
   .katechat-message-linked {
-    margin-right: var(--mantine-spacing-md);
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   }
 
   .katechat-message-linked-toggle {
@@ -34,13 +34,14 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  word-break: break-all;
   border-radius: var(--mantine-radius-md);
-
   margin-top: var(--mantine-spacing-md);
 
   p {
     margin-block-start: 0;
     margin-block-end: 0;
+    padding-top: var(--mantine-spacing-sm);
   }
 
   blockquote {
@@ -120,7 +121,7 @@
 
     td,
     th {
-      padding: var(--mb-padding, var(--mantine-spacing-xs));
+      padding: var(--mb-padding, var(--mantine-spacing-sm));
       margin: 0;
       border-top: 1px solid var(--mantine-color-default-border);
       border-left: 1px solid var(--mantine-color-default-border);
@@ -345,7 +346,7 @@
     }
 
     .katechat-message-linked {
-      background-color: var(--mantine-color-dark-8);
+      background-color: var(--mantine-color-dark-5);
     }
   }
 }

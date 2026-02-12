@@ -86,11 +86,11 @@ const Login: React.FC = () => {
             <PasswordInput label="Password" placeholder="Your password" required {...form.getInputProps("password")} />
           </Stack>
 
-          <Group justify="space-between" mt="lg">
+          {/* <Group justify="space-between" mt="lg">
             <Anchor component="button" type="button" c="dimmed" size="sm">
               Forgot password?
             </Anchor>
-          </Group>
+          </Group> */}
 
           <Button type="submit" fullWidth mt="xl" loading={loading}>
             Sign in

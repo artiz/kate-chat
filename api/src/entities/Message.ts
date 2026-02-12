@@ -12,10 +12,11 @@ import { Field, ID, ObjectType } from "type-graphql";
 import { Chat } from "./Chat";
 import { ChatFile } from "./ChatFile";
 import { User } from "./User";
-import { MessageRole, ModelMessageContent, MessageMetadata, ResponseStatus } from "../types/ai.types";
+import { MessageRole, ResponseStatus } from "../types/api";
 import { JSONTransformer } from "../utils/db";
+import { MessageMetadata, ModelMessageContent } from "../types/ai.types";
+import { DB_TYPE } from "../config/env";
 
-const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 @ObjectType()

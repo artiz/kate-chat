@@ -1,5 +1,5 @@
-import { Resolver, Query, Ctx, Authorized, Arg, Mutation, FieldResolver, Root } from "type-graphql";
-import { MCPServer, MCPAuthType, MCPAuthConfig, MCPTransportType, UserRole } from "../entities";
+import { Resolver, Query, Ctx, Arg, Mutation, FieldResolver, Root } from "type-graphql";
+import { MCPServer, MCPAuthConfig } from "../entities";
 import { BaseResolver } from "./base.resolver";
 import {
   MCPServerResponse,
@@ -19,6 +19,7 @@ import { createLogger } from "@/utils/logger";
 import { MCPClient } from "@/services/ai/tools/mcp.client";
 import { Repository } from "typeorm";
 import { MCPAuthToken } from "@/types/ai.types";
+import { MCPAuthType, MCPTransportType } from "@/types/api";
 
 const logger = createLogger(__filename);
 

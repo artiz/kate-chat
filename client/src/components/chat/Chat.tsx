@@ -504,8 +504,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
         onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />
 
-      {aiUsageAlert && (
-        <Text size="xs" c="dimmed" mt="xs" ta="center">
+      {aiUsageAlert && loadCompleted && messages?.length && (
+        <Text size="xs" c="dimmed" mt="0" mb="0" ta="center">
           {aiUsageAlert}
         </Text>
       )}

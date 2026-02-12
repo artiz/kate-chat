@@ -1,3 +1,6 @@
+import { MantineColorsTuple } from "@mantine/core";
+import customization from "../customization.json";
+
 export type NavLinkIcon = "cv" | "github" | "network" | "link";
 
 export interface ClientNavLink {
@@ -9,20 +12,71 @@ export interface ClientNavLink {
 
 export interface ClientConfig {
   theme: {
-    brandColors: Record<string, string[]>;
-    fontFamily: string;
+    primaryColor?: string;
+    colors?: Record<string, MantineColorsTuple>;
+    defaultRadius?: "0" | "xs" | "sm" | "md" | "lg" | "xl";
+    fontFamily?: string;
   };
   appTitle: string;
-  navLinks: ClientNavLink[];
+  navLinks?: ClientNavLink[];
   aiUsageAlert?: string;
 }
 
 const defaultConfig: ClientConfig = {
   theme: {
-    brandColors: {
-      brand: ["#fff0f6", "#ffe0ec", "#ffccd7", "#ffb3c2", "#ff99ab", "#ff8095", "#e65a74", "#cc3352", "#b31231", "#c00a34"],
+    primaryColor: "brand",
+    colors: {
+      brand: [
+        "#ecf4ff",
+        "#dce4f5",
+        "#b9c7e2",
+        "#94a8d0",
+        "#748dc0",
+        "#5f7cb7",
+        "#5474b4",
+        "#44639f",
+        "#3a5890",
+        "#2c4b80",
+      ],
+      green: [
+        "#effaf3",
+        "#dff3e6",
+        "#b9e6c8",
+        "#91daa9",
+        "#70cf8e",
+        "#5bc97d",
+        "#4fc674",
+        "#40ae62",
+        "#369b56",
+        "#1f6938",
+      ],
+      red: [
+        "#ffeaec",
+        "#fcd4d7",
+        "#f4a7ac",
+        "#ec777e",
+        "#e64f57",
+        "#e3353f",
+        "#e22732",
+        "#c91a25",
+        "#b41220",
+        "#9e0419",
+      ],
+      blue: [
+        "#eef6fb",
+        "#dde9f2",
+        "#b6d2e6",
+        "#8cbadb",
+        "#6ba6d1",
+        "#5799cc",
+        "#4b93ca",
+        "#3c7fb3",
+        "#3171a1",
+        "#194f73",
+      ],
     },
     fontFamily: `"Noto Sans", "Segoe UI", system-ui`,
+    defaultRadius: "md",
   },
   appTitle: "KateChat",
   navLinks: [
@@ -33,7 +87,6 @@ const defaultConfig: ClientConfig = {
 };
 
 let clientConfig: ClientConfig = { ...defaultConfig };
-let loadPromise: Promise<void> | undefined;
 
 function mergeDeep<T>(target: T, source?: Partial<T>): T {
   if (!source) return target;
@@ -59,33 +112,7 @@ function mergeDeep<T>(target: T, source?: Partial<T>): T {
   return output as T;
 }
 
-async function loadCustomization(): Promise<Partial<ClientConfig> | undefined> {
-  const locations = ["./customization.json", "../customization.json"];
-  for (const location of locations) {
-    try {
-      const resp = await fetch(location, { cache: "no-store" });
-      if (resp.ok) {
-        return (await resp.json()) as Partial<ClientConfig>;
-      }
-    } catch {
-      // ignore missing customization
-    }
-  }
-  return undefined;
-}
-
-export async function ensureClientConfig(): Promise<void> {
-  if (!loadPromise) {
-    loadPromise = (async () => {
-      const customization = await loadCustomization();
-      clientConfig = mergeDeep(clientConfig, customization);
-      if (clientConfig.appTitle) {
-        document.title = clientConfig.appTitle;
-      }
-    })();
-  }
-  return loadPromise;
-}
+clientConfig = mergeDeep(clientConfig, customization as unknown as ClientConfig);
 
 export function getClientConfig(): ClientConfig {
   return clientConfig;
@@ -94,5 +121,3 @@ export function getClientConfig(): ClientConfig {
 export function getClientNavLinks(): ClientNavLink[] {
   return clientConfig.navLinks || [];
 }
-
-export const clientDefaultConfig = defaultConfig;

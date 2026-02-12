@@ -4,18 +4,21 @@ import { logger } from "../utils/logger";
 import { IncomingHttpHeaders } from "http";
 import { GraphQLContext } from "@/resolvers";
 import { TokenExpiredError } from "jsonwebtoken";
+import { globalConfig } from "@/global-config";
 
 export interface ConnectionParams {
-  AWS_BEDROCK_REGION?: string;
-  AWS_BEDROCK_PROFILE?: string;
-  AWS_BEDROCK_ACCESS_KEY_ID?: string;
-  AWS_BEDROCK_SECRET_ACCESS_KEY?: string;
-  OPENAI_API_KEY?: string;
-  OPENAI_API_ADMIN_KEY?: string;
-  YANDEX_FM_API_KEY?: string;
-  YANDEX_FM_API_FOLDER?: string;
-  YANDEX_SEARCH_API_KEY?: string;
-  YANDEX_SEARCH_API_FOLDER?: string;
+  awsBedrockRegion?: string;
+  awsBedrockProfile?: string;
+  awsBedrockAccessKeyId?: string;
+  awsBedrockSecretAccessKey?: string;
+
+  openAiApiKey?: string;
+  openAiApiAdminKey?: string;
+
+  yandexFmApiKey?: string;
+  yandexFmApiFolder?: string;
+  yandexSearchApiKey?: string;
+  yandexSearchApiFolder?: string;
 }
 
 declare global {
@@ -93,20 +96,21 @@ const getHeader = (headerValue: string | string[] | undefined): string | undefin
 
 function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
   return {
-    AWS_BEDROCK_REGION: getHeader(headers["x-aws-region"]) || process.env.AWS_BEDROCK_REGION,
-    AWS_BEDROCK_PROFILE: getHeader(headers["x-aws-profile"]) || process.env.AWS_BEDROCK_PROFILE,
-    AWS_BEDROCK_ACCESS_KEY_ID: getHeader(headers["x-aws-access-key-id"]) || process.env.AWS_BEDROCK_ACCESS_KEY_ID,
-    AWS_BEDROCK_SECRET_ACCESS_KEY:
-      getHeader(headers["x-aws-secret-access-key"]) || process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
-    OPENAI_API_KEY: getHeader(headers["x-openai-api-key"]) || process.env.OPENAI_API_KEY,
-    OPENAI_API_ADMIN_KEY: getHeader(headers["x-openai-api-admin-key"]) || process.env.OPENAI_API_ADMIN_KEY,
-    YANDEX_FM_API_KEY: getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_FM_API_KEY,
-    YANDEX_FM_API_FOLDER: getHeader(headers["x-yandex-api-folder"]) || process.env.YANDEX_FM_API_FOLDER,
-    YANDEX_SEARCH_API_KEY:
-      getHeader(headers["x-yandex-api-key"]) || process.env.YANDEX_SEARCH_API_KEY || process.env.YANDEX_FM_API_KEY,
-    YANDEX_SEARCH_API_FOLDER:
+    awsBedrockRegion: getHeader(headers["x-aws-region"]) || globalConfig.bedrock.region,
+    awsBedrockProfile: getHeader(headers["x-aws-profile"]) || globalConfig.bedrock.profile,
+    awsBedrockAccessKeyId: getHeader(headers["x-aws-access-key-id"]) || globalConfig.bedrock.accessKeyId,
+    awsBedrockSecretAccessKey: getHeader(headers["x-aws-secret-access-key"]) || globalConfig.bedrock.secretAccessKey,
+
+    openAiApiKey: getHeader(headers["x-openai-api-key"]) || globalConfig.openai.apiKey,
+    openAiApiAdminKey: getHeader(headers["x-openai-api-admin-key"]) || globalConfig.openai.adminApiKey,
+
+    yandexFmApiKey: getHeader(headers["x-yandex-api-key"]) || globalConfig.yandex.fmApiKey,
+    yandexFmApiFolder: getHeader(headers["x-yandex-api-folder"]) || globalConfig.yandex.fmApiFolder,
+    yandexSearchApiKey:
+      getHeader(headers["x-yandex-api-key"]) || globalConfig.yandex.searchApiKey || globalConfig.yandex.fmApiKey,
+    yandexSearchApiFolder:
       getHeader(headers["x-yandex-api-folder"]) ||
-      process.env.YANDEX_SEARCH_API_FOLDER ||
-      process.env.YANDEX_FM_API_FOLDER,
+      globalConfig.yandex.searchApiFolder ||
+      globalConfig.yandex.fmApiFolder,
   };
 }

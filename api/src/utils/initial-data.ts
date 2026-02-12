@@ -1,10 +1,10 @@
 import { getRepository } from "@/config/database";
-import { ApiProvider } from "@/global-config";
-import { globalConfig, InitialCustomModel, InitialMCPServer } from "@/global-config";
-import { MCPAuthConfig, MCPAuthType, MCPServer, MCPTransportType, Model, ModelType } from "@/entities";
+import { globalConfig, InitialCustomModel } from "@/global-config";
+import { MCPAuthConfig, MCPServer, Model } from "@/entities";
 import { CustomModelProtocol } from "@/entities/Model";
 import { User } from "@/entities/User";
 import { logger } from "@/utils/logger";
+import { ApiProvider, MCPAuthType, MCPTransportType, ModelType } from "@/types/api";
 
 function resolveApiKey(modelConfig: InitialCustomModel): string | undefined {
   if (modelConfig.apiKeyEnv) {
@@ -19,7 +19,7 @@ const resolveProtocol = (protocol?: string): CustomModelProtocol | undefined => 
 };
 
 export async function ensureInitialUserAssets(user: User) {
-  const { initial } = globalConfig.values;
+  const { initial } = globalConfig;
   if (!initial) return;
 
   const modelRepo = getRepository(Model);
@@ -47,7 +47,7 @@ export async function ensureInitialUserAssets(user: User) {
         protocol: resolveProtocol(modelConfig.protocol),
         endpoint: modelConfig.baseUrl,
         apiKey: resolveApiKey(modelConfig),
-        modelName: modelConfig.modelId,
+        modelName: modelConfig.modelName || modelConfig.modelId,
       },
     });
 

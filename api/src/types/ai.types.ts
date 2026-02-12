@@ -1,59 +1,15 @@
 import "reflect-metadata";
 import { Field, ID, ObjectType } from "type-graphql";
-import { ApiProvider } from "@/global-config";
-import { MCPServer } from "@/entities";
-
-export enum MessageType {
-  MESSAGE = "message",
-  SYSTEM = "system",
-}
-
-export enum ModelType {
-  CHAT = "chat",
-  EMBEDDING = "embedding",
-  IMAGE_GENERATION = "image_generation",
-  VIDEO_GENERATION = "video_generation",
-  AUDIO_GENERATION = "audio_generation",
-  REALTIME = "realtime",
-  OTHER = "other",
-}
-
-export enum MessageRole {
-  USER = "user",
-  ASSISTANT = "assistant",
-  ERROR = "error",
-  SYSTEM = "system",
-}
-
-export enum ResponseStatus {
-  STARTED = "started",
-  IN_PROGRESS = "in_progress",
-  RAG_SEARCH = "rag_search",
-  WEB_SEARCH = "web_search",
-  MCP_CALL = "mcp_call",
-  CODE_INTERPRETER = "code_interpreter",
-  TOOL_CALL = "tool_call",
-  TOOL_CALL_COMPLETED = "tool_call_completed",
-  OUTPUT_ITEM = "output_item",
-  REASONING = "reasoning",
-  CONTENT_GENERATION = "content_generation",
-  COMPLETED = "completed",
-  CANCELLED = "cancelled",
-  ERROR = "error",
-}
-
-export enum DocumentStatus {
-  UPLOAD = "upload",
-  STORAGE_UPLOAD = "storage_upload",
-  BATCHING = "batching",
-  PARSING = "parsing",
-  CHUNKING = "chunking",
-  EMBEDDING = "embedding",
-  SUMMARIZING = "summarizing",
-  READY = "ready",
-  ERROR = "error",
-  DELETING = "deleting",
-}
+import {
+  ApiProvider,
+  MCPAuthType,
+  MCPTransportType,
+  MessageRole,
+  ModelFeature,
+  ModelType,
+  ResponseStatus,
+  ToolType,
+} from "./api";
 
 export interface ProviderInfo {
   id: ApiProvider;
@@ -290,18 +246,35 @@ export interface StreamCallbacks {
   onError: (error: Error) => Promise<boolean | undefined>;
 }
 
-export interface CompleteChatRequest {
-  systemPrompt?: string;
-  apiProvider: ApiProvider;
-  modelId: string;
-  modelType: ModelType;
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-  tools?: ChatTool[];
-  mcpServers?: MCPServer[];
-  mcpTokens?: MCPAuthToken[];
+export class IMCPAuthConfig {
+  headerName?: string; // e.g., "Authorization", "X-API-Key"
+  clientId?: string;
+  clientSecret?: string;
+  tokenUrl?: string;
+  authorizationUrl?: string; // OAuth2 authorization URL
+  scope?: string; // OAuth2 scope
+}
+
+export class IMCPToolInfo {
+  name: string;
+  description?: string;
+  inputSchema?: string; // JSON string of the input schema
+  outputSchema?: string; // JSON string of the output schema
+}
+
+export interface IMCPServer {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  transportType: MCPTransportType;
+  authType: MCPAuthType;
+  authConfig?: IMCPAuthConfig;
+  tools?: IMCPToolInfo[];
+  isActive: boolean;
+  userId?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export class MCPAuthToken {
@@ -320,21 +293,24 @@ export class MCPAuthToken {
   }
 }
 
+export interface CompleteChatRequest {
+  systemPrompt?: string;
+  apiProvider: ApiProvider;
+  modelId: string;
+  modelType: ModelType;
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  imagesCount?: number;
+  tools?: ChatTool[];
+  mcpServers?: IMCPServer[];
+  mcpTokens?: MCPAuthToken[];
+}
+
 export interface GetEmbeddingsRequest {
   modelId: string;
   input: string;
   dimensions?: number;
-}
-
-export enum ToolType {
-  WEB_SEARCH = "web_search",
-  CODE_INTERPRETER = "code_interpreter",
-  MCP = "mcp",
-}
-
-export enum ModelFeature {
-  REQUEST_CANCELLATION = "request_cancellation",
-  REASONING = "reasoning",
 }
 
 @ObjectType()

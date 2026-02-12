@@ -7,17 +7,16 @@ import {
   StreamCallbacks,
   CompleteChatRequest,
   MessageMetadata,
-  MessageRole,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
-  ToolType,
-  ResponseStatus,
   ModelMessageContent,
   ChatToolCallResult,
   ChatResponseStatus,
   ChatTool,
   MCPAuthToken,
+  IMCPServer,
 } from "@/types/ai.types";
+import { MCPAuthType, MessageRole, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -29,7 +28,6 @@ import {
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
 import { ModelProtocol } from "./common";
-import { MCPAuthType, MCPServer } from "@/entities";
 import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 
@@ -339,7 +337,7 @@ export class OpenAIProtocol implements ModelProtocol {
     return params;
   }
 
-  private formatRequestTools(inputTools?: ChatTool[], mcpServers?: MCPServer[]): ChatCompletionToolCallable[] {
+  private formatRequestTools(inputTools?: ChatTool[], mcpServers?: IMCPServer[]): ChatCompletionToolCallable[] {
     if (inputTools?.length) {
       const tools: ChatCompletionToolCallable[] = [];
 

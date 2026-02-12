@@ -5,27 +5,22 @@ import {
   StreamCallbacks,
   AIModelInfo,
   UsageCostInfo,
-  ModelType,
   EmbeddingsResponse,
   GetEmbeddingsRequest,
-  ToolType,
   ModelMessage,
-  MessageRole,
-  ResponseStatus,
   ChatResponseStatus,
 } from "@/types/ai.types";
-import { YANDEX_FM_OPENAI_API_URL, YANDEX_MODELS, YANDEX_FM_API_URL } from "@/config/ai/yandex";
+import { YANDEX_MODELS } from "@/config/ai/yandex";
 import { fetch } from "undici";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
-import { ApiProvider, EMBEDDINGS_DIMENSIONS } from "@/config/ai/common";
+import { globalConfig } from "@/global-config";
 import { FileContentLoader } from "@/services/data/s3.service";
 import { notEmpty } from "@/utils/assert";
-import { ca } from "zod/dist/types/v4/locales";
-import e from "express";
 import { getErrorMessage } from "@/utils/errors";
+import { ApiProvider, MessageRole, ModelType, ResponseStatus, ToolType } from "@/types/api";
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
@@ -34,13 +29,13 @@ export class YandexApiProvider extends BaseApiProvider {
 
   constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
     super(connection, fileLoader);
-    this.apiKey = connection.YANDEX_FM_API_KEY || "";
-    this.folderId = connection.YANDEX_FM_API_FOLDER || "";
+    this.apiKey = connection.yandexFmApiKey || "";
+    this.folderId = connection.yandexFmApiFolder || "";
 
     if (this.apiKey) {
       this.protocol = new OpenAIProtocol({
         apiType: "completions",
-        baseURL: YANDEX_FM_OPENAI_API_URL,
+        baseURL: globalConfig.yandex.fmOpenApiUrl,
         apiKey: this.apiKey,
         connection,
         fileLoader,
@@ -134,7 +129,7 @@ export class YandexApiProvider extends BaseApiProvider {
     );
 
     const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
-    const url = `${YANDEX_FM_API_URL}/foundationModels/v1/imageGenerationAsync`;
+    const url = `${globalConfig.yandex.fmApiUrl}/foundationModels/v1/imageGenerationAsync`;
 
     // 1. Start generation
     const response = await fetch(url, {
@@ -179,7 +174,7 @@ export class YandexApiProvider extends BaseApiProvider {
     for (let i = 0; i < maxRetries; i++) {
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      const opUrl = `${YANDEX_FM_API_URL}/operations/${operationId}`;
+      const opUrl = `${globalConfig.yandex.fmApiUrl}/operations/${operationId}`;
       const opResponse = await fetch(opUrl, {
         headers: {
           Authorization: authHeader,
@@ -291,7 +286,7 @@ export class YandexApiProvider extends BaseApiProvider {
     const { modelId, input } = request;
     const modelUri = modelId.replace("{folder}", this.folderId);
 
-    const url = `${YANDEX_FM_API_URL}/foundationModels/v1/textEmbedding`;
+    const url = `${globalConfig.yandex.fmApiUrl}/foundationModels/v1/textEmbedding`;
     const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
 
     const response = await fetch(url, {

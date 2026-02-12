@@ -8,8 +8,8 @@
 
   :global .mantine-ActionIcon-root {
     position: absolute;
-    top: 0.6em;
-    right: 1em;
+    top: var(--mantine-spacing-xs);
+    right: var(--mantine-spacing-md);
     z-index: 1;
     opacity: 0;
     transition: opacity 0.2s ease;

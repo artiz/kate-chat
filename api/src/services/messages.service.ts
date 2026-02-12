@@ -1,7 +1,6 @@
-import { PubSub } from "graphql-subscriptions";
 import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
-
+import { IncomingMessage } from "http";
 import { Message } from "../entities/Message";
 import { ChatFile, ChatFileType } from "../entities/ChatFile";
 import { AIService } from "./ai/ai.service";
@@ -13,32 +12,27 @@ import {
   ChatResponseStatus,
   CompleteChatRequest,
   MessageMetadata,
-  MessageRole,
-  MessageType,
   ModelMessageContent,
   ModelMessageContentImage,
   ModelResponse,
-  ModelType,
-  ResponseStatus,
-  ToolType,
 } from "@/types/ai.types";
+import { MessageRole, MessageType, ModelType, ResponseStatus, ToolType } from "@/types/api";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
 import { isAdmin } from "@/utils/jwt";
-import { formatDateCeil, formatDateFloor, getRepository } from "@/config/database";
-import { IncomingMessage } from "http";
-import { CHAT_MESSAGES_CHANNEL, NEW_MESSAGE, SubscriptionsService } from "./messaging";
+import { getRepository } from "@/config/database";
+import { formatDateCeil, formatDateFloor } from "@/utils/db";
+
+import { SubscriptionsService } from "./messaging";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
-import e from "express";
 import { globalConfig } from "@/global-config";
 
-const cfg = globalConfig.config;
-const ai = cfg.ai;
+const aiConfig = globalConfig.ai;
 
 const logger = createLogger(__filename);
 
@@ -82,7 +76,7 @@ export class MessagesService {
     this.modelRepository = getRepository(Model);
     this.mcpServerRepository = getRepository(MCPServer);
 
-    subscriptionsService.on(CHAT_MESSAGES_CHANNEL, this.handleMessageEvent.bind(this));
+    subscriptionsService.on(globalConfig.redis.channelChatMessage, this.handleMessageEvent.bind(this));
   }
 
   public connectClient(socket: WebSocket, request: IncomingMessage, chatId: string) {
@@ -91,7 +85,10 @@ export class MessagesService {
 
     MessagesService.clients.set(socket, chatId);
     setTimeout(() => {
-      SubscriptionsService.pubSub.publish(NEW_MESSAGE, { chatId, data: { type: MessageType.SYSTEM } });
+      SubscriptionsService.pubSub.publish(globalConfig.redis.channelChatMessage, {
+        chatId,
+        data: { type: MessageType.SYSTEM },
+      });
     }, 300);
   }
 
@@ -262,7 +259,7 @@ export class MessagesService {
         user: { id: user.id }, // Ensure the model belongs to the user
       },
     });
-    if (!model) throw new Error("Model not found");
+    this.checkModelFeatures(model);
 
     let assistantMessage = this.messageRepository.create({
       content: "",
@@ -275,6 +272,10 @@ export class MessagesService {
     });
 
     if (documentIds && documentIds.length > 0) {
+      if (!globalConfig.features.rag) {
+        throw new Error("RAG module is not enabled");
+      }
+
       const userMessage = await this.publishUserMessage(input, user, chat, model, { documentIds });
 
       const ragMessage = await this.messageRepository.save(assistantMessage);
@@ -333,10 +334,9 @@ export class MessagesService {
         user: { id: user.id },
       },
     });
+    this.checkModelFeatures(model);
 
-    if (!model) throw new Error("Model not found or not accessible");
     const chatId = chat.id;
-
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
     const files = await this.chatFileRepository.find({ where: { messageId: originalMessage.id } });
     await this.removeFiles(files, user, chat);
@@ -439,7 +439,7 @@ export class MessagesService {
       },
     });
 
-    if (!model) throw new Error("Model not found for this chat");
+    this.checkModelFeatures(model);
 
     // Get context messages (up to the edited message, excluding it)
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
@@ -503,7 +503,7 @@ export class MessagesService {
         user: { id: user.id }, // Ensure the model belongs to the user
       },
     });
-    if (!model) throw new Error("Model not found");
+    this.checkModelFeatures(model);
 
     // Get previous messages for context (up to the original message)
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
@@ -980,8 +980,8 @@ export class MessagesService {
     inputMessage: Message,
     ragMessage: Message
   ): Promise<void> {
-    let chunksLimit = ai.ragQueryChunksLimit;
-    let loadFullPage = ai.ragLoadFullPages;
+    let chunksLimit = aiConfig.ragQueryChunksLimit;
+    let loadFullPage = aiConfig.ragLoadFullPages;
     let aiResponse: ModelResponse | undefined = undefined;
     let chunks: DocumentChunk[] = [];
     let ragRequest: string = "";
@@ -1248,7 +1248,7 @@ export class MessagesService {
         .andWhere("message.id <> :id", { id: currentMessage.id });
     }
 
-    const messages = await query.orderBy("message.createdAt", "DESC").take(ai.contextMessagesLimit).getMany();
+    const messages = await query.orderBy("message.createdAt", "DESC").take(aiConfig.contextMessagesLimit).getMany();
     return messages.reverse();
   }
 
@@ -1266,14 +1266,25 @@ export class MessagesService {
       chatId: chat.id,
       modelId: modelId_,
       content,
-      temperature: chat.temperature ?? user.defaultTemperature ?? ai.defaultTemperature,
-      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? ai.defaultMaxTokens,
-      topP: chat.topP ?? user.defaultTopP ?? ai.defaultTopP,
+      temperature: chat.temperature ?? user.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: chat.topP ?? user.defaultTopP ?? aiConfig.defaultTopP,
       imagesCount: chat.imagesCount ?? user.defaultImagesCount ?? 1,
       systemPrompt: chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
       mcpTokens: messageContext?.mcpTokens,
     };
 
     return request;
+  }
+
+  private checkModelFeatures(model: Model | null | undefined): asserts model is Model {
+    if (!model) throw new Error("Model not found or not accessible");
+
+    if (model.type === ModelType.IMAGE_GENERATION && !globalConfig.features.imagesGeneration) {
+      throw new Error("Image generation models are not enabled");
+    }
+    if (model.type === ModelType.VIDEO_GENERATION && !globalConfig.features.videoGeneration) {
+      throw new Error("Video generation models are not enabled");
+    }
   }
 }

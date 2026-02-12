@@ -4,17 +4,14 @@ import { createClient, RedisClientType } from "redis";
 import { Message } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
 import { ok } from "@/utils/assert";
-import { MessageRole } from "@/types/ai.types";
+import { MessageRole } from "@/types/api";
 import { Document } from "@/entities/Document";
 import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/responses";
 import { Chat } from "@/entities";
 import EventEmitter from "events";
 import { globalConfig } from "@/global-config";
 
-const appCfg = globalConfig.config.app;
-
-// Topics for PubSub
-export const NEW_MESSAGE = "NEW_MESSAGE";
+const redisCfg = globalConfig.redis;
 
 const logger = createLogger(__filename);
 
@@ -22,11 +19,6 @@ interface MessageCacheData {
   message: Message;
   chat: MessageChatInfo;
 }
-
-// PubSub channel for broadcasting messages
-export const CHAT_MESSAGES_CHANNEL = process.env.CHAT_MESSAGES_CHANNEL || "chat:messages";
-export const CHAT_ERRORS_CHANNEL = process.env.CHAT_ERRORS_CHANNEL || "chat:errors";
-export const DOCUMENT_STATUS_CHANNEL = process.env.DOCUMENT_STATUS_CHANNEL || "document:status";
 
 export class SubscriptionsService extends EventEmitter {
   private connectionError: boolean = false;
@@ -50,14 +42,14 @@ export class SubscriptionsService extends EventEmitter {
     // init Redis client for storing messages and PubSub
     // NOTE: Redis connection is optional - application works without Redis
     // but will not share messages between multiple instances
-    if (!appCfg.redisUrl) {
+    if (!redisCfg.url) {
       logger.warn("Redis URL not configured - multi-instance support disabled");
       return;
     }
 
     try {
       const client: RedisClientType = createClient({
-        url: appCfg.redisUrl,
+        url: redisCfg.url,
         socket: {
           reconnectStrategy: (retries: number) => {
             if (retries > 5) {
@@ -100,21 +92,21 @@ export class SubscriptionsService extends EventEmitter {
             await redisSub.connect();
 
             await redisSub.subscribe(
-              [CHAT_MESSAGES_CHANNEL, CHAT_ERRORS_CHANNEL, DOCUMENT_STATUS_CHANNEL],
+              [redisCfg.channelChatMessage, redisCfg.channelChatError, redisCfg.channelDocumentStatus],
               async (message: string, channel: string) => {
                 try {
                   const data = JSON.parse(message);
 
-                  if (channel === DOCUMENT_STATUS_CHANNEL) {
+                  if (channel === redisCfg.channelDocumentStatus) {
                     this.emit(channel, data);
-                    await SubscriptionsService.pubSub.publish(DOCUMENT_STATUS_CHANNEL, data);
+                    await SubscriptionsService.pubSub.publish(redisCfg.channelDocumentStatus, data);
                     return;
                   }
 
                   const { chatId, messageId, error, streaming } = data;
-                  if (channel === CHAT_ERRORS_CHANNEL) {
+                  if (channel === redisCfg.channelChatError) {
                     this.emit(channel, data);
-                    return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+                    return await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
                       chatId,
                       data: { error: error || "Unknown error" },
                     });
@@ -131,7 +123,7 @@ export class SubscriptionsService extends EventEmitter {
                     });
 
                     // Send to client via GraphQL PubSub
-                    await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+                    await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
                       chatId,
                       data: {
                         error: message.role === MessageRole.ERROR ? message.content : null,
@@ -142,7 +134,7 @@ export class SubscriptionsService extends EventEmitter {
                     });
                   } else {
                     logger.error(error, `Sync error: message ${messageId} not found in Redis`);
-                    await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+                    await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
                       chatId,
                       data: { error: "Sync error: message not found in cache" },
                     });
@@ -170,7 +162,7 @@ export class SubscriptionsService extends EventEmitter {
   async publishChatError(chatId: string, error: string): Promise<void> {
     // Publish directly if Redis is not configured
     if (!this.redisClient || !this.redisClient.isOpen) {
-      return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+      return await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
         chatId,
         data: { error },
       });
@@ -178,11 +170,11 @@ export class SubscriptionsService extends EventEmitter {
 
     try {
       // Broadcast error to all clients using Redis PubSub
-      await this.redisClient.publish(CHAT_ERRORS_CHANNEL, JSON.stringify({ chatId, error }));
+      await this.redisClient.publish(redisCfg.channelChatError, JSON.stringify({ chatId, error }));
     } catch (err) {
       logger.error(err, `Failed to publish error for chat ${chatId} in Redis`);
       // fallback to publish if Redis fails
-      return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+      return await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
         chatId,
         data: { error },
       });
@@ -193,7 +185,7 @@ export class SubscriptionsService extends EventEmitter {
     const chatId = chat.id;
     // Publish directly if Redis is not configured
     if (!this.redisClient || !this.redisClient.isOpen || !this.redisSub) {
-      return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+      return await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
         chatId,
         data: { message, chat, streaming },
       });
@@ -206,16 +198,16 @@ export class SubscriptionsService extends EventEmitter {
       await this.redisClient.set(
         `message:${messageId}`,
         JSON.stringify({ message, chat }),
-        { EX: appCfg.queueMessageExpirationSec } // message expiration to prevent stale data
+        { EX: redisCfg.chatMessageExpirationSec } // message expiration to prevent stale data
       );
 
       // Broadcast message to all clients using Redis PubSub
-      await this.redisClient.publish(CHAT_MESSAGES_CHANNEL, JSON.stringify({ chatId, messageId, streaming }));
+      await this.redisClient.publish(redisCfg.channelChatMessage, JSON.stringify({ chatId, messageId, streaming }));
     } catch (error: unknown) {
       logger.error(error, `Failed to publish message ${messageId} in Redis`);
 
       // fallback to publish if Redis fails
-      return await SubscriptionsService.pubSub.publish(NEW_MESSAGE, {
+      return await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {
         chatId,
         data: { message, chat, streaming },
       });
@@ -234,17 +226,17 @@ export class SubscriptionsService extends EventEmitter {
 
     // Publish directly if Redis is not configured
     if (!this.redisClient || !this.redisClient.isOpen) {
-      return await SubscriptionsService.pubSub.publish(DOCUMENT_STATUS_CHANNEL, message);
+      return await SubscriptionsService.pubSub.publish(redisCfg.channelDocumentStatus, message);
     }
 
     try {
       // Broadcast message to all clients using Redis PubSub
-      await this.redisClient.publish(DOCUMENT_STATUS_CHANNEL, JSON.stringify(message));
+      await this.redisClient.publish(redisCfg.channelDocumentStatus, JSON.stringify(message));
     } catch (error: unknown) {
       logger.error(error, `Failed to publish document status for document ${document.id} in Redis`);
 
       // fallback to publish if Redis fails
-      return await SubscriptionsService.pubSub.publish(DOCUMENT_STATUS_CHANNEL, message);
+      return await SubscriptionsService.pubSub.publish(redisCfg.channelDocumentStatus, message);
     }
   }
 

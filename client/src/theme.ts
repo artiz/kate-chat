@@ -4,40 +4,51 @@ import { getClientConfig } from "./global-config";
 
 const buildThemeBase = (): MantineThemeOverride => {
   const config = getClientConfig();
-  const brandColors: Record<string, MantineColorsTuple> = config.theme.brandColors as Record<
-    string,
-    MantineColorsTuple
-  >;
-  const fontFamily = config.theme.fontFamily;
+  const fontFamily = config.theme.fontFamily || `"Segoe UI", system-ui`;
 
   return createTheme({
-    primaryColor: "brand",
-    colors: brandColors,
+    primaryColor: config.theme.primaryColor || "indigo",
+    colors: config.theme.colors,
     fontFamily,
     headings: {
       fontFamily,
     },
-    defaultRadius: "md",
+    spacing: {
+      xs: "0.33rem",
+      sm: "0.5rem",
+      md: "0.75rem",
+      lg: "1rem",
+      xl: "1.75rem",
+    },
+    defaultRadius: config.theme.defaultRadius,
+    other: {
+      transitionDuration: "0.5s",
+    },
     components: {
       Button: {
         defaultProps: {
-          radius: "md",
+          radius: config.theme.defaultRadius,
         },
       },
       TextInput: {
         defaultProps: {
-          radius: "md",
+          radius: config.theme.defaultRadius,
         },
       },
       PasswordInput: {
         defaultProps: {
-          radius: "md",
+          radius: config.theme.defaultRadius,
         },
       },
       Card: {
         defaultProps: {
-          radius: "md",
-          shadow: "sm",
+          radius: config.theme.defaultRadius,
+          shadow: "md",
+        },
+      },
+      NavLink: {
+        defaultProps: {
+          p: "xs md",
         },
       },
     },
@@ -46,5 +57,5 @@ const buildThemeBase = (): MantineThemeOverride => {
 
 export const createAppTheme = (): MantineTheme => {
   const base = buildThemeBase();
-  return mergeMantineTheme(base as MantineTheme, themeOverride);
+  return base as MantineTheme;
 };

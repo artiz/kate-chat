@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { MantineProvider, ColorSchemeScript, Center, Loader } from "@mantine/core";
+import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride } from "@mantine/core";
 import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
@@ -9,7 +9,7 @@ import { createAppTheme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
-import { addChats, setChats } from "../store/slices/chatSlice";
+import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "@katechat/ui";
 
@@ -137,7 +137,7 @@ const AppContent: React.FC = () => {
 
   return (
     <MantineProvider
-      theme={mantineTheme}
+      theme={mantineTheme as MantineThemeOverride}
       defaultColorScheme={colorScheme}
       forceColorScheme={colorScheme === "auto" ? undefined : colorScheme}
     >

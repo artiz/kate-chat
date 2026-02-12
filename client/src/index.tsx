@@ -4,7 +4,6 @@ import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store";
 import App from "./components/App";
-import { ensureClientConfig } from "./global-config";
 
 import "./index.scss";
 import "katex/dist/katex.css";
@@ -17,12 +16,6 @@ if (!container) throw new Error("Root element not found");
 const root = createRoot(container);
 
 async function bootstrap() {
-  try {
-    await ensureClientConfig();
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("Failed to load customization.json", error);
-  }
   root.render(
     <React.StrictMode>
       <Provider store={store}>

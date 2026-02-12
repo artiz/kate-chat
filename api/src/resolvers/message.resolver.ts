@@ -23,15 +23,12 @@ import {
 } from "@/types/graphql/responses";
 import { createLogger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
-import { MessageType, ModelMessageContent } from "@/types/ai.types";
-import { notEmpty } from "@/utils/assert";
-import { ok } from "assert";
+import { MessageRole, MessageType } from "@/types/api";
+import { ok, notEmpty } from "@/utils/assert";
 import { ChatsService } from "@/services/chats.service";
 import { isAdmin } from "@/utils/jwt";
-import { NEW_MESSAGE } from "@/services/messaging";
-
 import { ChatFileType } from "@/entities/ChatFile";
-import { MessageRole } from "@/types/ai.types";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
@@ -188,7 +185,7 @@ export class MessageResolver extends BaseResolver {
   }
 
   @Subscription(() => GqlMessage, {
-    topics: NEW_MESSAGE,
+    topics: globalConfig.redis.channelChatMessage,
     filter: ({ payload, args }) => {
       return payload.chatId === args.chatId;
     },

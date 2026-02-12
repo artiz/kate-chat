@@ -4,23 +4,24 @@ import {
   EmbeddingsResponse,
   GetEmbeddingsRequest,
   CompleteChatRequest,
-  MessageRole,
   ModelMessage,
   ModelResponse,
   MessageMetadata,
   ProviderInfo,
   UsageCostInfo,
   ChatResponseStatus,
-} from "../../types/ai.types";
+} from "@/types/ai.types";
+import { MessageRole, ApiProvider } from "@/types/api";
+import { logger } from "@/utils/logger";
+import { globalConfig } from "@/global-config";
+import { ConnectionParams } from "@/middleware/auth.middleware";
+import { FileContentLoader } from "@/services/data";
 import { BedrockApiProvider } from "./providers/bedrock.provider";
 import { OpenAIApiProvider } from "./providers/openai.provider";
 import { YandexApiProvider } from "./providers/yandex.provider";
 import { CustomRestApiProvider } from "./providers/custom-rest-api.provider";
-import { logger } from "../../utils/logger";
-import { ApiProvider, ENABLED_API_PROVIDERS } from "@/config/ai/common";
-import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseApiProvider } from "./providers/base.provider";
-import { FileContentLoader } from "../data";
+
 import { Model } from "@/entities";
 
 export class AIService {
@@ -109,7 +110,7 @@ export class AIService {
   // Get all models from all providers
   async getModels(connection: ConnectionParams): Promise<Record<string, AIModelInfo>> {
     const models = await Promise.all(
-      ENABLED_API_PROVIDERS.map(async apiProvider => {
+      globalConfig.ai.enabledProviders.map(async apiProvider => {
         const service = this.getApiProvider(apiProvider, connection);
         return await service.getModels();
       })
@@ -126,7 +127,7 @@ export class AIService {
   // Get provider information
   async getProviderInfo(connection: ConnectionParams, testConnection = false): Promise<ProviderInfo[]> {
     const providers: ProviderInfo[] = await Promise.all(
-      ENABLED_API_PROVIDERS.map(async apiProvider => {
+      globalConfig.ai.enabledProviders.map(async apiProvider => {
         try {
           const service = this.getApiProvider(apiProvider, connection);
           return service.getInfo(testConnection);
@@ -161,7 +162,7 @@ export class AIService {
     fileLoader?: FileContentLoader,
     model?: Model
   ): BaseApiProvider {
-    if (!ENABLED_API_PROVIDERS.includes(apiProvider)) {
+    if (!globalConfig.ai.enabledProviders.includes(apiProvider)) {
       throw new Error(`API provider ${apiProvider} is not enabled`);
     }
 

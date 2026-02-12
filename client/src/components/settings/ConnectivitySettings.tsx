@@ -166,7 +166,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
     <Stack gap="lg">
       <Paper withBorder p="md">
         <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
-          <Stack gap="sm">
+          <Stack gap="md">
             {enabledApiProviders.has("AWS_BEDROCK") && (
               <>
                 <Group justify="space-between" align="center">
@@ -190,7 +190,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
                     <Text size="sm" c="dark.5">
                       <strong>How to get AWS Bedrock credentials:</strong>
                     </Text>
-                    <Text size="sm" mt="xs" c="dark.5">
+                    <Text size="sm" c="dark.5">
                       1. Sign in to the AWS Management Console
                       <br />
                       2. Go to IAM (Identity and Access Management)

@@ -97,30 +97,27 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
     navigate(path);
   };
 
-  const renderNavIcon = useCallback(
-    (icon: NavLinkIcon) => {
-      switch (icon) {
-        case "cv":
-          return <IconFileCv size={24} />;
-        case "github":
-          return <IconBrandGithub size={24} />;
-        case "network":
-          return <IconNetwork size={24} />;
-        case "link":
-        default:
-          return <IconLink size={24} />;
-      }
-    },
-    []
-  );
+  const renderNavIcon = useCallback((icon: NavLinkIcon) => {
+    switch (icon) {
+      case "cv":
+        return <IconFileCv size={24} />;
+      case "github":
+        return <IconBrandGithub size={24} />;
+      case "network":
+        return <IconNetwork size={24} />;
+      case "link":
+      default:
+        return <IconLink size={24} />;
+    }
+  }, []);
 
   return (
     <>
       <AppShell.Section>
         <Stack h="100%" justify="space-between" gap="0">
           <Flex
-            p="xs"
-            gap="xs"
+            p="sm"
+            gap="sm"
             justify={expanded ? "space-between" : "center"}
             wrap="wrap"
             align="flex-start"
@@ -131,7 +128,6 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                 <Button
                   leftSection={<IconMessagePlus size={16} />}
                   disabled={newChatDisabled}
-                  variant="light"
                   onClick={handleNewChat}
                   style={{ flex: 1 }}
                 >
@@ -139,7 +135,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                 </Button>
               ) : (
                 <Tooltip label="New Chat" position="right">
-                  <ActionIcon disabled={newChatDisabled} variant="light" onClick={handleNewChat} size="lg">
+                  <ActionIcon disabled={newChatDisabled} onClick={handleNewChat} size="lg">
                     <IconMessagePlus size={20} />
                   </ActionIcon>
                 </Tooltip>
@@ -170,7 +166,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
             >
               {/* Settings Section */}
               <Accordion.Item key="settings" value="settings">
-                <Accordion.Control icon={<IconSettings />}>{expanded ? "Settings" : null}</Accordion.Control>
+                <Accordion.Control icon={expanded ? <IconSettings /> : undefined}>
+                  {expanded ? "Settings" : null}
+                </Accordion.Control>
                 <Accordion.Panel>
                   <Tooltip label="Models" position="right" disabled={expanded}>
                     <NavLink
@@ -290,7 +288,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
         <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} onToggleExpand={onToggleExpand} />
       </AppShell.Section>
       <AppShell.Section p="sm">
-        <Group justify={expanded ? "flex-start" : "center"} gap="xs">
+        <Group justify={expanded ? "flex-start" : "center"} gap="sm">
           {navLinks.map(link => (
             <Tooltip key={link.url} label={link.tooltip} position="right">
               <ActionIcon component="a" variant="subtle" href={link.url} target="_blank" color={link.color || "dark"}>

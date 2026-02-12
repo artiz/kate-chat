@@ -1,6 +1,4 @@
-import { globalConfig } from "@/global-config";
-
-const frontendOrigin = new URL(globalConfig.config.runtime.frontendUrl).origin;
+import { getFrontendOrigin } from "@/global-config";
 
 export const HTML_TEMPLATE = (title: string, content: string, script?: string) =>
   `
@@ -27,7 +25,7 @@ export const HTML_TEMPLATE = (title: string, content: string, script?: string) =
     </div>
     ${script || ""}
   </body>
-</html>`.replace(/\{\{FRONTEND_ORIGIN\}\}/g, frontendOrigin);
+</html>`.replace(/\{\{FRONTEND_ORIGIN\}\}/g, getFrontendOrigin());
 
 export const MCP_OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
   "MCP Authorization Failed",

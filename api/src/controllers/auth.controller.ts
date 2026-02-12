@@ -9,7 +9,7 @@ import { escapeHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
-const runtimeCfg = globalConfig.config.runtime;
+const runtimeCfg = globalConfig.runtime;
 
 // Create a router for auth routes
 export const router = Router();

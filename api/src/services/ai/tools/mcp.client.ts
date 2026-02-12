@@ -1,12 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { MCPServer, MCPAuthType, MCPTransportType } from "@/entities";
 import { createLogger } from "@/utils/logger";
-import { APP_USER_AGENT } from "@/config/application";
 import { ok } from "@/utils/assert";
-import { MCPAuthToken } from "@/types/ai.types";
+import { IMCPServer, MCPAuthToken } from "@/types/ai.types";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
+import { globalConfig } from "@/global-config";
+import { MCPAuthType, MCPTransportType } from "@/types/api";
 
 const logger = createLogger(__filename);
 
@@ -56,7 +56,7 @@ const RECONNECT_MAX_ATTEMPTS = 7;
  * - Legacy HTTP+SSE transport (2024-11-05 spec) for backwards compatibility
  */
 export class MCPClient {
-  private server: MCPServer;
+  private server: IMCPServer;
   private client: Client;
   private transport?: SSEClientTransport | StreamableHTTPClientTransport;
   private closeTimeout: NodeJS.Timeout;
@@ -68,7 +68,7 @@ export class MCPClient {
    * Connect to an MCP server. For OAuth2 servers that require user authentication,
    * provide the authToken obtained from the client-side OAuth flow.
    */
-  public static connect(server: MCPServer, authToken?: MCPAuthToken): MCPClient {
+  public static connect(server: IMCPServer, authToken?: MCPAuthToken): MCPClient {
     // For OAuth servers with user tokens, include token hash in cache key to separate sessions per user
     const cacheKey = authToken ? `${server.id}:${simpleHash(authToken.accessToken)}` : server.id;
 
@@ -174,7 +174,7 @@ export class MCPClient {
     return proxy;
   }
 
-  private constructor(server: MCPServer, oauthToken?: MCPAuthToken) {
+  private constructor(server: IMCPServer, oauthToken?: MCPAuthToken) {
     this.server = server;
     this.authToken = oauthToken;
   }
@@ -208,7 +208,7 @@ export class MCPClient {
     }
 
     this.client = new Client({
-      name: APP_USER_AGENT,
+      name: globalConfig.app.userAgent,
       version: "1.0.0",
     });
 
@@ -378,7 +378,7 @@ export class MCPClient {
    */
   private getCommonHeaders(): Record<string, string> {
     return {
-      "User-Agent": APP_USER_AGENT,
+      "User-Agent": globalConfig.app.userAgent,
       ...this.getAuthHeaders(),
     };
   }

@@ -1,14 +1,6 @@
 import { createLogger } from "@/utils/logger";
 import { DocumentQueueService } from "../document-queue.service";
 import {
-  SQS_ACCESS_KEY_ID,
-  SQS_DOCUMENTS_QUEUE,
-  SQS_INDEX_DOCUMENTS_QUEUE,
-  SQS_ENDPOINT,
-  SQS_REGION,
-  SQS_SECRET_ACCESS_KEY,
-} from "@/config/application";
-import {
   SQSClient,
   ReceiveMessageCommand,
   DeleteMessageCommand,
@@ -16,7 +8,9 @@ import {
   Message,
   ListQueuesCommand,
 } from "@aws-sdk/client-sqs";
+import { globalConfig } from "@/global-config";
 import { SubscriptionsService } from "./subscriptions.service";
+import { ok } from "assert";
 
 const logger = createLogger(__filename);
 
@@ -29,28 +23,34 @@ export class SQSService {
   private pollInterval?: NodeJS.Timeout;
 
   constructor(subscriptionsService: SubscriptionsService) {
-    this.outputQueueUrl = SQS_DOCUMENTS_QUEUE || "";
-    this.indexQueueUrl = SQS_INDEX_DOCUMENTS_QUEUE || "";
-    this.documentQueueService = new DocumentQueueService(subscriptionsService);
+    const { documentsQueue, indexDocumentsQueue, endpoint, accessKeyId, secretAccessKey, region } = globalConfig.sqs;
+
+    if (globalConfig.features.rag) {
+      ok(documentsQueue, "SQS_DOCUMENTS_QUEUE must be configured");
+      ok(indexDocumentsQueue, "SQS_INDEX_DOCUMENTS_QUEUE must be configured");
+      this.outputQueueUrl = documentsQueue;
+      this.indexQueueUrl = indexDocumentsQueue;
+      this.documentQueueService = new DocumentQueueService(subscriptionsService);
+    }
 
     // Initialize SQS client
-    logger.info({ SQS_ENDPOINT, SQS_ACCESS_KEY_ID, SQS_REGION }, "Initializing SQS client");
+    logger.info({ endpoint, accessKeyId, region }, "Initializing SQS client");
     this.sqs = new SQSClient({
-      endpoint: SQS_ENDPOINT || undefined,
-      region: SQS_REGION || "us-east-1",
+      endpoint,
+      region,
       credentials:
-        SQS_ACCESS_KEY_ID && SQS_SECRET_ACCESS_KEY
+        accessKeyId && secretAccessKey
           ? {
-              accessKeyId: SQS_ACCESS_KEY_ID,
-              secretAccessKey: SQS_SECRET_ACCESS_KEY,
+              accessKeyId,
+              secretAccessKey,
             }
           : undefined,
     });
   }
 
   async startup(): Promise<void> {
-    if (!this.indexQueueUrl) {
-      logger.warn("SQS_INDEX_DOCUMENTS_QUEUE not configured, skipping SQS listener");
+    if (!globalConfig.features.rag) {
+      logger.warn("RAG not configured, skipping indexing SQS listener");
       return;
     }
 

@@ -35,7 +35,6 @@ import { createHandler } from "graphql-http/lib/use/express";
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
-import { globalConfig } from "./global-config";
 import { MessagesService } from "@/services/messages.service";
 import { HttpError } from "./types/exceptions";
 import { SQSService, SubscriptionsService } from "./services/messaging";
@@ -45,8 +44,7 @@ import { globalConfig } from "./global-config";
 // Load environment variables
 config();
 
-const cfg = globalConfig.values;
-const isProd = cfg.env.nodeEnv === "production" || cfg.env.nodeEnv === "staging";
+const isProd = globalConfig.runtime.nodeEnv === "production" || globalConfig.runtime.nodeEnv === "staging";
 const logger = createLogger("server");
 
 let subscriptionsService: SubscriptionsService | undefined;
@@ -91,7 +89,7 @@ async function bootstrap() {
   });
 
   // Create Express application
-  const allowedOrigins = (cfg.env.allowedOrigins || "").split(",").map(o => o.trim());
+  const { allowedOrigins } = globalConfig.app;
 
   const app = express();
   app.use(
@@ -101,14 +99,13 @@ async function bootstrap() {
       maxAge: 86_400, // 24 hours in seconds without subsequent OPTIONS requests
     })
   );
-  const cfg = globalConfig.config;
-  app.use(express.json({ limit: cfg.app.maxInputJson }));
+  app.use(express.json({ limit: globalConfig.app.maxInputJson }));
   app.use(cookieParser());
 
   // Set up session and passport
   app.use(
     session({
-      secret: cfg.env.sessionSecret || "katechat-secret",
+      secret: globalConfig.runtime.sessionSecret,
       httpOnly: true,
       secure: isProd,
       name: "user-session",
@@ -277,11 +274,11 @@ async function bootstrap() {
   );
 
   // Start the server
-  const PORT = cfg.env.port || 4000;
-  httpServer.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}, origins: ${allowedOrigins.join(", ")}`);
-    logger.info(`GraphQL endpoint: http://localhost:${PORT}/graphql`);
-    logger.info(`GraphQL subscriptions: ws://localhost:${PORT}/graphql/subscriptions`);
+  const { port } = globalConfig.runtime;
+  httpServer.listen(port, () => {
+    logger.info(`Server running on port ${port}, origins: ${allowedOrigins.join(", ")}`);
+    logger.info(`GraphQL endpoint: http://localhost:${port}/graphql`);
+    logger.info(`GraphQL subscriptions: ws://localhost:${port}/graphql/subscriptions`);
   });
 
   httpServer.on("close", async () => {

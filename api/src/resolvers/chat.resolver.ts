@@ -4,13 +4,13 @@ import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphq
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
 import { AddDocumentsToChatResponse, GqlChatsList, RemoveDocumentsFromChatResponse } from "../types/graphql/responses";
-import { Message, Document, Chat, ChatDocument } from "@/entities";
+import { Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
 import { ChatsService } from "@/services/chats.service";
 import { globalConfig } from "@/global-config";
 import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
 
-const aiConfig = globalConfig.config.ai;
+const aiConfig = globalConfig.ai;
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {

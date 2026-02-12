@@ -3,13 +3,13 @@ import { getRepository } from "@/config/database";
 
 import { Document } from "@/entities/Document";
 import { GraphQLContext } from ".";
-import { DOCUMENT_STATUS_CHANNEL } from "@/services/messaging";
 import { BaseResolver } from "./base.resolver";
 import { Repository, ILike } from "typeorm";
 import { S3Service } from "@/services/data";
 import { DocumentStatusMessage, DocumentsResponse } from "@/types/graphql/responses";
 import { GetDocumentsInput } from "@/types/graphql/inputs";
-import { DocumentStatus } from "@/types/ai.types";
+import { DocumentStatus } from "@/types/api";
+import { globalConfig } from "@/global-config";
 
 @Resolver(Document)
 export class DocumentResolver extends BaseResolver {
@@ -138,7 +138,7 @@ export class DocumentResolver extends BaseResolver {
   }
 
   @Subscription(() => [DocumentStatusMessage], {
-    topics: DOCUMENT_STATUS_CHANNEL,
+    topics: globalConfig.redis.channelDocumentStatus,
     filter: ({ payload, args }) => {
       return (
         [DocumentStatus.ERROR, DocumentStatus.DELETING].includes(payload.status) ||

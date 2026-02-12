@@ -1,12 +1,6 @@
 // Yandex AI API Configuration
 
-import { ModelType } from "@/types/ai.types";
-
-// Base URL for Yandex API
-export const YANDEX_FM_API_URL = process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net";
-export const YANDEX_FM_OPENAI_API_URL = process.env.YANDEX_FM_OPENAI_API_URL || "https://llm.api.cloud.yandex.net/v1";
-export const YANDEX_SEARCH_API_URL =
-  process.env.YANDEX_SEARCH_API_URL || "https://searchapi.api.cloud.yandex.net/v2/web/search";
+import { ModelType } from "@/types/api";
 
 export interface YandexModel {
   uri: string;

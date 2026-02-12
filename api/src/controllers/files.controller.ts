@@ -5,10 +5,10 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { createLogger } from "@/utils/logger";
 import { S3Service } from "@/services/data";
 
-import { ok } from "assert";
+import { ok } from "@/utils/assert";
 import { getRepository } from "@/config/database";
-import { ChatDocument, User, Document, Chat } from "@/entities";
-import { DocumentStatus } from "@/types/ai.types";
+import { ChatDocument, Document, Chat } from "@/entities";
+import { DocumentStatus } from "@/types/api";
 import { TokenPayload } from "@/utils/jwt";
 import { SubscriptionsService, SQSService } from "@/services/messaging";
 import { MessagesService } from "@/services/messages.service";

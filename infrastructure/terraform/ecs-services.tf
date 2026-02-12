@@ -1,3 +1,6 @@
+
+
+
 # Generate secrets and configurations for ECS services
 resource "random_password" "session_secret" {
   length  = 128

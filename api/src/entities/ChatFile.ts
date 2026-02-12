@@ -12,8 +12,8 @@ import { Exif } from "exif-reader";
 import { Chat } from "./Chat";
 import { Message } from "./Message";
 import { JSONTransformer } from "../utils/db";
+import { DB_TYPE } from "../config/env";
 
-const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
 export enum ChatFileType {
@@ -48,7 +48,7 @@ export class ChatFile {
   messageId?: string;
 
   @Field(() => Message, { nullable: true })
-  @ManyToOne(() => Message, { onDelete: "CASCADE" })
+  @ManyToOne(() => Message, { onDelete: DB_TYPE == "mssql" ? "NO ACTION" : "CASCADE" })
   @JoinColumn({ name: "messageId" })
   message?: Message;
 

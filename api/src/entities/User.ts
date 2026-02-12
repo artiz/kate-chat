@@ -4,8 +4,7 @@ import { Model } from "./Model";
 import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
-import { ConnectionParams } from "../middleware/auth.middleware";
-import { globalConfig } from "@/global-config";
+import { DB_TYPE } from "../config/env";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -19,9 +18,7 @@ export enum UserRole {
   ADMIN = "admin",
 }
 
-const DB_TYPE = process.env.DB_TYPE;
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
-const aiDefaults = globalConfig.config.ai;
 
 @ObjectType("UserSettings")
 @InputType("UserSettingsInput")
@@ -104,15 +101,15 @@ export class User {
   defaultSystemPrompt?: string;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, default: aiDefaults.defaultTemperature, type: "float" })
+  @Column({ nullable: true, default: 0.7, type: "float" })
   defaultTemperature?: number;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, default: aiDefaults.defaultMaxTokens, type: "integer" })
+  @Column({ nullable: true, default: 2048, type: "integer" })
   defaultMaxTokens?: number;
 
   @Field({ nullable: true })
-  @Column({ nullable: true, default: aiDefaults.defaultTopP, type: "float" })
+  @Column({ nullable: true, default: 0.9, type: "float" })
   defaultTopP?: number;
 
   @Field({ nullable: true })
@@ -185,19 +182,5 @@ export class User {
 
   isAdmin(): boolean {
     return this.role === UserRole.ADMIN;
-  }
-
-  static getConnectionInfo(user?: User): ConnectionParams {
-    return {
-      AWS_BEDROCK_REGION: user?.settings?.awsBedrockRegion || process.env.AWS_BEDROCK_REGION,
-      AWS_BEDROCK_PROFILE: user?.settings?.awsBedrockProfile || process.env.AWS_BEDROCK_PROFILE,
-      AWS_BEDROCK_ACCESS_KEY_ID: user?.settings?.awsBedrockAccessKeyId || process.env.AWS_BEDROCK_ACCESS_KEY_ID,
-      AWS_BEDROCK_SECRET_ACCESS_KEY:
-        user?.settings?.awsBedrockSecretAccessKey || process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
-      OPENAI_API_KEY: user?.settings?.openaiApiKey || process.env.OPENAI_API_KEY,
-      OPENAI_API_ADMIN_KEY: user?.settings?.openaiApiAdminKey || process.env.OPENAI_API_ADMIN_KEY,
-      YANDEX_FM_API_KEY: user?.settings?.yandexFmApiKey || process.env.YANDEX_FM_API_KEY,
-      YANDEX_FM_API_FOLDER: user?.settings?.yandexFmApiFolderId || process.env.YANDEX_FM_API_FOLDER,
-    };
   }
 }

@@ -173,7 +173,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
     return (
       <>
-        <Group align="center">
+        <Group align="center" pt="sm">
           <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
             {isUserMessage ? (
               <IconUser />
@@ -183,16 +183,16 @@ export const ChatMessage = (props: ChatMessageProps) => {
               <IconRobot />
             )}
           </Avatar>
-          <Group gap="xs">
+          <Group gap="sm">
             <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
               {username}
             </Text>
-            <Text size="xs" c="dimmed">
+            <Text size="sm" c="dimmed">
               {timestamp}
             </Text>
             {status && <MessageStatus status={status} />}
             {statusInfo && (
-              <Text size="xs" c="dimmed">
+              <Text size="sm" c="dimmed">
                 {statusInfo}
               </Text>
             )}
