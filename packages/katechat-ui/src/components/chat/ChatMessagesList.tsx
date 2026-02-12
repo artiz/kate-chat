@@ -249,7 +249,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
 
   return (
     <>
-      <Stack gap="xs" ref={componentRef} onClick={handleMessageClick}>
+      <Stack gap="sm" ref={componentRef} onClick={handleMessageClick}>
         {messages.map((msg, index) => (
           <ChatMessage
             key={msg.id}
