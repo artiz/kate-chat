@@ -6,7 +6,7 @@
 
   .katechat-message-main,
   .katechat-message-linked {
-    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
     flex-grow: 1;
     width: 50%;
     display: flex;
@@ -15,7 +15,7 @@
   }
 
   .katechat-message-linked {
-    padding-left: var(--mantine-spacing-xs);
+    padding-left: var(--mantine-spacing-sm);
   }
 
   .katechat-message-linked-toggle {
