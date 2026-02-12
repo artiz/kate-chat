@@ -172,10 +172,10 @@
 
   .code-header {
     font-size: 0.875rem;
-    margin-top: 0.5rem;
-    padding: 0.25rem 1rem 0.25rem 0.5rem;
-    border-top-right-radius: 0.25em;
-    border-top-left-radius: 0.25em;
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-sm) var(--mantine-spacing-md);
+    border-top-right-radius: var(--mantine-radius-md);
+    border-top-left-radius: var(--mantine-radius-md);
+    min-height: 3rem;
 
     display: flex;
     justify-content: space-between;
@@ -183,6 +183,11 @@
     flex-direction: row;
     white-space: normal;
     gap: 0.5rem;
+
+    &.placeholder {
+      min-height: 2rem;
+      opacity: 0;
+    }
 
     .title {
       width: fit-content;
@@ -283,17 +288,6 @@
 
   .code-data {
     display: none;
-  }
-
-  .code-footer {
-    font-size: 90%;
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 0.7rem;
-
-    &.collapsed {
-      display: none;
-    }
   }
 
   .katex-html {

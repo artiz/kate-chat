@@ -2,37 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { gql, useSubscription, OnDataOptions } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { MessageRole, MessageType, parseMarkdown } from "@katechat/ui";
-import { BASE_MESSAGE_FRAGMENT } from "@/store/services/graphql.queries";
+import { BASE_MESSAGE_FRAGMENT, NEW_MESSAGE_SUBSCRIPTION } from "@/store/services/graphql.queries";
 import { Message, MessageChatInfo, MessageMetadata } from "@/types/graphql";
 import { updateChatInfo } from "@/store/slices/chatSlice";
 import { useAppDispatch } from "@/store";
 
 const THROTTLE_TIMEOUT = 60; // ms throttle timeout
-
-// GraphQL queries and subscriptions
-const NEW_MESSAGE_SUBSCRIPTION = gql`
-  subscription OnNewMessage($chatId: String!) {
-    newMessage(chatId: $chatId) {
-      type
-      message {
-        ...BaseMessage
-        status
-        statusInfo
-        linkedMessages {
-          ...BaseMessage
-        }
-      }
-      chat {
-        title
-        modelId
-      }
-      error
-      streaming
-    }
-  }
-
-  ${BASE_MESSAGE_FRAGMENT}
-`;
 
 type SubscriptionResult = {
   wsConnected: boolean;

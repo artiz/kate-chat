@@ -66,6 +66,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const { aiUsageAlert } = getClientConfig();
 
   const [selectedRagDocIds, setSelectedRagDocIds] = useState<string[]>([]);
+  const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
   const {
     messages,
@@ -122,6 +123,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
     return docs;
   }, [chat?.chatDocuments, uploadingDocs]);
+
+  const handleAutoScroll = useCallback((enabled: boolean) => {
+    setAutoScroll(enabled);
+    if (enabled) {
+      chatMessagesRef.current?.scrollToBottom();
+    }
+  }, []);
 
   // #region Send message
   const [createMessage] = useMutation<CreateMessageResponse>(CREATE_MESSAGE, {
@@ -181,9 +189,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
       });
 
       // Scroll chat to bottom after sending message
-      setTimeout(() => {
-        chatMessagesRef.current?.scrollToBottom();
-      }, 250);
+      if (autoScroll) {
+        setTimeout(() => {
+          chatMessagesRef.current?.scrollToBottom();
+        }, 250);
+      }
     } catch (error) {
       notifications.show({
         title: "Error",
@@ -445,6 +455,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           ref={chatMessagesRef}
           messages={messages}
           models={models}
+          autoScroll={autoScroll}
           addChatMessage={addChatMessage}
           removeMessages={removeMessages}
           loadMoreMessages={loadMoreMessages}
@@ -483,6 +494,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             models={models}
             selectedModel={selectedModel}
             onUpdateChat={updateChat}
+            onAutoScroll={handleAutoScroll}
           />
         }
         inputPlugins={

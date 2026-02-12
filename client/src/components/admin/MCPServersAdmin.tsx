@@ -14,6 +14,7 @@ import {
   Card,
   em,
   Flex,
+  Grid,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -153,58 +154,60 @@ export const MCPServersAdmin: React.FC = () => {
           </Button>
         </Paper>
       ) : (
-        <Flex gap="sm" wrap="wrap">
+        <Grid gutter="lg">
           {servers.map((server: any) => (
-            <Card key={server.id} withBorder padding="sm" radius="md">
-              <Group justify="space-between" align="flex-start" wrap="nowrap">
-                <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                  <Group gap="sm">
-                    <IconPlugConnected size="1rem" />
-                    <Text fw={600} truncate>
-                      {server.name}
+            <Grid.Col key={server.id} span={{ base: 12, md: 6, lg: 4 }}>
+              <Card key={server.id} withBorder padding="md" mih="12rem">
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                    <Group gap="sm" wrap="nowrap">
+                      <IconPlugConnected size="1rem" />
+                      <Text fw={600} truncate>
+                        {server.name}
+                      </Text>
+                    </Group>
+                    <Text size="sm" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                      {server.url}
                     </Text>
-                  </Group>
-                  <Text size="sm" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
-                    {server.url}
-                  </Text>
-                  {server.description && (
-                    <Text size="sm" c="dimmed" lineClamp={2}>
-                      {server.description}
-                    </Text>
-                  )}
-                </Stack>
-                <ActionIcon.Group>
-                  <Tooltip label="View Tools">
-                    <ActionIcon variant="light" color="blue" size="lg" onClick={() => handleViewTools(server)}>
-                      <IconTool size="20" />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Edit">
-                    <ActionIcon variant="light" color="gray" size="lg" onClick={() => handleEditServer(server)}>
-                      <IconEdit size="20" />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Delete">
-                    <ActionIcon variant="light" color="red" size="lg" onClick={() => handleDeleteServer(server)}>
-                      <IconTrash size="20" />
-                    </ActionIcon>
-                  </Tooltip>
-                </ActionIcon.Group>
-              </Group>
-              <Group gap="sm" mt="sm">
-                <Badge variant="light" color="blue" size="sm">
-                  {server.tools?.length || 0} tools
-                </Badge>
-                <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="sm">
-                  {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
-                </Badge>
-                <Badge color={server.isActive ? "green" : "red"} size="sm">
-                  {server.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </Group>
-            </Card>
+                    {server.description && (
+                      <Text size="sm" c="dimmed" lineClamp={2}>
+                        {server.description}
+                      </Text>
+                    )}
+                  </Stack>
+                  <ActionIcon.Group>
+                    <Tooltip label="View Tools">
+                      <ActionIcon variant="light" color="blue" size="lg" onClick={() => handleViewTools(server)}>
+                        <IconTool size="20" />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Edit">
+                      <ActionIcon variant="light" color="gray" size="lg" onClick={() => handleEditServer(server)}>
+                        <IconEdit size="20" />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Delete">
+                      <ActionIcon variant="light" color="red" size="lg" onClick={() => handleDeleteServer(server)}>
+                        <IconTrash size="20" />
+                      </ActionIcon>
+                    </Tooltip>
+                  </ActionIcon.Group>
+                </Group>
+                <Group gap="sm" mt="sm">
+                  <Badge variant="light" color="blue" size="sm">
+                    {server.tools?.length || 0} tools
+                  </Badge>
+                  <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="sm">
+                    {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
+                  </Badge>
+                  <Badge color={server.isActive ? "green" : "red"} size="sm">
+                    {server.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </Group>
+              </Card>
+            </Grid.Col>
           ))}
-        </Flex>
+        </Grid>
       )}
 
       {/* Add/Edit Server Dialog */}

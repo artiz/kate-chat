@@ -113,10 +113,10 @@ export const ChatMessage = (props: ChatMessageProps) => {
 
       componentRef.current.querySelectorAll("pre").forEach(pre => {
         if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
+          const header = pre.querySelector(".code-header") || document.createElement("div");
           const data = pre.querySelector(".code-data");
           const lang = data?.getAttribute("data-lang") || "plaintext";
           const block = document.createElement("div");
-          const header = document.createElement("div");
           block.className = "code-block";
           header.className = "code-header";
 

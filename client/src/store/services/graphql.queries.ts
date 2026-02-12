@@ -194,6 +194,30 @@ export const UPDATE_USER_MUTATION = gql`
   }
 `;
 
+export const NEW_MESSAGE_SUBSCRIPTION = gql`
+  subscription OnNewMessage($chatId: String!) {
+    newMessage(chatId: $chatId) {
+      type
+      message {
+        ...BaseMessage
+        status
+        statusInfo
+        linkedMessages {
+          ...BaseMessage
+        }
+      }
+      chat {
+        title
+        modelId
+      }
+      error
+      streaming
+    }
+  }
+
+  ${BASE_MESSAGE_FRAGMENT}
+`;
+
 export const CREATE_MESSAGE = gql`
   mutation CreateMessage($input: CreateMessageInput!) {
     createMessage(input: $input) {
