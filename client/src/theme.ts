@@ -1,5 +1,4 @@
-import { createTheme, mergeMantineTheme, MantineColorsTuple, MantineTheme, MantineThemeOverride } from "@mantine/core";
-import { themeOverride } from "./theme.override";
+import { createTheme, MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { getClientConfig } from "./global-config";
 
 const buildThemeBase = (): MantineThemeOverride => {

@@ -37,7 +37,7 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MessagesService } from "@/services/messages.service";
 import { HttpError } from "./types/exceptions";
-import { SQSService, SubscriptionsService } from "./services/messaging";
+import { DocumentSqsService, SubscriptionsService } from "./services/messaging";
 import { servicesMiddleware } from "./middleware/services.middleware";
 import { globalConfig } from "./global-config";
 
@@ -48,8 +48,9 @@ const isProd = globalConfig.runtime.nodeEnv === "production" || globalConfig.run
 const logger = createLogger("server");
 
 let subscriptionsService: SubscriptionsService | undefined;
-let sqsService: SQSService | undefined;
+let sqsService: DocumentSqsService | undefined;
 let messagesService: MessagesService | undefined;
+
 async function bootstrap() {
   // Initialize database connection
   const dbConnected = await initializeDatabase();
@@ -59,7 +60,8 @@ async function bootstrap() {
 
   subscriptionsService = new SubscriptionsService();
   messagesService = new MessagesService(subscriptionsService);
-  sqsService = new SQSService(subscriptionsService);
+  sqsService = new DocumentSqsService(subscriptionsService);
+
   await sqsService.startup();
 
   const schemaPubSub = {

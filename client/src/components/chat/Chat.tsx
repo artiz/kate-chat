@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
-import { IconX, IconEdit, IconCheck } from "@tabler/icons-react";
+import { IconEdit, IconCheck, IconArrowLeft } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import {
   assert,
@@ -410,9 +410,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
             <div className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
             <div className={classes.wsStatusText}>{wsConnected ? "Connected" : "Connecting..."}</div>
           </div>
-          <ActionIcon onClick={() => navigate("/chat")}>
-            <IconX size="1.2rem" />
-          </ActionIcon>
+          <Tooltip label="Back to chats list">
+            <ActionIcon onClick={() => navigate("/chat")}>
+              <IconArrowLeft size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
         </div>
       </div>
 
@@ -504,11 +506,11 @@ export const ChatComponent = ({ chatId }: IProps) => {
         onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />
 
-      {aiUsageAlert && loadCompleted && messages?.length && (
+      {aiUsageAlert && loadCompleted && messages?.length ? (
         <Text size="xs" c="dimmed" mt="0" mb="0" ta="center">
           {aiUsageAlert}
         </Text>
-      )}
+      ) : null}
 
       {PythonCodeModal}
     </Container>

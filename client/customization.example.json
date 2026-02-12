@@ -1,7 +1,7 @@
 {
   "theme": {
     "primaryColor": "brand",
-    "fontFamily": "\"Courier New\", \"Segoe UI\", system-ui",
+    "fontFamily": "\"Courier New\", system-ui",
     "brandColors": {
       "brand": [
         "#eafde9",

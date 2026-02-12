@@ -15,7 +15,7 @@ function resolveApiKey(modelConfig: InitialCustomModel): string | undefined {
 
 const resolveProtocol = (protocol?: string): CustomModelProtocol | undefined => {
   if (!protocol) return undefined;
-  return (protocol as CustomModelProtocol) || undefined;
+  return protocol as CustomModelProtocol;
 };
 
 export async function ensureInitialUserAssets(user: User) {

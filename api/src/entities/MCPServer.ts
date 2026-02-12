@@ -101,7 +101,7 @@ export class MCPServer implements IMCPServer {
   isActive: boolean;
 
   @Field(() => User, { nullable: true })
-  @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   user: User;
 
   @Field({ nullable: true })

@@ -7,7 +7,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { TokenPayload } from "@/utils/jwt";
 import { GraphQLContext } from ".";
 import { MessagesService } from "@/services/messages.service";
-import { SQSService } from "@/services/messaging";
+import { DocumentSqsService } from "@/services/messaging";
 
 export class BaseResolver {
   protected userRepository: Repository<User>;
@@ -94,7 +94,7 @@ export class BaseResolver {
     return messagesService;
   }
 
-  protected getSqsService(context: GraphQLContext): SQSService {
+  protected getSqsService(context: GraphQLContext): DocumentSqsService {
     const sqsService = context.sqsService;
     if (!sqsService) {
       throw new GraphQLError("SqsService not available in context", {

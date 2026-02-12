@@ -103,10 +103,12 @@ export class ModelResolver extends BaseResolver {
       // Save models to database
       const outModels: Model[] = [];
       for (const [modelId, info] of Object.entries(aiModels)) {
-        // skip image generation models in demo mode to minimize costs and avoid inappropriate content
-
-        if (globalConfig.features.imagesGeneration && info.type === ModelType.IMAGE_GENERATION) {
+        if (!globalConfig.features.imagesGeneration && info.type === ModelType.IMAGE_GENERATION) {
           logger.info({ modelId, name: info.name }, "Skipping image generation model in demo mode");
+          continue;
+        }
+        if (!globalConfig.features.videoGeneration && info.type === ModelType.VIDEO_GENERATION) {
+          logger.info({ modelId, name: info.name }, "Skipping video generation model in demo mode");
           continue;
         }
 

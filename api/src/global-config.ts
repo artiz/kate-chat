@@ -210,8 +210,13 @@ export class GlobalConfig {
     return this.cfg;
   }
 
+  private parseBoolean(value: string | undefined, defaultValue: boolean = false): boolean {
+    if (value === undefined) return defaultValue;
+    return ["1", "true", "y", "yes"].includes(value.toLowerCase());
+  }
+
   private buildDefaults(): GlobalConfigShape {
-    const demo = ["1", "true", "y", "yes"].includes((process.env.DEMO_MODE || "").toLowerCase());
+    const demo = this.parseBoolean(process.env.DEMO_MODE);
 
     return {
       runtime: {
@@ -242,8 +247,8 @@ export class GlobalConfig {
         maxVideos: +(process.env.DEMO_MAX_VIDEOS || 2) | 0,
       },
       features: {
-        imagesGeneration: demo ? !!process.env.FEATURE_ENABLE_IMAGE_GEN || false : true,
-        videoGeneration: demo ? !!process.env.FEATURE_ENABLE_VIDEO_GEN || false : true,
+        imagesGeneration: demo ? this.parseBoolean(process.env.FEATURE_ENABLE_IMAGE_GEN) : true,
+        videoGeneration: demo ? this.parseBoolean(process.env.FEATURE_ENABLE_VIDEO_GEN) : true,
         rag: true,
         mcp: true,
       },
@@ -264,7 +269,7 @@ export class GlobalConfig {
         summarizingOutputTokens: +(process.env.AI_SUMMARIZING_OUTPUT_TOKENS || 2000) | 0,
         summarizingTemperature: +(process.env.AI_SUMMARIZING_TEMPERATURE || 0.25),
         ragQueryChunksLimit: +(process.env.RAG_QUERY_CHUNKS_LIMIT || 10) | 0,
-        ragLoadFullPages: ["1", "true", "y", "yes"].includes((process.env.RAG_LOAD_FULL_PAGES || "yes").toLowerCase()),
+        ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, true),
       },
       oauth: {
         google: {
@@ -291,7 +296,7 @@ export class GlobalConfig {
         username: process.env.DB_USERNAME,
         password: process.env.DB_PASSWORD,
         name: process.env.DB_NAME || "katechat.sqlite",
-        ssl: ["1", "true", "y", "yes"].includes(process.env.DB_SSL?.toLowerCase() || ""),
+        ssl: this.parseBoolean(process.env.DB_SSL),
         migrationsPath: process.env.DB_MIGRATIONS_PATH || path.join(__dirname, `../../db-migrations/${DB_TYPE}/*-*.ts`),
         logging: !!process.env.DB_LOGGING,
       },

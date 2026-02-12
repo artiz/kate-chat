@@ -1,5 +1,12 @@
 import { MantineColorsTuple } from "@mantine/core";
-import customization from "../customization.json";
+
+let customization = {};
+try {
+  // Attempt to load customization.json if it exists
+  customization = require("../customization.json");
+} catch (error) {
+  console.debug("No customization.json found, using default client configuration.");
+}
 
 export type NavLinkIcon = "cv" | "github" | "network" | "link";
 

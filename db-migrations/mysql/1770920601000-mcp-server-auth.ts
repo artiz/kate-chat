@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class McpServerAuth1770898976986 implements MigrationInterface {
-  name = "McpServerAuth1770898976986";
+export class McpServerAuth1770920601000 implements MigrationInterface {
+  name = "McpServerAuth1770920601000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -36,7 +36,7 @@ export class McpServerAuth1770898976986 implements MigrationInterface {
       `ALTER TABLE \`mcp_servers\` ADD \`userId\` varchar(255) NULL`,
     );
     await queryRunner.query(
-      `ALTER TABLE \`mcp_servers\` ADD CONSTRAINT \`FK_23850a3c7767d2f4ffaea8fd02b\` FOREIGN KEY (\`userId\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+      `ALTER TABLE \`mcp_servers\` ADD CONSTRAINT \`FK_23850a3c7767d2f4ffaea8fd02b\` FOREIGN KEY (\`userId\`) REFERENCES \`users\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
   }
 
@@ -60,7 +60,7 @@ export class McpServerAuth1770898976986 implements MigrationInterface {
       `ALTER TABLE \`mcp_servers\` DROP COLUMN \`transportType\``,
     );
     await queryRunner.query(
-      `ALTER TABLE \`mcp_servers\` ADD \`transportType\` varchar(50) NOT NULL DEFAULT '_utf8mb4\'STREAMABLE_HTTP\''`,
+      `ALTER TABLE \`mcp_servers\` ADD \`transportType\` varchar(50) NOT NULL DEFAULT 'STREAMABLE_HTTP'`,
     );
     await queryRunner.query(
       `ALTER TABLE \`mcp_servers\` DROP COLUMN \`description\``,

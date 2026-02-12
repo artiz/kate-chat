@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class McpServerAuth1770898965760 implements MigrationInterface {
-  name = "McpServerAuth1770898965760";
+export class McpServerAuth1770920590004 implements MigrationInterface {
+  name = "McpServerAuth1770920590004";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -11,7 +11,7 @@ export class McpServerAuth1770898965760 implements MigrationInterface {
       `ALTER TABLE "mcp_servers" ALTER COLUMN "authType" SET DEFAULT 'NONE'`,
     );
     await queryRunner.query(
-      `ALTER TABLE "mcp_servers" ADD CONSTRAINT "FK_23850a3c7767d2f4ffaea8fd02b" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+      `ALTER TABLE "mcp_servers" ADD CONSTRAINT "FK_23850a3c7767d2f4ffaea8fd02b" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
   }
 

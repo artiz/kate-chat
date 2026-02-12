@@ -10,14 +10,14 @@ import { getRepository } from "@/config/database";
 import { ChatDocument, Document, Chat } from "@/entities";
 import { DocumentStatus } from "@/types/api";
 import { TokenPayload } from "@/utils/jwt";
-import { SubscriptionsService, SQSService } from "@/services/messaging";
+import { SubscriptionsService, DocumentSqsService } from "@/services/messaging";
 import { MessagesService } from "@/services/messages.service";
 
 declare global {
   namespace Express {
     interface Request {
       subscriptionsService?: SubscriptionsService;
-      sqsService?: SQSService;
+      sqsService?: DocumentSqsService;
       messagesService?: MessagesService;
     }
   }
