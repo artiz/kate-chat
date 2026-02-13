@@ -16,6 +16,7 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
+  loginTime: number | null;
 }
 
 const currentToken = localStorage.getItem(STORAGE_AUTH_TOKEN);
@@ -23,6 +24,7 @@ const initialState: AuthState = {
   token: currentToken,
   isAuthenticated: !!currentToken,
   loading: false,
+  loginTime: null,
 };
 
 const authSlice = createSlice({
@@ -36,6 +38,7 @@ const authSlice = createSlice({
       state.token = action.payload;
       state.isAuthenticated = true;
       state.loading = false;
+      state.loginTime = Date.now();
       localStorage.setItem(STORAGE_AUTH_TOKEN, action.payload);
       document.cookie = `${STORAGE_AUTH_TOKEN}=${action.payload || ""}; path=/`;
     },

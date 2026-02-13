@@ -68,19 +68,15 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
         const tokenPayload = verifyToken(token);
         if (!tokenPayload) {
           logger.debug("Invalid or expired token");
-          res.status(403).json({ error: "Forbidden: invalid or expired token" });
         } else {
           req.tokenPayload = tokenPayload;
         }
-      } else {
-        res.status(403).json({ error: "Forbidden: nvalid authorization header" });
       }
     }
 
     req.connectionParams = loadConnectionParams(req.headers);
     next();
   } catch (error) {
-    res.status(403).json({ error: "Forbidden: invalid or expired token" });
     next();
   }
 };

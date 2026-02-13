@@ -60,7 +60,7 @@ const AdminRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
 const AppContent: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isAuthenticated, token } = useAppSelector(state => state.auth);
+  const { isAuthenticated, token, loginTime } = useAppSelector(state => state.auth);
   const mantineTheme = React.useMemo(() => createAppTheme(), []);
 
   // Get theme from context
@@ -106,7 +106,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     // Handle errors from the initial data query
-    if (isError) {
+    if (isError && Date.now() - (loginTime || 0) > 1000) {
       const authFailed =
         ("status" in error && [403, 401, "PARSING_ERROR", "CUSTOM_ERROR"].includes(error.status)) ||
         ("error" in error && [ERROR_UNAUTHORIZED, ERROR_FORBIDDEN].some(err => String(error.error).includes(err)));
@@ -123,7 +123,7 @@ const AppContent: React.FC = () => {
         });
       }
     }
-  }, [isError, error, navigate, initData]);
+  }, [isError, error, loginTime]);
 
   // Make sure the theme is applied to the document element
   React.useEffect(() => {

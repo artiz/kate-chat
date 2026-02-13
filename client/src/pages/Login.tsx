@@ -7,7 +7,6 @@ import {
   TextInput,
   PasswordInput,
   Button,
-  Group,
   Stack,
   Container,
   Title,
@@ -23,8 +22,6 @@ import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlic
 import { OAuthButtons } from "../components/auth";
 import { setUser } from "@/store/slices/userSlice";
 import { getClientConfig } from "@/global-config";
-
-// Login mutation is imported from graphql.ts
 
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
