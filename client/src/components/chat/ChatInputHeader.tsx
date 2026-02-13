@@ -19,7 +19,7 @@ import { ModelInfo } from "@/components/models/ModelInfo";
 import { ToolType, ChatTool, Model, MCPServer } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
-import { assert } from "@katechat/ui";
+import { assert, ProviderIcon } from "@katechat/ui";
 import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
 import { GET_MCP_SERVERS_FOR_CHAT } from "@/store/services/graphql.queries";
 import { RootState } from "@/store";
@@ -206,25 +206,56 @@ export const ChatInputHeader = ({
 
   return (
     <Group justify="space-between" align="center" style={{ flex: 1 }}>
-      <Group>
-        <IconRobot size={20} />
-        <Select
-          data={models.map(model => ({
-            value: model.modelId,
-            label: `${model.provider}: ${model.name}`,
-          }))}
-          searchable
-          value={selectedModel?.modelId || ""}
-          onChange={handleModelChange}
-          placeholder="Select a model"
-          size="xs"
-          clearable={false}
-          style={{ maxWidth: "50%" }}
-          disabled={disabled}
-        />
+      <Group gap="sm">
+        {isMobile ? (
+          <Menu position="top" withArrow shadow="md">
+            <Menu.Target>
+              <Tooltip label="MCP Tools">
+                <ActionIcon variant="default" disabled={disabled || streaming}>
+                  <IconRobot size="1.2rem" />
+                </ActionIcon>
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown mah="60vh" maw="100vw" style={{ overflowY: "auto" }}>
+              <Menu.Label>Select Model</Menu.Label>
+              {models.map(model => {
+                const isSelected = selectedModel?.modelId === model.modelId;
+                return (
+                  <Menu.Item
+                    key={model.modelId}
+                    leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
+                    rightSection={<ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />}
+                    c={isSelected ? "brand" : undefined}
+                    onClick={() => handleModelChange(model.modelId)}
+                  >
+                    {model.name}
+                  </Menu.Item>
+                );
+              })}
+            </Menu.Dropdown>
+          </Menu>
+        ) : (
+          <>
+            <IconRobot size={20} />
+            <Select
+              data={models.map(model => ({
+                value: model.modelId,
+                label: `${model.provider}: ${model.name}`,
+              }))}
+              searchable
+              value={selectedModel?.modelId || ""}
+              onChange={handleModelChange}
+              placeholder="Select a model"
+              size="xs"
+              clearable={false}
+              style={{ maxWidth: "50%" }}
+              disabled={disabled || streaming}
+            />
+          </>
+        )}
         {selectedModel && (
-          <Box visibleFrom="xs">
-            <ModelInfo model={selectedModel} size="18" />
+          <Box>
+            <ModelInfo model={selectedModel} size="1rem" />
           </Box>
         )}
 
