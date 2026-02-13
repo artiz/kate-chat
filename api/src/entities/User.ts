@@ -26,7 +26,6 @@ const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 export class UserSettings {
   @Field({ nullable: true })
   language?: string;
-
   @Field({ nullable: true })
   s3Endpoint?: string;
   @Field({ nullable: true })

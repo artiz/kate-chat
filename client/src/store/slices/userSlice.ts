@@ -6,7 +6,6 @@ import { ApplicationConfig } from "@/types/graphql";
 
 export interface UserSettings {
   language?: string;
-
   s3Endpoint?: string;
   s3Region?: string;
   s3AccessKeyId?: string;
