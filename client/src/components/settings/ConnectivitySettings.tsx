@@ -245,7 +245,9 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
               </Group>
               <Group my="md">
                 {apiProvidersCredSource["AWS_BEDROCK"] && (
-                  <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["AWS_BEDROCK"] })}</Badge>
+                  <Badge color="blue">
+                    {t("connectivity.source", { source: apiProvidersCredSource["AWS_BEDROCK"] })}
+                  </Badge>
                 )}
                 <Switch
                   checked={awsBedrockServerSave}
@@ -387,7 +389,9 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
               </Group>
               <Group my="md">
                 {apiProvidersCredSource["YANDEX_FM"] && (
-                  <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["YANDEX_FM"] })}</Badge>
+                  <Badge color="blue">
+                    {t("connectivity.source", { source: apiProvidersCredSource["YANDEX_FM"] })}
+                  </Badge>
                 )}
                 <Switch
                   checked={yandexFmServerSave}
@@ -445,12 +449,18 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
             )}
             <Group justify="space-between" align="center">
               <Title order={3}>{t("connectivity.s3FileStorage")}</Title>
-              <ActionIcon variant="subtle" onClick={() => setS3HelpOpen(!s3HelpOpen)} aria-label={t("connectivity.toggleHelp")}>
+              <ActionIcon
+                variant="subtle"
+                onClick={() => setS3HelpOpen(!s3HelpOpen)}
+                aria-label={t("connectivity.toggleHelp")}
+              >
                 <IconHelp size={16} />
               </ActionIcon>
             </Group>
             <Group my="md">
-              {apiProvidersCredSource["S3"] && <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["S3"] })}</Badge>}
+              {apiProvidersCredSource["S3"] && (
+                <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["S3"] })}</Badge>
+              )}
             </Group>
 
             <Collapse in={s3HelpOpen}>

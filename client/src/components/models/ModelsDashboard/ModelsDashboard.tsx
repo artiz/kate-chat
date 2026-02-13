@@ -474,7 +474,12 @@ export const ModelsDashboard: React.FC = () => {
       </Modal>
 
       {/* Usage Costs Modal */}
-      <Modal opened={costModalOpen} onClose={handleCloseCostModal} title={t("models.usageCosts", { provider: currentProvider })} size="lg">
+      <Modal
+        opened={costModalOpen}
+        onClose={handleCloseCostModal}
+        title={t("models.usageCosts", { provider: currentProvider })}
+        size="lg"
+      >
         <Stack gap="md">
           <Group grow align="flex-begin">
             <DatePicker

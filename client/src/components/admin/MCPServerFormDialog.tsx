@@ -21,7 +21,6 @@ interface FormData {
   scope: string;
 }
 
-
 const DEFAULT_FORM_DATA: FormData = {
   name: "",
   url: "",

@@ -23,9 +23,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
       </Text>
       {noActiveProviders && (
         <Alert color="yellow" title={t("models.noActiveProvidersTitle")}>
-          <Text size="sm">
-            {t("models.noActiveProvidersMessage")}
-          </Text>
+          <Text size="sm">{t("models.noActiveProvidersMessage")}</Text>
         </Alert>
       )}
       <Grid>
@@ -79,9 +77,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                   <Alert color="yellow" title={t("models.awsBedrockConfig")}>
                     {process.env.NODE_ENV === "development" && (
                       <>
-                        <Text size="sm">
-                          {t("models.awsBedrockRequiresEnv")}
-                        </Text>
+                        <Text size="sm">{t("models.awsBedrockRequiresEnv")}</Text>
 
                         <Code block mt="xs">
                           <p>
@@ -99,9 +95,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                       </>
                     )}
                     {process.env.NODE_ENV !== "development" && (
-                      <Text size="sm">
-                        {t("models.awsBedrockRequiresSetup")}
-                      </Text>
+                      <Text size="sm">{t("models.awsBedrockRequiresSetup")}</Text>
                     )}
                   </Alert>
                 )}
@@ -118,11 +112,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                         </Code>
                       </>
                     )}
-                    {process.env.NODE_ENV !== "development" && (
-                      <Text size="sm">
-                        {t("models.openaiRequiresSetup")}
-                      </Text>
-                    )}
+                    {process.env.NODE_ENV !== "development" && <Text size="sm">{t("models.openaiRequiresSetup")}</Text>}
                   </Alert>
                 )}
 
@@ -138,11 +128,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                         </Code>
                       </>
                     )}
-                    {process.env.NODE_ENV !== "development" && (
-                      <Text size="sm">
-                        {t("models.yandexRequiresSetup")}
-                      </Text>
-                    )}
+                    {process.env.NODE_ENV !== "development" && <Text size="sm">{t("models.yandexRequiresSetup")}</Text>}
                   </Alert>
                 )}
               </Stack>
