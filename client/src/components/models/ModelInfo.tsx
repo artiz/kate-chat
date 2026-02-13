@@ -11,6 +11,7 @@ import {
   IconVideo,
   IconMicrophone,
 } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { Model, ToolType } from "@/types/graphql";
 import { ModelType } from "@katechat/ui";
 
@@ -21,15 +22,16 @@ interface IProps {
 }
 
 export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = false }) => {
+  const { t } = useTranslation();
   const tools = new Set(model.tools || []);
   return (
     <Group gap="xs" wrap="nowrap" align="center">
-      <Tooltip label="Text input">
+      <Tooltip label={t("models.textInput")}>
         <IconTextScan2 size={size} />
       </Tooltip>
 
       {model.imageInput && (
-        <Tooltip label="Images input">
+        <Tooltip label={t("models.imagesInput")}>
           <IconPhotoAi size={size} />
         </Tooltip>
       )}
@@ -37,27 +39,27 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
       <IconArrowBigRightLinesFilled size={size} color="teal" />
 
       {model.type === ModelType.CHAT && (
-        <Tooltip label="Text generation">
+        <Tooltip label={t("models.textGeneration")}>
           <IconTextScan2 size={size} />
         </Tooltip>
       )}
       {model.type === ModelType.EMBEDDING && (
-        <Tooltip label="Embeddings generation">
+        <Tooltip label={t("models.embeddingsGeneration")}>
           <IconMatrix size={size} />
         </Tooltip>
       )}
       {model.type === ModelType.IMAGE_GENERATION && (
-        <Tooltip label="Images generation">
+        <Tooltip label={t("models.imagesGeneration")}>
           <IconPhotoAi size={size} />
         </Tooltip>
       )}
       {model.type === ModelType.VIDEO_GENERATION && (
-        <Tooltip label="Video generation">
+        <Tooltip label={t("models.videoGeneration")}>
           <IconVideo size={size} />
         </Tooltip>
       )}
       {model.type === ModelType.REALTIME && (
-        <Tooltip label="Realtime audio model">
+        <Tooltip label={t("models.realtimeAudio")}>
           <IconMicrophone size={size} />
         </Tooltip>
       )}
@@ -66,12 +68,12 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
         <>
           |
           {tools.has(ToolType.WEB_SEARCH) && (
-            <Tooltip label="Web search">
+            <Tooltip label={t("chat.webSearch")}>
               <IconWorldSearch size={size} />
             </Tooltip>
           )}
           {tools.has(ToolType.CODE_INTERPRETER) && (
-            <Tooltip label="Code interpreter">
+            <Tooltip label={t("chat.codeInterpreter")}>
               <IconCloudCode size={size} />
             </Tooltip>
           )}

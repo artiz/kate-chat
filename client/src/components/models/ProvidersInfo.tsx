@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Text, Grid, Card, Button, Group, Stack, Badge, Divider, Table, Alert, Code } from "@mantine/core";
 import { IconReportMoney } from "@tabler/icons-react";
-import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ProviderIcon } from "@katechat/ui";
 import { ProviderInfo } from "@/types/graphql";
 
@@ -11,6 +11,7 @@ interface ProvidersInfoProps {
 }
 
 export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenCostModal }) => {
+  const { t } = useTranslation();
   const noActiveProviders = useMemo(() => {
     return providers.length === 0 || !providers.some(provider => provider.isConnected);
   }, [providers]);
@@ -18,13 +19,12 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
   return (
     <Stack gap="md" mb="xl">
       <Text fw={700} size="lg">
-        API Connections
+        {t("models.apiConnections")}
       </Text>
       {noActiveProviders && (
-        <Alert color="yellow" title="No Active Providers">
+        <Alert color="yellow" title={t("models.noActiveProvidersTitle")}>
           <Text size="sm">
-            No active AI providers connected. Please configure at least one provider on the{" "}
-            <Link to="/connectivity">connectivity</Link> page.
+            {t("models.noActiveProvidersMessage")}
           </Text>
         </Alert>
       )}
@@ -45,11 +45,11 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                         leftSection={<IconReportMoney size={16} />}
                         onClick={() => onOpenCostModal(provider.id)}
                       >
-                        Usage
+                        {t("models.usage")}
                       </Button>
                     )}
                     <Badge color={provider.isConnected ? "green" : "red"}>
-                      {provider.isConnected ? "Connected" : "Disconnected"}
+                      {provider.isConnected ? t("models.connected") : t("models.disconnected")}
                     </Badge>
                   </Group>
                 </Group>
@@ -76,11 +76,11 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                 </Table>
 
                 {provider.id === "AWS_BEDROCK" && !provider.isConnected && (
-                  <Alert color="yellow" title="AWS Bedrock Configuration">
+                  <Alert color="yellow" title={t("models.awsBedrockConfig")}>
                     {process.env.NODE_ENV === "development" && (
                       <>
                         <Text size="sm">
-                          AWS Bedrock requires AWS credentials. Set the following environment variables:
+                          {t("models.awsBedrockRequiresEnv")}
                         </Text>
 
                         <Code block mt="xs">
@@ -89,7 +89,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                             <br />
                             AWS_BEDROCK_PROFILE=your_profile
                           </p>
-                          <p>or</p>
+                          <p>{t("common.or")}</p>
                           <p>
                             AWS_BEDROCK_ACCESS_KEY_ID=your_access_key
                             <br />
@@ -100,18 +100,17 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     )}
                     {process.env.NODE_ENV !== "development" && (
                       <Text size="sm">
-                        AWS Bedrock requires AWS credentials. Please setup connection credentials on{" "}
-                        <Link to="/connectivity">connectivity</Link> page.
+                        {t("models.awsBedrockRequiresSetup")}
                       </Text>
                     )}
                   </Alert>
                 )}
 
                 {provider.id === "OPEN_AI" && !provider.isConnected && (
-                  <Alert color="yellow" title="OpenAI Configuration">
+                  <Alert color="yellow" title={t("models.openaiConfig")}>
                     {process.env.NODE_ENV === "development" && (
                       <>
-                        <Text size="sm">OpenAI requires an API key. Set the following environment variable:</Text>
+                        <Text size="sm">{t("models.openaiRequiresEnv")}</Text>
                         <Code block mt="xs">
                           OPENAI_API_KEY=your_openai_key
                           <br />
@@ -121,18 +120,17 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     )}
                     {process.env.NODE_ENV !== "development" && (
                       <Text size="sm">
-                        OpenAI requires an API key. Please setup connection credentials on{" "}
-                        <Link to="/connectivity">connectivity</Link> page.
+                        {t("models.openaiRequiresSetup")}
                       </Text>
                     )}
                   </Alert>
                 )}
 
                 {provider.id === "YANDEX_FM" && !provider.isConnected && (
-                  <Alert color="yellow" title="Yandex Configuration">
+                  <Alert color="yellow" title={t("models.yandexConfig")}>
                     {process.env.NODE_ENV === "development" && (
                       <>
-                        <Text size="sm">Yandex requires an API key. Set the following environment variable:</Text>
+                        <Text size="sm">{t("models.yandexRequiresEnv")}</Text>
                         <Code block mt="xs">
                           YANDEX_FM_API_KEY=your_yandex_api_key
                           <br />
@@ -142,8 +140,7 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     )}
                     {process.env.NODE_ENV !== "development" && (
                       <Text size="sm">
-                        Yandex requires an API key. Please setup connection credentials on{" "}
-                        <Link to="/connectivity">connectivity</Link> page.
+                        {t("models.yandexRequiresSetup")}
                       </Text>
                     )}
                   </Alert>

@@ -18,6 +18,7 @@ import { notifications } from "@mantine/notifications";
 import { useMutation } from "@apollo/client";
 import { TEST_CUSTOM_MODEL_MUTATION } from "@/store/services/graphql.queries";
 import { IconTestPipe, IconAlertCircle, IconCheck } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 interface CustomModelDialogProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
   initialData,
   mode = "create",
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<CustomModelFormData>({
     name: "",
     modelId: "",
@@ -72,8 +74,8 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
         message: data.testCustomModel.content || "Connection successful!",
       });
       notifications.show({
-        title: "Success",
-        message: "Model Connection Checked successfully",
+        title: t("common.success"),
+        message: t("models.modelConnectionChecked"),
         color: "green",
       });
     },
@@ -117,8 +119,8 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
   const handleTest = async () => {
     if (!formData.endpoint || !formData.modelName) {
       notifications.show({
-        title: "Validation Error",
-        message: "Endpoint, API Key and Model Name (API) are required for testing",
+        title: t("models.validationError"),
+        message: t("models.endpointApiKeyRequired"),
         color: "red",
       });
       return;
@@ -153,8 +155,8 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
       !formData.modelName
     ) {
       notifications.show({
-        title: "Validation Error",
-        message: "Please fill in all required fields",
+        title: t("models.validationError"),
+        message: t("models.fillRequiredFields"),
         color: "red",
       });
       return;
@@ -182,7 +184,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
       onClose={handleClose}
       title={
         <Text size="lg" fw={600}>
-          {mode === "create" ? "Add Custom Model" : "Edit Custom Model"}
+          {mode === "create" ? t("models.addCustomModel") : t("models.editCustomModel")}
         </Text>
       }
       size="lg"
@@ -192,7 +194,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
       <Stack gap="md">
         <Group grow align="flex-end">
           <TextInput
-            label="Model Name"
+            label={t("models.modelName")}
             placeholder="e.g., Deepseek Chat"
             required
             value={formData.name}
@@ -202,9 +204,9 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           />
 
           <TextInput
-            label="Model ID"
+            label={t("models.modelId")}
             placeholder="e.g., deepseek-chat"
-            description="Unique identifier for this model in your system"
+            description={t("models.modelIdDescription")}
             required
             value={formData.modelId}
             onChange={e => updateFormField("modelId", e.target.value)}
@@ -215,9 +217,9 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
 
         <Group grow align="flex-end">
           <TextInput
-            label="Endpoint URL"
+            label={t("models.endpointUrl")}
             placeholder="e.g., https://api.deepseek.com/v1"
-            description="Base URL for the API (without /chat/completions)"
+            description={t("models.endpointUrlDescription")}
             required
             value={formData.endpoint}
             onChange={e => updateFormField("endpoint", e.target.value)}
@@ -225,7 +227,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             autoComplete="off"
           />
           <TextInput
-            label="API Key"
+            label={t("models.apiKey")}
             placeholder="sk-..."
             type={initialData?.apiKey ? "text" : "password"}
             required
@@ -238,9 +240,9 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
 
         <Group grow align="flex-end">
           <TextInput
-            label="Model Name (API)"
+            label={t("models.modelNameApi")}
             placeholder="e.g., deepseek-chat"
-            description="The model identifier to send to the API"
+            description={t("models.modelNameApiDescription")}
             required
             value={formData.modelName}
             onChange={e => updateFormField("modelName", e.target.value)}
@@ -248,11 +250,11 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             autoComplete="off"
           />
           <Select
-            label="Protocol"
+            label={t("models.protocol")}
             required
             data={[
-              { value: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS, label: "OpenAI Chat Completions" },
-              { value: CustomModelProtocol.OPENAI_RESPONSES, label: "OpenAI Responses API" },
+              { value: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS, label: t("models.openaiChatCompletions") },
+              { value: CustomModelProtocol.OPENAI_RESPONSES, label: t("models.openaiResponsesApi") },
             ]}
             value={formData.protocol}
             onChange={value => updateFormField("protocol", value || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS)}
@@ -263,14 +265,14 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
         <Group grow align="flex-end">
           <Stack>
             <Switch
-              label="Streaming"
+              label={t("models.streaming")}
               checked={formData.streaming}
               onChange={event => updateFormField("streaming", event.currentTarget.checked)}
               disabled={isLoading}
               mb="xs"
             />
             <Switch
-              label="Image Input"
+              label={t("models.imageInput")}
               checked={formData.imageInput}
               onChange={event => updateFormField("imageInput", event.currentTarget.checked)}
               disabled={isLoading}
@@ -279,9 +281,9 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           </Stack>
 
           <NumberInput
-            label="Max Input Tokens"
+            label={t("models.maxInputTokensLabel")}
             placeholder="e.g., 8192"
-            description="Maximum number of input tokens the model can handle"
+            description={t("models.maxInputTokensDescription")}
             value={formData.maxInputTokens}
             onChange={value => updateFormField("maxInputTokens", value)}
             min={1}
@@ -291,7 +293,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
         </Group>
 
         <Textarea
-          label="Description"
+          label={t("common.description")}
           placeholder="e.g., Deepseek AI chat model with reasoning capabilities"
           rows={3}
           value={formData.description}
@@ -301,7 +303,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
         <Divider />
 
         <Textarea
-          label="Test prompt"
+          label={t("models.testPrompt")}
           placeholder="2+2=?"
           rows={3}
           value={testPrompt}
@@ -312,7 +314,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
         {testResult && (
           <Alert
             icon={testResult.success ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
-            title={testResult.success ? "Connection Successful" : "Connection Failed"}
+            title={testResult.success ? t("models.testConnectionSuccess") : t("models.testConnectionFailed")}
             color={testResult.success ? "green" : "red"}
             variant="light"
           >
@@ -328,15 +330,15 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             loading={testing}
             disabled={!canTest || isLoading}
           >
-            Test Connection
+            {t("models.testConnection")}
           </Button>
 
           <Group>
             <Button variant="default" onClick={handleClose} disabled={isLoading}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSubmit} loading={isLoading}>
-              {mode === "create" ? "Create Model" : "Save Changes"}
+              {mode === "create" ? t("models.createModel") : t("models.saveChanges")}
             </Button>
           </Group>
         </Group>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Text, Grid, Card, Group, Badge, Stack, Button, Switch, Select, Paper, Tooltip } from "@mantine/core";
 import { IconMessagePlus, IconTestPipe, IconTrash, IconEdit } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { useAppSelector } from "@/store";
 import { ModelInfo } from "./ModelInfo";
 import { formatTokensLimit, ModelType, ProviderIcon, DeleteConfirmationModal } from "@katechat/ui";
@@ -25,6 +26,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
   onEditModel,
   creatingChat,
 }) => {
+  const { t } = useTranslation();
   const user = useAppSelector(state => state.user.currentUser);
   const { providers } = useAppSelector(state => state.models);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -104,11 +106,11 @@ export const ModelsList: React.FC<ModelsListProps> = ({
         <Stack>
           <Group justify="space-between">
             <Text fw={700} size="lg">
-              Models
+              {t("nav.models")}
             </Text>
             <Group>
               <Select
-                placeholder="API Provider"
+                placeholder={t("models.apiProvider")}
                 clearable
                 data={apiProviders}
                 value={apiProviderFilter || null}
@@ -116,7 +118,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                 size="sm"
               />
               <Select
-                placeholder="Provider"
+                placeholder={t("models.provider")}
                 clearable
                 data={uniqueProviders}
                 value={providerFilter || null}
@@ -124,11 +126,11 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                 size="sm"
               />
               <Select
-                placeholder="Status"
+                placeholder={t("common.status")}
                 clearable
                 data={[
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
+                  { value: "active", label: t("common.active") },
+                  { value: "inactive", label: t("common.inactive") },
                 ]}
                 value={activeFilter || null}
                 onChange={v => setActiveFilter(v || undefined)}
@@ -152,13 +154,13 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                     </Text>
                     {model.modelId === user?.defaultModelId && (
                       <Badge color="green" variant="light" size="xs">
-                        Default
+                        {t("models.default")}
                       </Badge>
                     )}
                   </Group>
                   <Group>
                     {model?.maxInputTokens && (
-                      <Tooltip label={`Maximum input tokens limit: ${model.maxInputTokens.toLocaleString()}`} withArrow>
+                      <Tooltip label={t("models.maxInputTokens", { count: model.maxInputTokens })} withArrow>
                         <Text size="xs">{formatTokensLimit(model.maxInputTokens)}&nbsp;&gt;&gt;</Text>
                       </Tooltip>
                     )}
@@ -198,7 +200,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                       loading={creatingChat}
                       disabled={!model.isActive}
                     >
-                      New Chat
+                      {t("nav.newChat")}
                     </Button>
                   )}
                   {[ModelType.CHAT, ModelType.EMBEDDING].includes(model.type) && (
@@ -208,14 +210,14 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                       onClick={() => onOpenTestModal(model)}
                       disabled={!model.isActive}
                     >
-                      Test
+                      {t("common.test")}
                     </Button>
                   )}
                   {model.isCustom && (
                     <>
                       {onEditModel && (
                         <Button leftSection={<IconEdit size={16} />} variant="light" onClick={() => onEditModel(model)}>
-                          Edit
+                          {t("common.edit")}
                         </Button>
                       )}
                       <Button
@@ -224,7 +226,7 @@ export const ModelsList: React.FC<ModelsListProps> = ({
                         color="red"
                         onClick={() => handleDeleteClick(model)}
                       >
-                        Delete
+                        {t("common.delete")}
                       </Button>
                     </>
                   )}
@@ -238,11 +240,11 @@ export const ModelsList: React.FC<ModelsListProps> = ({
           <Grid.Col span={12}>
             {models.length === 0 ? (
               <Text ta="center" c="dimmed">
-                No AI models available. Please contact your administrator.
+                {t("models.noModels")}
               </Text>
             ) : (
               <Text ta="center" c="dimmed">
-                No models match your filter criteria. Try adjusting your filters.
+                {t("models.noModelsFiltered")}
               </Text>
             )}
           </Grid.Col>
@@ -254,10 +256,10 @@ export const ModelsList: React.FC<ModelsListProps> = ({
         isOpen={deleteConfirmOpen}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        title="Delete Custom Model"
-        message={`Are you sure you want to delete the custom model "${modelToDelete?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t("models.deleteCustomModel")}
+        message={t("models.deleteCustomModelMessage", { name: modelToDelete?.name })}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
       />
     </>
   );
