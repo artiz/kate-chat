@@ -603,5 +603,10 @@
     "reasoning": "Рассуждение",
     "toolCallCompleted": "Вызов инструмента завершён",
     "cancelled": "Отменено"
-  }
+  },
+
+  "Start the conversation by sending a message": "Начните диалог, отправив сообщение",
+  "AI-generated, for reference only.": "Сгенерировано ИИ, только для справки.",
+  "Click or drop an image/document here to upload": "Нажмите или перетащите изображение/документ сюда для загрузки",
+  "Upload File": "Загрузить файл"
 }

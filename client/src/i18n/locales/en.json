@@ -555,7 +555,7 @@
     "failedToReadFile": "Failed to read file: {{name}}",
     "failedToReadImageFiles": "Failed to read image files",
     "documentUploadNotAvailable": "Document upload is not available in this chat.",
-    "clickOrDropFile": "Click or drop an image/document here",
+    "clickOrDropFile": "Click or drop an image/document here to upload",
     "uploadFile": "Upload File",
     "dropFilesHere": "Drop files here to upload"
   },
@@ -604,5 +604,10 @@
     "reasoning": "Reasoning",
     "toolCallCompleted": "Tool Call Completed",
     "cancelled": "Cancelled"
-  }
+  },
+
+  "Start the conversation by sending a message": "Start the conversation by sending a message",
+  "AI-generated, for reference only.": "AI-generated, for reference only.",
+  "Click or drop an image/document here to upload": "Click or drop an image/document here to upload",
+  "Upload File": "Upload File"
 }

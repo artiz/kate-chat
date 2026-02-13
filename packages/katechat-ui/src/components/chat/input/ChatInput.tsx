@@ -4,6 +4,7 @@ import { IconCirclePlus, IconPlayerStopFilled, IconSend, IconX } from "@tabler/i
 import { notifications } from "@mantine/notifications";
 import { ImageInput } from "@/core";
 import { FileDropzone } from "@/controls";
+import { useTranslation } from "react-i18next";
 
 import classes from "./ChatInput.module.scss";
 
@@ -16,6 +17,7 @@ interface IProps {
   loadCompleted?: boolean;
   disabled?: boolean;
   promptMode?: boolean;
+  promptText?: string;
   uploadAllowed?: boolean;
   streaming: boolean;
   setSending: (value: boolean) => void;
@@ -38,6 +40,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
       loadCompleted = false,
       disabled = false,
       promptMode = false,
+      promptText,
       uploadAllowed = true,
       streaming,
       setSending,
@@ -57,8 +60,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
     const [prevImageNdx, setPrevImageNdx] = useState<number>(0);
     const [isImagesSeek, setIsImagesSeek] = useState<boolean>(false);
-
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const { t } = useTranslation();
 
     useImperativeHandle(ref, () => ({
       handleAddFiles: (files: File[]) => handleAddFiles(files),
@@ -224,7 +227,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
         {promptMode ? (
           <Stack align="center" justify="center" gap="md" mb="lg">
             <Text c="dimmed" size="lg" ta="center" className={classes.promptModeText}>
-              Start the conversation by sending a message
+              {promptText || t("Start the conversation by sending a message")}
             </Text>
           </Stack>
         ) : null}

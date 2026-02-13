@@ -603,5 +603,10 @@
     "reasoning": "Denken",
     "toolCallCompleted": "Tool-Aufruf abgeschlossen",
     "cancelled": "Abgebrochen"
-  }
+  },
+
+  "Start the conversation by sending a message": "Beginnen Sie das Gespräch, indem Sie eine Nachricht senden",
+  "AI-generated, for reference only.": "KI-generiert, nur zur Referenz.",
+  "Click or drop an image/document here to upload": "Klicken oder Bild/Dokument hierher ziehen",
+  "Upload File": "Datei hochladen"
 }

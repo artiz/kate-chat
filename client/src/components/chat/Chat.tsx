@@ -526,7 +526,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         <Group justify="center" c="dimmed" p="0">
           <IconAi size="20" />
           <Text size="xs" mt="0" mb="0" ta="center">
-            {aiUsageAlert}
+            {t(aiUsageAlert)}
           </Text>
         </Group>
       ) : null}
