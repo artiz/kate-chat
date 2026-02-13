@@ -7,6 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { MessageRole, ModelType, PluginProps } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { CALL_OTHER_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import classes from "./Plugins.module.scss";
@@ -22,6 +23,7 @@ export const CallOtherModel = ({
   onAction,
   onActionEnd,
 }: PluginProps<Message>) => {
+  const { t } = useTranslation();
   const { role, id, modelId, streaming } = message;
   const { models: allModels } = useAppSelector(state => state.models);
   const activeModels = useMemo(() => {
@@ -52,7 +54,7 @@ export const CallOtherModel = ({
         onActionEnd?.(id);
         if (res.data?.callOther?.error) {
           return notifications.show({
-            title: "Error",
+            title: t("common.error"),
             message: res.data.callOther.error,
             color: "red",
           });
@@ -63,8 +65,8 @@ export const CallOtherModel = ({
       .catch(error => {
         onActionEnd?.(id);
         notifications.show({
-          title: "Error",
-          message: error.message || "Failed to call other models",
+          title: t("common.error"),
+          message: error.message || t("chat.failedToCallOther"),
           color: "red",
         });
       });
@@ -74,7 +76,7 @@ export const CallOtherModel = ({
     <Menu shadow="md" width={200}>
       <Menu.Target>
         <ActionIcon size="sm" color="gray" variant="subtle" disabled={disabled || streaming || callingOthers}>
-          <Tooltip label="Call other model" position="top" withArrow>
+          <Tooltip label={t("chat.callOtherModel")} position="top" withArrow>
             <IconMoodPlus />
           </Tooltip>
         </ActionIcon>

@@ -5,6 +5,7 @@ import { DeleteMessageResponse, Message } from "@/types/graphql";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { PluginProps } from "@katechat/ui";
+import { useTranslation } from "react-i18next";
 import { DELETE_MESSAGE_MUTATION } from "@/store/services/graphql.queries";
 import { DeleteMessageModal } from "./DeleteMessageModal";
 
@@ -18,6 +19,7 @@ export const DeleteMessage = ({
   onMessageDeleted,
 }: PluginProps<Message>) => {
   const { id, streaming, linkedToMessageId } = message;
+  const { t } = useTranslation();
   const [showModal, setShowModal] = useState<boolean>(false);
 
   const handleDeleteClick = useCallback(() => {
@@ -29,8 +31,8 @@ export const DeleteMessage = ({
     onCompleted: res => {
       onActionEnd?.(id);
       notifications.show({
-        title: "Message Deleted",
-        message: "Message has been successfully deleted",
+        title: t("chat.messageDeleted"),
+        message: t("chat.messageDeletedMessage"),
         color: "green",
       });
 
@@ -41,8 +43,8 @@ export const DeleteMessage = ({
     onError: error => {
       onActionEnd?.(id);
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to delete message",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToDeleteMessage"),
         color: "red",
       });
     },
@@ -79,7 +81,7 @@ export const DeleteMessage = ({
         onDeleteWithFollowing={linkedToMessageId ? undefined : handleDeleteMessageAndFollowing}
       />
 
-      <Tooltip label="Delete message" position="top" withArrow>
+      <Tooltip label={t("chat.deleteMessage")} position="top" withArrow>
         <ActionIcon
           className="delete-message-btn"
           data-message-id={id}

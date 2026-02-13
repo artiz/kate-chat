@@ -576,6 +576,7 @@
     "codeInterpreter": "Code Interpreter",
     "mcpToolCalls": "MCP Tool Calls",
     "arguments": "Arguments:",
+    "result": "Result:",
     "mcpResults": "MCP Results",
     "ragSearchResults": "RAG search results",
     "ragSearch": "RAG search",

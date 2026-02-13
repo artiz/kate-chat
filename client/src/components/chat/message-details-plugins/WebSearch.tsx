@@ -2,6 +2,7 @@ import React, { Fragment } from "react";
 import { Text, Box, Group, Anchor } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconWorldSearch } from "@tabler/icons-react";
+import i18n from "@/i18n";
 
 const WEB_SEARCH_TOOL_NAME = "internal-web_search";
 
@@ -29,7 +30,7 @@ export const WebSearchCall = (message: Message): React.ReactNode => {
         <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
           <IconWorldSearch size={16} className="message-details-icon" />
           <Text fw={600} size="sm">
-            Web Search
+            {i18n.t("messageDetails.webSearch")}
           </Text>
         </Group>
 

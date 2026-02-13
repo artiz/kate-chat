@@ -3,6 +3,7 @@ import { Text, Box, Group } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconCode } from "@tabler/icons-react";
 import { parseMarkdown } from "@katechat/ui";
+import i18n from "@/i18n";
 
 export const CodeInterpreterCall = (message: Message): React.ReactNode => {
   if (!message || !message.metadata) return null;
@@ -31,7 +32,7 @@ export const CodeInterpreterCall = (message: Message): React.ReactNode => {
       <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
         <IconCode size={16} />
         <Text fw={600} size="sm">
-          Code Interpreter
+          {i18n.t("messageDetails.codeInterpreter")}
         </Text>
       </Group>
 

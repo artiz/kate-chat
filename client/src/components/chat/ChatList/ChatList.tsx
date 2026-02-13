@@ -4,6 +4,7 @@ import { Title, Text, Grid, Card, Button, Group, Stack, Divider, Alert } from "@
 import { IconPlus, IconMessage } from "@tabler/icons-react";
 import { ChatMessagePreview } from "@katechat/ui";
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { addChats } from "@/store/slices/chatSlice";
 import { GET_CHATS } from "@/store/services/graphql.queries";
@@ -13,6 +14,7 @@ import { CHAT_PAGE_SIZE } from "@/lib/config";
 export const ChatList: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const { chats, error, next } = useAppSelector(state => state.chats);
 
   const { loading: loadingChats, refetch: fetchNextChats } = useQuery<GetChatsResponse>(GET_CHATS, {
@@ -45,22 +47,22 @@ export const ChatList: React.FC = () => {
   };
 
   if (error) {
-    return <Text c="red">Error loading chats. Please try again.</Text>;
+    return <Text c="red">{t("chat.errorLoadingChats")}</Text>;
   }
 
   if (noActiveProviders) {
     return (
-      <Alert color="yellow" title="No Active Providers">
+      <Alert color="yellow" title={t("chat.noActiveProviders")}>
         <div>
-          No active AI providers connected.
+          {t("chat.noActiveProvidersMessage")}
           <ol>
             <li>
-              Please configure at least one provider on the <Link to="/settings">settings</Link> page
+              <Link to="/settings">{t("chat.configureProvider")}</Link>
             </li>
             <li>
-              Then fetch models on the <Link to="/models">models</Link> page
+              <Link to="/models">{t("chat.thenFetchModels")}</Link>
             </li>
-            <li>After that, you can create a new chat</li>
+            <li>{t("chat.afterThatCreateChat")}</li>
           </ol>
         </div>
       </Alert>
@@ -71,21 +73,21 @@ export const ChatList: React.FC = () => {
     return (
       <>
         <Group justify="space-between" mb="lg">
-          <Title order={2}>Your Chats</Title>
+          <Title order={2}>{t("chat.yourChats")}</Title>
           <Button leftSection={<IconPlus size={16} />} onClick={handleNewChat}>
-            New Chat
+            {t("chat.newChat")}
           </Button>
         </Group>
         <Stack align="center" justify="center" h={300} gap="md">
           <IconMessage size={64} opacity={0.3} />
           <Text size="lg" fw={500} ta="center">
-            No chats yet
+            {t("chat.noChatsYet")}
           </Text>
           <Text size="sm" c="dimmed" ta="center" maw={500}>
-            Start a new conversation with an AI model by clicking the New Chat button.
+            {t("chat.startNewConversation")}
           </Text>
           <Button onClick={handleNewChat} mt="md">
-            Create your first chat
+            {t("chat.createFirstChat")}
           </Button>
         </Stack>
       </>
@@ -95,9 +97,9 @@ export const ChatList: React.FC = () => {
   return (
     <>
       <Group justify="space-between" mb="lg">
-        <Title order={2}>Your Chats</Title>
+        <Title order={2}>{t("chat.yourChats")}</Title>
         <Button leftSection={<IconPlus size={16} />} onClick={handleNewChat}>
-          New Chat
+          {t("chat.newChat")}
         </Button>
       </Group>
       <Grid>
@@ -114,13 +116,13 @@ export const ChatList: React.FC = () => {
                   style={{ cursor: "pointer" }}
                 >
                   <Text fw={500} size="lg" mb="xs" truncate>
-                    {chat.title || "Untitled Chat"}
+                    {chat.title || t("chat.untitledChat")}
                   </Text>
                   <Text size="sm" c="dimmed">
                     {new Date(chat.updatedAt).toLocaleDateString()}
                   </Text>
                   <Text size="sm">
-                    <b>{chat.messagesCount}</b> messages
+                    <b>{chat.messagesCount}</b> {t("chat.messages")}
                   </Text>
                 </Group>
                 <Divider />
@@ -133,7 +135,7 @@ export const ChatList: React.FC = () => {
       {next ? (
         <Group justify="center" mt="md">
           <Button variant="subtle" size="xs" onClick={() => fetchNextChats()} loading={loadingChats}>
-            Load more...
+            {t("chat.loadMore")}
           </Button>
         </Group>
       ) : null}

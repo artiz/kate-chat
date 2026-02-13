@@ -2,6 +2,7 @@ import React, { Fragment } from "react";
 import { Text, Box, Group, Code } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconPlugConnected } from "@tabler/icons-react";
+import i18n from "@/i18n";
 
 /** MCP Details - Display MCP tool call results */
 export const MCPCall = (message: Message): React.ReactNode => {
@@ -39,7 +40,7 @@ export const MCPCall = (message: Message): React.ReactNode => {
         <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
           <IconPlugConnected size={16} className="message-details-icon" />
           <Text fw={600} size="sm">
-            MCP Tool Calls
+            {i18n.t("messageDetails.mcpToolCalls")}
           </Text>
         </Group>
 
@@ -56,7 +57,7 @@ export const MCPCall = (message: Message): React.ReactNode => {
               {call.args && (
                 <Box fz="12" mt={4}>
                   <Text size="xs" c="dimmed">
-                    Arguments:
+                    {i18n.t("messageDetails.arguments")}
                   </Text>
                   <Code block fz="11">
                     {formatArgs(call.args)}
@@ -71,7 +72,7 @@ export const MCPCall = (message: Message): React.ReactNode => {
               {result?.content && (
                 <Box fz="12" mt={4}>
                   <Text size="xs" c="dimmed">
-                    Result:
+                    {i18n.t("messageDetails.result")}
                   </Text>
                   <Box fz="12">
                     <pre>{truncateContent(result.content)}</pre>
@@ -96,7 +97,7 @@ export const MCPCall = (message: Message): React.ReactNode => {
         <Group justify="flex-start" align="center" gap="xs" mt="lg" className="message-details-header">
           <IconPlugConnected size={16} className="message-details-icon" />
           <Text fw={600} size="sm">
-            MCP Results
+            {i18n.t("messageDetails.mcpResults")}
           </Text>
         </Group>
 

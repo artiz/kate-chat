@@ -5,6 +5,7 @@ import { EditMessageResponse, Message } from "@/types/graphql";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { MessageRole, PluginProps } from "@katechat/ui";
+import { useTranslation } from "react-i18next";
 import { EDIT_MESSAGE_MUTATION } from "@/store/services/graphql.queries";
 import { assert } from "@katechat/ui";
 import { EditMessageModal } from "./EditMessageModal";
@@ -20,6 +21,7 @@ export const EditMessage = ({
   onMessageDeleted,
 }: PluginProps<Message>) => {
   const { role, id, content = "" } = message;
+  const { t } = useTranslation();
   const [isEdited, setIsEdited] = useState<boolean>(false);
   const [editedContent, setEditedContent] = useState<string>("");
   const messageContext = useChatPluginsContext();
@@ -31,7 +33,7 @@ export const EditMessage = ({
 
       if (res.editMessage.error) {
         return notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: res.editMessage.error,
           color: "red",
         });
@@ -41,8 +43,8 @@ export const EditMessage = ({
       setEditedContent("");
 
       notifications.show({
-        title: "Message Edited",
-        message: "Message has been edited and following messages regenerated",
+        title: t("chat.messageEdited"),
+        message: t("chat.messageEditedMessage"),
         color: "green",
       });
 
@@ -57,8 +59,8 @@ export const EditMessage = ({
       onActionEnd?.(id);
 
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to edit message",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToEditMessage"),
         color: "red",
       });
     },
@@ -83,7 +85,7 @@ export const EditMessage = ({
 
   return role === MessageRole.USER ? (
     <>
-      <Tooltip label="Edit message" position="top" withArrow>
+      <Tooltip label={t("chat.editMessage")} position="top" withArrow>
         <ActionIcon
           className="edit-message-btn"
           data-message-id={id}

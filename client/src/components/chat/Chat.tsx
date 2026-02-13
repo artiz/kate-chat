@@ -16,6 +16,7 @@ import {
   DropFilesOverlay,
 } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { useChatSubscription, useChatMessages } from "@/hooks";
 
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
@@ -49,6 +50,7 @@ interface IProps {
 
 export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const { codePlugins, PythonCodeModal } = useCodePlugins();
   const [editedTitle, setEditedTitle] = useState("");
@@ -97,8 +99,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
     if (loadCompleted && !appConfig?.s3Connected) {
       notifications.show({
-        title: "Warning",
-        message: "S3 connection is not enabled. You cannot upload/generate images.",
+        title: t("common.warning"),
+        message: t("chat.s3NotEnabled"),
         color: "yellow",
       });
     }
@@ -148,8 +150,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to send message",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToSend"),
         color: "red",
       });
       setSending(false);
@@ -163,7 +165,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     onCompleted: data => {
       if (data.stopMessageGeneration.error) {
         notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: data.stopMessageGeneration.error,
           color: "red",
         });
@@ -171,7 +173,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message || "Failed to stop message generation",
         color: "red",
       });
@@ -204,8 +206,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
       }
     } catch (error) {
       notifications.show({
-        title: "Error",
-        message: error instanceof Error ? error.message : "Failed to send message",
+        title: t("common.error"),
+        message: error instanceof Error ? error.message : t("chat.failedToSend"),
         color: "red",
       });
     }
@@ -214,8 +216,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const handleStopRequest = useCallback(async () => {
     if (!messageMetadata?.requestId) {
       return notifications.show({
-        title: "Error",
-        message: "No request ID found for current message",
+        title: t("common.error"),
+        message: t("chat.noRequestId"),
         color: "red",
       });
     }
@@ -227,8 +229,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
     if (!message?.id) {
       return notifications.show({
-        title: "Error",
-        message: "No message found to stop",
+        title: t("common.error"),
+        message: t("chat.noMessageToStop"),
         color: "red",
       });
     }
@@ -288,7 +290,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const handleTitleEdit = useCallback(() => {
     setIsEditingTitle(true);
-    setEditedTitle(chat?.title || "Untitled Chat");
+    setEditedTitle(chat?.title || t("chat.untitledChat"));
     setTimeout(() => {
       titleRef.current?.focus();
     }, 0);
@@ -304,8 +306,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
       if (documents.length) {
         if (!appConfig?.ragEnabled) {
           return notifications.show({
-            title: "Warning",
-            message: "RAG is not enabled. Documents will not be processed.",
+            title: t("common.warning"),
+            message: t("chat.ragNotEnabled"),
             color: "yellow",
           });
         }
@@ -314,8 +316,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
         setUploadProgress(0);
         uploadDocuments(documents, chatId, setUploadProgress).catch(error => {
           notifications.show({
-            title: "Error",
-            message: error.message || "Failed to upload documents",
+            title: t("common.error"),
+            message: error.message || t("chat.failedToUploadDocs"),
             color: "red",
           });
         });
@@ -410,7 +412,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             ) : (
               <Group gap="xs" className={classes.title}>
                 <Title order={4} className={classes.titleText}>
-                  {chat?.title || "Untitled Chat"}
+                  {chat?.title || t("chat.untitledChat")}
                 </Title>
 
                 <ActionIcon onClick={handleTitleEdit} size="md" variant="subtle" className={classes.editTitleButton}>
@@ -426,23 +428,21 @@ export const ChatComponent = ({ chatId }: IProps) => {
         <div className={classes.actionsBlock}>
           <div className={classes.wsStatus}>
             <div className={[classes.wsStatusIndicator, wsConnected ? classes.connected : ""].join(" ")} />
-            <div className={classes.wsStatusText}>{wsConnected ? "Connected" : "Connecting..."}</div>
+            <div className={classes.wsStatusText}>{wsConnected ? t("chat.connected") : t("chat.connecting")}</div>
           </div>
-          <Tooltip label="Back to chats list">
+          <Tooltip label={t("chat.backToChats")}>
             <ActionIcon onClick={() => navigate("/chat")}>
               <IconArrowLeft size="1.2rem" />
             </ActionIcon>
           </Tooltip>
         </div>
       </div>
-
       <Stack justify="stretch" align="center">
         {!appConfig?.demoMode && appConfig?.ragSupported && !appConfig?.ragEnabled && (
           <Alert color="yellow">
-            RAG is supported (DB is PostgreSQL/MSSQL/SQLite) but processing models are not setup. However, the
-            processing models required for full functionality are not yet configured. As a result, document uploads are
-            not possible at this time. To enable this feature, please select the appropriate{" "}
-            <Link to="/settings#document_processing">processing models</Link>.
+            {t("chat.ragNotConfigured")}
+            <br />
+            <Link to="/ai-settings">{t("aiSettings.title")}</Link>.
           </Alert>
         )}
 
@@ -472,7 +472,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         />
       </ChatPluginsContextProvider>
       {messagesLimitReached && (
-        <Tooltip label={`You have reached the limit of ${appConfig?.maxChatMessages} messages in this chat`}>
+        <Tooltip label={t("chat.messagesLimitReached", { limit: appConfig?.maxChatMessages })}>
           <Text size="xs" c="red" mb="sm">
             Messages limit reached
           </Text>

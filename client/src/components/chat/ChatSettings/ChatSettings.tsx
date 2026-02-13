@@ -16,6 +16,7 @@ import {
   Grid,
 } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import classes from "./ChatSettings.module.scss";
 
 export const DEFAULT_CHAT_SETTINGS = {
@@ -46,6 +47,7 @@ export function ChatSettings({
   systemPrompt = DEFAULT_CHAT_SETTINGS.systemPrompt,
   onSettingsChange,
 }: ChatSettingsComponentProps) {
+  const { t } = useTranslation();
   const [tempValue, setTempValue] = useState<number>(temperature);
   const [tokensValue, setTokensValue] = useState<number>(maxTokens);
   const [topPValue, setTopPValue] = useState<number>(topP);
@@ -119,8 +121,8 @@ export function ChatSettings({
         <div>
           <Group mb="md" justify="space-between">
             <Text size="sm" fw={500}>
-              System Prompt{" "}
-              <Tooltip label="The initial prompt that sets the behavior of the AI assistant in this chat.">
+              {t("chat.systemPrompt")}{" "}
+              <Tooltip label={t("chat.systemPromptTooltip")}>
                 <ActionIcon size="xs" variant="subtle">
                   <IconInfoCircle size={14} />
                 </ActionIcon>
@@ -128,12 +130,12 @@ export function ChatSettings({
             </Text>
             {systemPrompt !== systemPromptValue ? (
               <Button size="xs" mt={5} onClick={handlePromptSave}>
-                Save
+                {t("common.save")}
               </Button>
             ) : null}
           </Group>
           <Textarea
-            placeholder="Enter system prompt..."
+            placeholder={t("chat.enterSystemPrompt")}
             value={systemPromptValue || ""}
             autosize
             rows={4}
@@ -145,12 +147,12 @@ export function ChatSettings({
         <Grid gutter="lg">
           <Box m="md" miw="140px">
             <Group p="apart" mb="md">
-              <Text size="sm">Temperature</Text>
+              <Text size="sm">{t("chat.temperature")}</Text>
               <Group gap={5}>
                 <Text size="sm" c="dimmed">
                   {tempValue?.toFixed(2)}
                 </Text>
-                <Tooltip label="Controls randomness: lower values make responses more focused and deterministic, higher values make responses more creative and varied.">
+                <Tooltip label={t("chat.temperatureTooltip")}>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
@@ -174,12 +176,12 @@ export function ChatSettings({
 
           <Box m="md" miw="140px">
             <Group p="apart" mb="md">
-              <Text size="sm">Top P</Text>
+              <Text size="sm">{t("chat.topP")}</Text>
               <Group gap={5}>
                 <Text size="sm" c="dimmed">
                   {topPValue?.toFixed(2)}
                 </Text>
-                <Tooltip label="Controls diversity: lower values filter out unlikely options, higher values preserve more possibilities.">
+                <Tooltip label={t("chat.topPTooltip")}>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
@@ -203,12 +205,12 @@ export function ChatSettings({
 
           <Box m="md" miw="140px">
             <Group p="apart" mb="md">
-              <Text size="sm">Images Count</Text>
+              <Text size="sm">{t("chat.imagesCount")}</Text>
               <Group gap={5}>
                 <Text size="sm" c="dimmed">
                   {imagesCountValue}
                 </Text>
-                <Tooltip label="Generated images limit.">
+                <Tooltip label={t("chat.imagesCountTooltip")}>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
@@ -232,8 +234,8 @@ export function ChatSettings({
 
           <Box m="md" miw="140px">
             <Group p="apart" mb="md">
-              <Text size="sm">Max Tokens</Text>
-              <Tooltip label="Maximum number of tokens to generate. A token is about 4 characters or 0.75 words.">
+              <Text size="sm">{t("chat.maxTokens")}</Text>
+              <Tooltip label={t("chat.maxTokensTooltip")}>
                 <ActionIcon size="xs" variant="subtle">
                   <IconInfoCircle size={14} />
                 </ActionIcon>

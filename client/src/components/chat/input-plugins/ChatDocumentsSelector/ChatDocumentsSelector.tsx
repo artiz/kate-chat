@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { IconFile, IconChevronDown, IconCheck, IconX, IconFileDatabase } from "@tabler/icons-react";
 import { Document } from "@/types/graphql";
+import { useTranslation } from "react-i18next";
 
 import classes from "./ChatDocumentsSelector.module.scss";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
@@ -40,6 +41,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   chatId,
 }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [opened, setOpened] = useState(false);
 
   // Filter documents that are ready for RAG search
@@ -89,7 +91,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
     <Menu shadow="md" withArrow opened={opened} onChange={setOpened}>
       <Menu.Target>
         <Group justify="start" className="drop-zone-control" gap="xs">
-          <Tooltip label="Attach/select documents to do RAG search" position="bottom">
+          <Tooltip label={t("documents.attachDocuments")} position="bottom">
             <ActionIcon variant="subtle" size="lg" color="dark" className={classes.button} onClick={handleToggle}>
               <IconFileDatabase size="24" />
               {selectedDocuments.length > 0 && (
@@ -100,7 +102,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
             </ActionIcon>
           </Tooltip>
           <Box hiddenFrom="xs" pe="sm">
-            Select documents...
+            {t("documents.selectDocuments")}
           </Box>
         </Group>
       </Menu.Target>
@@ -109,10 +111,10 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
         <Stack gap="sm" p="sm">
           <Group justify="space-between">
             <Text size="sm" fw={500}>
-              RAG Documents ({selectedDocuments.length}/{availableDocuments.length})
+              {t("documents.ragDocuments", { selected: selectedDocuments.length, total: availableDocuments.length })}
             </Text>
             <Group gap="xs">
-              <Tooltip label="Select All">
+              <Tooltip label={t("documents.selectAll")}>
                 <ActionIcon
                   size="sm"
                   variant="light"
@@ -123,7 +125,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                   <IconCheck size={12} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Unselect All">
+              <Tooltip label={t("documents.unselectAll")}>
                 <ActionIcon
                   size="sm"
                   variant="light"
@@ -175,7 +177,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
 
           <Group justify="space-between" pt="sm">
             <Button size="xs" variant="light" onClick={handleOpenDocuments}>
-              Documents...
+              {t("documents.documentsButton")}
             </Button>
           </Group>
         </Stack>

@@ -14,6 +14,7 @@ import {
   IconArrowDown,
 } from "@tabler/icons-react";
 import { useQuery } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import { ChatSettings } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
 import { ToolType, ChatTool, Model, MCPServer } from "@/types/graphql";
@@ -54,6 +55,7 @@ export const ChatInputHeader = ({
   onAutoScroll,
 }: IHeaderProps) => {
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
+  const { t } = useTranslation();
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
   const { token: userToken } = useSelector((state: RootState) => state.auth);
@@ -210,14 +212,14 @@ export const ChatInputHeader = ({
         {isMobile ? (
           <Menu position="top" withArrow shadow="md">
             <Menu.Target>
-              <Tooltip label="MCP Tools">
+              <Tooltip label={t("chat.mcpTools")}>
                 <ActionIcon variant="default" disabled={disabled || streaming}>
                   <IconRobot size="1.2rem" />
                 </ActionIcon>
               </Tooltip>
             </Menu.Target>
             <Menu.Dropdown mah="60vh" maw="100vw" style={{ overflowY: "auto" }}>
-              <Menu.Label>Select Model</Menu.Label>
+              <Menu.Label>{t("chat.selectModel")}</Menu.Label>
               {models.map(model => {
                 const isSelected = selectedModel?.modelId === model.modelId;
                 return (
@@ -245,7 +247,7 @@ export const ChatInputHeader = ({
               searchable
               value={selectedModel?.modelId || ""}
               onChange={handleModelChange}
-              placeholder="Select a model"
+              placeholder={t("chat.selectModel")}
               size="xs"
               clearable={false}
               style={{ maxWidth: "50%" }}
@@ -259,7 +261,7 @@ export const ChatInputHeader = ({
           </Box>
         )}
 
-        <Tooltip label="Chat Settings">
+        <Tooltip label={t("chat.chatSettings")}>
           <ActionIcon disabled={disabled || streaming} variant="default" onClick={openSettings}>
             <IconSettings size="1.2rem" />
           </ActionIcon>
@@ -267,7 +269,7 @@ export const ChatInputHeader = ({
         <Modal
           opened={settingsOpened}
           onClose={closeSettings}
-          title="Chat Settings"
+          title={t("chat.chatSettings")}
           fullScreen={isMobile}
           size="lg"
           yOffset="auto"
@@ -275,13 +277,13 @@ export const ChatInputHeader = ({
         >
           <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
           <Button mt="md" onClick={closeSettings}>
-            Close
+            {t("common.close")}
           </Button>
         </Modal>
 
         {/* Tool buttons */}
         {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (
-          <Tooltip label="Web Search">
+          <Tooltip label={t("chat.webSearch")}>
             <ActionIcon
               variant={selectedTools?.has(ToolType.WEB_SEARCH) ? "filled" : "default"}
               color={selectedTools?.has(ToolType.WEB_SEARCH) ? "brand" : undefined}
@@ -294,7 +296,7 @@ export const ChatInputHeader = ({
         )}
 
         {selectedModel?.tools?.includes(ToolType.CODE_INTERPRETER) && (
-          <Tooltip label="Code Interpreter">
+          <Tooltip label={t("chat.codeInterpreter")}>
             <ActionIcon
               variant={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "filled" : "default"}
               color={selectedTools?.has(ToolType.CODE_INTERPRETER) ? "brand" : undefined}
@@ -310,7 +312,7 @@ export const ChatInputHeader = ({
         {mcpServers.length > 0 && selectedModel?.tools?.includes(ToolType.MCP) && (
           <Menu position="top" withArrow shadow="md">
             <Menu.Target>
-              <Tooltip label="MCP Tools">
+              <Tooltip label={t("chat.mcpTools")}>
                 <ActionIcon
                   variant={selectedMcpServers.size > 0 ? "filled" : "default"}
                   color={selectedMcpServers.size > 0 ? "brand" : undefined}
@@ -325,7 +327,7 @@ export const ChatInputHeader = ({
               </Tooltip>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Label>MCP Servers</Menu.Label>
+              <Menu.Label>{t("chat.mcpServers")}</Menu.Label>
               {mcpServers.map(server => {
                 const needsAuth = requiresAuth(server);
                 const isAuthenticated = !needsAuth || mcpAuthStatus.get(server.id);
@@ -337,7 +339,7 @@ export const ChatInputHeader = ({
                     leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
                     rightSection={
                       needsAuth && !isAuthenticated ? (
-                        <Tooltip label={requiresTokenEntry(server) ? "Requires token" : "Requires authentication"}>
+                        <Tooltip label={requiresTokenEntry(server) ? t("chat.requiresToken") : t("chat.requiresAuth")}>
                           {requiresTokenEntry(server) ? (
                             <IconKey size="0.9rem" color="orange" />
                           ) : (
@@ -370,7 +372,7 @@ export const ChatInputHeader = ({
       <Group align="center" gap="sm">
         {streaming && <Loader size="sm" color="dimmed" />}
         {onAutoScroll && (
-          <Tooltip label="Auto-Scroll">
+          <Tooltip label={t("chat.autoScroll")}>
             <ActionIcon
               variant={autoScroll ? "filled" : "default"}
               color={autoScroll ? "brand" : undefined}

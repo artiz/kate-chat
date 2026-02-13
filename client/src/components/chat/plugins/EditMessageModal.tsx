@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Button, Group, Text, Stack, Textarea } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 
 interface EditMessageModalProps {
   isOpen: boolean;
@@ -18,17 +19,18 @@ export const EditMessageModal: React.FC<EditMessageModalProps> = ({
   onSave,
   loading = false,
 }) => {
+  const { t } = useTranslation();
   return (
-    <Modal opened={isOpen} onClose={onClose} title="Edit Message" centered size="lg">
+    <Modal opened={isOpen} onClose={onClose} title={t("chat.editMessageTitle")} centered size="lg">
       <Stack>
         <Text size="sm" c="dimmed">
-          Editing this message will regenerate all following AI responses in the conversation.
+          {t("chat.editMessageWarning")}
         </Text>
 
         <Textarea
           value={content}
           onChange={e => onContentChange(e.currentTarget.value)}
-          placeholder="Enter your message..."
+          placeholder={t("chat.enterMessage")}
           autosize
           minRows={3}
           maxRows={10}
@@ -37,10 +39,10 @@ export const EditMessageModal: React.FC<EditMessageModalProps> = ({
 
         <Group mt="md" justify="flex-end">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={onSave} loading={loading} disabled={!content.trim()}>
-            Save & Regenerate
+            {t("chat.saveAndRegenerate")}
           </Button>
         </Group>
       </Stack>

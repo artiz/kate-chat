@@ -2,6 +2,7 @@ import React, { Fragment } from "react";
 import { Text, Box, Group } from "@mantine/core";
 import { Message, Document } from "@/types/graphql";
 import { IconClipboardData, IconFileSearch, IconReportSearch } from "@tabler/icons-react";
+import i18n from "@/i18n";
 
 /** RAG Details - Display semantic search documents and relevant chunks */
 export const RAG =
@@ -31,7 +32,7 @@ export const RAG =
               <IconFileSearch className="message-details-icon" size={16} />
             )}
             <Text fw={600} size="sm">
-              {relevantsChunks.length ? "RAG search results" : "RAG search"}
+              {relevantsChunks.length ? i18n.t("messageDetails.ragSearchResults") : i18n.t("messageDetails.ragSearch")}
             </Text>
           </Group>
 
@@ -66,17 +67,17 @@ export const RAG =
           <Group justify="flex-start" align="center" gap="xs" mt="lg" className="message-details-header">
             <IconClipboardData size={16} className="message-details-icon" />
             <Text fw={600} size="sm">
-              Related chunks
+              {i18n.t("messageDetails.relatedChunks")}
             </Text>
           </Group>
 
           {relevantsChunks.map((chunk, idx) => (
             <div key={chunk.id || idx} className="message-details-content">
               <Text size="xs" c="dimmed">
-                {chunk.documentName || chunk.id} (Page {chunk.page})
+                {chunk.documentName || chunk.id} ({i18n.t("messageDetails.page", { page: chunk.page })})
               </Text>
               <Text size="xs" c="dimmed">
-                Relevance: {chunk.relevance || "N/A"}
+                {i18n.t("messageDetails.relevance")} {chunk.relevance || i18n.t("chat.na")}
               </Text>
               <Box fz="12">
                 <pre>{chunk.content}</pre>

@@ -5,6 +5,7 @@ import { Message, SwitchModelResponse } from "@/types/graphql";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { MessageRole, ModelType, PluginProps } from "@katechat/ui";
+import { useTranslation } from "react-i18next";
 import { useAppSelector } from "@/store";
 import { useMemo } from "react";
 import { SWITCH_MODEL_MUTATION } from "@/store/services/graphql.queries";
@@ -22,6 +23,7 @@ export const SwitchModel = ({
   onActionEnd,
 }: PluginProps<Message>) => {
   const { role, id, modelId, modelName, streaming } = message;
+  const { t } = useTranslation();
   const { models: allModels } = useAppSelector(state => state.models);
   const activeModels = useMemo(() => {
     return allModels.filter(m => m.isActive && m.type !== ModelType.EMBEDDING && m.modelId != modelId);
@@ -34,7 +36,7 @@ export const SwitchModel = ({
       onActionEnd?.(id);
       if (res.switchModel.error) {
         return notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: res.switchModel.error,
           color: "red",
         });
@@ -44,8 +46,8 @@ export const SwitchModel = ({
     onError: error => {
       onActionEnd?.(id);
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to switch model",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToSwitchModel"),
         color: "red",
       });
     },
@@ -69,7 +71,7 @@ export const SwitchModel = ({
     <Menu shadow="md" width={200}>
       <Menu.Target>
         <ActionIcon size="sm" color="gray" variant="subtle" disabled={disabled || streaming || switchingModel}>
-          <Tooltip label={`Switch model: ${modelName}`} position="top" withArrow>
+          <Tooltip label={t("chat.switchModel", { modelName })} position="top" withArrow>
             <IconRefresh />
           </Tooltip>
         </ActionIcon>
