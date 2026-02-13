@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button, NavLink, Text, Group, Loader, Menu, ActionIcon, Accordion, Tooltip } from "@mantine/core";
 import {
   IconMessage,
@@ -32,6 +33,7 @@ interface IProps {
 }
 
 export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand }: IProps) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -55,24 +57,24 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     return sortItemsBySections(
       chats.filter(chat => !chat.isPristine),
       [
-        { label: "Pinned", icon: <IconPin />, selector: chat => !!chat.isPinned },
+        { label: t("chat.pinned"), icon: <IconPin />, selector: chat => !!chat.isPinned },
         {
-          label: "Today",
+          label: t("chat.today"),
           selector: (ch, dt) =>
             dt.getDate() === today.getDate() &&
             dt.getMonth() === today.getMonth() &&
             dt.getFullYear() === today.getFullYear(),
         },
         {
-          label: "Yesterday",
+          label: t("chat.yesterday"),
           selector: (ch, dt) =>
             dt.getDate() === yesterday.getDate() &&
             dt.getMonth() === yesterday.getMonth() &&
             dt.getFullYear() === yesterday.getFullYear(),
         },
-        { label: "Last 7 Days", selector: (ch, dt: Date) => dt > ago7Days && dt <= today },
-        { label: "Last 30 Days", selector: (ch, dt: Date) => dt > ago30Days && dt <= today },
-        { label: "Older", selector: false },
+        { label: t("chat.last7Days"), selector: (ch, dt: Date) => dt > ago7Days && dt <= today },
+        { label: t("chat.last30Days"), selector: (ch, dt: Date) => dt > ago30Days && dt <= today },
+        { label: t("chat.older"), selector: false },
       ]
     );
   }, [chats, next]);
@@ -89,8 +91,8 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to rename chat",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToRename"),
         color: "red",
       });
     },
@@ -112,8 +114,8 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     onCompleted: (data, options) => {
       // Show success notification
       notifications.show({
-        title: "Success",
-        message: "Chat deleted successfully",
+        title: t("common.success"),
+        message: t("chat.chatDeleted"),
         color: "green",
       });
 
@@ -134,8 +136,8 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to delete chat",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToDelete"),
         color: "red",
       });
     },
@@ -200,7 +202,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
   const handleEditClick = (e: React.MouseEvent, chat: Chat) => {
     e.stopPropagation();
     setEditingChatId(chat.id);
-    setEditedTitle(chat.title || "Untitled Chat");
+    setEditedTitle(chat.title || t("chat.untitledChat"));
   };
 
   const updateChatTitle = (chatId: string) => {
@@ -270,7 +272,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     return (
       <>
         {chats.slice(0, CHATS_TO_SHOW_WHEN_COLLAPSED).map(chat => (
-          <Tooltip key={chat.id} label={chat.title || "Untitled Chat"} position="right">
+          <Tooltip key={chat.id} label={chat.title || t("chat.untitledChat")} position="right">
             <NavLink
               active={chat.id === currentChatId}
               leftSection={<IconMessage size={16} />}
@@ -282,7 +284,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
           </Tooltip>
         ))}
         {chats.length > CHATS_TO_SHOW_WHEN_COLLAPSED && onToggleExpand && (
-          <Tooltip label="Show all chats" position="right">
+          <Tooltip label={t("chat.showAllChats")} position="right">
             <NavLink leftSection={<IconDots size={16} />} onClick={onToggleExpand} />
           </Tooltip>
         )}
@@ -293,14 +295,14 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
   if (error || loadChatsError) {
     return (
       <Text c="red" size="sm" ta="center">
-        Error loading chats: {String(error || loadChatsError)}
+        {t("chat.errorLoadingChats")} {String(error || loadChatsError)}
       </Text>
     );
   }
   if (chats?.length === 0) {
     return (
       <Text c="dimmed" size="sm" ta="center" m="lg">
-        No chats yet
+        {t("chat.noChatsYet")}
       </Text>
     );
   }
@@ -337,7 +339,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
                   <>
                     <NavLink
                       active={chat.id === currentChatId}
-                      label={chat.title || "Untitled Chat"}
+                      label={chat.title || t("chat.untitledChat")}
                       leftSection={<IconMessage size={16} />}
                       onClick={() => handleChatClick(chat.id)}
                       p="xs"
@@ -362,17 +364,17 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
                           leftSection={chat.isPinned ? <IconPinFilled size={14} /> : <IconPin size={14} />}
                           onClick={e => handleTogglePin(e, chat)}
                         >
-                          {chat.isPinned ? "Unpin" : "Pin"}
+                          {chat.isPinned ? t("chat.unpin") : t("chat.pin")}
                         </Menu.Item>
                         <Menu.Item leftSection={<IconEdit size={14} />} onClick={e => handleEditClick(e, chat)}>
-                          Rename
+                          {t("chat.rename")}
                         </Menu.Item>
                         <Menu.Item
                           leftSection={<IconTrash size={14} />}
                           color="red"
                           onClick={e => handleDeleteClick(e, chat.id)}
                         >
-                          Delete
+                          {t("common.delete")}
                         </Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
@@ -387,7 +389,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
       {next ? (
         <Group justify="center" p="md">
           <Button variant="subtle" size="xs" onClick={() => fetchNextChats()} loading={loadingChats}>
-            Load more...
+            {t("chat.loadMore")}
           </Button>
         </Group>
       ) : null}
@@ -396,9 +398,10 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
         isOpen={!!deletingChatId}
         onClose={() => setDeletingChatId(undefined)}
         onConfirm={handleDeleteChat}
-        title="Delete Chat"
-        message={`Are you sure you want to delete "${deletingChat?.title}"? This action cannot be undone and will remove the chat and all its associated data.`}
-        confirmLabel="Delete"
+        title={t("chat.deleteChatTitle")}
+        message={t("chat.deleteChatMessage")}
+        confirmLabel={t("common.delete")}
+        cancelLabel={t("common.cancel")}
         isLoading={deleteLoading}
       />
     </Accordion>

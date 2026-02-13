@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useLocalStorage } from "@mantine/hooks";
 import {
   Stack,
@@ -52,6 +53,7 @@ interface IProps {
 }
 
 const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onToggleExpand }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useLocalStorage<string>({
@@ -131,10 +133,10 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                   onClick={handleNewChat}
                   style={{ flex: 1 }}
                 >
-                  New Chat
+                  {t("nav.newChat")}
                 </Button>
               ) : (
-                <Tooltip label="New Chat" position="right">
+                <Tooltip label={t("nav.newChat")} position="right">
                   <ActionIcon disabled={newChatDisabled} onClick={handleNewChat} size="lg">
                     <IconMessagePlus size={20} />
                   </ActionIcon>
@@ -144,7 +146,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
             <Group>
               {onToggleExpand && (
-                <Tooltip label={expanded ? "Collapse Sidebar" : "Expand Sidebar"}>
+                <Tooltip label={expanded ? t("nav.collapseSidebar") : t("nav.expandSidebar")}>
                   <ActionIcon variant="subtle" onClick={onToggleExpand} size="lg" color="gray">
                     {expanded ? <IconLayoutSidebarLeftCollapse size={20} /> : <IconLayoutSidebarLeftExpand size={20} />}
                   </ActionIcon>
@@ -167,38 +169,38 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
               {/* Settings Section */}
               <Accordion.Item key="settings" value="settings">
                 <Accordion.Control icon={expanded ? <IconSettings /> : undefined}>
-                  {expanded ? "Settings" : null}
+                  {expanded ? t("nav.settings") : null}
                 </Accordion.Control>
                 <Accordion.Panel>
-                  <Tooltip label="Models" position="right" disabled={expanded}>
+                  <Tooltip label={t("nav.models")} position="right" disabled={expanded}>
                     <NavLink
-                      label={expanded ? "Models" : null}
+                      label={expanded ? t("nav.models") : null}
                       leftSection={<IconRobot size={16} />}
                       active={location.pathname === "/models"}
                       onClick={handleSectionClick("/models")}
                     />
                   </Tooltip>
-                  <Tooltip label="AI" position="right" disabled={expanded}>
+                  <Tooltip label={t("nav.ai")} position="right" disabled={expanded}>
                     <NavLink
-                      label={expanded ? "AI" : null}
+                      label={expanded ? t("nav.ai") : null}
                       leftSection={<IconBrain size={16} />}
                       active={location.pathname === "/ai-settings"}
                       onClick={handleSectionClick("/ai-settings")}
                     />
                   </Tooltip>
                   {currentUser?.role === UserRole.ADMIN && (
-                    <Tooltip label="MCP Servers" position="right" disabled={expanded}>
+                    <Tooltip label={t("nav.mcpServers")} position="right" disabled={expanded}>
                       <NavLink
-                        label={expanded ? "MCP Servers" : null}
+                        label={expanded ? t("nav.mcpServers") : null}
                         leftSection={<IconPlugConnected size={16} />}
                         active={location.pathname === "/mcp-servers"}
                         onClick={handleSectionClick("/mcp-servers")}
                       />
                     </Tooltip>
                   )}
-                  <Tooltip label="Connectivity" position="right" disabled={expanded}>
+                  <Tooltip label={t("nav.connectivity")} position="right" disabled={expanded}>
                     <NavLink
-                      label={expanded ? "Connectivity" : null}
+                      label={expanded ? t("nav.connectivity") : null}
                       leftSection={<IconWifi size={16} />}
                       active={location.pathname === "/connectivity"}
                       onClick={handleSectionClick("/connectivity")}
@@ -207,22 +209,22 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
                   {expanded && (
                     <Group className={accordionClasses.header}>
-                      <IconShield size="16" /> Admin
+                      <IconShield size="16" /> {t("nav.admin")}
                     </Group>
                   )}
 
-                  <Tooltip label="Profile" position="right" disabled={expanded}>
+                  <Tooltip label={t("nav.profile")} position="right" disabled={expanded}>
                     <NavLink
-                      label={expanded ? "Profile" : null}
+                      label={expanded ? t("nav.profile") : null}
                       leftSection={<IconUser size={16} />}
                       active={location.pathname === "/profile"}
                       onClick={handleSectionClick("/profile")}
                     />
                   </Tooltip>
                   {isLocalUser && (
-                    <Tooltip label="Password" position="right" disabled={expanded}>
+                    <Tooltip label={t("nav.password")} position="right" disabled={expanded}>
                       <NavLink
-                        label={expanded ? "Password" : null}
+                        label={expanded ? t("nav.password") : null}
                         leftSection={<IconKey size={16} />}
                         active={location.pathname === "/password"}
                         onClick={handleSectionClick("/password")}
@@ -230,9 +232,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                     </Tooltip>
                   )}
                   {currentUser?.role === UserRole.ADMIN && (
-                    <Tooltip label="Users" position="right" disabled={expanded}>
+                    <Tooltip label={t("nav.users")} position="right" disabled={expanded}>
                       <NavLink
-                        label={expanded ? "Users" : null}
+                        label={expanded ? t("nav.users") : null}
                         leftSection={<IconUsers size={16} />}
                         active={location.pathname === "/users"}
                         onClick={handleSectionClick("/users")}
@@ -242,22 +244,22 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
                   {expanded && (
                     <Group className={accordionClasses.header}>
-                      <IconBooks size="16" /> Library
+                      <IconBooks size="16" /> {t("nav.library")}
                     </Group>
                   )}
 
-                  <Tooltip label="Media" position="right" disabled={expanded}>
+                  <Tooltip label={t("nav.media")} position="right" disabled={expanded}>
                     <NavLink
-                      label={expanded ? "Media" : null}
+                      label={expanded ? t("nav.media") : null}
                       leftSection={<IconPhoto size={16} />}
                       active={location.pathname === "/library"}
                       onClick={handleSectionClick("/library")}
                     />
                   </Tooltip>
                   {appConfig?.ragEnabled && (
-                    <Tooltip label="Documents" position="right" disabled={expanded}>
+                    <Tooltip label={t("nav.documents")} position="right" disabled={expanded}>
                       <NavLink
-                        label={expanded ? "Documents" : null}
+                        label={expanded ? t("nav.documents") : null}
                         leftSection={<IconFile size={16} />}
                         active={location.pathname === "/documents"}
                         onClick={handleSectionClick("/documents")}
@@ -273,9 +275,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
 
       {chats?.length > 0 && (
         <AppShell.Section className={styles.chatsSection}>
-          <Tooltip label="All Chats" position="right" disabled={expanded}>
+          <Tooltip label={t("nav.allChats")} position="right" disabled={expanded}>
             <NavLink
-              label={expanded ? "All Chats" : null}
+              label={expanded ? t("nav.allChats") : null}
               leftSection={<IconMessages />}
               active={location.pathname === "/chat"}
               onClick={handleSectionClick("/chat")}
