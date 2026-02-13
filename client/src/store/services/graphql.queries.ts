@@ -101,6 +101,7 @@ export const FULL_USER_FRAGMENT = `
       avatarUrl
       role
       settings {
+        language
         s3Endpoint
         s3Region
         s3FilesBucketName

@@ -1,0 +1,114 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "confirm": "确认"
+  },
+  "nav": {
+    "profile": "个人资料",
+    "connectivitySettings": "连接设置",
+    "models": "模型",
+    "logout": "退出登录",
+    "switchToLight": "切换到浅色模式",
+    "switchToDark": "切换到深色模式",
+    "demoMode": "演示模式",
+    "demoModeTooltip": "演示模式，每用户最大聊天数：{{maxChats}}，最大消息数：{{maxChatMessages}}，最大图片数：{{maxImages}}"
+  },
+  "auth": {
+    "welcomeTo": "欢迎使用 {{appTitle}}！",
+    "signInSubtitle": "登录以访问您的 AI 聊天",
+    "email": "电子邮箱",
+    "emailPlaceholder": "you@example.com",
+    "password": "密码",
+    "passwordPlaceholder": "您的密码",
+    "signIn": "登录",
+    "noAccount": "还没有账户？",
+    "register": "注册",
+    "createAccount": "创建账户",
+    "registerSubtitle": "注册以开始使用 {{appTitle}}",
+    "firstName": "名字",
+    "firstNamePlaceholder": "您的名字",
+    "lastName": "姓氏",
+    "lastNamePlaceholder": "您的姓氏",
+    "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "确认您的密码",
+    "haveAccount": "已有账户？",
+    "loginFailed": "登录失败",
+    "loginFailedMessage": "登录失败，请重试。",
+    "registrationFailed": "注册失败",
+    "registrationFailedMessage": "注册失败，请重试。",
+    "recaptchaError": "reCAPTCHA 错误",
+    "recaptchaNotLoaded": "reCAPTCHA 未加载，请稍后再试。",
+    "recaptchaVerificationError": "reCAPTCHA 验证出错。"
+  },
+  "validation": {
+    "invalidEmail": "邮箱地址无效",
+    "passwordRequired": "密码为必填项",
+    "passwordMinLength": "密码至少需要8个字符",
+    "passwordsDoNotMatch": "两次输入的密码不一致",
+    "firstNameRequired": "名字为必填项",
+    "lastNameRequired": "姓氏为必填项"
+  },
+  "profile": {
+    "title": "个人资料",
+    "updated": "资料已更新",
+    "updatedMessage": "您的个人资料已成功更新",
+    "updateFailed": "更新失败",
+    "updateFailedMessage": "无法更新个人资料",
+    "theme": "主题",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "themeAuto": "自动",
+    "saveProfile": "保存资料",
+    "provider": "提供者：{{provider}}"
+  },
+  "connectivity": {
+    "title": "连接",
+    "updated": "设置已更新",
+    "updatedMessage": "您的连接设置已成功更新",
+    "updateFailed": "更新失败",
+    "updateFailedMessage": "无法更新设置"
+  },
+  "settings": {
+    "title": "设置"
+  },
+  "password": {
+    "currentPassword": "当前密码",
+    "newPassword": "新密码",
+    "confirmNewPassword": "确认新密码",
+    "changePassword": "更改密码",
+    "changed": "密码已更改",
+    "changedMessage": "您的密码已成功更改",
+    "changeFailed": "密码更改失败",
+    "changeFailedMessage": "无法更改密码",
+    "mismatch": "密码不匹配",
+    "mismatchMessage": "新密码和确认密码不一致"
+  },
+  "errors": {
+    "apiError": "API 错误",
+    "unknownError": "发生未知错误",
+    "unauthorized": "未授权",
+    "forbidden": "禁止访问",
+    "networkError": "无法连接到服务器，请稍后再试。",
+    "serverError": "服务器发生错误",
+    "validationError": "验证错误",
+    "notFound": "资源未找到",
+    "conflict": "冲突：资源已存在",
+    "tooManyRequests": "请求过多，请稍后再试。",
+    "badRequest": "错误请求",
+    "internalServerError": "内部服务器错误",
+    "serviceUnavailable": "服务暂时不可用"
+  },
+  "language": {
+    "label": "语言",
+    "en": "English",
+    "de": "Deutsch",
+    "ru": "Русский",
+    "zh": "中文"
+  }
+}

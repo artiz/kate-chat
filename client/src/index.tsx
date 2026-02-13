@@ -5,6 +5,7 @@ import { Provider } from "react-redux";
 import { store } from "./store";
 import App from "./components/App";
 
+import "./i18n";
 import "./index.scss";
 import "katex/dist/katex.css";
 import "./assets/katex-overrides.css";

@@ -17,6 +17,7 @@ import {
   Center,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { logout, useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { OAuthButtons } from "../components/auth";
@@ -29,6 +30,7 @@ const Login: React.FC = () => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
   const [loggingIn, setLoggingIn] = React.useState(false);
   const { appTitle } = getClientConfig();
+  const { t } = useTranslation();
 
   // If already authenticated, redirect to chat
   useEffect(() => {
@@ -48,8 +50,8 @@ const Login: React.FC = () => {
       dispatch(logout());
       dispatch(loginFailure());
       notifications.show({
-        title: "Login Failed",
-        message: error.message || "Failed to login. Please try again.",
+        title: t("auth.loginFailed"),
+        message: error.message || t("auth.loginFailedMessage"),
         color: "red",
       });
     },
@@ -62,8 +64,8 @@ const Login: React.FC = () => {
       password: "",
     },
     validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : "Invalid email"),
-      password: (value: string) => (value.length > 0 ? null : "Password is required"),
+      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : t("validation.invalidEmail")),
+      password: (value: string) => (value.length > 0 ? null : t("validation.passwordRequired")),
     },
   });
 
@@ -83,18 +85,18 @@ const Login: React.FC = () => {
   return (
     <Container size="sm" my={40}>
       <Title ta="center" fw={900}>
-        Welcome to {appTitle}!
+        {t("auth.welcomeTo", { appTitle })}
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
-        Sign in to access your AI chats
+        {t("auth.signInSubtitle")}
       </Text>
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
-            <TextInput label="Email" placeholder="you@example.com" required {...form.getInputProps("email")} />
+            <TextInput label={t("auth.email")} placeholder={t("auth.emailPlaceholder")} required {...form.getInputProps("email")} />
 
-            <PasswordInput label="Password" placeholder="Your password" required {...form.getInputProps("password")} />
+            <PasswordInput label={t("auth.password")} placeholder={t("auth.passwordPlaceholder")} required {...form.getInputProps("password")} />
           </Stack>
 
           {/* <Group justify="space-between" mt="lg">
@@ -104,7 +106,7 @@ const Login: React.FC = () => {
           </Group> */}
 
           <Button type="submit" fullWidth mt="xl" loading={loading} disabled={loggingIn}>
-            Sign in
+            {t("auth.signIn")}
           </Button>
 
           <OAuthButtons variant="light" onLogin={() => setLoggingIn(true)} />
@@ -112,9 +114,9 @@ const Login: React.FC = () => {
 
           {!loggingIn && (
             <Text ta="center" mt="md">
-              Don't have an account?{" "}
+              {t("auth.noAccount")}{" "}
               <Anchor component="button" type="button" onClick={() => navigate("/register")} disabled={loggingIn}>
-                Register
+                {t("auth.register")}
               </Anchor>
             </Text>
           )}

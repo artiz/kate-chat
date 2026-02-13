@@ -1,6 +1,7 @@
 import React, { useState, useEffect, use, useMemo } from "react";
 import { Paper, TextInput, Button, Group, Stack, Text, SegmentedControl } from "@mantine/core";
 import { useTheme } from "@katechat/ui";
+import { useTranslation } from "react-i18next";
 import { UpdateUserInput, User } from "@/store/slices/userSlice";
 
 type ColorScheme = "light" | "dark" | "auto";
@@ -16,6 +17,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const { t } = useTranslation();
 
   // UI preferences state
   const { colorScheme, setColorScheme } = useTheme();
@@ -68,14 +70,14 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
     <Paper withBorder p="xl">
       <form name="profile-settings" onSubmit={handleProfileUpdate}>
         <Stack gap="md" mb="lg">
-          <Text mb="xs">Theme</Text>
+          <Text mb="xs">{t("profile.theme")}</Text>
           <SegmentedControl
             value={colorScheme}
             onChange={handleThemeUpdate}
             data={[
-              { label: "Light", value: "light" },
-              { label: "Dark", value: "dark" },
-              { label: "Auto", value: "auto" },
+              { label: t("profile.themeLight"), value: "light" },
+              { label: t("profile.themeDark"), value: "dark" },
+              { label: t("profile.themeAuto"), value: "auto" },
             ]}
             fullWidth
           />
@@ -83,23 +85,23 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
 
         <Stack gap="md">
           <Group grow>
-            <TextInput label="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} required />
-            <TextInput label="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} required />
+            <TextInput label={t("auth.firstName")} value={firstName} onChange={e => setFirstName(e.target.value)} required />
+            <TextInput label={t("auth.lastName")} value={lastName} onChange={e => setLastName(e.target.value)} required />
           </Group>
 
           <TextInput
-            label="Email"
+            label={t("auth.email")}
             disabled={!isLocalUser}
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             required={isLocalUser ? true : undefined}
-            description={`Provider: ${provider}`}
+            description={t("profile.provider", { provider })}
           />
 
           <Group justify="right" mt="md">
             <Button type="submit" loading={updateLoading}>
-              Save Profile
+              {t("profile.saveProfile")}
             </Button>
           </Group>
         </Stack>

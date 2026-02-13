@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { gql, useMutation } from "@apollo/client";
 import { Paper, PasswordInput, Button, Group, Stack, Divider } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 
 // GraphQL mutations
 const CHANGE_PASSWORD_MUTATION = gql`
@@ -19,6 +20,7 @@ export const PasswordSettings: React.FC<PasswordSettingsProps> = () => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const { t } = useTranslation();
 
   // Change password mutation
   const [changePassword, { loading: passwordLoading }] = useMutation(CHANGE_PASSWORD_MUTATION, {
@@ -28,15 +30,15 @@ export const PasswordSettings: React.FC<PasswordSettingsProps> = () => {
       setConfirmPassword("");
 
       notifications.show({
-        title: "Password Changed",
-        message: "Your password has been changed successfully",
+        title: t("password.changed"),
+        message: t("password.changedMessage"),
         color: "green",
       });
     },
     onError: error => {
       notifications.show({
-        title: "Password Change Failed",
-        message: error.message || "Failed to change password",
+        title: t("password.changeFailed"),
+        message: error.message || t("password.changeFailedMessage"),
         color: "red",
       });
     },
@@ -48,8 +50,8 @@ export const PasswordSettings: React.FC<PasswordSettingsProps> = () => {
 
     if (newPassword !== confirmPassword) {
       notifications.show({
-        title: "Password Mismatch",
-        message: "New password and confirmation do not match",
+        title: t("password.mismatch"),
+        message: t("password.mismatchMessage"),
         color: "red",
       });
       return;
@@ -70,7 +72,7 @@ export const PasswordSettings: React.FC<PasswordSettingsProps> = () => {
       <form name="password-settings" onSubmit={handlePasswordChange}>
         <Stack gap="md">
           <PasswordInput
-            label="Current Password"
+            label={t("password.currentPassword")}
             value={currentPassword}
             onChange={e => setCurrentPassword(e.target.value)}
             required
@@ -79,14 +81,14 @@ export const PasswordSettings: React.FC<PasswordSettingsProps> = () => {
           <Divider my="sm" />
 
           <PasswordInput
-            label="New Password"
+            label={t("password.newPassword")}
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
             required
           />
 
           <PasswordInput
-            label="Confirm New Password"
+            label={t("password.confirmNewPassword")}
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             required
@@ -94,7 +96,7 @@ export const PasswordSettings: React.FC<PasswordSettingsProps> = () => {
 
           <Group justify="right" mt="md">
             <Button type="submit" loading={passwordLoading}>
-              Change Password
+              {t("password.changePassword")}
             </Button>
           </Group>
         </Stack>

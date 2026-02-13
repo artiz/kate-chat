@@ -1,0 +1,114 @@
+{
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "confirm": "Подтвердить"
+  },
+  "nav": {
+    "profile": "Профиль",
+    "connectivitySettings": "Настройки подключения",
+    "models": "Модели",
+    "logout": "Выйти",
+    "switchToLight": "Переключить на светлую тему",
+    "switchToDark": "Переключить на тёмную тему",
+    "demoMode": "Демо-режим",
+    "demoModeTooltip": "Демо-режим, макс. чатов: {{maxChats}}, макс. сообщений: {{maxChatMessages}}, макс. изображений: {{maxImages}}"
+  },
+  "auth": {
+    "welcomeTo": "Добро пожаловать в {{appTitle}}!",
+    "signInSubtitle": "Войдите, чтобы получить доступ к вашим ИИ-чатам",
+    "email": "Электронная почта",
+    "emailPlaceholder": "you@example.com",
+    "password": "Пароль",
+    "passwordPlaceholder": "Ваш пароль",
+    "signIn": "Войти",
+    "noAccount": "Нет аккаунта?",
+    "register": "Зарегистрироваться",
+    "createAccount": "Создать аккаунт",
+    "registerSubtitle": "Зарегистрируйтесь, чтобы начать использовать {{appTitle}}",
+    "firstName": "Имя",
+    "firstNamePlaceholder": "Ваше имя",
+    "lastName": "Фамилия",
+    "lastNamePlaceholder": "Ваша фамилия",
+    "confirmPassword": "Подтвердите пароль",
+    "confirmPasswordPlaceholder": "Подтвердите пароль",
+    "haveAccount": "Уже есть аккаунт?",
+    "loginFailed": "Ошибка входа",
+    "loginFailedMessage": "Не удалось войти. Пожалуйста, попробуйте снова.",
+    "registrationFailed": "Ошибка регистрации",
+    "registrationFailedMessage": "Не удалось зарегистрироваться. Пожалуйста, попробуйте снова.",
+    "recaptchaError": "Ошибка reCAPTCHA",
+    "recaptchaNotLoaded": "reCAPTCHA не загружена. Пожалуйста, попробуйте позже.",
+    "recaptchaVerificationError": "Произошла ошибка при проверке reCAPTCHA."
+  },
+  "validation": {
+    "invalidEmail": "Некорректный адрес электронной почты",
+    "passwordRequired": "Пароль обязателен",
+    "passwordMinLength": "Пароль должен содержать не менее 8 символов",
+    "passwordsDoNotMatch": "Пароли не совпадают",
+    "firstNameRequired": "Имя обязательно",
+    "lastNameRequired": "Фамилия обязательна"
+  },
+  "profile": {
+    "title": "Профиль",
+    "updated": "Профиль обновлён",
+    "updatedMessage": "Ваш профиль успешно обновлён",
+    "updateFailed": "Ошибка обновления",
+    "updateFailedMessage": "Не удалось обновить профиль",
+    "theme": "Тема",
+    "themeLight": "Светлая",
+    "themeDark": "Тёмная",
+    "themeAuto": "Автоматически",
+    "saveProfile": "Сохранить профиль",
+    "provider": "Провайдер: {{provider}}"
+  },
+  "connectivity": {
+    "title": "Подключение",
+    "updated": "Настройки обновлены",
+    "updatedMessage": "Ваши настройки подключения успешно обновлены",
+    "updateFailed": "Ошибка обновления",
+    "updateFailedMessage": "Не удалось обновить настройки"
+  },
+  "settings": {
+    "title": "Настройки"
+  },
+  "password": {
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "confirmNewPassword": "Подтвердите новый пароль",
+    "changePassword": "Изменить пароль",
+    "changed": "Пароль изменён",
+    "changedMessage": "Ваш пароль успешно изменён",
+    "changeFailed": "Ошибка смены пароля",
+    "changeFailedMessage": "Не удалось изменить пароль",
+    "mismatch": "Пароли не совпадают",
+    "mismatchMessage": "Новый пароль и подтверждение не совпадают"
+  },
+  "errors": {
+    "apiError": "Ошибка API",
+    "unknownError": "Произошла неизвестная ошибка",
+    "unauthorized": "Не авторизован",
+    "forbidden": "Доступ запрещён",
+    "networkError": "Не удаётся подключиться к серверу. Пожалуйста, попробуйте позже.",
+    "serverError": "Произошла ошибка сервера",
+    "validationError": "Ошибка валидации",
+    "notFound": "Ресурс не найден",
+    "conflict": "Конфликт: ресурс уже существует",
+    "tooManyRequests": "Слишком много запросов. Пожалуйста, попробуйте позже.",
+    "badRequest": "Некорректный запрос",
+    "internalServerError": "Внутренняя ошибка сервера",
+    "serviceUnavailable": "Сервис временно недоступен"
+  },
+  "language": {
+    "label": "Язык",
+    "en": "English",
+    "de": "Deutsch",
+    "ru": "Русский",
+    "zh": "中文"
+  }
+}

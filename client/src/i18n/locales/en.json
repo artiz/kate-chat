@@ -1,0 +1,114 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm"
+  },
+  "nav": {
+    "profile": "Profile",
+    "connectivitySettings": "Connectivity Settings",
+    "models": "Models",
+    "logout": "Logout",
+    "switchToLight": "Switch to light mode",
+    "switchToDark": "Switch to dark mode",
+    "demoMode": "Demo Mode",
+    "demoModeTooltip": "Demo mode, max chats per user: {{maxChats}}, max chat messages: {{maxChatMessages}}, max images: {{maxImages}}"
+  },
+  "auth": {
+    "welcomeTo": "Welcome to {{appTitle}}!",
+    "signInSubtitle": "Sign in to access your AI chats",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Your password",
+    "signIn": "Sign in",
+    "noAccount": "Don't have an account?",
+    "register": "Register",
+    "createAccount": "Create an Account",
+    "registerSubtitle": "Register to start using {{appTitle}}",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "Your first name",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Your last name",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "haveAccount": "Already have an account?",
+    "loginFailed": "Login Failed",
+    "loginFailedMessage": "Failed to login. Please try again.",
+    "registrationFailed": "Registration Failed",
+    "registrationFailedMessage": "Failed to register. Please try again.",
+    "recaptchaError": "reCAPTCHA Error",
+    "recaptchaNotLoaded": "reCAPTCHA has not loaded. Please try again later.",
+    "recaptchaVerificationError": "There was an error with the reCAPTCHA verification."
+  },
+  "validation": {
+    "invalidEmail": "Invalid email",
+    "passwordRequired": "Password is required",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "firstNameRequired": "First name is required",
+    "lastNameRequired": "Last name is required"
+  },
+  "profile": {
+    "title": "Profile",
+    "updated": "Profile Updated",
+    "updatedMessage": "Your profile has been updated successfully",
+    "updateFailed": "Update Failed",
+    "updateFailedMessage": "Failed to update profile",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "Auto",
+    "saveProfile": "Save Profile",
+    "provider": "Provider: {{provider}}"
+  },
+  "connectivity": {
+    "title": "Connectivity",
+    "updated": "Settings Updated",
+    "updatedMessage": "Your connectivity settings have been updated successfully",
+    "updateFailed": "Update Failed",
+    "updateFailedMessage": "Failed to update settings"
+  },
+  "settings": {
+    "title": "Settings"
+  },
+  "password": {
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "changePassword": "Change Password",
+    "changed": "Password Changed",
+    "changedMessage": "Your password has been changed successfully",
+    "changeFailed": "Password Change Failed",
+    "changeFailedMessage": "Failed to change password",
+    "mismatch": "Password Mismatch",
+    "mismatchMessage": "New password and confirmation do not match"
+  },
+  "errors": {
+    "apiError": "API Error",
+    "unknownError": "An unknown error occurred",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "networkError": "Unable to connect to the server. Please try again later.",
+    "serverError": "Server error occurred",
+    "validationError": "Validation error",
+    "notFound": "Resource not found",
+    "conflict": "Conflict: resource already exists",
+    "tooManyRequests": "Too many requests. Please try again later.",
+    "badRequest": "Bad request",
+    "internalServerError": "Internal server error",
+    "serviceUnavailable": "Service temporarily unavailable"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "de": "Deutsch",
+    "ru": "Русский",
+    "zh": "中文"
+  }
+}

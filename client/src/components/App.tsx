@@ -4,6 +4,7 @@ import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverrid
 import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { ApolloWrapper } from "../lib/apollo-provider";
 import { createAppTheme } from "../theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
@@ -12,6 +13,7 @@ import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
 import { ThemeProvider, useTheme } from "@katechat/ui";
+import { LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES, SupportedLanguage } from "@/i18n";
 
 // Pages
 import Login from "@/pages/Login";
@@ -62,6 +64,7 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, token, loginTime } = useAppSelector(state => state.auth);
   const mantineTheme = React.useMemo(() => createAppTheme(), []);
+  const { t, i18n } = useTranslation();
 
   // Get theme from context
   const { colorScheme } = useTheme();
@@ -95,6 +98,13 @@ const AppContent: React.FC = () => {
       );
 
       dispatch(loginSuccess(initData.appConfig.token));
+
+      // Sync language from user settings
+      const userLang = initData.appConfig.currentUser?.settings?.language;
+      if (userLang && SUPPORTED_LANGUAGES.includes(userLang as SupportedLanguage)) {
+        i18n.changeLanguage(userLang);
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, userLang);
+      }
     }
   }, [isAuthenticated, initData, dispatch]);
 
@@ -117,8 +127,8 @@ const AppContent: React.FC = () => {
       } else if ("error" in error) {
         // Show error notification
         notifications.show({
-          title: "API Error",
-          message: error.error || "An unknown error occurred",
+          title: t("errors.apiError"),
+          message: error.error || t("errors.unknownError"),
           color: "red",
         });
       }

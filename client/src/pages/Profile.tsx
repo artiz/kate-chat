@@ -2,6 +2,7 @@ import React from "react";
 import { Container, Title } from "@mantine/core";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { ProfileSettings as ProfileSettingsComponent } from "@/components/settings/ProfileSettings";
 import { UPDATE_USER_MUTATION } from "@/store/services/graphql.queries";
 import { useAppSelector, useAppDispatch } from "@/store";
@@ -14,6 +15,7 @@ interface IProps {
 export const Profile = ({ onReloadAppData }: IProps) => {
   const { currentUser } = useAppSelector(state => state.user);
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   const [updateUser, { loading: updateLoading }] = useMutation(UPDATE_USER_MUTATION, {
     onCompleted: data => {
@@ -21,15 +23,15 @@ export const Profile = ({ onReloadAppData }: IProps) => {
         dispatch(setUser(data.updateUser));
       }
       notifications.show({
-        title: "Profile Updated",
-        message: "Your profile has been updated successfully",
+        title: t("profile.updated"),
+        message: t("profile.updatedMessage"),
         color: "green",
       });
     },
     onError: error => {
       notifications.show({
-        title: "Update Failed",
-        message: error.message || "Failed to update profile",
+        title: t("profile.updateFailed"),
+        message: error.message || t("profile.updateFailedMessage"),
         color: "red",
       });
     },
@@ -47,7 +49,7 @@ export const Profile = ({ onReloadAppData }: IProps) => {
   return (
     <Container size="lg" py="xl">
       <Title order={2} mb="lg">
-        Profile
+        {t("profile.title")}
       </Title>
       <ProfileSettingsComponent user={currentUser} updateUser={handleUpdateUser} updateLoading={updateLoading} />
     </Container>

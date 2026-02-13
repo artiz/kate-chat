@@ -1,6 +1,7 @@
 import { parseMarkdown } from "@katechat/ui";
 import { api } from "../api";
 import { User } from "../slices/userSlice";
+import { mapServerError } from "@/i18n/errorMapping";
 
 import {
   ApplicationConfig,
@@ -23,7 +24,7 @@ export const handleError = (error: { status?: string | number }, meta: unknown) 
 
     // Backend is unreachable
     return {
-      error: "Unable to connect to the server. Please try again later.",
+      error: mapServerError("Service unavailable"),
     };
   }
   return error;
