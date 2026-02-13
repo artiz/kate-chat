@@ -23,11 +23,7 @@ export const LanguageSelector: React.FC = () => {
       </Menu.Target>
       <Menu.Dropdown>
         {SUPPORTED_LANGUAGES.map(lang => (
-          <Menu.Item
-            key={lang}
-            onClick={() => handleLanguageChange(lang)}
-            fw={i18n.language === lang ? 700 : 400}
-          >
+          <Menu.Item key={lang} onClick={() => handleLanguageChange(lang)} fw={i18n.language === lang ? 700 : 400}>
             {t(`language.${lang}`)}
           </Menu.Item>
         ))}

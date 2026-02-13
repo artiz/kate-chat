@@ -85,8 +85,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
 
         <Stack gap="md">
           <Group grow>
-            <TextInput label={t("auth.firstName")} value={firstName} onChange={e => setFirstName(e.target.value)} required />
-            <TextInput label={t("auth.lastName")} value={lastName} onChange={e => setLastName(e.target.value)} required />
+            <TextInput
+              label={t("auth.firstName")}
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              required
+            />
+            <TextInput
+              label={t("auth.lastName")}
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              required
+            />
           </Group>
 
           <TextInput

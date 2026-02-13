@@ -152,10 +152,20 @@ const RegisterForm: React.FC = () => {
                 required
                 {...form.getInputProps("firstName")}
               />
-              <TextInput label={t("auth.lastName")} placeholder={t("auth.lastNamePlaceholder")} required {...form.getInputProps("lastName")} />
+              <TextInput
+                label={t("auth.lastName")}
+                placeholder={t("auth.lastNamePlaceholder")}
+                required
+                {...form.getInputProps("lastName")}
+              />
             </Group>
 
-            <PasswordInput label={t("auth.password")} placeholder={t("auth.passwordPlaceholder")} required {...form.getInputProps("password")} />
+            <PasswordInput
+              label={t("auth.password")}
+              placeholder={t("auth.passwordPlaceholder")}
+              required
+              {...form.getInputProps("password")}
+            />
 
             <PasswordInput
               label={t("auth.confirmPassword")}

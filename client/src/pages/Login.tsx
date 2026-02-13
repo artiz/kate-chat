@@ -94,9 +94,19 @@ const Login: React.FC = () => {
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
-            <TextInput label={t("auth.email")} placeholder={t("auth.emailPlaceholder")} required {...form.getInputProps("email")} />
+            <TextInput
+              label={t("auth.email")}
+              placeholder={t("auth.emailPlaceholder")}
+              required
+              {...form.getInputProps("email")}
+            />
 
-            <PasswordInput label={t("auth.password")} placeholder={t("auth.passwordPlaceholder")} required {...form.getInputProps("password")} />
+            <PasswordInput
+              label={t("auth.password")}
+              placeholder={t("auth.passwordPlaceholder")}
+              required
+              {...form.getInputProps("password")}
+            />
           </Stack>
 
           {/* <Group justify="space-between" mt="lg">
