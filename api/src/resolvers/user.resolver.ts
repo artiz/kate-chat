@@ -1,6 +1,6 @@
-import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx, ID, FieldResolver, Root } from "type-graphql";
 import bcrypt from "bcryptjs";
-import { User, AuthProvider, UserRole } from "@/entities/User";
+import { User, AuthProvider, UserRole, UserSettings } from "@/entities/User";
 import { generateToken } from "@/utils/jwt";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "@/types/graphql/inputs";
 import { ApplicationConfig, AuthResponse, CredentialSource } from "@/types/graphql/responses";
@@ -55,14 +55,14 @@ export class UserResolver extends BaseResolver {
     if (s3Connected) {
       credentialsSource.push({
         type: "S3",
-        source: globalConfig.s3.credentialsSource || "DATABASE",
+        source: user?.getProviderCredentialsSource("S3") || globalConfig.s3.credentialsSource || "DATABASE",
       });
     }
 
     for (const provider of globalConfig.ai.enabledProviders) {
       credentialsSource.push({
         type: provider,
-        source: getProviderCredentialsSource(provider) || user?.getProviderCredentialsSource(provider) || "BROWSER",
+        source: user?.getProviderCredentialsSource(provider) || getProviderCredentialsSource(provider) || "BROWSER",
       });
     }
 
@@ -160,9 +160,16 @@ export class UserResolver extends BaseResolver {
     if (input.documentSummarizationModelId) user.documentSummarizationModelId = input.documentSummarizationModelId;
 
     if (input.settings) {
+      const settingsToUpdate: Partial<UserSettings> = input.settings;
+      for (const [key, value] of Object.entries(input.settings)) {
+        if (value) {
+          settingsToUpdate[key as keyof UserSettings] = value;
+        }
+      }
+
       user.settings = {
         ...(user.settings || {}),
-        ...input.settings,
+        ...settingsToUpdate,
       };
     }
 
@@ -238,5 +245,61 @@ export class UserResolver extends BaseResolver {
     await this.userRepository.save(user);
 
     return user.id;
+  }
+}
+
+@Resolver(() => UserSettings)
+export class UserSettingsResolver {
+  private mask(value: string | undefined): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    // Mask the API key if it's shorter than 10 chars, otherwise show parts
+    if (value.length <= 10) {
+      return "********";
+    }
+    // Show first 3 and last 4 characters
+    return `${value.substring(0, 3)}...${value.substring(value.length - 4)}`;
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  awsBedrockAccessKeyId(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.awsBedrockAccessKeyId);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  awsBedrockSecretAccessKey(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.awsBedrockSecretAccessKey);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  openaiApiKey(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.openaiApiKey);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  openaiApiAdminKey(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.openaiApiAdminKey);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  yandexFmApiKey(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.yandexFmApiKey);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  yandexFmApiFolderId(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.yandexFmApiFolderId);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  s3AccessKeyId(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.s3AccessKeyId);
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  s3SecretAccessKey(@Root() settings: UserSettings): string | undefined {
+    return this.mask(settings.s3SecretAccessKey);
   }
 }

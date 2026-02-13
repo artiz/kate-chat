@@ -5,7 +5,7 @@ import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
-import { ApiProvider, CredentialSourceType } from "@/types/api";
+import { ApiProvider, CredentialSourceType, CredentialType } from "@/types/api";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -181,7 +181,7 @@ export class User {
     };
   }
 
-  getProviderCredentialsSource(provider: ApiProvider): CredentialSourceType | undefined {
+  getProviderCredentialsSource(provider: CredentialType): CredentialSourceType | undefined {
     if (!this.settings) return undefined;
     switch (provider) {
       case ApiProvider.AWS_BEDROCK:
@@ -196,6 +196,11 @@ export class User {
         return undefined;
       case ApiProvider.YANDEX_FM:
         if (this.settings.yandexFmApiKey && this.settings.yandexFmApiFolderId) {
+          return "DATABASE";
+        }
+        return undefined;
+      case "S3":
+        if (this.settings.s3AccessKeyId && this.settings.s3SecretAccessKey) {
           return "DATABASE";
         }
         return undefined;

@@ -129,7 +129,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
     setS3AccessKeyId(user?.settings?.s3AccessKeyId || "");
     setS3SecretAccessKey(user?.settings?.s3SecretAccessKey || "");
     setS3FilesBucketName(user?.settings?.s3FilesBucketName || "");
-  }, [user, enabledApiProviders]);
+  }, [user, enabledApiProviders, apiProvidersCredSource]);
 
   const toggleServerSave = (provider: ApiProvider): React.ChangeEventHandler<HTMLInputElement> | undefined => {
     switch (provider) {
@@ -146,30 +146,71 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
 
   const handleConnectivityUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem(STORAGE_AWS_BEDROCK_REGION, awsRegion || "");
-    localStorage.setItem(STORAGE_AWS_BEDROCK_PROFILE, awsProfile || "");
-    localStorage.setItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, awsAccessKeyId || "");
-    localStorage.setItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY, awsSecretAccessKey || "");
-    localStorage.setItem(STORAGE_OPENAI_API_KEY, openaiApiKey || "");
-    localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
-    localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
-    localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER, yandexApiFolderId || "");
+    const initialData = user?.settings || {};
+
+    if (awsBedrockServerSave) {
+      localStorage.removeItem(STORAGE_AWS_BEDROCK_REGION);
+      localStorage.removeItem(STORAGE_AWS_BEDROCK_PROFILE);
+      localStorage.removeItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID);
+      localStorage.removeItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY);
+    } else {
+      localStorage.setItem(STORAGE_AWS_BEDROCK_REGION, awsRegion || "");
+      localStorage.setItem(STORAGE_AWS_BEDROCK_PROFILE, awsProfile || "");
+      localStorage.setItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, awsAccessKeyId || "");
+      localStorage.setItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY, awsSecretAccessKey || "");
+    }
+
+    if (openAiServerSave) {
+      localStorage.removeItem(STORAGE_OPENAI_API_KEY);
+      localStorage.removeItem(STORAGE_OPENAI_API_ADMIN_KEY);
+    } else {
+      localStorage.setItem(STORAGE_OPENAI_API_KEY, openaiApiKey || "");
+      localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
+    }
+
+    if (yandexFmServerSave) {
+      localStorage.removeItem(STORAGE_YANDEX_FM_API_KEY);
+      localStorage.removeItem(STORAGE_YANDEX_FM_API_FOLDER);
+    } else {
+      localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
+      localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER, yandexApiFolderId || "");
+    }
 
     const settings: UserSettings = {
       s3Endpoint: s3Endpoint || "",
       s3Region: s3Region || "",
-      s3AccessKeyId: s3AccessKeyId || "",
-      s3SecretAccessKey: s3SecretAccessKey || "",
+      s3AccessKeyId: initialData?.s3AccessKeyId === s3AccessKeyId ? undefined : s3AccessKeyId,
+      s3SecretAccessKey: initialData?.s3SecretAccessKey === s3SecretAccessKey ? undefined : s3SecretAccessKey,
       s3FilesBucketName: s3FilesBucketName || "",
 
       awsBedrockRegion: awsBedrockServerSave ? awsRegion : "",
       awsBedrockProfile: awsBedrockServerSave ? awsProfile : "",
-      awsBedrockAccessKeyId: awsBedrockServerSave ? awsAccessKeyId : "",
-      awsBedrockSecretAccessKey: awsBedrockServerSave ? awsSecretAccessKey : "",
-      openaiApiKey: openAiServerSave ? openaiApiKey : "",
-      openaiApiAdminKey: openAiServerSave ? openaiApiAdminKey : "",
-      yandexFmApiKey: yandexFmServerSave ? yandexApiKey : "",
-      yandexFmApiFolderId: yandexFmServerSave ? yandexApiFolderId : "",
+      awsBedrockAccessKeyId: awsBedrockServerSave
+        ? initialData?.awsBedrockAccessKeyId === awsAccessKeyId
+          ? undefined
+          : awsAccessKeyId
+        : "",
+      awsBedrockSecretAccessKey: awsBedrockServerSave
+        ? initialData?.awsBedrockSecretAccessKey === awsSecretAccessKey
+          ? undefined
+          : awsSecretAccessKey
+        : "",
+      openaiApiKey: openAiServerSave ? (initialData?.openaiApiKey === openaiApiKey ? undefined : openaiApiKey) : "",
+      openaiApiAdminKey: openAiServerSave
+        ? initialData?.openaiApiAdminKey === openaiApiAdminKey
+          ? undefined
+          : openaiApiAdminKey
+        : "",
+      yandexFmApiKey: yandexFmServerSave
+        ? initialData?.yandexFmApiKey === yandexApiKey
+          ? undefined
+          : yandexApiKey
+        : "",
+      yandexFmApiFolderId: yandexFmServerSave
+        ? initialData?.yandexFmApiFolderId === yandexApiFolderId
+          ? undefined
+          : yandexApiFolderId
+        : "",
     };
 
     await updateUser({

@@ -103,10 +103,9 @@ export const FULL_USER_FRAGMENT = `
       settings {
         s3Endpoint
         s3Region
+        s3FilesBucketName
         s3AccessKeyId
         s3SecretAccessKey
-        s3FilesBucketName
-
         awsBedrockAccessKeyId
         awsBedrockProfile
         awsBedrockRegion
