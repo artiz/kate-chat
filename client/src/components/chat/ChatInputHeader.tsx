@@ -1,5 +1,5 @@
 import React, { use, useEffect, useMemo, useState } from "react";
-import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button, Group } from "@mantine/core";
+import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button, Group, Loader } from "@mantine/core";
 import {
   IconRobot,
   IconSettings,
@@ -367,7 +367,8 @@ export const ChatInputHeader = ({
         onSubmit={handleTokenSubmit}
         onClose={mcpCloseTokenModal}
       />
-      <Group>
+      <Group align="center" gap="sm">
+        {streaming && <Loader size="sm" color="dimmed" />}
         {onAutoScroll && (
           <Tooltip label="Auto-Scroll">
             <ActionIcon
