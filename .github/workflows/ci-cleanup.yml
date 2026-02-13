@@ -46,6 +46,6 @@ jobs:
               run: |
                 BRANCH_NAME=${{ steps.encode_branch.outputs.BRANCH_NAME }}
                 # remove app image from ECR
-                docker image rm $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME 2> /dev/null
+                docker image rm $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME 2> /dev/null || :
                 
 

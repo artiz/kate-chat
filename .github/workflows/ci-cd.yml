@@ -178,7 +178,13 @@ jobs:
           --build-arg RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY\
           --build-arg COMMIT_SHA=$COMMIT_SHA\
           ./ -f infrastructure/services/katechat-app/Dockerfile
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
+
+        if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
+        else
+          echo "Skipping docker push (branch: ${{ github.ref }})"
+        fi
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
     
     - name: Free Disk Space (Ubuntu)
@@ -208,8 +214,14 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME\
           --build-arg COMMIT_SHA=$COMMIT_SHA\
           ./ -f infrastructure/services/katechat-document-processor/Dockerfile
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME" >> $GITHUB_OUTPUT
+        
+        if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME" >> $GITHUB_OUTPUT
+        else
+          echo "Skipping docker push (branch: ${{ github.ref }})"
+        fi
+        
     
   deploy-staging:
     name: Deploy to Staging
