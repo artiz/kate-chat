@@ -77,12 +77,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
         { label: t("chat.older"), selector: false },
       ]
     );
-  }, [chats, next]);
-
-  const deletingChat = useMemo(
-    () => (deletingChatId ? chats.find(chat => chat.id === deletingChatId) : undefined),
-    [deletingChatId, chats]
-  );
+  }, [chats, next, t]);
 
   // Mutations
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
