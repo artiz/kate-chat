@@ -30,6 +30,7 @@ import {
 } from "@tabler/icons-react";
 import { gql, useQuery } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { UserRole } from "@/store/slices/userSlice";
 
 // GraphQL queries
@@ -94,6 +95,7 @@ interface GetUsersResponse {
 }
 
 export const AdminDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -109,8 +111,8 @@ export const AdminDashboard: React.FC = () => {
     errorPolicy: "all",
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to load admin stats",
+        title: t("common.error"),
+        message: error.message || t("admin.failedToLoadStats"),
         color: "red",
       });
     },
@@ -133,8 +135,8 @@ export const AdminDashboard: React.FC = () => {
     errorPolicy: "all",
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to load users",
+        title: t("common.error"),
+        message: error.message || t("admin.failedToLoadUsers"),
         color: "red",
       });
     },
@@ -161,8 +163,8 @@ export const AdminDashboard: React.FC = () => {
   if (statsError || usersError) {
     const errorMessage = statsError?.message || usersError?.message || "Access denied";
     return (
-      <Alert icon={<IconAlertCircle size="1rem" />} title="Admin Access Required" color="red" variant="light">
-        {errorMessage}. You need admin privileges to access this page.
+      <Alert icon={<IconAlertCircle size="1rem" />} title={t("admin.adminRequired")} color="red" variant="light">
+        {t("admin.adminRequiredMessage", { message: errorMessage })}
       </Alert>
     );
   }
@@ -171,9 +173,9 @@ export const AdminDashboard: React.FC = () => {
     <Stack gap="md">
       <Group justify="space-between" align="flex-start">
         <Title order={2} mb="lg">
-          Admin Dashboard
+          {t("admin.adminDashboard")}
         </Title>
-        <Tooltip label="Refresh data">
+        <Tooltip label={t("admin.refreshData")}>
           <ActionIcon
             variant="light"
             color="blue"
@@ -193,7 +195,7 @@ export const AdminDashboard: React.FC = () => {
             <Group justify="space-between">
               <div>
                 <Text c="dimmed" size="sm" fw={500} tt="uppercase">
-                  Total Users
+                  {t("admin.totalUsers")}
                 </Text>
                 <Text fw={700} size="xl">
                   {statsLoading ? <Loader size="sm" /> : stats?.usersCount || 0}
@@ -209,7 +211,7 @@ export const AdminDashboard: React.FC = () => {
             <Group justify="space-between">
               <div>
                 <Text c="dimmed" size="sm" fw={500} tt="uppercase">
-                  Total Chats
+                  {t("admin.totalChats")}
                 </Text>
                 <Text fw={700} size="xl">
                   {statsLoading ? <Loader size="sm" /> : stats?.chatsCount || 0}
@@ -225,7 +227,7 @@ export const AdminDashboard: React.FC = () => {
             <Group justify="space-between">
               <div>
                 <Text c="dimmed" size="sm" fw={500} tt="uppercase">
-                  Total Models
+                  {t("admin.totalModels")}
                 </Text>
                 <Text fw={700} size="xl">
                   {statsLoading ? <Loader size="sm" /> : stats?.modelsCount || 0}
@@ -241,10 +243,10 @@ export const AdminDashboard: React.FC = () => {
       <Paper withBorder p="md">
         <Stack gap="md">
           <Group justify="space-between" align="center">
-            <Title order={2}>Users Management</Title>
+            <Title order={2}>{t("admin.usersManagement")}</Title>
             <Group>
               <TextInput
-                placeholder="Search users..."
+                placeholder={t("admin.searchUsers")}
                 value={searchInput}
                 onChange={e => setSearchInput(e.currentTarget.value)}
                 onKeyDown={e => e.key === "Enter" && handleSearch()}
@@ -267,12 +269,12 @@ export const AdminDashboard: React.FC = () => {
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th visibleFrom="lg" w="30%">
-                      Name
+                      {t("common.name")}
                     </Table.Th>
-                    <Table.Th w="30%">Email</Table.Th>
-                    <Table.Th visibleFrom="lg">Role</Table.Th>
-                    <Table.Th visibleFrom="lg">Models/Chats</Table.Th>
-                    <Table.Th visibleFrom="lg">Joined</Table.Th>
+                    <Table.Th w="30%">{t("admin.email")}</Table.Th>
+                    <Table.Th visibleFrom="lg">{t("admin.role")}</Table.Th>
+                    <Table.Th visibleFrom="lg">{t("admin.modelsChats")}</Table.Th>
+                    <Table.Th visibleFrom="lg">{t("admin.joined")}</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -321,12 +323,12 @@ export const AdminDashboard: React.FC = () => {
               )}
 
               <Text size="sm" c="dimmed" ta="center">
-                Showing {users.users.length} of {users.total} users
+                {t("admin.showingUsers", { count: users.users.length, total: users.total })}
               </Text>
             </>
           ) : (
             <Text ta="center" c="dimmed" py="xl">
-              No users found
+              {t("admin.noUsersFound")}
             </Text>
           )}
         </Stack>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Stack, TextInput, Button, Group, Modal, Textarea, Select, Text } from "@mantine/core";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { CREATE_MCP_SERVER, UPDATE_MCP_SERVER } from "@/store/services/graphql.queries";
 import { MCPServer } from "@/types/graphql";
 
@@ -20,17 +21,6 @@ interface FormData {
   scope: string;
 }
 
-const AUTH_TYPES = [
-  { value: "NONE", label: "No Authentication" },
-  { value: "API_KEY", label: "API Key" },
-  { value: "BEARER", label: "Bearer Token" },
-  { value: "OAUTH2", label: "OAuth 2.0" },
-];
-
-const TRANSPORT_TYPES = [
-  { value: "STREAMABLE_HTTP", label: "Streamable HTTP (Modern)" },
-  { value: "HTTP_SSE_LEGACY", label: "HTTP + SSE (Legacy)" },
-];
 
 const DEFAULT_FORM_DATA: FormData = {
   name: "",
@@ -61,6 +51,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
   onSuccess,
   fullScreen,
 }) => {
+  const { t } = useTranslation();
   const isEditMode = !!server;
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
 
@@ -91,14 +82,14 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
     onCompleted: data => {
       if (data.createMCPServer.error) {
         notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: data.createMCPServer.error,
           color: "red",
         });
       } else {
         notifications.show({
-          title: "Success",
-          message: "MCP server created successfully",
+          title: t("common.success"),
+          message: t("mcp.serverCreated"),
           color: "green",
         });
         onSuccess();
@@ -107,7 +98,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message,
         color: "red",
       });
@@ -118,14 +109,14 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
     onCompleted: data => {
       if (data.updateMCPServer.error) {
         notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: data.updateMCPServer.error,
           color: "red",
         });
       } else {
         notifications.show({
-          title: "Success",
-          message: "MCP server updated successfully",
+          title: t("common.success"),
+          message: t("mcp.serverUpdated"),
           color: "green",
         });
         onSuccess();
@@ -134,7 +125,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message,
         color: "red",
       });
@@ -178,44 +169,56 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
 
   const loading = createLoading || updateLoading;
 
+  const AUTH_TYPES = [
+    { value: "NONE", label: t("mcp.noAuth") },
+    { value: "API_KEY", label: t("mcp.apiKeyAuth") },
+    { value: "BEARER", label: t("mcp.bearerTokenAuth") },
+    { value: "OAUTH2", label: t("mcp.oauth2") },
+  ];
+
+  const TRANSPORT_TYPES = [
+    { value: "STREAMABLE_HTTP", label: t("mcp.streamableHttp") },
+    { value: "HTTP_SSE_LEGACY", label: t("mcp.httpSse") },
+  ];
+
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title={isEditMode ? "Edit MCP Server" : "Add MCP Server"}
+      title={isEditMode ? t("mcp.editMcpServer") : t("mcp.addMcpServer")}
       size="lg"
       fullScreen={fullScreen}
     >
       <Stack gap="md">
         <TextInput
-          label="Name"
-          placeholder="My MCP Server"
+          label={t("mcp.serverName")}
+          placeholder={t("mcp.serverNamePlaceholder")}
           required
           value={formData.name}
           onChange={e => setFormData({ ...formData, name: e.target.value })}
         />
         <TextInput
-          label="URL"
-          placeholder="https://example.com/mcp"
+          label={t("mcp.url")}
+          placeholder={t("mcp.urlPlaceholder")}
           required
           value={formData.url}
           onChange={e => setFormData({ ...formData, url: e.target.value })}
         />
         <Textarea
-          label="Description"
-          placeholder="Optional description"
+          label={t("common.description")}
+          placeholder={t("mcp.descriptionPlaceholder")}
           value={formData.description}
           onChange={e => setFormData({ ...formData, description: e.target.value })}
         />
         <Select
-          label="Transport Type"
-          description="Use Legacy for servers that use the older SSE protocol"
+          label={t("mcp.transportType")}
+          description={t("mcp.transportTypeDescription")}
           data={TRANSPORT_TYPES}
           value={formData.transportType}
           onChange={v => setFormData({ ...formData, transportType: v || "STREAMABLE_HTTP" })}
         />
         <Select
-          label="Authentication Type"
+          label={t("mcp.authType")}
           data={AUTH_TYPES}
           value={formData.authType}
           onChange={v => setFormData({ ...formData, authType: v || "NONE" })}
@@ -223,7 +226,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
         {formData.authType === "API_KEY" && (
           <>
             <TextInput
-              label="Header Name"
+              label={t("mcp.headerName")}
               placeholder="X-API-Key"
               value={formData.headerName}
               onChange={e => setFormData({ ...formData, headerName: e.target.value })}
@@ -233,40 +236,39 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
         {formData.authType === "OAUTH2" && (
           <>
             <Text size="sm" c="dimmed" mb="xs">
-              Configure OAuth 2.0 authentication. Enable "Requires User Auth" if each user needs to authorize
-              separately.
+              {t("mcp.oauthInfo")}
             </Text>
             <TextInput
-              label="Client ID"
-              placeholder="OAuth application client ID"
+              label={t("mcp.clientId")}
+              placeholder={t("mcp.clientIdPlaceholder")}
               required
               value={formData.clientId}
               onChange={e => setFormData({ ...formData, clientId: e.target.value })}
             />
             <TextInput
-              label="Client Secret"
-              placeholder={isEditMode ? "Leave blank to keep existing" : "OAuth client secret (optional for PKCE)"}
+              label={t("mcp.clientSecret")}
+              placeholder={isEditMode ? t("mcp.clientSecretPlaceholderEdit") : t("mcp.clientSecretPlaceholder")}
               type="password"
               value={formData.clientSecret}
               onChange={e => setFormData({ ...formData, clientSecret: e.target.value })}
             />
             <TextInput
-              label="Authorization URL"
+              label={t("mcp.authorizationUrl")}
               placeholder="https://provider.com/oauth/authorize"
               required
               value={formData.authorizationUrl}
               onChange={e => setFormData({ ...formData, authorizationUrl: e.target.value })}
             />
             <TextInput
-              label="Token URL"
+              label={t("mcp.tokenUrl")}
               placeholder="https://provider.com/oauth/token"
               required
               value={formData.tokenUrl}
               onChange={e => setFormData({ ...formData, tokenUrl: e.target.value })}
             />
             <TextInput
-              label="Scope"
-              placeholder="read:user openid"
+              label={t("mcp.scope")}
+              placeholder={t("mcp.scopePlaceholder")}
               value={formData.scope}
               onChange={e => setFormData({ ...formData, scope: e.target.value })}
             />
@@ -274,10 +276,10 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
         )}
         <Group justify="flex-end" mt="md">
           <Button variant="light" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSubmit} loading={loading}>
-            {isEditMode ? "Update Server" : "Add Server"}
+            {isEditMode ? t("mcp.updateServer") : t("mcp.addServer")}
           </Button>
         </Group>
       </Stack>

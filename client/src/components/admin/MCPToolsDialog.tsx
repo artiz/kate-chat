@@ -19,6 +19,7 @@ import {
 import { IconTestPipe, IconTool, IconChevronDown, IconChevronUp, IconRefresh, IconLock } from "@tabler/icons-react";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import {
   useMcpAuth,
   requiresAuth,
@@ -88,6 +89,7 @@ function isSimpleType(prop: SchemaProperty): boolean {
  * Individual tool card with form controls
  */
 const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
+  const { t } = useTranslation();
   const parsedSchema = useMemo(() => parseSchema(tool.inputSchema), [tool.inputSchema]);
   const [formValues, setFormValues] = useState<Record<string, any>>({});
   const [complexValues, setComplexValues] = useState<Record<string, string>>({});
@@ -204,7 +206,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
           key={key}
           label={label}
           description={description}
-          placeholder={`Enter ${key}`}
+          placeholder={t("mcp.enterValue", { key })}
           value={formValues[key] || ""}
           onChange={e => handleSimpleValueChange(key, e.target.value)}
           size="xs"
@@ -219,7 +221,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
           key={key}
           label={label}
           description={description}
-          placeholder={`Enter ${key}`}
+          placeholder={t("mcp.enterValue", { key })}
           value={formValues[key] ?? ""}
           onChange={value => handleSimpleValueChange(key, value)}
           size="xs"
@@ -284,7 +286,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
       {hasParameters && (
         <Stack gap="xs" mb="sm">
           <Text size="xs" fw={500} c="dimmed">
-            Parameters:
+            {t("mcp.parameters")}
           </Text>
           {Object.entries(parsedSchema!.properties).map(([key, prop]) =>
             renderPropertyInput(key, prop, parsedSchema!.required.includes(key))
@@ -294,7 +296,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
 
       {!hasParameters && tool.inputSchema && (
         <Text size="xs" c="dimmed" mb="sm">
-          No parameters required
+          {t("mcp.noParametersRequired")}
         </Text>
       )}
 
@@ -305,7 +307,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
         onClick={handleTest}
         loading={testLoading}
       >
-        Test
+        {t("common.test")}
       </Button>
 
       <Group gap="md" mt="xs">
@@ -318,7 +320,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
             p={0}
             h="auto"
           >
-            {showInputSchema ? "Hide Input Schema" : "Show Input Schema"}
+            {showInputSchema ? t("mcp.hideInputSchema") : t("mcp.showInputSchema")}
           </Button>
         )}
         {tool.outputSchema && (
@@ -330,7 +332,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
             p={0}
             h="auto"
           >
-            {showOutputSchema ? "Hide Output Schema" : "Show Output Schema"}
+            {showOutputSchema ? t("mcp.hideOutputSchema") : t("mcp.showOutputSchema")}
           </Button>
         )}
       </Group>
@@ -339,7 +341,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
         <Collapse in={showInputSchema}>
           <Box mt="xs">
             <Text size="xs" fw={500} c="dimmed" mb="xs">
-              Input Schema:
+              {t("mcp.inputSchema")}
             </Text>
             <ScrollArea h={120}>
               <Code block style={{ fontSize: "0.7rem" }}>
@@ -354,7 +356,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
         <Collapse in={showOutputSchema}>
           <Box mt="xs">
             <Text size="xs" fw={500} c="dimmed" mb="xs">
-              Output Schema:
+              {t("mcp.outputSchema")}
             </Text>
             <ScrollArea h={120}>
               <Code block style={{ fontSize: "0.7rem" }}>
@@ -369,7 +371,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
         <Box mt="sm">
           <Divider mb="xs" />
           <Text size="xs" fw={500} mb="xs">
-            Result:
+            {t("mcp.result")}
           </Text>
           <ScrollArea h={150}>
             <Code block style={{ whiteSpace: "pre-wrap", fontSize: "0.75rem" }}>
@@ -397,6 +399,7 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
   onToolsRefetched,
   fullScreen,
 }) => {
+  const { t } = useTranslation();
   const [tools, setTools] = useState<MCPTool[]>([]);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const { token: userToken } = useSelector((state: RootState) => state.auth);
@@ -405,11 +408,11 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
   const servers = useMemo(() => (server ? [server] : []), [server]);
 
   // Selected tool
-  const selectedTool = useMemo(() => tools.find(t => t.name === selectedToolName) || null, [tools, selectedToolName]);
+  const selectedTool = useMemo(() => tools.find(tl => tl.name === selectedToolName) || null, [tools, selectedToolName]);
 
   // Tool options for select
   const toolOptions = useMemo(
-    () => tools.map(t => ({ value: t.name, label: t.name, description: t.description })),
+    () => tools.map(tl => ({ value: tl.name, label: tl.name, description: tl.description })),
     [tools]
   );
   const {
@@ -429,14 +432,14 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
     onCompleted: data => {
       if (data.refetchMcpServerTools.error) {
         notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: data.refetchMcpServerTools.error,
           color: "red",
         });
       } else {
         notifications.show({
-          title: "Success",
-          message: "Tools refreshed successfully",
+          title: t("common.success"),
+          message: t("mcp.toolsRefreshed"),
           color: "green",
         });
 
@@ -448,7 +451,7 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message,
         color: "red",
       });
@@ -512,13 +515,13 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
           <Stack align="center" p="xl" gap="md">
             <IconLock size="3rem" color="orange" />
             <Text ta="center" size="lg" fw={500}>
-              Authentication Required
+              {t("mcp.authRequired")}
             </Text>
             <Text ta="center" c="dimmed" size="sm">
-              This MCP server requires authentication before you can view or test its tools.
+              {t("mcp.authRequiredMessage")}
             </Text>
             <Button leftSection={<IconLock size="1rem" />} onClick={handleAuthenticate}>
-              Authenticate
+              {t("mcp.authenticate")}
             </Button>
           </Stack>
         ) : (
@@ -526,13 +529,13 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
             <Group justify="space-between" mb="md">
               <Group>
                 <Text size="sm" c="dimmed">
-                  {tools.length} tool{tools.length !== 1 ? "s" : ""} available
+                  {t("mcp.toolsAvailable", { count: tools.length })}
                 </Text>
               </Group>
               <Group>
                 {server.authType === MCPAuthType.OAUTH2 ? (
                   <Button leftSection={<IconLock size="1rem" />} onClick={handleReAuthenticate}>
-                    Re-Authenticate
+                    {t("mcp.reAuthenticate")}
                   </Button>
                 ) : null}
                 <Button
@@ -542,25 +545,25 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
                   onClick={handleRefetchTools}
                   loading={refetchLoading}
                 >
-                  Refetch tools
+                  {t("mcp.refetchTools")}
                 </Button>
               </Group>
             </Group>
             {!tools.length ? (
               <Text c="dimmed" ta="center" p="xl">
-                No tools available from this server
+                {t("mcp.noToolsAvailable")}
               </Text>
             ) : (
               <Stack gap="md">
                 <Select
-                  placeholder="Select a tool to test"
+                  placeholder={t("mcp.selectToolToTest")}
                   searchable
                   data={toolOptions}
                   value={selectedToolName}
                   onChange={setSelectedToolName}
                   leftSection={<IconTool size="1rem" />}
                   renderOption={({ option }) => {
-                    const toolDesc = tools.find(t => t.name === option.value)?.description;
+                    const toolDesc = tools.find(tl => tl.name === option.value)?.description;
                     return (
                       <Stack gap={0}>
                         <Text size="sm">{option.value}</Text>
