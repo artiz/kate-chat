@@ -55,6 +55,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
+* Finish "Forgot password?" logic for local login
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * Add SerpApi for Web Search (new setting in UI)
 * Python API (FastAPI)
