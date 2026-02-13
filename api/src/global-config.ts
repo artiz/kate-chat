@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { config as loadEnv } from "dotenv";
 import { DEFAULT_CHAT_PROMPT } from "./config/ai/prompts";
-import { ApiProvider } from "./types/api";
+import { ApiProvider, CredentialSourceType } from "./types/api";
 import { DB_TYPE } from "./config/env";
 
 const DEFAULT_PROVIDERS: ApiProvider[] = [
@@ -123,6 +123,7 @@ export interface GlobalConfigShape {
     secretAccessKey?: string;
     filesBucketName?: string;
     profile?: string;
+    credentialsSource?: CredentialSourceType;
   };
   bedrock: {
     endpoint?: string;
@@ -130,11 +131,13 @@ export interface GlobalConfigShape {
     region?: string;
     accessKeyId?: string;
     secretAccessKey?: string;
+    credentialsSource?: CredentialSourceType;
   };
   openai: {
     apiKey?: string;
     adminApiKey?: string;
     apiUrl?: string;
+    credentialsSource?: CredentialSourceType;
   };
   yandex: {
     fmApiUrl: string;
@@ -144,6 +147,7 @@ export interface GlobalConfigShape {
     searchApiUrl: string;
     searchApiKey?: string;
     searchApiFolder?: string;
+    credentialsSource?: CredentialSourceType;
   };
   sqs: {
     endpoint?: string;
@@ -314,18 +318,26 @@ export class GlobalConfig {
         secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
         filesBucketName: process.env.S3_FILES_BUCKET_NAME,
         profile: process.env.S3_AWS_PROFILE,
+        credentialsSource:
+          process.env.S3_FILES_BUCKET_NAME &&
+          (process.env.S3_AWS_PROFILE || (process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY))
+            ? "ENVIRONMENT"
+            : undefined,
       },
       bedrock: {
         endpoint: process.env.AWS_BEDROCK_ENDPOINT,
         profile: process.env.AWS_BEDROCK_PROFILE,
-        region: process.env.AWS_BEDROCK_REGION,
+        region: process.env.AWS_BEDROCK_REGION || process.env.AWS_REGION,
         accessKeyId: process.env.AWS_BEDROCK_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
+        credentialsSource:
+          process.env.AWS_BEDROCK_PROFILE || process.env.AWS_BEDROCK_SECRET_ACCESS_KEY ? "ENVIRONMENT" : undefined,
       },
       openai: {
         apiKey: process.env.OPENAI_API_KEY,
         adminApiKey: process.env.OPENAI_API_ADMIN_KEY,
         apiUrl: process.env.OPENAI_API_URL,
+        credentialsSource: process.env.OPENAI_API_KEY ? "ENVIRONMENT" : undefined,
       },
       yandex: {
         fmApiUrl: process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net",
@@ -335,6 +347,8 @@ export class GlobalConfig {
         searchApiUrl: process.env.YANDEX_SEARCH_API_URL || "https://searchapi.api.cloud.yandex.net/v2/web/search",
         searchApiKey: process.env.YANDEX_SEARCH_API_KEY || process.env.YANDEX_FM_API_KEY,
         searchApiFolder: process.env.YANDEX_SEARCH_API_FOLDER || process.env.YANDEX_FM_API_FOLDER,
+        credentialsSource:
+          process.env.YANDEX_FM_API_KEY && process.env.YANDEX_FM_API_FOLDER ? "ENVIRONMENT" : undefined,
       },
       sqs: {
         endpoint: process.env.SQS_ENDPOINT,
@@ -382,3 +396,18 @@ export const getFrontendOrigin = (): string => {
     return globalConfig.runtime.frontendUrl;
   }
 };
+
+export function getProviderCredentialsSource(provider: ApiProvider) {
+  switch (provider) {
+    case ApiProvider.AWS_BEDROCK:
+      return globalConfig.bedrock.credentialsSource;
+    case ApiProvider.OPEN_AI:
+      return globalConfig.openai.credentialsSource;
+    case ApiProvider.YANDEX_FM:
+      return globalConfig.yandex.credentialsSource;
+    case ApiProvider.CUSTOM_REST_API:
+      return "DATABASE";
+    default:
+      return undefined;
+  }
+}

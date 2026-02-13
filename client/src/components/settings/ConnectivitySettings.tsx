@@ -7,17 +7,16 @@ import {
   Button,
   Group,
   Stack,
-  Divider,
   Text,
   Collapse,
   ActionIcon,
   SimpleGrid,
   Alert,
   Switch,
+  Badge,
 } from "@mantine/core";
 import { IconHelp } from "@tabler/icons-react";
 import type { ApiProvider } from "@katechat/ui";
-import { ModelType } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { UpdateUserInput, User, UserSettings } from "@/store/slices/userSlice";
 import {
@@ -30,6 +29,7 @@ import {
   STORAGE_YANDEX_FM_API_FOLDER,
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
+import { CredentialSourceType, CredentialType } from "@/types/graphql";
 
 interface AISettingsProps {
   user: User;
@@ -39,7 +39,7 @@ interface AISettingsProps {
 
 export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUser, updateLoading }) => {
   const { appConfig } = useAppSelector(state => state.user);
-  const { models, providers } = useAppSelector(state => state.models);
+  const { providers } = useAppSelector(state => state.models);
 
   // local connection settings
   const [awsRegion, setAwsRegion] = useState<string>("");
@@ -69,6 +69,23 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
   const enabledApiProviders: Set<ApiProvider> = useMemo(() => {
     return new Set(providers.map(provider => provider.id as ApiProvider));
   }, [providers]);
+
+  const apiProvidersCredSource: Record<CredentialType, CredentialSourceType> = useMemo(() => {
+    const map: Record<CredentialType, CredentialSourceType> = {} as Record<CredentialType, CredentialSourceType>;
+    providers.forEach(provider => {
+      const src = appConfig?.credentialsSource?.find(c => c.type === provider.id);
+      if (src) {
+        map[provider.id] = src.source;
+      }
+    });
+
+    const s3Src = appConfig?.credentialsSource?.find(c => c.type === "S3");
+    if (s3Src) {
+      map["S3"] = s3Src.source;
+    }
+
+    return map;
+  }, [providers, appConfig]);
 
   useEffect(() => {
     const settings = user?.settings || {};
@@ -163,205 +180,221 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
   if (!user) return null;
 
   return (
-    <Stack gap="lg">
-      <Paper withBorder p="md">
-        <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
-          <Stack gap="md">
-            {enabledApiProviders.has("AWS_BEDROCK") && (
-              <>
-                <Group justify="space-between" align="center">
-                  <Title order={3}>AWS Bedrock</Title>
-                  <ActionIcon
-                    variant="subtle"
-                    onClick={() => setAwsHelpOpen(!awsHelpOpen)}
-                    aria-label="Toggle AWS Bedrock help"
-                  >
-                    <IconHelp size={16} />
-                  </ActionIcon>
-                </Group>
+    <Stack gap="0">
+      <Group justify="right">
+        <Button type="submit" loading={updateLoading} onClick={handleConnectivityUpdate}>
+          Save
+        </Button>
+      </Group>
+      <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
+        <Stack gap="lg" mt="lg">
+          {enabledApiProviders.has("AWS_BEDROCK") && (
+            <Paper withBorder p="md">
+              <Group justify="space-between" align="center">
+                <Title order={3}>AWS Bedrock</Title>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => setAwsHelpOpen(!awsHelpOpen)}
+                  aria-label="Toggle AWS Bedrock help"
+                >
+                  <IconHelp size={16} />
+                </ActionIcon>
+              </Group>
+              <Group my="md">
+                {apiProvidersCredSource["AWS_BEDROCK"] && (
+                  <Badge color="blue">Source: {apiProvidersCredSource["AWS_BEDROCK"]}</Badge>
+                )}
                 <Switch
                   checked={awsBedrockServerSave}
                   onChange={toggleServerSave("AWS_BEDROCK")}
                   label="Store on server (to use on other devices)"
                 />
+              </Group>
 
-                <Collapse in={awsHelpOpen}>
-                  <Paper p="sm" bg="gray.4" mb="md">
-                    <Text size="sm" c="dark.5">
-                      <strong>How to get AWS Bedrock credentials:</strong>
-                    </Text>
-                    <Text size="sm" c="dark.5">
-                      1. Sign in to the AWS Management Console
-                      <br />
-                      2. Go to IAM (Identity and Access Management)
-                      <br />
-                      3. Create a new user or use existing one
-                      <br />
-                      4. Attach the "AmazonBedrockFullAccess" policy
-                      <br />
-                      5. Generate access keys in Security credentials tab
-                      <br />
-                      6. Choose your preferred AWS region (e.g., us-east-1, us-west-2)
-                      <br />
-                      7. Optionally configure AWS profile in ~/.aws/credentials
-                    </Text>
-                  </Paper>
-                </Collapse>
+              <Collapse in={awsHelpOpen}>
+                <Paper p="sm" bg="gray.4" mb="md">
+                  <Text size="sm" c="dark.5">
+                    <strong>How to get AWS Bedrock credentials:</strong>
+                  </Text>
+                  <Text size="sm" c="dark.5">
+                    1. Sign in to the AWS Management Console
+                    <br />
+                    2. Go to IAM (Identity and Access Management)
+                    <br />
+                    3. Create a new user or use existing one
+                    <br />
+                    4. Attach the "AmazonBedrockFullAccess" policy
+                    <br />
+                    5. Generate access keys in Security credentials tab
+                    <br />
+                    6. Choose your preferred AWS region (e.g., us-east-1, us-west-2)
+                    <br />
+                    7. Optionally configure AWS profile in ~/.aws/credentials
+                  </Text>
+                </Paper>
+              </Collapse>
 
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                  <TextInput
-                    label="AWS region"
-                    autoComplete="off"
-                    value={awsRegion}
-                    onChange={e => setAwsRegion(e.target.value)}
-                    placeholder="us-east-1"
-                  />
-                  <TextInput
-                    label="AWS profile (useful on local dev env)"
-                    autoComplete="off"
-                    value={awsProfile}
-                    onChange={e => setAwsProfile(e.target.value)}
-                    placeholder="default"
-                  />
-                  <PasswordInput
-                    label="AWS access key ID"
-                    autoComplete="off"
-                    value={awsAccessKeyId}
-                    onChange={e => setAwsAccessKeyId(e.target.value)}
-                    placeholder="AKIA..."
-                  />
-                  <PasswordInput
-                    label="AWS secret access key"
-                    autoComplete="off"
-                    value={awsSecretAccessKey}
-                    onChange={e => setAwsSecretAccessKey(e.target.value)}
-                    placeholder="..."
-                  />
-                </SimpleGrid>
-
-                <Divider />
-              </>
-            )}
-            {enabledApiProviders.has("OPEN_AI") && (
-              <>
-                <Group justify="space-between" align="center">
-                  <Title order={3}>OpenAI</Title>
-                  <ActionIcon
-                    variant="subtle"
-                    onClick={() => setOpenaiHelpOpen(!openaiHelpOpen)}
-                    aria-label="Toggle OpenAI help"
-                  >
-                    <IconHelp size={16} />
-                  </ActionIcon>
-                </Group>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <TextInput
+                  label="AWS region"
+                  autoComplete="off"
+                  value={awsRegion}
+                  onChange={e => setAwsRegion(e.target.value)}
+                  placeholder="us-east-1"
+                />
+                <TextInput
+                  label="AWS profile (useful on local dev env)"
+                  autoComplete="off"
+                  value={awsProfile}
+                  onChange={e => setAwsProfile(e.target.value)}
+                  placeholder="default"
+                />
+                <PasswordInput
+                  label="AWS access key ID"
+                  autoComplete="off"
+                  value={awsAccessKeyId}
+                  onChange={e => setAwsAccessKeyId(e.target.value)}
+                  placeholder="AKIA..."
+                />
+                <PasswordInput
+                  label="AWS secret access key"
+                  autoComplete="off"
+                  value={awsSecretAccessKey}
+                  onChange={e => setAwsSecretAccessKey(e.target.value)}
+                  placeholder="..."
+                />
+              </SimpleGrid>
+            </Paper>
+          )}
+          {enabledApiProviders.has("OPEN_AI") && (
+            <Paper withBorder p="md">
+              <Group justify="space-between" align="center">
+                <Title order={3}>OpenAI</Title>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => setOpenaiHelpOpen(!openaiHelpOpen)}
+                  aria-label="Toggle OpenAI help"
+                >
+                  <IconHelp size={16} />
+                </ActionIcon>
+              </Group>
+              <Group my="md">
+                {apiProvidersCredSource["OPEN_AI"] && (
+                  <Badge color="blue">Source: {apiProvidersCredSource["OPEN_AI"]}</Badge>
+                )}
                 <Switch
                   checked={openAiServerSave}
                   onChange={toggleServerSave("OPEN_AI")}
                   label="Store on server (to use on other devices)"
                 />
+              </Group>
 
-                <Collapse in={openaiHelpOpen}>
-                  <Paper p="sm" bg="gray.4" mb="md">
-                    <Text size="sm" c="dark.5">
-                      <strong>How to get OpenAI API keys:</strong>
-                    </Text>
-                    <Text size="sm" c="dark.5">
-                      1. Sign up or log in to OpenAI Platform (platform.openai.com)
-                      <br />
-                      2. Navigate to API keys section in your account
-                      <br />
-                      3. Click "Create new secret key"
-                      <br />
-                      4. Copy and store the key securely
-                      <br />
-                      5. Set usage limits and billing information as needed
-                      <br />
-                      6. Admin key is optional and used for organization management
-                    </Text>
-                  </Paper>
-                </Collapse>
+              <Collapse in={openaiHelpOpen}>
+                <Paper p="sm" bg="gray.4" mb="md">
+                  <Text size="sm" c="dark.5">
+                    <strong>How to get OpenAI API keys:</strong>
+                  </Text>
+                  <Text size="sm" c="dark.5">
+                    1. Sign up or log in to OpenAI Platform (platform.openai.com)
+                    <br />
+                    2. Navigate to API keys section in your account
+                    <br />
+                    3. Click "Create new secret key"
+                    <br />
+                    4. Copy and store the key securely
+                    <br />
+                    5. Set usage limits and billing information as needed
+                    <br />
+                    6. Admin key is optional and used for organization management
+                  </Text>
+                </Paper>
+              </Collapse>
 
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                  <PasswordInput
-                    label="OpenAI API Key"
-                    autoComplete="off"
-                    value={openaiApiKey}
-                    onChange={e => setOpenaiApiKey(e.target.value)}
-                    placeholder="sk-..."
-                  />
-                  <PasswordInput
-                    label="OpenAI API Admin Key"
-                    autoComplete="off"
-                    value={openaiApiAdminKey}
-                    onChange={e => setOpenaiApiAdminKey(e.target.value)}
-                    placeholder="sk-..."
-                  />
-                </SimpleGrid>
-                <Divider />
-              </>
-            )}
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <PasswordInput
+                  label="OpenAI API Key"
+                  autoComplete="off"
+                  value={openaiApiKey}
+                  onChange={e => setOpenaiApiKey(e.target.value)}
+                  placeholder="sk-..."
+                />
+                <PasswordInput
+                  label="OpenAI API Admin Key"
+                  autoComplete="off"
+                  value={openaiApiAdminKey}
+                  onChange={e => setOpenaiApiAdminKey(e.target.value)}
+                  placeholder="sk-..."
+                />
+              </SimpleGrid>
+            </Paper>
+          )}
 
-            {enabledApiProviders.has("YANDEX_FM") && (
-              <>
-                <Group justify="space-between" align="center">
-                  <Title order={3}>Yandex Foundational Models</Title>
+          {enabledApiProviders.has("YANDEX_FM") && (
+            <Paper withBorder p="md">
+              <Group justify="space-between" align="center">
+                <Title order={3}>Yandex Foundational Models</Title>
 
-                  <ActionIcon
-                    variant="subtle"
-                    onClick={() => setYandexHelpOpen(!yandexHelpOpen)}
-                    aria-label="Toggle Yandex help"
-                  >
-                    <IconHelp size={16} />
-                  </ActionIcon>
-                </Group>
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => setYandexHelpOpen(!yandexHelpOpen)}
+                  aria-label="Toggle Yandex help"
+                >
+                  <IconHelp size={16} />
+                </ActionIcon>
+              </Group>
+              <Group my="md">
+                {apiProvidersCredSource["YANDEX_FM"] && (
+                  <Badge color="blue">Source: {apiProvidersCredSource["YANDEX_FM"]}</Badge>
+                )}
                 <Switch
                   checked={yandexFmServerSave}
                   onChange={toggleServerSave("YANDEX_FM")}
                   label="Store on server (to use on other devices)"
                 />
+              </Group>
 
-                <Collapse in={yandexHelpOpen}>
-                  <Paper p="sm" bg="gray.4" mb="md">
-                    <Text size="sm" c="dark.5">
-                      <strong>How to get Yandex Cloud credentials:</strong>
-                    </Text>
-                    <Text size="sm" c="dark.5">
-                      1. Sign up for Yandex Cloud (cloud.yandex.com)
-                      <br />
-                      2. Create or select a folder in your cloud
-                      <br />
-                      3. Go to Identity and Access Management/Service accounts and create a new service account
-                      <br />
-                      4. Assign the "ai.models.user" role to the service account
-                      <br />
-                      5. Create an API key for the service account
-                      <br />
-                      6. Copy the folder ID from the folder overview page
-                    </Text>
-                  </Paper>
-                </Collapse>
+              <Collapse in={yandexHelpOpen}>
+                <Paper p="sm" bg="gray.4" mb="md">
+                  <Text size="sm" c="dark.5">
+                    <strong>How to get Yandex Cloud credentials:</strong>
+                  </Text>
+                  <Text size="sm" c="dark.5">
+                    1. Sign up for Yandex Cloud (cloud.yandex.com)
+                    <br />
+                    2. Create or select a folder in your cloud
+                    <br />
+                    3. Go to Identity and Access Management/Service accounts and create a new service account
+                    <br />
+                    4. Assign the "ai.models.user" role to the service account
+                    <br />
+                    5. Create an API key for the service account
+                    <br />
+                    6. Copy the folder ID from the folder overview page
+                  </Text>
+                </Paper>
+              </Collapse>
 
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                  <PasswordInput
-                    label="Yandex API Key"
-                    autoComplete="off"
-                    value={yandexApiKey}
-                    onChange={e => setYandexApiKey(e.target.value)}
-                    placeholder="AQVN..."
-                  />
-                  <PasswordInput
-                    label="Yandex API Folder ID"
-                    autoComplete="off"
-                    value={yandexApiFolderId}
-                    onChange={e => setYandexApiFolderId(e.target.value)}
-                    placeholder="b1g..."
-                  />
-                </SimpleGrid>
-              </>
-            )}
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <PasswordInput
+                  label="Yandex API Key"
+                  autoComplete="off"
+                  value={yandexApiKey}
+                  onChange={e => setYandexApiKey(e.target.value)}
+                  placeholder="AQVN..."
+                />
+                <PasswordInput
+                  label="Yandex API Folder ID"
+                  autoComplete="off"
+                  value={yandexApiFolderId}
+                  onChange={e => setYandexApiFolderId(e.target.value)}
+                  placeholder="b1g..."
+                />
+              </SimpleGrid>
+            </Paper>
+          )}
 
-            {/* S3 Configuration */}
-            <Divider />
+          {/* S3 Configuration */}
+          <Paper withBorder p="md">
             {appConfig?.s3Connected && (
               <Alert color="green" mb="md">
                 S3 storage is connected on backend and ready to use. You could override these settings below, they will
@@ -373,6 +406,9 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
               <ActionIcon variant="subtle" onClick={() => setS3HelpOpen(!s3HelpOpen)} aria-label="Toggle S3 help">
                 <IconHelp size={16} />
               </ActionIcon>
+            </Group>
+            <Group my="md">
+              {apiProvidersCredSource["S3"] && <Badge color="blue">Source: {apiProvidersCredSource["S3"]}</Badge>}
             </Group>
 
             <Collapse in={s3HelpOpen}>
@@ -447,15 +483,14 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
               onChange={e => setS3FilesBucketName(e.target.value)}
               placeholder="my-files-bucket"
             />
-
-            <Group justify="right" mt="md">
-              <Button type="submit" loading={updateLoading}>
-                Save
-              </Button>
-            </Group>
-          </Stack>
-        </form>
-      </Paper>
+          </Paper>
+        </Stack>
+      </form>
+      <Group justify="right" mt="md">
+        <Button type="submit" loading={updateLoading} onClick={handleConnectivityUpdate}>
+          Save
+        </Button>
+      </Group>
     </Stack>
   );
 };

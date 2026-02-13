@@ -5,6 +5,7 @@ import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
+import { ApiProvider, CredentialSourceType } from "@/types/api";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -178,6 +179,29 @@ export class User {
       email: this.email,
       roles: [this.role],
     };
+  }
+
+  getProviderCredentialsSource(provider: ApiProvider): CredentialSourceType | undefined {
+    if (!this.settings) return undefined;
+    switch (provider) {
+      case ApiProvider.AWS_BEDROCK:
+        if (this.settings.awsBedrockAccessKeyId && this.settings.awsBedrockSecretAccessKey) {
+          return "DATABASE";
+        }
+        return undefined;
+      case ApiProvider.OPEN_AI:
+        if (this.settings.openaiApiKey) {
+          return "DATABASE";
+        }
+        return undefined;
+      case ApiProvider.YANDEX_FM:
+        if (this.settings.yandexFmApiKey && this.settings.yandexFmApiFolderId) {
+          return "DATABASE";
+        }
+        return undefined;
+      default:
+        return undefined;
+    }
   }
 
   isAdmin(): boolean {

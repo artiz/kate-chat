@@ -1,6 +1,6 @@
 import { ObjectType, Field, ID } from "type-graphql";
 import { User, Chat, Message, Model, Document, MCPServer } from "@/entities";
-import { ApiProvider, DocumentStatus, MessageRole, MessageType } from "../api";
+import { ApiProvider, CredentialSourceType, CredentialType, DocumentStatus, MessageRole, MessageType } from "../api";
 
 @ObjectType()
 export class UserResponse {
@@ -186,6 +186,15 @@ export class GqlCostsInfo {
 }
 
 @ObjectType()
+export class CredentialSource {
+  @Field({ nullable: true })
+  type?: CredentialType;
+
+  @Field({ nullable: true })
+  source?: CredentialSourceType;
+}
+
+@ObjectType()
 export class ApplicationConfig {
   @Field({ nullable: true })
   currentUser?: User;
@@ -213,6 +222,9 @@ export class ApplicationConfig {
 
   @Field({ nullable: true })
   maxImages?: number;
+
+  @Field(() => [CredentialSource], { nullable: true })
+  credentialsSource?: CredentialSource[];
 }
 
 @ObjectType()

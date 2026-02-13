@@ -9,6 +9,9 @@ export enum ApiProvider {
   // ANTHROPIC = "ANTHROPIC",
 }
 
+export type CredentialType = keyof typeof ApiProvider | "S3";
+export type CredentialSourceType = "BROWSER" | "ENVIRONMENT" | "DATABASE";
+
 export enum MessageType {
   MESSAGE = "message",
   SYSTEM = "system",

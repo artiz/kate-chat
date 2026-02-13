@@ -1,6 +1,7 @@
 import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole, ModelType } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
 import { DocumentStatus } from "./ai";
+import { Api } from "@reduxjs/toolkit/query";
 
 export interface ProviderDetail {
   key: string;
@@ -131,6 +132,14 @@ export interface CreateChatInput {
   systemPrompt?: string;
 }
 
+export type CredentialSourceType = "ENVIRONMENT" | "BROWSER" | "DATABASE";
+export type CredentialType = ApiProvider | "S3";
+
+export interface CredentialSource {
+  type: CredentialType;
+  source: CredentialSourceType;
+}
+
 export interface ApplicationConfig {
   currentUser: User;
   token: string;
@@ -142,6 +151,7 @@ export interface ApplicationConfig {
   maxChatMessages?: number;
   maxImages?: number;
   lastUpdate?: number;
+  credentialsSource?: CredentialSource[];
 }
 
 export interface GetInitialDataResponse {

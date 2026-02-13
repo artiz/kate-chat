@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
-import { IconEdit, IconCheck, IconArrowLeft } from "@tabler/icons-react";
+import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import {
   assert,
@@ -519,9 +519,12 @@ export const ChatComponent = ({ chatId }: IProps) => {
       />
 
       {aiUsageAlert && loadCompleted && messages?.length ? (
-        <Text size="xs" c="dimmed" mt="0" mb="0" ta="center">
-          {aiUsageAlert}
-        </Text>
+        <Group justify="center" c="dimmed" p="0">
+          <IconAi size="20" />
+          <Text size="xs" mt="0" mb="0" ta="center">
+            {aiUsageAlert}
+          </Text>
+        </Group>
       ) : null}
 
       {PythonCodeModal}

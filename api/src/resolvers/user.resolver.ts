@@ -3,14 +3,14 @@ import bcrypt from "bcryptjs";
 import { User, AuthProvider, UserRole } from "@/entities/User";
 import { generateToken } from "@/utils/jwt";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "@/types/graphql/inputs";
-import { ApplicationConfig, AuthResponse } from "@/types/graphql/responses";
+import { ApplicationConfig, AuthResponse, CredentialSource } from "@/types/graphql/responses";
 import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
 import { verifyRecaptchaToken } from "@/utils/recaptcha";
 import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
 import { ensureInitialUserAssets } from "@/utils/initial-data";
-import { globalConfig } from "@/global-config";
+import { getProviderCredentialsSource, globalConfig } from "@/global-config";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -51,6 +51,21 @@ export class UserResolver extends BaseResolver {
       ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
     );
 
+    const credentialsSource: CredentialSource[] = [];
+    if (s3Connected) {
+      credentialsSource.push({
+        type: "S3",
+        source: globalConfig.s3.credentialsSource || "DATABASE",
+      });
+    }
+
+    for (const provider of globalConfig.ai.enabledProviders) {
+      credentialsSource.push({
+        type: provider,
+        source: getProviderCredentialsSource(provider) || user?.getProviderCredentialsSource(provider) || "BROWSER",
+      });
+    }
+
     return {
       currentUser: user || undefined,
       token,
@@ -61,6 +76,7 @@ export class UserResolver extends BaseResolver {
       maxChats: demoMode ? globalConfig.demo.maxChats : -1,
       maxChatMessages: demoMode ? globalConfig.demo.maxChatMessages : -1,
       maxImages: features.imagesGeneration ? (demoMode ? globalConfig.demo.maxImages : -1) : 0,
+      credentialsSource,
     };
   }
 

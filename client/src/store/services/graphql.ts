@@ -206,6 +206,10 @@ export const graphqlApi = api.injectEndpoints({
                 maxChats
                 maxChatMessages
                 maxImages
+                credentialsSource {
+                  type
+                  source
+                }
               }
             }
 
