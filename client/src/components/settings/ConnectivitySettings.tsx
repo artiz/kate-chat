@@ -16,6 +16,7 @@ import {
   Badge,
 } from "@mantine/core";
 import { IconHelp } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import type { ApiProvider } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { UpdateUserInput, User, UserSettings } from "@/store/slices/userSlice";
@@ -38,6 +39,7 @@ interface AISettingsProps {
 }
 
 export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUser, updateLoading }) => {
+  const { t } = useTranslation();
   const { appConfig } = useAppSelector(state => state.user);
   const { providers } = useAppSelector(state => state.models);
 
@@ -224,7 +226,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
     <Stack gap="0">
       <Group justify="right">
         <Button type="submit" loading={updateLoading} onClick={handleConnectivityUpdate}>
-          Save
+          {t("common.save")}
         </Button>
       </Group>
       <form name="connectivity-settings" onSubmit={handleConnectivityUpdate}>
@@ -232,73 +234,73 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
           {enabledApiProviders.has("AWS_BEDROCK") && (
             <Paper withBorder p="md">
               <Group justify="space-between" align="center">
-                <Title order={3}>AWS Bedrock</Title>
+                <Title order={3}>{t("connectivity.awsBedrock")}</Title>
                 <ActionIcon
                   variant="subtle"
                   onClick={() => setAwsHelpOpen(!awsHelpOpen)}
-                  aria-label="Toggle AWS Bedrock help"
+                  aria-label={t("connectivity.toggleHelp")}
                 >
                   <IconHelp size={16} />
                 </ActionIcon>
               </Group>
               <Group my="md">
                 {apiProvidersCredSource["AWS_BEDROCK"] && (
-                  <Badge color="blue">Source: {apiProvidersCredSource["AWS_BEDROCK"]}</Badge>
+                  <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["AWS_BEDROCK"] })}</Badge>
                 )}
                 <Switch
                   checked={awsBedrockServerSave}
                   onChange={toggleServerSave("AWS_BEDROCK")}
-                  label="Store on server (to use on other devices)"
+                  label={t("connectivity.storeOnServer")}
                 />
               </Group>
 
               <Collapse in={awsHelpOpen}>
                 <Paper p="sm" bg="gray.4" mb="md">
                   <Text size="sm" c="dark.5">
-                    <strong>How to get AWS Bedrock credentials:</strong>
+                    <strong>{t("connectivity.awsHowTo")}</strong>
                   </Text>
                   <Text size="sm" c="dark.5">
-                    1. Sign in to the AWS Management Console
+                    {t("connectivity.awsStep1")}
                     <br />
-                    2. Go to IAM (Identity and Access Management)
+                    {t("connectivity.awsStep2")}
                     <br />
-                    3. Create a new user or use existing one
+                    {t("connectivity.awsStep3")}
                     <br />
-                    4. Attach the "AmazonBedrockFullAccess" policy
+                    {t("connectivity.awsStep4")}
                     <br />
-                    5. Generate access keys in Security credentials tab
+                    {t("connectivity.awsStep5")}
                     <br />
-                    6. Choose your preferred AWS region (e.g., us-east-1, us-west-2)
+                    {t("connectivity.awsStep6")}
                     <br />
-                    7. Optionally configure AWS profile in ~/.aws/credentials
+                    {t("connectivity.awsStep7")}
                   </Text>
                 </Paper>
               </Collapse>
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <TextInput
-                  label="AWS region"
+                  label={t("connectivity.awsRegion")}
                   autoComplete="off"
                   value={awsRegion}
                   onChange={e => setAwsRegion(e.target.value)}
                   placeholder="us-east-1"
                 />
                 <TextInput
-                  label="AWS profile (useful on local dev env)"
+                  label={t("connectivity.awsProfile")}
                   autoComplete="off"
                   value={awsProfile}
                   onChange={e => setAwsProfile(e.target.value)}
                   placeholder="default"
                 />
                 <PasswordInput
-                  label="AWS access key ID"
+                  label={t("connectivity.awsAccessKeyId")}
                   autoComplete="off"
                   value={awsAccessKeyId}
                   onChange={e => setAwsAccessKeyId(e.target.value)}
                   placeholder="AKIA..."
                 />
                 <PasswordInput
-                  label="AWS secret access key"
+                  label={t("connectivity.awsSecretAccessKey")}
                   autoComplete="off"
                   value={awsSecretAccessKey}
                   onChange={e => setAwsSecretAccessKey(e.target.value)}
@@ -310,57 +312,57 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
           {enabledApiProviders.has("OPEN_AI") && (
             <Paper withBorder p="md">
               <Group justify="space-between" align="center">
-                <Title order={3}>OpenAI</Title>
+                <Title order={3}>{t("connectivity.openai")}</Title>
                 <ActionIcon
                   variant="subtle"
                   onClick={() => setOpenaiHelpOpen(!openaiHelpOpen)}
-                  aria-label="Toggle OpenAI help"
+                  aria-label={t("connectivity.toggleHelp")}
                 >
                   <IconHelp size={16} />
                 </ActionIcon>
               </Group>
               <Group my="md">
                 {apiProvidersCredSource["OPEN_AI"] && (
-                  <Badge color="blue">Source: {apiProvidersCredSource["OPEN_AI"]}</Badge>
+                  <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["OPEN_AI"] })}</Badge>
                 )}
                 <Switch
                   checked={openAiServerSave}
                   onChange={toggleServerSave("OPEN_AI")}
-                  label="Store on server (to use on other devices)"
+                  label={t("connectivity.storeOnServer")}
                 />
               </Group>
 
               <Collapse in={openaiHelpOpen}>
                 <Paper p="sm" bg="gray.4" mb="md">
                   <Text size="sm" c="dark.5">
-                    <strong>How to get OpenAI API keys:</strong>
+                    <strong>{t("connectivity.openaiHowTo")}</strong>
                   </Text>
                   <Text size="sm" c="dark.5">
-                    1. Sign up or log in to OpenAI Platform (platform.openai.com)
+                    {t("connectivity.openaiStep1")}
                     <br />
-                    2. Navigate to API keys section in your account
+                    {t("connectivity.openaiStep2")}
                     <br />
-                    3. Click "Create new secret key"
+                    {t("connectivity.openaiStep3")}
                     <br />
-                    4. Copy and store the key securely
+                    {t("connectivity.openaiStep4")}
                     <br />
-                    5. Set usage limits and billing information as needed
+                    {t("connectivity.openaiStep5")}
                     <br />
-                    6. Admin key is optional and used for organization management
+                    {t("connectivity.openaiStep6")}
                   </Text>
                 </Paper>
               </Collapse>
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <PasswordInput
-                  label="OpenAI API Key"
+                  label={t("connectivity.openaiApiKey")}
                   autoComplete="off"
                   value={openaiApiKey}
                   onChange={e => setOpenaiApiKey(e.target.value)}
                   placeholder="sk-..."
                 />
                 <PasswordInput
-                  label="OpenAI API Admin Key"
+                  label={t("connectivity.openaiApiAdminKey")}
                   autoComplete="off"
                   value={openaiApiAdminKey}
                   onChange={e => setOpenaiApiAdminKey(e.target.value)}
@@ -373,58 +375,58 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
           {enabledApiProviders.has("YANDEX_FM") && (
             <Paper withBorder p="md">
               <Group justify="space-between" align="center">
-                <Title order={3}>Yandex Foundational Models</Title>
+                <Title order={3}>{t("connectivity.yandex")}</Title>
 
                 <ActionIcon
                   variant="subtle"
                   onClick={() => setYandexHelpOpen(!yandexHelpOpen)}
-                  aria-label="Toggle Yandex help"
+                  aria-label={t("connectivity.toggleHelp")}
                 >
                   <IconHelp size={16} />
                 </ActionIcon>
               </Group>
               <Group my="md">
                 {apiProvidersCredSource["YANDEX_FM"] && (
-                  <Badge color="blue">Source: {apiProvidersCredSource["YANDEX_FM"]}</Badge>
+                  <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["YANDEX_FM"] })}</Badge>
                 )}
                 <Switch
                   checked={yandexFmServerSave}
                   onChange={toggleServerSave("YANDEX_FM")}
-                  label="Store on server (to use on other devices)"
+                  label={t("connectivity.storeOnServer")}
                 />
               </Group>
 
               <Collapse in={yandexHelpOpen}>
                 <Paper p="sm" bg="gray.4" mb="md">
                   <Text size="sm" c="dark.5">
-                    <strong>How to get Yandex Cloud credentials:</strong>
+                    <strong>{t("connectivity.yandexHowTo")}</strong>
                   </Text>
                   <Text size="sm" c="dark.5">
-                    1. Sign up for Yandex Cloud (cloud.yandex.com)
+                    {t("connectivity.yandexStep1")}
                     <br />
-                    2. Create or select a folder in your cloud
+                    {t("connectivity.yandexStep2")}
                     <br />
-                    3. Go to Identity and Access Management/Service accounts and create a new service account
+                    {t("connectivity.yandexStep3")}
                     <br />
-                    4. Assign the "ai.models.user" role to the service account
+                    {t("connectivity.yandexStep4")}
                     <br />
-                    5. Create an API key for the service account
+                    {t("connectivity.yandexStep5")}
                     <br />
-                    6. Copy the folder ID from the folder overview page
+                    {t("connectivity.yandexStep6")}
                   </Text>
                 </Paper>
               </Collapse>
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <PasswordInput
-                  label="Yandex API Key"
+                  label={t("connectivity.yandexApiKey")}
                   autoComplete="off"
                   value={yandexApiKey}
                   onChange={e => setYandexApiKey(e.target.value)}
                   placeholder="AQVN..."
                 />
                 <PasswordInput
-                  label="Yandex API Folder ID"
+                  label={t("connectivity.yandexApiFolderId")}
                   autoComplete="off"
                   value={yandexApiFolderId}
                   onChange={e => setYandexApiFolderId(e.target.value)}
@@ -438,24 +440,23 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
           <Paper withBorder p="md">
             {appConfig?.s3Connected && (
               <Alert color="green" mb="md">
-                S3 storage is connected on backend and ready to use. You could override these settings below, they will
-                be stored in your profile to make uploaded/generated images available everywhere.
+                {t("connectivity.s3Connected")}
               </Alert>
             )}
             <Group justify="space-between" align="center">
-              <Title order={3}>S3 File Storage</Title>
-              <ActionIcon variant="subtle" onClick={() => setS3HelpOpen(!s3HelpOpen)} aria-label="Toggle S3 help">
+              <Title order={3}>{t("connectivity.s3FileStorage")}</Title>
+              <ActionIcon variant="subtle" onClick={() => setS3HelpOpen(!s3HelpOpen)} aria-label={t("connectivity.toggleHelp")}>
                 <IconHelp size={16} />
               </ActionIcon>
             </Group>
             <Group my="md">
-              {apiProvidersCredSource["S3"] && <Badge color="blue">Source: {apiProvidersCredSource["S3"]}</Badge>}
+              {apiProvidersCredSource["S3"] && <Badge color="blue">{t("connectivity.source", { source: apiProvidersCredSource["S3"] })}</Badge>}
             </Group>
 
             <Collapse in={s3HelpOpen}>
               <Paper p="sm" bg="gray.4" mb="md">
                 <Text size="sm" c="dark.5">
-                  <strong>How to configure S3 storage:</strong>
+                  <strong>{t("connectivity.s3HowTo")}</strong>
                 </Text>
                 <Text size="sm" c="dark.5">
                   <strong>AWS S3:</strong>
@@ -489,28 +490,28 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
 
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <TextInput
-                label="S3 Endpoint"
+                label={t("connectivity.s3Endpoint")}
                 autoComplete="off"
                 value={s3Endpoint}
                 onChange={e => setS3Endpoint(e.target.value)}
                 placeholder="https://s3.amazonaws.com or http://localhost:9000"
               />
               <TextInput
-                label="S3 Region"
+                label={t("connectivity.s3Region")}
                 autoComplete="off"
                 value={s3Region}
                 onChange={e => setS3Region(e.target.value)}
                 placeholder="us-east-1"
               />
               <PasswordInput
-                label="S3 Access Key ID"
+                label={t("connectivity.s3AccessKeyId")}
                 autoComplete="off"
                 value={s3AccessKeyId}
                 onChange={e => setS3AccessKeyId(e.target.value)}
                 placeholder="AKIA... or minioadmin"
               />
               <PasswordInput
-                label="S3 Secret Access Key"
+                label={t("connectivity.s3SecretAccessKey")}
                 autoComplete="off"
                 value={s3SecretAccessKey}
                 onChange={e => setS3SecretAccessKey(e.target.value)}
@@ -518,7 +519,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
               />
             </SimpleGrid>
             <TextInput
-              label="S3 Files Bucket Name"
+              label={t("connectivity.s3FilesBucketName")}
               autoComplete="off"
               value={s3FilesBucketName}
               onChange={e => setS3FilesBucketName(e.target.value)}
@@ -529,7 +530,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
       </form>
       <Group justify="right" mt="md">
         <Button type="submit" loading={updateLoading} onClick={handleConnectivityUpdate}>
-          Save
+          {t("common.save")}
         </Button>
       </Group>
     </Stack>
