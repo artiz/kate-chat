@@ -24,6 +24,7 @@ export enum ModelType {
   VIDEO_GENERATION = "video_generation",
   AUDIO_GENERATION = "audio_generation",
   REALTIME = "realtime",
+  TRANSCRIPTION = "transcription",
   OTHER = "other",
 }
 

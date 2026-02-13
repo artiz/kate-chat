@@ -47,6 +47,7 @@ import {
 } from "./bedrock.tools";
 
 import { FileContentLoader } from "@/services/data";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
@@ -77,7 +78,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     super(connection, fileLoader);
 
     if (!connection.awsBedrockProfile && !connection.awsBedrockAccessKeyId) {
-      logger.warn("AWS_BEDROCK_PROFILE/AWS_BEDROCK_ACCESS_KEY_ID is not set. Skipping AWS Bedrock initialization.");
+      logger.debug("AWS_BEDROCK_PROFILE/AWS_BEDROCK_ACCESS_KEY_ID is not set. Skipping AWS Bedrock initialization.");
       return;
     }
 
@@ -445,7 +446,7 @@ export class BedrockApiProvider extends BaseApiProvider {
   public async getModels(): Promise<Record<string, AIModelInfo>> {
     // no AWS connection
     if (!this.connection.awsBedrockAccessKeyId && !this.connection.awsBedrockProfile) {
-      logger.warn("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");
+      logger.debug("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");
       return {};
     }
 
@@ -490,49 +491,55 @@ export class BedrockApiProvider extends BaseApiProvider {
     const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
     const bedrockRegion = await this.bedrockClient.config.region();
     for (const model of response.modelSummaries) {
+      if (globalConfig.bedrock.ignoredModels.some(ignoredModel => model.modelId?.startsWith(ignoredModel))) {
+        continue; // Skip ignored models
+      }
+
       const regions = modelsRegions[model.modelId || ""];
       if (!regions || !regions.includes(bedrockRegion)) {
         continue;
       }
 
-      if (model.modelId && model.providerName) {
-        let modelId = model.modelId;
-        const providerName = model.providerName;
-
-        if (modelIdOverrides[model.modelId]) {
-          const map = modelIdOverrides[model.modelId];
-          // Use the override if available
-          const region = bedrockRegion.split("-")[0]; // Get the region prefix (e.g., "us")
-          modelId = map[region] || map[modelId] || modelId;
-        }
-
-        const type = model.outputModalities?.includes(ModelModality.IMAGE)
-          ? ModelType.IMAGE_GENERATION
-          : model.outputModalities?.includes(ModelModality.EMBEDDING)
-            ? ModelType.EMBEDDING
-            : ModelType.CHAT;
-
-        // Enable tools for chat models (web search if available, and MCP)
-        const tools: ToolType[] = [];
-        if (type === ModelType.CHAT) {
-          if (searchAvailable) {
-            tools.push(ToolType.WEB_SEARCH);
-          }
-          tools.push(ToolType.MCP);
-        }
-
-        models[modelId] = {
-          apiProvider: ApiProvider.AWS_BEDROCK,
-          provider: providerName,
-          name: model.modelName || modelId.split(".").pop() || modelId,
-          description: `${model.modelName || modelId} by ${providerName}`,
-          type,
-          streaming: model.responseStreamingSupported || false,
-          imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
-          maxInputTokens: modelsInputTokens[model.modelId],
-          tools: tools.length > 0 ? tools : undefined,
-        };
+      if (!model.modelId || !model.providerName) {
+        continue;
       }
+
+      let modelId = model.modelId;
+      const providerName = model.providerName;
+
+      if (modelIdOverrides[model.modelId]) {
+        const map = modelIdOverrides[model.modelId];
+        // Use the override if available
+        const region = bedrockRegion.split("-")[0]; // Get the region prefix (e.g., "us")
+        modelId = map[region] || map[modelId] || modelId;
+      }
+
+      const type = model.outputModalities?.includes(ModelModality.IMAGE)
+        ? ModelType.IMAGE_GENERATION
+        : model.outputModalities?.includes(ModelModality.EMBEDDING)
+          ? ModelType.EMBEDDING
+          : ModelType.CHAT;
+
+      // Enable tools for chat models (web search if available, and MCP)
+      const tools: ToolType[] = [];
+      if (type === ModelType.CHAT) {
+        if (searchAvailable) {
+          tools.push(ToolType.WEB_SEARCH);
+        }
+        tools.push(ToolType.MCP);
+      }
+
+      models[modelId] = {
+        apiProvider: ApiProvider.AWS_BEDROCK,
+        provider: providerName,
+        name: model.modelName || modelId.split(".").pop() || modelId,
+        description: `${model.modelName || modelId} by ${providerName}`,
+        type,
+        streaming: model.responseStreamingSupported || false,
+        imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
+        maxInputTokens: modelsInputTokens[model.modelId],
+        tools: tools.length > 0 ? tools : undefined,
+      };
     }
 
     return models;

@@ -50,7 +50,7 @@ export interface GlobalConfigShape {
     jwtSecret: string;
     jwtExpirationSec: number;
     sessionSecret: string;
-    recaptchaSecretKey: string;
+    recaptchaSecretKey?: string;
   };
   demo: {
     enabled: boolean;
@@ -132,12 +132,14 @@ export interface GlobalConfigShape {
     accessKeyId?: string;
     secretAccessKey?: string;
     credentialsSource?: CredentialSourceType;
+    ignoredModels: string[];
   };
   openai: {
     apiKey?: string;
     adminApiKey?: string;
     apiUrl?: string;
     credentialsSource?: CredentialSourceType;
+    ignoredModels: string[];
   };
   yandex: {
     fmApiUrl: string;
@@ -148,6 +150,7 @@ export interface GlobalConfigShape {
     searchApiKey?: string;
     searchApiFolder?: string;
     credentialsSource?: CredentialSourceType;
+    ignoredModels: string[];
   };
   sqs: {
     endpoint?: string;
@@ -229,10 +232,10 @@ export class GlobalConfig {
         logLevel: process.env.LOG_LEVEL || "info",
         callbackUrlBase: process.env.CALLBACK_URL_BASE || "http://localhost:4000",
         frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
-        jwtSecret: process.env.JWT_SECRET || "katechat-secret",
+        jwtSecret: process.env.JWT_SECRET || "secret-string",
         jwtExpirationSec: +(process.env.JWT_EXPIRATION_SEC || 7200) | 0,
-        sessionSecret: process.env.SESSION_SECRET || "katechat-secret",
-        recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY || "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe",
+        sessionSecret: process.env.SESSION_SECRET || "secret-string",
+        recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY,
       },
       app: {
         defaultAdminEmails:
@@ -241,7 +244,9 @@ export class GlobalConfig {
             .filter(Boolean) || [],
         userAgent: process.env.APP_USER_AGENT || "KateChat/1.0 (+https://katechat.tech/)",
         maxInputJson: process.env.MAX_INPUT_JSON || "50mb",
-        allowedOrigins: (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()),
+        allowedOrigins: (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:4000")
+          .split(",")
+          .map(o => o.trim()),
       },
       demo: {
         enabled: demo,
@@ -253,7 +258,7 @@ export class GlobalConfig {
       features: {
         imagesGeneration: demo ? this.parseBoolean(process.env.FEATURE_ENABLE_IMAGE_GEN) : true,
         videoGeneration: demo ? this.parseBoolean(process.env.FEATURE_ENABLE_VIDEO_GEN) : true,
-        rag: true,
+        rag: !!(process.env.SQS_DOCUMENTS_QUEUE && process.env.SQS_INDEX_DOCUMENTS_QUEUE),
         mcp: true,
       },
       ai: {
@@ -332,12 +337,20 @@ export class GlobalConfig {
         secretAccessKey: process.env.AWS_BEDROCK_SECRET_ACCESS_KEY,
         credentialsSource:
           process.env.AWS_BEDROCK_PROFILE || process.env.AWS_BEDROCK_SECRET_ACCESS_KEY ? "ENVIRONMENT" : undefined,
+        ignoredModels: (process.env.AWS_BEDROCK_IGNORED_MODELS || "")
+          .split(",")
+          .map(m => m.trim())
+          .filter(Boolean),
       },
       openai: {
         apiKey: process.env.OPENAI_API_KEY,
         adminApiKey: process.env.OPENAI_API_ADMIN_KEY,
         apiUrl: process.env.OPENAI_API_URL,
         credentialsSource: process.env.OPENAI_API_KEY ? "ENVIRONMENT" : undefined,
+        ignoredModels: (process.env.OPENAI_IGNORED_MODELS || "")
+          .split(",")
+          .map(m => m.trim())
+          .filter(Boolean),
       },
       yandex: {
         fmApiUrl: process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net",
@@ -349,6 +362,10 @@ export class GlobalConfig {
         searchApiFolder: process.env.YANDEX_SEARCH_API_FOLDER || process.env.YANDEX_FM_API_FOLDER,
         credentialsSource:
           process.env.YANDEX_FM_API_KEY && process.env.YANDEX_FM_API_FOLDER ? "ENVIRONMENT" : undefined,
+        ignoredModels: (process.env.YANDEX_FM_IGNORED_MODELS || "")
+          .split(",")
+          .map(m => m.trim())
+          .filter(Boolean),
       },
       sqs: {
         endpoint: process.env.SQS_ENDPOINT,

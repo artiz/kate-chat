@@ -80,9 +80,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     req.connectionParams = loadConnectionParams(req.headers);
     next();
   } catch (error) {
-    if (!(error instanceof TokenExpiredError)) {
-      logger.error(error, "Auth middleware error, path: %s", req.path);
-    }
+    res.status(403).json({ error: "Forbidden: invalid or expired token" });
     next();
   }
 };

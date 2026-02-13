@@ -84,7 +84,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     this.baseUrl = globalConfig.openai.apiUrl || "https://api.openai.com/v1";
     this.apiKey = connection.openAiApiKey || "";
     if (!this.apiKey) {
-      logger.warn("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+      logger.debug("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     } else {
       this.protocol = new OpenAIProtocol({
         apiType: modelId ? this.getChatApiType(modelId) : "completions",
@@ -255,6 +255,10 @@ export class OpenAIApiProvider extends BaseApiProvider {
   async getModels(): Promise<Record<string, AIModelInfo>> {
     const models: Record<string, AIModelInfo> = {};
 
+    if (!this.protocol?.api) {
+      logger.debug("OpenAI API client is not initialized, cannot fetch models");
+      return models;
+    }
     try {
       // Fetch models from OpenAI API
       const response = await this.protocol.api.models.list();
@@ -263,11 +267,16 @@ export class OpenAIApiProvider extends BaseApiProvider {
       console.log("OpenAI models response:", response.data);
       // Filter and map models
       for (const model of response.data) {
+        if (globalConfig.openai.ignoredModels.some(ignoredModel => model.id.startsWith(ignoredModel))) {
+          continue; // Skip ignored models
+        }
+
         const nonChatModel = OPENAI_NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
         const embeddingModel = model.id.startsWith("text-embedding");
         const isImageGeneration = OPENAI_MODELS_IMAGES_GENERATION.some(prefix => model.id.startsWith(prefix));
         const isVideoGeneration = OPENAI_MODELS_VIDEO_GENERATION.some(prefix => model.id.startsWith(prefix));
         const isRealtime = model.id.includes("-realtime");
+        const isTranscription = ["whisper"].some(prefix => model.id.startsWith(prefix));
 
         const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => model.id.startsWith(prefix));
 
@@ -296,7 +305,9 @@ export class OpenAIApiProvider extends BaseApiProvider {
               ? ModelType.VIDEO_GENERATION
               : isRealtime
                 ? ModelType.REALTIME
-                : ModelType.CHAT;
+                : isTranscription
+                  ? ModelType.TRANSCRIPTION
+                  : ModelType.CHAT;
 
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||

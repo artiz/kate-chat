@@ -198,6 +198,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             value={formData.name}
             onChange={e => updateFormField("name", e.target.value)}
             disabled={isLoading}
+            autoComplete="off"
           />
 
           <TextInput
@@ -208,6 +209,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             value={formData.modelId}
             onChange={e => updateFormField("modelId", e.target.value)}
             disabled={isLoading}
+            autoComplete="off"
           />
         </Group>
 
@@ -220,6 +222,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             value={formData.endpoint}
             onChange={e => updateFormField("endpoint", e.target.value)}
             disabled={isLoading}
+            autoComplete="off"
           />
           <TextInput
             label="API Key"
@@ -229,6 +232,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             value={formData.apiKey}
             onChange={e => updateFormField("apiKey", e.target.value)}
             disabled={isLoading}
+            autoComplete="off"
           />
         </Group>
 
@@ -241,6 +245,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             value={formData.modelName}
             onChange={e => updateFormField("modelName", e.target.value)}
             disabled={isLoading}
+            autoComplete="off"
           />
           <Select
             label="Protocol"
@@ -272,6 +277,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
               mb="xs"
             />
           </Stack>
+
           <NumberInput
             label="Max Input Tokens"
             placeholder="e.g., 8192"

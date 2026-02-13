@@ -242,7 +242,6 @@ export class YandexApiProvider extends BaseApiProvider {
 
   // Get available Yandex models
   async getModels(): Promise<Record<string, AIModelInfo>> {
-    // If API key is not set, return empty object
     if (!this.apiKey) {
       return {};
     }
@@ -250,6 +249,10 @@ export class YandexApiProvider extends BaseApiProvider {
     const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
     return YANDEX_MODELS.reduce(
       (map, model) => {
+        if (globalConfig.yandex.ignoredModels.some(ignoredModel => model.uri.includes(ignoredModel))) {
+          return map; // Skip ignored models
+        }
+
         map[model.uri] = {
           apiProvider: ApiProvider.YANDEX_FM,
           provider: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_FM),

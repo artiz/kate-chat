@@ -52,7 +52,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Add status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
-* Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do no wait response in cycle but use 
+* Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do not wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Add support for Google Vertex AI provider
 * Finish "Forgot password?" logic for local login
@@ -255,23 +255,22 @@ For running local models with Ollama:
   - Web search and code interpreter tools
 
 
-### Installation
+### Quick Start
 
 1. Clone the repository
 ```
 git clone https://github.com/artiz/kate-chat.git
 cd kate-chat
+npm install
+npm run dev
 ```
 
-2. Set up environment variables
-```bash
-cp api/.env.example api/.env
-cp api-rust/.env.example api-rust/.env
-cp client/.env.example client/.env
-```
-Edit the `.env` files with your configuration settings.
+App will be available at `http://localhost:3000`
+There you could use own OpenAI API key, AWS Bedrock credentials or Yandex FM to connect to cloud models.
+Local Ollama-like models could be added as Custom models.
 
-3. Start the production-like environment using Docker
+
+### Production-like environment using Docker
 
 Add the following to your `/etc/hosts` file:
 ```
@@ -281,7 +280,7 @@ Then run the following commands:
 
 ```bash
 export COMPOSE_BAKE=true
-npm run install:all
+npm install
 npm run build:client
 docker compose up --build
 ```
@@ -294,7 +293,7 @@ To run the projects in development mode:
 
 #### Default Node.js API/Client
 ```bash
-npm run install:all
+npm install
 docker compose up redis localstack postgres mysql mssql -d
 npm run dev
 ```
@@ -322,6 +321,18 @@ cargo run
 APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
 ```
 
+### Environment setup
+
+App could be tuned for your needs with environment variables:
+
+```bash
+cp api/.env.example api/.env
+cp api-rust/.env.example api-rust/.env
+cp client/.env.example client/.env
+```
+Edit the `.env` files with your configuration settings.
+
+
 ### API DB Migrations
 
 * Create new migration
@@ -337,8 +348,11 @@ npm run migration:generate <migration name>
 npm run migration:run
 ```
 
-
 NOTE: do not update more than one table definition at once, sqlite sometimes applies migrations incorrectly due to "temporary_xxx" tables creation.
+NOTE: do not use more then 1 foreign key with ON DELETE CASCADE in one table for MS SQL, or use NO ACTION as fallback:
+```
+@ManyToOne(() => Message, { onDelete: DB_TYPE == "mssql" ? "NO ACTION" : "CASCADE" })
+```
 
 ### Production Build
 
@@ -358,7 +372,6 @@ docker run --env-file=./api/.env  -p4000:4000 katechat-api
 docker build -t katechat-client --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f client/Dockerfile  
 docker run -p3000:80 katechat-client
 ```
-
 
 All-in-one service
 ```bash
@@ -390,37 +403,6 @@ docker run -it --rm --pid=host --env-file=./document-processor/.env \
  --env SQS_ENDPOINT="http://host.docker.internal:4566" \
  -p8080:8080 katechat-document-processor
 ```
-
-
-
-## API Documentation
-
-### GraphQL API
-Available at `/graphql` endpoint with the following main queries/mutations:
-
-#### Queries
-- `currentUser` - Get current authenticated user
-- `getChats` - Get list of user's chats with pagination
-- `getChatById` - Get a specific chat
-- `getChatMessages` - Get messages for a specific chat
-- `getModelServiceProviders` - Get list of available AI model providers
-- `getModels` - Get list of available AI models
-
-#### Mutations
-- `login` - Authenticate a user
-- `register` - Register a new user
-- `createChat` - Create a new chat
-- `updateChat` - Update chat details
-- `deleteChat` - Delete a chat
-- `createMessage` - Send a message and generate AI response
-- `deleteMessage` - Delete a message
-
-#### Subscriptions
-- `newMessage` - Real-time updates for new messages in a chat
-
-## Authentication
-
-Authentication is handled via JWT tokens. When a user logs in or registers, they receive a token that must be included in the Authorization header for subsequent requests.
 
 ## Screenshots
 
@@ -463,10 +445,9 @@ KateChat includes an admin dashboard for managing users and viewing system stati
    ```env
    DEFAULT_ADMIN_EMAILS=admin@example.com,another-admin@example.com
    ```
-
 2. Users with these email addresses will automatically receive admin privileges upon:
    - Registration
    - Login (existing users)
    - OAuth authentication (Google/GitHub)
 
-3. Admin users can access the dashboard at `/admin` in the web interface
+

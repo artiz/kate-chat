@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
-import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert } from "@mantine/core";
+import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert, Stack } from "@mantine/core";
 import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import {
@@ -94,8 +94,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   useEffect(() => {
     if (!chatId) return;
+
+    if (loadCompleted && !appConfig?.s3Connected) {
+      notifications.show({
+        title: "Warning",
+        message: "S3 connection is not enabled. You cannot upload/generate images.",
+        color: "yellow",
+      });
+    }
     setSelectedRagDocIds([]);
-  }, [chatId]);
+  }, [chatId, loadCompleted]);
 
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
@@ -428,11 +436,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </div>
       </div>
 
-      <Group>
-        {!appConfig?.s3Connected && (
-          <Alert color="yellow">S3 connection is not enabled. You cannot upload/generate images.</Alert>
-        )}
-
+      <Stack justify="stretch" align="center">
         {!appConfig?.demoMode && appConfig?.ragSupported && !appConfig?.ragEnabled && (
           <Alert color="yellow">
             RAG is supported (DB is PostgreSQL/MSSQL/SQLite) but processing models are not setup. However, the
@@ -448,7 +452,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           loading={uploadLoading}
           documents={uploadingDocs || []}
         />
-      </Group>
+      </Stack>
 
       <ChatPluginsContextProvider context={{ mcpTokens }}>
         <ChatMessagesContainer

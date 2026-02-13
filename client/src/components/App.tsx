@@ -107,11 +107,11 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // Handle errors from the initial data query
     if (isError) {
-      if (
-        "status" in error &&
-        (error.status === "PARSING_ERROR" || error.status === "CUSTOM_ERROR") &&
-        (error.error?.includes(ERROR_UNAUTHORIZED) || error.error?.includes(ERROR_FORBIDDEN))
-      ) {
+      const authFailed =
+        ("status" in error && [403, 401, "PARSING_ERROR", "CUSTOM_ERROR"].includes(error.status)) ||
+        ("error" in error && [ERROR_UNAUTHORIZED, ERROR_FORBIDDEN].some(err => String(error.error).includes(err)));
+
+      if (authFailed) {
         dispatch(logout());
         navigate("/login");
       } else if ("error" in error) {
