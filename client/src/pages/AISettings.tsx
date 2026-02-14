@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Container, Title } from "@mantine/core";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
@@ -12,6 +13,7 @@ interface IProps {
 }
 
 export const AISettings = ({ onReloadAppData }: IProps) => {
+  const { t } = useTranslation();
   const { currentUser } = useAppSelector(state => state.user);
   const dispatch = useAppDispatch();
 
@@ -21,15 +23,15 @@ export const AISettings = ({ onReloadAppData }: IProps) => {
         dispatch(setUser(data.updateUser));
       }
       notifications.show({
-        title: "Settings Updated",
-        message: "Your AI settings have been updated successfully",
+        title: t("settings.aiUpdated"),
+        message: t("settings.aiUpdatedMessage"),
         color: "green",
       });
     },
     onError: error => {
       notifications.show({
-        title: "Update Failed",
-        message: error.message || "Failed to update settings",
+        title: t("connectivity.updateFailed"),
+        message: error.message || t("connectivity.updateFailedMessage"),
         color: "red",
       });
     },
@@ -47,7 +49,7 @@ export const AISettings = ({ onReloadAppData }: IProps) => {
   return (
     <Container size="lg" py="xl">
       <Title order={2} mb="lg">
-        AI Settings
+        {t("aiSettings.title")}
       </Title>
       <AISettingsComponent user={currentUser} updateUser={handleUpdateUser} updateLoading={updateLoading} />
     </Container>

@@ -5,6 +5,7 @@ import { REGISTER_MUTATION } from "../store/services/graphql.queries";
 import { useNavigate } from "react-router-dom";
 import { TextInput, PasswordInput, Button, Group, Stack, Container, Title, Paper, Text, Anchor } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
 import { logout, useAppDispatch, useAppSelector } from "../store";
 import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
@@ -38,6 +39,7 @@ const RegisterForm: React.FC = () => {
   const navigate = useNavigate();
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
   const { appTitle } = getClientConfig();
+  const { t } = useTranslation();
 
   // If already authenticated, redirect to chat
   useEffect(() => {
@@ -57,8 +59,8 @@ const RegisterForm: React.FC = () => {
       dispatch(logout());
       dispatch(loginFailure());
       notifications.show({
-        title: "Registration Failed",
-        message: error.message || "Failed to register. Please try again.",
+        title: t("auth.registrationFailed"),
+        message: error.message || t("auth.registrationFailedMessage"),
         color: "red",
       });
     },
@@ -74,12 +76,12 @@ const RegisterForm: React.FC = () => {
       lastName: "",
     },
     validate: {
-      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : "Invalid email"),
-      password: (value: string) => (value.length < 8 ? "Password must be at least 8 characters" : null),
+      email: (value: string) => (/^\S+@\S+$/.test(value) ? null : t("validation.invalidEmail")),
+      password: (value: string) => (value.length < 8 ? t("validation.passwordMinLength") : null),
       confirmPassword: (value: string, values: RegisterFormProps) =>
-        value !== values.password ? "Passwords do not match" : null,
-      firstName: (value: string) => (value.length === 0 ? "First name is required" : null),
-      lastName: (value: string) => (value.length === 0 ? "Last name is required" : null),
+        value !== values.password ? t("validation.passwordsDoNotMatch") : null,
+      firstName: (value: string) => (value.length === 0 ? t("validation.firstNameRequired") : null),
+      lastName: (value: string) => (value.length === 0 ? t("validation.lastNameRequired") : null),
     },
   });
 
@@ -90,8 +92,8 @@ const RegisterForm: React.FC = () => {
   const handleSubmit = async (values: typeof form.values) => {
     if (!executeRecaptcha) {
       notifications.show({
-        title: "reCAPTCHA Error",
-        message: "reCAPTCHA has not loaded. Please try again later.",
+        title: t("auth.recaptchaError"),
+        message: t("auth.recaptchaNotLoaded"),
         color: "red",
       });
       return;
@@ -116,8 +118,8 @@ const RegisterForm: React.FC = () => {
     } catch (error) {
       dispatch(loginFailure());
       notifications.show({
-        title: "Registration Failed",
-        message: "There was an error with the reCAPTCHA verification.",
+        title: t("auth.registrationFailed"),
+        message: t("auth.recaptchaVerificationError"),
         color: "red",
       });
     }
@@ -126,53 +128,63 @@ const RegisterForm: React.FC = () => {
   return (
     <Container size={420} my={40}>
       <Title ta="center" fw={900}>
-        Create an Account
+        {t("auth.createAccount")}
       </Title>
       <Text c="dimmed" size="sm" ta="center" mt={5}>
-        Register to start using {appTitle}
+        {t("auth.registerSubtitle", { appTitle })}
       </Text>
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
         <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             <TextInput
-              label="Email"
+              label={t("auth.email")}
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               required
               {...form.getInputProps("email")}
             />
 
             <Group grow>
               <TextInput
-                label="First Name"
-                placeholder="Your first name"
+                label={t("auth.firstName")}
+                placeholder={t("auth.firstNamePlaceholder")}
                 required
                 {...form.getInputProps("firstName")}
               />
-              <TextInput label="Last Name" placeholder="Your last name" required {...form.getInputProps("lastName")} />
+              <TextInput
+                label={t("auth.lastName")}
+                placeholder={t("auth.lastNamePlaceholder")}
+                required
+                {...form.getInputProps("lastName")}
+              />
             </Group>
 
-            <PasswordInput label="Password" placeholder="Your password" required {...form.getInputProps("password")} />
+            <PasswordInput
+              label={t("auth.password")}
+              placeholder={t("auth.passwordPlaceholder")}
+              required
+              {...form.getInputProps("password")}
+            />
 
             <PasswordInput
-              label="Confirm Password"
-              placeholder="Confirm your password"
+              label={t("auth.confirmPassword")}
+              placeholder={t("auth.confirmPasswordPlaceholder")}
               required
               {...form.getInputProps("confirmPassword")}
             />
           </Stack>
 
           <Button type="submit" fullWidth mt="xl" loading={loading}>
-            Register
+            {t("auth.register")}
           </Button>
 
           <OAuthButtons variant="light" />
 
           <Text ta="center" mt="md">
-            Already have an account?{" "}
+            {t("auth.haveAccount")}{" "}
             <Anchor component="button" type="button" onClick={() => navigate("/login")}>
-              Sign in
+              {t("auth.signIn")}
             </Anchor>
           </Text>
         </form>

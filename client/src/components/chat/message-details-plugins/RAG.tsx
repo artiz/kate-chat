@@ -2,10 +2,11 @@ import React, { Fragment } from "react";
 import { Text, Box, Group } from "@mantine/core";
 import { Message, Document } from "@/types/graphql";
 import { IconClipboardData, IconFileSearch, IconReportSearch } from "@tabler/icons-react";
+import { TFunction, t as globalT } from "i18next";
 
 /** RAG Details - Display semantic search documents and relevant chunks */
 export const RAG =
-  (documents: Document[] = []) =>
+  (documents: Document[] = [], t: TFunction = globalT) =>
   (message: Message): React.ReactNode => {
     if (!message || !message.metadata) return null;
 
@@ -31,7 +32,7 @@ export const RAG =
               <IconFileSearch className="message-details-icon" size={16} />
             )}
             <Text fw={600} size="sm">
-              {relevantsChunks.length ? "RAG search results" : "RAG search"}
+              {relevantsChunks.length ? t("messageDetails.ragSearchResults") : t("messageDetails.ragSearch")}
             </Text>
           </Group>
 
@@ -66,17 +67,17 @@ export const RAG =
           <Group justify="flex-start" align="center" gap="xs" mt="lg" className="message-details-header">
             <IconClipboardData size={16} className="message-details-icon" />
             <Text fw={600} size="sm">
-              Related chunks
+              {t("messageDetails.relatedChunks")}
             </Text>
           </Group>
 
           {relevantsChunks.map((chunk, idx) => (
             <div key={chunk.id || idx} className="message-details-content">
               <Text size="xs" c="dimmed">
-                {chunk.documentName || chunk.id} (Page {chunk.page})
+                {chunk.documentName || chunk.id} ({t("messageDetails.page", { page: chunk.page })})
               </Text>
               <Text size="xs" c="dimmed">
-                Relevance: {chunk.relevance || "N/A"}
+                {t("messageDetails.relevance")} {chunk.relevance || t("chat.na")}
               </Text>
               <Box fz="12">
                 <pre>{chunk.content}</pre>

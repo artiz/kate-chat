@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Modal, Button, Group, Text, Loader, ScrollArea, Box, Textarea, ActionIcon, Tooltip } from "@mantine/core";
 import { IconPlayerPlay, IconTrash, IconDownload, IconCopy, IconCheck } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 
 import "./PythonExecutorModal.scss";
 
@@ -143,6 +144,7 @@ const CopyImageButton: React.FC<{ dataUrl: string }> = ({ dataUrl }) => {
 };
 
 export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened, onClose, initialCode }) => {
+  const { t } = useTranslation();
   const [code, setCode] = useState(initialCode);
   const [output, setOutput] = useState<OutputEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -180,7 +182,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         setLoading(false);
       })
       .catch(err => {
-        setError(`Failed to load Python runtime: ${err.message}`);
+        setError(t("python.failedToLoadRuntime", { error: err.message }));
         setLoading(false);
       });
   }, [opened]);
@@ -302,11 +304,11 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
       fullScreen
       title={
         <Group gap="xs">
-          <Text fw={600}>Python Executor</Text>
+          <Text fw={600}>{t("python.title")}</Text>
           {!pyodideReady && !error && <Loader size="xs" />}
           {pyodideReady && (
             <Text size="xs" c="teal">
-              (Pyodide ready)
+              {t("python.pyodideReady")}
             </Text>
           )}
         </Group>
@@ -326,10 +328,10 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         <div className="python-executor-editor">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
-              Code
+              {t("python.code")}
             </Text>
             <Text size="xs" c="dimmed">
-              Ctrl+Enter to run
+              {t("python.ctrlEnterToRun")}
             </Text>
           </Group>
           <Textarea
@@ -347,7 +349,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
                 overflowWrap: "normal",
               },
             }}
-            placeholder="Enter Python code..."
+            placeholder={t("python.enterPythonCode")}
             readOnly={loading}
           />
         </div>
@@ -355,17 +357,17 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         <div className="python-executor-output">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
-              Output
+              {t("python.output")}
             </Text>
             <Group gap="xs">
               {output.length > 0 && (
                 <>
-                  <Tooltip label="Download output">
+                  <Tooltip label={t("python.downloadOutput")}>
                     <ActionIcon size="sm" variant="subtle" color="gray" onClick={downloadOutput}>
                       <IconDownload size={20} />
                     </ActionIcon>
                   </Tooltip>
-                  <Tooltip label="Clear output">
+                  <Tooltip label={t("python.clearOutput")}>
                     <ActionIcon size="sm" variant="subtle" color="gray" onClick={clearOutput}>
                       <IconTrash size={20} />
                     </ActionIcon>
@@ -379,7 +381,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
             <Box className="python-executor-output-content">
               {output.length === 0 && !waitingForInput && (
                 <Text size="xs" c="dimmed" fs="italic">
-                  Output will appear here...
+                  {t("python.outputPlaceholder")}
                 </Text>
               )}
               {output.map((entry, idx) =>
@@ -417,7 +419,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
                         submitInput();
                       }
                     }}
-                    placeholder="Enter input..."
+                    placeholder={t("python.enterInput")}
                     autoFocus
                   />
                 </div>
@@ -429,7 +431,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
 
       <Group justify="flex-end" mt="md">
         <Button variant="default" onClick={onClose}>
-          Close
+          {t("common.close")}
         </Button>
         <Button
           color="teal"
@@ -438,7 +440,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
           loading={loading}
           leftSection={<IconPlayerPlay size={16} />}
         >
-          Run
+          {t("common.run")}
         </Button>
       </Group>
     </Modal>

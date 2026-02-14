@@ -3,3 +3,4 @@ export * from "./components";
 export * from "./controls";
 export * from "./hooks";
 export * from "./lib";
+export * from "./i18n";

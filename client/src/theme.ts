@@ -47,7 +47,8 @@ const buildThemeBase = (): MantineThemeOverride => {
       },
       NavLink: {
         defaultProps: {
-          p: "xs md",
+          py: "xs",
+          px: "md",
         },
       },
     },

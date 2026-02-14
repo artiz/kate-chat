@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { CodePlugin } from "@katechat/ui";
 import { PythonExecutorModal } from "./PythonExecutorModal";
+import { useTranslation } from "react-i18next";
 
 /**
  * Hook providing a Python CodePlugin backed by Pyodide.
@@ -12,6 +13,7 @@ export function useCodePlugins(): {
 } {
   const [opened, setOpened] = useState(false);
   const [initialCode, setInitialCode] = useState("");
+  const { t, i18n } = useTranslation();
 
   const execute = useCallback((code: string, _language: string) => {
     setInitialCode(code);
@@ -24,9 +26,9 @@ export function useCodePlugins(): {
 
   const codePlugins = useMemo<Record<string, CodePlugin>>(
     () => ({
-      python: { label: "Run", execute },
+      python: { label: t("chat.codeRun"), execute },
     }),
-    [execute]
+    [execute, i18n.language]
   );
 
   const PythonCodeModal = <PythonExecutorModal opened={opened} onClose={onClose} initialCode={initialCode} />;

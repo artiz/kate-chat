@@ -9,6 +9,7 @@ import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import "./ChatMessage.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
+import { useTranslation } from "react-i18next";
 
 interface ChatMessageProps {
   message: Message;
@@ -42,12 +43,13 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
   const [showMainMessage, setShowMainMessage] = React.useState(true);
   const [showDetails, setShowDetails] = React.useState(false);
+  const { t, i18n } = useTranslation();
 
   const timestamp = new Date(updatedAt).toLocaleString();
   const isUserMessage = role === MessageRole.USER;
   const username = isUserMessage
-    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
-    : modelName || "AI";
+    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || t("You")
+    : modelName || t("AI");
 
   const codeHeaderTemplate = `
         <span class="title">
@@ -75,7 +77,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                       <path d="M12 4l0 12" />
                   </svg>
               </div>
-              <span class="action-btn-label">Download</span>
+              <span class="action-btn-label"><DOWNLOAD_TITLE></span>
             </div>
 
             <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn" data-lang="<LANG>">
@@ -102,10 +104,13 @@ export const ChatMessage = (props: ChatMessageProps) => {
                         <path d="M11 14l2 2l4 -4" />
                     </svg>
                 </div>
-                <span class="action-btn-label">Copy</span>
+                <span class="action-btn-label"><COPY_TITLE></span>
             </div>
       </div>
   `;
+
+  const donwloadTitle = useMemo(() => t("Download"), [i18n.language]);
+  const copyTitle = useMemo(() => t("Copy"), [i18n.language]);
 
   const processCodeElements = useCallback(
     debounce(() => {
@@ -131,7 +136,11 @@ export const ChatMessage = (props: ChatMessageProps) => {
               </div>`
             : "";
 
-          header.innerHTML = codeHeaderTemplate.replaceAll("<LANG>", lang).replace("<EXECUTE_BTN>", executeBtn);
+          header.innerHTML = codeHeaderTemplate
+            .replaceAll("<LANG>", lang)
+            .replace("<EXECUTE_BTN>", executeBtn)
+            .replace("<DOWNLOAD_TITLE>", donwloadTitle)
+            .replace("<COPY_TITLE>", copyTitle);
 
           pre.parentNode?.insertBefore(header, pre);
           pre.parentNode?.insertBefore(block, pre);
@@ -147,7 +156,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
         }
       });
     }, 250),
-    []
+    [donwloadTitle, copyTitle, codePlugins]
   );
 
   useEffect(() => {
@@ -159,7 +168,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
       processCodeElements(); // Initial call to inject code elements
       return () => observer.disconnect();
     }
-  }, [role, streaming]);
+  }, [role, streaming, processCodeElements]);
 
   const toggleDetails = () => setShowDetails(s => !s);
 
@@ -211,7 +220,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <CopyMessageButton messageId={id} messageIndex={index} />
 
             {details && (
-              <Tooltip label="Details" position="top" withArrow>
+              <Tooltip label={t("Details")} position="top" withArrow>
                 <ActionIcon
                   className="edit-message-btn"
                   data-message-id={id}
@@ -249,6 +258,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     details,
     showDetails,
     streaming,
+    i18n.language,
   ]);
 
   const linkedMessagesCmp = useMemo(() => {
@@ -275,7 +285,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
         ))}
       </Carousel>
     );
-  }, [linkedMessages, models, pluginsLoader, index]);
+  }, [linkedMessages, models, pluginsLoader, index, i18n.language]);
 
   if (!linkedMessagesCmp) {
     return (
@@ -291,7 +301,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
         <Switch
           checked={showMainMessage}
           onChange={event => setShowMainMessage(event.currentTarget.checked)}
-          label={showMainMessage ? "Main" : "Others"}
+          label={showMainMessage ? t("Main") : t("Others")}
           size="sm"
         />
       </div>

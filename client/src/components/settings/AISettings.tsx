@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Title, Paper, Button, Group, Stack, Select, Textarea, SimpleGrid, NumberInput } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 import { ModelType } from "@katechat/ui";
 import { useAppSelector } from "@/store";
 import { UpdateUserInput, User } from "@/store/slices/userSlice";
@@ -11,6 +12,7 @@ interface AISettingsProps {
 }
 
 export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, updateLoading }) => {
+  const { t } = useTranslation();
   const { models } = useAppSelector(state => state.models);
 
   // Default settings form state
@@ -103,14 +105,14 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
     <Stack gap="lg">
       <Paper withBorder p="md">
         <Title order={4} mb="md">
-          Chat Defaults
+          {t("aiSettings.chatDefaults")}
         </Title>
         <form name="user-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
           <Stack gap="md">
             <Select
-              label="Default AI Model"
-              description="This model will be used by default for new chats"
-              placeholder="Select a model"
+              label={t("aiSettings.defaultModel")}
+              description={t("aiSettings.defaultModelDescription")}
+              placeholder={t("aiSettings.selectModel")}
               value={defaultModelId}
               onChange={value => setDefaultModelId(value || "")}
               data={modelSelectData}
@@ -119,9 +121,9 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
             />
 
             <Textarea
-              label="Default System Prompt"
-              description="This prompt will be used for all new chats to guide model behavior"
-              placeholder="You are a helpful AI assistant..."
+              label={t("aiSettings.defaultSystemPrompt")}
+              description={t("aiSettings.defaultSystemPromptDescription")}
+              placeholder={t("aiSettings.defaultSystemPromptPlaceholder")}
               value={defaultSystemPrompt}
               onChange={e => setDefaultSystemPrompt(e.currentTarget.value)}
               autosize
@@ -131,8 +133,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <NumberInput
-                label="Default Temperature"
-                description="Controls randomness (0-1)"
+                label={t("aiSettings.defaultTemperature")}
+                description={t("aiSettings.defaultTemperatureDescription")}
                 placeholder="0.7"
                 value={defaultTemperature}
                 onChange={value => setDefaultTemperature(typeof value === "number" ? value : undefined)}
@@ -143,8 +145,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               />
 
               <NumberInput
-                label="Default Max Tokens"
-                description="Maximum tokens to generate"
+                label={t("aiSettings.defaultMaxTokens")}
+                description={t("aiSettings.defaultMaxTokensDescription")}
                 placeholder="2048"
                 value={defaultMaxTokens}
                 onChange={value => setDefaultMaxTokens(typeof value === "number" ? value : undefined)}
@@ -154,8 +156,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               />
 
               <NumberInput
-                label="Default Top P"
-                description="Nucleus sampling threshold (0-1)"
+                label={t("aiSettings.defaultTopP")}
+                description={t("aiSettings.defaultTopPDescription")}
                 placeholder="0.9"
                 value={defaultTopP}
                 onChange={value => setDefaultTopP(typeof value === "number" ? value : undefined)}
@@ -166,8 +168,8 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               />
 
               <NumberInput
-                label="Default Images Count"
-                description="Number of images to generate"
+                label={t("aiSettings.defaultImagesCount")}
+                description={t("aiSettings.defaultImagesCountDescription")}
                 placeholder="1"
                 value={defaultImagesCount}
                 onChange={value => setDefaultImagesCount(typeof value === "number" ? value : undefined)}
@@ -185,10 +187,10 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                 onClick={handleDefaultsReset}
                 disabled={!isUserSettingsDirty}
               >
-                Reset
+                {t("common.reset")}
               </Button>
               <Button type="submit" color="green" loading={updateLoading} disabled={!isUserSettingsDirty}>
-                Save
+                {t("common.save")}
               </Button>
             </Group>
           </Stack>
@@ -199,14 +201,14 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
         <form name="documents-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
           <Stack gap="md">
             <Title order={4}>
-              <a id="document_processing">Document Processing</a>
+              <a id="document_processing">{t("aiSettings.documentProcessing")}</a>
             </Title>
 
             <Select
               name="embeddings-model"
-              label="Documents Embeddings Model"
-              description="Model used to generate vector embeddings for document chunks"
-              placeholder="Select an embeddings model"
+              label={t("aiSettings.embeddingsModel")}
+              description={t("aiSettings.embeddingsModelDescription")}
+              placeholder={t("aiSettings.selectEmbeddingsModel")}
               value={documentsEmbeddingsModelId}
               onChange={value => setDocumentsEmbeddingsModelId(value || "")}
               data={embeddingModelSelectData}
@@ -216,9 +218,9 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
             <Select
               name="summarization-model"
-              label="Document Summarization Model"
-              description="Model used to generate document summaries (up to 1024 words)"
-              placeholder="Select a chat model"
+              label={t("aiSettings.summarizationModel")}
+              description={t("aiSettings.summarizationModelDescription")}
+              placeholder={t("aiSettings.selectChatModel")}
               value={documentSummarizationModelId}
               onChange={value => setDocumentSummarizationModelId(value || "")}
               data={modelSelectData}
@@ -234,10 +236,10 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
                 onClick={handleDocumentsModelsReset}
                 disabled={!isDocumentsSettingsDirty}
               >
-                Reset
+                {t("common.reset")}
               </Button>
               <Button type="submit" color="green" loading={updateLoading} disabled={!isDocumentsSettingsDirty}>
-                Save
+                {t("common.save")}
               </Button>
             </Group>
           </Stack>

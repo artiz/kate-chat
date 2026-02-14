@@ -29,6 +29,7 @@ import { gql, useQuery, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { useMediaQuery } from "@mantine/hooks";
+import { useTranslation } from "react-i18next";
 import { MCPToolsDialog } from "./MCPToolsDialog";
 import { MCPServerFormDialog } from "./MCPServerFormDialog";
 import { MCPServer } from "@/types/graphql";
@@ -42,6 +43,7 @@ const AUTH_TYPES = [
 ];
 
 export const MCPServersAdmin: React.FC = () => {
+  const { t } = useTranslation();
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null);
@@ -63,7 +65,7 @@ export const MCPServersAdmin: React.FC = () => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message,
         color: "red",
       });
@@ -72,9 +74,9 @@ export const MCPServersAdmin: React.FC = () => {
 
   const handleDeleteServer = (server: MCPServer) => {
     modals.openConfirmModal({
-      title: "Delete MCP Server",
-      children: <Text size="sm">Are you sure you want to delete "{server.name}"? This action cannot be undone.</Text>,
-      labels: { confirm: "Delete", cancel: "Cancel" },
+      title: t("mcp.deleteMcpServer"),
+      children: <Text size="sm">{t("mcp.deleteMcpServerMessage", { name: server.name })}</Text>,
+      labels: { confirm: t("common.delete"), cancel: t("common.cancel") },
       confirmProps: { color: "red" },
       onConfirm: () => deleteServer({ variables: { input: { id: server.id } } }),
     });
@@ -105,7 +107,7 @@ export const MCPServersAdmin: React.FC = () => {
 
   if (serversError) {
     return (
-      <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red" variant="light">
+      <Alert icon={<IconAlertCircle size="1rem" />} title={t("common.error")} color="red" variant="light">
         Failed to load MCP servers: {serversError}
       </Alert>
     );
@@ -115,7 +117,7 @@ export const MCPServersAdmin: React.FC = () => {
     <Stack gap="xl">
       <Group justify="space-between" align="center">
         <Group>
-          <Tooltip label="Refresh">
+          <Tooltip label={t("common.refresh")}>
             <ActionIcon
               variant="light"
               color="blue"
@@ -127,13 +129,13 @@ export const MCPServersAdmin: React.FC = () => {
             </ActionIcon>
           </Tooltip>
           <Button leftSection={<IconPlus size="1rem" />} onClick={handleAddServer}>
-            Add Server
+            {t("mcp.addServer")}
           </Button>
         </Group>
       </Group>
 
       <Text c="dimmed" size="sm">
-        Register external MCP (Model Context Protocol) servers to extend AI capabilities with custom tools.
+        {t("mcp.mcpDescription")}
       </Text>
 
       {serversLoading ? (
@@ -144,13 +146,13 @@ export const MCPServersAdmin: React.FC = () => {
         <Paper withBorder p="xl" ta="center">
           <IconPlugConnected size="3rem" style={{ opacity: 0.3 }} />
           <Text size="lg" mt="md" c="dimmed">
-            No MCP servers registered
+            {t("mcp.noServersTitle")}
           </Text>
           <Text size="sm" c="dimmed">
-            Add an MCP server to extend AI with custom tools
+            {t("mcp.noServersSubtitle")}
           </Text>
           <Button mt="md" leftSection={<IconPlus size="1rem" />} onClick={handleAddServer}>
-            Add Your First Server
+            {t("mcp.addFirstServer")}
           </Button>
         </Paper>
       ) : (
@@ -176,17 +178,17 @@ export const MCPServersAdmin: React.FC = () => {
                     )}
                   </Stack>
                   <ActionIcon.Group>
-                    <Tooltip label="View Tools">
+                    <Tooltip label={t("mcp.viewTools")}>
                       <ActionIcon variant="light" color="blue" size="lg" onClick={() => handleViewTools(server)}>
                         <IconTool size="20" />
                       </ActionIcon>
                     </Tooltip>
-                    <Tooltip label="Edit">
+                    <Tooltip label={t("common.edit")}>
                       <ActionIcon variant="light" color="gray" size="lg" onClick={() => handleEditServer(server)}>
                         <IconEdit size="20" />
                       </ActionIcon>
                     </Tooltip>
-                    <Tooltip label="Delete">
+                    <Tooltip label={t("common.delete")}>
                       <ActionIcon variant="light" color="red" size="lg" onClick={() => handleDeleteServer(server)}>
                         <IconTrash size="20" />
                       </ActionIcon>
@@ -195,13 +197,13 @@ export const MCPServersAdmin: React.FC = () => {
                 </Group>
                 <Group gap="sm" mt="sm">
                   <Badge variant="light" color="blue" size="sm">
-                    {server.tools?.length || 0} tools
+                    {t("mcp.toolsCount", { count: server.tools?.length || 0 })}
                   </Badge>
                   <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="sm">
-                    {AUTH_TYPES.find(t => t.value === server.authType)?.label || server.authType}
+                    {AUTH_TYPES.find(at => at.value === server.authType)?.label || server.authType}
                   </Badge>
                   <Badge color={server.isActive ? "green" : "red"} size="sm">
-                    {server.isActive ? "Active" : "Inactive"}
+                    {server.isActive ? t("common.active") : t("common.inactive")}
                   </Badge>
                 </Group>
               </Card>

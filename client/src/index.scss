@@ -28,9 +28,9 @@ body,
 }
 
 .mantine-Container-root {
-  --container-size-md: calc(75rem * var(--mantine-scale)) !important;
-  --container-size-lg: calc(100rem * var(--mantine-scale)) !important;
-  --container-size-xl: calc(120rem * var(--mantine-scale)) !important;
+  --container-size-md: calc(60rem * var(--mantine-scale)) !important;
+  --container-size-lg: calc(75rem * var(--mantine-scale)) !important;
+  --container-size-xl: calc(100rem * var(--mantine-scale)) !important;
 }
 
 [data-mantine-color-scheme="light"] {

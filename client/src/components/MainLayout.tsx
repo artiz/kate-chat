@@ -26,9 +26,11 @@ import {
 } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useTheme } from "@katechat/ui";
+import { useTranslation } from "react-i18next";
 import { useAppSelector } from "../store";
 import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
+import { LanguageSelector } from "./LanguageSelector";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { getClientConfig } from "@/global-config";
 
@@ -38,6 +40,7 @@ export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { colorScheme, toggleColorScheme } = useTheme();
+  const { t } = useTranslation();
 
   // Get user data from Redux store
   const { currentUser, appConfig } = useAppSelector(state => state.user);
@@ -80,19 +83,21 @@ export const MainLayout: React.FC = () => {
             </Text>
             {appConfig?.demoMode && (
               <Tooltip
-                label={`Demo mode, max chats per user: ${appConfig.maxChats},
-                      max chat messages: ${appConfig.maxChatMessages},
-                      max images: ${appConfig.maxImages}`}
+                label={t("nav.demoModeTooltip", {
+                  maxChats: appConfig.maxChats,
+                  maxChatMessages: appConfig.maxChatMessages,
+                  maxImages: appConfig.maxImages,
+                })}
                 color="red"
               >
                 <Text size="sm" c="red" fw={500}>
-                  Demo Mode
+                  {t("nav.demoMode")}
                 </Text>
               </Tooltip>
             )}
           </Group>
           <Group>
-            <Tooltip label={colorScheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            <Tooltip label={colorScheme === "dark" ? t("nav.switchToLight") : t("nav.switchToDark")}>
               <ActionIcon
                 variant="subtle"
                 onClick={() => {
@@ -105,6 +110,8 @@ export const MainLayout: React.FC = () => {
                 {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
               </ActionIcon>
             </Tooltip>
+
+            <LanguageSelector />
 
             <Menu shadow="md" width={200} position="bottom-end">
               <Menu.Target>
@@ -128,20 +135,20 @@ export const MainLayout: React.FC = () => {
 
               <Menu.Dropdown>
                 <Menu.Item leftSection={<IconUser size={14} />} onClick={() => navigate("/profile")}>
-                  Profile
+                  {t("nav.profile")}
                 </Menu.Item>
 
                 <Menu.Item leftSection={<IconWifi size={14} />} onClick={() => navigate("/connectivity")}>
-                  Connectivity Settings
+                  {t("nav.connectivitySettings")}
                 </Menu.Item>
 
                 <Menu.Item leftSection={<IconRobot size={14} />} onClick={() => navigate("/models")}>
-                  Models
+                  {t("nav.models")}
                 </Menu.Item>
 
                 <Divider />
                 <Menu.Item leftSection={<IconLogout size={14} />} onClick={handleLogout} color="red">
-                  Logout
+                  {t("nav.logout")}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>

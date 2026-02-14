@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Button, Group, Text, Stack } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 
 interface DeleteMessageModalProps {
   isOpen: boolean;
@@ -14,22 +15,23 @@ export const DeleteMessageModal: React.FC<DeleteMessageModalProps> = ({
   onDeleteSingle,
   onDeleteWithFollowing,
 }) => {
+  const { t } = useTranslation();
   return (
-    <Modal opened={isOpen} onClose={onClose} title="Delete Message" centered>
+    <Modal opened={isOpen} onClose={onClose} title={t("chat.deleteMessageTitle")} centered>
       <Stack>
-        <Text>What would you like to delete?</Text>
+        <Text>{t("chat.deleteMessagePrompt")}</Text>
 
         <Group mt="md">
           <Button variant="outline" color="red" onClick={onDeleteSingle}>
-            {onDeleteWithFollowing ? "Only this message" : "Delete Message"}
+            {onDeleteWithFollowing ? t("chat.onlyThisMessage") : t("chat.deleteMessageTitle")}
           </Button>
           {onDeleteWithFollowing && (
             <Button color="red" onClick={onDeleteWithFollowing}>
-              This one and all following
+              {t("chat.thisAndFollowing")}
             </Button>
           )}
           <Button ms="4" variant="outline" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         </Group>
       </Stack>

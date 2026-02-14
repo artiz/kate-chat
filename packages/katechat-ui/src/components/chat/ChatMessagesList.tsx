@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { notEmpty, ok } from "@/lib/assert";
+import { useTranslation } from "react-i18next";
 import { Message, Model, PluginProps, CodePlugin } from "@/core";
 import { ChatMessage } from "./message/ChatMessage";
 import { ImagePopup } from "../modal/ImagePopup";
@@ -26,6 +27,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
   codePlugins,
   models = [],
 }) => {
+  const { t } = useTranslation();
   const componentRef = useRef<HTMLDivElement>(null);
 
   const [imageToShow, setImageToShow] = useState<string | undefined>();
@@ -104,8 +106,8 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
 
           if (!code) {
             return notifications.show({
-              title: "Error",
-              message: "Code block is empty",
+              title: t("Error"),
+              message: t("Code block is empty"),
               color: "red",
             });
           }
@@ -113,8 +115,8 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
           if (run) {
             if (!lang) {
               return notifications.show({
-                title: "Error",
-                message: "Language is not specified for this code block",
+                title: t("Error"),
+                message: t("Language is not specified for this code block"),
                 color: "red",
               });
             }
@@ -186,8 +188,8 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
               .write([new ClipboardItem({ [blobHTML.type]: blobHTML, [blobPlain.type]: blobPlain })])
               .catch(err =>
                 notifications.show({
-                  title: "Error",
-                  message: err.message || "Failed to copy message",
+                  title: t("Error"),
+                  message: err.message || t("Failed to copy message"),
                   color: "red",
                 })
               );

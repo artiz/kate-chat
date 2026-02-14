@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Title, Text, Card, Group, Stack, Loader, Button, Modal, TextInput, Alert, Table } from "@mantine/core";
 import { DatePicker, DateStringValue } from "@mantine/dates";
 import { IconRefresh, IconAlertCircle, IconPlus } from "@tabler/icons-react";
@@ -25,6 +26,7 @@ import { ModelsList } from "../ModelsList";
 import { CustomModelDialog, CustomModelFormData } from "../CustomModelDialog";
 
 export const ModelsDashboard: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { models, providers, loading, error } = useAppSelector(state => state.models);
@@ -65,13 +67,13 @@ export const ModelsDashboard: React.FC = () => {
           })
         );
         notifications.show({
-          title: "Success",
-          message: "Models refreshed successfully",
+          title: t("common.success"),
+          message: t("models.modelsRefreshed"),
           color: "green",
         });
       } else if (data?.reloadModels?.error) {
         notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: data?.reloadModels?.error,
           color: "red",
         });
@@ -79,7 +81,7 @@ export const ModelsDashboard: React.FC = () => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message || "Failed to refresh models",
         color: "red",
       });
@@ -94,7 +96,7 @@ export const ModelsDashboard: React.FC = () => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message || "Failed to create chat",
         color: "red",
       });
@@ -107,15 +109,15 @@ export const ModelsDashboard: React.FC = () => {
       if (data?.updateModelStatus) {
         dispatch(updateModel(data.updateModelStatus));
         notifications.show({
-          title: "Success",
-          message: `${data.updateModelStatus.name} is now ${data.updateModelStatus.isActive ? "active" : "inactive"}`,
+          title: t("common.success"),
+          message: `${data.updateModelStatus.name} is now ${data.updateModelStatus.isActive ? t("common.active").toLowerCase() : t("common.inactive").toLowerCase()}`,
           color: "green",
         });
       }
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message || "Failed to update model status",
         color: "red",
       });
@@ -143,7 +145,7 @@ export const ModelsDashboard: React.FC = () => {
       },
       onError: error => {
         notifications.show({
-          title: "Error",
+          title: t("common.error"),
           message: error.message || "Failed to fetch cost information",
           color: "red",
         });
@@ -156,7 +158,7 @@ export const ModelsDashboard: React.FC = () => {
     createChat({
       variables: {
         input: {
-          title: `Chat with ${model.name}`,
+          title: t("models.chatWith", { modelName: model.name }),
           modelId: model.modelId,
         },
       },
@@ -186,8 +188,8 @@ export const ModelsDashboard: React.FC = () => {
       if (data?.createCustomModel) {
         dispatch(addModel(data.createCustomModel));
         notifications.show({
-          title: "Success",
-          message: "Custom model created successfully",
+          title: t("common.success"),
+          message: t("models.customModelCreated"),
           color: "green",
         });
         setCustomModelDialogOpen(false);
@@ -203,15 +205,15 @@ export const ModelsDashboard: React.FC = () => {
     onCompleted: data => {
       if (data?.deleteModel) {
         notifications.show({
-          title: "Success",
-          message: "Model deleted successfully",
+          title: t("common.success"),
+          message: t("models.modelDeleted"),
           color: "green",
         });
       }
     },
     onError: error => {
       notifications.show({
-        title: "Error",
+        title: t("common.error"),
         message: error.message || "Failed to delete model",
         color: "red",
       });
@@ -224,8 +226,8 @@ export const ModelsDashboard: React.FC = () => {
       if (data?.updateCustomModel) {
         dispatch(updateModel(data.updateCustomModel));
         notifications.show({
-          title: "Success",
-          message: "Custom model updated successfully",
+          title: t("common.success"),
+          message: t("models.customModelUpdated"),
           color: "green",
         });
         setCustomModelDialogOpen(false);
@@ -384,7 +386,7 @@ export const ModelsDashboard: React.FC = () => {
     return (
       <Stack align="center" gap="md">
         <Loader size="xl" />
-        <Text>{reloading ? "Reloading models..." : "Loading models..."}</Text>
+        <Text>{reloading ? t("models.reloadingModels") : t("models.loadingModels")}</Text>
       </Stack>
     );
   }
@@ -393,7 +395,7 @@ export const ModelsDashboard: React.FC = () => {
     return (
       <>
         <Title order={2} c="red">
-          Error Loading Models
+          {t("models.errorLoadingModels")}
         </Title>
         <Text mt="md">{error}</Text>
       </>
@@ -403,15 +405,15 @@ export const ModelsDashboard: React.FC = () => {
   return (
     <>
       <Group justify="space-between" mb="xl">
-        <Title order={2}>AI Models</Title>
+        <Title order={2}>{t("models.title")}</Title>
         <Group>
           {providers.some(p => p.id === "CUSTOM_REST_API") && (
             <Button leftSection={<IconPlus size={16} />} onClick={handleOpenCreateDialog} variant="filled">
-              Custom Model
+              {t("models.customModel")}
             </Button>
           )}
           <Button leftSection={<IconRefresh size={16} />} onClick={handleReloadModels} variant="light">
-            Reload
+            {t("models.reload")}
           </Button>
         </Group>
       </Group>
@@ -434,24 +436,24 @@ export const ModelsDashboard: React.FC = () => {
       <Modal
         opened={testModalOpen}
         onClose={handleCloseTestModal}
-        title={`Test ${currentTestingModel?.name || "Model"}`}
+        title={t("models.testModel", { modelName: currentTestingModel?.name || "Model" })}
         size="lg"
       >
         <Stack gap="md">
           <TextInput
-            label="Test prompt"
+            label={t("models.testPrompt")}
             value={testText}
             onChange={e => setTestText(e.target.value)}
-            placeholder="Enter text to test the model"
+            placeholder={t("models.enterTestPrompt")}
           />
 
           <Button onClick={handleTestModel} loading={testLoading} disabled={!testText.trim()} fullWidth>
-            Run Test
+            {t("models.runTest")}
           </Button>
 
           {testResult && (
             <Stack>
-              <Text fw={500}>Model Response:</Text>
+              <Text fw={500}>{t("models.modelResponse")}</Text>
               <Card withBorder p="md" radius="md">
                 <Text>{testResult?.content}</Text>
               </Card>
@@ -459,11 +461,11 @@ export const ModelsDashboard: React.FC = () => {
           )}
 
           {testError && (
-            <Alert icon={<IconAlertCircle size={16} />} title="Error" color="red">
+            <Alert icon={<IconAlertCircle size={16} />} title={t("common.error")} color="red">
               {testError}
               <Group mt="md">
                 <Button color="red" onClick={handleDisableModel}>
-                  Disable Model
+                  {t("models.disableModel")}
                 </Button>
               </Group>
             </Alert>
@@ -472,7 +474,12 @@ export const ModelsDashboard: React.FC = () => {
       </Modal>
 
       {/* Usage Costs Modal */}
-      <Modal opened={costModalOpen} onClose={handleCloseCostModal} title={`Usage Costs - ${currentProvider}`} size="lg">
+      <Modal
+        opened={costModalOpen}
+        onClose={handleCloseCostModal}
+        title={t("models.usageCosts", { provider: currentProvider })}
+        size="lg"
+      >
         <Stack gap="md">
           <Group grow align="flex-begin">
             <DatePicker
@@ -496,12 +503,12 @@ export const ModelsDashboard: React.FC = () => {
             loading={costsLoading}
             leftSection={<IconRefresh size={16} />}
           >
-            Refresh Data
+            {t("models.refreshData")}
           </Button>
 
           {costsLoading ? (
             <Stack align="center" py="xl">
-              <Text c="dimmed">Loading cost information...</Text>
+              <Text c="dimmed">{t("models.loadingCosts")}</Text>
             </Stack>
           ) : costsData?.getCosts ? (
             <Stack>
@@ -514,7 +521,7 @@ export const ModelsDashboard: React.FC = () => {
               <Card withBorder padding="md">
                 <Stack gap="xs">
                   <Group justify="space-between">
-                    <Text fw={500}>Service Costs</Text>
+                    <Text fw={500}>{t("models.serviceCosts")}</Text>
                     <Text size="sm" c="dimmed">
                       {new Date(costsData.getCosts.start).toLocaleDateString()} -
                       {costsData.getCosts.end ? new Date(costsData.getCosts.end).toLocaleDateString() : "Present"}
@@ -524,9 +531,9 @@ export const ModelsDashboard: React.FC = () => {
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
-                        <Table.Th>Service</Table.Th>
-                        <Table.Th>Type</Table.Th>
-                        <Table.Th style={{ textAlign: "right" }}>Amount</Table.Th>
+                        <Table.Th>{t("models.service")}</Table.Th>
+                        <Table.Th>{t("models.type")}</Table.Th>
+                        <Table.Th style={{ textAlign: "right" }}>{t("models.amount")}</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -548,7 +555,7 @@ export const ModelsDashboard: React.FC = () => {
                         <Table.Tr key={`total-${cost[0]}`}>
                           <Table.Td colSpan={2}>
                             <Text c="blue" fw={500}>
-                              TOTAL {cost[0]}
+                              {t("models.totalCurrency", { currency: cost[0] })}
                             </Text>
                           </Table.Td>
                           <Table.Td style={{ textAlign: "right" }}>
@@ -563,7 +570,7 @@ export const ModelsDashboard: React.FC = () => {
 
                   {costsData.getCosts.costs.length === 0 && (
                     <Text ta="center" c="dimmed" py="md">
-                      No cost information available for the selected period.
+                      {t("models.noCostInfo")}
                     </Text>
                   )}
                 </Stack>
@@ -571,7 +578,7 @@ export const ModelsDashboard: React.FC = () => {
             </Stack>
           ) : (
             <Text ta="center" c="dimmed">
-              Select a date range and click Refresh to view cost information.
+              {t("models.selectDateRange")}
             </Text>
           )}
         </Stack>

@@ -36,7 +36,10 @@
     "@types/sharp": "^0.31.1",
     "concurrently": "^9.1.2",
     "exif-reader": "^2.0.3",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "katex": "^0.16.28",
+    "embla-carousel-react": "^8.6.0",
+    "graphql-scalars": "^1.23.0"
   },
   "devDependencies": {
     "husky": "^9.1.7",

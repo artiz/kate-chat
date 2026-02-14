@@ -3,6 +3,7 @@ import { Text } from "@mantine/core";
 import { IconFileUpload } from "@tabler/icons-react";
 
 import classes from "./DropFilesOverlay.module.scss";
+import { useTranslation } from "react-i18next";
 
 interface IProps {
   visible: boolean;
@@ -12,13 +13,8 @@ interface IProps {
   onDrop: (ev: React.DragEvent<HTMLDivElement>) => void;
 }
 
-export const DropFilesOverlay: React.FC<IProps> = ({
-  visible,
-  message = "Drop files here to upload",
-  onDragOver,
-  onDragLeave,
-  onDrop,
-}) => {
+export const DropFilesOverlay: React.FC<IProps> = ({ visible, message, onDragOver, onDragLeave, onDrop }) => {
+  const { t } = useTranslation();
   if (!visible) return null;
 
   return (
@@ -26,7 +22,7 @@ export const DropFilesOverlay: React.FC<IProps> = ({
       <div className={classes.content}>
         <IconFileUpload size={48} color="var(--mantine-color-blue-4)" />
         <Text size="lg" fw={500} c="blue.4">
-          {message}
+          {message || t("Drop files here to upload")}
         </Text>
       </div>
     </div>

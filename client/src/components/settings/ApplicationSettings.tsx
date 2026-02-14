@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Tabs } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 import { AISettings } from "./AISettings";
 import { ProfileSettings } from "./ProfileSettings";
 import { PasswordSettings } from "./PasswordSettings";
@@ -15,6 +16,7 @@ interface IProps {
 }
 
 export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProps) => {
+  const { t } = useTranslation();
   const { currentUser } = useAppSelector(state => state.user);
   const dispatch = useAppDispatch();
 
@@ -31,15 +33,15 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
       }
 
       notifications.show({
-        title: "Profile Updated",
-        message: "Your profile information has been updated successfully",
+        title: t("profile.updated"),
+        message: t("profile.updatedMessage"),
         color: "green",
       });
     },
     onError: error => {
       notifications.show({
-        title: "Update Failed",
-        message: error.message || "Failed to update profile",
+        title: t("profile.updateFailed"),
+        message: error.message || t("profile.updateFailedMessage"),
         color: "red",
       });
     },
@@ -59,10 +61,10 @@ export const ApplicationSettings: React.FC<IProps> = ({ onReloadAppData }: IProp
   return (
     <Tabs defaultValue="ai">
       <Tabs.List mb="md">
-        <Tabs.Tab value="ai">AI Settings</Tabs.Tab>
-        <Tabs.Tab value="connectivity">Connectivity Settings</Tabs.Tab>
-        <Tabs.Tab value="profile">Profile Settings</Tabs.Tab>
-        {isLocalUser && <Tabs.Tab value="password">Password</Tabs.Tab>}
+        <Tabs.Tab value="ai">{t("settings.aiSettings")}</Tabs.Tab>
+        <Tabs.Tab value="connectivity">{t("settings.connectivitySettings")}</Tabs.Tab>
+        <Tabs.Tab value="profile">{t("settings.profileSettings")}</Tabs.Tab>
+        {isLocalUser && <Tabs.Tab value="password">{t("settings.password")}</Tabs.Tab>}
       </Tabs.List>
 
       <Tabs.Panel value="connectivity">

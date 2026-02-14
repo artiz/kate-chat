@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@apollo/client";
 import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
@@ -10,6 +11,7 @@ import { useChatMessages } from "@/hooks";
 import { ModelType } from "@katechat/ui";
 
 export const CreateChat: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -59,8 +61,8 @@ export const CreateChat: React.FC = () => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to check for existing chats",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToCheckChats"),
         color: "red",
       });
       navigate("/chat");
@@ -75,8 +77,8 @@ export const CreateChat: React.FC = () => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to create chat",
+        title: t("common.error"),
+        message: error.message || t("chat.failedToCreateChat"),
         color: "red",
       });
       navigate("/chat");
@@ -87,8 +89,8 @@ export const CreateChat: React.FC = () => {
   const createNewChat = () => {
     if (!modelToUse) {
       notifications.show({
-        title: "No Models Available",
-        message: "Please configure AI models before creating a chat",
+        title: t("chat.noModelsAvailable"),
+        message: t("chat.configureModels"),
         color: "yellow",
       });
       navigate("/chat");
@@ -114,7 +116,7 @@ export const CreateChat: React.FC = () => {
   return (
     <Center flex={1} m="xl">
       <Loader size="lg" />
-      <Text ml="md">Creating new chat...</Text>
+      <Text ml="md">{t("chat.creatingNewChat")}</Text>
     </Center>
   );
 };

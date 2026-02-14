@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Group, Tooltip, Box, Text, ActionIcon } from "@mantine/core";
 import { IconFileUpload } from "@tabler/icons-react";
 import { notEmpty } from "@/lib/assert";
+import { useTranslation } from "react-i18next";
 import classes from "./FileDropzone.module.scss";
 
 interface IProps {
@@ -16,6 +17,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, uploadFor
   const [isDragging, setIsDragging] = useState(false);
   const dropzoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   // Handle paste events for clipboard images
   useEffect(() => {
@@ -100,13 +102,13 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, uploadFor
         onClick={openFileDialog}
       >
         <Group justify="start" className="drop-zone-control" gap="xs">
-          <Tooltip label="Click or drop an image/document here" position="top">
+          <Tooltip label={t("Click or drop an image/document here to upload")} position="top">
             <ActionIcon variant="subtle" size="lg" color="dark">
               <IconFileUpload size="24" />
             </ActionIcon>
           </Tooltip>
           <Box hiddenFrom="xs" pe="sm">
-            Upload File
+            {t("Upload File")}
           </Box>
           <input
             ref={fileInputRef}

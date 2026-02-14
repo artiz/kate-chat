@@ -1,6 +1,7 @@
 .control {
   padding: 0 1rem 0 0.5rem !important;
   margin: 0 !important;
+  color: var(--mantine-color-brand-5) !important;
 }
 
 .content {
@@ -19,5 +20,5 @@
   padding: var(--mantine-spacing-md) var(--mantine-spacing-xs) var(--mantine-spacing-xs);
   font-weight: 600 !important;
   font-size: 80%;
-  color: var(--mantine-color-dimmed);
+  color: var(--mantine-color-brand-5);
 }
