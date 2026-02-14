@@ -11,7 +11,7 @@ import zh from "./locales/zh.json";
 const SUPPORTED_LANGUAGES = ["en", "de", "ru", "zh"] as const;
 export const LANGUAGE_STORAGE_KEY = "ui-language";
 
-interface IProps {
+interface InitI18nProps {
   lookupLocalStorage?: string;
   supportedLngs?: readonly string[];
   fallbackLng?: string;
@@ -35,7 +35,7 @@ export async function initI18n({
   supportedLngs = SUPPORTED_LANGUAGES,
   fallbackLng = "en",
   resources = {},
-}: IProps = {}) {
+}: InitI18nProps = {}) {
   return i18n
     .use(LanguageDetector)
     .use(initReactI18next)
