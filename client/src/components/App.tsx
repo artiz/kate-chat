@@ -5,15 +5,15 @@ import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { ApolloWrapper } from "../lib/apollo-provider";
-import { createAppTheme } from "../theme";
+import { LANGUAGE_STORAGE_KEY, ThemeProvider, useTheme } from "@katechat/ui";
+import { ApolloWrapper } from "@/lib/apollo-provider";
+import { createAppTheme } from "@/theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
-import { ThemeProvider, useTheme } from "@katechat/ui";
-import { LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES, SupportedLanguage } from "@/i18n";
+import { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/i18n";
 
 // Pages
 import Login from "@/pages/Login";

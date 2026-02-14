@@ -291,7 +291,8 @@
     "configureModels": "Bitte konfigurieren Sie KI-Modelle, bevor Sie einen Chat erstellen",
     "main": "Haupt",
     "others": "Andere",
-    "you": "Sie"
+    "you": "Sie",
+    "codeRun": "Ausführen"
   },
   "documents": {
     "title": "Dokumente",
@@ -536,29 +537,6 @@
     "summarizationModelDescription": "Modell zur Generierung von Dokumentenzusammenfassungen (bis zu 1024 Wörter)",
     "selectChatModel": "Chat-Modell auswählen"
   },
-  "library": {
-    "title": "Bibliothek",
-    "subtitle": "Alle Ihre hochgeladenen und generierten Bilder",
-    "loadingLibrary": "Ihre Bildbibliothek wird geladen...",
-    "noImagesFound": "Keine Bilder gefunden",
-    "uploadImagesHint": "Laden Sie Bilder in Ihren Chats hoch, um sie hier zu sehen",
-    "loadMoreImages": "Mehr Bilder laden",
-    "reloadInfo": "Info neu laden (Farbe & EXIF)",
-    "failedToReloadInfo": "Bildinfo konnte nicht neu geladen werden"
-  },
-  "upload": {
-    "uploadError": "Upload-Fehler",
-    "documentsUpload": "Dokumente hochladen",
-    "uploading": "Hochladen... {{progress}}%",
-    "imageUploadsNotAllowed": "Bild-Uploads sind in diesem Chat nicht erlaubt.",
-    "maxImagesReached": "Sie können nur bis zu {{count}} Bilder gleichzeitig hinzufügen",
-    "failedToReadFile": "Datei konnte nicht gelesen werden: {{name}}",
-    "failedToReadImageFiles": "Bilddateien konnten nicht gelesen werden",
-    "documentUploadNotAvailable": "Dokument-Upload ist in diesem Chat nicht verfügbar.",
-    "clickOrDropFile": "Klicken oder Bild/Dokument hierher ziehen",
-    "uploadFile": "Datei hochladen",
-    "dropFilesHere": "Dateien zum Hochladen hier ablegen"
-  },
   "python": {
     "title": "Python-Executor",
     "pyodideReady": "(Pyodide bereit)",
@@ -584,29 +562,6 @@
     "page": "Seite {{page}}",
     "webSearch": "Websuche"
   },
-  "chatUI": {
-    "startConversation": "Beginnen Sie das Gespräch, indem Sie eine Nachricht senden",
-    "typeMessage": "Nachricht eingeben...",
-    "stop": "Stopp",
-    "send": "Senden",
-    "more": "Mehr...",
-    "codeBlockEmpty": "Codeblock ist leer",
-    "languageNotSpecified": "Sprache ist für diesen Codeblock nicht angegeben",
-    "failedToCopyMessage": "Nachricht konnte nicht kopiert werden",
-    "started": "Gestartet",
-    "inProgress": "In Bearbeitung",
-    "completed": "Abgeschlossen",
-    "ragSearchStatus": "RAG-Suche",
-    "webSearchStatus": "Websuche",
-    "codeInterpreterStatus": "Code-Interpreter",
-    "toolCall": "Tool-Aufruf",
-    "reasoning": "Denken",
-    "toolCallCompleted": "Tool-Aufruf abgeschlossen",
-    "cancelled": "Abgebrochen"
-  },
 
-  "Start the conversation by sending a message": "Beginnen Sie das Gespräch, indem Sie eine Nachricht senden",
-  "AI-generated, for reference only.": "KI-generiert, nur zur Referenz.",
-  "Click or drop an image/document here to upload": "Klicken oder Bild/Dokument hierher ziehen",
-  "Upload File": "Datei hochladen"
+  "AI-generated, for reference only.": "KI-generiert, nur zur Referenz."
 }

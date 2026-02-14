@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Button, Group, Text, Stack } from "@mantine/core";
+import { useTranslation } from "react-i18next";
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -16,23 +17,26 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   isOpen,
   onClose,
   onConfirm,
-  title = "Confirm Deletion",
-  message = "Are you sure you want to delete this item? This action cannot be undone.",
-  confirmLabel = "Delete",
-  cancelLabel = "Cancel",
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   return (
-    <Modal opened={isOpen} onClose={onClose} title={title} centered>
+    <Modal opened={isOpen} onClose={onClose} title={title || t("Confirm Deletion")} centered>
       <Stack>
-        <Text style={{ wordBreak: "break-word" }}>{message}</Text>
+        <Text style={{ wordBreak: "break-word" }}>
+          {message || t("Are you sure you want to delete this item? This action cannot be undone.")}
+        </Text>
 
         <Group mt="md" justify="flex-end">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            {cancelLabel}
+            {cancelLabel || t("Cancel")}
           </Button>
           <Button color="red" onClick={onConfirm} loading={isLoading}>
-            {confirmLabel}
+            {confirmLabel || t("Delete")}
           </Button>
         </Group>
       </Stack>

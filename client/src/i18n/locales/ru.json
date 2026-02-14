@@ -204,7 +204,7 @@
     "newChat": "Новый чат",
     "untitledChat": "Безымянный чат",
     "backToChats": "Назад к списку чатов",
-    "connected": "Подключено",
+    "connected": "Подключён",
     "connecting": "Подключение...",
     "messagesLimitReached": "Вы достигли лимита в {{limit}} сообщений в этом чате",
     "failedToSend": "Не удалось отправить сообщение",
@@ -215,7 +215,7 @@
     "noRequestId": "ID запроса для текущего сообщения не найден",
     "noMessageToStop": "Сообщение для остановки не найдено",
     "selectModel": "Выберите модель",
-    "mcpTools": "MCP-инструменты",
+    "mcpTools": "Выбрать MCP-серверы",
     "chatSettings": "Настройки чата",
     "webSearch": "Веб-поиск",
     "codeInterpreter": "Интерпретатор кода",
@@ -289,9 +289,7 @@
     "failedToCreateChat": "Не удалось создать чат",
     "noModelsAvailable": "Нет доступных моделей",
     "configureModels": "Настройте модели ИИ перед созданием чата",
-    "main": "Основной",
-    "others": "Другие",
-    "you": "Вы"
+    "codeRun": "Выполнить"
   },
   "documents": {
     "title": "Документы",
@@ -536,29 +534,6 @@
     "summarizationModelDescription": "Модель для генерации сводок документов (до 1024 слов)",
     "selectChatModel": "Выберите чат-модель"
   },
-  "library": {
-    "title": "Библиотека",
-    "subtitle": "Все ваши загруженные и сгенерированные изображения",
-    "loadingLibrary": "Загрузка библиотеки изображений...",
-    "noImagesFound": "Изображения не найдены",
-    "uploadImagesHint": "Загружайте изображения в чатах, чтобы увидеть их здесь",
-    "loadMoreImages": "Загрузить ещё",
-    "reloadInfo": "Обновить информацию (Цвет и EXIF)",
-    "failedToReloadInfo": "Не удалось обновить информацию об изображении"
-  },
-  "upload": {
-    "uploadError": "Ошибка загрузки",
-    "documentsUpload": "Загрузка документов",
-    "uploading": "Загрузка... {{progress}}%",
-    "imageUploadsNotAllowed": "Загрузка изображений в этом чате запрещена.",
-    "maxImagesReached": "Вы можете добавить не более {{count}} изображений за раз",
-    "failedToReadFile": "Не удалось прочитать файл: {{name}}",
-    "failedToReadImageFiles": "Не удалось прочитать файлы изображений",
-    "documentUploadNotAvailable": "Загрузка документов в этом чате недоступна.",
-    "clickOrDropFile": "Нажмите или перетащите изображение/документ сюда",
-    "uploadFile": "Загрузить файл",
-    "dropFilesHere": "Перетащите файлы сюда для загрузки"
-  },
   "python": {
     "title": "Python-исполнитель",
     "pyodideReady": "(Pyodide готов)",
@@ -584,29 +559,5 @@
     "page": "Страница {{page}}",
     "webSearch": "Веб-поиск"
   },
-  "chatUI": {
-    "startConversation": "Начните диалог, отправив сообщение",
-    "typeMessage": "Введите сообщение...",
-    "stop": "Стоп",
-    "send": "Отправить",
-    "more": "Ещё...",
-    "codeBlockEmpty": "Блок кода пуст",
-    "languageNotSpecified": "Язык для этого блока кода не указан",
-    "failedToCopyMessage": "Не удалось скопировать сообщение",
-    "started": "Начато",
-    "inProgress": "В процессе",
-    "completed": "Завершено",
-    "ragSearchStatus": "RAG-поиск",
-    "webSearchStatus": "Веб-поиск",
-    "codeInterpreterStatus": "Интерпретатор кода",
-    "toolCall": "Вызов инструмента",
-    "reasoning": "Рассуждение",
-    "toolCallCompleted": "Вызов инструмента завершён",
-    "cancelled": "Отменено"
-  },
-
-  "Start the conversation by sending a message": "Начните диалог, отправив сообщение",
-  "AI-generated, for reference only.": "Сгенерировано ИИ, только для справки.",
-  "Click or drop an image/document here to upload": "Нажмите или перетащите изображение/документ сюда для загрузки",
-  "Upload File": "Загрузить файл"
+  "AI-generated, for reference only.": "Сгенерировано ИИ, только для справки."
 }

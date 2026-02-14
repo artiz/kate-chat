@@ -86,7 +86,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
       } catch (error) {
         notifications.show({
           title: "Error",
-          message: error instanceof Error ? error.message : "Failed to send message",
+          message: error instanceof Error ? error.message : t("Failed to send message"),
           color: "red",
         });
       } finally {
@@ -131,8 +131,10 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
         const filesToAdd = files.filter(f => f.size < maxUploadFileSize);
         if (filesToAdd.length < files.length) {
           notifications.show({
-            title: "Warning",
-            message: `Some files are too large and were not added (max size: ${maxUploadFileSize / 1024 / 1024} MB)`,
+            title: t("Warning"),
+            message: t(`Some files are too large and were not added (max size: {{size}} MB)`, {
+              size: maxUploadFileSize / (1024 * 1024),
+            }),
             color: "yellow",
           });
         }
@@ -142,8 +144,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
 
         if (imageFiles.length && maxImagesCount <= 0) {
           notifications.show({
-            title: "Warning",
-            message: "Image uploads are not allowed in this chat.",
+            title: t("Warning"),
+            message: t("Image uploads are not allowed in this chat."),
             color: "yellow",
           });
           imageFiles = [];
@@ -152,8 +154,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
         // Limit images
         if (imageFiles.length + selectedImages.length > maxImagesCount) {
           notifications.show({
-            title: "Warning",
-            message: `You can only add up to ${maxImagesCount} images at a time`,
+            title: t("Warning"),
+            message: t("You can only add up to {{count}} images at a time", { count: maxImagesCount }),
             color: "yellow",
           });
 
@@ -174,11 +176,15 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                       bytesBase64,
                     });
                   } else {
-                    reject(new Error(`Failed to read file: ${file.name}`));
+                    reject(new Error(t("Failed to read file: {{fileName}}", { fileName: file.name })));
                   }
                 };
                 reader.onerror = err => {
-                  reject(new Error(`Failed to read file: ${file.name}, error: ${err}`));
+                  reject(
+                    new Error(
+                      t("Failed to read file: {{fileName}}, error: {{error}}", { fileName: file.name, error: err })
+                    )
+                  );
                 };
                 reader.readAsDataURL(file);
               });
@@ -189,8 +195,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
             })
             .catch(error => {
               notifications.show({
-                title: "Error",
-                message: error.message || "Failed to read image files",
+                title: t("Error"),
+                message: error.message || t("Failed to read image files"),
                 color: "red",
               });
             });
@@ -200,8 +206,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
           onDocumentsUpload(documents);
         } else if (documents.length) {
           notifications.show({
-            title: "Warning",
-            message: "Document upload is not available in this chat.",
+            title: t("Warning"),
+            message: t("Document upload is not available in this chat."),
             color: "orange",
           });
         }
@@ -272,7 +278,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                 <Menu shadow="md" width="content">
                   <Menu.Target>
                     <ActionIcon size="lg" variant="subtle" hiddenFrom="xs" color="dark">
-                      <Tooltip label="More..." position="right" withArrow>
+                      <Tooltip label={t("More...")} position="right" withArrow>
                         <IconCirclePlus size="24" />
                       </Tooltip>
                     </ActionIcon>
@@ -287,7 +293,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
               <Textarea
                 ref={inputRef}
                 className={classes.chatInput}
-                placeholder="Type your message..."
+                placeholder={t("Type your message...")}
                 value={userMessage || ""}
                 autosize
                 minRows={1}
@@ -299,7 +305,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
 
               {onStopRequest && streaming ? (
                 <Button onClick={onStopRequest} disabled={disabled}>
-                  <IconPlayerStopFilled size={24} /> <Text visibleFrom="md">Stop</Text>
+                  <IconPlayerStopFilled size={24} /> <Text visibleFrom="md">{t("Stop")}</Text>
                 </Button>
               ) : (
                 <Button
@@ -311,7 +317,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                 >
                   <IconSend size={24} />{" "}
                   <Text visibleFrom="md" ml="xs">
-                    Send
+                    {t("Send")}
                   </Text>
                 </Button>
               )}

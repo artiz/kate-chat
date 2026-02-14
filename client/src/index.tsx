@@ -4,8 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store";
 import App from "./components/App";
+import i18n from "@/i18n";
 
-import "./i18n";
 import "./index.scss";
 import "katex/dist/katex.css";
 import "./assets/katex-overrides.css";
@@ -17,6 +17,8 @@ if (!container) throw new Error("Root element not found");
 const root = createRoot(container);
 
 async function bootstrap() {
+  await i18n;
+
   root.render(
     <React.StrictMode>
       <Provider store={store}>

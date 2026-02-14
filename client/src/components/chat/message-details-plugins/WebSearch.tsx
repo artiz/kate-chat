@@ -2,12 +2,12 @@ import React, { Fragment } from "react";
 import { Text, Box, Group, Anchor } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconWorldSearch } from "@tabler/icons-react";
-import i18n from "@/i18n";
+import { TFunction, t as globalT } from "i18next";
 
 const WEB_SEARCH_TOOL_NAME = "internal-web_search";
 
 /** Web Search Details - Display web search tool results */
-export const WebSearchCall = (message: Message): React.ReactNode => {
+export const WebSearchCall = (message: Message, t: TFunction = globalT): React.ReactNode => {
   if (!message || !message.metadata) return null;
 
   const tools = message.metadata.tools || [];
@@ -30,7 +30,7 @@ export const WebSearchCall = (message: Message): React.ReactNode => {
         <Group justify="flex-start" align="center" gap="xs" className="message-details-header">
           <IconWorldSearch size={16} className="message-details-icon" />
           <Text fw={600} size="sm">
-            {i18n.t("messageDetails.webSearch")}
+            {t("messageDetails.webSearch")}
           </Text>
         </Group>
 

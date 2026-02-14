@@ -1,6 +1,18 @@
-import i18n, { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY, SupportedLanguage } from "../i18n";
+import i18n from "i18next";
+import { SUPPORTED_LANGUAGES, LANGUAGE_STORAGE_KEY, I18N_RESOURCES } from "../i18n";
 
 describe("i18n configuration", () => {
+  beforeAll(async () => {
+    await i18n.init({
+      resources: I18N_RESOURCES,
+      fallbackLng: "en",
+      supportedLngs: SUPPORTED_LANGUAGES,
+      interpolation: {
+        escapeValue: false,
+      },
+    });
+  });
+
   beforeEach(() => {
     localStorage.clear();
   });

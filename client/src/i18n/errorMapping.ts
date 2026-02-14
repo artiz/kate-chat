@@ -1,4 +1,4 @@
-import i18n from "@/i18n";
+import { t } from "i18next";
 
 /**
  * Maps known server error messages to localized translation keys.
@@ -26,25 +26,25 @@ const SERVER_ERROR_MAP: Record<string, string> = {
 export function mapServerError(message: string): string {
   const key = SERVER_ERROR_MAP[message];
   if (key) {
-    return i18n.t(key);
+    return t(key);
   }
 
   // Try partial matching for common patterns
   const lowerMessage = message.toLowerCase();
   if (lowerMessage.includes("unauthorized") || lowerMessage.includes("unauthenticated")) {
-    return i18n.t("errors.unauthorized");
+    return t("errors.unauthorized");
   }
   if (lowerMessage.includes("forbidden") || lowerMessage.includes("access denied")) {
-    return i18n.t("errors.forbidden");
+    return t("errors.forbidden");
   }
   if (lowerMessage.includes("not found")) {
-    return i18n.t("errors.notFound");
+    return t("errors.notFound");
   }
   if (lowerMessage.includes("too many requests") || lowerMessage.includes("rate limit")) {
-    return i18n.t("errors.tooManyRequests");
+    return t("errors.tooManyRequests");
   }
   if (lowerMessage.includes("service unavailable")) {
-    return i18n.t("errors.serviceUnavailable");
+    return t("errors.serviceUnavailable");
   }
 
   return message;

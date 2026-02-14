@@ -1,6 +1,7 @@
 import React from "react";
 import { Badge, DefaultMantineColor } from "@mantine/core";
 import { ResponseStatus } from "@/core/message";
+import { useTranslation } from "react-i18next";
 
 const TITLE_MAP: Record<ResponseStatus, string> = {
   [ResponseStatus.STARTED]: "Started",
@@ -31,7 +32,8 @@ const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
 };
 
 export const MessageStatus = ({ status }: { status: ResponseStatus }) => {
-  const title = TITLE_MAP[status] || status;
+  const { t } = useTranslation();
+  const title = t(TITLE_MAP[status] || status);
   const color = COLOR_MAP[status] || "indigo";
 
   return (

@@ -82,7 +82,7 @@ const defaultConfig: ClientConfig = {
         "#194f73",
       ],
     },
-    fontFamily: `"Noto Sans", "Segoe UI", system-ui`,
+    fontFamily: `"Noto Sans", "ui-sans-serif", "-apple-system", "system-ui", "Segoe UI", system-ui`,
     defaultRadius: "md",
   },
   appTitle: "KateChat",

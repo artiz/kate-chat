@@ -9,6 +9,7 @@ import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import "./ChatMessage.scss";
 import carouselClasses from "./ChatMessage.Carousel.module.scss";
+import { useTranslation } from "react-i18next";
 
 interface ChatMessageProps {
   message: Message;
@@ -42,12 +43,13 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
   const [showMainMessage, setShowMainMessage] = React.useState(true);
   const [showDetails, setShowDetails] = React.useState(false);
+  const { t, i18n } = useTranslation();
 
   const timestamp = new Date(updatedAt).toLocaleString();
   const isUserMessage = role === MessageRole.USER;
   const username = isUserMessage
-    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "You"
-    : modelName || "AI";
+    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || t("You")
+    : modelName || t("AI");
 
   const codeHeaderTemplate = `
         <span class="title">
@@ -75,7 +77,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
                       <path d="M12 4l0 12" />
                   </svg>
               </div>
-              <span class="action-btn-label">Download</span>
+              <span class="action-btn-label"><DOWNLOAD_TITLE></span>
             </div>
 
             <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn" data-lang="<LANG>">
@@ -102,53 +104,57 @@ export const ChatMessage = (props: ChatMessageProps) => {
                         <path d="M11 14l2 2l4 -4" />
                     </svg>
                 </div>
-                <span class="action-btn-label">Copy</span>
+                <span class="action-btn-label"><COPY_TITLE></span>
             </div>
       </div>
   `;
 
-  const processCodeElements = useCallback(
-    debounce(() => {
-      if (!componentRef.current) return;
+  const donwloadTitle = useMemo(() => t("Download"), [i18n.language]);
+  const copyTitle = useMemo(() => t("Copy"), [i18n.language]);
 
-      componentRef.current.querySelectorAll("pre").forEach(pre => {
-        if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
-          const header = pre.querySelector(".code-header") || document.createElement("div");
-          const data = pre.querySelector(".code-data");
-          const lang = data?.getAttribute("data-lang") || "plaintext";
-          const block = document.createElement("div");
-          block.className = "code-block";
-          header.className = "code-header";
+  const processCodeElements = useCallback(() => {
+    if (!componentRef.current) return;
 
-          const plugin = codePlugins?.[lang];
-          const executeBtn = plugin
-            ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
+    componentRef.current.querySelectorAll("pre").forEach(pre => {
+      if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
+        const header = pre.querySelector(".code-header") || document.createElement("div");
+        const data = pre.querySelector(".code-data");
+        const lang = data?.getAttribute("data-lang") || "plaintext";
+        const block = document.createElement("div");
+        block.className = "code-block";
+        header.className = "code-header";
+
+        const plugin = codePlugins?.[lang];
+        const executeBtn = plugin
+          ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="icon icon-tabler icons-tabler-filled icon-tabler-player-play">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
                 </svg>
                 <span class="action-btn-label">${plugin.label}</span>
               </div>`
-            : "";
+          : "";
 
-          header.innerHTML = codeHeaderTemplate.replaceAll("<LANG>", lang).replace("<EXECUTE_BTN>", executeBtn);
+        header.innerHTML = codeHeaderTemplate
+          .replaceAll("<LANG>", lang)
+          .replace("<EXECUTE_BTN>", executeBtn)
+          .replace("<DOWNLOAD_TITLE>", donwloadTitle)
+          .replace("<COPY_TITLE>", copyTitle);
 
-          pre.parentNode?.insertBefore(header, pre);
-          pre.parentNode?.insertBefore(block, pre);
-          block.appendChild(pre);
-        }
-      });
+        pre.parentNode?.insertBefore(header, pre);
+        pre.parentNode?.insertBefore(block, pre);
+        block.appendChild(pre);
+      }
+    });
 
-      componentRef.current.querySelectorAll("img").forEach(img => {
-        if (!img?.classList?.contains("message-image")) {
-          img.classList.add("message-image");
-          const fileName = img.src.split("/").pop() || "";
-          img.setAttribute("data-file-name", fileName);
-        }
-      });
-    }, 250),
-    []
-  );
+    componentRef.current.querySelectorAll("img").forEach(img => {
+      if (!img?.classList?.contains("message-image")) {
+        img.classList.add("message-image");
+        const fileName = img.src.split("/").pop() || "";
+        img.setAttribute("data-file-name", fileName);
+      }
+    });
+  }, [donwloadTitle, copyTitle, codePlugins]);
 
   useEffect(() => {
     if (streaming) return;
@@ -159,7 +165,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
       processCodeElements(); // Initial call to inject code elements
       return () => observer.disconnect();
     }
-  }, [role, streaming]);
+  }, [role, streaming, processCodeElements]);
 
   const toggleDetails = () => setShowDetails(s => !s);
 
@@ -211,7 +217,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             <CopyMessageButton messageId={id} messageIndex={index} />
 
             {details && (
-              <Tooltip label="Details" position="top" withArrow>
+              <Tooltip label={t("Details")} position="top" withArrow>
                 <ActionIcon
                   className="edit-message-btn"
                   data-message-id={id}
@@ -249,6 +255,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
     details,
     showDetails,
     streaming,
+    i18n.language,
   ]);
 
   const linkedMessagesCmp = useMemo(() => {
@@ -275,7 +282,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
         ))}
       </Carousel>
     );
-  }, [linkedMessages, models, pluginsLoader, index]);
+  }, [linkedMessages, models, pluginsLoader, index, i18n.language]);
 
   if (!linkedMessagesCmp) {
     return (
@@ -291,7 +298,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
         <Switch
           checked={showMainMessage}
           onChange={event => setShowMainMessage(event.currentTarget.checked)}
-          label={showMainMessage ? "Main" : "Others"}
+          label={showMainMessage ? t("Main") : t("Others")}
           size="sm"
         />
       </div>

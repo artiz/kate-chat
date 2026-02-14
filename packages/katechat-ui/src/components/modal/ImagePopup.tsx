@@ -2,6 +2,8 @@ import React, { useEffect, useCallback } from "react";
 import { Image, Text, Group, Stack, ActionIcon, Modal, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconExternalLink } from "@tabler/icons-react";
+import { formatDate } from "@/i18n";
+import { useTranslation } from "react-i18next";
 
 interface IProps {
   fileName: string;
@@ -40,19 +42,10 @@ export const ImagePopup: React.FC<IProps> = ({
     handleClose();
   }, [onOpenSource, handleClose]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
+  const { t } = useTranslation();
   // Image Preview Modal
   return (
-    <Modal opened={opened} onClose={handleClose} size="xl" title="Image Preview" centered>
+    <Modal opened={opened} onClose={handleClose} size="xl" title={t("Image Preview")} centered>
       {fileUrl && (
         <Stack gap="md">
           <Image src={fileUrl} alt={fileName} fit="contain" mah="70vh" />
@@ -69,7 +62,7 @@ export const ImagePopup: React.FC<IProps> = ({
 
             {onOpenSource && (
               <Group gap="xs">
-                <Tooltip label="Open source">
+                <Tooltip label={t("Open image source")}>
                   <ActionIcon variant="light" onClick={navigateToSource}>
                     <IconExternalLink size={16} />
                   </ActionIcon>
@@ -82,7 +75,7 @@ export const ImagePopup: React.FC<IProps> = ({
             <Text size="sm" c="dimmed">
               From:{" "}
               <Text span c="blue" style={{ cursor: "pointer" }} onClick={navigateToSource}>
-                {sourceTitle || "source"}
+                {sourceTitle || t("source")}
               </Text>
             </Text>
           )}

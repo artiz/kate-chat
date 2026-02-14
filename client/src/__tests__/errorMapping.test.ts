@@ -1,7 +1,19 @@
+import i18n from "i18next";
 import { mapServerError } from "../i18n/errorMapping";
-import i18n from "../i18n";
+import { I18N_RESOURCES, SUPPORTED_LANGUAGES } from "../i18n";
 
 describe("mapServerError", () => {
+  beforeAll(async () => {
+    await i18n.init({
+      resources: I18N_RESOURCES,
+      fallbackLng: "en",
+      supportedLngs: SUPPORTED_LANGUAGES,
+      interpolation: {
+        escapeValue: false,
+      },
+    });
+  });
+
   beforeEach(() => {
     i18n.changeLanguage("en");
   });
