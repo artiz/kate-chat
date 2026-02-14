@@ -112,49 +112,52 @@ export const ChatMessage = (props: ChatMessageProps) => {
   const donwloadTitle = useMemo(() => t("Download"), [i18n.language]);
   const copyTitle = useMemo(() => t("Copy"), [i18n.language]);
 
-  const processCodeElements = useCallback(() => {
-    if (!componentRef.current) return;
+  const processCodeElements = useCallback(
+    debounce(() => {
+      if (!componentRef.current) return;
 
-    componentRef.current.querySelectorAll("pre").forEach(pre => {
-      if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
-        const header = pre.querySelector(".code-header") || document.createElement("div");
-        const data = pre.querySelector(".code-data");
-        const lang = data?.getAttribute("data-lang") || "plaintext";
-        const block = document.createElement("div");
-        block.className = "code-block";
-        header.className = "code-header";
+      componentRef.current.querySelectorAll("pre").forEach(pre => {
+        if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
+          const header = pre.querySelector(".code-header") || document.createElement("div");
+          const data = pre.querySelector(".code-data");
+          const lang = data?.getAttribute("data-lang") || "plaintext";
+          const block = document.createElement("div");
+          block.className = "code-block";
+          header.className = "code-header";
 
-        const plugin = codePlugins?.[lang];
-        const executeBtn = plugin
-          ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
+          const plugin = codePlugins?.[lang];
+          const executeBtn = plugin
+            ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="icon icon-tabler icons-tabler-filled icon-tabler-player-play">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
                 </svg>
                 <span class="action-btn-label">${plugin.label}</span>
               </div>`
-          : "";
+            : "";
 
-        header.innerHTML = codeHeaderTemplate
-          .replaceAll("<LANG>", lang)
-          .replace("<EXECUTE_BTN>", executeBtn)
-          .replace("<DOWNLOAD_TITLE>", donwloadTitle)
-          .replace("<COPY_TITLE>", copyTitle);
+          header.innerHTML = codeHeaderTemplate
+            .replaceAll("<LANG>", lang)
+            .replace("<EXECUTE_BTN>", executeBtn)
+            .replace("<DOWNLOAD_TITLE>", donwloadTitle)
+            .replace("<COPY_TITLE>", copyTitle);
 
-        pre.parentNode?.insertBefore(header, pre);
-        pre.parentNode?.insertBefore(block, pre);
-        block.appendChild(pre);
-      }
-    });
+          pre.parentNode?.insertBefore(header, pre);
+          pre.parentNode?.insertBefore(block, pre);
+          block.appendChild(pre);
+        }
+      });
 
-    componentRef.current.querySelectorAll("img").forEach(img => {
-      if (!img?.classList?.contains("message-image")) {
-        img.classList.add("message-image");
-        const fileName = img.src.split("/").pop() || "";
-        img.setAttribute("data-file-name", fileName);
-      }
-    });
-  }, [donwloadTitle, copyTitle, codePlugins]);
+      componentRef.current.querySelectorAll("img").forEach(img => {
+        if (!img?.classList?.contains("message-image")) {
+          img.classList.add("message-image");
+          const fileName = img.src.split("/").pop() || "";
+          img.setAttribute("data-file-name", fileName);
+        }
+      });
+    }, 250),
+    [donwloadTitle, copyTitle, codePlugins]
+  );
 
   useEffect(() => {
     if (streaming) return;

@@ -185,7 +185,7 @@
     gap: 0.5rem;
 
     &.placeholder {
-      min-height: 2rem;
+      min-height: 2.5rem;
       opacity: 0;
     }
 
@@ -270,7 +270,7 @@
     flex-grow: 1;
     overflow-x: auto;
     margin-top: 0;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     border-bottom-right-radius: 0.25em;
     border-bottom-left-radius: 0.25em;
     transition:

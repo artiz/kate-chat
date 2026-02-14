@@ -9,14 +9,19 @@ export const InOutTokens = ({ message }: PluginProps<Message>) => {
   const { t } = useTranslation();
   const { metadata } = message;
   const na = t("chat.na");
+
   return metadata?.usage && (metadata.usage.inputTokens || metadata.usage.outputTokens) ? (
     <Tooltip
-      label={`${t("chat.inputTokens", { count: String(metadata.usage.inputTokens || na) } as Record<string, unknown>)}, ${t("chat.outputTokens", { count: String(metadata.usage.outputTokens || na) } as Record<string, unknown>)}`}
+      label={t("chat.inputOutputTokens", {
+        input: metadata.usage.inputTokens?.toString() || na,
+        output: metadata.usage.outputTokens?.toString() || na,
+      })}
       position="top"
       withArrow
     >
       <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
-        IN: {metadata.usage.inputTokens || na}, OUT: {metadata.usage.outputTokens || na}
+        {metadata.usage.inputTokens || na} {metadata.usage.inputTokens && metadata.usage.outputTokens ? ">" : ""}{" "}
+        {metadata.usage.outputTokens || na}
       </Text>
     </Tooltip>
   ) : null;
