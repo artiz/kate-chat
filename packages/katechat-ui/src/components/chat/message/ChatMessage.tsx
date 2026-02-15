@@ -1,15 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
-import { Carousel } from "@mantine/carousel";
-import { IconInfoSquare, IconInfoSquareFilled, IconRobot, IconUser } from "@tabler/icons-react";
+// import { Carousel } from "@mantine/carousel";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconInfoSquare,
+  IconInfoSquareFilled,
+  IconRobot,
+  IconUser,
+} from "@tabler/icons-react";
 import { MessageRole, Model, Message, CodePlugin } from "@/core";
 import { ProviderIcon, LinkedChatMessage, MessageStatus } from "@/components";
 import { debounce } from "lodash";
 import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import "./ChatMessage.scss";
-import carouselClasses from "./ChatMessage.Carousel.module.scss";
 import { useTranslation } from "react-i18next";
+
+const ANIMATION_DURATION = 250; // Duration of the carousel animation in milliseconds
 
 interface ChatMessageProps {
   message: Message;
@@ -122,6 +130,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
           const data = pre.querySelector(".code-data");
           const lang = data?.getAttribute("data-lang") || "plaintext";
           const block = document.createElement("div");
+
           block.className = "code-block";
           header.className = "code-header";
 
@@ -142,7 +151,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
             .replace("<DOWNLOAD_TITLE>", donwloadTitle)
             .replace("<COPY_TITLE>", copyTitle);
 
-          pre.parentNode?.insertBefore(header, pre);
+          block.appendChild(header);
           pre.parentNode?.insertBefore(block, pre);
           block.appendChild(pre);
         }
@@ -155,7 +164,7 @@ export const ChatMessage = (props: ChatMessageProps) => {
           img.setAttribute("data-file-name", fileName);
         }
       });
-    }, 250),
+    }, ANIMATION_DURATION + 10),
     [donwloadTitle, copyTitle, codePlugins]
   );
 
@@ -261,33 +270,120 @@ export const ChatMessage = (props: ChatMessageProps) => {
     i18n.language,
   ]);
 
-  const linkedMessagesCmp = useMemo(() => {
+  const [carouselIndex, setCarouselIndex] = React.useState(0);
+  const [animationState, setAnimationState] = React.useState<
+    "idle" | "exit-left" | "exit-right" | "enter-left" | "enter-right"
+  >("idle");
+  const [isAnimating, setIsAnimating] = React.useState(false);
+
+  useEffect(() => {
+    if (!linkedMessages || linkedMessages.length === 0) return;
+    const streamingIdx = linkedMessages.findIndex(m => m.streaming);
+    if (streamingIdx >= 0) {
+      setCarouselIndex(streamingIdx);
+    }
+  }, [linkedMessages]);
+
+  const linkedMessagesCmps = useMemo(() => {
+    if (!linkedMessages || linkedMessages.length === 0) return [];
+
+    return linkedMessages.map(lm => (
+      <LinkedChatMessage
+        key={lm.id}
+        message={lm}
+        parentIndex={index}
+        index={carouselIndex}
+        models={models}
+        plugins={pluginsLoader?.(lm)}
+      />
+    ));
+  }, [linkedMessages, models, index, i18n.language]);
+
+  const linkedMessagesCarouselCmp = useMemo(() => {
     if (!linkedMessages || linkedMessages.length === 0) return null;
 
-    return (
-      <Carousel
-        withIndicators={linkedMessages.length > 1}
-        emblaOptions={{ align: "center", loop: true }}
-        slideGap="0"
-        withControls={linkedMessages.length > 1}
-        initialSlide={linkedMessages.findIndex(m => m.streaming)}
-        classNames={carouselClasses}
-      >
-        {linkedMessages.map((linkedMsg, linkedIndex) => (
-          <LinkedChatMessage
-            key={linkedMsg.id}
-            message={linkedMsg}
-            parentIndex={index}
-            index={linkedIndex}
-            models={models}
-            plugins={pluginsLoader?.(linkedMsg)}
-          />
-        ))}
-      </Carousel>
-    );
-  }, [linkedMessages, models, pluginsLoader, index, i18n.language]);
+    const msgCount = linkedMessages.length;
+    const handlePrev = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isAnimating) return;
 
-  if (!linkedMessagesCmp) {
+      setIsAnimating(true);
+      setAnimationState("exit-right");
+
+      setTimeout(() => {
+        setCarouselIndex(idx => (idx - 1 + msgCount) % msgCount);
+        setAnimationState("enter-left");
+
+        setTimeout(() => {
+          setAnimationState("idle");
+          setIsAnimating(false);
+        }, ANIMATION_DURATION);
+      }, ANIMATION_DURATION);
+    };
+    const handleNext = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isAnimating) return;
+
+      setIsAnimating(true);
+      setAnimationState("exit-left");
+
+      setTimeout(() => {
+        setCarouselIndex(idx => (idx + 1) % msgCount);
+        setAnimationState("enter-right");
+
+        setTimeout(() => {
+          setAnimationState("idle");
+          setIsAnimating(false);
+        }, ANIMATION_DURATION);
+      }, ANIMATION_DURATION);
+    };
+
+    const currentMsg = linkedMessagesCmps[carouselIndex];
+
+    return (
+      <div className="katechat-message-carousel">
+        <div className="message-carousel-header">
+          <div className="message-carousel-controls">
+            {msgCount > 1 && (
+              <>
+                <ActionIcon onClick={handlePrev} aria-label="Previous" radius="xl" variant="light">
+                  <IconChevronLeft />
+                </ActionIcon>
+
+                <ActionIcon onClick={handleNext} aria-label="Next" radius="xl" variant="light">
+                  <IconChevronRight />
+                </ActionIcon>
+              </>
+            )}
+          </div>
+        </div>
+        <div className={`carousel-message-content animation-${animationState}`}>{currentMsg}</div>
+
+        {/* Model icons below carousel */}
+        {msgCount > 1 && (
+          <Group className="carousel-model-icons">
+            {linkedMessages.map((msg, idx) => {
+              const model = models?.find(m => m.modelId === msg.modelId);
+              const isSelected = idx === carouselIndex;
+              return (
+                <Tooltip key={msg.id} label={model?.name || t("AI")} position="top">
+                  <Box key={msg.id} c={isSelected ? undefined : "dimmed"} onClick={() => setCarouselIndex(idx)}>
+                    {model ? (
+                      <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} size={20} />
+                    ) : (
+                      <IconRobot size={20} />
+                    )}
+                  </Box>
+                </Tooltip>
+              );
+            })}
+          </Group>
+        )}
+      </div>
+    );
+  }, [linkedMessagesCmps, i18n.language, carouselIndex, animationState, isAnimating]);
+
+  if (!linkedMessagesCarouselCmp) {
     return (
       <div className={["katechat-message", `katechat-message__${role || ""}`].join(" ")} ref={componentRef}>
         <div className="katechat-message-main">{mainMessage}</div>
@@ -306,7 +402,9 @@ export const ChatMessage = (props: ChatMessageProps) => {
         />
       </div>
       <div className={["katechat-message-main", showMainMessage ? "" : "hidden"].join(" ")}>{mainMessage}</div>
-      <div className={["katechat-message-linked", showMainMessage ? "hidden" : ""].join(" ")}>{linkedMessagesCmp}</div>
+      <div className={["katechat-message-linked", showMainMessage ? "hidden" : ""].join(" ")}>
+        {linkedMessagesCarouselCmp}
+      </div>
     </div>
   );
 };

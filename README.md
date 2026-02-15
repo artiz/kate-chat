@@ -50,7 +50,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
-* Replace @mantine/carousel in ChatMessage with own implementation to avoid rerenderings
 * Add status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).

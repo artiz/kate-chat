@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
-import { Text, Group, Avatar } from "@mantine/core";
-import { Carousel } from "@mantine/carousel";
+import { Text, Group, Avatar, Box } from "@mantine/core";
 import { IconRobot } from "@tabler/icons-react";
 
 import { Message, Model } from "@/core";
@@ -24,8 +23,8 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
   }, [models, message.modelId]);
 
   return (
-    <Carousel.Slide key={message.id} className="katechat-message-linked">
-      <Group align="center">
+    <Box key={message.id}>
+      <Group align="center" pt="sm">
         <Avatar radius="xl" size="md">
           {model ? <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} /> : <IconRobot />}
         </Avatar>
@@ -57,7 +56,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
           {plugins}
         </div>
       </div>
-    </Carousel.Slide>
+    </Box>
   );
 };
 

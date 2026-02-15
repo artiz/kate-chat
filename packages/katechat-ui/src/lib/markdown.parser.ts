@@ -6,7 +6,7 @@ import markedKatex from "marked-katex-extension";
 import { Message, MessageRole } from "@/core/message";
 
 // Template to store original (unformatted) code to copy it
-const CodeDataTemplate = `<div class="code-header placeholder"><LANG>&nbsp;</div><span class="code-data" data-code="<CODE>" data-lang="<LANG>"></span>`;
+const CodeDataTemplate = `<div class="code-header"><span class="title"><span class="header-toggle"></span><span class="language"><LANG></span></span></div><span class="code-data" data-code="<CODE>" data-lang="<LANG>"></span>`;
 
 const marked = new Marked(
   // code highlighting

@@ -83,7 +83,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
 
       const target = el as HTMLElement;
       const toggleCodeBlock = (header: HTMLElement) => {
-        const codeBlock = header?.nextElementSibling as HTMLElement;
+        const codeBlock = header?.parentElement as HTMLElement;
         if (codeBlock.classList.contains("collapsed")) {
           header.classList.remove("collapsed");
           codeBlock && codeBlock.classList.remove("collapsed");
@@ -98,7 +98,7 @@ export const ChatMessagesList: React.FC<ChatMessagesProps> = ({
         const lang = target.dataset["lang"];
         const run = target.classList.contains("code-run-btn");
 
-        const codeBlock = target.closest(".code-header")?.nextElementSibling;
+        const codeBlock = target.closest(".code-header")?.parentElement;
         const codeDataEl = codeBlock?.querySelector(".code-data") as HTMLElement;
 
         if (codeDataEl) {

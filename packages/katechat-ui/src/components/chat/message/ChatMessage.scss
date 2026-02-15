@@ -15,19 +15,12 @@
   }
 
   .katechat-message-linked {
-    padding-left: var(--mantine-spacing-sm);
+    margin-right: var(--mantine-spacing-sm);
   }
 
   .katechat-message-linked-toggle {
     display: none;
   }
-}
-
-.katechat-message-linked {
-  width: 100%;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .katechat-message-content {
@@ -168,6 +161,12 @@
     transition: all var(--theme-default-time) ease;
     font-family: var(--monospace-font-family);
     overflow-x: auto;
+    position: relative;
+    border-radius: var(--mantine-radius-md);
+
+    &:has(.code-header) {
+      padding-top: 3.6rem;
+    }
   }
 
   .code-header {
@@ -175,7 +174,12 @@
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-sm) var(--mantine-spacing-md);
     border-top-right-radius: var(--mantine-radius-md);
     border-top-left-radius: var(--mantine-radius-md);
-    min-height: 3rem;
+    height: 2.7rem;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
 
     display: flex;
     justify-content: space-between;
@@ -184,14 +188,10 @@
     white-space: normal;
     gap: 0.5rem;
 
-    &.placeholder {
-      min-height: 2.5rem;
-      opacity: 0;
-    }
-
     .title {
       width: fit-content;
       font-weight: 700;
+      font-family: var(--mantine-font-family);
       display: flex;
       align-items: center;
       flex-direction: row;
@@ -200,6 +200,7 @@
       min-height: 2rem;
 
       .header-toggle {
+        width: 1.5rem;
         margin-right: 0.5rem;
         display: none;
         display: inline-block;
@@ -247,6 +248,7 @@
       border-bottom-right-radius: 0.25em;
       border-bottom-left-radius: 0.25em;
       margin-bottom: 0;
+
       .title {
         .header-toggle {
           transform: translateY(0.2rem) rotateZ(0deg);
@@ -262,27 +264,31 @@
   }
 
   .code-block {
+    position: relative;
+    flex-grow: 1;
+    overflow-x: auto;
+    padding-top: 2.7rem;
+    margin: 0.5rem 0;
+    border-radius: var(--mantine-radius-md);
+
     pre {
       margin: 0;
       white-space: pre;
+      transition:
+        clip-path 0.5s ease,
+        height 0.5s ease,
+        opacity 0.5s ease;
     }
 
-    flex-grow: 1;
-    overflow-x: auto;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    border-bottom-right-radius: 0.25em;
-    border-bottom-left-radius: 0.25em;
-    transition:
-      clip-path 0.5s ease,
-      height 0.5s ease,
-      opacity 0.5s ease;
-
     &.collapsed {
-      clip-path: inset(0 0 100% 0);
-      overflow-y: hidden;
-      height: 0;
-      opacity: 0;
+      padding-top: 0.7rem;
+      height: 2.7rem;
+      pre {
+        clip-path: inset(0 0 100% 0);
+        overflow-y: hidden;
+        height: 0;
+        opacity: 0;
+      }
     }
   }
 
@@ -311,6 +317,108 @@
 
   &:hover {
     opacity: 1;
+  }
+}
+
+.katechat-message-carousel {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+
+  .message-carousel-header {
+    position: absolute;
+    display: flex;
+    justify-content: flex-end;
+    top: 0.75rem;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+  }
+
+  .message-carousel-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .carousel-message-content {
+    position: relative;
+    overflow: hidden;
+
+    &.animation-exit-left {
+      animation: slideOutLeft 0.3s ease-in-out forwards;
+    }
+
+    &.animation-exit-right {
+      animation: slideOutRight 0.3s ease-in-out forwards;
+    }
+
+    &.animation-enter-right {
+      animation: slideInFromRight 0.3s ease-in-out forwards;
+    }
+
+    &.animation-enter-left {
+      animation: slideInFromLeft 0.3s ease-in-out forwards;
+    }
+  }
+
+  .carousel-model-icons {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+
+    div {
+      cursor: pointer;
+    }
+  }
+
+  // Carousel slide animations - scoped to this carousel only
+  @keyframes slideOutLeft {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideOutRight {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes slideInFromRight {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInFromLeft {
+    from {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
   }
 }
 
