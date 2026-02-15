@@ -15,7 +15,17 @@ const buildConfig = {
   sourcemap: true,
   minify: true,
   metafile: true,
-  external: ["react", "react-dom", "react-router-dom", "react-redux", "@mantine/*", "@tabler/icons-react"],
+  external: [
+    "react",
+    "react-dom",
+    "react-router-dom",
+    "react-redux",
+    "react-i18next",
+    "i18next",
+    "i18next-browser-languagedetector",
+    "@mantine/*",
+    "@tabler/icons-react",
+  ],
   loader: {
     ".js": "jsx",
     ".svg": "dataurl",
