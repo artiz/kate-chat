@@ -407,14 +407,12 @@ export class BedrockApiProvider extends BaseApiProvider {
   }
 
   public async getInfo(checkConnection = false): Promise<ProviderInfo> {
-    const isConnected = !!this.bedrockClient;
+    let isConnected = !!this.bedrockClient;
     const region = this.connection.awsBedrockRegion;
     const profile = this.connection.awsBedrockProfile;
     const accessKey = this.connection.awsBedrockAccessKeyId;
 
-    const details: Record<string, string | number | boolean | undefined> = {
-      available: isConnected,
-    };
+    const details: Record<string, string | number | boolean | undefined> = {};
 
     if (region) details.region = region;
     if (profile) details.profile = profile;
@@ -430,6 +428,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       } catch (error) {
         logger.error(error, "Error validating AWS credentials");
         details.status = `Connection check failed: ${getErrorMessage(error)}`;
+        isConnected = false;
       }
     }
 

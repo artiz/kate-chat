@@ -132,10 +132,9 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
   // Get OpenAI provider information including account details
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
-    const isConnected = !!this.apiKey;
+    let isConnected = !!this.apiKey;
     const details: Record<string, string | number | boolean> = {
       apiUrl: this.baseUrl,
-      available: isConnected,
     };
 
     if (isConnected && checkConnection) {
@@ -146,6 +145,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
       } catch (error) {
         logger.warn(error, "Error fetching OpenAI models information");
         details.status = `Connection check failed: ${getErrorMessage(error)}`;
+        isConnected = false;
       }
     }
 

@@ -59,12 +59,16 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
                     {provider.details.map(detail => (
                       <Table.Tr key={detail.key}>
                         <Table.Td style={{ width: "40%" }}>
-                          <Text fw={500} size="sm">
+                          <Text
+                            fw={500}
+                            size="sm"
+                            c={detail.key === "status" && !provider.isConnected ? "red" : "default"}
+                          >
                             {detail.key}
                           </Text>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm">
+                          <Text size="sm" c={detail.key === "status" && !provider.isConnected ? "red" : "default"}>
                             {typeof detail.value === "boolean" ? (detail.value ? "Yes" : "No") : detail.value}
                           </Text>
                         </Table.Td>

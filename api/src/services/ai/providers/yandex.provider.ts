@@ -211,10 +211,9 @@ export class YandexApiProvider extends BaseApiProvider {
   }
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {
-    const isConnected = !!this.apiKey;
+    let isConnected = Boolean(this.apiKey && this.folderId);
 
     const details: Record<string, string | number | boolean | undefined> = {
-      available: isConnected,
       folderId: this.folderId || "N/A",
     };
 
@@ -228,6 +227,7 @@ export class YandexApiProvider extends BaseApiProvider {
         }
       } catch (error) {
         details.status = `Connection check failed: ${getErrorMessage(error)}`;
+        isConnected = false;
       }
     }
 
