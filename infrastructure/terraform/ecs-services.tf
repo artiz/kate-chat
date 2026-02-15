@@ -77,6 +77,10 @@ locals {
     {
       name  = "DEFAULT_ADMIN_EMAILS"
       value = var.default_admin_emails
+    },
+    {
+      name  = "OPENAI_IGNORED_MODELS"
+      value = "chatgpt-image,gpt-image,sora,dall-e,o4,gpt-audio,gpt-4-0125-preview,gpt-4-0613,gpt-4-1106-preview,gpt-4o-2024-11-20,gpt-4o-mini-search-preview,gpt-5-2025-08-07,gpt-realtime,,whisper-1,gpt-5-codex,gpt-5.2-codex"
     }
   ]
 
@@ -196,6 +200,10 @@ locals {
       {
         name      = "YANDEX_FM_API_FOLDER"
         valueFrom = aws_secretsmanager_secret.yandex_fm_api_folder.arn
+      },
+      {
+        name      = "OPENAI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.openai_api_key.arn
       }
     ]
 

@@ -259,12 +259,13 @@ export class OpenAIApiProvider extends BaseApiProvider {
       logger.debug("OpenAI API client is not initialized, cannot fetch models");
       return models;
     }
+
+    logger.debug({ ignored: globalConfig.openai.ignoredModels }, "Fetching OpenAI models information");
     try {
       // Fetch models from OpenAI API
       const response = await this.protocol.api.models.list();
       const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
 
-      console.log("OpenAI models response:", response.data);
       // Filter and map models
       for (const model of response.data) {
         if (globalConfig.openai.ignoredModels.some(ignoredModel => model.id.startsWith(ignoredModel))) {

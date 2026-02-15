@@ -88,3 +88,10 @@ resource "aws_secretsmanager_secret" "yandex_fm_api_folder" {
   description             = "Yandex Foundational Models API Folder"
   recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
+
+resource "aws_secretsmanager_secret" "openai_api_key" {
+  name                    = "${var.project_name}-${var.environment}-openai-api-key"
+  description             = "OpenAI API Key"
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
+}
+
