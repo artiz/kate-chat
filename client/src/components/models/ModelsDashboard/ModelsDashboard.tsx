@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Title, Text, Group, Stack, Loader, Button, Modal, Alert, Table } from "@mantine/core";
+import { Title, Text, Group, Stack, Loader, Button, Modal, Alert, Table, Card } from "@mantine/core";
 import { DatePicker, DateStringValue } from "@mantine/dates";
 import { IconRefresh, IconAlertCircle, IconPlus } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "@/store";
