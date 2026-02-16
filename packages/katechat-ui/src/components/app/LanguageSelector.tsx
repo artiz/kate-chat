@@ -2,12 +2,12 @@ import React from "react";
 import { Menu, ActionIcon, Tooltip } from "@mantine/core";
 import { IconLanguage } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LANGUAGES, SupportedLanguage, LANGUAGE_STORAGE_KEY } from "@/i18n";
+import { LANGUAGE_STORAGE_KEY, BASE_SUPPORTED_LANGUAGES } from "@/i18n";
 
-export const LanguageSelector: React.FC = () => {
+export const LanguageSelector = ({ languages = BASE_SUPPORTED_LANGUAGES }: { languages?: string[] }) => {
   const { t, i18n } = useTranslation();
 
-  const handleLanguageChange = (lang: SupportedLanguage) => {
+  const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
     localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
   };
@@ -22,7 +22,7 @@ export const LanguageSelector: React.FC = () => {
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown>
-        {SUPPORTED_LANGUAGES.map(lang => (
+        {languages.map(lang => (
           <Menu.Item key={lang} onClick={() => handleLanguageChange(lang)} fw={i18n.language === lang ? 700 : 400}>
             {t(`language.${lang}`)}
           </Menu.Item>

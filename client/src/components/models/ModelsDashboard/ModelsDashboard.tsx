@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Title, Text, Card, Group, Stack, Loader, Button, Modal, TextInput, Alert, Table } from "@mantine/core";
+import { Title, Text, Group, Stack, Loader, Button, Modal, Alert, Table } from "@mantine/core";
 import { DatePicker, DateStringValue } from "@mantine/dates";
 import { IconRefresh, IconAlertCircle, IconPlus } from "@tabler/icons-react";
 import { useAppSelector, useAppDispatch } from "@/store";
@@ -24,6 +24,7 @@ import { CustomModelProtocol } from "@katechat/ui";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
 import { CustomModelDialog, CustomModelFormData } from "../CustomModelDialog";
+import { ModelTestModal } from "./ModelTestModal";
 
 export const ModelsDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -33,11 +34,7 @@ export const ModelsDashboard: React.FC = () => {
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [customModelDialogOpen, setCustomModelDialogOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<Model | undefined>();
-  const [testText, setTestText] = useState("2+2=");
-  const [testResult, setTestResult] = useState<Message>();
-  const [testError, setTestError] = useState("");
   const [currentTestingModel, setCurrentTestingModel] = useState<Model>();
-  const [testLoading, setTestLoading] = useState(false);
 
   const [costModalOpen, setCostModalOpen] = useState(false);
   const [costStartDate, setCostStartDate] = useState<Date>();
@@ -125,16 +122,7 @@ export const ModelsDashboard: React.FC = () => {
   });
 
   // Test model mutation
-  const [testModel] = useMutation(TEST_MODEL_MUTATION, {
-    onCompleted: data => {
-      setTestResult(data.testModel);
-      setTestLoading(false);
-    },
-    onError: error => {
-      setTestError(error.message);
-      setTestLoading(false);
-    },
-  });
+  const [testModel] = useMutation(TEST_MODEL_MUTATION);
 
   // Get costs query
   const [getCosts, { loading: costsLoading, data: costsData }] = useLazyQuery<{ getCosts: GqlCostsInfo }>(
@@ -154,33 +142,39 @@ export const ModelsDashboard: React.FC = () => {
   );
 
   // Handle creating a new chat with the selected model
-  const handleCreateChat = (model: Model) => {
-    createChat({
-      variables: {
-        input: {
-          title: t("models.chatWith", { modelName: model.name }),
-          modelId: model.modelId,
+  const handleCreateChat = useCallback(
+    (model: Model) => {
+      createChat({
+        variables: {
+          input: {
+            title: t("models.chatWith", { modelName: model.name }),
+            modelId: model.modelId,
+          },
         },
-      },
-    });
-  };
+      });
+    },
+    [createChat, t]
+  );
 
   // Handle reloading models
-  const handleReloadModels = () => {
+  const handleReloadModels = useCallback(() => {
     reloadModels();
-  };
+  }, [reloadModels]);
 
   // Handle toggle model active status
-  const handleToggleModelStatus = (model: Model, isActive: boolean) => {
-    updateModelStatus({
-      variables: {
-        input: {
-          modelId: model.id,
-          isActive,
+  const handleToggleModelStatus = useCallback(
+    (model: Model, isActive: boolean) => {
+      updateModelStatus({
+        variables: {
+          input: {
+            modelId: model.id,
+            isActive,
+          },
         },
-      },
-    });
-  };
+      });
+    },
+    [updateModelStatus]
+  );
 
   // Create custom model mutation
   const [createCustomModel, { loading: creatingCustomModel }] = useMutation(CREATE_CUSTOM_MODEL_MUTATION, {
@@ -240,119 +234,91 @@ export const ModelsDashboard: React.FC = () => {
   });
 
   // Handle open create dialog
-  const handleOpenCreateDialog = () => {
+  const handleOpenCreateDialog = useCallback(() => {
     setEditingModel(undefined);
     setCustomModelDialogOpen(true);
-  };
+  }, []);
 
   // Handle open edit dialog
-  const handleOpenEditDialog = (model: Model) => {
+  const handleOpenEditDialog = useCallback((model: Model) => {
     setEditingModel(model);
     setCustomModelDialogOpen(true);
-  };
+  }, []);
 
   // Handle create/update custom model
-  const handleSubmitCustomModel = async (formData: CustomModelFormData) => {
-    if (editingModel) {
-      await updateCustomModel({
-        variables: {
-          input: {
-            id: editingModel.id,
-            ...formData,
+  const handleSubmitCustomModel = useCallback(
+    async (formData: CustomModelFormData) => {
+      if (editingModel) {
+        await updateCustomModel({
+          variables: {
+            input: {
+              id: editingModel.id,
+              ...formData,
+            },
           },
-        },
-      });
-    } else {
-      await createCustomModel({
-        variables: {
-          input: formData,
-        },
-      });
-    }
-  };
+        });
+      } else {
+        await createCustomModel({
+          variables: {
+            input: formData,
+          },
+        });
+      }
+    },
+    [editingModel, updateCustomModel, createCustomModel]
+  );
 
   // Handle delete model
-  const handleDeleteModel = async (modelId: string) => {
-    const result = await deleteModel({
-      variables: {
-        input: { modelId },
-      },
-    });
+  const handleDeleteModel = useCallback(
+    async (modelId: string) => {
+      const result = await deleteModel({
+        variables: {
+          input: { modelId },
+        },
+      });
 
-    if (result.data?.deleteModel) {
-      dispatch(removeModel(modelId));
-    }
-  };
+      if (result.data?.deleteModel) {
+        dispatch(removeModel(modelId));
+      }
+    },
+    [deleteModel, dispatch]
+  );
 
   // Handle opening test modal
-  const handleOpenTestModal = (model: Model) => {
+  const handleOpenTestModal = useCallback((model: Model) => {
     setCurrentTestingModel(model);
-    setTestText("2+2=");
-    setTestResult(undefined);
-    setTestError("");
     setTestModalOpen(true);
-  };
+  }, []);
 
   // Handle closing test modal
-  const handleCloseTestModal = () => {
+  const handleCloseTestModal = useCallback(() => {
     setCurrentTestingModel(undefined);
     setTestModalOpen(false);
-    setTestResult(undefined);
-    setTestError("");
-  };
+  }, []);
 
   // Handle test model
-  const handleTestModel = () => {
-    if (!currentTestingModel) return;
+  const handleTestModel = useCallback(
+    async (text: string) => {
+      if (!currentTestingModel) return;
 
-    setTestLoading(true);
-    setTestResult(undefined);
-    setTestError("");
-
-    testModel({
-      variables: {
-        input: {
-          id: currentTestingModel.id,
-          text: testText,
-        },
-      },
-    });
-  };
-
-  // Handle opening cost modal
-  const handleOpenCostModal = (providerId: string) => {
-    setCurrentProvider(providerId);
-    setCostModalOpen(true);
-
-    // Convert dates to Unix timestamps (seconds)
-    handleRefreshCosts(providerId);
-  };
-
-  // Handle closing cost modal
-  const handleCloseCostModal = () => {
-    setCurrentProvider(undefined);
-    setCostModalOpen(false);
-  };
-
-  // Handle date change and refresh costs
-  const handleRefreshCosts = (apiProvider: string | undefined) => {
-    // Convert dates to Unix timestamps (seconds)
-    const startTime = costStartDate ? Math.floor(costStartDate.getTime() / 1000) : undefined;
-    const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
-
-    getCosts({
-      variables: {
-        input: {
-          apiProvider,
-          startTime,
-          endTime,
-        },
-      },
-    });
-  };
+      try {
+        await testModel({
+          variables: {
+            input: {
+              id: currentTestingModel.id,
+              text,
+            },
+          },
+        });
+      } catch (error) {
+        // Error handled by mutation
+      }
+    },
+    [currentTestingModel, testModel]
+  );
 
   // Handle disabling model after test error
-  const handleDisableModel = () => {
+  const handleDisableModel = useCallback(() => {
     if (!currentTestingModel) return;
 
     updateModelStatus({
@@ -365,7 +331,45 @@ export const ModelsDashboard: React.FC = () => {
     });
 
     handleCloseTestModal();
-  };
+  }, [currentTestingModel, updateModelStatus, handleCloseTestModal]);
+
+  // Handle date change and refresh costs
+  const handleRefreshCosts = useCallback(
+    (apiProvider: string | undefined) => {
+      // Convert dates to Unix timestamps (seconds)
+      const startTime = costStartDate ? Math.floor(costStartDate.getTime() / 1000) : undefined;
+      const endTime = costEndDate ? Math.floor(costEndDate.getTime() / 1000) : undefined;
+
+      getCosts({
+        variables: {
+          input: {
+            apiProvider,
+            startTime,
+            endTime,
+          },
+        },
+      });
+    },
+    [costStartDate, costEndDate, getCosts]
+  );
+
+  // Handle opening cost modal
+  const handleOpenCostModal = useCallback(
+    (providerId: string) => {
+      setCurrentProvider(providerId);
+      setCostModalOpen(true);
+
+      // Convert dates to Unix timestamps (seconds)
+      handleRefreshCosts(providerId);
+    },
+    [handleRefreshCosts]
+  );
+
+  // Handle closing cost modal
+  const handleCloseCostModal = useCallback(() => {
+    setCurrentProvider(undefined);
+    setCostModalOpen(false);
+  }, []);
 
   const totalCosts = useMemo(() => {
     if (!costsData?.getCosts || !costsData.getCosts.costs) return [];
@@ -433,45 +437,13 @@ export const ModelsDashboard: React.FC = () => {
       />
 
       {/* Test Request Modal */}
-      <Modal
+      <ModelTestModal
         opened={testModalOpen}
+        model={currentTestingModel}
         onClose={handleCloseTestModal}
-        title={t("models.testModel", { modelName: currentTestingModel?.name || "Model" })}
-        size="lg"
-      >
-        <Stack gap="md">
-          <TextInput
-            label={t("models.testPrompt")}
-            value={testText}
-            onChange={e => setTestText(e.target.value)}
-            placeholder={t("models.enterTestPrompt")}
-          />
-
-          <Button onClick={handleTestModel} loading={testLoading} disabled={!testText.trim()} fullWidth>
-            {t("models.runTest")}
-          </Button>
-
-          {testResult && (
-            <Stack>
-              <Text fw={500}>{t("models.modelResponse")}</Text>
-              <Card withBorder p="md" radius="md">
-                <Text>{testResult?.content}</Text>
-              </Card>
-            </Stack>
-          )}
-
-          {testError && (
-            <Alert icon={<IconAlertCircle size={16} />} title={t("common.error")} color="red">
-              {testError}
-              <Group mt="md">
-                <Button color="red" onClick={handleDisableModel}>
-                  {t("models.disableModel")}
-                </Button>
-              </Group>
-            </Alert>
-          )}
-        </Stack>
-      </Modal>
+        onTest={handleTestModel}
+        onDisableModel={handleDisableModel}
+      />
 
       {/* Usage Costs Modal */}
       <Modal

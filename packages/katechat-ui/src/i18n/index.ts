@@ -8,7 +8,7 @@ import de from "./locales/de.json";
 import ru from "./locales/ru.json";
 import zh from "./locales/zh.json";
 
-const SUPPORTED_LANGUAGES = ["en", "de", "ru", "zh"] as const;
+export const BASE_SUPPORTED_LANGUAGES: string[] = ["en", "de", "ru", "zh"] as const;
 export const LANGUAGE_STORAGE_KEY = "ui-language";
 
 interface InitI18nProps {
@@ -32,7 +32,7 @@ function mergeResources(mainResource: Resource = {}) {
 
 export async function initI18n({
   lookupLocalStorage = LANGUAGE_STORAGE_KEY,
-  supportedLngs = SUPPORTED_LANGUAGES,
+  supportedLngs = BASE_SUPPORTED_LANGUAGES,
   fallbackLng = "en",
   resources = {},
 }: InitI18nProps = {}) {

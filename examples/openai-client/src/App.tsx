@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, use } from "react";
 import {
   AppShell,
   Group,
@@ -49,8 +49,14 @@ export const App: React.FC = () => {
   const clientRef = useRef<OpenAIClient | null>(null);
   const messagesContainerRef = useRef<any>(null);
 
-  const { chats, createChat, updateChat, deleteChat, updateChatTitle } =
-    useChats();
+  const {
+    loading,
+    chats,
+    createChat,
+    updateChat,
+    deleteChat,
+    updateChatTitle,
+  } = useChats();
   const { messages, addMessage, updateMessage, deleteMessages } =
     useMessages(currentChatId);
 
@@ -62,10 +68,16 @@ export const App: React.FC = () => {
   }, [apiKey, apiEndpoint, apiMode]);
 
   const handleNewChat = useCallback(async () => {
+    // If current chat is empty, reuse it instead of creating a new one
+    if (currentChatId && messages.length === 0) {
+      setSidebarOpened(false);
+      return;
+    }
+
     const newChat = await createChat(modelName);
     setCurrentChatId(newChat.id);
     setSidebarOpened(false);
-  }, [createChat, modelName]);
+  }, [createChat, modelName, currentChatId, messages.length]);
 
   const handleSelectChat = useCallback((id: string) => {
     setCurrentChatId(id);
@@ -286,6 +298,21 @@ export const App: React.FC = () => {
     },
     [messages, deleteMessages],
   );
+
+  // Auto-select or create a chat on initial load
+  useEffect(() => {
+    if (!loading && !currentChatId) {
+      if (chats.length > 0) {
+        // Select the most recent chat (chats are typically sorted by updatedAt)
+        setCurrentChatId(chats[0].id);
+      } else {
+        // Only create a new chat if there are no chats at all
+        createChat(modelName).then((newChat) => {
+          setCurrentChatId(newChat.id);
+        });
+      }
+    }
+  }, [loading, currentChatId, chats, modelName, createChat]);
 
   // Dummy models array for ChatMessagesList
   const models: Model[] = [

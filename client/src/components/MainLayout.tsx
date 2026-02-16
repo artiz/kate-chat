@@ -1,5 +1,5 @@
 import React from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import {
   AppShell,
   Burger,
@@ -11,28 +11,18 @@ import {
   Divider,
   ActionIcon,
   Tooltip,
-  em,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
-import {
-  IconLogout,
-  IconSettings,
-  IconChevronRight,
-  IconSun,
-  IconMoon,
-  IconUser,
-  IconWifi,
-  IconRobot,
-} from "@tabler/icons-react";
+import { IconLogout, IconChevronRight, IconSun, IconMoon, IconUser, IconWifi, IconRobot } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
-import { useTheme } from "@katechat/ui";
+import { LanguageSelector, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
 import { useAppSelector } from "../store";
 import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
-import { LanguageSelector } from "./LanguageSelector";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { getClientConfig } from "@/global-config";
+import { SUPPORTED_LANGUAGES } from "@/i18n";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
@@ -111,7 +101,7 @@ export const MainLayout: React.FC = () => {
               </ActionIcon>
             </Tooltip>
 
-            <LanguageSelector />
+            <LanguageSelector languages={SUPPORTED_LANGUAGES} />
 
             <Menu shadow="md" width={200} position="bottom-end">
               <Menu.Target>

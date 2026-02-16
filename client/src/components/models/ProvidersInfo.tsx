@@ -10,7 +10,7 @@ interface ProvidersInfoProps {
   onOpenCostModal: (providerId: string) => void;
 }
 
-export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenCostModal }) => {
+export const ProvidersInfo = React.memo<ProvidersInfoProps>(({ providers, onOpenCostModal }) => {
   const { t } = useTranslation();
   const noActiveProviders = useMemo(() => {
     return providers.length === 0 || !providers.some(provider => provider.isConnected);
@@ -142,4 +142,4 @@ export const ProvidersInfo: React.FC<ProvidersInfoProps> = ({ providers, onOpenC
       </Grid>
     </Stack>
   );
-};
+});

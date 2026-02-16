@@ -29,7 +29,7 @@ interface ChatMessageProps {
   codePlugins?: Record<string, CodePlugin>;
 }
 
-export const ChatMessage = (props: ChatMessageProps) => {
+export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps) => {
   const { message, index, disabled = false, pluginsLoader, messageDetailsLoader, models, codePlugins } = props;
 
   const {
@@ -407,5 +407,5 @@ export const ChatMessage = (props: ChatMessageProps) => {
       </div>
     </div>
   );
-};
+});
 ChatMessage.displayName = "ChatMessage";

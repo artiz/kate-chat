@@ -71,6 +71,17 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
     useEffect(() => {
       if (autoScroll) {
         handleAutoScroll();
+      } else {
+        // When autoScroll is disabled and new messages arrive, show the anchor button
+        // if user is not already at the bottom
+        const container = messagesContainerRef.current;
+        if (container) {
+          const { scrollTop, scrollHeight, clientHeight } = container;
+          const isAtBottom = scrollHeight - scrollTop - clientHeight < 2;
+          if (!isAtBottom) {
+            setShowAnchorButton(true);
+          }
+        }
       }
     }, [messages, handleAutoScroll, autoScroll]);
 

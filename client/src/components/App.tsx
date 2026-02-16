@@ -13,7 +13,7 @@ import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
-import { SUPPORTED_LANGUAGES, SupportedLanguage } from "@/i18n";
+import { SUPPORTED_LANGUAGES } from "@/i18n";
 
 // Pages
 import Login from "@/pages/Login";
@@ -101,7 +101,7 @@ const AppContent: React.FC = () => {
 
       // Sync language from user settings
       const userLang = initData.appConfig.currentUser?.settings?.language;
-      if (userLang && SUPPORTED_LANGUAGES.includes(userLang as SupportedLanguage)) {
+      if (userLang && SUPPORTED_LANGUAGES.includes(userLang)) {
         i18n.changeLanguage(userLang);
         localStorage.setItem(LANGUAGE_STORAGE_KEY, userLang);
       }

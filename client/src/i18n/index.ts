@@ -5,8 +5,7 @@ import ru from "./locales/ru.json";
 import zh from "./locales/zh.json";
 
 export { LANGUAGE_STORAGE_KEY };
-export const SUPPORTED_LANGUAGES = ["en", "de", "ru", "zh"] as const;
-export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+export const SUPPORTED_LANGUAGES: string[] = ["en", "de", "ru", "zh"] as const;
 
 export const I18N_RESOURCES = {
   en: { translation: en },
