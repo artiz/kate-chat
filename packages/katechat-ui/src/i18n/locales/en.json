@@ -10,8 +10,8 @@
   "Confirm Deletion": "Confirm Deletion",
   "Copy": "Copy",
   "Copy message": "Copy message",
-  "Details": "Details",
   "Delete": "Delete",
+  "Details": "Details",
   "Document upload is not available in this chat.": "Document upload is not available in this chat.",
   "Download": "Download",
   "Drop files here to upload": "Drop files here to upload",
@@ -24,6 +24,13 @@
   "Image Preview": "Image Preview",
   "Image uploads are not allowed in this chat.": "Image uploads are not allowed in this chat.",
   "In Progress": "In Progress",
+  "language": {
+    "de": "Deutsch",
+    "en": "English",
+    "label": "Language",
+    "ru": "Русский",
+    "zh": "中文"
+  },
   "Language is not specified for this code block": "Language is not specified for this code block",
   "Main": "Main",
   "More...": "More...",

@@ -24,6 +24,13 @@
   "Image Preview": "图片预览",
   "Image uploads are not allowed in this chat.": "此聊天不允许上传图片。",
   "In Progress": "进行中",
+  "language": {
+    "de": "Deutsch",
+    "en": "English",
+    "label": "语言",
+    "ru": "Русский",
+    "zh": "中文"
+  },
   "Language is not specified for this code block": "此代码块未指定语言",
   "Main": "主要",
   "More...": "更多...",

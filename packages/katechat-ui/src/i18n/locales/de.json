@@ -24,6 +24,13 @@
   "Image Preview": "Bildvorschau",
   "Image uploads are not allowed in this chat.": "Bild-Uploads sind in diesem Chat nicht erlaubt.",
   "In Progress": "In Bearbeitung",
+  "language": {
+    "de": "Deutsch",
+    "en": "English",
+    "label": "Sprache",
+    "ru": "Русский",
+    "zh": "中文"
+  },
   "Language is not specified for this code block": "Für diesen Codeblock ist keine Sprache angegeben",
   "Main": "Haupt",
   "More...": "Mehr...",

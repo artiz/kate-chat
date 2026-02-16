@@ -24,6 +24,13 @@
   "Image Preview": "Предпросмотр изображения",
   "Image uploads are not allowed in this chat.": "Загрузка изображений в этом чате запрещена.",
   "In Progress": "В процессе",
+  "language": {
+    "de": "Deutsch",
+    "en": "English",
+    "label": "Язык",
+    "ru": "Русский",
+    "zh": "中文"
+  },
   "Language is not specified for this code block": "Язык не указан для этого блока кода",
   "Main": "Основной",
   "More...": "Ещё...",
