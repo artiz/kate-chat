@@ -75,7 +75,7 @@ export class UserResolver extends BaseResolver {
       ragEnabled: features.rag ? ragEnabled : false,
       maxChats: demoMode ? globalConfig.demo.maxChats : -1,
       maxChatMessages: demoMode ? globalConfig.demo.maxChatMessages : -1,
-      maxImages: features.imagesGeneration ? (demoMode ? globalConfig.demo.maxImages : -1) : 0,
+      maxImages: demoMode ? globalConfig.demo.maxImages : -1,
       credentialsSource,
     };
   }

@@ -279,7 +279,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
         const isRealtime = model.id.includes("-realtime");
         const isTranscription = ["whisper"].some(prefix => model.id.startsWith(prefix));
 
-        const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => model.id.startsWith(prefix));
+        const imageInput = OPENAI_MODELS_SUPPORT_IMAGES_INPUT.some(prefix => model.id.startsWith(prefix));
 
         if (nonChatModel && !isImageGeneration && !embeddingModel) {
           continue; // Skip non-chat models that are not image generation or embeddings
@@ -382,6 +382,10 @@ export class OpenAIApiProvider extends BaseApiProvider {
   ): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
+    }
+
+    if (!globalConfig.features.imagesGeneration) {
+      throw new Error("Image generation feature is disabled");
     }
 
     const { modelId, imagesCount } = inputRequest;

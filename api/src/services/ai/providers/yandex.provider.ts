@@ -104,6 +104,9 @@ export class YandexApiProvider extends BaseApiProvider {
     if (!this.apiKey || !this.folderId) {
       throw new Error("Yandex API key or Folder ID is not set.");
     }
+    if (!globalConfig.features.imagesGeneration) {
+      throw new Error("Image generation feature is disabled");
+    }
 
     const { modelId } = inputRequest;
     const modelUri = modelId.replace("{folder}", this.folderId);
