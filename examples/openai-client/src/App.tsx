@@ -18,6 +18,7 @@ import {
   Model,
   parseMarkdown,
   escapeHtml,
+  LanguageSelector,
 } from "@katechat/ui";
 import { DEFAULT_MODEL, SettingsForm } from "./components/SettingsForm";
 import { ChatList } from "./components/ChatList";
@@ -342,6 +343,7 @@ export const App: React.FC = () => {
               </Title>
             </Group>
             <Group>
+              <LanguageSelector />
               <Button
                 leftSection={<IconSettings size={18} />}
                 onClick={() => setSettingsOpened(true)}
