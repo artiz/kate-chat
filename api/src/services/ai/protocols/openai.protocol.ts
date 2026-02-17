@@ -243,7 +243,7 @@ export class OpenAIProtocol implements ModelProtocol {
         logger.warn(part, `Unsupported message content type`);
       }
 
-      return parts;
+      return parts.length ? parts : "";
     };
 
     const requestMessages: ChatCompletionMessageParam[] = [];
@@ -281,10 +281,13 @@ export class OpenAIProtocol implements ModelProtocol {
         }
       }
 
-      requestMessages.push(...toolCalls, ...tools, {
-        role,
-        content: await parseContent(msg.body),
-      } as ChatCompletionMessageParam);
+      const content = await parseContent(msg.body);
+      if (content) {
+        requestMessages.push(...toolCalls, ...tools, {
+          role,
+          content,
+        } as ChatCompletionMessageParam);
+      }
     }
 
     // Add system prompt at the beginning if provided
@@ -515,7 +518,7 @@ export class OpenAIProtocol implements ModelProtocol {
     const cyclesLimit = 100; // to prevent infinite loops in case of bugs
     let cycleNo = 0;
     do {
-      logger.trace({ ...params }, "invoking streaming chat.completions...");
+      logger.debug({ ...params }, "invoking streaming chat.completions...");
       const stream = await this.openai.chat.completions.create(params);
 
       let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
