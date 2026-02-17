@@ -11,8 +11,9 @@ import {
   EmbeddingsResponse,
   ModelMessage,
   ProviderInfo,
+  ChatResponseStatus,
 } from "@/types/ai.types";
-import { ApiProvider, MessageRole, ModelType, ToolType, ModelFeature } from "@/types/api";
+import { ApiProvider, MessageRole, ModelType, ToolType, ModelFeature, ResponseStatus } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
@@ -119,7 +120,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     if (modelType === ModelType.IMAGE_GENERATION || modelId.startsWith("dall-e")) {
       callbacks.onStart();
       try {
-        const response = await this.generateImages(input, messages);
+        const response = await this.generateImages(input, messages, callbacks.onProgress);
         callbacks.onComplete(response);
       } catch (error) {
         callbacks.onError(error instanceof Error ? error : new Error(String(error)));
@@ -321,7 +322,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
           name: this.getModelName(model.id),
           description: `${model.id} by OpenAI`,
           type,
-          streaming: type === ModelType.CHAT,
+          streaming: type === ModelType.CHAT || type === ModelType.IMAGE_GENERATION,
           imageInput,
           maxInputTokens,
           tools,
@@ -378,7 +379,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
   // Image generation implementation for DALL-E models
   private async generateImages(
     inputRequest: CompleteChatRequest,
-    messages: ModelMessage[] = []
+    messages: ModelMessage[] = [],
+    onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>
   ): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
@@ -416,6 +418,20 @@ export class OpenAIApiProvider extends BaseApiProvider {
       size: "1024x1024",
       response_format: ["dall-e-2", "dall-e-3"].includes(modelId) ? "b64_json" : undefined,
     };
+
+    // Send placeholder images immediately for new requests
+    if (onProgress) {
+      const placeholders = Array(n)
+        .fill(`![Generated Image](/files/assets/generated_image_placeholder.png)`)
+        .join("   ");
+      await onProgress(
+        placeholders,
+        {
+          status: ResponseStatus.CONTENT_GENERATION,
+        },
+        true
+      );
+    }
 
     logger.debug({ params }, "Image generation");
     try {

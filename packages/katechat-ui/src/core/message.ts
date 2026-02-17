@@ -53,7 +53,7 @@ export interface PluginProps<TMessage = Message> {
   onAddMessage?: (message: TMessage) => void;
   onAction?: (messageId: string) => void;
   onActionEnd?: (messageId: string) => void;
-  onMessageDeleted?: (args: { messagesToDelete?: TMessage[]; deleteAfter?: TMessage }) => void;
+  onMessageDeleted?: (args: { messagesToDelete?: TMessage[]; deleteAfter?: TMessage; isEdit?: boolean }) => void;
 }
 
 export interface ImageInput {

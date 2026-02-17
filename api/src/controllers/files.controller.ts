@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import { Readable } from "stream";
 import { IncomingForm, File as FormidableFile } from "formidable";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
+import path from "path";
+import fs from "fs";
 import { createLogger } from "@/utils/logger";
 import { S3Service } from "@/services/data";
 
@@ -26,6 +28,44 @@ declare global {
 const logger = createLogger(__filename);
 
 export const router = Router();
+
+// Serve static assets
+router.get("/assets/:fileName", async (req: Request<{ fileName: string }>, res: Response) => {
+  try {
+    const { fileName } = req.params;
+    const assetsPath = path.join(__dirname, "../assets", fileName);
+
+    // Check if file exists
+    if (!fs.existsSync(assetsPath)) {
+      res.status(404).send("Asset not found");
+      return;
+    }
+
+    // Set cache control headers
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1 year
+
+    // Determine content type
+    const ext = path.extname(fileName).toLowerCase();
+    const contentTypes: Record<string, string> = {
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".gif": "image/gif",
+      ".svg": "image/svg+xml",
+      ".webp": "image/webp",
+    };
+
+    const contentType = contentTypes[ext] || "application/octet-stream";
+    res.setHeader("Content-Type", contentType);
+
+    // Stream the file
+    const fileStream = fs.createReadStream(assetsPath);
+    fileStream.pipe(res);
+  } catch (error) {
+    logger.error(error, `Error serving asset: ${req.params.fileName}`);
+    res.status(500).send("Error serving asset");
+  }
+});
 
 router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, res: Response) => {
   const { chatId } = req.query;
@@ -218,7 +258,7 @@ router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, r
     }
 
     // Set cache control headers
-    res.setHeader("Cache-Control", "max-age=31536000"); // 1 year
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1 year
 
     // Stream the file to the response
     if (s3Object.Body instanceof Readable) {

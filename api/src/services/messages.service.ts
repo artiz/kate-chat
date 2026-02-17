@@ -111,109 +111,6 @@ export class MessagesService {
     return this.chatFileRepository.save(chatFile);
   }
 
-  private async getImageFeatures(buffer: Buffer): Promise<{ predominantColor?: string; exif?: any }> {
-    try {
-      const image = sharp(buffer);
-      const metadata = await image.metadata();
-
-      let predominantColor: string | undefined;
-
-      // Extract predominant color from random points
-      if (metadata.width && metadata.height) {
-        const totalPixels = metadata.width * metadata.height;
-        const numberOfPoints = totalPixels > 20_000 ? 5_000 : Math.floor(totalPixels * 0.5);
-
-        const colorCounts = new Map<number, number>();
-        const channels = metadata.channels || 3;
-        let candidateColor: number | undefined = undefined;
-        let maxCandidateCount = 0;
-
-        // Get raw buffer data
-        const rawBuffer = await image.raw().toBuffer();
-
-        const borderSize = 0.1; // 10% border
-        const xLeft = Math.floor(metadata.width * borderSize);
-        const xRight = Math.floor(metadata.width * (1 - borderSize));
-        const yTop = Math.floor(metadata.height * borderSize);
-        const yBottom = Math.floor(metadata.height * (1 - borderSize));
-
-        for (let i = 0; i < numberOfPoints; i++) {
-          const quarter = i % 4;
-          let x = 0,
-            y = 0;
-          if (quarter === 0) {
-            x = Math.floor(Math.random() * xLeft);
-            y = Math.floor(Math.random() * metadata.height);
-          } else if (quarter === 1) {
-            x = Math.floor(Math.random() * metadata.width);
-            y = Math.floor(Math.random() * yTop);
-          } else if (quarter === 2) {
-            x = Math.floor(Math.random() * (metadata.width - xRight)) + xRight;
-            y = Math.floor(Math.random() * metadata.height);
-          } else {
-            x = Math.floor(Math.random() * metadata.width);
-            y = Math.floor(Math.random() * (metadata.height - yBottom)) + yBottom;
-          }
-
-          const offset = (y * metadata.width + x) * channels;
-
-          if (offset + 2 < rawBuffer.length) {
-            const r = Math.floor(rawBuffer[offset] / 4) * 4;
-            const g = Math.floor(rawBuffer[offset + 1] / 4) * 4;
-            const b = Math.floor(rawBuffer[offset + 2] / 4) * 4;
-
-            // Pack color into a single integer
-            const color = (1 << 24) + (r << 16) + (g << 8) + b;
-            const count = (colorCounts.get(color) || 0) + 1;
-            colorCounts.set(color, count);
-
-            if (candidateColor === undefined || count > maxCandidateCount) {
-              candidateColor = color;
-              maxCandidateCount = count;
-            }
-          }
-        }
-
-        if (candidateColor !== undefined) {
-          // Convert back to hex string
-          predominantColor = `#${candidateColor.toString(16).slice(1)}`;
-        }
-      }
-
-      let exif: Exif | undefined;
-      if (metadata.exif) {
-        try {
-          exif = exifReader(metadata.exif);
-          // fix possible serialization issues
-          const bufferTags = [
-            "OECF",
-            "ExifVersion",
-            "ComponentsConfiguration",
-            "MakerNote",
-            "UserComment",
-            "SpatialFrequencyResponse",
-            "FileSource",
-            "SceneType",
-            "CFAPattern",
-            "DeviceSettingDescription",
-            "SourceExposureTimesOfCompositeImage",
-          ];
-
-          for (const tag of bufferTags) {
-            if (exif.Photo?.[tag]) {
-              (exif.Photo[tag] as any) = Buffer.from(exif.Photo[tag] as Buffer).toString("utf-8");
-            }
-          }
-        } catch (e) {}
-      }
-
-      return { predominantColor, exif };
-    } catch (e) {
-      logger.warn(e, "Failed to extract image features");
-      return {};
-    }
-  }
-
   public disconnectClient(socket: WebSocket) {
     const chatId = MessagesService.clients.get(socket);
     if (chatId) {
@@ -405,11 +302,17 @@ export class MessagesService {
 
     // Delete all messages after this one in the chat
     ok(originalMessage.createdAt);
-    const messagesToDelete = await this.messageRepository.findBy({
-      chatId,
-      createdAt: MoreThanOrEqual(formatDateFloor(originalMessage.createdAt)),
-      id: Not(originalMessage.id),
-    });
+
+    let query = this.messageRepository
+      .createQueryBuilder("message")
+      .where("message.chatId = :chatId", { chatId })
+      .andWhere("message.id <> :id", { id: originalMessage.id })
+      .andWhere("message.createdAt >= :createdAt", { createdAt: formatDateFloor(originalMessage.createdAt) })
+      .orderBy("message.createdAt", "ASC");
+
+    const messagesToDelete = await query.getMany();
+
+    let assistantMessage: Message | undefined = messagesToDelete.find(m => m.role === MessageRole.ASSISTANT);
 
     // Remove any files from following messages before deleting them
     const deletedFiles: ChatFile[] = [];
@@ -418,7 +321,9 @@ export class MessagesService {
       const files = await this.chatFileRepository.find({ where: { messageId: In(msgIds) } });
       deletedFiles.push(...files);
 
-      await this.messageRepository.remove(messagesToDelete);
+      await this.messageRepository.remove(
+        messagesToDelete.filter(m => !assistantMessage || m.id !== assistantMessage.id)
+      );
     }
 
     // Remove image files if any
@@ -445,19 +350,26 @@ export class MessagesService {
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
 
     // Create new assistant message
-    const assistantMessage = await this.messageRepository
-      .save({
+    if (assistantMessage) {
+      // leave previosly generated content
+      if (model.type !== ModelType.IMAGE_GENERATION) {
+        assistantMessage.content = "";
+      }
+    } else {
+      assistantMessage = this.messageRepository.create({
         content: "",
         role: MessageRole.ASSISTANT,
         modelId: model.modelId,
         modelName: model.name,
         chatId,
         chat,
-      })
-      .catch(err => {
-        this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
-        throw err;
       });
+    }
+
+    await this.messageRepository.save(assistantMessage).catch(err => {
+      this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
+      throw err;
+    });
 
     const request: CreateMessageRequest = this.formatMessageRequest(
       model.modelId,
@@ -470,7 +382,7 @@ export class MessagesService {
     // Add the edited user message to context
     contextMessages.push(originalMessage);
 
-    // Generate new assistant response
+    // Re/generate assistant response
     await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, assistantMessage);
 
     return originalMessage;
@@ -626,12 +538,12 @@ export class MessagesService {
   public async saveImageFromBase64(
     s3Service: S3Service,
     content: string,
-    { chatId, messageId, index = 0 }: { chatId: string; messageId: string; index?: number }
+    { chatId, messageId, id }: { chatId: string; messageId: string; id: string }
   ): Promise<{ fileName: string; contentType: string; buffer: Buffer }> {
     // Parse extension from base64 content if possible, default to .png
     const matches = content.match(/^data:image\/(\w+);base64,/);
     const type = matches ? `${matches[1]}` : "png";
-    const fileName = `${chatId}-${messageId}-${index}.${type}`;
+    const fileName = `${chatId}-${messageId}-${id}.${type}`;
     const contentType = `image/${type}`;
 
     // Remove data URL prefix if present (e.g., "data:image/png;base64,")
@@ -691,7 +603,7 @@ export class MessagesService {
         const { fileName, buffer } = await this.saveImageFromBase64(s3Service, image.bytesBase64, {
           chatId: chat.id,
           messageId: userMessage.id,
-          index,
+          id: `${Date.now()}-${index}`,
         });
 
         const { predominantColor, exif } = await this.getImageFeatures(buffer);
@@ -819,7 +731,7 @@ export class MessagesService {
           const { fileName, contentType, buffer } = await this.saveImageFromBase64(s3Service, file, {
             chatId: chat.id,
             messageId: message.id,
-            index: images.length,
+            id: `${Date.now()}-${images.length}`,
           });
 
           const { predominantColor, exif } = await this.getImageFeatures(buffer);
@@ -907,7 +819,14 @@ export class MessagesService {
         return true;
       }
 
-      content += token;
+      // image edit
+      if (model.type === ModelType.IMAGE_GENERATION && assistantMessage.content) {
+        // do nothing until the final image is generated, then replace the content with the image markdown
+        content = assistantMessage.content;
+      } else {
+        content += token;
+      }
+
       const now = new Date();
 
       if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
@@ -1285,6 +1204,109 @@ export class MessagesService {
     }
     if (model.type === ModelType.VIDEO_GENERATION && !globalConfig.features.videoGeneration) {
       throw new Error("Video generation models are not enabled");
+    }
+  }
+
+  private async getImageFeatures(buffer: Buffer): Promise<{ predominantColor?: string; exif?: any }> {
+    try {
+      const image = sharp(buffer);
+      const metadata = await image.metadata();
+
+      let predominantColor: string | undefined;
+
+      // Extract predominant color from random points
+      if (metadata.width && metadata.height) {
+        const totalPixels = metadata.width * metadata.height;
+        const numberOfPoints = totalPixels > 20_000 ? 5_000 : Math.floor(totalPixels * 0.5);
+
+        const colorCounts = new Map<number, number>();
+        const channels = metadata.channels || 3;
+        let candidateColor: number | undefined = undefined;
+        let maxCandidateCount = 0;
+
+        // Get raw buffer data
+        const rawBuffer = await image.raw().toBuffer();
+
+        const borderSize = 0.1; // 10% border
+        const xLeft = Math.floor(metadata.width * borderSize);
+        const xRight = Math.floor(metadata.width * (1 - borderSize));
+        const yTop = Math.floor(metadata.height * borderSize);
+        const yBottom = Math.floor(metadata.height * (1 - borderSize));
+
+        for (let i = 0; i < numberOfPoints; i++) {
+          const quarter = i % 4;
+          let x = 0,
+            y = 0;
+          if (quarter === 0) {
+            x = Math.floor(Math.random() * xLeft);
+            y = Math.floor(Math.random() * metadata.height);
+          } else if (quarter === 1) {
+            x = Math.floor(Math.random() * metadata.width);
+            y = Math.floor(Math.random() * yTop);
+          } else if (quarter === 2) {
+            x = Math.floor(Math.random() * (metadata.width - xRight)) + xRight;
+            y = Math.floor(Math.random() * metadata.height);
+          } else {
+            x = Math.floor(Math.random() * metadata.width);
+            y = Math.floor(Math.random() * (metadata.height - yBottom)) + yBottom;
+          }
+
+          const offset = (y * metadata.width + x) * channels;
+
+          if (offset + 2 < rawBuffer.length) {
+            const r = Math.floor(rawBuffer[offset] / 4) * 4;
+            const g = Math.floor(rawBuffer[offset + 1] / 4) * 4;
+            const b = Math.floor(rawBuffer[offset + 2] / 4) * 4;
+
+            // Pack color into a single integer
+            const color = (1 << 24) + (r << 16) + (g << 8) + b;
+            const count = (colorCounts.get(color) || 0) + 1;
+            colorCounts.set(color, count);
+
+            if (candidateColor === undefined || count > maxCandidateCount) {
+              candidateColor = color;
+              maxCandidateCount = count;
+            }
+          }
+        }
+
+        if (candidateColor !== undefined) {
+          // Convert back to hex string
+          predominantColor = `#${candidateColor.toString(16).slice(1)}`;
+        }
+      }
+
+      let exif: Exif | undefined;
+      if (metadata.exif) {
+        try {
+          exif = exifReader(metadata.exif);
+          // fix possible serialization issues
+          const bufferTags = [
+            "OECF",
+            "ExifVersion",
+            "ComponentsConfiguration",
+            "MakerNote",
+            "UserComment",
+            "SpatialFrequencyResponse",
+            "FileSource",
+            "SceneType",
+            "CFAPattern",
+            "DeviceSettingDescription",
+            "SourceExposureTimesOfCompositeImage",
+          ];
+
+          for (const tag of bufferTags) {
+            if (exif.Photo?.[tag]) {
+              (exif.Photo[tag] as any) = Buffer.from(exif.Photo[tag] as Buffer).toString("utf-8");
+            }
+          }
+        } catch (e) {}
+      }
+
+      return { predominantColor, exif };
+    } catch (e) {
+      logger.warn(e, "Failed to extract image features");
+      return {};
     }
   }
 }

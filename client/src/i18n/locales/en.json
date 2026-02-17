@@ -128,7 +128,6 @@
     "messageDeleted": "Message Deleted",
     "messageDeletedMessage": "Message has been successfully deleted",
     "messageEdited": "Message Edited",
-    "messageEditedMessage": "Message has been edited and following messages regenerated",
     "messages": "messages",
     "messagesLimitReached": "You have reached the limit of {{limit}} messages in this chat",
     "na": "N/A",

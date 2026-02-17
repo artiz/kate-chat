@@ -66,6 +66,23 @@
     cursor: pointer;
   }
 
+  &.streaming {
+    img {
+      animation: imagePlaceholderBlur 500ms ease-in-out infinite alternate;
+      pointer-events: none;
+      cursor: default;
+    }
+  }
+
+  @keyframes imagePlaceholderBlur {
+    0% {
+      filter: blur(2px) grayscale(90%);
+    }
+    100% {
+      filter: blur(5px) grayscale(90%);
+    }
+  }
+
   &.katechat-message-preview {
     height: 200px;
     padding: var(--mb-padding, var(--mantine-spacing-sm)) 0 0 0;

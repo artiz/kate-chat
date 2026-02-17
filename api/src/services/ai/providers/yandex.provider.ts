@@ -108,6 +108,17 @@ export class YandexApiProvider extends BaseApiProvider {
       throw new Error("Image generation feature is disabled");
     }
 
+    // Send placeholder image immediately for new requests
+    if (onProgress) {
+      await onProgress(
+        `![Generated Image](/files/assets/generated_image_placeholder.png)`,
+        {
+          status: ResponseStatus.CONTENT_GENERATION,
+        },
+        true
+      );
+    }
+
     const { modelId } = inputRequest;
     const modelUri = modelId.replace("{folder}", this.folderId);
 
@@ -162,8 +173,6 @@ export class YandexApiProvider extends BaseApiProvider {
 
     const operation = (await response.json()) as { id: string };
     const operationId = operation.id;
-
-    onProgress?.("", { status: ResponseStatus.CONTENT_GENERATION, requestId: operationId });
 
     // 2. Poll for completion
     return this.pollImageGenerationResult(operationId);

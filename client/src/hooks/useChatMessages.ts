@@ -8,13 +8,19 @@ import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphq
 import { pick } from "lodash";
 import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType } from "@/types/graphql";
 
+type RemoveMessagesArgs = {
+  messagesToDelete?: Message[];
+  deleteAfter?: Message;
+  isEdit?: boolean;
+};
+
 type HookResult = {
   messages: Message[] | undefined;
   messagesLoading: boolean;
   loadCompleted: boolean;
   streaming: boolean;
   addChatMessage: (message: Message) => void;
-  removeMessages: (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => void;
+  removeMessages: (args: RemoveMessagesArgs) => void;
   loadMoreMessages: () => void;
   updateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
 };
@@ -134,13 +140,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     };
   }, [chatId]);
 
-  const removeMessages = ({
-    messagesToDelete,
-    deleteAfter,
-  }: {
-    messagesToDelete?: Message[];
-    deleteAfter?: Message;
-  }) => {
+  const removeMessages = ({ messagesToDelete, deleteAfter, isEdit = false }: RemoveMessagesArgs) => {
     if (!chatId) return;
 
     const resetLastBotMessage = (messages: Message[] = []) => {
@@ -159,8 +159,16 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
     if (deleteAfter) {
       setMessages(prev => {
+        const assistantMessage = prev?.find(
+          msg =>
+            msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id && msg.role === MessageRole.ASSISTANT
+        );
+
         const filtered =
           prev?.filter(msg => {
+            if (isEdit && msg.id === assistantMessage?.id) {
+              return true; // Keep the assistant message if it's an edit, it will be updated with new content
+            }
             if (msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id) {
               return false; // Remove messages after the specified message
             }

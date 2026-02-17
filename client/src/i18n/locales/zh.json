@@ -128,7 +128,6 @@
     "messageDeleted": "消息已删除",
     "messageDeletedMessage": "消息已成功删除",
     "messageEdited": "消息已编辑",
-    "messageEditedMessage": "消息已编辑，后续消息已重新生成",
     "messages": "条消息",
     "messagesLimitReached": "您已达到此聊天 {{limit}} 条消息的限制",
     "na": "无",

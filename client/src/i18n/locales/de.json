@@ -247,7 +247,6 @@
     "thisAndFollowing": "Diese und alle folgenden",
     "editMessage": "Nachricht bearbeiten",
     "messageEdited": "Nachricht bearbeitet",
-    "messageEditedMessage": "Nachricht wurde bearbeitet und folgende Nachrichten neu generiert",
     "failedToEditMessage": "Nachricht konnte nicht bearbeitet werden",
     "editMessageTitle": "Nachricht bearbeiten",
     "editMessageWarning": "Das Bearbeiten dieser Nachricht wird alle folgenden KI-Antworten im Gespräch neu generieren.",

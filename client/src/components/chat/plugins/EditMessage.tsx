@@ -42,16 +42,10 @@ export const EditMessage = ({
       setIsEdited(false);
       setEditedContent("");
 
-      notifications.show({
-        title: t("chat.messageEdited"),
-        message: t("chat.messageEditedMessage"),
-        color: "green",
-      });
-
       assert.ok(res.editMessage.message, "Edit Message response should contain a message");
       const resMessage = res.editMessage.message;
 
-      onMessageDeleted?.({ deleteAfter: resMessage });
+      onMessageDeleted?.({ deleteAfter: resMessage, isEdit: true });
       onAddMessage?.(resMessage);
     },
     onError: error => {
@@ -76,12 +70,13 @@ export const EditMessage = ({
         messageContext,
       },
     });
+    setIsEdited(false);
   }, [id, editedContent, editMessage, messageContext]);
 
   const handleEditMessage = useCallback(() => {
     setIsEdited(true);
     setEditedContent(content);
-  }, []);
+  }, [content]);
 
   return role === MessageRole.USER ? (
     <>

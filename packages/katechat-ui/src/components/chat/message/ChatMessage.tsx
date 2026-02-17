@@ -216,7 +216,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
             )}
           </Group>
         </Group>
-        <div className="katechat-message-content">
+        <div className={["katechat-message-content", streaming ? "streaming" : ""].join(" ")}>
           {streaming && !content && <Loader size="md" mb="md" />}
 
           {html ? (
