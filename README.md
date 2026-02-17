@@ -54,7 +54,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 in Yandex for "YandexGPT Lite" in request with images
 
 ## TODO
-
+* Add chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
 * Add status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
@@ -110,12 +110,185 @@ The project consists of several parts:
 
 ### Prerequisites
 - Node.js (v20+)
-- AWS Account with Bedrock access (instructions below)
-- OpenAI API Account (instructions below)
-- Yandex Foundation Models [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
+- Connection to LLM, any from:
+   * AWS Account with [Bedrock](#aws-bedrock-api-connection) access
+   * [OpenAI API](#openai-api-connection) Account
+   * Yandex Foundation Models [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
+   * Local [Ollama](#install-ollama) model
 - Docker and Docker Compose (optional, for development environment)
 
-### AWS Bedrock API keys retrieval
+### Quick Start
+
+1. Clone the repository
+```
+git clone https://github.com/artiz/kate-chat.git
+cd kate-chat
+npm install
+npm run dev
+```
+
+App will be available at `http://localhost:3000`
+There you could use own OpenAI API key, AWS Bedrock credentials or Yandex FM to connect to cloud models.
+Local Ollama-like models could be added as Custom models.
+
+### Production-like environment using Docker
+
+Add the following to your `/etc/hosts` file:
+```
+127.0.0.1       katechat.dev.com
+```
+Then run the following commands:
+
+```bash
+export COMPOSE_BAKE=true
+npm install
+npm run build:client
+docker compose up --build
+```
+
+App will be available at `http://katechat.dev.com`
+
+## Development Mode
+
+To run the projects in development mode:
+
+#### Default Node.js API/Client
+```bash
+npm install
+docker compose up redis localstack postgres mysql mssql -d
+npm run dev
+```
+
+#### Documents processor (Python)
+```bash
+python -m venv document-processor/.venv
+source document-processor/.venv/bin/activate
+pip install -r document-processor/requirements.txt
+npm run dev:document_processor
+```
+
+#### Rust API (experiment)
+
+1. Server
+```bash
+cd api-rust
+diesel migration run
+cargo build
+cargo run
+```
+
+2. Client
+```bash
+APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
+```
+
+#### API DB Migrations
+
+* Create new migration
+
+```bash
+docker compose up redis localstack postgres mysql mssql -d
+npm run migration:generate <migration name>
+```
+
+* Apply migrations (automated at app start but could be used to test)
+
+```bash
+npm run migration:run
+```
+
+NOTE: do not update more than one table definition at once, sqlite sometimes applies migrations incorrectly due to "temporary_xxx" tables creation.
+NOTE: do not use more then 1 foreign key with ON DELETE CASCADE in one table for MS SQL, or use NO ACTION as fallback:
+```
+@ManyToOne(() => Message, { onDelete: DB_TYPE == "mssql" ? "NO ACTION" : "CASCADE" })
+```
+
+### Production Build
+
+```bash
+npm run install:all
+npm run build
+```
+
+### Docker Build
+
+```bash
+docker build -t katechat-api ./ -f api/Dockerfile  
+docker run --env-file=./api/.env  -p4000:4000 katechat-api 
+```
+
+```bash
+docker build -t katechat-client --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f client/Dockerfile  
+docker run -p3000:80 katechat-client
+```
+
+All-in-one service
+```bash
+docker build -t katechat-app ./ -f infrastructure/services/katechat-app/Dockerfile
+
+docker run -it --rm --pid=host --env-file=./api/.env \
+ --env PORT=80 \
+ --env NODE_ENV=production \
+ --env ALLOWED_ORIGINS="*" \
+ --env REDIS_URL="redis://host.docker.internal:6379" \
+ --env S3_ENDPOINT="http://host.docker.internal:4566" \
+ --env SQS_ENDPOINT="http://host.docker.internal:4566" \
+ --env DB_URL="postgres://katechat:katechat@host.docker.internal:5432/katechat" \
+ --env CALLBACK_URL_BASE="http://localhost" \
+ --env FRONTEND_URL="http://localhost" \
+ --env DB_MIGRATIONS_PATH="./db-migrations/*-*.js" \
+ -p80:80 katechat-app
+```
+
+Document processor
+```bash
+DOCKER_BUILDKIT=1 docker build -t katechat-document-processor ./ -f infrastructure/services/katechat-document-processor/Dockerfile
+
+docker run -it --rm --pid=host --env-file=./document-processor/.env \
+ --env PORT=8080 \
+ --env NODE_ENV=production \
+ --env REDIS_URL="redis://host.docker.internal:6379" \
+ --env S3_ENDPOINT="http://host.docker.internal:4566" \
+ --env SQS_ENDPOINT="http://host.docker.internal:4566" \
+ -p8080:8080 katechat-document-processor
+```
+
+## Environment setup
+
+App could be tuned for your needs with environment variables:
+
+```bash
+cp api/.env.example api/.env
+cp api-rust/.env.example api-rust/.env
+cp client/.env.example client/.env
+```
+Edit the `.env` files with your configuration settings.
+
+## Admin Dashboard
+
+KateChat includes an admin dashboard for managing users and viewing system statistics. Admin access is controlled by email addresses specified in the `DEFAULT_ADMIN_EMAILS` environment variable.
+
+### Admin Features
+
+- **User Management**: View all registered users with pagination and search
+- **System Statistics**: Monitor total users, chats, and models
+- **Role-based Access**: Automatic admin role assignment for specified email addresses
+
+### Configuring Admin Access
+
+1. Set the `DEFAULT_ADMIN_EMAILS` environment variable in your `.env` file:
+   ```env
+   DEFAULT_ADMIN_EMAILS=admin@example.com,another-admin@example.com
+   ```
+2. Users with these email addresses will automatically receive admin privileges upon:
+   - Registration
+   - Login (existing users)
+   - OAuth authentication (Google/GitHub)
+
+
+## AI Setup
+
+### AWS Bedrock API connection
 
 1. **Create an AWS Account**
    - Visit [AWS Sign-up](https://portal.aws.amazon.com/billing/signup)
@@ -159,7 +332,7 @@ The project consists of several parts:
    - Check the [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-regions.html) for model availability by region
    - Make sure to set the `AWS_BEDROCK_REGION` to a region that supports your desired models
 
-### OpenAI API keys retrieval
+### OpenAI API connection
 
 1. **Create an OpenAI Account**
    - Visit [OpenAI's website](https://openai.com/)
@@ -234,6 +407,7 @@ For running local models with Ollama:
    - Visit [Ollama website](https://ollama.ai/)
    - Download and install Ollama
    - Pull a model: `ollama pull llama3`
+   - Pull a model: `ollama run llama3`
 
 2. **Configure Custom Model**
    - Create a new Model entry with:
@@ -260,156 +434,6 @@ For running local models with Ollama:
   - Request cancellation support
   - Web search and code interpreter tools
 
-
-### Quick Start
-
-1. Clone the repository
-```
-git clone https://github.com/artiz/kate-chat.git
-cd kate-chat
-npm install
-npm run dev
-```
-
-App will be available at `http://localhost:3000`
-There you could use own OpenAI API key, AWS Bedrock credentials or Yandex FM to connect to cloud models.
-Local Ollama-like models could be added as Custom models.
-
-
-### Production-like environment using Docker
-
-Add the following to your `/etc/hosts` file:
-```
-127.0.0.1       katechat.dev.com
-```
-Then run the following commands:
-
-```bash
-export COMPOSE_BAKE=true
-npm install
-npm run build:client
-docker compose up --build
-```
-
-App will be available at `http://katechat.dev.com`
-
-### Development Mode
-
-To run the projects in development mode:
-
-#### Default Node.js API/Client
-```bash
-npm install
-docker compose up redis localstack postgres mysql mssql -d
-npm run dev
-```
-
-#### Documents processor (Python)
-```bash
-python -m venv document-processor/.venv
-source document-processor/.venv/bin/activate
-pip install -r document-processor/requirements.txt
-npm run dev:document_processor
-```
-
-#### Rust API (experiment)
-
-1. Server
-```bash
-cd api-rust
-diesel migration run
-cargo build
-cargo run
-```
-
-2. Client
-```bash
-APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
-```
-
-### Environment setup
-
-App could be tuned for your needs with environment variables:
-
-```bash
-cp api/.env.example api/.env
-cp api-rust/.env.example api-rust/.env
-cp client/.env.example client/.env
-```
-Edit the `.env` files with your configuration settings.
-
-
-### API DB Migrations
-
-* Create new migration
-
-```bash
-docker compose up redis localstack postgres mysql mssql -d
-npm run migration:generate <migration name>
-```
-
-* Apply migrations (automated at app start but could be used to test)
-
-```bash
-npm run migration:run
-```
-
-NOTE: do not update more than one table definition at once, sqlite sometimes applies migrations incorrectly due to "temporary_xxx" tables creation.
-NOTE: do not use more then 1 foreign key with ON DELETE CASCADE in one table for MS SQL, or use NO ACTION as fallback:
-```
-@ManyToOne(() => Message, { onDelete: DB_TYPE == "mssql" ? "NO ACTION" : "CASCADE" })
-```
-
-### Production Build
-
-```bash
-npm run install:all
-npm run build
-```
-
-### Docker Build
-
-```bash
-docker build -t katechat-api ./ -f api/Dockerfile  
-docker run --env-file=./api/.env  -p4000:4000 katechat-api 
-```
-
-```bash
-docker build -t katechat-client --build-arg APP_API_URL=http://localhost:4000 --build-arg APP_WS_URL=http://localhost:4000 ./ -f client/Dockerfile  
-docker run -p3000:80 katechat-client
-```
-
-All-in-one service
-```bash
-docker build -t katechat-app ./ -f infrastructure/services/katechat-app/Dockerfile
-
-docker run -it --rm --pid=host --env-file=./api/.env \
- --env PORT=80 \
- --env NODE_ENV=production \
- --env ALLOWED_ORIGINS="*" \
- --env REDIS_URL="redis://host.docker.internal:6379" \
- --env S3_ENDPOINT="http://host.docker.internal:4566" \
- --env SQS_ENDPOINT="http://host.docker.internal:4566" \
- --env DB_URL="postgres://katechat:katechat@host.docker.internal:5432/katechat" \
- --env CALLBACK_URL_BASE="http://localhost" \
- --env FRONTEND_URL="http://localhost" \
- --env DB_MIGRATIONS_PATH="./db-migrations/*-*.js" \
- -p80:80 katechat-app
-```
-
-Document processor
-```bash
-DOCKER_BUILDKIT=1 docker build -t katechat-document-processor ./ -f infrastructure/services/katechat-document-processor/Dockerfile
-
-docker run -it --rm --pid=host --env-file=./document-processor/.env \
- --env PORT=8080 \
- --env NODE_ENV=production \
- --env REDIS_URL="redis://host.docker.internal:6379" \
- --env S3_ENDPOINT="http://host.docker.internal:4566" \
- --env SQS_ENDPOINT="http://host.docker.internal:4566" \
- -p8080:8080 katechat-document-processor
-```
-
 ## Screenshots
 
 ### Rich Formatting
@@ -434,26 +458,5 @@ docker run -it --rm --pid=host --env-file=./document-processor/.env \
 3. Commit your changes: `git commit -am 'Add some feature'`
 4. Push to the branch: `git push origin feature/my-new-feature`
 5. Submit a pull request
-
-## Admin Dashboard
-
-KateChat includes an admin dashboard for managing users and viewing system statistics. Admin access is controlled by email addresses specified in the `DEFAULT_ADMIN_EMAILS` environment variable.
-
-### Admin Features
-
-- **User Management**: View all registered users with pagination and search
-- **System Statistics**: Monitor total users, chats, and models
-- **Role-based Access**: Automatic admin role assignment for specified email addresses
-
-### Configuring Admin Access
-
-1. Set the `DEFAULT_ADMIN_EMAILS` environment variable in your `.env` file:
-   ```env
-   DEFAULT_ADMIN_EMAILS=admin@example.com,another-admin@example.com
-   ```
-2. Users with these email addresses will automatically receive admin privileges upon:
-   - Registration
-   - Login (existing users)
-   - OAuth authentication (Google/GitHub)
 
 
