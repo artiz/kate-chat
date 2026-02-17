@@ -49,6 +49,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
+* enable all the features for admin user, do not apply XXX_IGNORED_MODELS to users with own keys
 * Add chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
 * Add status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
