@@ -103,7 +103,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, uploadFor
       >
         <Group justify="start" className="drop-zone-control" gap="xs">
           <Tooltip label={t("Click or drop an image/document here to upload")} position="top">
-            <ActionIcon variant="subtle" size="lg" color="dark">
+            <ActionIcon variant="default" size="lg">
               <IconFileUpload size="24" />
             </ActionIcon>
           </Tooltip>

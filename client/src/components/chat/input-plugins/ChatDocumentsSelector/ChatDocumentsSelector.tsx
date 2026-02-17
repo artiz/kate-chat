@@ -92,7 +92,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
       <Menu.Target>
         <Group justify="start" className="drop-zone-control" gap="xs">
           <Tooltip label={t("documents.attachDocuments")} position="bottom">
-            <ActionIcon variant="subtle" size="lg" color="dark" className={classes.button} onClick={handleToggle}>
+            <ActionIcon variant="default" size="lg" className={classes.button} onClick={handleToggle}>
               <IconFileDatabase size="24" />
               {selectedDocuments.length > 0 && (
                 <Badge size="sm" color="blue" p="0" className={classes.badge}>

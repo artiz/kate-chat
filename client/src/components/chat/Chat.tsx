@@ -498,7 +498,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             models={models}
             selectedModel={selectedModel}
             onUpdateChat={updateChat}
-            onAutoScroll={handleAutoScroll}
+            onAutoScroll={messages?.length === 0 ? undefined : handleAutoScroll}
           />
         }
         inputPlugins={

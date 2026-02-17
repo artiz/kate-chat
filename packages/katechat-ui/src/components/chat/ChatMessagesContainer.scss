@@ -88,11 +88,14 @@
 [data-mantine-color-scheme="light"] {
   .katechat-messages-container {
     background-color: var(--mantine-color-white);
+    box-shadow: 0.1rem 0.1rem 0.25rem var(--app-shell-border-color);
   }
 }
 
 [data-mantine-color-scheme="dark"] {
   .katechat-messages-container {
     background-color: var(--mantine-color-dark-7);
+    border: 1px solid var(--mantine-color-dark-7);
+    box-shadow: 0.1rem 0.1rem 0.25rem var(--mantine-color-dark-9);
   }
 }

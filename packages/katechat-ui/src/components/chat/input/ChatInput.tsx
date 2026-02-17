@@ -248,7 +248,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
           <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
             {uploadAllowed && (
               <div className={classes.documentsInput}>
-                <Group visibleFrom="xs" gap="0">
+                <Group visibleFrom="xs" gap="xs">
                   <FileDropzone onFilesAdd={handleAddFiles} uploadFormats={uploadFormats} />
                   {inputPlugins}
                 </Group>
@@ -277,7 +277,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
               {uploadAllowed && (
                 <Menu shadow="md" width="content">
                   <Menu.Target>
-                    <ActionIcon size="lg" variant="subtle" hiddenFrom="xs" color="dark">
+                    <ActionIcon size="lg" variant="subtle" hiddenFrom="xs">
                       <Tooltip label={t("More...")} position="right" withArrow>
                         <IconCirclePlus size="24" />
                       </Tooltip>
@@ -312,7 +312,6 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                   onClick={handleSendMessage}
                   disabled={sendMessageNotAllowed}
                   className={onStopRequest && streaming ? classes.hidden : ""}
-                  color="blue"
                   radius="md"
                 >
                   <IconSend size={24} />{" "}

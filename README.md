@@ -47,12 +47,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
-
-### Issues
-
-* OpenAI API error: rpc error: code = InvalidArgument desc = Error in session internal_id=a24d32ca-48f8fb8-a5e74f5d-ac9ce9a5&request_id=06d760a4-2063-45ee-a379-1e0db856ca9e&client_request_id=undefined&client_id=b1ge1df4kjogdvce8n65: empty message text
-in Yandex for "YandexGPT Lite" in request with images
-
 ## TODO
 * Add chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
 * Add status update time into document processing, load pages count and show it and full processing time and average proc speed
@@ -114,7 +108,7 @@ The project consists of several parts:
    * AWS Account with [Bedrock](#aws-bedrock-api-connection) access
    * [OpenAI API](#openai-api-connection) Account
    * Yandex Foundation Models [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
-   * Local [Ollama](#install-ollama) model
+   * Local [Ollama](#example-local-ollama-models) model
 - Docker and Docker Compose (optional, for development environment)
 
 ### Quick Start

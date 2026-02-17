@@ -102,11 +102,11 @@ const ImageCard: React.FC<{
             />
             <Group gap={4} pos="absolute" top={8} right={8}>
               <Tooltip label="Reload Info (Color & EXIF)">
-                <ActionIcon variant="filled" color="dark" size="sm" loading={reloading} onClick={handleReloadInfo}>
+                <ActionIcon variant="default" size="sm" loading={reloading} onClick={handleReloadInfo}>
                   <IconRefresh size={14} />
                 </ActionIcon>
               </Tooltip>
-              <ActionIcon variant="filled" color="dark" size="sm" onClick={onClick}>
+              <ActionIcon variant="default" size="sm" onClick={onClick}>
                 <IconZoomIn size={14} />
               </ActionIcon>
             </Group>

@@ -1,10 +1,27 @@
 [data-mantine-color-scheme="light"] {
   .chatControlsContainer {
+    :global(.mantine-ActionIcon-root),
+    :global(.mantine-Button-root),
+    :global(.mantine-Select-input),
     .chatInputContainer {
-      border: 1px solid var(--app-shell-border-color);
-      box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+      box-shadow: 0.1rem 0.1rem 0.25rem var(--app-shell-border-color);
     }
 
+    .chatInputGroup .chatInput :global(textarea) {
+      border: none;
+    }
+  }
+}
+
+[data-mantine-color-scheme="dark"] {
+  .chatControlsContainer {
+    :global(.mantine-ActionIcon-root),
+    :global(.mantine-Button-root),
+    :global(.mantine-Select-input),
+    .chatInputContainer {
+      border: 1px solid var(--mantine-color-body);
+      box-shadow: 0.1rem 0.1rem 0.25rem var(--mantine-color-dark-9);
+    }
     .chatInputGroup .chatInput :global(textarea) {
       border: none;
     }
