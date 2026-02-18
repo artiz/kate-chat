@@ -139,7 +139,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Check AWS credentials availability
+      id: check-aws
+      run: |
+        if [ -n "$AWS_KEY" ]; then
+          echo "available=true" >> $GITHUB_OUTPUT
+        else
+          echo "available=false" >> $GITHUB_OUTPUT
+          echo "AWS credentials not available, skipping ECR login"
+        fi
+      env:
+        AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
     - name: Configure AWS credentials
+      if: steps.check-aws.outputs.available == 'true'
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -148,6 +161,7 @@ jobs:
 
     - name: Login to Amazon ECR
       id: login-ecr
+      if: steps.check-aws.outputs.available == 'true'
       uses: aws-actions/amazon-ecr-login@v2
 
     - name: Set up Docker Buildx
@@ -158,7 +172,7 @@ jobs:
       with:
         node-version: '22.x'
         cache: 'npm'
-    
+
     # Build and push app image
     - name: Build and push app image
       id: build-app
@@ -171,22 +185,23 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
+        IMAGE_TAG="${ECR_REGISTRY:+$ECR_REGISTRY/}$ECR_REPOSITORY_APP:$BRANCH_NAME"
 
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME\
+        docker build -t $IMAGE_TAG\
           --build-arg APP_API_URL=$APP_API_URL\
           --build-arg APP_WS_URL=$APP_WS_URL\
           --build-arg RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY\
           --build-arg COMMIT_SHA=$COMMIT_SHA\
           ./ -f infrastructure/services/katechat-app/Dockerfile
 
-        if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
+        if [ -n "$ECR_REGISTRY" ] && [ "${{ github.ref }}" = "refs/heads/master" ]; then
+          docker push $IMAGE_TAG
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
         else
           echo "Skipping docker push (branch: ${{ github.ref }})"
         fi
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_APP:$BRANCH_NAME" >> $GITHUB_OUTPUT
-    
+        
+
     - name: Free Disk Space (Ubuntu)
       if: needs.changes.outputs.document_processor == 'true'
       uses: jlumbroso/free-disk-space@main
@@ -210,17 +225,19 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
         BRANCH_NAME=$(echo ${{ github.head_ref || github.ref_name }} | tr '[:upper:]' '[:lower:]' | sed 's/\//-/g')
+        IMAGE_TAG="${ECR_REGISTRY:+$ECR_REGISTRY/}$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME"
 
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME\
+        docker build -t $IMAGE_TAG\
           --build-arg COMMIT_SHA=$COMMIT_SHA\
           ./ -f infrastructure/services/katechat-document-processor/Dockerfile
-        
-        if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_DOCUMENT_PROCESSOR:$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+        if [ -n "$ECR_REGISTRY" ] && [ "${{ github.ref }}" = "refs/heads/master" ]; then
+          docker push $IMAGE_TAG
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
         else
           echo "Skipping docker push (branch: ${{ github.ref }})"
         fi
+        
         
     
   deploy-staging:
