@@ -147,7 +147,7 @@ export class MessagesService {
     const modelId = chat.modelId || user.defaultModelId;
     if (!modelId) throw new Error("Model must be defined for the chat or user");
 
-    await this.checkMessagesLimit(chatId, user.id);
+    await this.checkMessagesLimit(chatId, user);
 
     const model = await this.modelRepository.findOne({
       where: {
@@ -408,7 +408,7 @@ export class MessagesService {
     if (!originalMessage.chat) throw new Error("Chat not found for this message");
     if (originalMessage.role === MessageRole.USER) throw new Error("User messages cannot be used for calling others");
 
-    await this.checkMessagesLimit(originalMessage.chat.id, user.id);
+    await this.checkMessagesLimit(originalMessage.chat.id, user);
 
     const chat = originalMessage.chat;
     const chatId = originalMessage.chatId || originalMessage.chat.id;
@@ -1212,11 +1212,11 @@ export class MessagesService {
     }
   }
 
-  private async checkMessagesLimit(chatId: string, userId: string): Promise<void> {
-    const limit = globalConfig.limits.maxChatMessages;
+  private async checkMessagesLimit(chatId: string, user: User): Promise<void> {
+    const limit = user.isAdmin() ? -1 : globalConfig.limits.maxChatMessages;
     if (limit > -1) {
       const messagesCount = await this.messageRepository.count({
-        where: { chat: { id: chatId }, user: { id: userId } },
+        where: { chat: { id: chatId }, user: { id: user.id } },
       });
       if (messagesCount >= limit) {
         throw new Error(

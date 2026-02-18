@@ -74,9 +74,9 @@ export class UserResolver extends BaseResolver {
       s3Connected,
       ragSupported,
       ragEnabled: user?.isFeatureEnabled(APPLICATION_FEATURE.RAG) ? ragEnabled : false,
-      maxChats: globalConfig.limits.maxChats,
-      maxChatMessages: globalConfig.limits.maxChatMessages,
-      maxImages: globalConfig.limits.maxImages,
+      maxChats: user?.isAdmin() ? -1 : globalConfig.limits.maxChats,
+      maxChatMessages: user?.isAdmin() ? -1 : globalConfig.limits.maxChatMessages,
+      maxImages: user?.isAdmin() ? -1 : globalConfig.limits.maxImages,
       credentialsSource,
     };
   }

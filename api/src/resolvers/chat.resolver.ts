@@ -62,7 +62,7 @@ export class ChatResolver extends BaseResolver {
   async createChat(@Arg("input") input: CreateChatInput, @Ctx() context: GraphQLContext): Promise<Chat> {
     const user = await this.validateContextUser(context);
 
-    const limit = globalConfig.limits.maxChats;
+    const limit = user.isAdmin() ? -1 : globalConfig.limits.maxChats;
     if (limit > -1) {
       const chatsCount = await this.chatRepository.count({
         where: { user: { id: user.id } },
