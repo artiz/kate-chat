@@ -272,9 +272,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
               active={chat.id === currentChatId}
               leftSection={<IconMessage size={16} />}
               onClick={() => handleChatClick(chat.id)}
-              p="xs"
-              pl="sm"
-              m="0"
+              pl="md"
             />
           </Tooltip>
         ))}
