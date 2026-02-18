@@ -13,7 +13,15 @@ import {
   ProviderInfo,
   ChatResponseStatus,
 } from "@/types/ai.types";
-import { ApiProvider, MessageRole, ModelType, ToolType, ModelFeature, ResponseStatus } from "@/types/api";
+import {
+  ApiProvider,
+  MessageRole,
+  ModelType,
+  ToolType,
+  ModelFeature,
+  ResponseStatus,
+  CredentialSourceType,
+} from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
 import { BaseApiProvider } from "./base.provider";
@@ -23,11 +31,13 @@ import { globalConfig } from "@/global-config";
 import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
+  OPENAI_MODELS_AUDIO_GENERATION,
   OPENAI_MODELS_IMAGES_GENERATION,
   OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
   OPENAI_MODELS_SUPPORT_RESPONSES_API,
+  OPENAI_MODELS_TRANSCRIPTION,
   OPENAI_MODELS_VIDEO_GENERATION,
-  OPENAI_NON_CHAT_MODELS,
+  OPENAI_GLOBAL_IGNORED_MODELS,
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "@/services/ai/tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
@@ -253,7 +263,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     return result;
   }
 
-  async getModels(): Promise<Record<string, AIModelInfo>> {
+  async getModels(allowedTypes: ModelType[], credSource: CredentialSourceType): Promise<Record<string, AIModelInfo>> {
     const models: Record<string, AIModelInfo> = {};
 
     if (!this.protocol?.api) {
@@ -269,26 +279,43 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
       // Filter and map models
       for (const model of response.data) {
-        if (globalConfig.openai.ignoredModels.some(ignoredModel => model.id.startsWith(ignoredModel))) {
+        if (credSource === "ENVIRONMENT" && globalConfig.openai.ignoredModels.some(id => model.id.startsWith(id))) {
           continue; // Skip ignored models
         }
+        if (OPENAI_GLOBAL_IGNORED_MODELS.some(id => model.id.startsWith(id))) {
+          continue; // Skip globally ignored models
+        }
 
-        const nonChatModel = OPENAI_NON_CHAT_MODELS.some(prefix => model.id.startsWith(prefix));
         const embeddingModel = model.id.startsWith("text-embedding");
         const isImageGeneration = OPENAI_MODELS_IMAGES_GENERATION.some(prefix => model.id.startsWith(prefix));
         const isVideoGeneration = OPENAI_MODELS_VIDEO_GENERATION.some(prefix => model.id.startsWith(prefix));
+        const isAudioGeneration = OPENAI_MODELS_AUDIO_GENERATION.some(prefix => model.id.startsWith(prefix));
+        const isTranscription = OPENAI_MODELS_TRANSCRIPTION.some(prefix => model.id.startsWith(prefix));
         const isRealtime = model.id.includes("-realtime");
-        const isTranscription = ["whisper"].some(prefix => model.id.startsWith(prefix));
+
+        const type = embeddingModel
+          ? ModelType.EMBEDDING
+          : isImageGeneration
+            ? ModelType.IMAGE_GENERATION
+            : isVideoGeneration
+              ? ModelType.VIDEO_GENERATION
+              : isAudioGeneration
+                ? ModelType.AUDIO_GENERATION
+                : isRealtime
+                  ? ModelType.REALTIME
+                  : isTranscription
+                    ? ModelType.TRANSCRIPTION
+                    : ModelType.CHAT;
+
+        if (!allowedTypes.includes(type)) {
+          continue; // Skip models that are not in the allowed types
+        }
 
         const imageInput = OPENAI_MODELS_SUPPORT_IMAGES_INPUT.some(prefix => model.id.startsWith(prefix));
 
-        if (nonChatModel && !isImageGeneration && !embeddingModel) {
-          continue; // Skip non-chat models that are not image generation or embeddings
-        }
-
         const apiType = this.getChatApiType(model.id);
         const tools =
-          embeddingModel || isImageGeneration || isVideoGeneration
+          embeddingModel || isImageGeneration || isVideoGeneration || isAudioGeneration || isTranscription
             ? []
             : apiType === "responses"
               ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER, ToolType.MCP]
@@ -298,18 +325,6 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
         const features: ModelFeature[] | undefined =
           apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : undefined;
-
-        const type = embeddingModel
-          ? ModelType.EMBEDDING
-          : isImageGeneration
-            ? ModelType.IMAGE_GENERATION
-            : isVideoGeneration
-              ? ModelType.VIDEO_GENERATION
-              : isRealtime
-                ? ModelType.REALTIME
-                : isTranscription
-                  ? ModelType.TRANSCRIPTION
-                  : ModelType.CHAT;
 
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||
@@ -384,10 +399,6 @@ export class OpenAIApiProvider extends BaseApiProvider {
   ): Promise<ModelResponse> {
     if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
-    }
-
-    if (!globalConfig.features.imagesGeneration) {
-      throw new Error("Image generation feature is disabled");
     }
 
     const { modelId, imagesCount } = inputRequest;

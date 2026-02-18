@@ -1,4 +1,4 @@
-import { ApiProvider } from "@/types/api";
+import { ApiProvider, CredentialSourceType, ModelType } from "@/types/api";
 import {
   AIModelInfo,
   EmbeddingsResponse,
@@ -30,7 +30,7 @@ export abstract class BaseApiProvider {
   abstract getEmbeddings(request: GetEmbeddingsRequest): Promise<EmbeddingsResponse>;
 
   abstract getCosts(startTime: number, endTime?: number): Promise<UsageCostInfo>;
-  abstract getModels(): Promise<Record<string, AIModelInfo>>;
+  abstract getModels(allowedTypes: ModelType[], credSource: CredentialSourceType): Promise<Record<string, AIModelInfo>>;
   abstract getInfo(checkConnection?: boolean): Promise<ProviderInfo>;
   abstract stopRequest(requestId: string, modelId: string): Promise<void>;
 

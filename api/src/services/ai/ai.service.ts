@@ -11,9 +11,9 @@ import {
   UsageCostInfo,
   ChatResponseStatus,
 } from "@/types/ai.types";
-import { MessageRole, ApiProvider } from "@/types/api";
+import { MessageRole, ApiProvider, ModelType } from "@/types/api";
 import { logger } from "@/utils/logger";
-import { globalConfig } from "@/global-config";
+import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { FileContentLoader } from "@/services/data";
 import { BedrockApiProvider } from "./providers/bedrock.provider";
@@ -22,7 +22,7 @@ import { YandexApiProvider } from "./providers/yandex.provider";
 import { CustomRestApiProvider } from "./providers/custom-rest-api.provider";
 import { BaseApiProvider } from "./providers/base.provider";
 
-import { Model } from "@/entities";
+import { Model, User } from "@/entities";
 
 export class AIService {
   // Main method to interact with models
@@ -108,11 +108,28 @@ export class AIService {
   }
 
   // Get all models from all providers
-  async getModels(connection: ConnectionParams): Promise<Record<string, AIModelInfo>> {
+  async getModels(connection: ConnectionParams, user: User): Promise<Record<string, AIModelInfo>> {
     const models = await Promise.all(
       globalConfig.ai.enabledProviders.map(async apiProvider => {
         const service = this.getApiProvider(apiProvider, connection);
-        return await service.getModels();
+        const credSource =
+          user?.getProviderCredentialsSource(apiProvider) || getProviderCredentialsSource(apiProvider) || "BROWSER";
+
+        const allowedTypes = [ModelType.CHAT, ModelType.EMBEDDING];
+        if (user.isFeatureEnabled(APPLICATION_FEATURE.IMAGE_GENERATION)) {
+          allowedTypes.push(ModelType.IMAGE_GENERATION);
+        }
+        if (user.isFeatureEnabled(APPLICATION_FEATURE.VIDEO_GENERATION)) {
+          allowedTypes.push(ModelType.VIDEO_GENERATION);
+        }
+        if (user.isFeatureEnabled(APPLICATION_FEATURE.REALTIME)) {
+          allowedTypes.push(ModelType.VIDEO_GENERATION);
+        }
+        if (user.isFeatureEnabled(APPLICATION_FEATURE.TRANSCRIPTION)) {
+          allowedTypes.push(ModelType.TRANSCRIPTION);
+        }
+
+        return await service.getModels(allowedTypes, credSource);
       })
     );
 

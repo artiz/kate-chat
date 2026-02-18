@@ -61,6 +61,17 @@ export class ChatResolver extends BaseResolver {
   @Mutation(() => Chat)
   async createChat(@Arg("input") input: CreateChatInput, @Ctx() context: GraphQLContext): Promise<Chat> {
     const user = await this.validateContextUser(context);
+
+    const limit = globalConfig.limits.maxChats;
+    if (limit > -1) {
+      const chatsCount = await this.chatRepository.count({
+        where: { user: { id: user.id } },
+      });
+      if (chatsCount >= limit) {
+        throw new Error(`Chat limit of ${limit} reached. Please delete some chats before creating new ones.`);
+      }
+    }
+
     const chat = this.chatRepository.create({
       ...input,
       title: input.title || "",

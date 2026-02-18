@@ -20,7 +20,7 @@ import { globalConfig } from "@/global-config";
 import { FileContentLoader } from "@/services/data/s3.service";
 import { notEmpty } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
-import { ApiProvider, MessageRole, ModelType, ResponseStatus, ToolType } from "@/types/api";
+import { ApiProvider, CredentialSourceType, MessageRole, ModelType, ResponseStatus, ToolType } from "@/types/api";
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
@@ -103,9 +103,6 @@ export class YandexApiProvider extends BaseApiProvider {
   ): Promise<ModelResponse> {
     if (!this.apiKey || !this.folderId) {
       throw new Error("Yandex API key or Folder ID is not set.");
-    }
-    if (!globalConfig.features.imagesGeneration) {
-      throw new Error("Image generation feature is disabled");
     }
 
     // Send placeholder image immediately for new requests
@@ -253,7 +250,7 @@ export class YandexApiProvider extends BaseApiProvider {
   }
 
   // Get available Yandex models
-  async getModels(): Promise<Record<string, AIModelInfo>> {
+  async getModels(allowedTypes: ModelType[], credSource: CredentialSourceType): Promise<Record<string, AIModelInfo>> {
     if (!this.apiKey) {
       return {};
     }
@@ -261,8 +258,15 @@ export class YandexApiProvider extends BaseApiProvider {
     const searchAvailable = await YandexWebSearch.isAvailable(this.connection);
     return YANDEX_MODELS.reduce(
       (map, model) => {
-        if (globalConfig.yandex.ignoredModels.some(ignoredModel => model.uri.includes(ignoredModel))) {
+        if (
+          credSource === "ENVIRONMENT" &&
+          globalConfig.yandex.ignoredModels.some(ignoredModel => model.uri.includes(ignoredModel))
+        ) {
           return map; // Skip ignored models
+        }
+        const type = model.type || ModelType.CHAT;
+        if (!allowedTypes.includes(type)) {
+          return map; // Skip models that are not in the allowed types
         }
 
         map[model.uri] = {
@@ -274,7 +278,7 @@ export class YandexApiProvider extends BaseApiProvider {
           maxInputTokens: model.maxInputTokens,
           tools: [searchAvailable ? ToolType.WEB_SEARCH : null, ToolType.MCP].filter(notEmpty),
           imageInput: model.imageInput || false,
-          type: model.type || ModelType.CHAT,
+          type,
         };
 
         return map;

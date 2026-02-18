@@ -11,11 +11,7 @@
   "providers": {
     "enabled": ["OPEN_AI", "CUSTOM_REST_API"]
   },
-  "features": {
-    "imagesGeneration": true,
-    "rag": false,
-    "mcp": true
-  },
+  "features": ["imagesGeneration", "mcp"],
   "ai": {
     "defaultTemperature": 0.7,
     "defaultMaxTokens": 2048,

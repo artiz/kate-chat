@@ -1,16 +1,5 @@
 // OpenAI Configuration
 
-export const OPENAI_NON_CHAT_MODELS = [
-  "gpt-3.5-turbo-instruct",
-  "gpt-4o-audio",
-  "gpt-4o-mini-audio",
-  "gpt-4o-mini-realtime",
-  "gpt-4o-realtime",
-  "o1-pro",
-  "tts-1",
-  "davinci-002",
-];
-
 export const OPENAI_MODELS_SUPPORT_RESPONSES_API = [
   "gpt-5",
   "gpt-5-mini",
@@ -47,9 +36,15 @@ export const OPENAI_MODELS_SUPPORT_IMAGES_INPUT = [
   "gpt-image",
 ];
 
+export const OPENAI_GLOBAL_IGNORED_MODELS = ["davinci-002", "gpt-3.5-turbo-instruct"];
+
 export const OPENAI_MODELS_IMAGES_GENERATION = ["dall-e", "chatgpt-image", "gpt-image"];
 
 export const OPENAI_MODELS_VIDEO_GENERATION = ["sora-2", "sora-2-pro"];
+
+export const OPENAI_MODELS_AUDIO_GENERATION = ["gpt-4o-audio", "gpt-4o-mini-audio", "tts-1"];
+
+export const OPENAI_MODELS_TRANSCRIPTION = ["whisper"];
 
 export const OPENAI_MODEL_MAX_INPUT_TOKENS: { [key: string]: number } = {
   "gpt-5": 400_000,

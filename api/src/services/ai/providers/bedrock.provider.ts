@@ -31,7 +31,7 @@ import {
   ProviderInfo,
   ChatToolCallResult,
 } from "@/types/ai.types";
-import { ApiProvider, ToolType, ModelType, MessageRole, ResponseStatus } from "@/types/api";
+import { ApiProvider, ToolType, ModelType, MessageRole, ResponseStatus, CredentialSourceType } from "@/types/api";
 import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
@@ -442,7 +442,10 @@ export class BedrockApiProvider extends BaseApiProvider {
   }
 
   // Helper method to get all supported models with their metadata
-  public async getModels(): Promise<Record<string, AIModelInfo>> {
+  public async getModels(
+    allowedTypes: ModelType[],
+    credSource: CredentialSourceType
+  ): Promise<Record<string, AIModelInfo>> {
     // no AWS connection
     if (!this.connection.awsBedrockAccessKeyId && !this.connection.awsBedrockProfile) {
       logger.debug("AWS credentials are not set. Skipping AWS Bedrock model retrieval.");

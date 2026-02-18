@@ -175,13 +175,8 @@ export class MessageResolver extends BaseResolver {
   async createMessage(@Arg("input") input: CreateMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
     const messageService = this.getMessagesService(context);
     const user = await this.validateContextUser(context);
-    return await messageService.createMessage(
-      {
-        ...input,
-      },
-      this.loadConnectionParams(context, user),
-      user
-    );
+
+    return await messageService.createMessage({ ...input }, this.loadConnectionParams(context, user), user);
   }
 
   @Subscription(() => GqlMessage, {
@@ -251,6 +246,7 @@ export class MessageResolver extends BaseResolver {
     try {
       const user = await this.validateContextUser(context);
       const messageService = this.getMessagesService(context);
+
       const message = await messageService.callOtherModel(
         messageId,
         modelId,

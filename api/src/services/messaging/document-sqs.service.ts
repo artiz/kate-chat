@@ -8,7 +8,7 @@ import {
   Message,
   ListQueuesCommand,
 } from "@aws-sdk/client-sqs";
-import { globalConfig } from "@/global-config";
+import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
 import { SubscriptionsService } from "./subscriptions.service";
 import { ok } from "@/utils/assert";
 
@@ -25,7 +25,7 @@ export class DocumentSqsService {
   constructor(subscriptionsService: SubscriptionsService) {
     const { documentsQueue, indexDocumentsQueue, endpoint, accessKeyId, region } = globalConfig.sqs;
 
-    if (globalConfig.features.rag) {
+    if (globalConfig.features?.includes(APPLICATION_FEATURE.RAG)) {
       ok(documentsQueue, "SQS_DOCUMENTS_QUEUE must be configured");
       ok(indexDocumentsQueue, "SQS_INDEX_DOCUMENTS_QUEUE must be configured");
       this.outputQueueUrl = documentsQueue;
@@ -37,7 +37,7 @@ export class DocumentSqsService {
   }
 
   async startup(): Promise<void> {
-    if (globalConfig.features.rag) {
+    if (globalConfig.features?.includes(APPLICATION_FEATURE.RAG)) {
       const { endpoint, accessKeyId, secretAccessKey, region } = globalConfig.sqs;
 
       this.sqs = new SQSClient({

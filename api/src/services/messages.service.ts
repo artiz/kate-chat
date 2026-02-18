@@ -30,7 +30,7 @@ import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
-import { globalConfig } from "@/global-config";
+import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
 
 const aiConfig = globalConfig.ai;
 
@@ -147,16 +147,19 @@ export class MessagesService {
     const modelId = chat.modelId || user.defaultModelId;
     if (!modelId) throw new Error("Model must be defined for the chat or user");
 
-    const request: CreateMessageRequest = this.formatMessageRequest(modelId, input.content, chat, user, {
-      mcpTokens: input.mcpTokens,
-    });
+    await this.checkMessagesLimit(chatId, user.id);
+
     const model = await this.modelRepository.findOne({
       where: {
         modelId,
         user: { id: user.id }, // Ensure the model belongs to the user
       },
     });
-    this.checkModelFeatures(model);
+    this.checkModelFeatures(model, user);
+
+    const request: CreateMessageRequest = this.formatMessageRequest(modelId, input.content, chat, user, {
+      mcpTokens: input.mcpTokens,
+    });
 
     let assistantMessage = this.messageRepository.create({
       content: "",
@@ -169,7 +172,7 @@ export class MessagesService {
     });
 
     if (documentIds && documentIds.length > 0) {
-      if (!globalConfig.features.rag) {
+      if (!user.isFeatureEnabled(APPLICATION_FEATURE.RAG)) {
         throw new Error("RAG module is not enabled");
       }
 
@@ -231,7 +234,7 @@ export class MessagesService {
         user: { id: user.id },
       },
     });
-    this.checkModelFeatures(model);
+    this.checkModelFeatures(model, user);
 
     const chatId = chat.id;
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
@@ -344,7 +347,7 @@ export class MessagesService {
       },
     });
 
-    this.checkModelFeatures(model);
+    this.checkModelFeatures(model, user);
 
     // Get context messages (up to the edited message, excluding it)
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
@@ -405,6 +408,8 @@ export class MessagesService {
     if (!originalMessage.chat) throw new Error("Chat not found for this message");
     if (originalMessage.role === MessageRole.USER) throw new Error("User messages cannot be used for calling others");
 
+    await this.checkMessagesLimit(originalMessage.chat.id, user.id);
+
     const chat = originalMessage.chat;
     const chatId = originalMessage.chatId || originalMessage.chat.id;
 
@@ -415,7 +420,7 @@ export class MessagesService {
         user: { id: user.id }, // Ensure the model belongs to the user
       },
     });
-    this.checkModelFeatures(model);
+    this.checkModelFeatures(model, user);
 
     // Get previous messages for context (up to the original message)
     const contextMessages = await this.getContextMessages(chatId, originalMessage);
@@ -1196,14 +1201,28 @@ export class MessagesService {
     return request;
   }
 
-  private checkModelFeatures(model: Model | null | undefined): asserts model is Model {
+  private checkModelFeatures(model: Model | null | undefined, user?: User): asserts model is Model {
     if (!model) throw new Error("Model not found or not accessible");
 
-    if (model.type === ModelType.IMAGE_GENERATION && !globalConfig.features.imagesGeneration) {
-      throw new Error("Image generation models are not enabled");
+    if (model.type === ModelType.IMAGE_GENERATION && !user?.isFeatureEnabled(APPLICATION_FEATURE.IMAGE_GENERATION)) {
+      throw new Error("Image generation is not enabled");
     }
-    if (model.type === ModelType.VIDEO_GENERATION && !globalConfig.features.videoGeneration) {
-      throw new Error("Video generation models are not enabled");
+    if (model.type === ModelType.VIDEO_GENERATION && !user?.isFeatureEnabled(APPLICATION_FEATURE.VIDEO_GENERATION)) {
+      throw new Error("Video generation is not enabled");
+    }
+  }
+
+  private async checkMessagesLimit(chatId: string, userId: string): Promise<void> {
+    const limit = globalConfig.limits.maxChatMessages;
+    if (limit > -1) {
+      const messagesCount = await this.messageRepository.count({
+        where: { chat: { id: chatId }, user: { id: userId } },
+      });
+      if (messagesCount >= limit) {
+        throw new Error(
+          `Chat messages limit of ${limit} reached. Please delete some messages before creating new ones.`
+        );
+      }
     }
   }
 

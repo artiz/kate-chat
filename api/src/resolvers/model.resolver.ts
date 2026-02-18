@@ -18,7 +18,7 @@ import { ApiProvider, ModelType, MessageRole, ToolType } from "@/types/api";
 import { ok } from "@/utils/assert";
 import { Message } from "@/entities/Message";
 import { createLogger } from "@/utils/logger";
-import { globalConfig } from "@/global-config";
+import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
 import { getErrorMessage } from "@/utils/errors";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
@@ -74,7 +74,7 @@ export class ModelResolver extends BaseResolver {
       const modelRepository = getRepository(Model);
 
       // Get the models from AWS Bedrock
-      const aiModels = await this.aiService.getModels(connectionParams);
+      const aiModels = await this.aiService.getModels(connectionParams, user);
 
       const dbModels = await modelRepository.find({
         where: { user: { id: user.id } },
@@ -103,15 +103,6 @@ export class ModelResolver extends BaseResolver {
       // Save models to database
       const outModels: Model[] = [];
       for (const [modelId, info] of Object.entries(aiModels)) {
-        if (!globalConfig.features.imagesGeneration && info.type === ModelType.IMAGE_GENERATION) {
-          logger.info({ modelId, name: info.name }, "Skipping image generation model in demo mode");
-          continue;
-        }
-        if (!globalConfig.features.videoGeneration && info.type === ModelType.VIDEO_GENERATION) {
-          logger.info({ modelId, name: info.name }, "Skipping video generation model in demo mode");
-          continue;
-        }
-
         // Create new model
         const model = modelRepository.create({
           ...info,

@@ -6,6 +6,7 @@ import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
 import { ApiProvider, CredentialSourceType, CredentialType } from "@/types/api";
+import { globalConfig, APPLICATION_FEATURE } from "@/global-config";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -213,5 +214,9 @@ export class User {
 
   isAdmin(): boolean {
     return this.role === UserRole.ADMIN;
+  }
+
+  isFeatureEnabled(feature: APPLICATION_FEATURE): boolean {
+    return this.isAdmin() || Boolean(globalConfig.features && globalConfig.features.includes(feature));
   }
 }

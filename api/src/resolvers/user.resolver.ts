@@ -10,7 +10,7 @@ import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
 import { ensureInitialUserAssets } from "@/utils/initial-data";
-import { getProviderCredentialsSource, globalConfig } from "@/global-config";
+import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -36,19 +36,20 @@ export class UserResolver extends BaseResolver {
         })
       : undefined;
 
-    const demoMode = user?.isAdmin() ? false : globalConfig.demo.enabled;
-    const features = globalConfig.features;
+    const demoMode = user?.isAdmin() ? false : globalConfig.demoMode;
 
     const s3Connected = Boolean(
       s3settings.s3FilesBucketName &&
         ((s3settings.s3AccessKeyId && s3settings.s3SecretAccessKey) || s3settings.s3Profile)
     );
     const ragSupported = Boolean(
-      features.rag && s3Connected && ["sqlite", "postgres", "mssql"].includes(globalConfig.db.type)
+      user?.isFeatureEnabled(APPLICATION_FEATURE.RAG) &&
+        s3Connected &&
+        ["sqlite", "postgres", "mssql"].includes(globalConfig.db.type)
     );
 
     const ragEnabled = Boolean(
-      ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
+      !demoMode && ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
     );
 
     const credentialsSource: CredentialSource[] = [];
@@ -72,10 +73,10 @@ export class UserResolver extends BaseResolver {
       demoMode,
       s3Connected,
       ragSupported,
-      ragEnabled: features.rag ? ragEnabled : false,
-      maxChats: demoMode ? globalConfig.demo.maxChats : -1,
-      maxChatMessages: demoMode ? globalConfig.demo.maxChatMessages : -1,
-      maxImages: demoMode ? globalConfig.demo.maxImages : -1,
+      ragEnabled: user?.isFeatureEnabled(APPLICATION_FEATURE.RAG) ? ragEnabled : false,
+      maxChats: globalConfig.limits.maxChats,
+      maxChatMessages: globalConfig.limits.maxChatMessages,
+      maxImages: globalConfig.limits.maxImages,
       credentialsSource,
     };
   }

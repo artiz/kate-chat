@@ -222,6 +222,7 @@ export class EmbeddingsService {
         for (var docId of documentIds) {
           // TODO: optimize with single query to get all chunks for all pages
           // ``` && c.document?.pagesCount > 1 ```
+          // pagesCount load must be implemented on document processor
           const chunkPages = new Set(
             documentsChunks
               .filter(c => c.documentId === docId)

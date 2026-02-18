@@ -12,7 +12,7 @@ import {
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
-import { ApiProvider } from "@/types/api";
+import { ApiProvider, CredentialSourceType, ModelType } from "@/types/api";
 import { OpenAIProtocol } from "../protocols/openai.protocol";
 import { FileContentLoader } from "@/services/data";
 import { Model } from "@/entities";
@@ -93,9 +93,9 @@ export class CustomRestApiProvider extends BaseApiProvider {
     };
   }
 
-  async getModels(): Promise<Record<string, AIModelInfo>> {
-    const models: Record<string, AIModelInfo> = {};
-    return models;
+  // For custom REST API, we cannot fetch models dynamically
+  async getModels(allowedTypes: ModelType[], credSource: CredentialSourceType): Promise<Record<string, AIModelInfo>> {
+    return {};
   }
 
   // #endregion

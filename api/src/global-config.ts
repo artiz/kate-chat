@@ -4,6 +4,7 @@ import { config as loadEnv } from "dotenv";
 import { DEFAULT_CHAT_PROMPT } from "./config/ai/prompts";
 import { ApiProvider, CredentialSourceType } from "./types/api";
 import { DB_TYPE } from "./config/env";
+import { notEmpty } from "./utils/assert";
 
 const DEFAULT_PROVIDERS: ApiProvider[] = [
   ApiProvider.AWS_BEDROCK,
@@ -34,6 +35,15 @@ export interface InitialMCPServer {
   tokenEnv?: string;
 }
 
+export enum APPLICATION_FEATURE {
+  IMAGE_GENERATION = "imagesGeneration",
+  VIDEO_GENERATION = "videoGeneration",
+  REALTIME = "realtime",
+  TRANSCRIPTION = "transcription",
+  RAG = "rag",
+  MCP = "mcp",
+}
+
 export interface GlobalConfigShape {
   app: {
     userAgent: string;
@@ -52,19 +62,14 @@ export interface GlobalConfigShape {
     sessionSecret: string;
     recaptchaSecretKey?: string;
   };
-  demo: {
-    enabled: boolean;
+  demoMode: boolean;
+  limits: {
     maxChatMessages: number;
     maxChats: number;
     maxImages: number;
     maxVideos: number;
   };
-  features: {
-    imagesGeneration: boolean;
-    videoGeneration: boolean;
-    rag: boolean;
-    mcp: boolean;
-  };
+  features?: APPLICATION_FEATURE[];
   ai: {
     enabledProviders: ApiProvider[];
     defaultSystemPrompt: string;
@@ -223,7 +228,7 @@ export class GlobalConfig {
   }
 
   private buildDefaults(): GlobalConfigShape {
-    const demo = this.parseBoolean(process.env.DEMO_MODE);
+    const demoMode = this.parseBoolean(process.env.DEMO_MODE);
 
     return {
       runtime: {
@@ -248,19 +253,25 @@ export class GlobalConfig {
           .split(",")
           .map(o => o.trim()),
       },
-      demo: {
-        enabled: demo,
+      demoMode,
+      limits: {
         maxChatMessages: +(process.env.DEMO_MAX_CHAT_MESSAGES || 25) | 0,
-        maxChats: +(process.env.DEMO_MAX_CHATS || 10) | 0,
-        maxImages: +(process.env.DEMO_MAX_IMAGES || 5) | 0,
-        maxVideos: +(process.env.DEMO_MAX_VIDEOS || 2) | 0,
+        maxChats: demoMode ? +(process.env.DEMO_MAX_CHATS || 10) | 0 : +(process.env.DEMO_MAX_CHATS || -1) | 0,
+        maxImages: demoMode ? +(process.env.DEMO_MAX_IMAGES || 5) | 0 : +(process.env.DEMO_MAX_IMAGES || -1) | 0,
+        maxVideos: demoMode ? +(process.env.DEMO_MAX_VIDEOS || 2) | 0 : +(process.env.DEMO_MAX_VIDEOS || -1) | 0,
       },
-      features: {
-        imagesGeneration: demo ? this.parseBoolean(process.env.FEATURE_ENABLE_IMAGE_GEN) : true,
-        videoGeneration: demo ? this.parseBoolean(process.env.FEATURE_ENABLE_VIDEO_GEN) : true,
-        rag: !!(process.env.SQS_DOCUMENTS_QUEUE && process.env.SQS_INDEX_DOCUMENTS_QUEUE),
-        mcp: true,
-      },
+      features: [
+        (demoMode ? this.parseBoolean(process.env.FEATURE_ENABLE_IMAGE_GEN) : true)
+          ? APPLICATION_FEATURE.IMAGE_GENERATION
+          : undefined,
+        (demoMode ? this.parseBoolean(process.env.FEATURE_ENABLE_VIDEO_GEN) : true)
+          ? APPLICATION_FEATURE.VIDEO_GENERATION
+          : undefined,
+        !!(process.env.SQS_DOCUMENTS_QUEUE && process.env.SQS_INDEX_DOCUMENTS_QUEUE)
+          ? APPLICATION_FEATURE.RAG
+          : undefined,
+        APPLICATION_FEATURE.MCP,
+      ].filter(notEmpty),
       ai: {
         enabledProviders:
           process.env.ENABLED_API_PROVIDERS === "*"
