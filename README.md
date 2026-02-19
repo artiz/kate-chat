@@ -48,19 +48,19 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
 ## TODO
-
-* Add thinking support for AWS Bedrock [Claudes](https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-extended-thinking.html)
-* Add custom Bedrock model
-* Add chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
-* Add status update time into document processing, load pages count and show it and full processing time and average proc speed
+* Integrate get GetMCPServersForChat to GetInitialdata
+* Thinking support for AWS Bedrock [Claude](https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-extended-thinking.html)
+* Custom Bedrock model: (CustomModelProtocol.AWS_BEDROCK_CUSTOM)[https://docs.aws.amazon.com/bedrock/latest/userguide/deploy-custom-model-on-demand.html]
+* Introduce chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
+* Put status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
 * Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do not wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
-* Add support for Google Vertex AI provider
+* Google Vertex AI provider support
 * Finish "Forgot password?" logic for local login
 * @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
-* Add SerpApi for Web Search (new setting in UI)
+* SerpApi for Web Search (new setting in UI)
 * Python API (FastAPI)
 * MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
 

@@ -494,7 +494,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
             streaming={streaming}
             chatTools={chat?.tools}
-            chatSettings={chat}
+            chatSettings={chat?.settings}
             models={models}
             selectedModel={selectedModel}
             onUpdateChat={updateChat}

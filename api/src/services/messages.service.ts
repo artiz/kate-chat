@@ -16,7 +16,7 @@ import {
   ModelMessageContentImage,
   ModelResponse,
 } from "@/types/ai.types";
-import { MessageRole, MessageType, ModelType, ResponseStatus, ToolType } from "@/types/api";
+import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, ToolType } from "@/types/api";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
@@ -31,6 +31,7 @@ import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
 import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
+import { ChatSettings } from "@/entities/Chat";
 
 const aiConfig = globalConfig.ai;
 
@@ -42,11 +43,7 @@ export interface CreateMessageRequest {
   chatId: string;
   modelId: string;
   content: string;
-  temperature: number;
-  maxTokens: number;
-  topP: number;
-  imagesCount: number;
-  systemPrompt?: string;
+  settings: ChatSettings;
   images?: ImageInput[];
   documentIds?: string[];
   mcpTokens?: { serverId: string; accessToken: string; refreshToken?: string; expiresAt?: number }[];
@@ -649,6 +646,7 @@ export class MessagesService {
     return userMessage;
   }
 
+  // TODO: simplify this method
   protected async publishAssistantMessage(
     input: CreateMessageRequest,
     connection: ConnectionParams,
@@ -658,16 +656,25 @@ export class MessagesService {
     inputMessages: Message[],
     assistantMessage: Message
   ): Promise<void> {
-    const systemPrompt = chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
+    const chatSettings: ChatSettings = {
+      temperature: user.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.defaultImagesCount ?? 1,
+      systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      ...chat.settings,
+    };
+
+    if (!model?.features?.includes(ModelFeature.REASONING)) {
+      chatSettings.thinking = undefined;
+      chatSettings.thinkingBudget = undefined;
+    }
+
     const request: CompleteChatRequest = {
       ...input,
       modelType: model.type,
       apiProvider: model.apiProvider,
-      systemPrompt,
-      temperature: chat.temperature,
-      maxTokens: chat.maxTokens,
-      topP: chat.topP,
-      imagesCount: chat.imagesCount,
+      settings: chatSettings,
       tools: chat.tools,
       mcpTokens: input.mcpTokens,
     };
@@ -965,8 +972,17 @@ export class MessagesService {
           modelType: model.type,
           apiProvider: model.apiProvider,
           modelId: model.modelId,
-          systemPrompt,
+          settings: input.settings || {},
         };
+
+        ok(request.settings);
+
+        // extend system prompt with RAG information
+        request.settings.systemPrompt = systemPrompt;
+        if (!model?.features?.includes(ModelFeature.REASONING)) {
+          request.settings.thinking = undefined;
+          request.settings.thinkingBudget = undefined;
+        }
 
         // always sync call
         aiResponse = await this.aiService.completeChat(
@@ -1067,26 +1083,36 @@ export class MessagesService {
     question: string,
     answer: string
   ): Promise<string> => {
-    const res = await this.aiService.completeChat(
-      connection,
-      {
-        modelId: model.modelId,
-        modelType: model.type,
-        apiProvider: model.apiProvider,
-      },
-      [
-        this.messageRepository.create({
-          id: "summary-system",
-          role: MessageRole.USER,
-          content: PROMPT_CHAT_TITLE({ question, answer }),
-        }),
-      ],
-      undefined,
-      model
-    );
+    const defaultTitle = question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+    try {
+      const res = await this.aiService.completeChat(
+        connection,
+        {
+          modelId: model.modelId,
+          modelType: model.type,
+          apiProvider: model.apiProvider,
+          settings: {
+            temperature: aiConfig.summarizingTemperature,
+            maxTokens: 10,
+          },
+        },
+        [
+          this.messageRepository.create({
+            id: "summary-system",
+            role: MessageRole.USER,
+            content: PROMPT_CHAT_TITLE({ question, answer }),
+          }),
+        ],
+        undefined,
+        model
+      );
 
-    const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
-    return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+      const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
+      return title || defaultTitle;
+    } catch (error: unknown) {
+      logger.error(error, "Error suggesting chat title");
+      return defaultTitle;
+    }
   };
 
   /**
@@ -1186,15 +1212,20 @@ export class MessagesService {
     const modelId_ = modelId || chat.modelId || user.defaultModelId;
     if (!modelId_) throw new Error("Model ID is required");
 
+    const chatSettings: ChatSettings = {
+      temperature: user.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.defaultImagesCount ?? 1,
+      systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      ...chat.settings,
+    };
+
     const request: CreateMessageRequest = {
       chatId: chat.id,
       modelId: modelId_,
+      settings: chatSettings,
       content,
-      temperature: chat.temperature ?? user.defaultTemperature ?? aiConfig.defaultTemperature,
-      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
-      topP: chat.topP ?? user.defaultTopP ?? aiConfig.defaultTopP,
-      imagesCount: chat.imagesCount ?? user.defaultImagesCount ?? 1,
-      systemPrompt: chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
       mcpTokens: messageContext?.mcpTokens,
     };
 

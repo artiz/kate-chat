@@ -24,7 +24,7 @@ export enum ToolType {
 
 export enum ModelFeature {
   REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
-  REASONING = "reasoning",
+  REASONING = "REASONING",
 }
 
 export interface Model extends BaseModel {
@@ -294,6 +294,16 @@ export interface ChatTool {
   options?: ChatToolOptions[];
 }
 
+export interface ChatSettings {
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  imagesCount?: number;
+  systemPrompt?: string;
+  thinking?: boolean;
+  thinkingBudget?: number;
+}
+
 export interface Chat {
   id: string;
   title: string;
@@ -306,11 +316,7 @@ export interface Chat {
   lastBotMessage?: string;
   lastBotMessageId?: string;
   lastBotMessageHtml?: string[];
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-  systemPrompt?: string;
+  settings?: ChatSettings;
   chatDocuments?: ChatDocument[];
   user?: User;
   tools?: ChatTool[];

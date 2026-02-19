@@ -14,10 +14,17 @@ import {
   Divider,
   Flex,
   Grid,
+  Switch,
 } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import classes from "./ChatSettings.module.scss";
+import { ChatSettings, Model, ModelFeature } from "@/types/graphql";
+
+import classes from "./ChatSettingsForm.module.scss";
+
+// TODO: load from global config or model features when available
+const MIN_THINKING_BUDGET = 1024;
+const MAX_THINKING_BUDGET = 30000;
 
 export const DEFAULT_CHAT_SETTINGS = {
   temperature: 0.7,
@@ -25,51 +32,54 @@ export const DEFAULT_CHAT_SETTINGS = {
   topP: 0.9,
   imagesCount: 1,
   systemPrompt: "You are a helpful, respectful and honest assistant.",
+  thinkingBudget: 3000,
 };
 
-export interface ChatSettingsProps {
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-  systemPrompt?: string;
+interface ChatSettingsComponentProps extends ChatSettings {
+  model?: Model;
+  onSettingsChange: (settings: ChatSettings) => void;
 }
 
-interface ChatSettingsComponentProps extends ChatSettingsProps {
-  onSettingsChange: (settings: ChatSettingsProps) => void;
-}
-
-export function ChatSettings({
+export function ChatSettingsForm({
   temperature = DEFAULT_CHAT_SETTINGS.temperature,
   maxTokens = DEFAULT_CHAT_SETTINGS.maxTokens,
   topP = DEFAULT_CHAT_SETTINGS.topP,
   imagesCount = DEFAULT_CHAT_SETTINGS.imagesCount,
   systemPrompt = DEFAULT_CHAT_SETTINGS.systemPrompt,
+  thinking = false,
+  thinkingBudget = DEFAULT_CHAT_SETTINGS.thinkingBudget,
+  model,
   onSettingsChange,
 }: ChatSettingsComponentProps) {
   const { t } = useTranslation();
   const [tempValue, setTempValue] = useState<number>(temperature);
   const [tokensValue, setTokensValue] = useState<number>(maxTokens);
   const [topPValue, setTopPValue] = useState<number>(topP);
-  const [imagesCountValue, setImagesCountValue] = useState<number>(1);
+  const [imagesCountValue, setImagesCountValue] = useState<number>(imagesCount);
   const [systemPromptValue, setSystemPromptValue] = useState<string>(systemPrompt);
+  const [thinkingValue, setThinkingValue] = useState<boolean>(thinking);
+  const [thinkingBudgetValue, setThinkingBudgetValue] = useState<number>(thinkingBudget);
 
   // Update local state when props change (e.g. when chat is switched)
   useEffect(() => {
     setTempValue(temperature);
-    setTokensValue(maxTokens);
+    setTokensValue(maxTokens || DEFAULT_CHAT_SETTINGS.maxTokens);
     setTopPValue(topP);
     setImagesCountValue(imagesCount);
     setSystemPromptValue(systemPrompt);
-  }, [temperature, maxTokens, topP, imagesCount, systemPrompt]);
+    setThinkingValue(thinking);
+    setThinkingBudgetValue(thinkingBudget || DEFAULT_CHAT_SETTINGS.thinkingBudget);
+  }, [temperature, maxTokens, topP, imagesCount, systemPrompt, thinking, thinkingBudget]);
 
-  const handleSettingsChange = (settings: ChatSettingsProps) => {
+  const handleSettingsChange = (settings: ChatSettings) => {
     onSettingsChange({
       temperature: tempValue,
       maxTokens: tokensValue,
       topP: topPValue,
       imagesCount: imagesCountValue,
       systemPrompt: systemPromptValue,
+      thinking: thinkingValue,
+      thinkingBudget: thinkingBudgetValue,
       ...settings,
     });
   };
@@ -114,6 +124,23 @@ export function ChatSettings({
   function handlePromptSave(): void {
     handleSettingsChange({ systemPrompt: systemPromptValue });
   }
+
+  const handleThinkingChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = event.currentTarget.checked;
+    setThinkingValue(checked);
+    handleSettingsChange({ thinking: checked });
+  };
+
+  const handleThinkingBudgetChange = (value: number | string) => {
+    let numValue = typeof value === "string" ? parseInt(value, 10) : value;
+    if (isNaN(numValue) || numValue < MIN_THINKING_BUDGET) {
+      numValue = MIN_THINKING_BUDGET; // Ensure minimum value is 100
+    } else if (numValue > MAX_THINKING_BUDGET) {
+      numValue = MAX_THINKING_BUDGET;
+    }
+    setThinkingBudgetValue(numValue);
+    handleSettingsChange({ thinkingBudget: numValue });
+  };
 
   return (
     <Box className={classes.settingsPanel}>
@@ -250,6 +277,43 @@ export function ChatSettings({
               size="xs"
             />
           </Box>
+
+          {model?.features?.includes(ModelFeature.REASONING) && (
+            <>
+              <Box m="md" miw="140px">
+                <Group p="apart" mb="md">
+                  <Text size="sm">{t("chat.thinking")}</Text>
+                  <Tooltip label={t("chat.thinkingTooltip")}>
+                    <ActionIcon size="xs" variant="subtle">
+                      <IconInfoCircle size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+
+                <Switch
+                  label={t("chat.thinkingEnabled")}
+                  checked={thinkingValue}
+                  onChange={handleThinkingChange}
+                  mb="xs"
+                />
+              </Box>
+              <Box m="md" miw="140px">
+                <Group p="apart" mb="md">
+                  <Text size="sm">{t("chat.thinkingBudget")}</Text>
+                </Group>
+
+                <NumberInput
+                  disabled={!thinkingValue}
+                  value={thinkingBudgetValue}
+                  onChange={handleThinkingBudgetChange}
+                  min={MIN_THINKING_BUDGET}
+                  max={MAX_THINKING_BUDGET}
+                  step={200}
+                  size="xs"
+                />
+              </Box>
+            </>
+          )}
         </Grid>
       </Stack>
     </Box>

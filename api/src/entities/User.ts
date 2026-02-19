@@ -5,8 +5,8 @@ import { Document } from "./Document";
 import { JSONTransformer } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
-import { ApiProvider, CredentialSourceType, CredentialType } from "@/types/api";
-import { globalConfig, APPLICATION_FEATURE } from "@/global-config";
+import { ApiProvider, CredentialSourceType, CredentialType } from "../types/api";
+import { globalConfig, APPLICATION_FEATURE } from "../global-config";
 
 export enum AuthProvider {
   LOCAL = "local",

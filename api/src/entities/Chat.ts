@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   OneToMany,
 } from "typeorm";
-import { Field, ID, ObjectType } from "type-graphql";
+import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { Message } from "./Message";
 import { JSONTransformer } from "../utils/db";
@@ -17,6 +17,31 @@ import { ChatTool } from "../types/ai.types";
 import { DB_TYPE } from "../config/env";
 
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
+
+@ObjectType("ChatSettings")
+@InputType("ChatSettingsInput")
+export class ChatSettings {
+  @Field({ nullable: true })
+  temperature?: number;
+
+  @Field({ nullable: true })
+  maxTokens?: number;
+
+  @Field({ nullable: true })
+  topP?: number;
+
+  @Field({ nullable: true })
+  imagesCount?: number;
+
+  @Field({ nullable: true })
+  systemPrompt?: string;
+
+  @Field({ nullable: true })
+  thinking?: boolean;
+
+  @Field({ nullable: true })
+  thinkingBudget?: number;
+}
 
 @ObjectType()
 @Entity("chats")
@@ -84,26 +109,6 @@ export class Chat {
   @Column({ nullable: true })
   modelId: string; // Initial model ID used for this chat
 
-  @Field({ nullable: true })
-  @Column({ nullable: true, type: "float" })
-  temperature?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, type: "int" })
-  maxTokens?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, type: "float" })
-  topP?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, type: "int" })
-  imagesCount?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  systemPrompt?: string;
-
   @Field()
   @Column({ default: false })
   isPristine: boolean;
@@ -111,6 +116,10 @@ export class Chat {
   @Field()
   @Column({ default: false })
   isPinned: boolean;
+
+  @Field(() => ChatSettings, { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ChatSettings>(), default: null })
+  settings?: ChatSettings;
 
   @Field(() => [ChatTool], { nullable: true })
   @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<ChatTool[]>(), default: null })

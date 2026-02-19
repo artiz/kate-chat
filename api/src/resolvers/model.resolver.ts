@@ -273,8 +273,10 @@ export class ModelResolver extends BaseResolver {
         modelId: model.modelId,
         modelType: model.type,
         apiProvider: model.apiProvider,
-        temperature: 0.5,
-        maxTokens: 256,
+        settings: {
+          temperature: 0.5,
+          maxTokens: 256,
+        },
       },
       [message],
       undefined,
@@ -379,7 +381,7 @@ export class ModelResolver extends BaseResolver {
         type: ModelType.CHAT,
         streaming,
         imageInput: imageInput || false,
-        maxInputTokens: maxInputTokens || globalConfig.ai.maxContextTokens,
+        maxInputTokens: maxInputTokens || globalConfig.ai.defaultModelMaxInputTokens,
         isActive: true,
         isCustom: true,
         user: { id: user.userId },
@@ -556,10 +558,12 @@ export class ModelResolver extends BaseResolver {
       const request: CompleteChatRequest = {
         apiProvider: ApiProvider.CUSTOM_REST_API,
         modelId: modelName,
-        systemPrompt: "You are a helpful assistant.",
-        temperature: 0.7,
-        maxTokens: 100,
         modelType: ModelType.CHAT,
+        settings: {
+          systemPrompt: "You are a helpful assistant.",
+          temperature: 0.7,
+          maxTokens: 100,
+        },
       };
 
       const messages: Message[] = [

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride } from "@mantine/core";
+import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride, Alert, Box } from "@mantine/core";
 import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
@@ -118,19 +118,12 @@ const AppContent: React.FC = () => {
     // Handle errors from the initial data query
     if (isError && Date.now() - (loginTime || 0) > 1000) {
       const authFailed =
-        ("status" in error && [403, 401, "PARSING_ERROR", "CUSTOM_ERROR"].includes(error.status)) ||
+        ("status" in error && [403, 401, "TIMEOUT_ERROR"].includes(error.status)) ||
         ("error" in error && [ERROR_UNAUTHORIZED, ERROR_FORBIDDEN].some(err => String(error.error).includes(err)));
 
       if (authFailed) {
         dispatch(logout());
         navigate("/login");
-      } else if ("error" in error) {
-        // Show error notification
-        notifications.show({
-          title: t("errors.apiError"),
-          message: error.error || t("errors.unknownError"),
-          color: "red",
-        });
       }
     }
   }, [isError, error, loginTime]);
@@ -154,11 +147,11 @@ const AppContent: React.FC = () => {
       <ModalsProvider>
         <Notifications position="top-right" />
         <ApolloWrapper>
-          {isAuthenticated && isLoading ? (
+          {isLoading ? (
             <Center h="100vh">
               <Loader size="xl" />
             </Center>
-          ) : (
+          ) : isAuthenticated && !isError ? (
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -188,6 +181,12 @@ const AppContent: React.FC = () => {
               {/* Fallback route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+          ) : (
+            <Box p="xl">
+              <Alert title={t("common.error")} color="red" variant="filled">
+                {error ? ("error" in error ? error.error : t("errors.unknownError")) : t("errors.unknownError")}
+              </Alert>
+            </Box>
           )}
         </ApolloWrapper>
       </ModalsProvider>

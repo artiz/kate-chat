@@ -187,7 +187,7 @@ export class DocumentQueueService {
       const markdownContent = await this.downloadS3Content(s3Service, `${s3key}.parsed.md`);
 
       const maxContentLength =
-        (model.maxInputTokens || globalConfig.ai.maxContextTokens) * globalConfig.ai.charactersPerToken;
+        (model.maxInputTokens || globalConfig.ai.defaultModelMaxInputTokens) * globalConfig.ai.charactersPerToken;
       const contentToSummarize =
         markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
 
@@ -198,8 +198,10 @@ export class DocumentQueueService {
           modelId,
           modelType: model.type,
           apiProvider: model.apiProvider,
-          maxTokens: globalConfig.ai.summarizingOutputTokens,
-          temperature: globalConfig.ai.summarizingTemperature,
+          settings: {
+            maxTokens: globalConfig.ai.summarizingOutputTokens,
+            temperature: globalConfig.ai.summarizingTemperature,
+          },
         },
         [
           this.messageRepo.create({

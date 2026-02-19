@@ -6,7 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { pick } from "lodash";
-import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType } from "@/types/graphql";
+import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings } from "@/types/graphql";
 
 type RemoveMessagesArgs = {
   messagesToDelete?: Message[];
@@ -33,11 +33,7 @@ export interface UpdateChatInput {
   title?: string;
   description?: string;
   modelId?: string;
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-  systemPrompt?: string;
+  settings?: ChatSettings;
   tools?: { type: ToolType; name?: string }[];
 
   lastBotMessage?: string;
@@ -247,20 +243,16 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     }
 
     updateTimeout.current = setTimeout(() => {
+      const request = pick(input, ["title", "description", "modelId", "settings", "tools"]);
+
+      if ((request?.settings as any)?.__typename) {
+        delete (request.settings as any).__typename;
+      }
+
       updateChatMutation({
         variables: {
           id,
-          input: pick(input, [
-            "title",
-            "description",
-            "modelId",
-            "temperature",
-            "maxTokens",
-            "topP",
-            "imagesCount",
-            "systemPrompt",
-            "tools",
-          ]),
+          input: request,
         },
       });
     }, 300);

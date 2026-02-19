@@ -73,6 +73,7 @@ export enum ToolType {
 
 export enum ModelFeature {
   REQUEST_CANCELLATION = "request_cancellation",
+  // same as tninking for Anthropic's models, but can be used for other providers as well
   REASONING = "reasoning",
 }
 

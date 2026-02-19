@@ -1,1 +1,1 @@
-export { ChatSettings } from "./ChatSettings";
+export { ChatSettingsForm, DEFAULT_CHAT_SETTINGS } from "./ChatSettingsForm";

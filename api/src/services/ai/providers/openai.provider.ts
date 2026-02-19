@@ -38,6 +38,7 @@ import {
   OPENAI_MODELS_TRANSCRIPTION,
   OPENAI_MODELS_VIDEO_GENERATION,
   OPENAI_GLOBAL_IGNORED_MODELS,
+  OPENAI_MODELS_SUPPORT_REASONING,
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "@/services/ai/tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
@@ -326,6 +327,10 @@ export class OpenAIApiProvider extends BaseApiProvider {
         const features: ModelFeature[] | undefined =
           apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : undefined;
 
+        if (OPENAI_MODELS_SUPPORT_REASONING.some(prefix => model.id.startsWith(prefix))) {
+          features?.push(ModelFeature.REASONING);
+        }
+
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||
           Object.entries(OPENAI_MODEL_MAX_INPUT_TOKENS).find(([key]) => model.id.startsWith(key))?.[1] ||
@@ -401,7 +406,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
 
-    const { modelId, imagesCount } = inputRequest;
+    const { modelId, settings = {} } = inputRequest;
+    const { imagesCount } = settings;
 
     // Extract the prompt from the last user message
     const userMessages = messages.filter(msg => msg.role === MessageRole.USER);

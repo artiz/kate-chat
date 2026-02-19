@@ -14,6 +14,7 @@ import {
   ConverseStreamCommandOutput,
   ValidationException,
 } from "@aws-sdk/client-bedrock-runtime";
+import { DocumentType } from "@smithy/types";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
 
@@ -31,7 +32,15 @@ import {
   ProviderInfo,
   ChatToolCallResult,
 } from "@/types/ai.types";
-import { ApiProvider, ToolType, ModelType, MessageRole, ResponseStatus, CredentialSourceType } from "@/types/api";
+import {
+  ApiProvider,
+  ToolType,
+  ModelType,
+  MessageRole,
+  ResponseStatus,
+  CredentialSourceType,
+  ModelFeature,
+} from "@/types/api";
 import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
@@ -48,6 +57,7 @@ import {
 
 import { FileContentLoader } from "@/services/data";
 import { globalConfig } from "@/global-config";
+import { AWS_BEDROCK_MODELS_SUPPORT_REASONING } from "@/config/ai/bedrock";
 
 const logger = createLogger(__filename);
 
@@ -175,7 +185,6 @@ export class BedrockApiProvider extends BaseApiProvider {
     return finalResponse || { type: "text", content: "" };
   }
 
-  // Stream response from models using InvokeModelWithResponseStreamCommand
   async streamChatCompletion(
     request: CompleteChatRequest,
     messages: ModelMessage[],
@@ -396,7 +405,7 @@ export class BedrockApiProvider extends BaseApiProvider {
           );
         }
       } catch (e: unknown) {
-        logger.error(e, "InvokeModelWithResponseStreamCommand failed");
+        logger.error(e, "ConverseStreamCommand failed");
         if ("$response" in (e as any)) {
           logger.error({ response: (e as any).$response }, "Detailed error response from AWS Bedrock");
         }
@@ -531,6 +540,11 @@ export class BedrockApiProvider extends BaseApiProvider {
         tools.push(ToolType.MCP);
       }
 
+      const features: ModelFeature[] = [];
+      if (AWS_BEDROCK_MODELS_SUPPORT_REASONING.some(supportedModel => modelId.includes(supportedModel))) {
+        features.push(ModelFeature.REASONING);
+      }
+
       models[modelId] = {
         apiProvider: ApiProvider.AWS_BEDROCK,
         provider: providerName,
@@ -541,6 +555,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
         maxInputTokens: modelsInputTokens[model.modelId],
         tools: tools.length > 0 ? tools : undefined,
+        features,
       };
     }
 
@@ -787,7 +802,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     messages: ModelMessage[] = [],
     requestTools: BedrockToolCallable[] = []
   ): Promise<ConverseCommandInput> {
-    const { systemPrompt, modelId, temperature, maxTokens, topP } = request;
+    const { modelId, settings = {} } = request;
+    const { systemPrompt, temperature, maxTokens, topP, thinking, thinkingBudget } = settings;
 
     const requestMessages: ConverseMessage[] = [];
 
@@ -850,15 +866,32 @@ export class BedrockApiProvider extends BaseApiProvider {
       });
     }
 
+    const inferenceConfig = {
+      maxTokens,
+      temperature,
+      topP,
+      stopSequences: [],
+    };
+    const additionalModelRequestFields: DocumentType = {};
+
+    if (thinking && thinkingBudget) {
+      const budget = Math.max(thinkingBudget, 1024);
+
+      inferenceConfig.temperature = 1;
+      if (maxTokens) {
+        inferenceConfig.maxTokens = Math.max(maxTokens, budget * 1.2);
+      }
+      additionalModelRequestFields.thinking = {
+        type: "enabled",
+        budget_tokens: budget,
+      };
+    }
+
     const command: ConverseCommandInput = {
       modelId,
       messages: requestMessages,
-      inferenceConfig: {
-        maxTokens,
-        temperature,
-        topP,
-        stopSequences: [],
-      },
+      inferenceConfig,
+      additionalModelRequestFields,
     };
 
     if (modelId.includes("claude-sonnet-4-5") && temperature != null && topP != null) {

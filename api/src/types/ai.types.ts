@@ -10,6 +10,7 @@ import {
   ResponseStatus,
   ToolType,
 } from "./api";
+import { ChatSettings } from "@/entities/Chat";
 
 export interface ProviderInfo {
   id: ApiProvider;
@@ -294,14 +295,10 @@ export class MCPAuthToken {
 }
 
 export interface CompleteChatRequest {
-  systemPrompt?: string;
   apiProvider: ApiProvider;
   modelId: string;
   modelType: ModelType;
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
+  settings?: ChatSettings;
   tools?: ChatTool[];
   mcpServers?: IMCPServer[];
   mcpTokens?: MCPAuthToken[];

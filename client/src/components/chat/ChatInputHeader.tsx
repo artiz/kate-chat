@@ -1,4 +1,4 @@
-import React, { use, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button, Group, Loader } from "@mantine/core";
 import {
   IconRobot,
@@ -15,11 +15,10 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
-import { ChatSettings } from "./ChatSettings";
+import { ChatSettingsForm, DEFAULT_CHAT_SETTINGS } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
-import { ToolType, ChatTool, Model, MCPServer } from "@/types/graphql";
+import { ToolType, ChatTool, Model, MCPServer, ChatSettings } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
-import { ChatSettingsProps, DEFAULT_CHAT_SETTINGS } from "./ChatSettings/ChatSettings";
 import { assert, ProviderIcon } from "@katechat/ui";
 import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
 import { GET_MCP_SERVERS_FOR_CHAT } from "@/store/services/graphql.queries";
@@ -36,7 +35,7 @@ interface IHeaderProps {
   disabled?: boolean;
   streaming: boolean;
   chatTools?: ChatTool[];
-  chatSettings?: ChatSettingsProps;
+  chatSettings?: ChatSettings;
   models: Model[];
   selectedModel?: Model;
   onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
@@ -117,8 +116,8 @@ export const ChatInputHeader = ({
     onUpdateChat(chatId, { modelId: modelId || undefined });
   };
 
-  const handleSettingsChange = (settings: ChatSettingsProps) => {
-    onUpdateChat(chatId, { ...settings });
+  const handleSettingsChange = (settings: ChatSettings) => {
+    onUpdateChat(chatId, { settings });
   };
 
   const handleToolToggle = (toolType: ToolType) => {
@@ -275,7 +274,7 @@ export const ChatInputHeader = ({
           yOffset="auto"
           styles={{ content: { marginTop: "auto", marginBottom: "1rem" } }}
         >
-          <ChatSettings {...chatSettings} onSettingsChange={handleSettingsChange} />
+          <ChatSettingsForm {...chatSettings} onSettingsChange={handleSettingsChange} model={selectedModel} />
           <Button mt="md" onClick={closeSettings}>
             {t("common.close")}
           </Button>

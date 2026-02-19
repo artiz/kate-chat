@@ -78,7 +78,7 @@ export interface GlobalConfigShape {
     defaultTopP: number;
     contextMessagesLimit: number;
     charactersPerToken: number;
-    maxContextTokens: number;
+    defaultModelMaxInputTokens: number;
     summarizingOutputTokens: number;
     summarizingTemperature: number;
     ragQueryChunksLimit: number;
@@ -285,7 +285,7 @@ export class GlobalConfig {
         defaultTopP: 0.9,
         contextMessagesLimit: +(process.env.AI_CONTEXT_MESSAGES_LIMIT || 100) | 0,
         charactersPerToken: 3.5,
-        maxContextTokens: +(process.env.AI_MAX_CONTEXT_TOKENS || 8192) | 0,
+        defaultModelMaxInputTokens: +(process.env.AI_MAX_INPUT_CONTEXT_TOKENS || 8192) | 0,
         summarizingOutputTokens: +(process.env.AI_SUMMARIZING_OUTPUT_TOKENS || 2000) | 0,
         summarizingTemperature: +(process.env.AI_SUMMARIZING_TEMPERATURE || 0.25),
         ragQueryChunksLimit: +(process.env.RAG_QUERY_CHUNKS_LIMIT || 10) | 0,
