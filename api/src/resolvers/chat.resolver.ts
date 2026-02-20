@@ -90,13 +90,16 @@ export class ChatResolver extends BaseResolver {
     @Arg("input") input: UpdateChatInput,
     @Ctx() context: GraphQLContext
   ): Promise<Chat> {
-    await this.validateContextToken(context);
+    const user = await this.validateContextToken(context);
 
     const chat = await this.chatRepository.findOne({
       where: { id },
     });
 
     if (!chat) throw new Error("Chat not found");
+    if (!chat.userId) throw new Error("Chat has no associated user");
+    if (chat.userId !== user.userId) throw new Error("Unauthorized");
+
     Object.assign(chat, {
       ...input,
       settings: {
@@ -121,6 +124,9 @@ export class ChatResolver extends BaseResolver {
     });
 
     if (!chat) throw new Error("Chat not found");
+    if (!chat.userId) throw new Error("Chat has no associated user");
+    if (chat.userId !== user.id) throw new Error("Unauthorized");
+
     if (chat.files?.length) {
       await messageService.removeFiles(chat.files, user);
     }
