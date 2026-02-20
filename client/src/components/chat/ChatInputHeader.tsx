@@ -19,10 +19,9 @@ import { ChatSettingsForm, DEFAULT_CHAT_SETTINGS } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
 import { ToolType, ChatTool, Model, MCPServer, ChatSettings } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
-import { assert, ProviderIcon } from "@katechat/ui";
+import { assert, ModelType, ProviderIcon } from "@katechat/ui";
 import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
-import { GET_MCP_SERVERS_FOR_CHAT } from "@/store/services/graphql.queries";
-import { RootState } from "@/store";
+import { RootState, useAppSelector } from "@/store";
 import { useSelector } from "react-redux";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { useMediaQuery, useDisclosure, useLocalStorage } from "@mantine/hooks";
@@ -36,7 +35,6 @@ interface IHeaderProps {
   streaming: boolean;
   chatTools?: ChatTool[];
   chatSettings?: ChatSettings;
-  models: Model[];
   selectedModel?: Model;
   onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
   onAutoScroll?: (value: boolean) => void;
@@ -48,13 +46,14 @@ export const ChatInputHeader = ({
   streaming,
   chatTools,
   chatSettings = DEFAULT_CHAT_SETTINGS,
-  models,
   selectedModel,
   onUpdateChat,
   onAutoScroll,
 }: IHeaderProps) => {
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const { t } = useTranslation();
+  const { models: allModels, mcpServers } = useAppSelector(state => state.models);
+
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
   const { token: userToken } = useSelector((state: RootState) => state.auth);
@@ -62,14 +61,9 @@ export const ChatInputHeader = ({
 
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
-  // Query MCP servers when MCP tool is supported
-  const { data: mcpServersData } = useQuery(GET_MCP_SERVERS_FOR_CHAT, {
-    skip: !selectedModel?.tools?.includes(ToolType.MCP),
-  });
-
-  const mcpServers: MCPServer[] = useMemo(() => {
-    return mcpServersData?.getMCPServers?.servers?.filter((s: MCPServer) => s.isActive) || [];
-  }, [mcpServersData?.getMCPServers?.servers]);
+  const models = useMemo(() => {
+    return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
+  }, [allModels]);
 
   const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServer) => [s.id, s.name])), [mcpServers]);
 

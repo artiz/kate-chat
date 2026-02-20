@@ -223,6 +223,12 @@ export class ApplicationConfig {
   @Field({ nullable: true })
   maxImages?: number;
 
+  @Field({ nullable: true })
+  reasoningMinTokenBudget?: number;
+
+  @Field({ nullable: true })
+  reasoningMaxTokenBudget?: number;
+
   @Field(() => [CredentialSource], { nullable: true })
   credentialsSource?: CredentialSource[];
 }

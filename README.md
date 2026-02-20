@@ -48,7 +48,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
 ## TODO
-* Integrate get GetMCPServersForChat to GetInitialdata
 * Thinking support for AWS Bedrock [Claude](https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-extended-thinking.html)
 * Custom Bedrock model: (CustomModelProtocol.AWS_BEDROCK_CUSTOM)[https://docs.aws.amazon.com/bedrock/latest/userguide/deploy-custom-model-on-demand.html]
 * Introduce chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats

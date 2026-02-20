@@ -58,6 +58,31 @@ export class UserSettings {
   yandexFmApiKey?: string;
   @Field({ nullable: true })
   yandexFmApiFolderId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  defaultModelId?: string;
+
+  @Field({ nullable: true })
+  documentsEmbeddingsModelId?: string;
+
+  @Field({ nullable: true })
+  documentSummarizationModelId?: string;
+
+  @Field({ nullable: true })
+  defaultSystemPrompt?: string;
+
+  @Field({ nullable: true, defaultValue: 0.7 })
+  defaultTemperature?: number;
+
+  @Field({ nullable: true, defaultValue: 2048 })
+  defaultMaxTokens?: number;
+
+  @Field({ nullable: true, defaultValue: 0.9 })
+  defaultTopP?: number;
+
+  @Field({ nullable: true, defaultValue: 1 })
+  defaultImagesCount?: number;
 }
 
 @ObjectType()
@@ -87,38 +112,6 @@ export class User {
   @Field(() => String)
   @Column({ type: "varchar", default: UserRole.USER })
   role: UserRole;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  defaultModelId?: string;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  documentsEmbeddingsModelId?: string;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  documentSummarizationModelId?: string;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  defaultSystemPrompt?: string;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, default: 0.7, type: "float" })
-  defaultTemperature?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, default: 2048, type: "integer" })
-  defaultMaxTokens?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, default: 0.9, type: "float" })
-  defaultTopP?: number;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true, default: 1, type: "integer" })
-  defaultImagesCount?: number;
 
   @Field({ nullable: true })
   @Column({ nullable: true })

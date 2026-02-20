@@ -10,6 +10,7 @@ import {
   GetChatsResponse,
   GetInitialDataResponse,
   GetModelsResponse,
+  MCPServer,
   Model,
   ProviderInfo,
 } from "@/types/graphql";
@@ -141,6 +142,7 @@ export const graphqlApi = api.injectEndpoints({
           total: number;
           next: number | undefined;
         };
+        mcpServers: MCPServer[];
       },
       void
     >({
@@ -212,6 +214,20 @@ export const graphqlApi = api.injectEndpoints({
                   source
                 }
               }
+
+              getMCPServers {
+                servers {
+                  id
+                  name
+                  isActive
+                  authType
+                  authConfig {
+                    clientId
+                    authorizationUrl
+                    scope
+                  }
+                }
+              }
             }
 
             ${FULL_USER_FRAGMENT}
@@ -234,6 +250,7 @@ export const graphqlApi = api.injectEndpoints({
             next: undefined,
           },
           appConfig,
+          getMCPServers,
         } = response.data || {};
 
         for (const chat of pinnedChats.chats) {
@@ -254,6 +271,7 @@ export const graphqlApi = api.injectEndpoints({
           chats,
           pinnedChats,
           appConfig,
+          mcpServers: getMCPServers?.servers || [],
         };
       },
       transformErrorResponse: handleError,

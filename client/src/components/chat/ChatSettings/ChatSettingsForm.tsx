@@ -21,10 +21,7 @@ import { useTranslation } from "react-i18next";
 import { ChatSettings, Model, ModelFeature } from "@/types/graphql";
 
 import classes from "./ChatSettingsForm.module.scss";
-
-// TODO: load from global config or model features when available
-const MIN_THINKING_BUDGET = 1024;
-const MAX_THINKING_BUDGET = 50_000;
+import { useAppSelector } from "@/store";
 
 export const DEFAULT_CHAT_SETTINGS = {
   temperature: 0.7,
@@ -52,6 +49,8 @@ export function ChatSettingsForm({
   onSettingsChange,
 }: ChatSettingsComponentProps) {
   const { t } = useTranslation();
+  const { appConfig } = useAppSelector(state => state.user);
+
   const [tempValue, setTempValue] = useState<number>(temperature);
   const [tokensValue, setTokensValue] = useState<number>(maxTokens);
   const [topPValue, setTopPValue] = useState<number>(topP);
@@ -296,8 +295,8 @@ export function ChatSettingsForm({
                   disabled={!thinkingValue}
                   value={thinkingBudgetValue}
                   onChange={handleThinkingBudgetChange}
-                  min={MIN_THINKING_BUDGET}
-                  max={MAX_THINKING_BUDGET}
+                  min={appConfig?.reasoningMinTokenBudget || 1024}
+                  max={appConfig?.reasoningMaxTokenBudget || 50_000}
                   clampBehavior="blur"
                   step={200}
                   size="xs"

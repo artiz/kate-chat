@@ -78,6 +78,8 @@ export class UserResolver extends BaseResolver {
       maxChatMessages: user?.isAdmin() ? -1 : globalConfig.limits.maxChatMessages,
       maxImages: user?.isAdmin() ? -1 : globalConfig.limits.maxImages,
       credentialsSource,
+      reasoningMaxTokenBudget: globalConfig.ai.reasoningMaxTokenBudget,
+      reasoningMinTokenBudget: globalConfig.ai.reasoningMinTokenBudget,
     };
   }
 

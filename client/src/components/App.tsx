@@ -10,7 +10,7 @@ import { ApolloWrapper } from "@/lib/apollo-provider";
 import { createAppTheme } from "@/theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
-import { setModelsAndProviders } from "../store/slices/modelSlice";
+import { setMcpServers, setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
@@ -87,6 +87,7 @@ const AppContent: React.FC = () => {
       dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
+      dispatch(setMcpServers(initData.mcpServers));
 
       const pinnedChatsIds = new Set(initData.pinnedChats.chats.map(chat => chat.id));
       dispatch(

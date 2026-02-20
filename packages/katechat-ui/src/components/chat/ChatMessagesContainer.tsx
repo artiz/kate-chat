@@ -9,7 +9,6 @@ import "./ChatMessagesContainer.scss";
 
 interface IProps {
   messages?: Message[];
-  models: Model[];
   addChatMessage: (message: Message) => void;
   removeMessages: (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => void;
   loadMoreMessages?: () => void;

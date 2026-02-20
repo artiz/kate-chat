@@ -460,7 +460,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
         <ChatMessagesContainer
           ref={chatMessagesRef}
           messages={messages}
-          models={models}
           autoScroll={autoScroll}
           addChatMessage={addChatMessage}
           removeMessages={removeMessages}

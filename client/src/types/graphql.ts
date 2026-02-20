@@ -152,6 +152,8 @@ export interface ApplicationConfig {
   maxImages?: number;
   lastUpdate?: number;
   credentialsSource?: CredentialSource[];
+  reasoningMaxTokenBudget?: number;
+  reasoningMinTokenBudget?: number;
 }
 
 export interface GetInitialDataResponse {
@@ -171,6 +173,9 @@ export interface GetInitialDataResponse {
       next: number | undefined;
     };
     appConfig: ApplicationConfig;
+    getMCPServers?: {
+      servers: MCPServer[];
+    };
   };
 }
 
