@@ -22,7 +22,7 @@ import { YandexApiProvider } from "./providers/yandex.provider";
 import { CustomRestApiProvider } from "./providers/custom-rest-api.provider";
 import { BaseApiProvider } from "./providers/base.provider";
 
-import { Model, User } from "@/entities";
+import { CustomModelProtocol, Model, User } from "@/entities";
 
 export class AIService {
   // Main method to interact with models
@@ -190,6 +190,9 @@ export class AIService {
     } else if (apiProvider === ApiProvider.YANDEX_FM) {
       return new YandexApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.CUSTOM_REST_API) {
+      if (model?.customSettings?.protocol === CustomModelProtocol.AWS_BEDROCK_CUSTOM) {
+        return new BedrockApiProvider(connection, fileLoader, model.customSettings?.modelName);
+      }
       return new CustomRestApiProvider(connection, model, fileLoader);
     } else {
       throw new Error(`Unsupported API provider: ${apiProvider}`);

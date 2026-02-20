@@ -66,6 +66,8 @@ export function getProgrammingLanguageExt(language: string): string {
     proto: "proto",
     tex: "tex",
     latex: "tex",
+    plaintext: "txt",
+    text: "txt",
   };
 
   return mapping[language.toLowerCase()] || language;

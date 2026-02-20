@@ -16,7 +16,7 @@ import {
   ModelMessageContentImage,
   ModelResponse,
 } from "@/types/ai.types";
-import { MessageRole, MessageType, ModelType, ResponseStatus, ToolType } from "@/types/api";
+import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, ToolType } from "@/types/api";
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
@@ -31,6 +31,7 @@ import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
 import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
+import { ChatSettings } from "@/entities/Chat";
 
 const aiConfig = globalConfig.ai;
 
@@ -42,11 +43,7 @@ export interface CreateMessageRequest {
   chatId: string;
   modelId: string;
   content: string;
-  temperature: number;
-  maxTokens: number;
-  topP: number;
-  imagesCount: number;
-  systemPrompt?: string;
+  settings: ChatSettings;
   images?: ImageInput[];
   documentIds?: string[];
   mcpTokens?: { serverId: string; accessToken: string; refreshToken?: string; expiresAt?: number }[];
@@ -144,7 +141,7 @@ export class MessagesService {
     });
     if (!chat) throw new Error("Chat not found");
 
-    const modelId = chat.modelId || user.defaultModelId;
+    const modelId = chat.modelId || user.settings?.defaultModelId;
     if (!modelId) throw new Error("Model must be defined for the chat or user");
 
     await this.checkMessagesLimit(chatId, user);
@@ -303,9 +300,9 @@ export class MessagesService {
     const chat = originalMessage.chat;
     const chatId = chat.id;
 
-    // Delete all messages after this one in the chat
     ok(originalMessage.createdAt);
 
+    // Delete all messages after this one in the chat
     let query = this.messageRepository
       .createQueryBuilder("message")
       .where("message.chatId = :chatId", { chatId })
@@ -342,7 +339,7 @@ export class MessagesService {
     // Find the model for the chat
     const model = await this.modelRepository.findOne({
       where: {
-        modelId: chat.modelId || user.defaultModelId,
+        modelId: chat.modelId || user.settings?.defaultModelId,
         user: { id: user.id },
       },
     });
@@ -358,6 +355,9 @@ export class MessagesService {
       if (model.type !== ModelType.IMAGE_GENERATION) {
         assistantMessage.content = "";
       }
+
+      assistantMessage.jsonContent = undefined;
+      assistantMessage.metadata = undefined;
     } else {
       assistantMessage = this.messageRepository.create({
         content: "",
@@ -368,6 +368,8 @@ export class MessagesService {
         chat,
       });
     }
+
+    await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
 
     await this.messageRepository.save(assistantMessage).catch(err => {
       this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
@@ -649,6 +651,7 @@ export class MessagesService {
     return userMessage;
   }
 
+  // TODO: simplify this method
   protected async publishAssistantMessage(
     input: CreateMessageRequest,
     connection: ConnectionParams,
@@ -658,16 +661,25 @@ export class MessagesService {
     inputMessages: Message[],
     assistantMessage: Message
   ): Promise<void> {
-    const systemPrompt = chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT;
+    const chatSettings: ChatSettings = {
+      temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.settings?.defaultImagesCount ?? 1,
+      systemPrompt: user.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      ...chat.settings,
+    };
+
+    if (!model?.features?.includes(ModelFeature.REASONING)) {
+      chatSettings.thinking = undefined;
+      chatSettings.thinkingBudget = undefined;
+    }
+
     const request: CompleteChatRequest = {
       ...input,
       modelType: model.type,
       apiProvider: model.apiProvider,
-      systemPrompt,
-      temperature: chat.temperature,
-      maxTokens: chat.maxTokens,
-      topP: chat.topP,
-      imagesCount: chat.imagesCount,
+      settings: chatSettings,
       tools: chat.tools,
       mcpTokens: input.mcpTokens,
     };
@@ -694,7 +706,7 @@ export class MessagesService {
         let titleModel: Model | null = model;
         if (titleModel.type !== ModelType.CHAT) {
           titleModel = await this.modelRepository.findOne({
-            where: { user: { id: user.id }, modelId: user.defaultModelId, type: ModelType.CHAT },
+            where: { user: { id: user.id }, modelId: user.settings?.defaultModelId, type: ModelType.CHAT },
           });
         }
         if (titleModel) {
@@ -965,8 +977,17 @@ export class MessagesService {
           modelType: model.type,
           apiProvider: model.apiProvider,
           modelId: model.modelId,
-          systemPrompt,
+          settings: input.settings || {},
         };
+
+        ok(request.settings);
+
+        // extend system prompt with RAG information
+        request.settings.systemPrompt = systemPrompt;
+        if (!model?.features?.includes(ModelFeature.REASONING)) {
+          request.settings.thinking = undefined;
+          request.settings.thinkingBudget = undefined;
+        }
 
         // always sync call
         aiResponse = await this.aiService.completeChat(
@@ -1067,26 +1088,36 @@ export class MessagesService {
     question: string,
     answer: string
   ): Promise<string> => {
-    const res = await this.aiService.completeChat(
-      connection,
-      {
-        modelId: model.modelId,
-        modelType: model.type,
-        apiProvider: model.apiProvider,
-      },
-      [
-        this.messageRepository.create({
-          id: "summary-system",
-          role: MessageRole.USER,
-          content: PROMPT_CHAT_TITLE({ question, answer }),
-        }),
-      ],
-      undefined,
-      model
-    );
+    const defaultTitle = question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+    try {
+      const res = await this.aiService.completeChat(
+        connection,
+        {
+          modelId: model.modelId,
+          modelType: model.type,
+          apiProvider: model.apiProvider,
+          settings: {
+            temperature: aiConfig.summarizingTemperature,
+            maxTokens: 10,
+          },
+        },
+        [
+          this.messageRepository.create({
+            id: "summary-system",
+            role: MessageRole.USER,
+            content: PROMPT_CHAT_TITLE({ question, answer }),
+          }),
+        ],
+        undefined,
+        model
+      );
 
-    const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
-    return title || question.substring(0, 25) + (question.length > 25 ? "..." : "") || "New Chat";
+      const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
+      return title || defaultTitle;
+    } catch (error: unknown) {
+      logger.error(error, "Error suggesting chat title");
+      return defaultTitle;
+    }
   };
 
   /**
@@ -1183,18 +1214,23 @@ export class MessagesService {
     user: User,
     messageContext?: MessageContext
   ): CreateMessageRequest {
-    const modelId_ = modelId || chat.modelId || user.defaultModelId;
-    if (!modelId_) throw new Error("Model ID is required");
+    const chatModelId = modelId || chat.modelId || user.settings?.defaultModelId;
+    if (!chatModelId) throw new Error("Model ID is required");
+
+    const chatSettings: ChatSettings = {
+      temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.settings?.defaultImagesCount ?? 1,
+      systemPrompt: user.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      ...chat.settings,
+    };
 
     const request: CreateMessageRequest = {
       chatId: chat.id,
-      modelId: modelId_,
+      modelId: chatModelId,
+      settings: chatSettings,
       content,
-      temperature: chat.temperature ?? user.defaultTemperature ?? aiConfig.defaultTemperature,
-      maxTokens: chat.maxTokens ?? user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
-      topP: chat.topP ?? user.defaultTopP ?? aiConfig.defaultTopP,
-      imagesCount: chat.imagesCount ?? user.defaultImagesCount ?? 1,
-      systemPrompt: chat.systemPrompt || user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
       mcpTokens: messageContext?.mcpTokens,
     };
 

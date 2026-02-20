@@ -1,4 +1,4 @@
-import { SearchResult } from "@/services/ai/tools/web_search";
+import { SearchResult } from "../../services/ai/tools/web_search";
 
 export const DEFAULT_CHAT_PROMPT = `You are a helpful, respectful and honest assistant. Do not make up answers.
 * In case of formulas output always use MatJAX format.

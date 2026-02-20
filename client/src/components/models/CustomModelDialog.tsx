@@ -116,11 +116,20 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
     if (testResult) setTestResult(null); // Reset test result on change
   };
 
+  const noEndpointRequired = formData.protocol === CustomModelProtocol.AWS_BEDROCK_CUSTOM;
+
   const handleTest = async () => {
-    if (!formData.endpoint || !formData.modelName) {
+    if (noEndpointRequired && !formData.modelName) {
       notifications.show({
         title: t("models.validationError"),
-        message: t("models.endpointApiKeyRequired"),
+        message: t("models.testModelRequired"),
+        color: "red",
+      });
+      return;
+    } else if (!noEndpointRequired && (!formData.endpoint || !formData.modelName)) {
+      notifications.show({
+        title: t("models.validationError"),
+        message: t("models.testEndpointRequired"),
         color: "red",
       });
       return;
@@ -150,8 +159,8 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
     if (
       !formData.name ||
       !formData.modelId ||
-      !formData.endpoint ||
-      (!formData.apiKey && !initialData?.apiKey) ||
+      (!noEndpointRequired && !formData.endpoint) ||
+      (!noEndpointRequired && !formData.apiKey && !initialData?.apiKey) ||
       !formData.modelName
     ) {
       notifications.show({
@@ -176,7 +185,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
     }
   };
 
-  const canTest = !!(formData.endpoint && formData.apiKey && formData.modelName);
+  const canTest = !!(((formData.endpoint && formData.apiKey) || noEndpointRequired) && formData.modelName);
 
   return (
     <Modal
@@ -215,28 +224,30 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           />
         </Group>
 
-        <Group grow align="flex-end">
-          <TextInput
-            label={t("models.endpointUrl")}
-            placeholder="e.g., https://api.deepseek.com/v1"
-            description={t("models.endpointUrlDescription")}
-            required
-            value={formData.endpoint}
-            onChange={e => updateFormField("endpoint", e.target.value)}
-            disabled={isLoading}
-            autoComplete="off"
-          />
-          <TextInput
-            label={t("models.apiKey")}
-            placeholder="sk-..."
-            type={initialData?.apiKey ? "text" : "password"}
-            required
-            value={formData.apiKey}
-            onChange={e => updateFormField("apiKey", e.target.value)}
-            disabled={isLoading}
-            autoComplete="off"
-          />
-        </Group>
+        {noEndpointRequired ? null : (
+          <Group grow align="flex-end">
+            <TextInput
+              label={t("models.endpointUrl")}
+              placeholder="e.g., https://api.deepseek.com/v1"
+              description={t("models.endpointUrlDescription")}
+              required
+              value={formData.endpoint}
+              onChange={e => updateFormField("endpoint", e.target.value)}
+              disabled={isLoading || noEndpointRequired}
+              autoComplete="off"
+            />
+            <TextInput
+              label={t("models.apiKey")}
+              placeholder="sk-..."
+              type={initialData?.apiKey ? "text" : "password"}
+              required
+              value={formData.apiKey}
+              onChange={e => updateFormField("apiKey", e.target.value)}
+              disabled={isLoading || noEndpointRequired}
+              autoComplete="off"
+            />
+          </Group>
+        )}
 
         <Group grow align="flex-end">
           <TextInput
@@ -255,6 +266,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             data={[
               { value: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS, label: t("models.openaiChatCompletions") },
               { value: CustomModelProtocol.OPENAI_RESPONSES, label: t("models.openaiResponsesApi") },
+              { value: CustomModelProtocol.AWS_BEDROCK_CUSTOM, label: t("models.awsBedrockCustom") },
             ]}
             value={formData.protocol}
             onChange={value => updateFormField("protocol", value || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS)}

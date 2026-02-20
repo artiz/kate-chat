@@ -25,7 +25,8 @@ import {
   IconPlugConnected,
   IconTool,
 } from "@tabler/icons-react";
-import { gql, useQuery, useMutation } from "@apollo/client";
+import { useDispatch } from "react-redux";
+import { useQuery, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { modals } from "@mantine/modals";
 import { useMediaQuery } from "@mantine/hooks";
@@ -35,6 +36,7 @@ import { MCPServerFormDialog } from "./MCPServerFormDialog";
 import { MCPServer } from "@/types/graphql";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { DELETE_MCP_SERVER, GET_MCP_SERVERS } from "@/store/services/graphql.queries";
+import { setMcpServers } from "@/store/slices/modelSlice";
 
 const AUTH_TYPES = [
   { value: "NONE", label: "No Authentication" },
@@ -44,6 +46,7 @@ const AUTH_TYPES = [
 
 export const MCPServersAdmin: React.FC = () => {
   const { t } = useTranslation();
+  const dispatch = useDispatch();
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null);
@@ -56,6 +59,11 @@ export const MCPServersAdmin: React.FC = () => {
     refetch: refetchServers,
   } = useQuery(GET_MCP_SERVERS, {
     errorPolicy: "all",
+    onCompleted: data => {
+      if (data?.getMCPServers?.servers?.length) {
+        dispatch(setMcpServers(data.getMCPServers.servers));
+      }
+    },
   });
 
   // Mutations

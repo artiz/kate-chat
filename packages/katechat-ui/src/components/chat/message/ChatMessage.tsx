@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
-// import { Carousel } from "@mantine/carousel";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -9,13 +8,14 @@ import {
   IconRobot,
   IconUser,
 } from "@tabler/icons-react";
-import { MessageRole, Model, Message, CodePlugin } from "@/core";
+import { MessageRole, Model, Message, CodePlugin, ResponseStatus } from "@/core";
 import { ProviderIcon, LinkedChatMessage, MessageStatus } from "@/components";
 import { debounce } from "lodash";
 import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import "./ChatMessage.scss";
 import { useTranslation } from "react-i18next";
+import { StreamingStatus } from "./StreamingStatus";
 
 const ANIMATION_DURATION = 250; // Duration of the carousel animation in milliseconds
 
@@ -209,7 +209,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
               {timestamp}
             </Text>
             {status && <MessageStatus status={status} />}
-            {statusInfo && (
+            {statusInfo && status !== ResponseStatus.REASONING && (
               <Text size="sm" c="dimmed">
                 {statusInfo}
               </Text>
@@ -217,7 +217,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
           </Group>
         </Group>
         <div className={["katechat-message-content", streaming ? "streaming" : ""].join(" ")}>
-          {streaming && !content && <Loader size="md" mb="md" />}
+          <StreamingStatus status={status} content={content} statusInfo={statusInfo} streaming={streaming} />
 
           {html ? (
             html.map((part, index) => <div key={index} dangerouslySetInnerHTML={{ __html: part }} />)

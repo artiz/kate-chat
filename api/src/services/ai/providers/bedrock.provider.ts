@@ -14,6 +14,7 @@ import {
   ConverseStreamCommandOutput,
   ValidationException,
 } from "@aws-sdk/client-bedrock-runtime";
+import { DocumentType } from "@smithy/types";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
 
@@ -31,7 +32,15 @@ import {
   ProviderInfo,
   ChatToolCallResult,
 } from "@/types/ai.types";
-import { ApiProvider, ToolType, ModelType, MessageRole, ResponseStatus, CredentialSourceType } from "@/types/api";
+import {
+  ApiProvider,
+  ToolType,
+  ModelType,
+  MessageRole,
+  ResponseStatus,
+  CredentialSourceType,
+  ModelFeature,
+} from "@/types/api";
 import BedrockModelConfigs from "@/config/data/bedrock-models-config.json";
 import { createLogger } from "@/utils/logger";
 import { getErrorMessage } from "@/utils/errors";
@@ -48,6 +57,7 @@ import {
 
 import { FileContentLoader } from "@/services/data";
 import { globalConfig } from "@/global-config";
+import { AWS_BEDROCK_MODELS_SUPPORT_REASONING } from "@/config/ai/bedrock";
 
 const logger = createLogger(__filename);
 
@@ -73,9 +83,11 @@ interface BedrockModelConfigRecord {
 export class BedrockApiProvider extends BaseApiProvider {
   protected bedrockClient: BedrockRuntimeClient;
   protected bedrockManagementClient: BedrockClient;
+  protected modelOverride?: string;
 
-  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader, modelOverride?: string) {
     super(connection, fileLoader);
+    this.modelOverride = modelOverride;
 
     if (!connection.awsBedrockProfile && !connection.awsBedrockAccessKeyId) {
       logger.debug("AWS_BEDROCK_PROFILE/AWS_BEDROCK_ACCESS_KEY_ID is not set. Skipping AWS Bedrock initialization.");
@@ -175,7 +187,6 @@ export class BedrockApiProvider extends BaseApiProvider {
     return finalResponse || { type: "text", content: "" };
   }
 
-  // Stream response from models using InvokeModelWithResponseStreamCommand
   async streamChatCompletion(
     request: CompleteChatRequest,
     messages: ModelMessage[],
@@ -201,6 +212,9 @@ export class BedrockApiProvider extends BaseApiProvider {
         const input = await this.formatConverseParams(request, inputMessages, requestTools);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
+        if (this.modelOverride) {
+          input.modelId = this.modelOverride;
+        }
 
         // reset tool choice for nova models after first call to avoid infinite loops
         if (input.modelId?.includes("amazon.nova") && conversationMessages.length > 0 && input.toolConfig) {
@@ -246,8 +260,19 @@ export class BedrockApiProvider extends BaseApiProvider {
               fullResponse += delta.text;
               await callbacks.onProgress(delta.text);
             } else if (delta.reasoningContent) {
-              reasoningContent += delta.reasoningContent;
+              reasoningContent += delta.reasoningContent.text || "";
               await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: reasoningContent });
+
+              if (delta.reasoningContent.signature && reasoningContent) {
+                if (!metadata) metadata = {};
+                if (!metadata.reasoning) metadata.reasoning = [];
+
+                metadata.reasoning.push({
+                  text: reasoningContent,
+                  timestamp: new Date(),
+                });
+                reasoningContent = "";
+              }
             } else if (delta.toolUse && currentToolUse) {
               currentToolUse.input += delta.toolUse.input || "";
               const status =
@@ -260,15 +285,20 @@ export class BedrockApiProvider extends BaseApiProvider {
               name: chunk.contentBlockStart.start.toolUse.name,
               input: "",
             };
-          } else if (chunk.contentBlockStop && currentToolUse) {
-            currentToolUse.input =
-              typeof currentToolUse.input === "string" ? JSON.parse(currentToolUse.input.trim()) : currentToolUse.input;
-            streamedToolUse.push(currentToolUse);
-            currentToolUse = null;
-            reasoningContent = "";
+          } else if (chunk.contentBlockStop) {
+            if (currentToolUse) {
+              currentToolUse.input =
+                typeof currentToolUse.input === "string"
+                  ? JSON.parse(currentToolUse.input.trim())
+                  : currentToolUse.input;
+              streamedToolUse.push(currentToolUse);
+              currentToolUse = null;
+            }
           } else if (chunk.metadata?.usage) {
             const { usage, metrics } = chunk.metadata;
+
             metadata = {
+              ...metadata,
               usage: {
                 inputTokens: usage.inputTokens,
                 outputTokens: usage.outputTokens,
@@ -386,6 +416,14 @@ export class BedrockApiProvider extends BaseApiProvider {
           }
         }
 
+        // Save any reasoning content accumulated without a signature (e.g. on stream interruption)
+        if (reasoningContent) {
+          if (!metadata) metadata = {};
+          if (!metadata.reasoning) metadata.reasoning = [];
+          metadata.reasoning.push({ text: reasoningContent, timestamp: new Date() });
+          reasoningContent = "";
+        }
+
         if (requestCompleted) {
           await callbacks.onComplete(
             {
@@ -396,7 +434,7 @@ export class BedrockApiProvider extends BaseApiProvider {
           );
         }
       } catch (e: unknown) {
-        logger.error(e, "InvokeModelWithResponseStreamCommand failed");
+        logger.error(e, "ConverseStreamCommand failed");
         if ("$response" in (e as any)) {
           logger.error({ response: (e as any).$response }, "Detailed error response from AWS Bedrock");
         }
@@ -531,6 +569,11 @@ export class BedrockApiProvider extends BaseApiProvider {
         tools.push(ToolType.MCP);
       }
 
+      const features: ModelFeature[] = [];
+      if (AWS_BEDROCK_MODELS_SUPPORT_REASONING.some(supportedModel => modelId.includes(supportedModel))) {
+        features.push(ModelFeature.REASONING);
+      }
+
       models[modelId] = {
         apiProvider: ApiProvider.AWS_BEDROCK,
         provider: providerName,
@@ -541,6 +584,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         imageInput: model.inputModalities?.includes(ModelModality.IMAGE) || false,
         maxInputTokens: modelsInputTokens[model.modelId],
         tools: tools.length > 0 ? tools : undefined,
+        features,
       };
     }
 
@@ -743,7 +787,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
 
     let body = "";
-    const { modelId } = request;
+    const modelId = this.modelOverride || request.modelId;
     const isV2 = modelId.includes("embed-text-v2");
 
     if (modelId == "cohere.embed-multilingual-v3") {
@@ -761,7 +805,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
 
     const params = {
-      modelId: request.modelId,
+      modelId,
       body,
     };
 
@@ -787,7 +831,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     messages: ModelMessage[] = [],
     requestTools: BedrockToolCallable[] = []
   ): Promise<ConverseCommandInput> {
-    const { systemPrompt, modelId, temperature, maxTokens, topP } = request;
+    const { systemPrompt, temperature, maxTokens, topP, thinking, thinkingBudget } = request.settings || {};
+    const modelId = this.modelOverride || request.modelId;
 
     const requestMessages: ConverseMessage[] = [];
 
@@ -811,7 +856,6 @@ export class BedrockApiProvider extends BaseApiProvider {
           }
 
           const bytes = await this.fileLoader.getFileContent(part.fileName);
-
           let mediaType = part.mimeType?.split("/")[1];
           let format = part.mimeType?.split("/")[0]; // "image" or "video"
 
@@ -824,7 +868,6 @@ export class BedrockApiProvider extends BaseApiProvider {
                 },
               },
             };
-
             content.push(image);
           } else {
             const video: ContentBlock = {
@@ -850,15 +893,32 @@ export class BedrockApiProvider extends BaseApiProvider {
       });
     }
 
+    const inferenceConfig = {
+      maxTokens,
+      temperature,
+      topP,
+      stopSequences: [],
+    };
+    const additionalModelRequestFields: DocumentType = {};
+
+    if (thinking && thinkingBudget) {
+      const budget = Math.max(thinkingBudget, 1024);
+
+      inferenceConfig.temperature = 1;
+      if (maxTokens) {
+        inferenceConfig.maxTokens = Math.max(maxTokens || 0, Math.ceil(budget * 1.2));
+      }
+      additionalModelRequestFields.thinking = {
+        type: "enabled",
+        budget_tokens: budget,
+      };
+    }
+
     const command: ConverseCommandInput = {
       modelId,
       messages: requestMessages,
-      inferenceConfig: {
-        maxTokens,
-        temperature,
-        topP,
-        stopSequences: [],
-      },
+      inferenceConfig,
+      additionalModelRequestFields,
     };
 
     if (modelId.includes("claude-sonnet-4-5") && temperature != null && topP != null) {

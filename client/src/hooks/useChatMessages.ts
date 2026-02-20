@@ -6,7 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { pick } from "lodash";
-import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType } from "@/types/graphql";
+import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings } from "@/types/graphql";
 
 type RemoveMessagesArgs = {
   messagesToDelete?: Message[];
@@ -33,11 +33,7 @@ export interface UpdateChatInput {
   title?: string;
   description?: string;
   modelId?: string;
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-  systemPrompt?: string;
+  settings?: ChatSettings;
   tools?: { type: ToolType; name?: string }[];
 
   lastBotMessage?: string;
@@ -209,14 +205,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
   // Update chat mutation (for changing the model)
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
-    onCompleted: data => {
-      notifications.update({
-        title: "Model Changed",
-        message: `Chat model has been updated`,
-        color: "green",
-      });
-      dispatch(updateChatInState(data.updateChat));
-    },
     onError: error => {
       console.error("Error updating chat:", error);
       notifications.show({
@@ -232,38 +220,37 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
     const existing = chats.find(c => c.id === id);
     if (existing) {
-      updateChatInState({
-        ...existing,
-        ...input,
-      });
+      dispatch(
+        updateChatInState({
+          ...existing,
+          ...input,
+          settings: { ...existing.settings, ...input.settings },
+        })
+      );
+    } else {
+      dispatch(updateChatInState({ id, messagesCount: 0, description: "", title: "", ...input }));
     }
 
     if (updateTimeout.current) {
       clearTimeout(updateTimeout.current);
     }
 
-    if (input.tools) {
-      input.tools = input.tools.map(t => ({ ...t, __typename: undefined }));
-    }
-
     updateTimeout.current = setTimeout(() => {
+      const request = pick(input, ["title", "description", "modelId", "settings", "tools"]);
+
+      if ((request?.settings as any)?.__typename) {
+        delete (request.settings as any).__typename;
+      }
+      if (request.tools) {
+        request.tools = request.tools.map(t => ({ ...t, __typename: undefined }));
+      }
       updateChatMutation({
         variables: {
           id,
-          input: pick(input, [
-            "title",
-            "description",
-            "modelId",
-            "temperature",
-            "maxTokens",
-            "topP",
-            "imagesCount",
-            "systemPrompt",
-            "tools",
-          ]),
+          input: request,
         },
       });
-    }, 300);
+    }, 500);
 
     afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
   };

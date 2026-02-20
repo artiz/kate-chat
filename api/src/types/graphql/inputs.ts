@@ -3,6 +3,7 @@ import { UserSettings, AuthProvider, MCPAuthConfig } from "@/entities";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
 import { ApiProvider, MCPAuthType, ToolType } from "../api";
+import { ChatSettings } from "@/entities/Chat";
 
 @InputType()
 export class UpdateUserInput {
@@ -138,20 +139,8 @@ export class UpdateChatInput {
   @Field({ nullable: true })
   modelId?: string;
 
-  @Field({ nullable: true })
-  temperature?: number;
-
-  @Field({ nullable: true })
-  maxTokens?: number;
-
-  @Field({ nullable: true })
-  topP?: number;
-
-  @Field({ nullable: true })
-  imagesCount?: number;
-
-  @Field({ nullable: true })
-  systemPrompt?: string;
+  @Field(() => ChatSettings, { nullable: true })
+  settings?: ChatSettings;
 
   @Field(() => [ChatToolInput!], { nullable: true })
   tools?: ChatToolInput[];

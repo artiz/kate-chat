@@ -30,15 +30,19 @@ export const BASE_CHAT_FRAGMENT = `
       id
         title
         modelId
-        systemPrompt
         isPristine
         messagesCount
         createdAt
         updatedAt
-        temperature
-        maxTokens
-        topP
-        imagesCount
+        settings {
+          systemPrompt
+          temperature
+          maxTokens
+          topP
+          imagesCount
+          thinking
+          thinkingBudget
+        }
         user {
           id
           firstName
@@ -89,14 +93,6 @@ export const FULL_USER_FRAGMENT = `
       firstName
       lastName
       createdAt
-      defaultModelId
-      defaultSystemPrompt
-      defaultTemperature
-      defaultMaxTokens
-      defaultTopP
-      defaultImagesCount
-      documentsEmbeddingsModelId
-      documentSummarizationModelId
       authProvider
       avatarUrl
       role
@@ -115,6 +111,15 @@ export const FULL_USER_FRAGMENT = `
         openaiApiKey
         yandexFmApiFolderId
         yandexFmApiKey
+
+        defaultModelId
+        defaultSystemPrompt
+        defaultTemperature
+        defaultMaxTokens
+        defaultTopP
+        defaultImagesCount
+        documentsEmbeddingsModelId
+        documentSummarizationModelId
       }
     }
 `;
@@ -159,6 +164,10 @@ export const BASE_MESSAGE_FRAGMENT = `
           name
           type
           args
+        }
+        reasoning {
+          text
+          timestamp
         }
       }
     }
@@ -236,11 +245,15 @@ export const UPDATE_CHAT_MUTATION = gql`
       isPristine
       isPinned
       messagesCount
-      temperature
-      maxTokens
-      topP
-      imagesCount
-      systemPrompt
+      settings {
+        systemPrompt
+        temperature
+        maxTokens
+        topP
+        imagesCount
+        thinking
+        thinkingBudget
+      }
       tools {
         type
         name

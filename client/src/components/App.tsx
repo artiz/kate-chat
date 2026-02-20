@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride } from "@mantine/core";
+import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride, Alert, Box } from "@mantine/core";
 import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
@@ -10,7 +10,7 @@ import { ApolloWrapper } from "@/lib/apollo-provider";
 import { createAppTheme } from "@/theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
-import { setModelsAndProviders } from "../store/slices/modelSlice";
+import { setMcpServers, setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats } from "../store/slices/chatSlice";
 import { logout, useAppSelector } from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
@@ -87,6 +87,7 @@ const AppContent: React.FC = () => {
       dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
+      dispatch(setMcpServers(initData.mcpServers));
 
       const pinnedChatsIds = new Set(initData.pinnedChats.chats.map(chat => chat.id));
       dispatch(
@@ -118,19 +119,12 @@ const AppContent: React.FC = () => {
     // Handle errors from the initial data query
     if (isError && Date.now() - (loginTime || 0) > 1000) {
       const authFailed =
-        ("status" in error && [403, 401, "PARSING_ERROR", "CUSTOM_ERROR"].includes(error.status)) ||
+        ("status" in error && [403, 401, "TIMEOUT_ERROR"].includes(error.status)) ||
         ("error" in error && [ERROR_UNAUTHORIZED, ERROR_FORBIDDEN].some(err => String(error.error).includes(err)));
 
       if (authFailed) {
         dispatch(logout());
         navigate("/login");
-      } else if ("error" in error) {
-        // Show error notification
-        notifications.show({
-          title: t("errors.apiError"),
-          message: error.error || t("errors.unknownError"),
-          color: "red",
-        });
       }
     }
   }, [isError, error, loginTime]);
@@ -154,7 +148,7 @@ const AppContent: React.FC = () => {
       <ModalsProvider>
         <Notifications position="top-right" />
         <ApolloWrapper>
-          {isAuthenticated && isLoading ? (
+          {isLoading ? (
             <Center h="100vh">
               <Loader size="xl" />
             </Center>
@@ -188,6 +182,14 @@ const AppContent: React.FC = () => {
               {/* Fallback route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+          )}
+
+          {isError && (
+            <Box p="xl">
+              <Alert title={t("common.error")} color="red" variant="filled">
+                {error ? ("error" in error ? error.error : t("errors.unknownError")) : t("errors.unknownError")}
+              </Alert>
+            </Box>
           )}
         </ApolloWrapper>
       </ModalsProvider>

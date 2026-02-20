@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Arg, Ctx, ID } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Ctx, ID, FieldResolver, Root } from "type-graphql";
 import { In, Repository } from "typeorm";
 import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphql/inputs";
 import { getRepository } from "../config/database";
@@ -9,6 +9,7 @@ import { BaseResolver } from "./base.resolver";
 import { ChatsService } from "@/services/chats.service";
 import { globalConfig } from "@/global-config";
 import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
+import { ChatSettings } from "@/entities/Chat";
 
 const aiConfig = globalConfig.ai;
 
@@ -74,13 +75,9 @@ export class ChatResolver extends BaseResolver {
 
     const chat = this.chatRepository.create({
       ...input,
+      modelId: input.modelId || user.settings?.defaultModelId,
       title: input.title || "",
       user,
-      systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
-      temperature: user.defaultTemperature ?? aiConfig.defaultTemperature,
-      maxTokens: user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
-      topP: user.defaultTopP ?? aiConfig.defaultTopP,
-      imagesCount: user.defaultImagesCount ?? 1,
       isPristine: true,
     });
 
@@ -100,9 +97,12 @@ export class ChatResolver extends BaseResolver {
     });
 
     if (!chat) throw new Error("Chat not found");
-
     Object.assign(chat, {
       ...input,
+      settings: {
+        ...chat.settings,
+        ...input.settings,
+      },
       isPristine: false,
     });
     return await this.chatRepository.save(chat);
@@ -176,5 +176,18 @@ export class ChatResolver extends BaseResolver {
     await this.chatDocumentRepo.delete(mappings);
     const chat = await this.chatService.getChat(chatId, user.userId);
     return chat ? { chat } : { error: "Chat not found" };
+  }
+
+  @FieldResolver(() => ChatSettings, { nullable: true })
+  settings(@Root() chat: Chat) {
+    const user = chat.user;
+    return {
+      systemPrompt: user?.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      temperature: user?.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user?.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user?.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user?.settings?.defaultImagesCount ?? 1,
+      ...(chat.settings || {}),
+    };
   }
 }

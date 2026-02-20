@@ -35,6 +35,8 @@ import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 import { WebSearchCall } from "./message-details-plugins/WebSearch";
 import { MCPCall } from "./message-details-plugins/MCP";
+import { Reasoning } from "./message-details-plugins/Reasoning";
+
 import { useCodePlugins } from "./code-plugins";
 import { ChatInputHeader } from "./ChatInputHeader";
 import { ChatDocumentsSelector } from "./input-plugins/ChatDocumentsSelector";
@@ -464,7 +466,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           removeMessages={removeMessages}
           loadMoreMessages={loadMoreMessages}
           plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-          detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall, WebSearchCall, MCPCall]}
+          detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning]}
           codePlugins={codePlugins}
           streaming={streaming}
           loading={messagesLoading}
@@ -494,8 +496,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
             streaming={streaming}
             chatTools={chat?.tools}
-            chatSettings={chat}
-            models={models}
+            chatSettings={chat?.settings}
             selectedModel={selectedModel}
             onUpdateChat={updateChat}
             onAutoScroll={messages?.length === 0 ? undefined : handleAutoScroll}

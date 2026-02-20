@@ -12,6 +12,7 @@ const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 export enum CustomModelProtocol {
   OPENAI_CHAT_COMPLETIONS = "OPENAI_CHAT_COMPLETIONS",
   OPENAI_RESPONSES = "OPENAI_RESPONSES",
+  AWS_BEDROCK_CUSTOM = "AWS_BEDROCK_CUSTOM",
 }
 
 @ObjectType("CustomModelSettings")

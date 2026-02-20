@@ -498,12 +498,12 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                       </Box>
                     </ScrollArea.Autosize>
                     {summaryDocument?.summaryModelId && (
-                      <Alert p="xs" title="Summarization Model" color="blue">
+                      <Alert p="md" title="Summarization Model" color="blue">
                         {summaryDocument.summaryModelId}
                       </Alert>
                     )}
                     {summaryDocument?.embeddingsModelId && (
-                      <Alert p="xs" title="Embeddings Model" color="green">
+                      <Alert p="md" title="Embeddings Model" color="green">
                         {summaryDocument?.embeddingsModelId}
                       </Alert>
                     )}

@@ -24,7 +24,7 @@ export enum ToolType {
 
 export enum ModelFeature {
   REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
-  REASONING = "reasoning",
+  REASONING = "REASONING",
 }
 
 export interface Model extends BaseModel {
@@ -152,6 +152,8 @@ export interface ApplicationConfig {
   maxImages?: number;
   lastUpdate?: number;
   credentialsSource?: CredentialSource[];
+  reasoningMaxTokenBudget?: number;
+  reasoningMinTokenBudget?: number;
 }
 
 export interface GetInitialDataResponse {
@@ -171,6 +173,9 @@ export interface GetInitialDataResponse {
       next: number | undefined;
     };
     appConfig: ApplicationConfig;
+    getMCPServers?: {
+      servers: MCPServer[];
+    };
   };
 }
 
@@ -258,6 +263,12 @@ export interface ChatToolCall {
   args?: string;
 }
 
+export interface ReasoningChunk {
+  text: string;
+  timestamp?: Date;
+  id?: string;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -269,6 +280,7 @@ export interface MessageMetadata {
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
   requestId?: string;
+  reasoning?: ReasoningChunk[];
 }
 
 export interface MessageChatInfo {
@@ -294,11 +306,21 @@ export interface ChatTool {
   options?: ChatToolOptions[];
 }
 
+export interface ChatSettings {
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  imagesCount?: number;
+  systemPrompt?: string;
+  thinking?: boolean;
+  thinkingBudget?: number;
+}
+
 export interface Chat {
   id: string;
   title: string;
   description: string;
-  updatedAt: string;
+  updatedAt?: string;
   modelId?: string;
   isPristine?: boolean;
   isPinned?: boolean;
@@ -306,11 +328,7 @@ export interface Chat {
   lastBotMessage?: string;
   lastBotMessageId?: string;
   lastBotMessageHtml?: string[];
-  temperature?: number;
-  maxTokens?: number;
-  topP?: number;
-  imagesCount?: number;
-  systemPrompt?: string;
+  settings?: ChatSettings;
   chatDocuments?: ChatDocument[];
   user?: User;
   tools?: ChatTool[];

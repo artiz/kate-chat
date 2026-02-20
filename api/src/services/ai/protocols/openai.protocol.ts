@@ -30,6 +30,7 @@ import { FileContentLoader } from "@/services/data";
 import { ModelProtocol } from "./common";
 import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
@@ -314,7 +315,9 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, tools, mcpServers } = inputRequest;
+    const { settings = {}, modelId: requestModelId, tools, mcpServers } = inputRequest;
+    const { systemPrompt, temperature, maxTokens } = settings;
+
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -364,16 +367,36 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
-    const { systemPrompt, modelId: requestModelId, temperature, maxTokens, mcpServers, mcpTokens } = inputRequest;
+    const { modelId: requestModelId, mcpServers, mcpTokens, settings = {} } = inputRequest;
+    const { systemPrompt, temperature, maxTokens, thinking, thinkingBudget } = settings;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
       model: modelId,
       input: await this.formatResponsesInput(messages),
-      max_output_tokens: maxTokens,
+      max_output_tokens: maxTokens ? Math.max(maxTokens, 16) : undefined,
       instructions: systemPrompt,
       temperature,
     };
+
+    if (thinking) {
+      const maxTokenBudget = globalConfig.ai.reasoningMaxTokenBudget;
+      const budget = thinkingBudget || globalConfig.ai.reasoningMinTokenBudget;
+
+      // 'minimal' | 'low' | 'medium' | 'high'
+      const effort =
+        budget < maxTokenBudget * 0.1
+          ? "minimal"
+          : budget < maxTokenBudget * 0.25
+            ? "low"
+            : budget < maxTokenBudget * 0.75
+              ? "medium"
+              : "high";
+      params.reasoning = {
+        effort,
+        summary: "auto",
+      };
+    }
 
     const tools: Array<OpenAI.Responses.Tool> = [];
 
@@ -500,6 +523,7 @@ export class OpenAIProtocol implements ModelProtocol {
     };
 
     let fullResponse = "";
+    let partResponse = "";
     let meta: MessageMetadata | undefined = undefined;
 
     let stopped = await callbacks.onStart();
@@ -681,6 +705,7 @@ export class OpenAIProtocol implements ModelProtocol {
     }
 
     let fullResponse = "";
+    let partResponse = "";
     let meta: MessageMetadata = {};
     let lastStatus: ResponseStatus | undefined = undefined;
 
@@ -753,6 +778,28 @@ export class OpenAIProtocol implements ModelProtocol {
               },
             ],
           });
+        } else if (chunk.type == "response.reasoning_summary_part.added") {
+          partResponse = "";
+        } else if (chunk.type == "response.reasoning_summary_text.delta") {
+          partResponse += chunk.delta;
+          stopped = await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: partResponse });
+        } else if (chunk.type == "response.reasoning_summary_text.done") {
+          if (!meta.reasoning) {
+            meta.reasoning = [];
+          }
+
+          meta.reasoning.push({
+            text: chunk.text || partResponse,
+            timestamp: new Date(),
+            id: chunk.item_id,
+          });
+        } else if (chunk.type == "response.output_item.added") {
+          if (chunk.item.type === "reasoning") {
+            if (lastStatus !== ResponseStatus.REASONING) {
+              lastStatus = ResponseStatus.REASONING;
+              stopped = await callbacks.onProgress("", { status: ResponseStatus.REASONING });
+            }
+          }
         } else if (chunk.type == "response.output_item.done") {
           let status: ResponseStatus | undefined = undefined;
           const item = chunk.item;

@@ -2,12 +2,13 @@ import React, { useMemo } from "react";
 import { Text, Group, Avatar, Box } from "@mantine/core";
 import { IconRobot } from "@tabler/icons-react";
 
-import { Message, Model } from "@/core";
+import { Message, Model, ResponseStatus } from "@/core";
 import { ProviderIcon } from "@/components/icons/ProviderIcon";
 import { MessageStatus } from "./MessageStatus";
 import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import "./ChatMessage.scss";
+import { StreamingStatus } from "./StreamingStatus";
 
 interface IProps {
   message: Message;
@@ -33,7 +34,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
             {message.modelName}
           </Text>
           {message.status && <MessageStatus status={message.status} />}
-          {message.statusInfo && (
+          {message.statusInfo && message.status !== ResponseStatus.REASONING && (
             <Text size="xs" c="dimmed">
               {message.statusInfo}
             </Text>
@@ -42,6 +43,12 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
       </Group>
 
       <div className="katechat-message-content">
+        <StreamingStatus
+          status={message.status}
+          content={message.content}
+          statusInfo={message.statusInfo}
+          streaming={message.streaming || false}
+        />
         {message.html ? (
           message.html.map((part: string, index: number) => (
             <div key={index} dangerouslySetInnerHTML={{ __html: part }} />

@@ -54,8 +54,9 @@ export async function initI18n({
     });
 }
 
-export function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString(i18n.language || "ru-RU", {
+export function formatDate(date: string | Date): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  return dateObj.toLocaleDateString(i18n.language || "ru-RU", {
     year: "numeric",
     month: "short",
     day: "numeric",
