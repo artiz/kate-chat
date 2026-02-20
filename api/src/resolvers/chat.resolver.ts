@@ -74,6 +74,7 @@ export class ChatResolver extends BaseResolver {
 
     const chat = this.chatRepository.create({
       ...input,
+      modelId: input.modelId || user.settings?.defaultModelId,
       title: input.title || "",
       user,
       isPristine: true,
@@ -180,11 +181,11 @@ export class ChatResolver extends BaseResolver {
   settings(@Root() chat: Chat) {
     const user = chat.user;
     return {
-      systemPrompt: user?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
-      temperature: user?.defaultTemperature ?? aiConfig.defaultTemperature,
-      maxTokens: user?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
-      topP: user?.defaultTopP ?? aiConfig.defaultTopP,
-      imagesCount: user?.defaultImagesCount ?? 1,
+      systemPrompt: user?.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      temperature: user?.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user?.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user?.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user?.settings?.defaultImagesCount ?? 1,
       ...(chat.settings || {}),
     };
   }

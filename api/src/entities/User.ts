@@ -7,6 +7,7 @@ import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
 import { ApiProvider, CredentialSourceType, CredentialType } from "../types/api";
 import { globalConfig, APPLICATION_FEATURE } from "../global-config";
+import { DEFAULT_CHAT_PROMPT } from "../config/ai/prompts";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -69,7 +70,7 @@ export class UserSettings {
   @Field({ nullable: true })
   documentSummarizationModelId?: string;
 
-  @Field({ nullable: true })
+  @Field({ nullable: true, defaultValue: DEFAULT_CHAT_PROMPT })
   defaultSystemPrompt?: string;
 
   @Field({ nullable: true, defaultValue: 0.7 })

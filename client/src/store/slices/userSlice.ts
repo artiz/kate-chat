@@ -20,6 +20,15 @@ export interface UserSettings {
   openaiApiAdminKey?: string;
   yandexFmApiKey?: string;
   yandexFmApiFolderId?: string;
+
+  defaultModelId?: string;
+  defaultSystemPrompt?: string;
+  defaultTemperature?: number;
+  defaultMaxTokens?: number;
+  defaultTopP?: number;
+  defaultImagesCount?: number;
+  documentsEmbeddingsModelId?: string;
+  documentSummarizationModelId?: string;
 }
 
 export enum UserRole {
@@ -29,27 +38,12 @@ export enum UserRole {
 
 export interface User extends BaseUser {
   role: UserRole;
-  defaultSystemPrompt?: string;
-  defaultTemperature?: number;
-  defaultMaxTokens?: number;
-  defaultTopP?: number;
-  defaultImagesCount?: number;
-  documentsEmbeddingsModelId?: string;
-  documentSummarizationModelId?: string;
   authProvider?: string;
   settings?: UserSettings;
   createdAt?: string;
 }
 
 export interface UpdateUserInput {
-  defaultModelId?: string;
-  defaultSystemPrompt?: string;
-  defaultTemperature?: number;
-  defaultMaxTokens?: number;
-  defaultTopP?: number;
-  defaultImagesCount?: number;
-  documentsEmbeddingsModelId?: string;
-  documentSummarizationModelId?: string;
   email?: string;
   firstName?: string;
   lastName?: string;

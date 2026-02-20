@@ -460,6 +460,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
         <ChatMessagesContainer
           ref={chatMessagesRef}
           messages={messages}
+          models={models}
           autoScroll={autoScroll}
           addChatMessage={addChatMessage}
           removeMessages={removeMessages}
@@ -496,7 +497,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
             streaming={streaming}
             chatTools={chat?.tools}
             chatSettings={chat?.settings}
-            models={models}
             selectedModel={selectedModel}
             onUpdateChat={updateChat}
             onAutoScroll={messages?.length === 0 ? undefined : handleAutoScroll}

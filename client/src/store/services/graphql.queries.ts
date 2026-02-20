@@ -93,14 +93,6 @@ export const FULL_USER_FRAGMENT = `
       firstName
       lastName
       createdAt
-      defaultModelId
-      defaultSystemPrompt
-      defaultTemperature
-      defaultMaxTokens
-      defaultTopP
-      defaultImagesCount
-      documentsEmbeddingsModelId
-      documentSummarizationModelId
       authProvider
       avatarUrl
       role
@@ -119,6 +111,15 @@ export const FULL_USER_FRAGMENT = `
         openaiApiKey
         yandexFmApiFolderId
         yandexFmApiKey
+
+        defaultModelId
+        defaultSystemPrompt
+        defaultTemperature
+        defaultMaxTokens
+        defaultTopP
+        defaultImagesCount
+        documentsEmbeddingsModelId
+        documentSummarizationModelId
       }
     }
 `;

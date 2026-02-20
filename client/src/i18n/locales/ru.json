@@ -392,7 +392,7 @@
     "createModel": "Создать модель",
     "saveChanges": "Сохранить изменения",
     "validationError": "Ошибка валидации",
-    "endpointApiKeyRequired": "Для тестирования требуются эндпоинт, API-ключ и название модели (API)",
+    "testEndpointRequired": "Для тестирования требуются эндпоинт, API-ключ и название модели (API)",
     "modelConnectionChecked": "Соединение с моделью успешно проверено",
     "fillRequiredFields": "Пожалуйста, заполните все обязательные поля",
     "apiConnections": "API-подключения",

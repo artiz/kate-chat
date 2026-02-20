@@ -14,6 +14,7 @@ export enum ModelType {
 export enum CustomModelProtocol {
   OPENAI_CHAT_COMPLETIONS = "OPENAI_CHAT_COMPLETIONS",
   OPENAI_RESPONSES = "OPENAI_RESPONSES",
+  AWS_BEDROCK_CUSTOM = "AWS_BEDROCK_CUSTOM",
 }
 
 export interface CustomModelSettings {

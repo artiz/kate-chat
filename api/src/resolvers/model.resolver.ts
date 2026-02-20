@@ -352,11 +352,10 @@ export class ModelResolver extends BaseResolver {
       // Validate protocol
       if (
         protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS &&
-        protocol !== CustomModelProtocol.OPENAI_RESPONSES
+        protocol !== CustomModelProtocol.OPENAI_RESPONSES &&
+        protocol !== CustomModelProtocol.AWS_BEDROCK_CUSTOM
       ) {
-        throw new Error(
-          `Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`
-        );
+        throw new Error(`Invalid protocol. Must be in ${Object.values(CustomModelProtocol).join(", ")}`);
       }
 
       // Get the repository
@@ -439,16 +438,15 @@ export class ModelResolver extends BaseResolver {
   async updateCustomModel(@Arg("input") input: UpdateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
     const user = await this.validateContextToken(context);
     try {
-      const { id, name, modelId, description, endpoint, apiKey, modelName, protocol, streaming, imageInput } = input;
+      const { id, name, modelId, apiKey, protocol, streaming, imageInput } = input;
 
       // Validate protocol
       if (
         protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS &&
-        protocol !== CustomModelProtocol.OPENAI_RESPONSES
+        protocol !== CustomModelProtocol.OPENAI_RESPONSES &&
+        protocol !== CustomModelProtocol.AWS_BEDROCK_CUSTOM
       ) {
-        throw new Error(
-          `Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`
-        );
+        throw new Error(`Invalid protocol. Must be in ${Object.values(CustomModelProtocol).join(", ")}`);
       }
 
       // Get the repository
@@ -487,14 +485,7 @@ export class ModelResolver extends BaseResolver {
       model.customSettings.endpoint = input.endpoint;
       model.customSettings.modelName = input.modelName;
       model.customSettings.protocol = input.protocol as CustomModelProtocol;
-
-      if (protocol === CustomModelProtocol.OPENAI_CHAT_COMPLETIONS) {
-        model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
-      } else if (protocol === CustomModelProtocol.OPENAI_RESPONSES) {
-        model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
-      } else {
-        model.tools = [];
-      }
+      model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
 
       // update apiKey only if provided
       if (apiKey) {
@@ -514,35 +505,26 @@ export class ModelResolver extends BaseResolver {
   @Mutation(() => Message)
   @Authorized()
   async testCustomModel(@Arg("input") input: TestCustomModelInput, @Ctx() context: GraphQLContext): Promise<Message> {
-    await this.validateContextToken(context);
+    const user = await this.validateContextUser(context);
     const modelRepository = getRepository(Model);
+    const connectionParams = this.loadConnectionParams(context, user);
 
     try {
       const { endpoint, modelName, protocol, text, modelId } = input;
       let { apiKey } = input;
 
       // saved model test
-      if (!apiKey && modelId) {
-        const existing = await modelRepository.findOne({ where: { modelId } });
-        if (existing) {
-          apiKey = existing.customSettings?.apiKey;
+      if (protocol !== CustomModelProtocol.AWS_BEDROCK_CUSTOM) {
+        if (!apiKey && modelId) {
+          const existing = await modelRepository.findOne({ where: { modelId } });
+          if (existing) {
+            apiKey = existing.customSettings?.apiKey;
+          }
+        }
+        if (!apiKey) {
+          throw new Error("API Key is required");
         }
       }
-      if (!apiKey) {
-        throw new Error("API Key is required");
-      }
-
-      // Validate protocol
-      if (
-        protocol !== CustomModelProtocol.OPENAI_CHAT_COMPLETIONS &&
-        protocol !== CustomModelProtocol.OPENAI_RESPONSES
-      ) {
-        throw new Error(
-          `Invalid protocol. Must be ${CustomModelProtocol.OPENAI_CHAT_COMPLETIONS} or ${CustomModelProtocol.OPENAI_RESPONSES}`
-        );
-      }
-
-      const connectionParams = {}; // Custom provider uses settings from model object
 
       // Create a temporary model object for testing
       const model = modelRepository.create({

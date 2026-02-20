@@ -26,17 +26,17 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   const [documentSummarizationModelId, setDocumentSummarizationModelId] = useState<string>();
 
   const handleDefaultsReset = () => {
-    setDefaultModelId(user?.defaultModelId);
-    setDefaultSystemPrompt(user?.defaultSystemPrompt);
-    setDefaultTemperature(user?.defaultTemperature);
-    setDefaultMaxTokens(user?.defaultMaxTokens);
-    setDefaultTopP(user?.defaultTopP);
-    setDefaultImagesCount(user?.defaultImagesCount);
+    setDefaultModelId(user?.settings?.defaultModelId || undefined);
+    setDefaultSystemPrompt(user?.settings?.defaultSystemPrompt || "");
+    setDefaultTemperature(user?.settings?.defaultTemperature || undefined);
+    setDefaultMaxTokens(user?.settings?.defaultMaxTokens || undefined);
+    setDefaultTopP(user?.settings?.defaultTopP || undefined);
+    setDefaultImagesCount(user?.settings?.defaultImagesCount || undefined);
   };
 
   const handleDocumentsModelsReset = () => {
-    setDocumentsEmbeddingsModelId(user?.documentsEmbeddingsModelId);
-    setDocumentSummarizationModelId(user?.documentSummarizationModelId);
+    setDocumentsEmbeddingsModelId(user?.settings?.documentsEmbeddingsModelId || undefined);
+    setDocumentSummarizationModelId(user?.settings?.documentSummarizationModelId || undefined);
   };
 
   useEffect(() => {
@@ -48,14 +48,16 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
   const handleUserDefaultsUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateUser({
-      defaultModelId,
-      defaultSystemPrompt,
-      defaultTemperature,
-      defaultMaxTokens,
-      defaultTopP,
-      defaultImagesCount,
-      documentsEmbeddingsModelId,
-      documentSummarizationModelId,
+      settings: {
+        defaultModelId,
+        defaultSystemPrompt,
+        defaultTemperature,
+        defaultMaxTokens,
+        defaultTopP,
+        defaultImagesCount,
+        documentsEmbeddingsModelId,
+        documentSummarizationModelId,
+      },
     });
   };
 
@@ -83,19 +85,19 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
 
   const isUserSettingsDirty = useMemo(
     () =>
-      defaultModelId !== user?.defaultModelId ||
-      defaultSystemPrompt !== user?.defaultSystemPrompt ||
-      defaultTemperature !== user?.defaultTemperature ||
-      defaultMaxTokens !== user?.defaultMaxTokens ||
-      defaultTopP !== user?.defaultTopP ||
-      defaultImagesCount !== user?.defaultImagesCount,
+      defaultModelId != user?.settings?.defaultModelId ||
+      defaultSystemPrompt != (user?.settings?.defaultSystemPrompt || "") ||
+      defaultTemperature != user?.settings?.defaultTemperature ||
+      defaultMaxTokens != user?.settings?.defaultMaxTokens ||
+      defaultTopP != user?.settings?.defaultTopP ||
+      defaultImagesCount != user?.settings?.defaultImagesCount,
     [defaultModelId, defaultSystemPrompt, defaultTemperature, defaultMaxTokens, defaultTopP, defaultImagesCount, user]
   );
 
   const isDocumentsSettingsDirty = useMemo(
     () =>
-      documentsEmbeddingsModelId !== user?.documentsEmbeddingsModelId ||
-      documentSummarizationModelId !== user?.documentSummarizationModelId,
+      documentsEmbeddingsModelId != user?.settings?.documentsEmbeddingsModelId ||
+      documentSummarizationModelId != user?.settings?.documentSummarizationModelId,
     [documentsEmbeddingsModelId, documentSummarizationModelId, user]
   );
 
@@ -107,143 +109,151 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
         <Title order={4} mb="md">
           {t("aiSettings.chatDefaults")}
         </Title>
-        <form name="user-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
-          <Stack gap="md">
-            <Select
-              label={t("aiSettings.defaultModel")}
-              description={t("aiSettings.defaultModelDescription")}
-              placeholder={t("aiSettings.selectModel")}
-              value={defaultModelId}
-              onChange={value => setDefaultModelId(value || "")}
-              data={modelSelectData}
-              searchable
-              clearable
+        <Stack gap="md">
+          <Select
+            label={t("aiSettings.defaultModel")}
+            description={t("aiSettings.defaultModelDescription")}
+            placeholder={t("aiSettings.selectModel")}
+            value={defaultModelId}
+            onChange={value => setDefaultModelId(value || "")}
+            data={modelSelectData}
+            searchable
+            clearable
+          />
+
+          <Textarea
+            label={t("aiSettings.defaultSystemPrompt")}
+            description={t("aiSettings.defaultSystemPromptDescription")}
+            placeholder={t("aiSettings.defaultSystemPromptPlaceholder")}
+            value={defaultSystemPrompt}
+            onChange={e => setDefaultSystemPrompt(e.currentTarget.value)}
+            autosize
+            minRows={3}
+            maxRows={6}
+          />
+
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <NumberInput
+              label={t("aiSettings.defaultTemperature")}
+              description={t("aiSettings.defaultTemperatureDescription")}
+              placeholder="0.7"
+              value={defaultTemperature}
+              onChange={value => setDefaultTemperature(typeof value === "number" ? value : undefined)}
+              min={0}
+              max={1}
+              step={0.01}
+              decimalScale={2}
             />
 
-            <Textarea
-              label={t("aiSettings.defaultSystemPrompt")}
-              description={t("aiSettings.defaultSystemPromptDescription")}
-              placeholder={t("aiSettings.defaultSystemPromptPlaceholder")}
-              value={defaultSystemPrompt}
-              onChange={e => setDefaultSystemPrompt(e.currentTarget.value)}
-              autosize
-              minRows={3}
-              maxRows={6}
+            <NumberInput
+              label={t("aiSettings.defaultMaxTokens")}
+              description={t("aiSettings.defaultMaxTokensDescription")}
+              placeholder="2048"
+              value={defaultMaxTokens}
+              onChange={value => setDefaultMaxTokens(typeof value === "number" ? value : undefined)}
+              min={1}
+              max={100000}
+              step={100}
             />
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <NumberInput
-                label={t("aiSettings.defaultTemperature")}
-                description={t("aiSettings.defaultTemperatureDescription")}
-                placeholder="0.7"
-                value={defaultTemperature}
-                onChange={value => setDefaultTemperature(typeof value === "number" ? value : undefined)}
-                min={0}
-                max={1}
-                step={0.01}
-                decimalScale={2}
-              />
+            <NumberInput
+              label={t("aiSettings.defaultTopP")}
+              description={t("aiSettings.defaultTopPDescription")}
+              placeholder="0.9"
+              value={defaultTopP}
+              onChange={value => setDefaultTopP(typeof value === "number" ? value : undefined)}
+              min={0}
+              max={1}
+              step={0.01}
+              decimalScale={2}
+            />
 
-              <NumberInput
-                label={t("aiSettings.defaultMaxTokens")}
-                description={t("aiSettings.defaultMaxTokensDescription")}
-                placeholder="2048"
-                value={defaultMaxTokens}
-                onChange={value => setDefaultMaxTokens(typeof value === "number" ? value : undefined)}
-                min={1}
-                max={100000}
-                step={100}
-              />
+            <NumberInput
+              label={t("aiSettings.defaultImagesCount")}
+              description={t("aiSettings.defaultImagesCountDescription")}
+              placeholder="1"
+              value={defaultImagesCount}
+              onChange={value => setDefaultImagesCount(typeof value === "number" ? value : undefined)}
+              min={1}
+              max={10}
+              step={1}
+            />
+          </SimpleGrid>
 
-              <NumberInput
-                label={t("aiSettings.defaultTopP")}
-                description={t("aiSettings.defaultTopPDescription")}
-                placeholder="0.9"
-                value={defaultTopP}
-                onChange={value => setDefaultTopP(typeof value === "number" ? value : undefined)}
-                min={0}
-                max={1}
-                step={0.01}
-                decimalScale={2}
-              />
-
-              <NumberInput
-                label={t("aiSettings.defaultImagesCount")}
-                description={t("aiSettings.defaultImagesCountDescription")}
-                placeholder="1"
-                value={defaultImagesCount}
-                onChange={value => setDefaultImagesCount(typeof value === "number" ? value : undefined)}
-                min={1}
-                max={10}
-                step={1}
-              />
-            </SimpleGrid>
-
-            <Group justify="right" mt="md">
-              <Button
-                type="reset"
-                color="gray"
-                loading={updateLoading}
-                onClick={handleDefaultsReset}
-                disabled={!isUserSettingsDirty}
-              >
-                {t("common.reset")}
-              </Button>
-              <Button type="submit" color="green" loading={updateLoading} disabled={!isUserSettingsDirty}>
-                {t("common.save")}
-              </Button>
-            </Group>
-          </Stack>
-        </form>
+          <Group justify="right" mt="md">
+            <Button
+              type="reset"
+              color="gray"
+              loading={updateLoading}
+              onClick={handleDefaultsReset}
+              disabled={!isUserSettingsDirty}
+            >
+              {t("common.reset")}
+            </Button>
+            <Button
+              type="submit"
+              onClick={handleUserDefaultsUpdate}
+              color="green"
+              loading={updateLoading}
+              disabled={!isUserSettingsDirty}
+            >
+              {t("common.save")}
+            </Button>
+          </Group>
+        </Stack>
       </Paper>
 
       <Paper withBorder p="md">
-        <form name="documents-defaults-settings" onSubmit={handleUserDefaultsUpdate}>
-          <Stack gap="md">
-            <Title order={4}>
-              <a id="document_processing">{t("aiSettings.documentProcessing")}</a>
-            </Title>
+        <Stack gap="md">
+          <Title order={4}>
+            <a id="document_processing">{t("aiSettings.documentProcessing")}</a>
+          </Title>
 
-            <Select
-              name="embeddings-model"
-              label={t("aiSettings.embeddingsModel")}
-              description={t("aiSettings.embeddingsModelDescription")}
-              placeholder={t("aiSettings.selectEmbeddingsModel")}
-              value={documentsEmbeddingsModelId}
-              onChange={value => setDocumentsEmbeddingsModelId(value || "")}
-              data={embeddingModelSelectData}
-              searchable
-              clearable
-            />
+          <Select
+            name="embeddings-model"
+            label={t("aiSettings.embeddingsModel")}
+            description={t("aiSettings.embeddingsModelDescription")}
+            placeholder={t("aiSettings.selectEmbeddingsModel")}
+            value={documentsEmbeddingsModelId}
+            onChange={value => setDocumentsEmbeddingsModelId(value || "")}
+            data={embeddingModelSelectData}
+            searchable
+            clearable
+          />
 
-            <Select
-              name="summarization-model"
-              label={t("aiSettings.summarizationModel")}
-              description={t("aiSettings.summarizationModelDescription")}
-              placeholder={t("aiSettings.selectChatModel")}
-              value={documentSummarizationModelId}
-              onChange={value => setDocumentSummarizationModelId(value || "")}
-              data={modelSelectData}
-              searchable
-              clearable
-            />
+          <Select
+            name="summarization-model"
+            label={t("aiSettings.summarizationModel")}
+            description={t("aiSettings.summarizationModelDescription")}
+            placeholder={t("aiSettings.selectChatModel")}
+            value={documentSummarizationModelId}
+            onChange={value => setDocumentSummarizationModelId(value || "")}
+            data={modelSelectData}
+            searchable
+            clearable
+          />
 
-            <Group justify="right" mt="md">
-              <Button
-                type="reset"
-                color="gray"
-                loading={updateLoading}
-                onClick={handleDocumentsModelsReset}
-                disabled={!isDocumentsSettingsDirty}
-              >
-                {t("common.reset")}
-              </Button>
-              <Button type="submit" color="green" loading={updateLoading} disabled={!isDocumentsSettingsDirty}>
-                {t("common.save")}
-              </Button>
-            </Group>
-          </Stack>
-        </form>
+          <Group justify="right" mt="md">
+            <Button
+              type="reset"
+              color="gray"
+              loading={updateLoading}
+              onClick={handleDocumentsModelsReset}
+              disabled={!isDocumentsSettingsDirty}
+            >
+              {t("common.reset")}
+            </Button>
+            <Button
+              type="submit"
+              onClick={handleUserDefaultsUpdate}
+              color="green"
+              loading={updateLoading}
+              disabled={!isDocumentsSettingsDirty}
+            >
+              {t("common.save")}
+            </Button>
+          </Group>
+        </Stack>
       </Paper>
     </Stack>
   );

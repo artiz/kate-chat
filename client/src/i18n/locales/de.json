@@ -394,7 +394,7 @@
     "createModel": "Modell erstellen",
     "saveChanges": "Änderungen speichern",
     "validationError": "Validierungsfehler",
-    "endpointApiKeyRequired": "Endpunkt, API-Schlüssel und Modellname (API) sind zum Testen erforderlich",
+    "testEndpointRequired": "Endpunkt und Modellname (API) sind zum Testen erforderlich",
     "modelConnectionChecked": "Modellverbindung erfolgreich überprüft",
     "fillRequiredFields": "Bitte füllen Sie alle erforderlichen Felder aus",
     "apiConnections": "API-Verbindungen",

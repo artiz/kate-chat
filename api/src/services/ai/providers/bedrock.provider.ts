@@ -83,9 +83,11 @@ interface BedrockModelConfigRecord {
 export class BedrockApiProvider extends BaseApiProvider {
   protected bedrockClient: BedrockRuntimeClient;
   protected bedrockManagementClient: BedrockClient;
+  protected modelOverride?: string;
 
-  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader, modelOverride?: string) {
     super(connection, fileLoader);
+    this.modelOverride = modelOverride;
 
     if (!connection.awsBedrockProfile && !connection.awsBedrockAccessKeyId) {
       logger.debug("AWS_BEDROCK_PROFILE/AWS_BEDROCK_ACCESS_KEY_ID is not set. Skipping AWS Bedrock initialization.");
@@ -210,6 +212,9 @@ export class BedrockApiProvider extends BaseApiProvider {
         const input = await this.formatConverseParams(request, inputMessages, requestTools);
         // Append any tool result messages from previous iterations
         input.messages = [...(input.messages || []), ...conversationMessages];
+        if (this.modelOverride) {
+          input.modelId = this.modelOverride;
+        }
 
         // reset tool choice for nova models after first call to avoid infinite loops
         if (input.modelId?.includes("amazon.nova") && conversationMessages.length > 0 && input.toolConfig) {
@@ -774,7 +779,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
 
     let body = "";
-    const { modelId } = request;
+    const modelId = this.modelOverride || request.modelId;
     const isV2 = modelId.includes("embed-text-v2");
 
     if (modelId == "cohere.embed-multilingual-v3") {
@@ -792,7 +797,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     }
 
     const params = {
-      modelId: request.modelId,
+      modelId,
       body,
     };
 
@@ -818,8 +823,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     messages: ModelMessage[] = [],
     requestTools: BedrockToolCallable[] = []
   ): Promise<ConverseCommandInput> {
-    const { modelId, settings = {} } = request;
-    const { systemPrompt, temperature, maxTokens, topP, thinking, thinkingBudget } = settings;
+    const { systemPrompt, temperature, maxTokens, topP, thinking, thinkingBudget } = request.settings || {};
+    const modelId = this.modelOverride || request.modelId;
 
     const requestMessages: ConverseMessage[] = [];
 

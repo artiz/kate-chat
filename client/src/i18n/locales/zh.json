@@ -419,7 +419,7 @@
     "disconnected": "已断开",
     "editCustomModel": "编辑自定义模型",
     "embeddingsGeneration": "嵌入生成",
-    "endpointApiKeyRequired": "测试需要端点、API 密钥和模型名称（API）",
+    "testEndpointRequired": "测试需要端点、API 密钥和模型名称（API）",
     "endpointUrl": "端点 URL",
     "endpointUrlDescription": "API 的基本 URL（不含 /chat/completions）",
     "enterTestPrompt": "输入文本以测试模型",

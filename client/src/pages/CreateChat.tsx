@@ -6,9 +6,10 @@ import { Center, Loader, Text } from "@mantine/core";
 import { useAppSelector, useAppDispatch } from "../store";
 import { addChat } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION, CreateChatInput, Chat } from "@/store/services/graphql.queries";
+import { FIND_PRISTINE_CHAT, CREATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { useChatMessages } from "@/hooks";
 import { ModelType } from "@katechat/ui";
+import { CreateChatInput } from "@/types/graphql";
 
 export const CreateChat: React.FC = () => {
   const { t } = useTranslation();
@@ -26,8 +27,9 @@ export const CreateChat: React.FC = () => {
   // 2. First active model
   const modelToUse = useMemo(() => {
     const models = allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
-    const userDefaultModel = user?.defaultModelId ? models.find(model => model.modelId === user.defaultModelId) : null;
-
+    const userDefaultModel = user?.settings?.defaultModelId
+      ? models.find(model => model.modelId === user.settings!.defaultModelId)
+      : null;
     return userDefaultModel || models[0] || null;
   }, [allModels, user]);
 
@@ -70,7 +72,7 @@ export const CreateChat: React.FC = () => {
   });
 
   // Create chat mutation
-  const [createChat, { loading }] = useMutation(CREATE_CHAT_MUTATION, {
+  const [createChat] = useMutation(CREATE_CHAT_MUTATION, {
     onCompleted: data => {
       dispatch(addChat(data.createChat));
       navigate(`/chat/${data.createChat.id}`);
@@ -102,8 +104,8 @@ export const CreateChat: React.FC = () => {
     };
 
     // Add system prompt if available
-    if (user?.defaultSystemPrompt) {
-      chatInput.systemPrompt = user.defaultSystemPrompt;
+    if (user?.settings?.defaultSystemPrompt) {
+      chatInput.systemPrompt = user.settings.defaultSystemPrompt;
     }
 
     createChat({

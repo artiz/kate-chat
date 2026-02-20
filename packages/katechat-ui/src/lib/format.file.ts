@@ -1,3 +1,5 @@
+import { text } from "stream/consumers";
+
 /**
  * Formats a file size in bytes to a human-readable format
  * @param bytes - The file size in bytes
@@ -66,6 +68,8 @@ export function getProgrammingLanguageExt(language: string): string {
     proto: "proto",
     tex: "tex",
     latex: "tex",
+    plaintext: "txt",
+    text: "txt",
   };
 
   return mapping[language.toLowerCase()] || language;

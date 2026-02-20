@@ -141,7 +141,7 @@ export class MessagesService {
     });
     if (!chat) throw new Error("Chat not found");
 
-    const modelId = chat.modelId || user.defaultModelId;
+    const modelId = chat.modelId || user.settings?.defaultModelId;
     if (!modelId) throw new Error("Model must be defined for the chat or user");
 
     await this.checkMessagesLimit(chatId, user);
@@ -339,7 +339,7 @@ export class MessagesService {
     // Find the model for the chat
     const model = await this.modelRepository.findOne({
       where: {
-        modelId: chat.modelId || user.defaultModelId,
+        modelId: chat.modelId || user.settings?.defaultModelId,
         user: { id: user.id },
       },
     });
@@ -662,11 +662,11 @@ export class MessagesService {
     assistantMessage: Message
   ): Promise<void> {
     const chatSettings: ChatSettings = {
-      temperature: user.defaultTemperature ?? aiConfig.defaultTemperature,
-      maxTokens: user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
-      topP: user.defaultTopP ?? aiConfig.defaultTopP,
-      imagesCount: user.defaultImagesCount ?? 1,
-      systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.settings?.defaultImagesCount ?? 1,
+      systemPrompt: user.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
       ...chat.settings,
     };
 
@@ -706,7 +706,7 @@ export class MessagesService {
         let titleModel: Model | null = model;
         if (titleModel.type !== ModelType.CHAT) {
           titleModel = await this.modelRepository.findOne({
-            where: { user: { id: user.id }, modelId: user.defaultModelId, type: ModelType.CHAT },
+            where: { user: { id: user.id }, modelId: user.settings?.defaultModelId, type: ModelType.CHAT },
           });
         }
         if (titleModel) {
@@ -1214,21 +1214,21 @@ export class MessagesService {
     user: User,
     messageContext?: MessageContext
   ): CreateMessageRequest {
-    const modelId_ = modelId || chat.modelId || user.defaultModelId;
-    if (!modelId_) throw new Error("Model ID is required");
+    const chatModelId = modelId || chat.modelId || user.settings?.defaultModelId;
+    if (!chatModelId) throw new Error("Model ID is required");
 
     const chatSettings: ChatSettings = {
-      temperature: user.defaultTemperature ?? aiConfig.defaultTemperature,
-      maxTokens: user.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
-      topP: user.defaultTopP ?? aiConfig.defaultTopP,
-      imagesCount: user.defaultImagesCount ?? 1,
-      systemPrompt: user.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.settings?.defaultImagesCount ?? 1,
+      systemPrompt: user.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
       ...chat.settings,
     };
 
     const request: CreateMessageRequest = {
       chatId: chat.id,
-      modelId: modelId_,
+      modelId: chatModelId,
       settings: chatSettings,
       content,
       mcpTokens: messageContext?.mcpTokens,

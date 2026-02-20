@@ -425,7 +425,9 @@
     "disconnected": "Disconnected",
     "editCustomModel": "Edit Custom Model",
     "embeddingsGeneration": "Embeddings generation",
-    "endpointApiKeyRequired": "Endpoint, API Key and Model Name (API) are required for testing",
+    "testEndpointRequired": "Endpoint, API Key and Model Name (API) are required for testing",
+    "testModelRequired": "Model Name (API) is required for testing",
+
     "endpointUrl": "Endpoint URL",
     "endpointUrlDescription": "Base URL for the API (without /chat/completions)",
     "enterTestPrompt": "Enter text to test the model",
@@ -458,6 +460,7 @@
     "openaiRequiresEnv": "OpenAI requires an API key. Set the following environment variable:",
     "openaiRequiresSetup": "OpenAI requires an API key. Please setup connection credentials on connectivity page.",
     "openaiResponsesApi": "OpenAI Responses API",
+    "awsBedrockCustom": "AWS Bedrock custom Model",
     "protocol": "Protocol",
     "provider": "Provider",
     "realtimeAudio": "Realtime audio model",

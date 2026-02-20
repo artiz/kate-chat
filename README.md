@@ -42,14 +42,12 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - Custom OpenAI-compatible REST API endpoint (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
-- LLM tools (Web Search, Code Interpreter) support, custom WebSearch tool implemented using Yandex Search API
+- LLM tools (Web Search, Code Interpreter, Reasoning) support, custom WebSearch tool implemented using Yandex Search API
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
 ## TODO
-* Thinking support for AWS Bedrock [Claude](https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-extended-thinking.html)
-* Custom Bedrock model: (CustomModelProtocol.AWS_BEDROCK_CUSTOM)[https://docs.aws.amazon.com/bedrock/latest/userguide/deploy-custom-model-on-demand.html]
 * Introduce chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
 * Put status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.

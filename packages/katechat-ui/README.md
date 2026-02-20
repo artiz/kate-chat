@@ -31,7 +31,6 @@ This package requires the following peer dependencies:
 
 ```json
 {
-  "@mantine/carousel": "8.3.3",
   "@mantine/core": "8.3.3",
   "@mantine/dates": "8.3.3",
   "@mantine/form": "8.3.3",

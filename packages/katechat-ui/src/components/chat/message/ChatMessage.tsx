@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
-// import { Carousel } from "@mantine/carousel";
 import {
   IconChevronLeft,
   IconChevronRight,

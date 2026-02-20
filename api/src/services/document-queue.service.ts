@@ -57,8 +57,8 @@ export class DocumentQueueService {
         return;
       }
 
-      const embeddingsModelId = document.embeddingsModelId || document.owner?.documentsEmbeddingsModelId;
-      const summarizationModelId = document.summaryModelId || document.owner?.documentSummarizationModelId;
+      const embeddingsModelId = document.embeddingsModelId || document.owner?.settings?.documentsEmbeddingsModelId;
+      const summarizationModelId = document.summaryModelId || document.owner?.settings?.documentSummarizationModelId;
 
       document.embeddingsModelId = embeddingsModelId;
       document.summaryModelId = summarizationModelId;

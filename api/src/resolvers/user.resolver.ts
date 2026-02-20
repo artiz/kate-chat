@@ -4,7 +4,6 @@ import { User, AuthProvider, UserRole, UserSettings } from "@/entities/User";
 import { generateToken } from "@/utils/jwt";
 import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "@/types/graphql/inputs";
 import { ApplicationConfig, AuthResponse, CredentialSource } from "@/types/graphql/responses";
-import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
 import { verifyRecaptchaToken } from "@/utils/recaptcha";
 import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
@@ -49,7 +48,11 @@ export class UserResolver extends BaseResolver {
     );
 
     const ragEnabled = Boolean(
-      !demoMode && ragSupported && user && user.documentsEmbeddingsModelId && user.documentSummarizationModelId
+      !demoMode &&
+        ragSupported &&
+        user &&
+        user.settings?.documentsEmbeddingsModelId &&
+        user.settings?.documentSummarizationModelId
     );
 
     const credentialsSource: CredentialSource[] = [];
@@ -120,7 +123,6 @@ export class UserResolver extends BaseResolver {
       lastName,
       avatarUrl,
       role,
-      defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
       authProvider: authProvider || AuthProvider.LOCAL,
     });
 
@@ -157,10 +159,13 @@ export class UserResolver extends BaseResolver {
     if (input.firstName) user.firstName = input.firstName;
     if (input.lastName) user.lastName = input.lastName;
     if (input.avatarUrl) user.avatarUrl = input.avatarUrl;
-    if (input.defaultModelId) user.defaultModelId = input.defaultModelId;
-    if (input.defaultSystemPrompt) user.defaultSystemPrompt = input.defaultSystemPrompt;
-    if (input.documentsEmbeddingsModelId) user.documentsEmbeddingsModelId = input.documentsEmbeddingsModelId;
-    if (input.documentSummarizationModelId) user.documentSummarizationModelId = input.documentSummarizationModelId;
+
+    if (!user.settings) user.settings = {};
+    if (input.defaultModelId) user.settings.defaultModelId = input.defaultModelId;
+    if (input.defaultSystemPrompt) user.settings.defaultSystemPrompt = input.defaultSystemPrompt;
+    if (input.documentsEmbeddingsModelId) user.settings.documentsEmbeddingsModelId = input.documentsEmbeddingsModelId;
+    if (input.documentSummarizationModelId)
+      user.settings.documentSummarizationModelId = input.documentSummarizationModelId;
 
     if (input.settings) {
       const settingsToUpdate: Partial<UserSettings> = input.settings;

@@ -119,7 +119,7 @@ export const ChatList: React.FC = () => {
                     {chat.title || t("chat.untitledChat")}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    {new Date(chat.updatedAt).toLocaleDateString()}
+                    {chat.updatedAt ? new Date(chat.updatedAt).toLocaleDateString() : ""}
                   </Text>
                   <Text size="sm">
                     <b>{chat.messagesCount}</b> {t("chat.messages")}
