@@ -141,7 +141,7 @@ export class MessageRelevantChunk {
 
 @ObjectType()
 export class ReasoningChunk {
-  @Field(() => ID)
+  @Field(() => String)
   text: string;
 
   @Field({ nullable: true })

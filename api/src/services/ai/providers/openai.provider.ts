@@ -324,11 +324,10 @@ export class OpenAIApiProvider extends BaseApiProvider {
                   notEmpty
                 );
 
-        const features: ModelFeature[] | undefined =
-          apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : undefined;
+        const features: ModelFeature[] = apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : [];
 
         if (OPENAI_MODELS_SUPPORT_REASONING.some(prefix => model.id.startsWith(prefix))) {
-          features?.push(ModelFeature.REASONING);
+          features.push(ModelFeature.REASONING);
         }
 
         const maxInputTokens =

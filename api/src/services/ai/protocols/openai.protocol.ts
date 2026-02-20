@@ -381,7 +381,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
     if (thinking) {
       const maxTokenBudget = globalConfig.ai.reasoningMaxTokenBudget;
-      const budget = thinkingBudget || 0;
+      const budget = thinkingBudget || globalConfig.ai.reasoningMinTokenBudget;
 
       // 'minimal' | 'low' | 'medium' | 'high'
       const effort =

@@ -71,18 +71,16 @@ export function ChatSettingsForm({
   }, [temperature, maxTokens, topP, imagesCount, systemPrompt, thinking, thinkingBudget]);
 
   const handleSettingsChange = (settings: ChatSettings) => {
-    setTimeout(() => {
-      onSettingsChange({
-        temperature: tempValue,
-        maxTokens: tokensValue,
-        topP: topPValue,
-        imagesCount: imagesCountValue,
-        systemPrompt: systemPromptValue,
-        thinking: thinkingValue,
-        thinkingBudget: thinkingBudgetValue,
-        ...settings,
-      });
-    }, 0);
+    onSettingsChange({
+      temperature: tempValue,
+      maxTokens: tokensValue,
+      topP: topPValue,
+      imagesCount: imagesCountValue,
+      systemPrompt: systemPromptValue,
+      thinking: thinkingValue,
+      thinkingBudget: thinkingBudgetValue,
+      ...settings,
+    });
   };
 
   const handleTemperatureChange = (value: number) => {
@@ -101,6 +99,11 @@ export function ChatSettingsForm({
 
   const handleImagesCountChange = (value: number | string) => {
     let numValue = typeof value === "string" ? parseInt(value, 10) : value;
+    if (isNaN(numValue) || numValue < 1) {
+      numValue = 1;
+    } else if (numValue > 10) {
+      numValue = 10;
+    }
     setImagesCountValue(numValue);
     handleSettingsChange({ imagesCount: numValue });
   };
@@ -181,6 +184,7 @@ export function ChatSettingsForm({
               max={1}
               step={0.01}
               label={null}
+              disabled={thinkingValue}
               marks={[
                 { value: 0, label: "0" },
                 { value: 0.5, label: "0.5" },

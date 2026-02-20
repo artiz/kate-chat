@@ -1,5 +1,3 @@
-import { text } from "stream/consumers";
-
 /**
  * Formats a file size in bytes to a human-readable format
  * @param bytes - The file size in bytes

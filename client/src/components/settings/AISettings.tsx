@@ -191,7 +191,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               {t("common.reset")}
             </Button>
             <Button
-              type="submit"
+              type="button"
               onClick={handleUserDefaultsUpdate}
               color="green"
               loading={updateLoading}
@@ -244,7 +244,7 @@ export const AISettings: React.FC<AISettingsProps> = ({ user, updateUser, update
               {t("common.reset")}
             </Button>
             <Button
-              type="submit"
+              type="button"
               onClick={handleUserDefaultsUpdate}
               color="green"
               loading={updateLoading}

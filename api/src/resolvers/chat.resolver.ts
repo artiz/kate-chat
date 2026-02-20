@@ -9,6 +9,7 @@ import { BaseResolver } from "./base.resolver";
 import { ChatsService } from "@/services/chats.service";
 import { globalConfig } from "@/global-config";
 import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
+import { ChatSettings } from "@/entities/Chat";
 
 const aiConfig = globalConfig.ai;
 
@@ -177,7 +178,7 @@ export class ChatResolver extends BaseResolver {
     return chat ? { chat } : { error: "Chat not found" };
   }
 
-  @FieldResolver(() => String, { nullable: true })
+  @FieldResolver(() => ChatSettings, { nullable: true })
   settings(@Root() chat: Chat) {
     const user = chat.user;
     return {

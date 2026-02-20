@@ -416,6 +416,14 @@ export class BedrockApiProvider extends BaseApiProvider {
           }
         }
 
+        // Save any reasoning content accumulated without a signature (e.g. on stream interruption)
+        if (reasoningContent) {
+          if (!metadata) metadata = {};
+          if (!metadata.reasoning) metadata.reasoning = [];
+          metadata.reasoning.push({ text: reasoningContent, timestamp: new Date() });
+          reasoningContent = "";
+        }
+
         if (requestCompleted) {
           await callbacks.onComplete(
             {
@@ -898,7 +906,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
       inferenceConfig.temperature = 1;
       if (maxTokens) {
-        inferenceConfig.maxTokens = Math.max(maxTokens, budget * 1.2);
+        inferenceConfig.maxTokens = Math.max(maxTokens || 0, Math.ceil(budget * 1.2));
       }
       additionalModelRequestFields.thinking = {
         type: "enabled",

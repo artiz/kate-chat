@@ -36,7 +36,7 @@ export const OPENAI_MODELS_SUPPORT_IMAGES_INPUT = [
   "gpt-image",
 ];
 
-export const OPENAI_MODELS_SUPPORT_REASONING = ["gpt-5", "o"];
+export const OPENAI_MODELS_SUPPORT_REASONING = ["gpt-5", "o1", "o3", "o4"];
 
 export const OPENAI_GLOBAL_IGNORED_MODELS = ["davinci-002", "gpt-3.5-turbo-instruct"];
 

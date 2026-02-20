@@ -205,10 +205,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
   // Update chat mutation (for changing the model)
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
-    onCompleted: data => {
-      // do not override current
-      // dispatch(updateChatInState(data.updateChat));
-    },
     onError: error => {
       console.error("Error updating chat:", error);
       notifications.show({
@@ -228,6 +224,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
         updateChatInState({
           ...existing,
           ...input,
+          settings: { ...existing.settings, ...input.settings },
         })
       );
     } else {

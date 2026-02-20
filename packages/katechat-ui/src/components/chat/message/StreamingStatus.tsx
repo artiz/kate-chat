@@ -43,4 +43,4 @@ export const StreamingStatus = ({ content, status, statusInfo, streaming }: IPro
   return cmp;
 };
 
-StreamingStatus.displayName = "ReasoningStatus";
+StreamingStatus.displayName = "StreamingStatus";
