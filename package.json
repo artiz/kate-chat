@@ -20,6 +20,7 @@
     "test:api": "npm run test -w api",
     "format": "npm run format -w client -w api -w packages/katechat-ui",
     "migration:generate": "bash scripts/migration-generate.sh \"$@\"",
+    "migration:create": "bash scripts/migration-create.sh \"$@\"",
     "migration:run": "bash scripts/migration-run.sh",
     "migration:revert": "bash scripts/migration-revert.sh",
     "publish:packages": "npm publish -w packages/katechat-ui"
