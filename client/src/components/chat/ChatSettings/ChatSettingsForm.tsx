@@ -24,7 +24,7 @@ import classes from "./ChatSettingsForm.module.scss";
 
 // TODO: load from global config or model features when available
 const MIN_THINKING_BUDGET = 1024;
-const MAX_THINKING_BUDGET = 30000;
+const MAX_THINKING_BUDGET = 50_000;
 
 export const DEFAULT_CHAT_SETTINGS = {
   temperature: 0.7,
@@ -72,16 +72,18 @@ export function ChatSettingsForm({
   }, [temperature, maxTokens, topP, imagesCount, systemPrompt, thinking, thinkingBudget]);
 
   const handleSettingsChange = (settings: ChatSettings) => {
-    onSettingsChange({
-      temperature: tempValue,
-      maxTokens: tokensValue,
-      topP: topPValue,
-      imagesCount: imagesCountValue,
-      systemPrompt: systemPromptValue,
-      thinking: thinkingValue,
-      thinkingBudget: thinkingBudgetValue,
-      ...settings,
-    });
+    setTimeout(() => {
+      onSettingsChange({
+        temperature: tempValue,
+        maxTokens: tokensValue,
+        topP: topPValue,
+        imagesCount: imagesCountValue,
+        systemPrompt: systemPromptValue,
+        thinking: thinkingValue,
+        thinkingBudget: thinkingBudgetValue,
+        ...settings,
+      });
+    }, 0);
   };
 
   const handleTemperatureChange = (value: number) => {
@@ -94,20 +96,12 @@ export function ChatSettingsForm({
     if (isNaN(numValue) || numValue < 1) {
       numValue = 1; // Ensure minimum value is 1
     }
-    if (numValue > 1_000_000) {
-      numValue = 1_000_000;
-    }
     setTokensValue(numValue);
     handleSettingsChange({ maxTokens: numValue });
   };
 
   const handleImagesCountChange = (value: number | string) => {
     let numValue = typeof value === "string" ? parseInt(value, 10) : value;
-    if (isNaN(numValue) || numValue < 1) {
-      numValue = 1; // Ensure minimum value is 1
-    } else if (numValue > 10) {
-      numValue = 10;
-    }
     setImagesCountValue(numValue);
     handleSettingsChange({ imagesCount: numValue });
   };
@@ -133,11 +127,6 @@ export function ChatSettingsForm({
 
   const handleThinkingBudgetChange = (value: number | string) => {
     let numValue = typeof value === "string" ? parseInt(value, 10) : value;
-    if (isNaN(numValue) || numValue < MIN_THINKING_BUDGET) {
-      numValue = MIN_THINKING_BUDGET; // Ensure minimum value is 100
-    } else if (numValue > MAX_THINKING_BUDGET) {
-      numValue = MAX_THINKING_BUDGET;
-    }
     setThinkingBudgetValue(numValue);
     handleSettingsChange({ thinkingBudget: numValue });
   };
@@ -179,7 +168,7 @@ export function ChatSettingsForm({
                 <Text size="sm" c="dimmed">
                   {tempValue?.toFixed(2)}
                 </Text>
-                <Tooltip label={t("chat.temperatureTooltip")}>
+                <Tooltip label={t("chat.temperatureTooltip")} maw="50vw" multiline>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
@@ -208,7 +197,7 @@ export function ChatSettingsForm({
                 <Text size="sm" c="dimmed">
                   {topPValue?.toFixed(2)}
                 </Text>
-                <Tooltip label={t("chat.topPTooltip")}>
+                <Tooltip label={t("chat.topPTooltip")} maw="50vw" multiline>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
@@ -237,7 +226,7 @@ export function ChatSettingsForm({
                 <Text size="sm" c="dimmed">
                   {imagesCountValue}
                 </Text>
-                <Tooltip label={t("chat.imagesCountTooltip")}>
+                <Tooltip label={t("chat.imagesCountTooltip")} maw="50vw" multiline>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
@@ -262,7 +251,7 @@ export function ChatSettingsForm({
           <Box m="md" miw="140px">
             <Group p="apart" mb="md">
               <Text size="sm">{t("chat.maxTokens")}</Text>
-              <Tooltip label={t("chat.maxTokensTooltip")}>
+              <Tooltip label={t("chat.maxTokensTooltip")} multiline>
                 <ActionIcon size="xs" variant="subtle">
                   <IconInfoCircle size={14} />
                 </ActionIcon>
@@ -273,6 +262,7 @@ export function ChatSettingsForm({
               onChange={handleMaxTokensChange}
               min={1}
               max={2_000_000}
+              clampBehavior="blur"
               step={100}
               size="xs"
             />
@@ -283,7 +273,7 @@ export function ChatSettingsForm({
               <Box m="md" miw="140px">
                 <Group p="apart" mb="md">
                   <Text size="sm">{t("chat.thinking")}</Text>
-                  <Tooltip label={t("chat.thinkingTooltip")}>
+                  <Tooltip label={t("chat.thinkingTooltip")} maw="50vw" multiline>
                     <ActionIcon size="xs" variant="subtle">
                       <IconInfoCircle size={14} />
                     </ActionIcon>
@@ -308,6 +298,7 @@ export function ChatSettingsForm({
                   onChange={handleThinkingBudgetChange}
                   min={MIN_THINKING_BUDGET}
                   max={MAX_THINKING_BUDGET}
+                  clampBehavior="blur"
                   step={200}
                   size="xs"
                 />

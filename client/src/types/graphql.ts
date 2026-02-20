@@ -258,6 +258,12 @@ export interface ChatToolCall {
   args?: string;
 }
 
+export interface ReasoningChunk {
+  text: string;
+  timestamp?: Date;
+  id?: string;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -269,6 +275,7 @@ export interface MessageMetadata {
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
   requestId?: string;
+  reasoning?: ReasoningChunk[];
 }
 
 export interface MessageChatInfo {
@@ -308,7 +315,7 @@ export interface Chat {
   id: string;
   title: string;
   description: string;
-  updatedAt: string;
+  updatedAt?: string;
   modelId?: string;
   isPristine?: boolean;
   isPinned?: boolean;

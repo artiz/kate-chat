@@ -30,6 +30,7 @@ import { FileContentLoader } from "@/services/data";
 import { ModelProtocol } from "./common";
 import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
+import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
@@ -379,8 +380,20 @@ export class OpenAIProtocol implements ModelProtocol {
     };
 
     if (thinking) {
+      const maxTokenBudget = globalConfig.ai.reasoningMaxTokenBudget;
+      const budget = thinkingBudget || 0;
+
+      // 'minimal' | 'low' | 'medium' | 'high'
+      const effort =
+        budget < maxTokenBudget * 0.1
+          ? "minimal"
+          : budget < maxTokenBudget * 0.25
+            ? "low"
+            : budget < maxTokenBudget * 0.75
+              ? "medium"
+              : "high";
       params.reasoning = {
-        effort: (thinkingBudget || 0) > 4000 ? "medium" : "low",
+        effort,
         summary: "auto",
       };
     }
@@ -771,11 +784,15 @@ export class OpenAIProtocol implements ModelProtocol {
           partResponse += chunk.delta;
           stopped = await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: partResponse });
         } else if (chunk.type == "response.reasoning_summary_text.done") {
-          if (!meta.analysis) {
-            meta.analysis = "";
+          if (!meta.reasoning) {
+            meta.reasoning = [];
           }
 
-          meta.analysis += (meta.analysis ? "\n---\n" : "") + chunk.text;
+          meta.reasoning.push({
+            text: chunk.text || partResponse,
+            timestamp: new Date(),
+            id: chunk.item_id,
+          });
         } else if (chunk.type == "response.output_item.added") {
           if (chunk.item.type === "reasoning") {
             if (lastStatus !== ResponseStatus.REASONING) {

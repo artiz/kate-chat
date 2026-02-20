@@ -83,6 +83,8 @@ export interface GlobalConfigShape {
     summarizingTemperature: number;
     ragQueryChunksLimit: number;
     ragLoadFullPages: boolean;
+    reasoningMinTokenBudget: number;
+    reasoningMaxTokenBudget: number;
   };
   oauth: {
     google: {
@@ -290,6 +292,8 @@ export class GlobalConfig {
         summarizingTemperature: +(process.env.AI_SUMMARIZING_TEMPERATURE || 0.25),
         ragQueryChunksLimit: +(process.env.RAG_QUERY_CHUNKS_LIMIT || 10) | 0,
         ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, true),
+        reasoningMinTokenBudget: Math.max(+(process.env.AI_REASONING_MIN_TOKEN_BUDGET || 1024) | 0, 1024),
+        reasoningMaxTokenBudget: +(process.env.AI_REASONING_MAX_TOKEN_BUDGET || 50_000) | 0,
       },
       oauth: {
         google: {

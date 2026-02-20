@@ -300,9 +300,9 @@ export class MessagesService {
     const chat = originalMessage.chat;
     const chatId = chat.id;
 
-    // Delete all messages after this one in the chat
     ok(originalMessage.createdAt);
 
+    // Delete all messages after this one in the chat
     let query = this.messageRepository
       .createQueryBuilder("message")
       .where("message.chatId = :chatId", { chatId })
@@ -355,6 +355,9 @@ export class MessagesService {
       if (model.type !== ModelType.IMAGE_GENERATION) {
         assistantMessage.content = "";
       }
+
+      assistantMessage.jsonContent = undefined;
+      assistantMessage.metadata = undefined;
     } else {
       assistantMessage = this.messageRepository.create({
         content: "",
@@ -365,6 +368,8 @@ export class MessagesService {
         chat,
       });
     }
+
+    await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
 
     await this.messageRepository.save(assistantMessage).catch(err => {
       this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));

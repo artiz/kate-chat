@@ -71,7 +71,7 @@ export const EditMessage = ({
       },
     });
     setIsEdited(false);
-  }, [id, editedContent, editMessage, messageContext]);
+  }, [id, editedContent, editMessage, onAddMessage, messageContext]);
 
   const handleEditMessage = useCallback(() => {
     setIsEdited(true);

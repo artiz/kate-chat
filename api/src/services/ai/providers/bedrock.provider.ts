@@ -255,8 +255,19 @@ export class BedrockApiProvider extends BaseApiProvider {
               fullResponse += delta.text;
               await callbacks.onProgress(delta.text);
             } else if (delta.reasoningContent) {
-              reasoningContent += delta.reasoningContent;
+              reasoningContent += delta.reasoningContent.text || "";
               await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: reasoningContent });
+
+              if (delta.reasoningContent.signature && reasoningContent) {
+                if (!metadata) metadata = {};
+                if (!metadata.reasoning) metadata.reasoning = [];
+
+                metadata.reasoning.push({
+                  text: reasoningContent,
+                  timestamp: new Date(),
+                });
+                reasoningContent = "";
+              }
             } else if (delta.toolUse && currentToolUse) {
               currentToolUse.input += delta.toolUse.input || "";
               const status =
@@ -269,15 +280,20 @@ export class BedrockApiProvider extends BaseApiProvider {
               name: chunk.contentBlockStart.start.toolUse.name,
               input: "",
             };
-          } else if (chunk.contentBlockStop && currentToolUse) {
-            currentToolUse.input =
-              typeof currentToolUse.input === "string" ? JSON.parse(currentToolUse.input.trim()) : currentToolUse.input;
-            streamedToolUse.push(currentToolUse);
-            currentToolUse = null;
-            reasoningContent = "";
+          } else if (chunk.contentBlockStop) {
+            if (currentToolUse) {
+              currentToolUse.input =
+                typeof currentToolUse.input === "string"
+                  ? JSON.parse(currentToolUse.input.trim())
+                  : currentToolUse.input;
+              streamedToolUse.push(currentToolUse);
+              currentToolUse = null;
+            }
           } else if (chunk.metadata?.usage) {
             const { usage, metrics } = chunk.metadata;
+
             metadata = {
+              ...metadata,
               usage: {
                 inputTokens: usage.inputTokens,
                 outputTokens: usage.outputTokens,
@@ -827,7 +843,6 @@ export class BedrockApiProvider extends BaseApiProvider {
           }
 
           const bytes = await this.fileLoader.getFileContent(part.fileName);
-
           let mediaType = part.mimeType?.split("/")[1];
           let format = part.mimeType?.split("/")[0]; // "image" or "video"
 
@@ -840,7 +855,6 @@ export class BedrockApiProvider extends BaseApiProvider {
                 },
               },
             };
-
             content.push(image);
           } else {
             const video: ContentBlock = {

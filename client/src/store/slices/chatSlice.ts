@@ -52,7 +52,7 @@ const chatSlice = createSlice({
       });
 
       if (!found && action.payload.id) {
-        state.chats.push(action.payload);
+        state.chats = [...state.chats, action.payload];
         state.total += 1;
       }
     },

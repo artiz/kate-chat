@@ -140,6 +140,18 @@ export class MessageRelevantChunk {
 }
 
 @ObjectType()
+export class ReasoningChunk {
+  @Field(() => ID)
+  text: string;
+
+  @Field({ nullable: true })
+  timestamp?: Date;
+
+  @Field({ nullable: true })
+  id?: string;
+}
+
+@ObjectType()
 export class MessageMetadata {
   // --------------- assistant message meta ---------------
   // model usage details
@@ -149,23 +161,28 @@ export class MessageMetadata {
   @Field(() => ModelResponseUsage, { nullable: true })
   usage?: ModelResponseUsage;
 
-  // relevant document chunks selected by model sorted by relevance
+  // RAG: relevant document chunks selected by model sorted by relevance
   @Field(() => [MessageRelevantChunk], { nullable: true })
   relevantsChunks?: MessageRelevantChunk[];
 
-  // Step by step analysis
+  // RAG: Step by step analysis
   @Field(() => String, { nullable: true })
   analysis?: string;
 
   // tool calls
   @Field(() => [ChatToolCall], { nullable: true })
   toolCalls?: ChatToolCall[];
+
   // tool calls results
   @Field(() => [ChatToolCallResult], { nullable: true })
   tools?: ChatToolCallResult[];
 
   @Field(() => [ChatResultAnnotation], { nullable: true })
   annotations?: ChatResultAnnotation[];
+
+  // reasoning chunks
+  @Field(() => [ReasoningChunk], { nullable: true })
+  reasoning?: ReasoningChunk[];
 
   // --------------- user message meta ---------------
   // input document IDs

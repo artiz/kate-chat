@@ -151,7 +151,7 @@ const AppContent: React.FC = () => {
             <Center h="100vh">
               <Loader size="xl" />
             </Center>
-          ) : isAuthenticated && !isError ? (
+          ) : (
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -181,7 +181,9 @@ const AppContent: React.FC = () => {
               {/* Fallback route */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          ) : (
+          )}
+
+          {isError && (
             <Box p="xl">
               <Alert title={t("common.error")} color="red" variant="filled">
                 {error ? ("error" in error ? error.error : t("errors.unknownError")) : t("errors.unknownError")}

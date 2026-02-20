@@ -164,6 +164,10 @@ export const BASE_MESSAGE_FRAGMENT = `
           type
           args
         }
+        reasoning {
+          text
+          timestamp
+        }
       }
     }
 `;
