@@ -183,7 +183,7 @@ export const graphqlApi = api.injectEndpoints({
                 next
               }
               
-              pinnedChats: getChats(input: { pinned: true }) {
+              pinnedChats: getChats(input: { pinned: true, limit: ${CHAT_PAGE_SIZE} }) {
                 chats {
                   id
                   title
@@ -195,6 +195,8 @@ export const graphqlApi = api.injectEndpoints({
                   lastBotMessage
                   lastBotMessageId
                 }
+                total
+                next
               }
 
               appConfig {

@@ -3,7 +3,7 @@ import { em } from "@mantine/core";
 export const MAX_UPLOAD_FILE_SIZE = 64 * 1024 * 1024; // 64 MB
 export const MAX_IMAGES = 5; // Maximum number of images allowed in a single message
 
-export const CHAT_PAGE_SIZE = 20; // Number of chats to fetch per page
+export const CHAT_PAGE_SIZE = 25; // Number of chats to fetch per page
 
 export const RECAPTCHA_SITE_KEY = process.env.RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
 
