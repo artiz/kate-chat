@@ -11,7 +11,8 @@ import { createAppTheme } from "@/theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
 import { setAppConfig, setUser } from "../store/slices/userSlice";
 import { setMcpServers, setModelsAndProviders } from "../store/slices/modelSlice";
-import { setChats } from "../store/slices/chatSlice";
+import { setChats, setPinnedChats } from "../store/slices/chatSlice";
+import { setFolders } from "../store/slices/folderSlice";
 import { logout, useAppSelector } from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 
@@ -88,15 +89,9 @@ const AppContent: React.FC = () => {
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
       dispatch(setMcpServers(initData.mcpServers));
-
-      const pinnedChatsIds = new Set(initData.pinnedChats.chats.map(chat => chat.id));
-      dispatch(
-        setChats({
-          chats: [...initData.pinnedChats.chats, ...initData.chats.chats.filter(chat => !pinnedChatsIds.has(chat.id))],
-          total: initData.chats.total,
-          next: initData.chats.next,
-        })
-      );
+      dispatch(setChats(initData.chats));
+      dispatch(setPinnedChats(initData.pinnedChats));
+      dispatch(setFolders(initData.folders));
 
       dispatch(loginSuccess(initData.appConfig.token));
 

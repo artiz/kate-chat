@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert, Stack } from "@mantine/core";
 import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
-import { useAppSelector } from "@/store";
+import { useAppSelector, useChat, useChat } from "@/store";
 import {
   assert,
   ModelType,
@@ -65,7 +65,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const allModels = useAppSelector(state => state.models.models);
-  const chats = useAppSelector(state => state.chats.chats);
   const { appConfig } = useAppSelector(state => state.user);
   const { aiUsageAlert } = getClientConfig();
 
@@ -91,10 +90,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     addMessage: addChatMessage,
   });
 
-  const chat = useMemo(() => {
-    if (!chatId) return;
-    return chats.find(c => c.id === chatId);
-  }, [chats, chatId]);
+  const chat = useChat(chatId || "");
 
   useEffect(() => {
     if (!chatId) return;
@@ -270,10 +266,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const handleTitleUpdate = useCallback(() => {
     const title = editedTitle?.trim() || "";
     if (title && chatId) {
-      updateChat(chatId, { title });
+      updateChat(chatId, { ...chat, title });
       setIsEditingTitle(false);
     }
-  }, [editedTitle, chatId, updateChat]);
+  }, [editedTitle, chatId, updateChat, chat]);
 
   const handleTitleBlur = useCallback(
     (event: React.FocusEvent<HTMLElement>) => {

@@ -21,6 +21,7 @@ import { router as filesRoutes } from "./controllers/files.controller";
 import { initializeDatabase } from "./config/database";
 import {
   ChatResolver,
+  FolderResolver,
   MessageResolver,
   UserResolver,
   UserSettingsResolver,
@@ -78,6 +79,7 @@ async function bootstrap() {
   const schema = await buildSchema({
     resolvers: [
       ChatResolver,
+      FolderResolver,
       MessageResolver,
       UserResolver,
       UserSettingsResolver,

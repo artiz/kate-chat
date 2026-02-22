@@ -6,6 +6,7 @@ import { mapServerError } from "@/i18n/errorMapping";
 import {
   ApplicationConfig,
   Chat,
+  ChatFolder,
   CurrentUserResponse,
   GetChatsResponse,
   GetInitialDataResponse,
@@ -126,7 +127,7 @@ export const graphqlApi = api.injectEndpoints({
           : [{ type: "Chat", id: "LIST" }],
     }),
 
-    // Initial data load - combines user, models, and chats
+    // Initial data load - combines user, models, chats, pinned chats, and folders
     getInitialData: builder.query<
       {
         appConfig: ApplicationConfig;
@@ -142,6 +143,7 @@ export const graphqlApi = api.injectEndpoints({
           total: number;
           next: number | undefined;
         };
+        folders: ChatFolder[];
         mcpServers: MCPServer[];
       },
       void
@@ -167,12 +169,13 @@ export const graphqlApi = api.injectEndpoints({
                   }
                 }
               }
-              chats: getChats(input: { limit: ${CHAT_PAGE_SIZE} }) {
+              chats: getChats(input: { pinned: false, limit: ${CHAT_PAGE_SIZE} }) {
                 chats {
                   id
                   title
                   isPristine
                   isPinned
+                  folderId
                   modelId
                   messagesCount
                   updatedAt
@@ -182,13 +185,14 @@ export const graphqlApi = api.injectEndpoints({
                 total
                 next
               }
-              
+
               pinnedChats: getChats(input: { pinned: true, limit: ${CHAT_PAGE_SIZE} }) {
                 chats {
                   id
                   title
                   isPristine
                   isPinned
+                  folderId
                   modelId
                   messagesCount
                   updatedAt
@@ -197,6 +201,18 @@ export const graphqlApi = api.injectEndpoints({
                 }
                 total
                 next
+              }
+
+              folders: getFolders(topLevelOnly: true) {
+                folders {
+                  id
+                  name
+                  color
+                  parentId
+                  topParentId
+                  createdAt
+                  updatedAt
+                }
               }
 
               appConfig {
@@ -251,6 +267,7 @@ export const graphqlApi = api.injectEndpoints({
             total: 0,
             next: undefined,
           },
+          folders,
           appConfig,
           getMCPServers,
         } = response.data || {};
@@ -272,6 +289,7 @@ export const graphqlApi = api.injectEndpoints({
           providers: models?.providers || [],
           chats,
           pinnedChats,
+          folders: folders?.folders || [],
           appConfig,
           mcpServers: getMCPServers?.servers || [],
         };

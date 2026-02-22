@@ -107,6 +107,8 @@ export class ChatResolver extends BaseResolver {
         ...input.settings,
       },
       isPristine: false,
+      // Auto-pin when moving to a folder
+      ...(input.folderId ? { isPinned: true } : {}),
     });
     return await this.chatRepository.save(chat);
   }
