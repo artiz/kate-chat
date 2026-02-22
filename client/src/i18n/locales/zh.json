@@ -121,6 +121,7 @@
       "loadMore": "加载更多..."
     },
     "moveToFolder": "移动到文件夹...",
+    "drag": "拖动以重新排序",
     "noFolder": "已固定（无文件夹）",
     "failedToCallOther": "调用其他模型失败",
     "failedToCheckChats": "检查现有聊天失败",

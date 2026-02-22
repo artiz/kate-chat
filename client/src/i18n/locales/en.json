@@ -121,6 +121,7 @@
       "loadMore": "Load more..."
     },
     "moveToFolder": "Move to folder...",
+    "drag": "Drag to reorder",
     "noFolder": "Pinned (no folder)",
     "failedToCallOther": "Failed to call other models",
     "failedToCheckChats": "Failed to check for existing chats",

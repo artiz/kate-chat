@@ -16,9 +16,12 @@ export class FolderResolver extends BaseResolver {
   }
 
   @Query(() => GqlFoldersList)
-  async getFolders(@Ctx() context: GraphQLContext): Promise<GqlFoldersList> {
+  async getFolders(
+    @Arg("topLevelOnly", { nullable: true }) topLevelOnly: boolean,
+    @Ctx() context: GraphQLContext
+  ): Promise<GqlFoldersList> {
     const user = await this.validateContextToken(context);
-    return this.foldersService.getFolders(user);
+    return this.foldersService.getFolders(user, topLevelOnly);
   }
 
   @Query(() => GqlFoldersList)

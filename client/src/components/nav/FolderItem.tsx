@@ -7,40 +7,28 @@ import {
   IconEdit,
   IconTrash,
   IconPalette,
-  IconMessage,
-  IconPin,
-  IconPinFilled,
-  IconFolderSymlink,
   IconFolder,
   IconFolderQuestion,
 } from "@tabler/icons-react";
 import { useLazyQuery, useMutation } from "@apollo/client";
+import { useDroppable } from "@dnd-kit/core";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useLocation } from "react-router-dom";
 import { notifications } from "@mantine/notifications";
 import { useMantineTheme } from "@mantine/core";
 import { DeleteConfirmationModal } from "@katechat/ui";
 import { useAppDispatch, useAppSelector } from "@/store";
-import {
-  GET_FOLDER_CONTENTS,
-  UPDATE_FOLDER_MUTATION,
-  DELETE_FOLDER_MUTATION,
-  UPDATE_CHAT_MUTATION,
-  DELETE_CHAT_MUTATION,
-} from "@/store/services/graphql.queries";
+import { GET_FOLDER_CONTENTS, UPDATE_FOLDER_MUTATION, DELETE_FOLDER_MUTATION } from "@/store/services/graphql.queries";
 import {
   setFolderLoading,
   setFolderContents,
   appendFolderChats,
   updateFolder,
   removeFolder,
-  removeFolderChat,
 } from "@/store/slices/folderSlice";
-import { updateChat, removeChat } from "@/store/slices/chatSlice";
-import { Chat, ChatFolder } from "@/types/graphql";
+import { ChatFolder } from "@/types/graphql";
 import { NewFolderModal } from "./NewFolderModal";
-import { MoveToChatModal } from "./MoveToChatModal";
 import { FolderColorPicker } from "./FolderColorPicker";
+import { DraggableChatRow } from "./DraggableChatRow";
 import { CHAT_PAGE_SIZE } from "@/lib/config";
 
 import classes from "./ChatsNavSection.module.scss";
@@ -54,8 +42,6 @@ interface FolderItemProps {
 export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navbarToggle }) => {
   const { t } = useTranslation();
   const theme = useMantineTheme();
-  const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useAppDispatch();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -64,12 +50,6 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [newSubfolderOpen, setNewSubfolderOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [editingChatId, setEditingChatId] = useState<string | null>(null);
-  const [editedChatTitle, setEditedChatTitle] = useState("");
-  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
-  const [movingChat, setMovingChat] = useState<Chat | null>(null);
-
-  const currentChatId = location.pathname.startsWith("/chat/") ? location.pathname.split("/")[2] : undefined;
 
   const folderChatsData = useAppSelector(state => state.folders.folderChats[folder.id]);
   const folderColor = folder.color ? theme.colors[folder.color]?.[6] : undefined;
@@ -77,6 +57,12 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
 
   const indentPl = `calc(var(--mantine-spacing-sm) + ${depth} * var(--mantine-spacing-sm))`;
   const chatIndentPl = `calc(var(--mantine-spacing-sm) + ${depth + 1} * var(--mantine-spacing-sm))`;
+
+  // Make the folder header a drop target for dragged chats
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `folder-${folder.id}`,
+    data: { type: "folder", folderId: folder.id },
+  });
 
   // Load folder contents on expand
   const [loadFolderContents, { loading: contentLoading }] = useLazyQuery(GET_FOLDER_CONTENTS, {
@@ -91,6 +77,8 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
             chats: contents.chats || [],
             next: contents.next,
             total: contents.total,
+            loading: false,
+            initialLoaded: true,
           })
         );
       }
@@ -101,7 +89,6 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
     },
   });
 
-  // Load more chats in this folder
   const [loadMoreChats, { loading: loadMoreLoading }] = useLazyQuery(GET_FOLDER_CONTENTS, {
     fetchPolicy: "network-only",
     onCompleted: data => {
@@ -148,38 +135,6 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
     },
   });
 
-  const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
-    onCompleted: data => {
-      dispatch(updateChat(data.updateChat));
-      setEditingChatId(null);
-    },
-    onError: error => {
-      notifications.show({
-        title: t("common.error"),
-        message: error.message || t("chat.failedToRename"),
-        color: "red",
-      });
-    },
-  });
-
-  const [deleteChatMutation, { loading: deleteChatLoading }] = useMutation(DELETE_CHAT_MUTATION, {
-    onCompleted: (_, options) => {
-      const deletedId = options?.variables?.id;
-      if (deletedId) {
-        dispatch(removeChat(deletedId));
-        dispatch(removeFolderChat(deletedId));
-      }
-      setDeletingChatId(null);
-    },
-    onError: error => {
-      notifications.show({
-        title: t("common.error"),
-        message: error.message || t("chat.failedToDelete"),
-        color: "red",
-      });
-    },
-  });
-
   const handleToggle = () => {
     const newOpen = !isOpen;
     setIsOpen(newOpen);
@@ -199,21 +154,6 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
     }
   };
 
-  const handleChatRenameSubmit = (chatId: string) => {
-    if (editedChatTitle.trim()) {
-      updateChatMutation({ variables: { id: chatId, input: { title: editedChatTitle.trim() } } });
-    } else {
-      setEditingChatId(null);
-    }
-  };
-
-  const handleDeleteChat = () => {
-    if (deletingChatId) {
-      deleteChatMutation({ variables: { id: deletingChatId } });
-    }
-  };
-
-  // Direct children only (top-level folder expansion returns all descendants)
   const directSubfolders = useMemo(
     () => (folderChatsData?.subfolders || []).filter(f => f.parentId === folder.id),
     [folderChatsData, folder.id]
@@ -226,7 +166,8 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
 
   return (
     <>
-      <div className={classes.chatItem}>
+      {/* Folder header row — also the primary drop target */}
+      <div ref={setDropRef} className={`${classes.chatItem} ${isOver ? classes.dropTarget : ""}`}>
         {isRenaming ? (
           <TextInput
             value={renameValue}
@@ -319,74 +260,7 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
               ))}
 
               {folderChats.map(chat => (
-                <div key={chat.id} className={classes.chatItem}>
-                  {editingChatId === chat.id ? (
-                    <TextInput
-                      value={editedChatTitle}
-                      onChange={e => setEditedChatTitle(e.currentTarget.value)}
-                      autoFocus
-                      style={{ paddingLeft: chatIndentPl, flex: 1 }}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") handleChatRenameSubmit(chat.id);
-                        if (e.key === "Escape") setEditingChatId(null);
-                      }}
-                      onBlur={() => setTimeout(() => setEditingChatId(null), 200)}
-                    />
-                  ) : (
-                    <>
-                      <NavLink
-                        active={chat.id === currentChatId}
-                        label={chat.title || t("chat.untitledChat")}
-                        leftSection={<IconMessage size={16} />}
-                        onClick={() => {
-                          navbarToggle?.();
-                          navigate(`/chat/${chat.id}`);
-                        }}
-                        p="xs"
-                        pl={chatIndentPl}
-                        m="0"
-                      />
-                      <Menu position="right" withArrow arrowPosition="center">
-                        <Menu.Target>
-                          <ActionIcon size="sm" onClick={e => e.stopPropagation()}>
-                            <IconDots size={14} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item
-                            leftSection={chat.isPinned ? <IconPinFilled size={14} /> : <IconPin size={14} />}
-                            onClick={() =>
-                              updateChatMutation({
-                                variables: { id: chat.id, input: { isPinned: !chat.isPinned } },
-                              })
-                            }
-                          >
-                            {chat.isPinned ? t("chat.unpin") : t("chat.pin")}
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconEdit size={14} />}
-                            onClick={() => {
-                              setEditingChatId(chat.id);
-                              setEditedChatTitle(chat.title || "");
-                            }}
-                          >
-                            {t("chat.rename")}
-                          </Menu.Item>
-                          <Menu.Item leftSection={<IconFolderSymlink size={14} />} onClick={() => setMovingChat(chat)}>
-                            {t("chat.moveToFolder")}
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconTrash size={14} />}
-                            color="red"
-                            onClick={() => setDeletingChatId(chat.id)}
-                          >
-                            {t("common.delete")}
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </>
-                  )}
-                </div>
+                <DraggableChatRow key={chat.id} chat={chat} pl={chatIndentPl} navbarToggle={navbarToggle} />
               ))}
 
               {folderChatsData?.next != null && (
@@ -428,19 +302,6 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
         cancelLabel={t("common.cancel")}
         isLoading={deleteLoading}
       />
-
-      <DeleteConfirmationModal
-        isOpen={!!deletingChatId}
-        onClose={() => setDeletingChatId(null)}
-        onConfirm={handleDeleteChat}
-        title={t("chat.deleteChatTitle")}
-        message={t("chat.deleteChatMessage")}
-        confirmLabel={t("common.delete")}
-        cancelLabel={t("common.cancel")}
-        isLoading={deleteChatLoading}
-      />
-
-      {movingChat && <MoveToChatModal isOpen onClose={() => setMovingChat(null)} chat={movingChat} />}
     </>
   );
 };

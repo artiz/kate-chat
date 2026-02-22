@@ -5,7 +5,6 @@
   gap: 0;
   position: relative;
   width: 100%;
-  padding-left: 0.5rem;
 
   :global .mantine-ActionIcon-root {
     position: absolute;
@@ -21,6 +20,11 @@
     overflow: hidden;
     white-space: nowrap;
   }
+
+  :global .mantine-NavLink-root {
+    padding-block: 0;
+    padding: 0;
+  }
 }
 
 .chatItem:hover {
@@ -29,10 +33,66 @@
   }
 }
 
+.dragHandle {
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--mantine-color-dimmed);
+  touch-action: none;
+  position: relative;
+
+  svg:first-child {
+    transition: opacity 0.15s ease;
+  }
+
+  svg:last-child {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.chatItem:hover .dragHandle {
+  svg:first-child {
+    opacity: 0;
+  }
+  svg:last-child {
+    opacity: 1;
+  }
+}
+
+.dropTarget {
+  outline: 2px solid var(--mantine-color-blue-5);
+  border-radius: 4px;
+  outline-offset: -2px;
+}
+
+.unpinnedChatsContainer {
+  min-height: 2rem;
+}
+
 @media (max-width: 640px) {
   .chatItem {
     :global .mantine-ActionIcon-root {
       opacity: 1;
+    }
+  }
+}
+
+@media (hover: none) {
+  .dragHandle {
+    cursor: default;
+
+    svg:last-child {
+      display: none;
     }
   }
 }

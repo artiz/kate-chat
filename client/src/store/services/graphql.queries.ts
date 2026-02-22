@@ -475,16 +475,6 @@ export const BASE_FOLDER_FRAGMENT = `
   updatedAt
 `;
 
-export const GET_FOLDERS = gql`
-  query GetFolders {
-    getFolders {
-      folders {
-        ${BASE_FOLDER_FRAGMENT}
-      }
-    }
-  }
-`;
-
 export const GET_ALL_FOLDERS = gql`
   query GetAllFolders {
     getAllFolders {

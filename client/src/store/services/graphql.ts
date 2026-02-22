@@ -203,7 +203,7 @@ export const graphqlApi = api.injectEndpoints({
                 next
               }
 
-              folders: getFolders {
+              folders: getFolders(topLevelOnly: true) {
                 folders {
                   id
                   name

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Chat, ChatFolder } from "@/types/graphql";
 import { logout } from "..";
+import { init } from "i18next";
 
 interface FolderExpandedData {
   subfolders: ChatFolder[];
@@ -8,6 +9,7 @@ interface FolderExpandedData {
   next?: number;
   total?: number;
   loading: boolean;
+  initialLoaded?: boolean;
 }
 
 interface FoldersState {
@@ -73,16 +75,14 @@ const folderSlice = createSlice({
     },
     setFolderContents(
       state,
-      action: PayloadAction<{
-        folderId: string;
-        subfolders: ChatFolder[];
-        chats: Chat[];
-        next?: number;
-        total?: number;
-      }>
+      action: PayloadAction<
+        FolderExpandedData & {
+          folderId: string;
+        }
+      >
     ) {
-      const { folderId, subfolders, chats, next, total } = action.payload;
-      state.folderChats[folderId] = { subfolders, chats, next, total, loading: false };
+      const { folderId, subfolders, chats, next, total, initialLoaded } = action.payload;
+      state.folderChats[folderId] = { subfolders, chats, next, total, loading: false, initialLoaded };
     },
     appendFolderChats(
       state,

@@ -41,6 +41,7 @@ import {
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
 import { PinnedChatsSection } from "./PinnedChatsSection";
+import { ChatDndProvider } from "./ChatDndContext";
 import { UserRole } from "@/store/slices/userSlice";
 import { getClientNavLinks, NavLinkIcon } from "@/global-config";
 
@@ -288,10 +289,13 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
       )}
 
       <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12">
-        <PinnedChatsSection navbarToggle={navbarToggle} expanded={expanded} />
-        <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} onToggleExpand={onToggleExpand} />
+        <ChatDndProvider>
+          <PinnedChatsSection navbarToggle={navbarToggle} expanded={expanded} />
+          <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} onToggleExpand={onToggleExpand} />
+        </ChatDndProvider>
       </AppShell.Section>
-      <AppShell.Section p="sm">
+
+      <AppShell.Section p="sm" className={styles.footer}>
         <Group justify={expanded ? "flex-start" : "center"} gap="sm">
           {navLinks.map(link => (
             <Tooltip key={link.url} label={link.tooltip} position="right">

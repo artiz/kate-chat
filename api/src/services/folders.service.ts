@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { FindOptionsWhere, IsNull, Repository } from "typeorm";
 import { Chat, ChatFolder } from "@/entities";
 import { getRepository } from "@/config/database";
 import { CreateFolderInput, GetFolderContentsInput, UpdateFolderInput } from "@/types/graphql/inputs";
@@ -16,11 +16,17 @@ export class FoldersService {
     this.chatRepository = getRepository(Chat);
   }
 
-  public async getFolders(user: TokenPayload): Promise<GqlFoldersList> {
+  public async getFolders(user: TokenPayload, topLevelOnly?: boolean): Promise<GqlFoldersList> {
+    const where: FindOptionsWhere<ChatFolder> = { userId: user.userId };
+    if (topLevelOnly) {
+      where.parentId = IsNull();
+    }
+
     const folders = await this.folderRepository.find({
-      where: { userId: user.userId, parentId: undefined },
+      where,
       order: { createdAt: "ASC" },
     });
+
     return { folders };
   }
 
