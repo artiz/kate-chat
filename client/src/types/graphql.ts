@@ -172,10 +172,31 @@ export interface GetInitialDataResponse {
       total: number;
       next: number | undefined;
     };
+    folders: {
+      folders: ChatFolder[];
+    };
     appConfig: ApplicationConfig;
     getMCPServers?: {
       servers: MCPServer[];
     };
+  };
+}
+
+export interface GetFolderContentsResponse {
+  getFolderContents: {
+    subfolders: ChatFolder[];
+    chats: Chat[];
+    next?: number;
+    total?: number;
+  };
+}
+
+export interface GetFoldersResponse {
+  getFolders: {
+    folders: ChatFolder[];
+  };
+  getAllFolders?: {
+    folders: ChatFolder[];
   };
 }
 
@@ -316,6 +337,16 @@ export interface ChatSettings {
   thinkingBudget?: number;
 }
 
+export interface ChatFolder {
+  id: string;
+  name: string;
+  color?: string;
+  parentId?: string;
+  topParentId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Chat {
   id: string;
   title: string;
@@ -324,6 +355,7 @@ export interface Chat {
   modelId?: string;
   isPristine?: boolean;
   isPinned?: boolean;
+  folderId?: string;
   messagesCount: number;
   lastBotMessage?: string;
   lastBotMessageId?: string;

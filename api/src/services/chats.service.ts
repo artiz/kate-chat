@@ -33,11 +33,7 @@ export class ChatsService {
   }
 
   public async getChats(input: GetChatsInput, user: TokenPayload): Promise<GqlChatsList> {
-    const { from = 0, limit = 20, searchTerm, pinned } = input;
-
-    const total = await this.chatRepository.countBy({
-      user: { id: user.userId },
-    });
+    const { from = 0, limit = 20, searchTerm, pinned, folderId } = input;
 
     let query = this.chatRepository.createQueryBuilder("chat").where({ userId: user.userId });
 
@@ -46,7 +42,20 @@ export class ChatsService {
     }
     if (pinned !== undefined) {
       query = query.andWhere({ isPinned: pinned });
+      // When fetching pinned chats without a specific folder, only return those not in any folder
+      if (pinned && folderId === undefined) {
+        query = query.andWhere("chat.folderId IS NULL");
+      }
     }
+    if (folderId !== undefined) {
+      if (folderId === null) {
+        query = query.andWhere("chat.folderId IS NULL");
+      } else {
+        query = query.andWhere({ folderId });
+      }
+    }
+
+    const total = await query.getCount();
 
     const chats = await query
       .addSelect(sq => {
@@ -73,8 +82,8 @@ export class ChatsService {
           .limit(1);
       }, "chat_lastBotMessageId")
       .leftJoinAndSelect("chat.user", "user")
-      .skip(pinned ? 0 : from)
-      .take(pinned ? 300 : limit)
+      .skip(from)
+      .take(limit)
       .orderBy("chat.updatedAt", "DESC")
       .getMany();
 

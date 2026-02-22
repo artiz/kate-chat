@@ -1,5 +1,5 @@
 import { ObjectType, Field, ID } from "type-graphql";
-import { User, Chat, Message, Model, Document, MCPServer } from "@/entities";
+import { User, Chat, ChatFolder, Message, Model, Document, MCPServer } from "@/entities";
 import { ApiProvider, CredentialSourceType, CredentialType, DocumentStatus, MessageRole, MessageType } from "../api";
 
 @ObjectType()
@@ -411,6 +411,28 @@ export class DocumentsResponse {
 
   @Field()
   hasMore: boolean;
+}
+
+// Chat Folder Responses
+@ObjectType()
+export class GqlFoldersList {
+  @Field(() => [ChatFolder])
+  folders: ChatFolder[];
+}
+
+@ObjectType()
+export class GqlFolderContents {
+  @Field(() => [ChatFolder])
+  subfolders: ChatFolder[];
+
+  @Field(() => [Chat])
+  chats: Chat[];
+
+  @Field({ nullable: true })
+  next?: number;
+
+  @Field({ nullable: true })
+  total?: number;
 }
 
 // MCP Server Responses

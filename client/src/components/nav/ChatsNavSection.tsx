@@ -10,6 +10,7 @@ import {
   IconMessage2Code,
   IconPin,
   IconPinFilled,
+  IconFolderSymlink,
 } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
@@ -18,11 +19,14 @@ import { DeleteConfirmationModal, sortItemsBySections } from "@katechat/ui";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION, GET_CHATS } from "@/store/services/graphql.queries";
 import { addChats, removeChat, updateChat } from "@/store/slices/chatSlice";
+import { MoveToChatModal } from "./MoveToChatModal";
 
 import classes from "./ChatsNavSection.module.scss";
 import accordionClasses from "./MenuAccordion.module.scss";
 import { Chat, GetChatsResponse } from "@/types/graphql";
 import { CHAT_PAGE_SIZE } from "@/lib/config";
+import { updateFolderChat } from "@/store/slices/folderSlice";
+import { useLocalStorage } from "@mantine/hooks";
 
 const CHATS_TO_SHOW_WHEN_COLLAPSED = 10;
 
@@ -41,7 +45,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
   const [editingChatId, setEditingChatId] = useState<string | undefined>();
   const [deletingChatId, setDeletingChatId] = useState<string | undefined>();
   const [editedTitle, setEditedTitle] = useState<string>("");
-
+  const [movingChat, setMovingChat] = useState<Chat | undefined>();
   const { chats, loading, error, next } = useAppSelector(state => state.chats);
 
   const sortedChats = useMemo(() => {
@@ -55,9 +59,8 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
     ago30Days.setDate(ago30Days.getDate() - 30);
 
     return sortItemsBySections(
-      chats.filter(chat => !chat.isPristine),
+      chats.filter(chat => !chat.isPristine && !chat.isPinned),
       [
-        { label: t("chat.pinned"), icon: <IconPin />, selector: chat => !!chat.isPinned },
         {
           label: t("chat.today"),
           selector: (ch, dt) =>
@@ -78,6 +81,11 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
       ]
     );
   }, [chats, next, t]);
+
+  const [openHistoryItems, setOpenHistoryItems] = useLocalStorage<string[]>({
+    key: "chat-history-menu",
+    defaultValue: sortedChats.map(block => block.label),
+  });
 
   // Mutations
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
@@ -100,6 +108,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
           cache.evict({ id: cacheId });
           cache.gc();
           dispatch(updateChat(data.updateChat));
+          dispatch(updateFolderChat(data.updateChat));
         }
       }
     },
@@ -306,7 +315,8 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
       p="0"
       variant="default"
       chevronSize="lg"
-      defaultValue={sortedChats.map(block => block.label)}
+      value={openHistoryItems}
+      onChange={setOpenHistoryItems}
       classNames={accordionClasses}
     >
       {sortedChats.map(block => (
@@ -363,6 +373,15 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
                           {t("chat.rename")}
                         </Menu.Item>
                         <Menu.Item
+                          leftSection={<IconFolderSymlink size={14} />}
+                          onClick={e => {
+                            e.stopPropagation();
+                            setMovingChat(chat);
+                          }}
+                        >
+                          {t("chat.moveToFolder")}
+                        </Menu.Item>
+                        <Menu.Item
                           leftSection={<IconTrash size={14} />}
                           color="red"
                           onClick={e => handleDeleteClick(e, chat.id)}
@@ -397,6 +416,8 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
         cancelLabel={t("common.cancel")}
         isLoading={deleteLoading}
       />
+
+      {movingChat && <MoveToChatModal isOpen onClose={() => setMovingChat(undefined)} chat={movingChat} />}
     </Accordion>
   );
 };

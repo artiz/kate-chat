@@ -147,6 +147,9 @@ export class UpdateChatInput {
 
   @Field({ nullable: true })
   isPinned?: boolean;
+
+  @Field({ nullable: true })
+  folderId?: string;
 }
 
 @InputType()
@@ -225,6 +228,9 @@ export class GetChatsInput {
 
   @Field({ nullable: true })
   pinned?: boolean;
+
+  @Field({ nullable: true })
+  folderId?: string;
 }
 
 @InputType()
@@ -476,4 +482,38 @@ export class TestMCPToolInput {
 
   @Field({ nullable: true })
   argsJson?: string; // JSON string of tool arguments
+}
+
+// Chat Folder Inputs
+@InputType()
+export class CreateFolderInput {
+  @Field()
+  name: string;
+
+  @Field({ nullable: true })
+  color?: string;
+
+  @Field({ nullable: true })
+  parentId?: string;
+}
+
+@InputType()
+export class UpdateFolderInput {
+  @Field({ nullable: true })
+  name?: string;
+
+  @Field({ nullable: true })
+  color?: string;
+}
+
+@InputType()
+export class GetFolderContentsInput {
+  @Field()
+  folderId: string;
+
+  @Field({ nullable: true, defaultValue: 0 })
+  from?: number;
+
+  @Field({ nullable: true, defaultValue: 25 })
+  limit?: number;
 }

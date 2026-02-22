@@ -31,6 +31,7 @@ export const BASE_CHAT_FRAGMENT = `
         title
         modelId
         isPristine
+        isPinned
         messagesCount
         createdAt
         updatedAt
@@ -244,6 +245,7 @@ export const UPDATE_CHAT_MUTATION = gql`
       modelId
       isPristine
       isPinned
+      folderId
       messagesCount
       settings {
         systemPrompt
@@ -449,13 +451,93 @@ export const GET_CHATS = gql`
         id
         title
         isPristine
+        isPinned
+        folderId
         modelId
         messagesCount
         updatedAt
         lastBotMessage
         lastBotMessageId
       }
+      total
+      next
     }
+  }
+`;
+
+export const BASE_FOLDER_FRAGMENT = `
+  id
+  name
+  color
+  parentId
+  topParentId
+  createdAt
+  updatedAt
+`;
+
+export const GET_FOLDERS = gql`
+  query GetFolders {
+    getFolders {
+      folders {
+        ${BASE_FOLDER_FRAGMENT}
+      }
+    }
+  }
+`;
+
+export const GET_ALL_FOLDERS = gql`
+  query GetAllFolders {
+    getAllFolders {
+      folders {
+        ${BASE_FOLDER_FRAGMENT}
+      }
+    }
+  }
+`;
+
+export const GET_FOLDER_CONTENTS = gql`
+  query GetFolderContents($input: GetFolderContentsInput!) {
+    getFolderContents(input: $input) {
+      subfolders {
+        ${BASE_FOLDER_FRAGMENT}
+      }
+      chats {
+        id
+        title
+        isPristine
+        isPinned
+        folderId
+        modelId
+        messagesCount
+        updatedAt
+        lastBotMessage
+        lastBotMessageId
+      }
+      next
+      total
+    }
+  }
+`;
+
+export const CREATE_FOLDER_MUTATION = gql`
+  mutation CreateFolder($input: CreateFolderInput!) {
+    createFolder(input: $input) {
+      ${BASE_FOLDER_FRAGMENT}
+    }
+  }
+`;
+
+export const UPDATE_FOLDER_MUTATION = gql`
+  mutation UpdateFolder($id: ID!, $input: UpdateFolderInput!) {
+    updateFolder(id: $id, input: $input) {
+      ${BASE_FOLDER_FRAGMENT}
+    }
+  }
+`;
+
+export const DELETE_FOLDER_MUTATION = gql`
+  mutation DeleteFolder($id: ID!) {
+    deleteFolder(id: $id)
   }
 `;
 
@@ -491,6 +573,7 @@ export const GET_CHAT_MESSAGES = gql`
       hasMore
       chat {
         ...BaseChat
+        folderId
       }
     }
   }

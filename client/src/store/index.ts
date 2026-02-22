@@ -6,6 +6,9 @@ import authReducer from "./slices/authSlice";
 import userReducer from "./slices/userSlice";
 import modelReducer from "./slices/modelSlice";
 import chatReducer from "./slices/chatSlice";
+import folderReducer from "./slices/folderSlice";
+import { Chat } from "@/types/graphql";
+import { useMemo } from "react";
 
 export const logout = createAction("logout");
 
@@ -16,6 +19,7 @@ export const store = configureStore({
     user: userReducer,
     models: modelReducer,
     chats: chatReducer,
+    folders: folderReducer,
   },
   middleware: getDefaultMiddleware => getDefaultMiddleware().concat(api.middleware),
 });
@@ -27,3 +31,27 @@ export type AppDispatch = typeof store.dispatch;
 
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+export const useChat = (id: string): Chat | undefined => {
+  const { chats, pinnedChats } = useAppSelector(state => state.chats);
+  const folderChats = useAppSelector(state => state.folders.folderChats);
+
+  const chat = useMemo(() => {
+    // Check main chat list first
+    let chat = chats.find(c => c.id === id);
+    if (chat) return chat;
+
+    chat = pinnedChats.find(c => c.id === id);
+    if (chat) return chat;
+
+    // If not found, check folder chats
+    for (const folderId in folderChats) {
+      const found = folderChats[folderId].chats.find(c => c.id === id);
+      if (found) return found;
+    }
+
+    return undefined;
+  }, [id, chats, pinnedChats, folderChats]);
+
+  return chat;
+};

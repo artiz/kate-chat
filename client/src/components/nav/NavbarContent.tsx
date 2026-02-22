@@ -40,6 +40,7 @@ import {
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
+import { PinnedChatsSection } from "./PinnedChatsSection";
 import { UserRole } from "@/store/slices/userSlice";
 import { getClientNavLinks, NavLinkIcon } from "@/global-config";
 
@@ -56,9 +57,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useLocalStorage<string>({
+  const [menuOpen, setMenuOpen] = useLocalStorage<string[]>({
     key: "settings-menu",
-    defaultValue: "",
+    defaultValue: [],
   });
 
   // Get chats from Redux store
@@ -163,8 +164,8 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
               variant="default"
               chevronSize="lg"
               classNames={accordionClasses}
-              value={menuOpen?.split(",").filter(Boolean)}
-              onChange={v => setMenuOpen(v ? v.join(",") : "")}
+              value={menuOpen}
+              onChange={setMenuOpen}
             >
               {/* Settings Section */}
               <Accordion.Item key="settings" value="settings">
@@ -287,6 +288,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
       )}
 
       <AppShell.Section grow component={ScrollArea} type="auto" scrollbarSize="12">
+        <PinnedChatsSection navbarToggle={navbarToggle} expanded={expanded} />
         <ChatsNavSection navbarToggle={navbarToggle} expanded={expanded} onToggleExpand={onToggleExpand} />
       </AppShell.Section>
       <AppShell.Section p="sm">

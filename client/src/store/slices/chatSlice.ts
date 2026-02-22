@@ -8,6 +8,10 @@ interface ChatsState {
   error: string | null;
   next: number | undefined;
   total: number;
+  // Pinned chats without a folder (for the sidebar pinned section)
+  pinnedChats: Chat[];
+  pinnedNext: number | undefined;
+  pinnedTotal: number;
 }
 
 const initialState: ChatsState = {
@@ -16,6 +20,9 @@ const initialState: ChatsState = {
   error: null,
   next: undefined,
   total: 0,
+  pinnedChats: [],
+  pinnedNext: undefined,
+  pinnedTotal: 0,
 };
 
 const chatSlice = createSlice({
@@ -37,23 +44,47 @@ const chatSlice = createSlice({
       state.next = action.payload.next;
       state.error = null;
     },
+    setPinnedChats(state, action: PayloadAction<GetChatsResponse["getChats"]>) {
+      state.pinnedChats = action.payload.chats;
+      state.pinnedTotal = action.payload.total;
+      state.pinnedNext = action.payload.next;
+    },
+    addPinnedChats(state, action: PayloadAction<GetChatsResponse["getChats"]>) {
+      const existingIds = new Set(state.pinnedChats.map((c: Chat) => c.id));
+      const newChats = action.payload.chats.filter(c => !existingIds.has(c.id));
+      state.pinnedChats = [...state.pinnedChats, ...newChats];
+      state.pinnedTotal = action.payload.total;
+      state.pinnedNext = action.payload.next;
+    },
     addChat(state, action: PayloadAction<Chat>) {
       state.chats = [action.payload, ...state.chats];
       state.total += 1;
     },
     updateChat(state, action: PayloadAction<Chat>) {
-      let found = false;
-      state.chats = state.chats.map(chat => {
-        if (chat.id === action.payload.id) {
-          found = true;
-          return { ...chat, ...action.payload };
-        }
-        return chat;
-      });
+      const updatedChat = action.payload;
+      const existsInChats = state.chats.some(c => c.id === updatedChat.id);
+      const existsInPinned = state.pinnedChats.some(c => c.id === updatedChat.id);
 
-      if (!found && action.payload.id) {
-        state.chats = [...state.chats, action.payload];
-        state.total += 1;
+      if (updatedChat.isPinned && !updatedChat.folderId) {
+        // Belongs in pinnedChats (pinned, no folder)
+        state.chats = state.chats.filter(c => c.id !== updatedChat.id);
+        if (existsInPinned) {
+          state.pinnedChats = state.pinnedChats.map(c => (c.id === updatedChat.id ? { ...c, ...updatedChat } : c));
+        } else {
+          state.pinnedChats = [updatedChat, ...state.pinnedChats];
+        }
+      } else if (updatedChat.isPinned && updatedChat.folderId) {
+        // In a folder — remove from both (folderSlice handles folder contents)
+        state.chats = state.chats.filter(c => c.id !== updatedChat.id);
+        state.pinnedChats = state.pinnedChats.filter(c => c.id !== updatedChat.id);
+      } else {
+        // Not pinned — belongs in chats
+        state.pinnedChats = state.pinnedChats.filter(c => c.id !== updatedChat.id);
+        if (existsInChats) {
+          state.chats = state.chats.map(c => (c.id === updatedChat.id ? { ...c, ...updatedChat } : c));
+        } else {
+          state.chats = [updatedChat, ...state.chats];
+        }
       }
     },
     updateChatInfo(
@@ -72,10 +103,17 @@ const chatSlice = createSlice({
         }
         return chat;
       });
+      state.pinnedChats = state.pinnedChats.map(chat => {
+        if (chat.id === action.payload.id) {
+          return { ...chat, ...action.payload };
+        }
+        return chat;
+      });
     },
 
     removeChat(state, action: PayloadAction<string>) {
       state.chats = state.chats.filter(chat => chat.id !== action.payload);
+      state.pinnedChats = state.pinnedChats.filter(chat => chat.id !== action.payload);
     },
 
     setChatLoading(state, action: PayloadAction<boolean>) {
@@ -94,6 +132,16 @@ const chatSlice = createSlice({
   },
 });
 
-export const { setChats, addChats, addChat, updateChat, updateChatInfo, removeChat, setChatLoading, setChatError } =
-  chatSlice.actions;
+export const {
+  setChats,
+  addChats,
+  setPinnedChats,
+  addPinnedChats,
+  addChat,
+  updateChat,
+  updateChatInfo,
+  removeChat,
+  setChatLoading,
+  setChatError,
+} = chatSlice.actions;
 export default chatSlice.reducer;

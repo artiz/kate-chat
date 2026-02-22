@@ -3,10 +3,11 @@ import { useApolloClient, useMutation } from "@apollo/client";
 import { parseChatMessages, parseMarkdown, MessageRole } from "@katechat/ui";
 import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { useAppDispatch, useAppSelector } from "@/store";
+import { useAppDispatch, useAppSelector, useChat } from "@/store";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { pick } from "lodash";
 import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings } from "@/types/graphql";
+import { updateFolderChat } from "@/store/slices/folderSlice";
 
 type RemoveMessagesArgs = {
   messagesToDelete?: Message[];
@@ -35,6 +36,7 @@ export interface UpdateChatInput {
   modelId?: string;
   settings?: ChatSettings;
   tools?: { type: ToolType; name?: string }[];
+  folderId?: string;
 
   lastBotMessage?: string;
   lastBotMessageId?: string;
@@ -51,7 +53,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const [streaming, setStreaming] = useState<boolean>(false);
   const updateTimeout = useRef<NodeJS.Timeout | null>(null);
   const loadTimeout = useRef<NodeJS.Timeout | null>(null);
-  const chats = useAppSelector(state => state.chats.chats);
+  const chat = useChat(chatId || "");
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -94,6 +96,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             }
 
             dispatch(updateChatInState(ch));
+            dispatch(updateFolderChat(ch));
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
@@ -109,11 +112,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     },
     [chatId]
   );
-
-  const chat = useMemo(() => {
-    if (!chatId) return;
-    return chats.find(c => c.id === chatId);
-  }, [chats, chatId]);
 
   const loadMoreMessages = () => {
     if (!chatId || messagesLoading) return;
@@ -218,18 +216,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const updateChat = (id: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => {
     if (!id) return;
 
-    const existing = chats.find(c => c.id === id);
-    if (existing) {
-      dispatch(
-        updateChatInState({
-          ...existing,
-          ...input,
-          settings: { ...existing.settings, ...input.settings },
-        })
-      );
-    } else {
-      dispatch(updateChatInState({ id, messagesCount: 0, description: "", title: "", ...input }));
-    }
+    dispatch(updateChatInState({ id, messagesCount: 0, description: "", title: "", ...input }));
+    dispatch(updateFolderChat({ id, messagesCount: 0, description: "", title: "", ...input }));
 
     if (updateTimeout.current) {
       clearTimeout(updateTimeout.current);
@@ -239,7 +227,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       const request = pick(input, ["title", "description", "modelId", "settings", "tools"]);
 
       if ((request?.settings as any)?.__typename) {
-        delete (request.settings as any).__typename;
+        (request.settings as any).__typename = undefined;
       }
       if (request.tools) {
         request.tools = request.tools.map(t => ({ ...t, __typename: undefined }));
