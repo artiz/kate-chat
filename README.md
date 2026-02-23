@@ -1,6 +1,6 @@
 # KateChat - Universal AI Chat Interface
 
-_KateChat_ is a universal chat bot platform similar to chat.openai.com that can be used as a base for customized chat bots. The platform supports multiple LLM models from various providers and allows switching between them on the fly within a chat session.
+_KateChat_ is a universal chatbot platform similar to chat.openai.com that can be used as a base for customized chatbots. The platform supports multiple LLM models from various providers and allows switching between them on the fly within a chat session.
 
 ![logo](/logo.png)
 
@@ -21,42 +21,39 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## Features
 
-- Multiple chats creation with pristine chat functionality
-- Chat history storage and management, messages editing/deletion
+- Multiple chats creation, chats history, hierarchical folders structure, messages editing/deletion
 - Rich markdown formatting: code blocks, images, MathJax formulas etc.
+- Real-time communication with GraphQL subscriptions and WebSocket
 - Localization
-- "Switch model"/"Call other model" logic to process current chat messages with another model
-- Request cancellation to stop reasoning or web search
-- Parallel call for assistant message against other models to [compare results](#screenshots)
-- Images input support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on localdev env)
+- "Switch model"/"Call other model" logic to process selected chat messages with another [model](#screenshots)
+- LLM tools (Web Search, Code Interpreter, Reasoning) support, custom WebSearch tool implemented using Yandex Search API
+- Request statistics (input/output tokens, tool calls), request cancellation to stop reasoning or web search
+- External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
+- Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
 - Client-side Python code [execution](#python-code-run-in-browser) with [Pyodide](https://pyodide.org/) 
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
   * Voice-to-voice demo for OpenAI realtime WebRTC API.
 - Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
-- User authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
-- Real-time communication with GraphQL subscriptions
+- External users authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Support for various LLM model Providers:
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
-- Custom OpenAI-compatible REST API endpoint (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
-- External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
-- LLM tools (Web Search, Code Interpreter, Reasoning) support, custom WebSearch tool implemented using Yandex Search API
+- Custom OpenAI-compatible REST API endpoints support (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
 ## TODO
-* Introduce chat folders hierarchy (wuth customized color/icon) under pinned folders, finalize paging for pinned chats
 * Put status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
-* Switch OpenAI "gpt-image..." models to Responses API, use image placeholder, do not wait response in cycle but use 
+* Switch OpenAI "gpt-image..." models to Responses API, do not wait response in cycle but use 
 new `requests` queue  with setTimeout and `publishMessage` with result
 * Google Vertex AI provider support
 * Finish "Forgot password?" logic for local login
-* @katechat/ui chat bot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
+* @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * SerpApi for Web Search (new setting in UI)
 * Python API (FastAPI)
 * MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG
@@ -82,7 +79,7 @@ new `requests` queue  with setTimeout and `publishMessage` with result
 ## Project Structure
 
 The project consists of several parts:
-1. API - Node.js GraphQL API server. Also there is alternative backend API implementation on Rust, Python is in plans.
+1. API - Node.js GraphQL API server. There is also an alternative backend API implementation in Rust; Python is planned.
 2. Client - Universal web interface
 3. Database - any TypeORM compatible RDBMS (PostgreSQL, MySQL, SQLite, etc.)
 4. Redis - for message queue and caching (optional, but recommended for production)
@@ -104,7 +101,7 @@ The project consists of several parts:
 
 ### Prerequisites
 - Node.js (v20+)
-- Connection to LLM, any from:
+- Connection to an LLM, choose any from:
    * AWS Account with [Bedrock](#aws-bedrock-api-connection) access
    * [OpenAI API](#openai-api-connection) Account
    * Yandex Foundation Models [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
@@ -122,8 +119,8 @@ npm run dev
 ```
 
 App will be available at `http://localhost:3000`
-There you could use own OpenAI API key, AWS Bedrock credentials or Yandex FM to connect to cloud models.
-Local Ollama-like models could be added as Custom models.
+There you can use your own OpenAI API key, AWS Bedrock credentials, or Yandex Foundation Models to connect to cloud models.
+Local Ollama-compatible models can be added as Custom models.
 
 ### Production-like environment using Docker
 
@@ -185,14 +182,14 @@ docker compose up redis localstack postgres mysql mssql -d
 npm run migration:generate <migration name>
 ```
 
-* Apply migrations (automated at app start but could be used to test)
+* Apply migrations (automated at app start but can be used to test)
 
 ```bash
 npm run migration:run
 ```
 
 NOTE: do not update more than one table definition at once, sqlite sometimes applies migrations incorrectly due to "temporary_xxx" tables creation.
-NOTE: do not use more then 1 foreign key with ON DELETE CASCADE in one table for MS SQL, or use NO ACTION as fallback:
+NOTE: do not use more than 1 foreign key with ON DELETE CASCADE in one table for MS SQL, or use NO ACTION as fallback:
 ```
 @ManyToOne(() => Message, { onDelete: DB_TYPE == "mssql" ? "NO ACTION" : "CASCADE" })
 ```
@@ -249,7 +246,7 @@ docker run -it --rm --pid=host --env-file=./document-processor/.env \
 
 ## Environment setup
 
-App could be tuned for your needs with environment variables:
+The app can be tuned for your needs with environment variables:
 
 ```bash
 cp api/.env.example api/.env
@@ -401,7 +398,7 @@ For running local models with Ollama:
    - Visit [Ollama website](https://ollama.ai/)
    - Download and install Ollama
    - Pull a model: `ollama pull llama3`
-   - Pull a model: `ollama run llama3`
+   - Run a model: `ollama run llama3`
 
 2. **Configure Custom Model**
    - Create a new Model entry with:
