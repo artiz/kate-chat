@@ -136,6 +136,10 @@
     "failedToUploadDocs": "上传文档失败",
     "imagesCount": "图片数量",
     "imagesCountTooltip": "生成图片限制。",
+    "imageQuality": "图片质量",
+    "imageQualityTooltip": "生成图片的质量。",
+    "imageOrientation": "图片方向",
+    "imageOrientationTooltip": "生成图片的方向。",
     "inputOutputTokens": "输入令牌：{{input}}, 输出令牌：{{output}}",
     "last30Days": "最近 30 天",
     "last7Days": "最近 7 天",
@@ -193,6 +197,18 @@
     "yesterday": "昨天",
     "you": "你",
     "yourChats": "你的聊天"
+  },
+  "chatSettings": {
+    "imageQuality": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "imageOrientation": {
+      "landscape": "横向",
+      "portrait": "纵向",
+      "square": "正方形"
+    }
   },
   "common": {
     "actions": "操作",

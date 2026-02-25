@@ -47,6 +47,8 @@ import { FileContentLoader } from "@/services/data";
 import { ok } from "@/utils/assert";
 import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
+import { EndEvent$ } from "@aws-sdk/client-s3";
+import e from "express";
 
 const logger = createLogger(__filename);
 
@@ -416,7 +418,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     }
 
     const { modelId, settings = {} } = inputRequest;
-    const { imagesCount } = settings;
+    const { imagesCount, imageQuality, imageOrientation = "square" } = settings;
 
     // Extract the prompt from the last user message
     const userMessages = messages.filter(msg => msg.role === MessageRole.USER);
@@ -437,28 +439,78 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
     const n = modelId === "dall-e-3" ? 1 : Math.min(imagesCount || 1, 10);
     const stream = Boolean(!modelId.includes("dall-e") && callbacks && n == 1); // DALL-E models do not support streaming responses, while gpt-image models do
+    let size: OpenAI.Images.ImageGenerateParams["size"] = "1024x1024" as const;
+    let quality: OpenAI.Images.ImageGenerateParams["quality"] = "auto";
 
-    // TODO: add size option:
-    // The size of the generated images. Must be one of `1024x1024`, `1536x1024`
-    // (landscape), `1024x1536` (portrait), or `auto` (default value) for
-    // `gpt-image-1`, one of `256x256`, `512x512`, or `1024x1024` for `dall-e-2`, and
-    // one of `1024x1024`, `1792x1024`, or `1024x1792` for `dall-e-3`.
-    // size?:
-    //   | 'auto'
-    //   | '1024x1024'
-    //   | '1536x1024'
-    //   | '1024x1536'
-    //   | '256x256'
-    //   | '512x512'
-    //   | '1792x1024'
-    //   | '1024x1792'
-    //   | null;
+    if (imageQuality) {
+      if (modelId.includes("dall-e")) {
+        if (imageQuality === "low") {
+          if (modelId === "dall-e-2") {
+            size = "256x256";
+          }
+          quality = "standard";
+        } else if (imageQuality === "medium") {
+          if (modelId === "dall-e-2") {
+            size = "512x512";
+          }
+          quality = "standard";
+        } else if (imageQuality === "high") {
+          if (modelId === "dall-e-3") {
+            quality = "hd";
+          } else if (modelId === "dall-e-2") {
+            size = "1024x1024";
+          }
+        }
+      } else {
+        quality = imageQuality as OpenAI.Images.ImageGenerateParams["quality"];
+        switch (imageQuality) {
+          case "low":
+            quality = "low";
+            break;
+          case "medium":
+            quality = "medium";
+            break;
+          case "high":
+            quality = "high";
+            break;
+          default:
+            quality = "auto";
+        }
+      }
+    }
+
+    if (imageOrientation && modelId !== "dall-e-2") {
+      if (modelId === "dall-e-3") {
+        switch (imageOrientation) {
+          case "landscape":
+            size = "1792x1024";
+            break;
+          case "portrait":
+            size = "1024x1792";
+            break;
+          default:
+            size = "1024x1024";
+        }
+      } else {
+        switch (imageOrientation) {
+          case "landscape":
+            size = "1536x1024";
+            break;
+          case "portrait":
+            size = "1024x1536";
+            break;
+          default:
+            size = "1024x1024";
+        }
+      }
+    }
 
     let params: OpenAI.Images.ImageGenerateParams = {
       model: modelId,
       prompt,
       n,
-      size: "1024x1024",
+      size,
+      quality,
       response_format: ["dall-e-2", "dall-e-3"].includes(modelId) ? "b64_json" : undefined,
     };
 

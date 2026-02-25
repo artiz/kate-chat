@@ -90,3 +90,7 @@ export enum MCPAuthType {
   BEARER = "BEARER",
   OAUTH2 = "OAUTH2",
 }
+
+export type ImageQuality = "low" | "medium" | "high";
+
+export type ImageOrientation = "landscape" | "portrait" | "square";

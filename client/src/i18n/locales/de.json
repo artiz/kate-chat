@@ -134,6 +134,10 @@
     },
     "imagesCount": "Bilderanzahl",
     "imagesCountTooltip": "Limit für generierte Bilder.",
+    "imageQuality": "Bildqualität",
+    "imageQualityTooltip": "Die Qualität der generierten Bilder.",
+    "imageOrientation": "Bildausrichtung",
+    "imageOrientationTooltip": "Die Ausrichtung der generierten Bilder.",
     "inputOutputTokens": "Eingabe-Tokens: {{input}}, Ausgabe-Tokens: {{output}}",
     "last30Days": "Letzte 30 Tage",
     "last7Days": "Letzte 7 Tage",
@@ -193,6 +197,18 @@
     "yesterday": "Gestern",
     "you": "Sie",
     "yourChats": "Ihre Chats"
+  },
+  "chatSettings": {
+    "imageQuality": {
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch"
+    },
+    "imageOrientation": {
+      "landscape": "Querformat",
+      "portrait": "Hochformat",
+      "square": "Quadrat"
+    }
   },
   "common": {
     "actions": "Aktionen",

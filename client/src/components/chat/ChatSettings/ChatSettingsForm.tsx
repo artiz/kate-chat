@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Title,
   Slider,
@@ -16,9 +16,17 @@ import {
   Grid,
   Switch,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
+import {
+  IconInfoCircle,
+  IconPhoto,
+  IconPhotoScan,
+  IconPhotoStar,
+  IconRectangle,
+  IconRectangleVertical,
+  IconSquare,
+} from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { ChatSettings, Model, ModelFeature } from "@/types/graphql";
+import { ChatSettings, ImageQuality, ImageOrientation, Model, ModelFeature } from "@/types/graphql";
 
 import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
@@ -29,6 +37,8 @@ export const DEFAULT_CHAT_SETTINGS = {
   maxTokens: 2048,
   topP: 0.9,
   imagesCount: 1,
+  imageQuality: "medium" as const,
+  imageOrientation: "square" as const,
   systemPrompt: "You are a helpful, respectful and honest assistant.",
   thinkingBudget: 3000,
 };
@@ -43,6 +53,8 @@ export function ChatSettingsForm({
   maxTokens = DEFAULT_CHAT_SETTINGS.maxTokens,
   topP = DEFAULT_CHAT_SETTINGS.topP,
   imagesCount = DEFAULT_CHAT_SETTINGS.imagesCount,
+  imageQuality = DEFAULT_CHAT_SETTINGS.imageQuality,
+  imageOrientation = DEFAULT_CHAT_SETTINGS.imageOrientation,
   systemPrompt = DEFAULT_CHAT_SETTINGS.systemPrompt,
   thinking = false,
   thinkingBudget = DEFAULT_CHAT_SETTINGS.thinkingBudget,
@@ -56,6 +68,8 @@ export function ChatSettingsForm({
   const [tokensValue, setTokensValue] = useState<number>(maxTokens);
   const [topPValue, setTopPValue] = useState<number>(topP);
   const [imagesCountValue, setImagesCountValue] = useState<number>(imagesCount);
+  const [imageQualityValue, setImageQualityValue] = useState<ImageQuality>(imageQuality);
+  const [imageOrientationValue, setImageOrientationValue] = useState<ImageOrientation>(imageOrientation);
   const [systemPromptValue, setSystemPromptValue] = useState<string>(systemPrompt);
   const [thinkingValue, setThinkingValue] = useState<boolean>(thinking);
   const [thinkingBudgetValue, setThinkingBudgetValue] = useState<number>(thinkingBudget);
@@ -66,23 +80,40 @@ export function ChatSettingsForm({
     setTokensValue(maxTokens || DEFAULT_CHAT_SETTINGS.maxTokens);
     setTopPValue(topP);
     setImagesCountValue(imagesCount);
+    setImageQualityValue(imageQuality);
+    setImageOrientationValue(imageOrientation);
     setSystemPromptValue(systemPrompt);
     setThinkingValue(thinking);
     setThinkingBudgetValue(thinkingBudget || DEFAULT_CHAT_SETTINGS.thinkingBudget);
-  }, [temperature, maxTokens, topP, imagesCount, systemPrompt, thinking, thinkingBudget]);
+  }, [
+    temperature,
+    maxTokens,
+    topP,
+    imagesCount,
+    imageQuality,
+    imageOrientation,
+    systemPrompt,
+    thinking,
+    thinkingBudget,
+  ]);
 
-  const handleSettingsChange = (settings: ChatSettings) => {
-    onSettingsChange({
-      temperature: tempValue,
-      maxTokens: tokensValue,
-      topP: topPValue,
-      imagesCount: imagesCountValue,
-      systemPrompt: systemPromptValue,
-      thinking: thinkingValue,
-      thinkingBudget: thinkingBudgetValue,
-      ...settings,
-    });
-  };
+  const handleSettingsChange = useCallback(
+    (settings: ChatSettings) => {
+      onSettingsChange({
+        temperature,
+        maxTokens,
+        topP,
+        imagesCount,
+        imageQuality,
+        imageOrientation,
+        systemPrompt,
+        thinking,
+        thinkingBudget,
+        ...settings,
+      });
+    },
+    [temperature, maxTokens, topP, imagesCount, imageQuality, imageOrientation, systemPrompt, thinking, thinkingBudget]
+  );
 
   const handleTemperatureChange = (value: number) => {
     setTempValue(value);
@@ -133,6 +164,22 @@ export function ChatSettingsForm({
     setThinkingBudgetValue(numValue);
     handleSettingsChange({ thinkingBudget: numValue });
   };
+
+  const handleImageQualityChange = useCallback(
+    (value: ImageQuality) => {
+      setImageQualityValue(value);
+      handleSettingsChange({ imageQuality: value });
+    },
+    [handleSettingsChange]
+  );
+
+  const handleImageOrientationChange = useCallback(
+    (value: ImageOrientation) => {
+      setImageOrientationValue(value);
+      handleSettingsChange({ imageOrientation: value });
+    },
+    [handleSettingsChange]
+  );
 
   const isImageGeneration = useMemo(() => model?.type === ModelType.IMAGE_GENERATION, [model?.type]);
   const isReasoning = useMemo(() => model?.features?.includes(ModelFeature.REASONING), [model?.features]);
@@ -256,6 +303,96 @@ export function ChatSettingsForm({
                   { value: 10, label: "10" },
                 ]}
               />
+            </Box>
+          )}
+
+          {isImageGeneration && (
+            <Box m="md" miw="140px" aria-label={t("chat.imageQuality")}>
+              <Group p="apart" mb="md">
+                <Text size="sm">{t("chat.imageQuality")}</Text>
+                <Group gap={5}>
+                  <Tooltip label={t("chat.imageQualityTooltip")} maw="50vw" multiline>
+                    <ActionIcon size="xs" variant="subtle">
+                      <IconInfoCircle size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Group>
+
+              <ActionIcon.Group>
+                <Tooltip label={t("chatSettings.imageQuality.low")}>
+                  <ActionIcon
+                    variant={imageQualityValue === "low" ? "filled" : "default"}
+                    size="lg"
+                    onClick={() => handleImageQualityChange("low")}
+                  >
+                    <IconPhotoScan size={14} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={t("chatSettings.imageQuality.medium")}>
+                  <ActionIcon
+                    variant={imageQualityValue === "medium" ? "filled" : "default"}
+                    size="lg"
+                    onClick={() => handleImageQualityChange("medium")}
+                  >
+                    <IconPhoto size={14} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={t("chatSettings.imageQuality.high")}>
+                  <ActionIcon
+                    variant={imageQualityValue === "high" ? "filled" : "default"}
+                    size="lg"
+                    onClick={() => handleImageQualityChange("high")}
+                  >
+                    <IconPhotoStar size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </ActionIcon.Group>
+            </Box>
+          )}
+
+          {isImageGeneration && (
+            <Box m="md" miw="140px" aria-label={t("chat.imageOrientation")}>
+              <Group p="apart" mb="md">
+                <Text size="sm">{t("chat.imageOrientation")}</Text>
+                <Group gap={5}>
+                  <Tooltip label={t("chat.imageOrientationTooltip")} maw="50vw" multiline>
+                    <ActionIcon size="xs" variant="subtle">
+                      <IconInfoCircle size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Group>
+
+              <ActionIcon.Group>
+                <Tooltip label={t("chatSettings.imageOrientation.landscape")}>
+                  <ActionIcon
+                    variant={imageOrientationValue === "landscape" ? "filled" : "default"}
+                    size="lg"
+                    onClick={() => handleImageOrientationChange("landscape")}
+                  >
+                    <IconRectangle size={14} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={t("chatSettings.imageOrientation.portrait")}>
+                  <ActionIcon
+                    variant={imageOrientationValue === "portrait" ? "filled" : "default"}
+                    size="lg"
+                    onClick={() => handleImageOrientationChange("portrait")}
+                  >
+                    <IconRectangleVertical size={14} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={t("chatSettings.imageOrientation.square")}>
+                  <ActionIcon
+                    variant={imageOrientationValue === "square" ? "filled" : "default"}
+                    size="lg"
+                    onClick={() => handleImageOrientationChange("square")}
+                  >
+                    <IconSquare size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </ActionIcon.Group>
             </Box>
           )}
 

@@ -16,6 +16,7 @@ import { ChatFile } from "./ChatFile";
 import { ChatFolder } from "./ChatFolder";
 import { ChatTool } from "../types/ai.types";
 import { DB_TYPE } from "../config/env";
+import { ImageQuality, ImageOrientation } from "@/types/api";
 
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
@@ -33,6 +34,12 @@ export class ChatSettings {
 
   @Field({ nullable: true })
   imagesCount?: number;
+
+  @Field({ nullable: true })
+  imageQuality?: ImageQuality;
+
+  @Field({ nullable: true })
+  imageOrientation?: ImageOrientation;
 
   @Field({ nullable: true })
   systemPrompt?: string;

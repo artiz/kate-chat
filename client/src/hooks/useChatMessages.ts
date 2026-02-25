@@ -3,10 +3,10 @@ import { useApolloClient, useMutation } from "@apollo/client";
 import { parseChatMessages, parseMarkdown, MessageRole } from "@katechat/ui";
 import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { useAppDispatch, useAppSelector, useChat } from "@/store";
+import { ChatLink, useAppDispatch, useAppSelector, useChat } from "@/store";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { pick } from "lodash";
-import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings } from "@/types/graphql";
+import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings, Chat } from "@/types/graphql";
 import { updateFolderChat } from "@/store/slices/folderSlice";
 
 type RemoveMessagesArgs = {
@@ -17,13 +17,14 @@ type RemoveMessagesArgs = {
 
 type HookResult = {
   messages: Message[] | undefined;
+  chat: Chat | undefined;
   messagesLoading: boolean;
   loadCompleted: boolean;
   streaming: boolean;
   addChatMessage: (message: Message) => void;
   removeMessages: (args: RemoveMessagesArgs) => void;
   loadMoreMessages: () => void;
-  updateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
+  updateChat: (link: ChatLink, input: UpdateChatInput, afterUpdate?: () => void) => void;
 };
 
 interface HookProps {
@@ -51,9 +52,9 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(false);
   const [loadCompleted, setLoadCompleted] = useState<boolean>(false);
   const [streaming, setStreaming] = useState<boolean>(false);
+  const [chat, setChat] = useState<Chat | undefined>(undefined);
   const updateTimeout = useRef<NodeJS.Timeout | null>(null);
   const loadTimeout = useRef<NodeJS.Timeout | null>(null);
-  const chat = useChat(chatId || "");
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -89,11 +90,12 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
               color: "red",
             });
           }
-          // Set chat details from the chat field in getChatMessages
+
           if (ch) {
             if (ch.id !== chatId) {
               return; // If the chat ID doesn't match, do nothing
             }
+            setChat(ch);
 
             dispatch(updateChatInState(ch));
             dispatch(updateFolderChat(ch));
@@ -135,14 +137,14 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   }, [chatId]);
 
   const removeMessages = ({ messagesToDelete, deleteAfter, isEdit = false }: RemoveMessagesArgs) => {
-    if (!chatId) return;
+    if (!chat) return;
 
-    const resetLastBotMessage = (messages: Message[] = []) => {
+    const resetLastBotMessage = (msgs: Message[] = []) => {
       // If the last message was removed, reset the lastBotMessage in chat
-      const lastMsgNdx = messages.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
-      const lastMsg = lastMsgNdx != -1 ? messages[lastMsgNdx] : undefined;
+      const lastMsgNdx = msgs.findLastIndex(m => m.role === MessageRole.ASSISTANT && !m.linkedToMessageId);
+      const lastMsg = lastMsgNdx != -1 ? msgs[lastMsgNdx] : undefined;
       if (chat?.lastBotMessageId && chat.lastBotMessageId !== lastMsg?.id) {
-        updateChat(chatId, {
+        updateChat(chat, {
           ...chat,
           lastBotMessage: lastMsg?.content || "...",
           lastBotMessageId: lastMsg?.id || undefined,
@@ -152,52 +154,52 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     };
 
     if (deleteAfter) {
-      setMessages(prev => {
-        const assistantMessage = prev?.find(
-          msg =>
-            msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id && msg.role === MessageRole.ASSISTANT
-        );
+      const assistantMessage = messages?.find(
+        msg => msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id && msg.role === MessageRole.ASSISTANT
+      );
 
-        const filtered =
-          prev?.filter(msg => {
-            if (isEdit && msg.id === assistantMessage?.id) {
-              return true; // Keep the assistant message if it's an edit, it will be updated with new content
-            }
-            if (msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id) {
-              return false; // Remove messages after the specified message
-            }
+      const filtered =
+        messages?.filter(msg => {
+          if (isEdit && msg.id === assistantMessage?.id) {
+            return true; // Keep the assistant message if it's an edit, it will be updated with new content
+          }
+          if (msg.createdAt >= deleteAfter.createdAt && msg.id !== deleteAfter.id) {
+            return false; // Remove messages after the specified message
+          }
 
-            return true;
-          }) || [];
+          return true;
+        }) || [];
 
-        resetLastBotMessage(filtered);
-        return filtered;
-      });
+      setMessages(filtered);
+      resetLastBotMessage(filtered);
     } else {
       if (!messagesToDelete || messagesToDelete.length === 0) return;
       const messageIds = new Set(messagesToDelete.map(m => m.id));
 
-      setMessages(prev => {
-        if (!prev) return []; // If no messages yet, return empty array
-        // linked one delete
-        const linkedMessages = new Set(messagesToDelete.filter(m => m.linkedToMessageId).map(m => m.linkedToMessageId));
-        if (linkedMessages.size) {
-          return prev.map(msg => {
+      if (!messages) {
+        setMessages([]);
+        return;
+      }
+      // linked one delete
+      const linkedMessages = new Set(messagesToDelete.filter(m => m.linkedToMessageId).map(m => m.linkedToMessageId));
+      if (linkedMessages.size) {
+        setMessages(
+          messages.map(msg => {
             if (linkedMessages.has(msg.id)) {
               return { ...msg, linkedMessages: msg.linkedMessages?.filter(lm => !messageIds.has(lm.id)) };
             }
             return msg;
-          });
-        } else {
-          // Filter out messages that match the IDs to be removed
-          const filtered = prev.filter(msg => !messageIds.has(msg.id));
-          if (filtered.length === prev.length) {
-            return prev;
-          }
-          resetLastBotMessage(filtered);
-          return filtered;
+          })
+        );
+      } else {
+        // Filter out messages that match the IDs to be removed
+        const filtered = messages.filter(msg => !messageIds.has(msg.id));
+        if (filtered.length === messages.length) {
+          return;
         }
-      });
+        setMessages(filtered);
+        resetLastBotMessage(filtered);
+      }
     }
   };
 
@@ -213,11 +215,11 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     },
   });
 
-  const updateChat = (id: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => {
-    if (!id) return;
+  const updateChat = (link: ChatLink, input: UpdateChatInput, afterUpdate?: () => void) => {
+    if (!link) return;
 
-    dispatch(updateChatInState({ id, messagesCount: 0, description: "", title: "", ...input }));
-    dispatch(updateFolderChat({ id, messagesCount: 0, description: "", title: "", ...input }));
+    dispatch(updateChatInState({ ...link, messagesCount: 0, description: "", title: "", ...input }));
+    dispatch(updateFolderChat({ ...link, messagesCount: 0, description: "", title: "", ...input }));
 
     if (updateTimeout.current) {
       clearTimeout(updateTimeout.current);
@@ -234,7 +236,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       }
       updateChatMutation({
         variables: {
-          id,
+          id: link.id,
           input: request,
         },
       });
@@ -299,6 +301,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
   return {
     messages,
+    chat,
     messagesLoading,
     loadCompleted,
     streaming,

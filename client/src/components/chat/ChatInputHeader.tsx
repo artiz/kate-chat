@@ -37,7 +37,7 @@ interface IHeaderProps {
   chatTools?: ChatTool[];
   chatSettings?: ChatSettings;
   selectedModel?: Model;
-  onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
+  onUpdateChat: (input: UpdateChatInput, afterUpdate?: () => void) => void;
   onAutoScroll?: (value: boolean) => void;
 }
 
@@ -108,11 +108,11 @@ export const ChatInputHeader = ({
   }, [selectedMcpServers, mcpServers, mcpAuthStatus]);
 
   const handleModelChange = (modelId: string | null) => {
-    onUpdateChat(chatId, { modelId: modelId || undefined });
+    onUpdateChat({ modelId: modelId || undefined });
   };
 
   const handleSettingsChange = (settings: ChatSettings) => {
-    onUpdateChat(chatId, { settings });
+    onUpdateChat({ settings });
   };
 
   const handleToolToggle = (toolType: ToolType) => {
@@ -139,7 +139,7 @@ export const ChatInputHeader = ({
       });
     }
 
-    onUpdateChat(chatId, { tools: toolsArray });
+    onUpdateChat({ tools: toolsArray });
   };
 
   const handleMcpServerToggle = (serverId: string) => {
@@ -188,7 +188,7 @@ export const ChatInputHeader = ({
       toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
     });
 
-    onUpdateChat(chatId, { tools: toolsArray });
+    onUpdateChat({ tools: toolsArray });
   };
 
   const handleTokenSubmit = () => {

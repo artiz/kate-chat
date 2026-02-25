@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert, Stack } from "@mantine/core";
 import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
-import { useAppSelector, useChat, useChat } from "@/store";
+import { useAppSelector, useChat } from "@/store";
 import {
   assert,
   ModelType,
@@ -45,6 +45,7 @@ import { ChatPluginsContextProvider } from "./ChatPluginsContext";
 import { getClientConfig } from "@/global-config";
 
 import classes from "./Chat.module.scss";
+import { UpdateChatInput } from "@/hooks/useChatMessages";
 
 interface IProps {
   chatId?: string;
@@ -80,17 +81,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
     loadMoreMessages,
     updateChat,
     streaming,
-  } = useChatMessages({
-    chatId,
-  });
+    chat,
+  } = useChatMessages({ chatId });
 
   const { wsConnected, messageMetadata } = useChatSubscription({
     id: chatId,
     resetSending: () => setSending(false),
     addMessage: addChatMessage,
   });
-
-  const chat = useChat(chatId || "");
 
   useEffect(() => {
     if (!chatId) return;
@@ -263,10 +261,19 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return appConfig?.demoMode && (chat?.messagesCount ?? 0) >= (appConfig.maxChatMessages || 0);
   }, [chat, appConfig]);
 
+  const handleChatUpdate = useCallback(
+    (input: UpdateChatInput, afterUpdate?: () => void) => {
+      if (chat) {
+        updateChat(chat, { ...chat, ...input }, afterUpdate);
+      }
+    },
+    [updateChat, chat]
+  );
+
   const handleTitleUpdate = useCallback(() => {
     const title = editedTitle?.trim() || "";
-    if (title && chatId) {
-      updateChat(chatId, { ...chat, title });
+    if (title && chat) {
+      updateChat(chat, { ...chat, title });
       setIsEditingTitle(false);
     }
   }, [editedTitle, chatId, updateChat, chat]);
@@ -494,7 +501,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             chatTools={chat?.tools}
             chatSettings={chat?.settings}
             selectedModel={selectedModel}
-            onUpdateChat={updateChat}
+            onUpdateChat={handleChatUpdate}
             onAutoScroll={messages?.length === 0 ? undefined : handleAutoScroll}
           />
         }
