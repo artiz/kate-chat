@@ -109,6 +109,10 @@ locals {
     {
       name  = "SQS_INDEX_DOCUMENTS_QUEUE"
       value = aws_sqs_queue.index_documents_queue.url
+    },
+    {
+      name  = "SQS_REQUESTS_QUEUE"
+      value = aws_sqs_queue.requests_queue.url
     }
   ]
 
