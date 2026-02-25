@@ -7,6 +7,10 @@
 .content {
   padding: 0 !important;
   margin: 0 !important;
+
+  :global(.mantine-NavLink-root) {
+    padding-inline: var(--mantine-spacing-md) !important;
+  }
 }
 
 .label {
