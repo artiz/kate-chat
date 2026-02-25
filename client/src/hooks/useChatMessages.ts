@@ -218,8 +218,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const updateChat = (link: ChatLink, input: UpdateChatInput, afterUpdate?: () => void) => {
     if (!link) return;
 
-    dispatch(updateChatInState({ ...link, messagesCount: 0, description: "", title: "", ...input }));
-    dispatch(updateFolderChat({ ...link, messagesCount: 0, description: "", title: "", ...input }));
+    dispatch(updateChatInState({ ...link, ...input }));
+    dispatch(updateFolderChat({ ...link, ...input }));
 
     if (updateTimeout.current) {
       clearTimeout(updateTimeout.current);

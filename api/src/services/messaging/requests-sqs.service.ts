@@ -123,7 +123,7 @@ export class RequestsSqsService extends BaseSqsService {
     try {
       const cmd = JSON.parse(sqsMessage.Body) as QueueCommand;
       ok(cmd.payload, "Invalid message payload");
-      ok(cmd.payload.message, "Missing command in message");
+      ok(cmd.payload.message, "Missing message in payload");
 
       const expired = cmd.expiration ? new Date(cmd.expiration) < new Date() : false;
       if (expired) {

@@ -11,7 +11,6 @@ import {
   EmbeddingsResponse,
   ModelMessage,
   ProviderInfo,
-  ChatResponseStatus,
   MessageMetadata,
 } from "@/types/ai.types";
 import {
@@ -47,8 +46,6 @@ import { FileContentLoader } from "@/services/data";
 import { ok } from "@/utils/assert";
 import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
-import { EndEvent$ } from "@aws-sdk/client-s3";
-import e from "express";
 
 const logger = createLogger(__filename);
 

@@ -62,7 +62,6 @@ export class QueueLockService<K, V> {
   constructor(prefix: string, expitionMs: number = 2000) {
     this.prefix = prefix;
     this.expirationMs = expitionMs;
-    this.redisClient = createRedisClient();
 
     try {
       const client = createRedisClient("Redis URL not configured - only local in-memory locks will work");
