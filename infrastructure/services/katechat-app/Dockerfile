@@ -41,6 +41,7 @@ FROM node:22-alpine
 WORKDIR /app
 COPY --from=build /app/node_modules/ ./node_modules
 COPY --from=build /app/api/dist ./
+COPY --from=build /app/api/src/assets ./assets
 COPY --from=build /app/db-migrations ./db-migrations
 
 # copy built frontend client files
