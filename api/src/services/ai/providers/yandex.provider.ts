@@ -51,7 +51,7 @@ export class YandexApiProvider extends BaseApiProvider {
 
     const { modelId, modelType } = request;
 
-    if (modelType === ModelType.IMAGE_GENERATION || modelId.includes("yandex-art")) {
+    if (modelType === ModelType.IMAGE_GENERATION) {
       return this.generateImage(request, messages);
     }
 
@@ -69,16 +69,14 @@ export class YandexApiProvider extends BaseApiProvider {
     callbacks: StreamCallbacks
   ): Promise<void> {
     if (!this.apiKey || !this.folderId) {
-      callbacks.onError(
+      return void callbacks.onError(
         new Error("Yandex API key is not set. Set YANDEX_FM_API_KEY/YANDEX_FM_API_FOLDER in environment variables.")
       );
-      return;
     }
-
     const { modelId, modelType } = request;
 
-    if (modelType === ModelType.IMAGE_GENERATION || modelId.includes("yandex-art")) {
-      callbacks.onStart({ status: ResponseStatus.STARTED });
+    if (modelType === ModelType.IMAGE_GENERATION) {
+      callbacks.onStart({ status: ResponseStatus.CONTENT_GENERATION });
       try {
         const response = await this.generateImage(request, messages, callbacks.onProgress);
         callbacks.onComplete(response);
@@ -96,24 +94,21 @@ export class YandexApiProvider extends BaseApiProvider {
     return this.protocol.streamChatCompletion(openAiRequest, messages, callbacks);
   }
 
-  private async generateImage(
+  private getAuthHeader(): string {
+    return this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
+  }
+
+  /**
+   * Start an async Yandex Art generation and return the operation ID.
+   * Does NOT poll — use checkImageGeneration or pollImageGenerationResult to get the result.
+   */
+  async startAsyncImageGeneration(
     inputRequest: CompleteChatRequest,
-    messages: ModelMessage[] = [],
+    messages: ModelMessage[],
     onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>
-  ): Promise<ModelResponse> {
+  ): Promise<string> {
     if (!this.apiKey || !this.folderId) {
       throw new Error("Yandex API key or Folder ID is not set.");
-    }
-
-    // Send placeholder image immediately for new requests
-    if (onProgress) {
-      await onProgress(
-        `![Generated Image](/files/assets/generated_image_placeholder.png)`,
-        {
-          status: ResponseStatus.CONTENT_GENERATION,
-        },
-        true
-      );
     }
 
     const { modelId } = inputRequest;
@@ -122,6 +117,11 @@ export class YandexApiProvider extends BaseApiProvider {
     const userMessages = messages.filter(msg => msg.role === MessageRole.USER);
     if (!userMessages.length) {
       throw new Error("No user prompt provided for image generation");
+    }
+
+    // Send placeholder image immediately for new requests
+    if (onProgress) {
+      await onProgress("", { status: ResponseStatus.CONTENT_GENERATION }, true);
     }
 
     const promptMessages = userMessages.map((msg, ndx) =>
@@ -139,25 +139,19 @@ export class YandexApiProvider extends BaseApiProvider {
           }
     );
 
-    const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
     const url = `${globalConfig.yandex.fmApiUrl}/foundationModels/v1/imageGenerationAsync`;
-
-    // 1. Start generation
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: authHeader,
+        Authorization: this.getAuthHeader(),
         "x-folder-id": this.folderId,
       },
       body: JSON.stringify({
         modelUri,
         generationOptions: {
           mimeType: "image/png",
-          aspectRatio: {
-            widthRatio: 1,
-            heightRatio: 1,
-          },
+          aspectRatio: { widthRatio: 1, heightRatio: 1 },
         },
         messages: promptMessages,
       }),
@@ -169,54 +163,91 @@ export class YandexApiProvider extends BaseApiProvider {
     }
 
     const operation = (await response.json()) as { id: string };
-    const operationId = operation.id;
+    return operation.id;
+  }
 
-    // 2. Poll for completion
+  /**
+   * Check the status of a Yandex async operation once.
+   * Returns a ModelResponse when done, or null if still running.
+   * Throws on API error or generation failure.
+   */
+  async checkImageGeneration(operationId: string): Promise<ModelResponse | null> {
+    if (!this.apiKey) {
+      throw new Error("Yandex API key is not set.");
+    }
+
+    const opUrl = `${globalConfig.yandex.fmApiUrl}/operations/${operationId}`;
+    const opResponse = await fetch(opUrl, {
+      headers: { Authorization: this.getAuthHeader() },
+    });
+
+    if (!opResponse.ok) {
+      const errorText = await opResponse.text();
+      throw new Error(`Yandex Operations API error: ${opResponse.status} ${opResponse.statusText} - ${errorText}`);
+    }
+
+    const opData = (await opResponse.json()) as any;
+    if (!opData.done) {
+      return null; // still running
+    }
+    if (opData.error) {
+      throw new Error(`Yandex Art generation failed: ${opData.error.message} (${opData.error.code})`);
+    }
+
+    return {
+      images: [opData.response.image],
+    };
+  }
+
+  private async generateImage(
+    inputRequest: CompleteChatRequest,
+    messages: ModelMessage[] = [],
+    onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>
+  ): Promise<ModelResponse> {
+    if (!this.apiKey || !this.folderId) {
+      throw new Error("Yandex API key or Folder ID is not set.");
+    }
+
+    // from polling queue
+    if (inputRequest.requestId) {
+      const result = await this.checkImageGeneration(inputRequest.requestId);
+      if (result) {
+        return {
+          ...result,
+          completed: true,
+        };
+      }
+
+      // queued for generation but not ready yet
+      return {
+        metadata: { requestId: inputRequest.requestId },
+      };
+    }
+
+    const operationId = await this.startAsyncImageGeneration(inputRequest, messages, onProgress);
+    if (inputRequest.requestPolling) {
+      return {
+        metadata: { requestId: operationId },
+      };
+    }
+
     return this.pollImageGenerationResult(operationId);
   }
 
   async pollImageGenerationResult(operationId: string): Promise<ModelResponse> {
-    const maxRetries = 60;
-    let finalResponse: any = null;
-    const authHeader = this.apiKey.startsWith("t1") ? `Bearer ${this.apiKey}` : `Api-Key ${this.apiKey}`;
+    const maxRetries = 30;
+    const retryDelayMs = 3000;
 
     for (let i = 0; i < maxRetries; i++) {
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
 
-      const opUrl = `${globalConfig.yandex.fmApiUrl}/operations/${operationId}`;
-      const opResponse = await fetch(opUrl, {
-        headers: {
-          Authorization: authHeader,
-        },
-      });
-
-      if (!opResponse.ok) {
-        const errorText = await opResponse.text();
-        throw new Error(`Yandex Operations API error: ${opResponse.status} ${opResponse.statusText} - ${errorText}`);
-      }
-
-      const opData = (await opResponse.json()) as any;
-      if (opData.done) {
-        if (opData.error) {
-          throw new Error(`Yandex Art generation failed: ${opData.error.message} (${opData.error.code})`);
-        }
-        finalResponse = opData.response;
-        break;
+      const result = await this.checkImageGeneration(operationId);
+      if (result) {
+        return result;
       }
     }
 
-    if (!finalResponse) {
-      throw new Error("Yandex Art generation timed out");
-    }
-
-    // 3. Return result
-    const base64Image = finalResponse.image;
-
-    return {
-      type: "image",
-      content: "",
-      files: [base64Image],
-    };
+    throw new Error(`Image generation timed out after ${(maxRetries * retryDelayMs) / 1000} seconds`);
   }
 
   async getInfo(checkConnection = false): Promise<ProviderInfo> {

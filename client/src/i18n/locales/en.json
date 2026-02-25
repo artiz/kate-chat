@@ -86,6 +86,7 @@
     "chatDeleted": "Chat deleted successfully",
     "chatSettings": "Chat Settings",
     "codeInterpreter": "Code Interpreter",
+    "imageGeneration": "Image Generation",
     "codeRun": "Run",
     "configureModels": "Please configure AI models before creating a chat",
     "configureProvider": "Please configure at least one provider on the settings page",
@@ -135,6 +136,10 @@
     "failedToUploadDocs": "Failed to upload documents",
     "imagesCount": "Images Count",
     "imagesCountTooltip": "Generated images limit.",
+    "imageQuality": "Image Quality",
+    "imageQualityTooltip": "The quality of the generated images.",
+    "imageOrientation": "Image Orientation",
+    "imageOrientationTooltip": "The orientation of the generated images.",
     "inputOutputTokens": "Input Tokens: {{input}}, Output Tokens: {{output}}",
     "last30Days": "Last 30 Days",
     "last7Days": "Last 7 Days",
@@ -192,6 +197,18 @@
     "yesterday": "Yesterday",
     "you": "You",
     "yourChats": "Your Chats"
+  },
+  "chatSettings": {
+    "imageQuality": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "imageOrientation": {
+      "landscape": "Landscape",
+      "portrait": "Portrait",
+      "square": "Square"
+    }
   },
   "common": {
     "actions": "Actions",

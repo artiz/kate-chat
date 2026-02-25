@@ -32,6 +32,7 @@ export const BASE_CHAT_FRAGMENT = `
         modelId
         isPristine
         isPinned
+        folderId
         messagesCount
         createdAt
         updatedAt
@@ -563,7 +564,6 @@ export const GET_CHAT_MESSAGES = gql`
       hasMore
       chat {
         ...BaseChat
-        folderId
       }
     }
   }

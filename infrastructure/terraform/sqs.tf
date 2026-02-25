@@ -57,6 +57,35 @@ resource "aws_sqs_queue" "index_documents_dlq" {
 }
 
 
+# SQS Queue for long-running AI requests (image/video generation)
+resource "aws_sqs_queue" "requests_queue" {
+  name                       = "${var.project_name}-${var.environment}-requests-queue"
+  delay_seconds              = 0
+  max_message_size           = 262144
+  message_retention_seconds  = 345600 # 4 days
+  receive_wait_time_seconds  = 0
+  visibility_timeout_seconds = 120 # longer timeout for image/video generation
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.requests_dlq.arn
+    maxReceiveCount     = 3
+  })
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-requests-queue"
+  }
+}
+
+# Dead Letter Queue for AI requests
+resource "aws_sqs_queue" "requests_dlq" {
+  name                      = "${var.project_name}-${var.environment}-requests-dlq"
+  message_retention_seconds = 1209600 # 14 days
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-requests-dlq"
+  }
+}
+
 # IAM policy for SQS access
 resource "aws_iam_policy" "sqs_access" {
   name        = "${var.project_name}-${var.environment}-sqs-access"
@@ -78,7 +107,9 @@ resource "aws_iam_policy" "sqs_access" {
           aws_sqs_queue.documents_queue.arn,
           aws_sqs_queue.index_documents_queue.arn,
           aws_sqs_queue.documents_dlq.arn,
-          aws_sqs_queue.index_documents_dlq.arn
+          aws_sqs_queue.index_documents_dlq.arn,
+          aws_sqs_queue.requests_queue.arn,
+          aws_sqs_queue.requests_dlq.arn,
         ]
       },
       {

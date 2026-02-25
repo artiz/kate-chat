@@ -49,8 +49,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Put status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
-* Switch OpenAI "gpt-image..." models to Responses API, do not wait response in cycle but use 
-new `requests` queue  with setTimeout and `publishMessage` with result
 * Google Vertex AI provider support
 * Finish "Forgot password?" logic for local login
 * @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form

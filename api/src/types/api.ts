@@ -69,6 +69,8 @@ export enum ToolType {
   WEB_SEARCH = "web_search",
   CODE_INTERPRETER = "code_interpreter",
   MCP = "mcp",
+  // additional images generation for chat models (e.g., gpt-5's image generation capability)
+  IMAGE_GENERATION = "IMAGE_GENERATION",
 }
 
 export enum ModelFeature {
@@ -88,3 +90,7 @@ export enum MCPAuthType {
   BEARER = "BEARER",
   OAUTH2 = "OAUTH2",
 }
+
+export type ImageQuality = "low" | "medium" | "high";
+
+export type ImageOrientation = "landscape" | "portrait" | "square";

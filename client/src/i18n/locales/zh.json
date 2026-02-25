@@ -86,6 +86,7 @@
     "chatDeleted": "聊天已成功删除",
     "chatSettings": "聊天设置",
     "codeInterpreter": "代码解释器",
+    "imageGeneration": "图片生成",
     "codeRun": "运行",
     "configureModels": "请在创建聊天前配置 AI 模型",
     "configureProvider": "请在设置页面配置至少一个提供商",
@@ -135,6 +136,10 @@
     "failedToUploadDocs": "上传文档失败",
     "imagesCount": "图片数量",
     "imagesCountTooltip": "生成图片限制。",
+    "imageQuality": "图片质量",
+    "imageQualityTooltip": "生成图片的质量。",
+    "imageOrientation": "图片方向",
+    "imageOrientationTooltip": "生成图片的方向。",
     "inputOutputTokens": "输入令牌：{{input}}, 输出令牌：{{output}}",
     "last30Days": "最近 30 天",
     "last7Days": "最近 7 天",
@@ -192,6 +197,18 @@
     "yesterday": "昨天",
     "you": "你",
     "yourChats": "你的聊天"
+  },
+  "chatSettings": {
+    "imageQuality": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "imageOrientation": {
+      "landscape": "横向",
+      "portrait": "纵向",
+      "square": "正方形"
+    }
   },
   "common": {
     "actions": "操作",

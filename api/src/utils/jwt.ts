@@ -22,6 +22,10 @@ export function verifyToken(token: string): TokenPayload | null {
   return jwt.verify(token, runtime.jwtSecret) as TokenPayload;
 }
 
+export function checkTokenWithoutExpiration(token: string): TokenPayload | null {
+  return jwt.verify(token, runtime.jwtSecret, { ignoreExpiration: true }) as TokenPayload;
+}
+
 export function isAdmin(token?: TokenPayload): boolean {
   return token?.roles?.includes(UserRole.ADMIN) || false;
 }

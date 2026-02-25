@@ -12,6 +12,7 @@ import {
   IconLock,
   IconKey,
   IconArrowDown,
+  IconPhoto,
 } from "@tabler/icons-react";
 import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
@@ -36,7 +37,7 @@ interface IHeaderProps {
   chatTools?: ChatTool[];
   chatSettings?: ChatSettings;
   selectedModel?: Model;
-  onUpdateChat: (chatId: string | undefined, input: UpdateChatInput, afterUpdate?: () => void) => void;
+  onUpdateChat: (input: UpdateChatInput, afterUpdate?: () => void) => void;
   onAutoScroll?: (value: boolean) => void;
 }
 
@@ -107,11 +108,11 @@ export const ChatInputHeader = ({
   }, [selectedMcpServers, mcpServers, mcpAuthStatus]);
 
   const handleModelChange = (modelId: string | null) => {
-    onUpdateChat(chatId, { modelId: modelId || undefined });
+    onUpdateChat({ modelId: modelId || undefined });
   };
 
   const handleSettingsChange = (settings: ChatSettings) => {
-    onUpdateChat(chatId, { settings });
+    onUpdateChat({ settings });
   };
 
   const handleToolToggle = (toolType: ToolType) => {
@@ -138,7 +139,7 @@ export const ChatInputHeader = ({
       });
     }
 
-    onUpdateChat(chatId, { tools: toolsArray });
+    onUpdateChat({ tools: toolsArray });
   };
 
   const handleMcpServerToggle = (serverId: string) => {
@@ -187,7 +188,7 @@ export const ChatInputHeader = ({
       toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
     });
 
-    onUpdateChat(chatId, { tools: toolsArray });
+    onUpdateChat({ tools: toolsArray });
   };
 
   const handleTokenSubmit = () => {
@@ -297,6 +298,19 @@ export const ChatInputHeader = ({
               disabled={disabled || streaming}
             >
               <IconCloudCode size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+
+        {selectedModel?.tools?.includes(ToolType.IMAGE_GENERATION) && (
+          <Tooltip label={t("chat.imageGeneration")}>
+            <ActionIcon
+              variant={selectedTools?.has(ToolType.IMAGE_GENERATION) ? "filled" : "default"}
+              color={selectedTools?.has(ToolType.IMAGE_GENERATION) ? "brand" : undefined}
+              onClick={() => handleToolToggle(ToolType.IMAGE_GENERATION)}
+              disabled={disabled || streaming}
+            >
+              <IconPhoto size="1.2rem" />
             </ActionIcon>
           </Tooltip>
         )}

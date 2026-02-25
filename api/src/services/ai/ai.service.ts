@@ -58,7 +58,7 @@ export class AIService {
       {
         onStart: async (status?: ChatResponseStatus) => {
           try {
-            return await callback({ content: "", type: "text", status });
+            return await callback({ content: "", status });
           } catch (error) {
             logger.error(error, "Error starting AI request");
             return true;
@@ -66,18 +66,18 @@ export class AIService {
         },
         onProgress: async (token: string, status?: ChatResponseStatus, force?: boolean) => {
           try {
-            return await callback({ content: token, type: "text", status }, false, force);
+            return await callback({ content: token, status }, false, force);
           } catch (error) {
             logger.error(error, "Error processing AI request");
             return true;
           }
         },
-        onComplete: async (response: ModelResponse, metadata: MessageMetadata | undefined) => {
-          await callback({ ...response, metadata }, true);
+        onComplete: async (response: ModelResponse) => {
+          await callback({ ...response }, true);
         },
         onError: async (error: Error) => {
           try {
-            return await callback({ type: "text", content: "", error }, true);
+            return await callback({ content: "", error }, true);
           } catch (error) {
             return true;
           }
@@ -173,7 +173,7 @@ export class AIService {
    * @param model Optional model entity (required for CUSTOM_REST_API).
    * @returns The API provider service instance.
    */
-  protected getApiProvider(
+  public getApiProvider(
     apiProvider: ApiProvider,
     connection: ConnectionParams,
     fileLoader?: FileContentLoader,

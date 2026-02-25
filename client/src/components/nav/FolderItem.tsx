@@ -138,7 +138,7 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
   const handleToggle = () => {
     const newOpen = !isOpen;
     setIsOpen(newOpen);
-    if (newOpen && !folderChatsData) {
+    if (newOpen && !folderChatsData?.initialLoaded) {
       dispatch(setFolderLoading({ folderId: folder.id, loading: true }));
       loadFolderContents({
         variables: { input: { folderId: folder.id, limit: CHAT_PAGE_SIZE } },

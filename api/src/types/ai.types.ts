@@ -11,6 +11,7 @@ import {
   ToolType,
 } from "./api";
 import { ChatSettings } from "@/entities/Chat";
+import { ImageInput } from "./graphql/inputs";
 
 export interface ProviderInfo {
   id: ApiProvider;
@@ -158,6 +159,9 @@ export class MessageMetadata {
   @Field({ nullable: true })
   requestId?: string;
 
+  @Field({ nullable: true })
+  lastSequenceNumber?: number;
+
   @Field(() => ModelResponseUsage, { nullable: true })
   usage?: ModelResponseUsage;
 
@@ -192,9 +196,11 @@ export class MessageMetadata {
 
 export interface ModelResponse {
   metadata?: MessageMetadata;
-  type: ContentType;
-  content: string;
-  files?: string[];
+  content?: string;
+  images?: string[];
+  videos?: string[];
+  audios?: string[];
+  completed?: boolean;
 }
 
 export interface EmbeddingsResponse {
@@ -250,8 +256,9 @@ export class ChatResultAnnotation {
 
 export interface ChatResponseStatus {
   status?: ResponseStatus;
-  sequence_number?: number;
+  sequenceNumber?: number;
   requestId?: string;
+  queue?: boolean;
   detail?: string;
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
@@ -260,7 +267,7 @@ export interface ChatResponseStatus {
 export interface StreamCallbacks {
   onStart: (status?: ChatResponseStatus) => Promise<boolean | undefined>;
   onProgress: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>;
-  onComplete: (response: ModelResponse, metadata?: MessageMetadata) => Promise<void | undefined>;
+  onComplete: (response: ModelResponse) => Promise<void | undefined>;
   onError: (error: Error) => Promise<boolean | undefined>;
 }
 
@@ -319,6 +326,12 @@ export interface CompleteChatRequest {
   tools?: ChatTool[];
   mcpServers?: IMCPServer[];
   mcpTokens?: MCPAuthToken[];
+
+  // if true, the request will be processed as a long-running request with status updates polled via SQS
+  requestPolling?: boolean;
+  // for polling updates to correlate with the original request
+  requestId?: string;
+  lastSequenceNumber?: number; // for polling, to get updates after this sequence number
 }
 
 export interface GetEmbeddingsRequest {
@@ -349,4 +362,17 @@ export class ChatTool {
 
   @Field(() => [ChatToolOptions], { nullable: true })
   options?: ChatToolOptions[];
+}
+
+export interface CreateMessageRequest {
+  chatId: string;
+  modelId: string;
+  content: string;
+  settings: ChatSettings;
+  images?: ImageInput[];
+  documentIds?: string[];
+  mcpTokens?: { serverId: string; accessToken: string; refreshToken?: string; expiresAt?: number }[];
+
+  requestId?: string;
+  lastSequenceNumber?: number;
 }

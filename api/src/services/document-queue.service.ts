@@ -5,7 +5,7 @@ import { getRepository } from "@/config/database";
 import { Document, Message, Model, User } from "@/entities";
 import { DocumentStatus, MessageRole } from "@/types/api";
 import { S3Service } from "./data";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, IndexDocument } from "@aws-sdk/client-s3";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { Repository } from "typeorm";
 import { PROMPT_DOCUMENT_SUMMARY } from "@/config/ai/prompts";
@@ -13,8 +13,15 @@ import { EmbeddingsService } from "./ai/embeddings.service";
 import { getUserConnectionInfo } from "@/config/auth";
 import { globalConfig } from "@/global-config";
 import { ParsedJsonDocument } from "@/types/ai.types";
+import { QueueLockService } from "./common/queue-lock.service";
 
 const logger = createLogger(__filename);
+
+export interface IndexDocumentPayload {
+  command: string;
+  documentId: string;
+  s3key: string;
+}
 
 export class DocumentQueueService {
   private subService: SubscriptionsService;
@@ -24,6 +31,7 @@ export class DocumentQueueService {
   private documentRepo: Repository<Document>;
   private userRepo: Repository<User>;
   private messageRepo: Repository<Message>;
+  private indexingLock: QueueLockService<string, string>;
 
   constructor(subService: SubscriptionsService) {
     this.subService = subService;
@@ -33,10 +41,11 @@ export class DocumentQueueService {
     this.documentRepo = getRepository(Document);
     this.userRepo = getRepository(User);
     this.messageRepo = getRepository(Message);
+    this.indexingLock = new QueueLockService("document_index", 30000);
   }
 
-  async handleIndexDocumentCommand(command: { command: string; documentId: string; s3key: string }): Promise<void> {
-    const { documentId, s3key } = command;
+  async handleIndexDocumentCommand(payload: IndexDocumentPayload): Promise<boolean> {
+    const { documentId, s3key } = payload;
 
     try {
       logger.info(`Processing index_document command for document ${documentId}`);
@@ -48,13 +57,18 @@ export class DocumentQueueService {
       });
 
       if (!document) {
-        logger.warn(command, `Document ${documentId} not found`);
-        return;
+        logger.warn(payload, `Document ${documentId} not found`);
+        return true;
       }
 
       if (document.status === DocumentStatus.EMBEDDING || document.status === DocumentStatus.SUMMARIZING) {
         logger.info(`Document ${documentId} is already being processed, skipping`);
-        return;
+        return true;
+      }
+
+      const lock = await this.indexingLock.checkLock(documentId);
+      if (lock) {
+        return false;
       }
 
       const embeddingsModelId = document.embeddingsModelId || document.owner?.settings?.documentsEmbeddingsModelId;
@@ -64,20 +78,19 @@ export class DocumentQueueService {
       document.summaryModelId = summarizationModelId;
       document.statusInfo = undefined;
 
-      if (!embeddingsModelId) {
-        logger.warn(`No embeddings model configured for document ${document.id}, skipping embeddings`);
-      }
-
       // Create connection params for AI service
       const connection = getUserConnectionInfo(document.owner);
+      await this.indexingLock.putLock(documentId, process.pid.toString());
 
-      // Download chunked JSON from S3
       const s3Service = new S3Service(document.owner?.toToken());
-      const chunkedContent = await this.downloadS3Content(s3Service, `${s3key}.chunked.json`);
-      const chunkedData = JSON.parse(chunkedContent);
 
-      // Process embeddings if model is configured
-      if (embeddingsModelId) {
+      if (!embeddingsModelId) {
+        logger.warn(`No embeddings model configured for document ${document.id}, skipping embeddings`);
+      } else {
+        // Download chunked JSON from S3
+        const chunkedContent = await this.downloadS3Content(s3Service, `${s3key}.chunked.json`);
+        const chunkedData = JSON.parse(chunkedContent);
+
         document.status = DocumentStatus.EMBEDDING;
         document.statusProgress = 0;
         await this.documentRepo.save(document);
@@ -87,10 +100,7 @@ export class DocumentQueueService {
 
       if (!summarizationModelId) {
         logger.warn(`No summarization model configured for document ${document.id}, skipping summary`);
-      }
-
-      // Generate summary if model is configured
-      if (summarizationModelId) {
+      } else {
         // Update document status for summarization
         document.status = DocumentStatus.SUMMARIZING;
         document.statusProgress = 0.5;
@@ -108,6 +118,9 @@ export class DocumentQueueService {
       this.subService.publishDocumentStatus(document);
 
       logger.info(`Successfully indexed document ${documentId}`);
+
+      this.indexingLock.releaseLock(documentId);
+      return true;
     } catch (error) {
       logger.error(error, `Failed to index document ${documentId}`);
 
@@ -120,7 +133,8 @@ export class DocumentQueueService {
         this.subService.publishDocumentStatus(document);
       }
 
-      throw error;
+      this.indexingLock.releaseLock(documentId);
+      return true;
     }
   }
 
@@ -214,7 +228,7 @@ export class DocumentQueueService {
         model
       );
 
-      logger.info(`Generated summary for document ${document.id} (${summaryResponse.content.length} characters)`);
+      logger.info(`Generated summary for document ${document.id} (${summaryResponse.content?.length || 0} characters)`);
 
       return summaryResponse.content;
     } catch (error) {

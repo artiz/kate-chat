@@ -10,6 +10,7 @@ import {
   IconPlugConnected,
   IconVideo,
   IconMicrophone,
+  IconPhoto,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { Model, ToolType } from "@/types/graphql";
@@ -78,8 +79,13 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
             </Tooltip>
           )}
           {tools.has(ToolType.MCP) && (
-            <Tooltip label="MCP">
+            <Tooltip label={t("chat.mcpTools")}>
               <IconPlugConnected size={size} />
+            </Tooltip>
+          )}
+          {tools.has(ToolType.IMAGE_GENERATION) && (
+            <Tooltip label={t("chat.imageGeneration")}>
+              <IconPhoto size={size} />
             </Tooltip>
           )}
         </>

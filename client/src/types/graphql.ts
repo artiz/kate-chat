@@ -20,6 +20,7 @@ export enum ToolType {
   WEB_SEARCH = "WEB_SEARCH",
   CODE_INTERPRETER = "CODE_INTERPRETER",
   MCP = "MCP",
+  IMAGE_GENERATION = "IMAGE_GENERATION",
 }
 
 export enum ModelFeature {
@@ -327,11 +328,16 @@ export interface ChatTool {
   options?: ChatToolOptions[];
 }
 
+export type ImageQuality = "low" | "medium" | "high";
+export type ImageOrientation = "landscape" | "portrait" | "square";
+
 export interface ChatSettings {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
   imagesCount?: number;
+  imageQuality?: ImageQuality;
+  imageOrientation?: ImageOrientation;
   systemPrompt?: string;
   thinking?: boolean;
   thinkingBudget?: number;

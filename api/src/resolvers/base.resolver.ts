@@ -94,10 +94,10 @@ export class BaseResolver {
     return messagesService;
   }
 
-  protected getSqsService(context: GraphQLContext): DocumentSqsService {
-    const sqsService = context.sqsService;
+  protected getDocumentSqsService(context: GraphQLContext): DocumentSqsService {
+    const sqsService = context.documentSqsService;
     if (!sqsService) {
-      throw new GraphQLError("SqsService not available in context", {
+      throw new GraphQLError("DocumentSqsService not available in context", {
         extensions: {
           code: 500,
         },

@@ -5,7 +5,7 @@ import { logger } from "../utils/logger";
 import { TypeORMPinoLogger } from "../utils/logger/typeorm.logger";
 import { globalConfig } from "../global-config";
 import { ENTITIES } from "../entities";
-import { DB_TYPE } from "./env";
+import { DB_SKIP_MIGRATIONS, DB_TYPE } from "./env";
 
 const dbConfig = globalConfig.db;
 
@@ -51,12 +51,12 @@ logger.debug(_.pick(dbConfig, ["type", "host", "database"]), "Database connectio
 export const AppDataSource = new DataSource({
   ...dbOptions,
   synchronize: false,
-  migrationsRun: true,
+  migrationsRun: !DB_SKIP_MIGRATIONS,
   migrationsTableName: "migrations",
   logger: dbConfig.logging ? new TypeORMPinoLogger() : undefined,
   logging: dbConfig.logging ? ["error", "warn", "info"] : false,
   entities: ENTITIES,
-  migrations: [dbConfig.migrationsPath],
+  migrations: DB_SKIP_MIGRATIONS ? [] : [dbConfig.migrationsPath],
 });
 
 // Helper function to get a repository from the data source

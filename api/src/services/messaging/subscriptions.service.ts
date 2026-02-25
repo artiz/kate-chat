@@ -10,6 +10,7 @@ import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/response
 import { Chat } from "@/entities";
 import EventEmitter from "events";
 import { globalConfig } from "@/global-config";
+import { createRedisClient } from "../common/queue-lock.service";
 
 const redisCfg = globalConfig.redis;
 
@@ -21,7 +22,6 @@ interface MessageCacheData {
 }
 
 export class SubscriptionsService extends EventEmitter {
-  private connectionError: boolean = false;
   private redisClient: RedisClientType | null = null;
   private redisSub: RedisClientType | null = null;
 
@@ -39,45 +39,17 @@ export class SubscriptionsService extends EventEmitter {
   constructor() {
     super();
 
-    // init Redis client for storing messages and PubSub
-    // NOTE: Redis connection is optional - application works without Redis
-    // but will not share messages between multiple instances
-    if (!redisCfg.url) {
-      logger.warn("Redis URL not configured - multi-instance support disabled");
-      return;
-    }
-
     try {
-      const client: RedisClientType = createClient({
-        url: redisCfg.url,
-        socket: {
-          reconnectStrategy: (retries: number) => {
-            if (retries > 5) {
-              logger.warn("Redis connection refused - multi-instance support disabled");
-              return false; // Stop reconnecting after 5 retries
-            }
-            // Exponential backoff with a maximum delay of 3 seconds
-            const delay = Math.min(Math.pow(2, retries) * 100, 3000);
-            return delay;
-          },
-        },
-      });
+      const client = createRedisClient(
+        "Redis URL not configured - multi-instance support disabled",
+        "Redis connection refused - multi-instance support disabled"
+      );
+
+      if (!client) {
+        return;
+      }
 
       this.redisClient = client;
-
-      // Add event listeners for Redis connection
-      client.on("error", (err: Error) => {
-        const message = err.name === "AggregateError" ? (err as any).code : err.message;
-        // Only log once to avoid flooding
-        if (message?.includes("ECONNREFUSED")) {
-          if (!this.connectionError) {
-            logger.error(err, "Redis connection error");
-            this.connectionError = true;
-          }
-        } else {
-          logger.error(err, "Redis client error");
-        }
-      });
 
       const redisSub = client.duplicate();
       this.redisSub = redisSub;
@@ -183,6 +155,7 @@ export class SubscriptionsService extends EventEmitter {
 
   async publishChatMessage(chat: Chat, message: Message, streaming = false): Promise<void> {
     const chatId = chat.id;
+
     // Publish directly if Redis is not configured
     if (!this.redisClient || !this.redisClient.isOpen || !this.redisSub) {
       return await SubscriptionsService.pubSub.publish(redisCfg.channelChatMessage, {

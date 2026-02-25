@@ -11,5 +11,9 @@
     "strictPropertyInitialization": false,
     "noImplicitAny": true
   },
+  "ts-node": {
+    "transpileOnly": true
+  },
+  "include": ["mssql/*.ts", "mysql/*.ts", "postgres/*.ts", "sqlite/*.ts"],
   "exclude": ["node_modules"]
 }

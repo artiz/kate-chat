@@ -114,11 +114,12 @@ services:
       - S3_FILES_BUCKET_NAME=katechatdevfiles
       # SQS
       - SQS_ENDPOINT=http://localstack:4566
-      - SQS_REGION=us-east-1
+      - SQS_REGION=us-east-1 # only us-east-1 works with localstack for some reason, even if we create queues with eu-central-1 region in init script
       - SQS_ACCESS_KEY_ID=localstack
       - SQS_SECRET_ACCESS_KEY=localstack
       - SQS_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue
       - SQS_INDEX_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-index-queue
+      - SQS_REQUESTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/requests-queue
 
     networks:
       - kate-chat-network
@@ -144,7 +145,7 @@ services:
       - S3_SECRET_ACCESS_KEY=localstack
       - S3_FILES_BUCKET_NAME=katechatdevfiles
       - SQS_ENDPOINT=http://localstack:4566
-      - SQS_REGION=us-east-1
+      - SQS_REGION=us-east-1 # only us-east-1 works with localstack for some reason, even if we create queues with eu-central-1 region in init script
       - SQS_ACCESS_KEY_ID=localstack
       - SQS_SECRET_ACCESS_KEY=localstack
       - SQS_DOCUMENTS_QUEUE=http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/documents-queue

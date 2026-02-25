@@ -38,6 +38,18 @@ export const OPENAI_MODELS_SUPPORT_IMAGES_INPUT = [
 
 export const OPENAI_MODELS_SUPPORT_REASONING = ["gpt-5", "o1", "o3", "o4"];
 
+export const OPENAI_MODELS_SUPPORT_TOOL_IMAGE_GENERATION = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-4.1",
+  "gpt-4.1-mini",
+  "gpt-4.1-nano",
+  "o3",
+  "gpt-5",
+  "gpt-5-nano",
+  "gpt-5.2",
+];
+
 export const OPENAI_GLOBAL_IGNORED_MODELS = ["davinci-002", "gpt-3.5-turbo-instruct"];
 
 export const OPENAI_MODELS_IMAGES_GENERATION = ["dall-e", "chatgpt-image", "gpt-image"];
