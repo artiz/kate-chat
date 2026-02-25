@@ -46,7 +46,7 @@ import { YandexWebSearch } from "@/services/ai/tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
 import { ok } from "@/utils/assert";
 import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
-import { IMAGE_BASE64_TPL, IMAGE_URL_BASE64_TPL } from "@/config/ai/templates";
+import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
 
 const logger = createLogger(__filename);
 
@@ -481,9 +481,12 @@ export class OpenAIApiProvider extends BaseApiProvider {
 
       for await (const chunk of imageStream) {
         if (chunk.type === "image_generation.partial_image") {
-          stopped = await callbacks.onProgress(IMAGE_URL_BASE64_TPL(chunk.output_format || "png", chunk.b64_json), {
-            status: ResponseStatus.CONTENT_GENERATION,
-          });
+          stopped = await callbacks.onProgress(
+            IMAGE_MARKDOWN_TPL(IMAGE_BASE64_TPL(chunk.output_format || "png", chunk.b64_json)),
+            {
+              status: ResponseStatus.CONTENT_GENERATION,
+            }
+          );
         } else if (chunk.type === "image_generation.completed") {
           images.push(IMAGE_BASE64_TPL(chunk.output_format || "png", chunk.b64_json));
 

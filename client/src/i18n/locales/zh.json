@@ -86,6 +86,7 @@
     "chatDeleted": "聊天已成功删除",
     "chatSettings": "聊天设置",
     "codeInterpreter": "代码解释器",
+    "imageGeneration": "图片生成",
     "codeRun": "运行",
     "configureModels": "请在创建聊天前配置 AI 模型",
     "configureProvider": "请在设置页面配置至少一个提供商",

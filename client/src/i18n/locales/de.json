@@ -86,6 +86,7 @@
     "chatDeleted": "Chat erfolgreich gelöscht",
     "chatSettings": "Chat-Einstellungen",
     "codeInterpreter": "Code-Interpreter",
+    "imageGeneration": "Bildgenerierung",
     "codeRun": "Ausführen",
     "configureModels": "Bitte konfigurieren Sie KI-Modelle, bevor Sie einen Chat erstellen",
     "configureProvider": "Bitte konfigurieren Sie mindestens einen Anbieter auf der Einstellungsseite",
@@ -417,6 +418,7 @@
     "reasoning": "Überlegung",
     "relatedChunks": "Verwandte Abschnitte",
     "relevance": "Relevanz:",
+    "result": "Ergebnis:",
     "webSearch": "Websuche"
   },
   "models": {

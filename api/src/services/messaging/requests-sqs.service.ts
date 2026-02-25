@@ -125,8 +125,6 @@ export class RequestsSqsService extends BaseSqsService {
       ok(cmd.payload, "Invalid message payload");
       ok(cmd.payload.message, "Missing command in message");
 
-      logger.debug({ command: cmd.command, messageId: cmd.payload.message.id }, "Processing Requests SQS message");
-
       const expired = cmd.expiration ? new Date(cmd.expiration) < new Date() : false;
       if (expired) {
         logger.debug(

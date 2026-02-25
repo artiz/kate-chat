@@ -31,7 +31,7 @@ import { ModelProtocol } from "./common";
 import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
-import { IMAGE_BASE64_TPL } from "@/config/ai/templates";
+import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
 
 const logger = createLogger(__filename);
 
@@ -418,8 +418,7 @@ export class OpenAIProtocol implements ModelProtocol {
       }
 
       if (inputRequest.tools.find(t => t.type === ToolType.IMAGE_GENERATION)) {
-        // TODO: set partial_images: 1-2 and return `generatedContent` to use `content` + `generatedContent`
-        tools.push({ type: "image_generation", partial_images: 0 });
+        tools.push({ type: "image_generation", partial_images: 2 });
       }
 
       const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);
@@ -934,7 +933,16 @@ export class OpenAIProtocol implements ModelProtocol {
             ...progressInfo,
           });
         } else if (chunk.type == "response.image_generation_call.partial_image") {
-          images.push(IMAGE_BASE64_TPL("png", chunk.partial_image_b64));
+          const imageUrl = IMAGE_BASE64_TPL("png", chunk.partial_image_b64);
+          images[0] = imageUrl;
+          stopped = await callbacks.onProgress(
+            IMAGE_MARKDOWN_TPL(imageUrl),
+            {
+              status: ResponseStatus.CONTENT_GENERATION,
+              ...progressInfo,
+            },
+            true
+          );
         } else if (
           chunk.type == "response.image_generation_call.completed" ||
           chunk.type == "response.image_generation_call.in_progress"

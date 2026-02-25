@@ -68,7 +68,7 @@
 
   &.streaming {
     img {
-      animation: imagePlaceholderBlur 500ms ease-in-out infinite alternate;
+      animation: imagePlaceholderBlur 1000ms ease-in-out infinite alternate;
       pointer-events: none;
       cursor: default;
     }
@@ -76,10 +76,10 @@
 
   @keyframes imagePlaceholderBlur {
     0% {
-      filter: blur(2px) grayscale(90%);
+      filter: blur(1px) grayscale(90%);
     }
     100% {
-      filter: blur(5px) grayscale(90%);
+      filter: blur(3px) grayscale(90%);
     }
   }
 

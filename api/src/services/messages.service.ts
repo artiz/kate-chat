@@ -36,7 +36,6 @@ import { ChatSettings } from "@/entities/Chat";
 import { IMAGE_GENERATION_PLACEHOLDER } from "@/config/ai/templates";
 import { pick } from "lodash";
 import { QueueLockService } from "./common/queue-lock.service";
-import { log } from "console";
 
 const aiConfig = globalConfig.ai;
 
@@ -70,7 +69,7 @@ export class MessagesService {
     this.chatFileRepository = getRepository(ChatFile);
     this.modelRepository = getRepository(Model);
     this.mcpServerRepository = getRepository(MCPServer);
-    this.requestsLock = new QueueLockService<string, string>("requests", 3000);
+    this.requestsLock = new QueueLockService<string, string>("requests", globalConfig.sqs.requestsQueueExpirationMs); // slightly longer than SQS delay
 
     subscriptionsService.on(globalConfig.redis.channelChatMessage, this.handleMessageEvent.bind(this));
     requestsSqsService.subscribe(COMMAND_CONTINUE_REQUEST, this.handleQueuedRequestMessage.bind(this));
@@ -176,6 +175,8 @@ export class MessagesService {
     if (lock) {
       return;
     }
+
+    logger.debug({ requestId, messageId: message.id }, "Processing delayed request");
 
     const model = await this.modelRepository.findOne({
       where: {

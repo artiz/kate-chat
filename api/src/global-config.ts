@@ -169,6 +169,7 @@ export interface GlobalConfigShape {
     requestsQueue?: string;
     requestsQueueMaxMessagesCount: number;
     requestsQueueDelayMs: number;
+    requestsQueueExpirationMs: number;
     requestsRetryInitialDelayMs: number;
     requestsRetrySubsequentDelayMs: number;
     requestsExpirationSec: number;
@@ -400,6 +401,7 @@ export class GlobalConfig {
         requestsQueue: process.env.SQS_REQUESTS_QUEUE,
         requestsQueueMaxMessagesCount: +(process.env.SQS_REQUESTS_QUEUE_MAX_MESSAGES_COUNT || 5),
         requestsQueueDelayMs: +(process.env.SQS_REQUESTS_QUEUE_DELAY_MS || 15000),
+        requestsQueueExpirationMs: +(process.env.SQS_REQUESTS_QUEUE_EXPIRATION_MS || 120000),
         requestsRetryInitialDelayMs: +(process.env.SQS_REQUESTS_INITIAL_DELAY_MS || 500),
         requestsRetrySubsequentDelayMs: +(process.env.SQS_REQUESTS_SUBSEQUENT_DELAY_MS || 3000),
         requestsExpirationSec: +(process.env.SQS_REQUESTS_EXPIRATION_SEC || 1800),
