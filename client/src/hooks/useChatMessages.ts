@@ -218,6 +218,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const updateChat = (link: ChatLink, input: UpdateChatInput, afterUpdate?: () => void) => {
     if (!link) return;
 
+    setChat(prev => (prev?.id === link.id ? ({ ...prev, ...input } as Chat) : prev));
     dispatch(updateChatInState({ ...link, ...input }));
     dispatch(updateFolderChat({ ...link, ...input }));
 
@@ -225,15 +226,16 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       clearTimeout(updateTimeout.current);
     }
 
-    updateTimeout.current = setTimeout(() => {
-      const request = pick(input, ["title", "description", "modelId", "settings", "tools"]);
+    const request = pick(input, ["title", "description", "modelId", "settings", "tools"]);
 
+    updateTimeout.current = setTimeout(() => {
       if ((request?.settings as any)?.__typename) {
         request.settings = { ...request.settings, __typename: undefined } as ChatSettings;
       }
       if (request.tools) {
         request.tools = request.tools.map(t => ({ ...t, __typename: undefined }));
       }
+
       updateChatMutation({
         variables: {
           id: link.id,
