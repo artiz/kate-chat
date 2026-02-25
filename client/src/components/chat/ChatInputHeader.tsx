@@ -12,6 +12,7 @@ import {
   IconLock,
   IconKey,
   IconArrowDown,
+  IconPhoto,
 } from "@tabler/icons-react";
 import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
@@ -297,6 +298,19 @@ export const ChatInputHeader = ({
               disabled={disabled || streaming}
             >
               <IconCloudCode size="1.2rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+
+        {selectedModel?.tools?.includes(ToolType.IMAGE_GENERATION) && (
+          <Tooltip label={t("chat.imageGeneration")}>
+            <ActionIcon
+              variant={selectedTools?.has(ToolType.IMAGE_GENERATION) ? "filled" : "default"}
+              color={selectedTools?.has(ToolType.IMAGE_GENERATION) ? "brand" : undefined}
+              onClick={() => handleToolToggle(ToolType.IMAGE_GENERATION)}
+              disabled={disabled || streaming}
+            >
+              <IconPhoto size="1.2rem" />
             </ActionIcon>
           </Tooltip>
         )}

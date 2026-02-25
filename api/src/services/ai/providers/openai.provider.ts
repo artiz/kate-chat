@@ -12,6 +12,7 @@ import {
   ModelMessage,
   ProviderInfo,
   ChatResponseStatus,
+  MessageMetadata,
 } from "@/types/ai.types";
 import {
   ApiProvider,
@@ -39,11 +40,13 @@ import {
   OPENAI_MODELS_VIDEO_GENERATION,
   OPENAI_GLOBAL_IGNORED_MODELS,
   OPENAI_MODELS_SUPPORT_REASONING,
+  OPENAI_MODELS_SUPPORT_TOOL_IMAGE_GENERATION,
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "@/services/ai/tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
-import { notEmpty } from "@/utils/assert";
+import { ok } from "@/utils/assert";
 import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
+import { IMAGE_BASE64_TPL, IMAGE_URL_BASE64_TPL } from "@/config/ai/templates";
 
 const logger = createLogger(__filename);
 
@@ -109,11 +112,11 @@ export class OpenAIApiProvider extends BaseApiProvider {
   }
 
   async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
-    const { modelId, modelType } = input;
-
-    // image generation request
-    if (modelType === ModelType.IMAGE_GENERATION || modelId.startsWith("dall-e")) {
-      return this.generateImages(input, messages);
+    const { modelType } = input;
+    if (modelType === ModelType.IMAGE_GENERATION) {
+      const result = await this.generateImages(input, messages);
+      ok(result, "Synchronous image generation failed to return a result");
+      return result;
     }
 
     return this.protocol.completeChat(input, messages);
@@ -125,15 +128,14 @@ export class OpenAIApiProvider extends BaseApiProvider {
     messages: ModelMessage[],
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const { modelId, modelType } = input;
+    const { modelType } = input;
 
-    // If this is an image generation model, generate the image non-streaming
-    if (modelType === ModelType.IMAGE_GENERATION || modelId.startsWith("dall-e")) {
-      callbacks.onStart();
+    if (modelType === ModelType.IMAGE_GENERATION) {
+      callbacks.onStart({ status: ResponseStatus.CONTENT_GENERATION });
       try {
-        const response = await this.generateImages(input, messages, callbacks.onProgress);
-        callbacks.onComplete(response);
+        await this.generateImages(input, messages, callbacks);
       } catch (error) {
+        logger.error(error, "Error generating image with OpenAI");
         callbacks.onError(error instanceof Error ? error : new Error(String(error)));
       }
       return;
@@ -315,14 +317,22 @@ export class OpenAIApiProvider extends BaseApiProvider {
         const imageInput = OPENAI_MODELS_SUPPORT_IMAGES_INPUT.some(prefix => model.id.startsWith(prefix));
 
         const apiType = this.getChatApiType(model.id);
-        const tools =
-          embeddingModel || isImageGeneration || isVideoGeneration || isAudioGeneration || isTranscription
-            ? []
-            : apiType === "responses"
-              ? [ToolType.WEB_SEARCH, ToolType.CODE_INTERPRETER, ToolType.MCP]
-              : [searchAvailable ? ToolType.WEB_SEARCH : null, ToolType.CODE_INTERPRETER, ToolType.MCP].filter(
-                  notEmpty
-                );
+
+        const tools = [];
+
+        if ([ModelType.CHAT, ModelType.REALTIME].includes(type)) {
+          tools.push(ToolType.CODE_INTERPRETER, ToolType.MCP);
+          if (apiType === "responses" || searchAvailable) {
+            tools.unshift(ToolType.WEB_SEARCH);
+          }
+
+          if (
+            OPENAI_MODELS_SUPPORT_TOOL_IMAGE_GENERATION.some(prefix => model.id.startsWith(prefix)) &&
+            allowedTypes.includes(ModelType.IMAGE_GENERATION)
+          ) {
+            tools.push(ToolType.IMAGE_GENERATION);
+          }
+        }
 
         const features: ModelFeature[] = apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : [];
 
@@ -399,8 +409,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
   private async generateImages(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = [],
-    onProgress?: (token: string, status?: ChatResponseStatus, force?: boolean) => Promise<boolean | undefined>
-  ): Promise<ModelResponse> {
+    callbacks?: StreamCallbacks
+  ): Promise<ModelResponse | undefined> {
     if (!this.apiKey) {
       throw new Error("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     }
@@ -425,9 +435,26 @@ export class OpenAIApiProvider extends BaseApiProvider {
       throw new Error("Empty prompt provided for image generation");
     }
 
-    let n = modelId === "dall-e-3" ? 1 : Math.min(imagesCount || 1, 10);
+    const n = modelId === "dall-e-3" ? 1 : Math.min(imagesCount || 1, 10);
+    const stream = Boolean(!modelId.includes("dall-e") && callbacks && n == 1); // DALL-E models do not support streaming responses, while gpt-image models do
 
-    const params: OpenAI.Images.ImageGenerateParams = {
+    // TODO: add size option:
+    // The size of the generated images. Must be one of `1024x1024`, `1536x1024`
+    // (landscape), `1024x1536` (portrait), or `auto` (default value) for
+    // `gpt-image-1`, one of `256x256`, `512x512`, or `1024x1024` for `dall-e-2`, and
+    // one of `1024x1024`, `1792x1024`, or `1024x1792` for `dall-e-3`.
+    // size?:
+    //   | 'auto'
+    //   | '1024x1024'
+    //   | '1536x1024'
+    //   | '1024x1536'
+    //   | '256x256'
+    //   | '512x512'
+    //   | '1792x1024'
+    //   | '1024x1792'
+    //   | null;
+
+    let params: OpenAI.Images.ImageGenerateParams = {
       model: modelId,
       prompt,
       n,
@@ -435,38 +462,68 @@ export class OpenAIApiProvider extends BaseApiProvider {
       response_format: ["dall-e-2", "dall-e-3"].includes(modelId) ? "b64_json" : undefined,
     };
 
-    // Send placeholder images immediately for new requests
-    if (onProgress) {
-      const placeholders = Array(n)
-        .fill(`![Generated Image](/files/assets/generated_image_placeholder.png)`)
-        .join("   ");
-      await onProgress(
-        placeholders,
-        {
-          status: ResponseStatus.CONTENT_GENERATION,
-        },
-        true
-      );
+    logger.trace({ ...params, stream }, "Image generation");
+
+    if (callbacks) {
+      await callbacks.onProgress("", { status: ResponseStatus.CONTENT_GENERATION });
     }
 
-    logger.debug({ params }, "Image generation");
-    try {
-      const response = await this.protocol.api.images.generate(params);
-      if (!response.data?.length) {
-        throw new Error("No image data returned from OpenAI API");
-      }
-      if (response.data.some(img => !img.b64_json)) {
-        throw new Error("Invalid image data returned from OpenAI API");
+    if (stream) {
+      ok(callbacks);
+
+      params = { ...params, partial_images: 2, stream };
+
+      const images: string[] = [];
+      const imageStream = await this.protocol.api.images.generate(params);
+
+      const metadata: MessageMetadata = {};
+      let stopped: boolean | undefined = false;
+
+      for await (const chunk of imageStream) {
+        if (chunk.type === "image_generation.partial_image") {
+          stopped = await callbacks.onProgress(IMAGE_URL_BASE64_TPL(chunk.output_format || "png", chunk.b64_json), {
+            status: ResponseStatus.CONTENT_GENERATION,
+          });
+        } else if (chunk.type === "image_generation.completed") {
+          images.push(IMAGE_BASE64_TPL(chunk.output_format || "png", chunk.b64_json));
+
+          if (chunk.usage) {
+            if (!metadata.usage) metadata.usage = {};
+            metadata.usage.inputTokens = (metadata.usage.inputTokens || 0) + chunk.usage.input_tokens;
+            metadata.usage.outputTokens = (metadata.usage.outputTokens || 0) + chunk.usage.output_tokens;
+          }
+          stopped = true;
+        }
+
+        if (stopped) {
+          break; // received all images, stop listening to the stream
+        }
       }
 
-      return {
-        type: "image",
-        content: "",
-        files: response.data.map(img => img.b64_json!),
-      };
-    } catch (error) {
-      logger.warn(error, "Error generating image with OpenAI");
-      throw error;
+      await callbacks.onComplete({
+        images,
+        metadata,
+      });
+    } else {
+      try {
+        const response = await this.protocol.api.images.generate(params);
+        ok(response.data?.length, "No image data returned from OpenAI API");
+        ok(
+          response.data.every(img => img.b64_json),
+          "Invalid image data returned from OpenAI API"
+        );
+
+        const res = {
+          images: response.data.map(img => img.b64_json!),
+        };
+        if (callbacks) {
+          await callbacks.onComplete(res);
+        }
+        return res;
+      } catch (error) {
+        logger.warn(error, "Error generating image with OpenAI");
+        throw error;
+      }
     }
   }
 

@@ -227,7 +227,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
       const request = pick(input, ["title", "description", "modelId", "settings", "tools"]);
 
       if ((request?.settings as any)?.__typename) {
-        (request.settings as any).__typename = undefined;
+        request.settings = { ...request.settings, __typename: undefined } as ChatSettings;
       }
       if (request.tools) {
         request.tools = request.tools.map(t => ({ ...t, __typename: undefined }));

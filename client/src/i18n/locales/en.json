@@ -86,6 +86,7 @@
     "chatDeleted": "Chat deleted successfully",
     "chatSettings": "Chat Settings",
     "codeInterpreter": "Code Interpreter",
+    "imageGeneration": "Image Generation",
     "codeRun": "Run",
     "configureModels": "Please configure AI models before creating a chat",
     "configureProvider": "Please configure at least one provider on the settings page",

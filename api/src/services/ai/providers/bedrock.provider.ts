@@ -184,7 +184,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       }
     } while (!requestCompleted);
 
-    return finalResponse || { type: "text", content: "" };
+    return finalResponse || { content: "" };
   }
 
   async streamChatCompletion(
@@ -246,7 +246,6 @@ export class BedrockApiProvider extends BaseApiProvider {
         // Process the stream
         if (!streamResponse?.stream) {
           await callbacks.onComplete({
-            type: "text",
             content: "_No response_",
           });
           requestCompleted = true;
@@ -425,13 +424,10 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
 
         if (requestCompleted) {
-          await callbacks.onComplete(
-            {
-              type: "text",
-              content: fullResponse,
-            },
-            metadata
-          );
+          await callbacks.onComplete({
+            content: fullResponse,
+            metadata,
+          });
         }
       } catch (e: unknown) {
         logger.error(e, "ConverseStreamCommand failed");
@@ -964,13 +960,12 @@ export class BedrockApiProvider extends BaseApiProvider {
     if (!response.output?.message?.content) {
       return {
         modelResponse: {
-          type: "text",
           content: "",
         },
       };
     }
 
-    const { content, files, toolUse } = response.output?.message?.content?.reduce(
+    const { content, images, toolUse } = response.output?.message?.content?.reduce(
       (res, item) => {
         if ("text" in item) {
           res.content += (res.content ? "\n\n" : "") + (item.text || "");
@@ -979,7 +974,7 @@ export class BedrockApiProvider extends BaseApiProvider {
             const imageData =
               `data:image/${item.image.format || "png"};base64,` +
               Buffer.from(item.image.source.bytes).toString("base64");
-            res.files.push(imageData);
+            res.images.push(imageData);
           } else if (item.image.source?.s3Location) {
             res.content += `|Image ${item.image.format}: ${item.image.source?.s3Location}|\n\n`;
           }
@@ -988,7 +983,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         }
         return res;
       },
-      { content: "", files: [] as string[], toolUse: [] as ToolUseBlock[] }
+      { content: "", images: [] as string[], toolUse: [] as ToolUseBlock[] }
     );
 
     const metadata: MessageMetadata | undefined =
@@ -1006,10 +1001,8 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     return {
       modelResponse: {
-        // for now only images are supported
-        type: files.length ? "image" : "text",
         content,
-        files,
+        images,
         metadata,
       },
       toolUse: toolUse.length > 0 ? toolUse : undefined,

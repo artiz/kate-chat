@@ -36,7 +36,7 @@ export const MessageStatus = ({ status }: { status: ResponseStatus }) => {
   const title = t(TITLE_MAP[status] || status);
   const color = COLOR_MAP[status] || "indigo";
 
-  return (
+  return status === ResponseStatus.COMPLETED ? null : (
     <Badge color={color} variant="light">
       {title}
     </Badge>

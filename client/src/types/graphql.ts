@@ -20,6 +20,7 @@ export enum ToolType {
   WEB_SEARCH = "WEB_SEARCH",
   CODE_INTERPRETER = "CODE_INTERPRETER",
   MCP = "MCP",
+  IMAGE_GENERATION = "IMAGE_GENERATION",
 }
 
 export enum ModelFeature {

@@ -8,6 +8,8 @@ const level = globalConfig.runtime.logLevel || (isProd ? "info" : "debug");
 const redactPaths = [
   "connectionParams",
   "password",
+  "accessToken",
+  "mcpTokens",
   "headers.Authorization",
   "*.headers.Authorization",
   "*.headers.authorization",

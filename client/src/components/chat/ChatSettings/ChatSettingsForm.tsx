@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useMemo } from "react";
 import {
   Title,
   Slider,
@@ -22,6 +22,7 @@ import { ChatSettings, Model, ModelFeature } from "@/types/graphql";
 
 import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
+import { ModelType } from "@katechat/ui";
 
 export const DEFAULT_CHAT_SETTINGS = {
   temperature: 0.7,
@@ -133,6 +134,9 @@ export function ChatSettingsForm({
     handleSettingsChange({ thinkingBudget: numValue });
   };
 
+  const isImageGeneration = useMemo(() => model?.type === ModelType.IMAGE_GENERATION, [model?.type]);
+  const isReasoning = useMemo(() => model?.features?.includes(ModelFeature.REASONING), [model?.features]);
+
   return (
     <Box className={classes.settingsPanel}>
       <Stack gap="md">
@@ -159,6 +163,7 @@ export function ChatSettingsForm({
             rows={4}
             maxRows={10}
             onChange={handleSystemPromptChange}
+            disabled={isImageGeneration}
           />
         </div>
 
@@ -184,7 +189,7 @@ export function ChatSettingsForm({
               max={1}
               step={0.01}
               label={null}
-              disabled={thinkingValue}
+              disabled={thinkingValue || isImageGeneration}
               marks={[
                 { value: 0, label: "0" },
                 { value: 0.5, label: "0.5" },
@@ -219,59 +224,64 @@ export function ChatSettingsForm({
                 { value: 0.5, label: "0.5" },
                 { value: 1, label: "1" },
               ]}
+              disabled={thinkingValue || isImageGeneration}
             />
           </Box>
 
-          <Box m="md" miw="140px">
-            <Group p="apart" mb="md">
-              <Text size="sm">{t("chat.imagesCount")}</Text>
-              <Group gap={5}>
-                <Text size="sm" c="dimmed">
-                  {imagesCountValue}
-                </Text>
-                <Tooltip label={t("chat.imagesCountTooltip")} maw="50vw" multiline>
+          {isImageGeneration && (
+            <Box m="md" miw="140px">
+              <Group p="apart" mb="md">
+                <Text size="sm">{t("chat.imagesCount")}</Text>
+                <Group gap={5}>
+                  <Text size="sm" c="dimmed">
+                    {imagesCountValue}
+                  </Text>
+                  <Tooltip label={t("chat.imagesCountTooltip")} maw="50vw" multiline>
+                    <ActionIcon size="xs" variant="subtle">
+                      <IconInfoCircle size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Group>
+              <Slider
+                value={imagesCountValue}
+                onChange={handleImagesCountChange}
+                min={1}
+                max={10}
+                step={1}
+                label={null}
+                marks={[
+                  { value: 1, label: "1" },
+                  { value: 5, label: "5" },
+                  { value: 10, label: "10" },
+                ]}
+              />
+            </Box>
+          )}
+
+          {!isImageGeneration && (
+            <Box m="md" miw="140px">
+              <Group p="apart" mb="md">
+                <Text size="sm">{t("chat.maxTokens")}</Text>
+                <Tooltip label={t("chat.maxTokensTooltip")} multiline>
                   <ActionIcon size="xs" variant="subtle">
                     <IconInfoCircle size={14} />
                   </ActionIcon>
                 </Tooltip>
               </Group>
-            </Group>
-            <Slider
-              value={imagesCountValue}
-              onChange={handleImagesCountChange}
-              min={1}
-              max={10}
-              step={1}
-              label={null}
-              marks={[
-                { value: 1, label: "1" },
-                { value: 5, label: "5" },
-                { value: 10, label: "10" },
-              ]}
-            />
-          </Box>
+              <NumberInput
+                value={tokensValue}
+                onChange={handleMaxTokensChange}
+                min={1}
+                max={2_000_000}
+                clampBehavior="blur"
+                step={100}
+                size="xs"
+              />
+            </Box>
+          )}
 
-          <Box m="md" miw="140px">
-            <Group p="apart" mb="md">
-              <Text size="sm">{t("chat.maxTokens")}</Text>
-              <Tooltip label={t("chat.maxTokensTooltip")} multiline>
-                <ActionIcon size="xs" variant="subtle">
-                  <IconInfoCircle size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-            <NumberInput
-              value={tokensValue}
-              onChange={handleMaxTokensChange}
-              min={1}
-              max={2_000_000}
-              clampBehavior="blur"
-              step={100}
-              size="xs"
-            />
-          </Box>
-
-          {model?.features?.includes(ModelFeature.REASONING) && (
+          {isReasoning && (
             <>
               <Box m="md" miw="140px">
                 <Group p="apart" mb="md">

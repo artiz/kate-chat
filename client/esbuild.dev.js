@@ -59,18 +59,19 @@ const context = await esbuild.context({
   logLevel: "info",
 });
 
+const PROXY_PORT = 3000;
+const DEV_SRV_PORT = 8888;
+
 const server = await context.serve({
   servedir: "./dist",
   host: "localhost",
-  port: 8888,
+  port: DEV_SRV_PORT,
   fallback: "./dist/index.html",
 });
 
 console.log("⚡ Development build complete!", server);
 
 const { host, port } = server;
-
-console.log(`🚀 Development server running on http://localhost:${port}`);
 
 // Copy index.html to dist
 fs.copyFileSync("./src/index.html", "./dist/index.html");
@@ -163,4 +164,7 @@ http
     // Forward the body of the request to esbuild
     req.pipe(proxyReq, { end: true });
   })
-  .listen(3000);
+  .listen(PROXY_PORT)
+  .on("listening", () => {
+    console.log(`🚀 Proxy server running on http://localhost:${PROXY_PORT}`);
+  });

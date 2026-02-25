@@ -16,6 +16,6 @@ export type GraphQLContext = {
   tokenPayload?: TokenPayload;
   connectionParams: ConnectionParams;
   subscriptionsService?: SubscriptionsService;
-  sqsService?: DocumentSqsService;
+  documentSqsService?: DocumentSqsService;
   messagesService?: MessagesService;
 };

@@ -31,6 +31,7 @@ import { ModelProtocol } from "./common";
 import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
+import { IMAGE_BASE64_TPL } from "@/config/ai/templates";
 
 const logger = createLogger(__filename);
 
@@ -84,7 +85,7 @@ export class OpenAIProtocol implements ModelProtocol {
       maxRetries: 3,
     });
 
-    logger.debug({ baseURL, modelIdOverride }, "OpenAIProtocol initialized");
+    logger.trace({ baseURL, modelIdOverride }, "OpenAIProtocol initialized");
   }
 
   get api(): OpenAI {
@@ -94,19 +95,23 @@ export class OpenAIProtocol implements ModelProtocol {
   public async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
     try {
       const response: ModelResponse = {
-        type: "text",
         content: "",
       };
 
       if (this.apiType === "responses") {
         const params = await this.formatResponsesRequest(input, messages);
-        logger.debug({ ...params, input: this.debugResponseInput(params.input) }, "invoking responses...");
+        if (logger.isLevelEnabled("trace")) {
+          logger.trace(
+            { ...params, input: this.debugResponseInput(params.input) },
+            "invoking synchronous responses..."
+          );
+        }
 
         const result = await this.openai.responses.create(params);
-        const { content, files, metadata } = this.parseResponsesOutput(result);
+        const { content, images, metadata } = this.parseResponsesOutput(result);
 
         response.content = content;
-        response.files = files.length ? files : undefined;
+        response.images = images.length ? images : undefined;
         response.metadata = metadata;
       } else {
         const params = await this.formatCompletionRequest(input, messages);
@@ -412,6 +417,11 @@ export class OpenAIProtocol implements ModelProtocol {
         tools.push({ type: "code_interpreter", container: { type: "auto" } });
       }
 
+      if (inputRequest.tools.find(t => t.type === ToolType.IMAGE_GENERATION)) {
+        // TODO: set partial_images: 1-2 and return `generatedContent` to use `content` + `generatedContent`
+        tools.push({ type: "image_generation", partial_images: 0 });
+      }
+
       const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);
 
       inputRequest.tools
@@ -441,10 +451,10 @@ export class OpenAIProtocol implements ModelProtocol {
 
           tools.push(mcpTool);
         });
+    }
 
-      if (tools.length) {
-        params.tools = tools;
-      }
+    if (tools.length) {
+      params.tools = tools;
     }
 
     if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
@@ -523,18 +533,14 @@ export class OpenAIProtocol implements ModelProtocol {
     };
 
     let fullResponse = "";
-    let partResponse = "";
     let meta: MessageMetadata | undefined = undefined;
 
     let stopped = await callbacks.onStart();
     if (stopped) {
-      return await callbacks.onComplete(
-        {
-          type: "text",
-          content: fullResponse,
-        },
-        meta
-      );
+      return await callbacks.onComplete({
+        content: fullResponse,
+        metadata: meta,
+      });
     }
 
     const callableTools = this.formatRequestTools(input.tools, input.mcpServers);
@@ -662,13 +668,11 @@ export class OpenAIProtocol implements ModelProtocol {
       } // for await (const chunk of stream)
     } while (!stopped && cycleNo++ < cyclesLimit);
 
-    await callbacks.onComplete(
-      {
-        type: "text",
-        content: fullResponse,
-      },
-      meta
-    );
+    await callbacks.onComplete({
+      content: fullResponse,
+      metadata: meta,
+      completed: true,
+    });
   }
 
   private parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
@@ -709,11 +713,18 @@ export class OpenAIProtocol implements ModelProtocol {
     let meta: MessageMetadata = {};
     let lastStatus: ResponseStatus | undefined = undefined;
 
-    await callbacks.onStart();
-
     let stream: Stream<OpenAI.Responses.ResponseStreamEvent>;
     try {
-      stream = await this.openai.responses.create(params);
+      if (inputRequest.requestId) {
+        stream = await this.openai.responses.retrieve(inputRequest.requestId, {
+          stream: true,
+          starting_after: inputRequest.lastSequenceNumber,
+        });
+      } else {
+        stream = await this.openai.responses.create(params);
+      }
+
+      await callbacks.onStart({ status: ResponseStatus.STARTED });
     } catch (error) {
       if (error instanceof OpenAI.APIError && error.code === "rate_limit_exceeded" && retry < RETRY_COUNT) {
         return new Promise(res => setTimeout(res, RETRY_TIMEOUT_MS)).then(() =>
@@ -725,20 +736,43 @@ export class OpenAIProtocol implements ModelProtocol {
     }
 
     let stopped: boolean | undefined = false;
+    let started = false;
+    let requestId: string | undefined = inputRequest.requestId;
+    const images: string[] = [];
 
     try {
+      const progressInfo: ChatResponseStatus = {
+        requestId,
+      };
+
       for await (const chunk of stream) {
         if (stopped) break;
 
         logger.trace(chunk, "got responses chunk");
+        progressInfo.sequenceNumber = chunk.sequence_number;
 
-        if (chunk.type == "response.created") {
-          stopped = await callbacks.onProgress("", {
-            status: ResponseStatus.STARTED,
-            requestId: chunk.response.id,
-          });
+        if (chunk.type == "response.created" || chunk.type == "response.queued") {
+          if (!started) {
+            progressInfo.requestId = chunk.response.id;
+
+            stopped = await callbacks.onProgress(
+              "",
+              {
+                status: ResponseStatus.STARTED,
+                queue: inputRequest.requestPolling,
+                ...progressInfo,
+              },
+              true
+            );
+            started = true;
+          }
+        } else if (chunk.type == "response.in_progress") {
+          // do nothing
         } else if (chunk.type == "response.output_text.delta") {
-          stopped = await callbacks.onProgress(chunk.delta, { status: ResponseStatus.IN_PROGRESS });
+          stopped = await callbacks.onProgress(chunk.delta, {
+            status: ResponseStatus.IN_PROGRESS,
+            ...progressInfo,
+          });
           fullResponse += chunk.delta;
         } else if (
           chunk.type == "response.web_search_call.in_progress" ||
@@ -747,7 +781,10 @@ export class OpenAIProtocol implements ModelProtocol {
         ) {
           if (lastStatus !== ResponseStatus.WEB_SEARCH) {
             lastStatus = ResponseStatus.WEB_SEARCH;
-            stopped = await callbacks.onProgress("", { status: ResponseStatus.WEB_SEARCH });
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.WEB_SEARCH,
+              ...progressInfo,
+            });
           }
         } else if (
           chunk.type == "response.mcp_list_tools.in_progress" ||
@@ -756,20 +793,28 @@ export class OpenAIProtocol implements ModelProtocol {
           stopped = await callbacks.onProgress("", {
             status: ResponseStatus.MCP_CALL,
             detail: chunk.type == "response.mcp_list_tools.in_progress" ? "Loading MCP tools..." : undefined,
+            ...progressInfo,
           });
         } else if (chunk.type == "response.code_interpreter_call.in_progress") {
           if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
             lastStatus = ResponseStatus.CODE_INTERPRETER;
-            stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.CODE_INTERPRETER,
+              ...progressInfo,
+            });
           }
         } else if (chunk.type == "response.code_interpreter_call_code.delta") {
           stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
         } else if (chunk.type == "response.code_interpreter_call.interpreting") {
-          stopped = await callbacks.onProgress(genProcessSymbol(), { status: ResponseStatus.CODE_INTERPRETER });
+          stopped = await callbacks.onProgress(genProcessSymbol(), {
+            status: ResponseStatus.CODE_INTERPRETER,
+            ...progressInfo,
+          });
         } else if (chunk.type == "response.code_interpreter_call_code.done") {
           logger.debug(chunk, "code interpreter call completed");
           stopped = await callbacks.onProgress("", {
             status: ResponseStatus.CODE_INTERPRETER,
+            ...progressInfo,
             tools: [
               {
                 name: "code_interpreter",
@@ -782,7 +827,11 @@ export class OpenAIProtocol implements ModelProtocol {
           partResponse = "";
         } else if (chunk.type == "response.reasoning_summary_text.delta") {
           partResponse += chunk.delta;
-          stopped = await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: partResponse });
+          stopped = await callbacks.onProgress("", {
+            status: ResponseStatus.REASONING,
+            ...progressInfo,
+            detail: partResponse,
+          });
         } else if (chunk.type == "response.reasoning_summary_text.done") {
           if (!meta.reasoning) {
             meta.reasoning = [];
@@ -797,18 +846,16 @@ export class OpenAIProtocol implements ModelProtocol {
           if (chunk.item.type === "reasoning") {
             if (lastStatus !== ResponseStatus.REASONING) {
               lastStatus = ResponseStatus.REASONING;
-              stopped = await callbacks.onProgress("", { status: ResponseStatus.REASONING });
+              stopped = await callbacks.onProgress("", {
+                status: ResponseStatus.REASONING,
+                ...progressInfo,
+              });
             }
           }
         } else if (chunk.type == "response.output_item.done") {
           let status: ResponseStatus | undefined = undefined;
           const item = chunk.item;
           let detail: string | undefined = undefined;
-          if ("action" in item) {
-            if ("query" in item.action) {
-              detail = item.action.query as string;
-            }
-          }
 
           if (item.type === "web_search_call") {
             status = ResponseStatus.WEB_SEARCH;
@@ -822,13 +869,16 @@ export class OpenAIProtocol implements ModelProtocol {
             } else {
               status = undefined;
             }
+          } else if (item.type === "image_generation_call") {
+            status = ResponseStatus.CONTENT_GENERATION;
+            detail = (item as any)?.revised_prompt as string;
           }
 
           if (status) {
             lastStatus = status;
             stopped = await callbacks.onProgress("", {
               status,
-              sequence_number: chunk.sequence_number,
+              ...progressInfo,
               detail,
             });
           }
@@ -878,7 +928,19 @@ export class OpenAIProtocol implements ModelProtocol {
           if (content) {
             fullResponse = content;
           }
-        } else if (!["response.output_item.added"].includes(chunk.type)) {
+        } else if (chunk.type == "response.image_generation_call.generating") {
+          stopped = await callbacks.onProgress("", {
+            status: ResponseStatus.CONTENT_GENERATION,
+            ...progressInfo,
+          });
+        } else if (chunk.type == "response.image_generation_call.partial_image") {
+          images.push(IMAGE_BASE64_TPL("png", chunk.partial_image_b64));
+        } else if (
+          chunk.type == "response.image_generation_call.completed" ||
+          chunk.type == "response.image_generation_call.in_progress"
+        ) {
+          // do nothing
+        } else if (!["keepalive"].includes(chunk.type)) {
           logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
         }
       }
@@ -889,18 +951,17 @@ export class OpenAIProtocol implements ModelProtocol {
     if (stopped) {
       stream?.controller?.abort(); // ensure stopping the background request
     }
-    await callbacks.onComplete(
-      {
-        type: "text",
-        content: fullResponse || (stopped ? "_Cancelled_" : "_No response_"),
-      },
-      meta
-    );
+    await callbacks.onComplete({
+      content: fullResponse || (stopped ? "_Cancelled_" : images.length ? "" : "_No response_"),
+      images,
+      metadata: meta,
+      completed: true,
+    });
   }
 
   private parseResponsesOutput(response: OpenAI.Responses.Response): {
     content: string;
-    files: string[];
+    images: string[];
     metadata: MessageMetadata;
   } {
     const { output, usage } = response;
@@ -913,7 +974,7 @@ export class OpenAIProtocol implements ModelProtocol {
       },
     };
 
-    const { content, files } = output.reduce(
+    const { content, images } = output.reduce(
       (res, item) => {
         if (item.type === "message") {
           res.content += item.content
@@ -968,17 +1029,17 @@ export class OpenAIProtocol implements ModelProtocol {
             .join("\n\n");
         } else if (item.type === "image_generation_call") {
           if (item.result) {
-            res.files.push(item.result);
+            res.images.push(item.result);
           } else {
             res.content += `|Image ${item.id}: ${item.status}|\n\n`;
           }
         }
         return res;
       },
-      { content: "", files: [] as string[] }
+      { content: "", images: [] as string[] }
     );
 
-    return { content, files, metadata };
+    return { content, images, metadata };
   }
 
   // Helper method to map our message roles to OpenAI roles

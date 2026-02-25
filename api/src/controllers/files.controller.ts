@@ -19,7 +19,7 @@ declare global {
   namespace Express {
     interface Request {
       subscriptionsService?: SubscriptionsService;
-      sqsService?: DocumentSqsService;
+      documentSqsService?: DocumentSqsService;
       messagesService?: MessagesService;
     }
   }
@@ -93,8 +93,8 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
 
     const subService = req.subscriptionsService;
     ok(subService, "SubscriptionsService is required in request");
-    const sqsService = req.sqsService;
-    ok(sqsService, "SQSService is required in request");
+    const documentSqsService = req.documentSqsService;
+    ok(documentSqsService, "SQSService is required in request");
 
     const existing = await documentRepo.findOne({
       where: {
@@ -128,7 +128,7 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
         [DocumentStatus.STORAGE_UPLOAD, DocumentStatus.PARSING, DocumentStatus.ERROR].includes(existing.status) &&
         existing.s3key
       ) {
-        await sqsService.sendJsonMessage({
+        await documentSqsService.sendJsonMessage({
           command: "parse_document",
           documentId: existing.id,
           s3key: existing.s3key,
@@ -182,7 +182,7 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
     subService.publishDocumentStatus(document);
 
     // Send parse_document command for new document
-    await sqsService.sendJsonMessage({
+    await documentSqsService.sendJsonMessage({
       command: "parse_document",
       documentId: document.id,
       s3key: document.s3key,

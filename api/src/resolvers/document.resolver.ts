@@ -38,7 +38,7 @@ export class DocumentResolver extends BaseResolver {
   @Mutation(() => Document)
   async reindexDocument(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Document> {
     await this.validateContextToken(context);
-    const sqsService = this.getSqsService(context);
+    const documentSqsService = this.getDocumentSqsService(context);
 
     const document = await this.documentRepo.findOne({
       where: { id },
@@ -51,7 +51,7 @@ export class DocumentResolver extends BaseResolver {
     document.statusProgress = 1;
     await this.documentRepo.save(document);
 
-    await sqsService.sendJsonMessage(
+    await documentSqsService.sendJsonMessage(
       {
         command: "index_document",
         documentId: document.id,
@@ -98,7 +98,7 @@ export class DocumentResolver extends BaseResolver {
     @Ctx() context: GraphQLContext
   ): Promise<Document> {
     await this.validateContextToken(context);
-    const sqsService = this.getSqsService(context);
+    const sqsService = this.getDocumentSqsService(context);
 
     const document = await this.documentRepo.findOne({
       where: { id },

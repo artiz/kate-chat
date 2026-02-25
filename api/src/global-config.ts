@@ -166,6 +166,14 @@ export interface GlobalConfigShape {
     secretAccessKey?: string;
     documentsQueue?: string;
     indexDocumentsQueue?: string;
+    requestsQueue?: string;
+    requestsQueueMaxMessagesCount: number;
+    requestsQueueDelayMs: number;
+    requestsRetryInitialDelayMs: number;
+    requestsRetrySubsequentDelayMs: number;
+    requestsExpirationSec: number;
+    requestsQueueWaitTimeSec: number;
+    requestsQueueVisibilityTimeoutSec: number;
   };
   initial?: {
     models?: InitialCustomModel[];
@@ -389,6 +397,14 @@ export class GlobalConfig {
         secretAccessKey: process.env.SQS_SECRET_ACCESS_KEY,
         documentsQueue: process.env.SQS_DOCUMENTS_QUEUE,
         indexDocumentsQueue: process.env.SQS_INDEX_DOCUMENTS_QUEUE,
+        requestsQueue: process.env.SQS_REQUESTS_QUEUE,
+        requestsQueueMaxMessagesCount: +(process.env.SQS_REQUESTS_QUEUE_MAX_MESSAGES_COUNT || 5),
+        requestsQueueDelayMs: +(process.env.SQS_REQUESTS_QUEUE_DELAY_MS || 15000),
+        requestsRetryInitialDelayMs: +(process.env.SQS_REQUESTS_INITIAL_DELAY_MS || 500),
+        requestsRetrySubsequentDelayMs: +(process.env.SQS_REQUESTS_SUBSEQUENT_DELAY_MS || 3000),
+        requestsExpirationSec: +(process.env.SQS_REQUESTS_EXPIRATION_SEC || 1800),
+        requestsQueueWaitTimeSec: +(process.env.SQS_REQUESTS_QUEUE_WAIT_TIME_SEC || 10),
+        requestsQueueVisibilityTimeoutSec: +(process.env.SQS_REQUESTS_QUEUE_VISIBILITY_TIMEOUT_SEC || 10),
       },
       initial: {
         models: [],

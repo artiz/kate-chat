@@ -4,13 +4,13 @@ import { IncomingMessage } from "http";
 import { Message } from "../entities/Message";
 import { ChatFile, ChatFileType } from "../entities/ChatFile";
 import { AIService } from "./ai/ai.service";
-import sharp from "sharp";
-import exifReader, { Exif } from "exif-reader";
+import { getImageFeatures, saveImageFromBase64 as saveImageFromBase64Util } from "@/utils/image";
 import { Chat, DocumentChunk, MCPServer, Model, User } from "@/entities";
 import { CreateMessageInput, ImageInput, MessageContext } from "@/types/graphql/inputs";
 import {
   ChatResponseStatus,
   CompleteChatRequest,
+  CreateMessageRequest,
   MessageMetadata,
   ModelMessageContent,
   ModelMessageContentImage,
@@ -24,7 +24,8 @@ import { isAdmin } from "@/utils/jwt";
 import { getRepository } from "@/config/database";
 import { formatDateCeil, formatDateFloor } from "@/utils/db";
 
-import { SubscriptionsService } from "./messaging";
+import { COMMAND_CONTINUE_REQUEST, SubscriptionsService } from "./messaging";
+import type { RequestQueuePayload, RequestsSqsService } from "./messaging/requests-sqs.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
@@ -32,22 +33,16 @@ import { EmbeddingsService } from "./ai/embeddings.service";
 import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
 import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
 import { ChatSettings } from "@/entities/Chat";
+import { IMAGE_GENERATION_PLACEHOLDER } from "@/config/ai/templates";
+import { pick } from "lodash";
+import { QueueLockService } from "./common/queue-lock.service";
+import { log } from "console";
 
 const aiConfig = globalConfig.ai;
 
 const logger = createLogger(__filename);
 
 const MIN_STREAMING_UPDATE_MS = 30; // Minimum interval between streaming updates
-
-export interface CreateMessageRequest {
-  chatId: string;
-  modelId: string;
-  content: string;
-  settings: ChatSettings;
-  images?: ImageInput[];
-  documentIds?: string[];
-  mcpTokens?: { serverId: string; accessToken: string; refreshToken?: string; expiresAt?: number }[];
-}
 
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
@@ -61,10 +56,13 @@ export class MessagesService {
   private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
   private embeddingsService: EmbeddingsService;
+  private requestsSqsService: RequestsSqsService;
   private cancelledMessages: Set<string> = new Set<string>();
+  private requestsLock: QueueLockService<string, string>;
 
-  constructor(subscriptionsService: SubscriptionsService) {
+  constructor(subscriptionsService: SubscriptionsService, requestsSqsService: RequestsSqsService) {
     this.subscriptionsService = subscriptionsService;
+    this.requestsSqsService = requestsSqsService;
     this.aiService = new AIService();
     this.embeddingsService = new EmbeddingsService();
     this.messageRepository = getRepository(Message);
@@ -72,8 +70,10 @@ export class MessagesService {
     this.chatFileRepository = getRepository(ChatFile);
     this.modelRepository = getRepository(Model);
     this.mcpServerRepository = getRepository(MCPServer);
+    this.requestsLock = new QueueLockService<string, string>("requests", 3000);
 
     subscriptionsService.on(globalConfig.redis.channelChatMessage, this.handleMessageEvent.bind(this));
+    requestsSqsService.subscribe(COMMAND_CONTINUE_REQUEST, this.handleQueuedRequestMessage.bind(this));
   }
 
   public connectClient(socket: WebSocket, request: IncomingMessage, chatId: string) {
@@ -100,7 +100,7 @@ export class MessagesService {
 
     const s3Service = new S3Service(user.toToken());
     const buffer = await s3Service.getFileContent(chatFile.fileName);
-    const features = await this.getImageFeatures(buffer);
+    const features = await getImageFeatures(buffer);
 
     chatFile.predominantColor = features.predominantColor;
     chatFile.exif = features.exif;
@@ -131,6 +131,88 @@ export class MessagesService {
     if (message?.status === ResponseStatus.CANCELLED) {
       this.cancelledMessages.add(message.id);
     }
+  }
+
+  protected async handleQueuedRequestMessage(
+    payload: RequestQueuePayload,
+    user: User,
+    cleanupMessage: () => Promise<void>,
+    expired?: boolean
+  ) {
+    const { input, modelId, message, connection, requestId, lastSequenceNumber } = payload;
+    if (!requestId) {
+      logger.error(`Missing requestId in Requests SQS message payload, messageId: ${message.id}`);
+      return;
+    }
+
+    const chat = await this.chatRepository.findOne({ where: { id: message.chatId, user: { id: user.id } } });
+    if (!chat) {
+      logger.warn(`Chat not found for Requests SQS message, chatId: ${message.chatId}`);
+      return;
+    }
+
+    const assistantMessage = await this.messageRepository.findOne({ where: { id: message.id } });
+    if (!assistantMessage) {
+      logger.warn(`Message not found for Requests SQS message, messageId: ${message.id}`);
+      return;
+    }
+
+    if (
+      assistantMessage.status &&
+      [ResponseStatus.COMPLETED, ResponseStatus.CANCELLED, ResponseStatus.ERROR].includes(assistantMessage.status)
+    ) {
+      await cleanupMessage();
+      return;
+    }
+
+    if (expired) {
+      assistantMessage.status = ResponseStatus.ERROR;
+      assistantMessage.statusInfo = "Request expired";
+      assistantMessage.content = "Request expired before processing";
+      return void (await this.saveAndPublish(chat, assistantMessage));
+    }
+
+    const lock = await this.requestsLock.checkLock(requestId);
+    if (lock) {
+      return;
+    }
+
+    const model = await this.modelRepository.findOne({
+      where: {
+        modelId,
+        user: { id: user.id }, // Ensure the model belongs to the user
+      },
+    });
+    this.checkModelFeatures(model, user);
+
+    const request: CreateMessageRequest = this.formatMessageRequest(modelId, input.content, chat, user, {
+      mcpTokens: input.mcpTokens,
+    });
+    // very important to avoid inifinite loops in case of continue_request
+    request.requestId = requestId;
+    request.lastSequenceNumber = lastSequenceNumber;
+
+    // run in background without awaiting to allow faster processing of next messages in the queue
+    this.requestsLock
+      .putLock(requestId, process.pid.toString())
+      .then(() => this.getContextMessages(chat.id, assistantMessage))
+      .then(messages =>
+        this.publishAssistantMessage(request, connection, user, model, chat, messages, assistantMessage, requestId)
+      )
+      .then(cleanupMessage)
+      .catch(error => {
+        logger.error(
+          {
+            error,
+            stack: error.stack,
+            messageId: message.id,
+            requestId,
+            ...pick(input, ["modelId", "settings"]),
+          },
+          `Error processing Requests SQS message for requestId ${requestId}`
+        );
+      })
+      .then(() => this.requestsLock.releaseLock(requestId));
   }
 
   public async createMessage(input: CreateMessageInput, connection: ConnectionParams, user: User): Promise<Message> {
@@ -351,22 +433,29 @@ export class MessagesService {
 
     // Create new assistant message
     if (assistantMessage) {
+      assistantMessage.status = undefined;
+      assistantMessage.statusInfo = undefined;
+
       // leave previosly generated content
       if (model.type !== ModelType.IMAGE_GENERATION) {
         assistantMessage.content = "";
+      } else {
+        assistantMessage.status = ResponseStatus.CONTENT_GENERATION;
       }
 
       assistantMessage.jsonContent = undefined;
       assistantMessage.metadata = undefined;
     } else {
-      assistantMessage = this.messageRepository.create({
-        content: "",
-        role: MessageRole.ASSISTANT,
-        modelId: model.modelId,
-        modelName: model.name,
-        chatId,
-        chat,
-      });
+      assistantMessage = await this.messageRepository.save(
+        this.messageRepository.create({
+          content: "",
+          role: MessageRole.ASSISTANT,
+          modelId: model.modelId,
+          modelName: model.name,
+          chatId,
+          chat,
+        })
+      );
     }
 
     await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
@@ -542,29 +631,12 @@ export class MessagesService {
     return result; // Return all deleted message IDs including the original
   }
 
-  public async saveImageFromBase64(
+  public saveImageFromBase64(
     s3Service: S3Service,
     content: string,
-    { chatId, messageId, id }: { chatId: string; messageId: string; id: string }
+    opts: { chatId: string; messageId: string; id: string }
   ): Promise<{ fileName: string; contentType: string; buffer: Buffer }> {
-    // Parse extension from base64 content if possible, default to .png
-    const matches = content.match(/^data:image\/(\w+);base64,/);
-    const type = matches ? `${matches[1]}` : "png";
-    const fileName = `${chatId}-${messageId}-${id}.${type}`;
-    const contentType = `image/${type}`;
-
-    // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-    const base64Data = content.replace(/^data:image\/[a-z0-9]+;base64,/, "");
-    const buffer = Buffer.from(base64Data, "base64");
-    // Upload to S3
-    await s3Service.uploadFile(buffer, fileName, contentType);
-
-    // Return the file key
-    return {
-      fileName,
-      contentType,
-      buffer,
-    };
+    return saveImageFromBase64Util(s3Service, content, opts);
   }
 
   protected async publishUserMessage(
@@ -613,7 +685,7 @@ export class MessagesService {
           id: `${Date.now()}-${index}`,
         });
 
-        const { predominantColor, exif } = await this.getImageFeatures(buffer);
+        const { predominantColor, exif } = await getImageFeatures(buffer);
 
         await this.chatFileRepository.save({
           chatId: chat.id,
@@ -651,7 +723,81 @@ export class MessagesService {
     return userMessage;
   }
 
-  // TODO: simplify this method
+  /** Save a message and notify the client. */
+  protected async saveAndPublish(chat: Chat, message: Message, inProgress: boolean = false): Promise<Message> {
+    const savedMessage = await this.messageRepository.save(message);
+    await this.subscriptionsService.publishChatMessage(chat, savedMessage, inProgress);
+    return savedMessage;
+  }
+
+  /** Update chat title from the first Q&A if not yet set. */
+  protected async ensureChatTitle(
+    chat: Chat,
+    titleModel: Model,
+    connection: ConnectionParams,
+    question: string,
+    answer: string
+  ): Promise<void> {
+    if (!chat.title || chat.isPristine) {
+      chat.title = await this.suggestChatTitle(titleModel, connection, question, answer);
+      chat.isPristine = false;
+      await this.chatRepository.save(chat);
+    }
+  }
+
+  /** Apply a ModelResponse to a message (saves images to S3 or sets text content). */
+  protected async processModelResponse(
+    message: Message,
+    response: ModelResponse,
+    s3Service: S3Service,
+    chat: Chat
+  ): Promise<void> {
+    message.content = response.content?.trim() || "";
+
+    if (response.images?.length) {
+      const images: ModelMessageContentImage[] = [];
+
+      for (const file of response.images) {
+        const { fileName, contentType, buffer } = await saveImageFromBase64Util(s3Service, file, {
+          chatId: chat.id,
+          messageId: message.id,
+          id: `${Date.now()}-${images.length}`,
+        });
+
+        const { predominantColor, exif } = await getImageFeatures(buffer);
+
+        await this.chatFileRepository.save({
+          chatId: chat.id,
+          messageId: message.id,
+          type: ChatFileType.IMAGE,
+          fileName,
+          predominantColor,
+          exif,
+        });
+
+        images.push({ contentType: "image", fileName, mimeType: contentType });
+      }
+
+      if (!message.jsonContent) message.jsonContent = [];
+
+      message.jsonContent.push(...images);
+      message.content +=
+        "\n\n" + images.map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`).join("   ");
+    }
+
+    if (!message.content) {
+      message.content = "_No response_";
+    }
+  }
+
+  private isLongRunningRequest(model: Model): boolean {
+    return (
+      model.type === ModelType.IMAGE_GENERATION ||
+      model.type === ModelType.VIDEO_GENERATION ||
+      Boolean(model.tools?.some(tool => tool === ToolType.MCP || tool === ToolType.IMAGE_GENERATION))
+    );
+  }
+
   protected async publishAssistantMessage(
     input: CreateMessageRequest,
     connection: ConnectionParams,
@@ -659,7 +805,8 @@ export class MessagesService {
     model: Model,
     chat: Chat,
     inputMessages: Message[],
-    assistantMessage: Message
+    assistantMessage: Message,
+    requestId?: string
   ): Promise<void> {
     const chatSettings: ChatSettings = {
       temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
@@ -677,6 +824,7 @@ export class MessagesService {
 
     const request: CompleteChatRequest = {
       ...input,
+      requestId,
       modelType: model.type,
       apiProvider: model.apiProvider,
       settings: chatSettings,
@@ -700,80 +848,46 @@ export class MessagesService {
 
     const s3Service = new S3Service(user.toToken());
 
-    const completeRequest = async (message: Message): Promise<boolean> => {
+    const completeRequest = async (message: Message, data?: ModelResponse): Promise<boolean> => {
       ok(message);
-      if (!chat.title || chat.isPristine) {
-        let titleModel: Model | null = model;
-        if (titleModel.type !== ModelType.CHAT) {
-          titleModel = await this.modelRepository.findOne({
-            where: { user: { id: user.id }, modelId: user.settings?.defaultModelId, type: ModelType.CHAT },
-          });
-        }
-        if (titleModel) {
-          chat.title = await this.suggestChatTitle(titleModel, connection, input.content, message.content || "");
-          chat.isPristine = false;
-          await this.chatRepository.save(chat);
-        }
+      logger.debug(
+        {
+          messageId: message.id,
+          requestId: request.requestId,
+          modelId: model.modelId,
+          content: message.content,
+        },
+        "Complete assistant message"
+      );
+
+      const titleModel =
+        model.type !== ModelType.CHAT
+          ? await this.modelRepository.findOne({
+              where: { user: { id: user.id }, modelId: user.settings?.defaultModelId, type: ModelType.CHAT },
+            })
+          : model;
+      if (titleModel) {
+        await this.ensureChatTitle(chat, titleModel, connection, input.content, message.content || "");
       }
+
       const stopped = this.cancelledMessages.has(message.id);
 
       if (stopped) {
         message.status = ResponseStatus.CANCELLED;
-        message.statusInfo = undefined;
+        message.statusInfo = "";
+      } else if (message?.metadata?.requestId && !data?.completed) {
+        // If the message has a requestId in metadata, it means it's waiting for a long-running request to be enqueued or completed
+        message.status = ResponseStatus.CONTENT_GENERATION;
+        message.statusInfo = "";
       } else {
-        message.status = undefined;
-        message.statusInfo = undefined;
+        message.status = ResponseStatus.COMPLETED;
+        message.statusInfo = "";
       }
 
-      const savedMessage = await this.messageRepository.save(message);
-      await this.subscriptionsService.publishChatMessage(chat, savedMessage);
+      await this.saveAndPublish(chat, message, Boolean(message?.metadata?.requestId && !data?.completed));
 
-      if (stopped) {
-        this.cancelledMessages.delete(message.id);
-      }
-
+      if (stopped) this.cancelledMessages.delete(message.id);
       return stopped;
-    };
-
-    const processResponse = async (message: Message, response: ModelResponse): Promise<void> => {
-      if (response.type === "image") {
-        if (!response.files) {
-          throw new Error("No image files returned from AI provider");
-        }
-
-        const images: ModelMessageContentImage[] = [];
-
-        for (const file of response.files) {
-          // Save base64 images to S3
-          const { fileName, contentType, buffer } = await this.saveImageFromBase64(s3Service, file, {
-            chatId: chat.id,
-            messageId: message.id,
-            id: `${Date.now()}-${images.length}`,
-          });
-
-          const { predominantColor, exif } = await this.getImageFeatures(buffer);
-
-          await this.chatFileRepository.save({
-            chatId: chat.id,
-            messageId: message.id,
-            type: ChatFileType.IMAGE,
-            fileName,
-            predominantColor,
-            exif,
-          });
-
-          images.push({
-            contentType: "image",
-            fileName,
-            mimeType: contentType,
-          });
-        }
-
-        message.jsonContent = images;
-        message.content = images.map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`).join("   ");
-      } else {
-        message.content = response.content?.trim() || "_No response_";
-      }
     };
 
     if (!model.streaming) {
@@ -782,12 +896,11 @@ export class MessagesService {
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
         const aiResponse = await this.aiService.completeChat(connection, request, inputMessages, s3Service, model);
 
-        await processResponse(assistantMessage, aiResponse);
+        await this.processModelResponse(assistantMessage, aiResponse, s3Service, chat);
         await completeRequest(assistantMessage);
         await this.chatRepository.save(chat);
       } catch (error: unknown) {
         logger.error(error, "Error generating AI response");
-
         assistantMessage.content = getErrorMessage(error);
         assistantMessage.role = MessageRole.ERROR;
 
@@ -813,33 +926,56 @@ export class MessagesService {
 
       if (completed) {
         if (error) {
-          return completeRequest({
-            ...assistantMessage,
-            content: getErrorMessage(error),
-            role: MessageRole.ERROR,
-          } as Message);
+          logger.error(error, "Error in streaming AI response");
+
+          return completeRequest(
+            {
+              ...assistantMessage,
+              content: getErrorMessage(error),
+              role: MessageRole.ERROR,
+            },
+            {
+              ...data,
+              completed: true,
+            }
+          );
         }
 
-        await processResponse(assistantMessage, data);
         if (metadata) {
-          if (!assistantMessage.metadata) {
-            assistantMessage.metadata = metadata;
-          } else {
-            assistantMessage.metadata = { ...assistantMessage.metadata, ...metadata };
-          }
+          assistantMessage.metadata = assistantMessage.metadata
+            ? { ...assistantMessage.metadata, ...metadata }
+            : metadata;
         }
 
-        return completeRequest(assistantMessage);
+        if (this.requestsSqsService.isConfigured() && metadata.requestId && this.isLongRunningRequest(model)) {
+          // For long-running image/video generation, enqueue via SQS
+          await this.requestsSqsService.enqueueRequest(
+            {
+              input,
+              modelId: model.modelId,
+              message: assistantMessage,
+              connection,
+              userToken: user.toToken(),
+              requestId: metadata.requestId,
+            },
+            request.requestId
+              ? globalConfig.sqs.requestsRetrySubsequentDelayMs
+              : globalConfig.sqs.requestsRetryInitialDelayMs
+          );
+        } else {
+          await this.processModelResponse(assistantMessage, data, s3Service, chat);
+        }
+
+        return completeRequest(assistantMessage, data);
       }
 
       if (this.cancelledMessages.has(messageId)) {
         return true;
       }
 
-      // image edit
-      if (model.type === ModelType.IMAGE_GENERATION && assistantMessage.content) {
-        // do nothing until the final image is generated, then replace the content with the image markdown
-        content = assistantMessage.content;
+      // image edit: keep placeholders until the final image arrives
+      if (status?.status === ResponseStatus.CONTENT_GENERATION) {
+        content = token || assistantMessage.content || IMAGE_GENERATION_PLACEHOLDER;
       } else {
         content += token;
       }
@@ -847,6 +983,10 @@ export class MessagesService {
       const now = new Date();
 
       if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
+        if (status?.requestId) {
+          await this.requestsLock.putLock(status.requestId, process.pid.toString());
+        }
+
         lastPublish = now.getTime();
         assistantMessage.content = content;
         assistantMessage.status = status?.status || ResponseStatus.STARTED;
@@ -875,22 +1015,60 @@ export class MessagesService {
           await this.messageRepository.save(assistantMessage);
         } else if (status?.status === ResponseStatus.STARTED && status.requestId) {
           if (!assistantMessage.metadata) assistantMessage.metadata = {};
+
           assistantMessage.metadata.requestId = status.requestId;
+          assistantMessage.metadata.lastSequenceNumber = status.sequenceNumber;
+          logger.debug(
+            {
+              requestId: status.requestId,
+              sequenceNumber: status.sequenceNumber,
+              isLongRunning: this.isLongRunningRequest(model),
+              queue: status.queue,
+            },
+            "Streaming request processing started"
+          );
+
+          await this.messageRepository.save(assistantMessage);
+
+          if (status.queue && this.requestsSqsService.isConfigured() && this.isLongRunningRequest(model)) {
+            // For long-running image/video generation, enqueue via SQS
+            await this.requestsSqsService.enqueueRequest(
+              {
+                input,
+                modelId: model.modelId,
+                message: assistantMessage,
+                connection,
+                userToken: user.toToken(),
+                requestId: status.requestId,
+                lastSequenceNumber: status.sequenceNumber,
+              },
+              globalConfig.sqs.requestsQueueDelayMs // longer delay to avoid too many retries
+            );
+          }
         }
 
         await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
       }
     };
 
+    request.requestPolling = this.requestsSqsService.isConfigured();
+
     this.aiService
       .streamChatCompletion(connection, request, inputMessages, handleStreaming, s3Service, model)
       .catch((error: unknown) => {
         logger.error(error, "Error streaming AI response");
-        return completeRequest({
-          ...assistantMessage,
-          content: getErrorMessage(error),
-          role: MessageRole.ERROR,
-        } as Message).catch(err => logger.error(err, "Error sending AI response"));
+        const content = getErrorMessage(error);
+        return completeRequest(
+          {
+            ...assistantMessage,
+            content,
+            role: MessageRole.ERROR,
+          },
+          {
+            content,
+            completed: true,
+          }
+        ).catch(err => logger.error(err, "Error sending AI response"));
       });
   }
 
@@ -902,7 +1080,7 @@ export class MessagesService {
       case ResponseStatus.TOOL_CALL:
       case ResponseStatus.OUTPUT_ITEM:
       case ResponseStatus.REASONING:
-        return status.detail || (status.sequence_number == null ? "" : `Step #${status.sequence_number}`);
+        return status.detail || (status.sequenceNumber == null ? "" : `Step #${status.sequenceNumber}`);
       default:
         return status.detail || undefined;
     }
@@ -927,14 +1105,8 @@ export class MessagesService {
     const completeRequest = async (message: Message) => {
       ok(message);
       try {
-        if (!chat.title || chat.isPristine) {
-          chat.title = await this.suggestChatTitle(model, connection, input.content, message.content || ragRequest);
-          chat.isPristine = false;
-          await this.chatRepository.save(chat);
-        }
-
-        const savedMessage = await this.messageRepository.save(message);
-        await this.subscriptionsService.publishChatMessage(chat, savedMessage);
+        await this.ensureChatTitle(chat, model, connection, input.content, message.content || ragRequest);
+        await this.saveAndPublish(chat, message);
       } catch (err) {
         this.subscriptionsService.publishChatError(chat.id, getErrorMessage(err));
         logger.error(err, "Error sending RAG response");
@@ -1031,7 +1203,7 @@ export class MessagesService {
     );
 
     try {
-      const content = aiResponse.content
+      const content = (aiResponse.content || "")
         .trim()
         .replace(/^\s*```(json)?/, "")
         .replace(/^[^\{]+/, "")
@@ -1112,7 +1284,7 @@ export class MessagesService {
         model
       );
 
-      const title = res.content.trim().replace(/(^["'])|(["']$)/g, "");
+      const title = res.content?.trim()?.replace(/(^["'])|(["']$)/g, "");
       return title || defaultTitle;
     } catch (error: unknown) {
       logger.error(error, "Error suggesting chat title");
@@ -1259,109 +1431,6 @@ export class MessagesService {
           `Chat messages limit of ${limit} reached. Please delete some messages before creating new ones.`
         );
       }
-    }
-  }
-
-  private async getImageFeatures(buffer: Buffer): Promise<{ predominantColor?: string; exif?: any }> {
-    try {
-      const image = sharp(buffer);
-      const metadata = await image.metadata();
-
-      let predominantColor: string | undefined;
-
-      // Extract predominant color from random points
-      if (metadata.width && metadata.height) {
-        const totalPixels = metadata.width * metadata.height;
-        const numberOfPoints = totalPixels > 20_000 ? 5_000 : Math.floor(totalPixels * 0.5);
-
-        const colorCounts = new Map<number, number>();
-        const channels = metadata.channels || 3;
-        let candidateColor: number | undefined = undefined;
-        let maxCandidateCount = 0;
-
-        // Get raw buffer data
-        const rawBuffer = await image.raw().toBuffer();
-
-        const borderSize = 0.1; // 10% border
-        const xLeft = Math.floor(metadata.width * borderSize);
-        const xRight = Math.floor(metadata.width * (1 - borderSize));
-        const yTop = Math.floor(metadata.height * borderSize);
-        const yBottom = Math.floor(metadata.height * (1 - borderSize));
-
-        for (let i = 0; i < numberOfPoints; i++) {
-          const quarter = i % 4;
-          let x = 0,
-            y = 0;
-          if (quarter === 0) {
-            x = Math.floor(Math.random() * xLeft);
-            y = Math.floor(Math.random() * metadata.height);
-          } else if (quarter === 1) {
-            x = Math.floor(Math.random() * metadata.width);
-            y = Math.floor(Math.random() * yTop);
-          } else if (quarter === 2) {
-            x = Math.floor(Math.random() * (metadata.width - xRight)) + xRight;
-            y = Math.floor(Math.random() * metadata.height);
-          } else {
-            x = Math.floor(Math.random() * metadata.width);
-            y = Math.floor(Math.random() * (metadata.height - yBottom)) + yBottom;
-          }
-
-          const offset = (y * metadata.width + x) * channels;
-
-          if (offset + 2 < rawBuffer.length) {
-            const r = Math.floor(rawBuffer[offset] / 4) * 4;
-            const g = Math.floor(rawBuffer[offset + 1] / 4) * 4;
-            const b = Math.floor(rawBuffer[offset + 2] / 4) * 4;
-
-            // Pack color into a single integer
-            const color = (1 << 24) + (r << 16) + (g << 8) + b;
-            const count = (colorCounts.get(color) || 0) + 1;
-            colorCounts.set(color, count);
-
-            if (candidateColor === undefined || count > maxCandidateCount) {
-              candidateColor = color;
-              maxCandidateCount = count;
-            }
-          }
-        }
-
-        if (candidateColor !== undefined) {
-          // Convert back to hex string
-          predominantColor = `#${candidateColor.toString(16).slice(1)}`;
-        }
-      }
-
-      let exif: Exif | undefined;
-      if (metadata.exif) {
-        try {
-          exif = exifReader(metadata.exif);
-          // fix possible serialization issues
-          const bufferTags = [
-            "OECF",
-            "ExifVersion",
-            "ComponentsConfiguration",
-            "MakerNote",
-            "UserComment",
-            "SpatialFrequencyResponse",
-            "FileSource",
-            "SceneType",
-            "CFAPattern",
-            "DeviceSettingDescription",
-            "SourceExposureTimesOfCompositeImage",
-          ];
-
-          for (const tag of bufferTags) {
-            if (exif.Photo?.[tag]) {
-              (exif.Photo[tag] as any) = Buffer.from(exif.Photo[tag] as Buffer).toString("utf-8");
-            }
-          }
-        } catch (e) {}
-      }
-
-      return { predominantColor, exif };
-    } catch (e) {
-      logger.warn(e, "Failed to extract image features");
-      return {};
     }
   }
 }

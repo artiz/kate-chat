@@ -39,7 +39,7 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MessagesService } from "@/services/messages.service";
 import { HttpError } from "./types/exceptions";
-import { DocumentSqsService, SubscriptionsService } from "./services/messaging";
+import { DocumentSqsService, RequestsSqsService, SubscriptionsService } from "./services/messaging";
 import { servicesMiddleware } from "./middleware/services.middleware";
 import { globalConfig } from "./global-config";
 
@@ -51,6 +51,7 @@ const logger = createLogger("server");
 
 let subscriptionsService: SubscriptionsService | undefined;
 let sqsService: DocumentSqsService | undefined;
+let requestsSqsService: RequestsSqsService | undefined;
 let messagesService: MessagesService | undefined;
 
 async function bootstrap() {
@@ -61,9 +62,11 @@ async function bootstrap() {
   }
 
   subscriptionsService = new SubscriptionsService();
-  messagesService = new MessagesService(subscriptionsService);
+  requestsSqsService = new RequestsSqsService();
+  messagesService = new MessagesService(subscriptionsService, requestsSqsService);
   sqsService = new DocumentSqsService(subscriptionsService);
 
+  await requestsSqsService.startup();
   await sqsService.startup();
 
   const schemaPubSub = {
@@ -125,7 +128,7 @@ async function bootstrap() {
 
   // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
-  app.use(servicesMiddleware(subscriptionsService, sqsService));
+  app.use(servicesMiddleware(subscriptionsService, sqsService, messagesService));
 
   // Set up routes
   app.use("/health", healthRoutes);
