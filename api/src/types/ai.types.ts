@@ -70,8 +70,6 @@ export interface AIModelInfo {
   features?: ModelFeature[];
 }
 
-export type ContentType = "text" | "image";
-
 export interface ModelMessageContentText {
   content: string;
   contentType: "text";

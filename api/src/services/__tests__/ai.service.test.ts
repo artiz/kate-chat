@@ -216,19 +216,9 @@ describe("AIService", () => {
       );
 
       expect(callback).toHaveBeenCalledTimes(4);
-      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined, type: "text" });
-      expect(callback).toHaveBeenNthCalledWith(
-        2,
-        { content: "Hello", status: undefined, type: "text" },
-        false,
-        undefined
-      );
-      expect(callback).toHaveBeenNthCalledWith(
-        3,
-        { content: ", world!", status: undefined, type: "text" },
-        false,
-        undefined
-      );
+      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined });
+      expect(callback).toHaveBeenNthCalledWith(2, { content: "Hello", status: undefined }, false, undefined);
+      expect(callback).toHaveBeenNthCalledWith(3, { content: ", world!", status: undefined }, false, undefined);
       expect(callback).toHaveBeenNthCalledWith(
         4,
         {
@@ -240,7 +230,6 @@ describe("AIService", () => {
               invocationLatency: 150,
             },
           },
-          type: "text",
         },
         true
       );
@@ -268,12 +257,8 @@ describe("AIService", () => {
       );
 
       expect(callback).toHaveBeenCalledTimes(2);
-      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined, type: "text" });
-      expect(callback).toHaveBeenNthCalledWith(
-        2,
-        { error: mockError, content: "", status: undefined, type: "text" },
-        true
-      );
+      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined });
+      expect(callback).toHaveBeenNthCalledWith(2, { error: mockError, content: "", status: undefined }, true);
     });
 
     it("should handle stream exceptions", async () => {
@@ -316,14 +301,9 @@ describe("AIService", () => {
       );
 
       expect(callback).toHaveBeenCalledTimes(4);
-      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined, type: "text" });
-      expect(callback).toHaveBeenNthCalledWith(
-        2,
-        { content: "Hello", status: undefined, type: "text" },
-        false,
-        undefined
-      );
-      expect(callback).toHaveBeenNthCalledWith(3, { error: mockError, content: "", type: "text" }, true);
+      expect(callback).toHaveBeenNthCalledWith(1, { content: "", status: undefined });
+      expect(callback).toHaveBeenNthCalledWith(2, { content: "Hello", status: undefined }, false, undefined);
+      expect(callback).toHaveBeenNthCalledWith(3, { error: mockError, content: "" }, true);
     });
   });
 });
