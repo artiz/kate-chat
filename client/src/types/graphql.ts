@@ -355,14 +355,14 @@ export interface ChatFolder {
 
 export interface Chat {
   id: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   updatedAt?: string;
   modelId?: string;
   isPristine?: boolean;
   isPinned?: boolean;
   folderId?: string;
-  messagesCount: number;
+  messagesCount?: number;
   lastBotMessage?: string;
   lastBotMessageId?: string;
   lastBotMessageHtml?: string[];

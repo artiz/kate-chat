@@ -27,6 +27,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Localization
 - "Switch model"/"Call other model" logic to process selected chat messages with another [model](#screenshots)
 - LLM tools (Web Search, Code Interpreter, Reasoning) support, custom WebSearch tool implemented using Yandex Search API
+- Distributed messages processing using external queue (SQS + Redis), specific queue for long-running requests (images generation, agents) that allows to continue requests processing after service crash/restart
 - Request statistics (input/output tokens, tool calls), request cancellation to stop reasoning or web search
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
 - Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
@@ -34,7 +35,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
   * Voice-to-voice demo for OpenAI realtime WebRTC API.
-- Distributed messages processing using external queue (Redis), full-fledged production-like dev environment with docker-compose
 - External users authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
 - Support for various LLM model Providers:
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
@@ -42,12 +42,14 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - Custom OpenAI-compatible REST API endpoints support (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
+- Full-fledged production-like dev environment with docker-compose
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
 ## TODO
 * Put status update time into document processing, load pages count and show it and full processing time and average proc speed
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
+* Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
 * Google Vertex AI provider support
 * Finish "Forgot password?" logic for local login
