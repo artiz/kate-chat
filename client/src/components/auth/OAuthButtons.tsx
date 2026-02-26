@@ -1,6 +1,6 @@
 import React from "react";
-import { Button, Group, Divider, Text, Stack, Flex, Loader } from "@mantine/core";
-import { IconBrandGoogle, IconBrandGithub, IconBrandOffice, IconBrandAzure } from "@tabler/icons-react";
+import { Button, Divider, Flex, Loader, Stack } from "@mantine/core";
+import { IconBrandGoogle, IconBrandGithub, IconBrandAzure } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { APP_API_URL } from "@/lib/config";
 
@@ -9,61 +9,76 @@ interface OAuthButtonsProps {
   onLogin?: () => void;
 }
 
-const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "outline", onLogin }) => {
+type AuthProvider = "local" | "google" | "github" | "microsoft";
+
+const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "filled", onLogin }) => {
   const { t } = useTranslation();
   const [loggingIn, setLoggingIn] = React.useState(false);
+  const [providers, setProviders] = React.useState<AuthProvider[] | null>(null);
 
-  const handleGoogleLogin = () => {
+  React.useEffect(() => {
+    fetch(`${APP_API_URL}/auth/providers`)
+      .then(res => res.json())
+      .then(data => setProviders(data))
+      .catch(() => setProviders(["local"]));
+  }, []);
+
+  const handleLogin = (provider: string) => {
     setLoggingIn(true);
     onLogin?.();
-    window.location.href = `${APP_API_URL}/auth/google`;
+    window.location.href = `${APP_API_URL}/auth/${provider}`;
   };
 
-  const handleGithubLogin = () => {
-    setLoggingIn(true);
-    onLogin?.();
-    window.location.href = `${APP_API_URL}/auth/github`;
-  };
+  if (providers === null) {
+    return (
+      <Stack gap="md" align="center">
+        <Loader size="sm" />
+      </Stack>
+    );
+  }
 
-  const handleMicrosoftLogin = () => {
-    setLoggingIn(true);
-    onLogin?.();
-    window.location.href = `${APP_API_URL}/auth/microsoft`;
-  };
+  const oauthProviders = providers.filter(p => p !== "local");
+  if (oauthProviders.length === 0) return null;
 
   return (
     <Stack gap="md">
       <Divider label={t("auth.orContinueWith")} labelPosition="center" my="lg" />
       <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
-        <Button
-          leftSection={<IconBrandGoogle size={16} />}
-          variant={variant}
-          color="red.9"
-          onClick={handleGoogleLogin}
-          disabled={loggingIn}
-        >
-          Google
-        </Button>
+        {oauthProviders.includes("google") && (
+          <Button
+            leftSection={<IconBrandGoogle size={16} />}
+            variant={variant}
+            color="red"
+            onClick={() => handleLogin("google")}
+            disabled={loggingIn}
+          >
+            Google
+          </Button>
+        )}
 
-        <Button
-          leftSection={<IconBrandGithub size={16} />}
-          variant={variant}
-          color="black.8"
-          onClick={handleGithubLogin}
-          disabled={loggingIn}
-        >
-          GitHub
-        </Button>
+        {oauthProviders.includes("github") && (
+          <Button
+            leftSection={<IconBrandGithub size={16} />}
+            variant={variant}
+            color="gray"
+            onClick={() => handleLogin("github")}
+            disabled={loggingIn}
+          >
+            GitHub
+          </Button>
+        )}
 
-        <Button
-          leftSection={<IconBrandAzure size={16} />}
-          variant={variant}
-          color="blue.9"
-          onClick={handleMicrosoftLogin}
-          disabled={loggingIn}
-        >
-          Microsoft
-        </Button>
+        {oauthProviders.includes("microsoft") && (
+          <Button
+            leftSection={<IconBrandAzure size={16} />}
+            variant={variant}
+            color="blue"
+            onClick={() => handleLogin("microsoft")}
+            disabled={loggingIn}
+          >
+            Microsoft
+          </Button>
+        )}
       </Flex>
       <Divider labelPosition="center" my="lg" />
     </Stack>

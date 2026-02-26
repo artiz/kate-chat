@@ -891,10 +891,12 @@ export class MessagesService {
       return stopped;
     };
 
+    // show progress immediately to avoid client timeouts and indicate that the request is being processed
+    await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
+
     if (!model.streaming) {
       // sync call
       try {
-        await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
         const aiResponse = await this.aiService.completeChat(connection, request, inputMessages, s3Service, model);
 
         await this.processModelResponse(assistantMessage, aiResponse, s3Service, chat);

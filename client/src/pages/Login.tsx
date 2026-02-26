@@ -119,7 +119,7 @@ const Login: React.FC = () => {
             {t("auth.signIn")}
           </Button>
 
-          <OAuthButtons variant="light" onLogin={() => setLoggingIn(true)} />
+          <OAuthButtons onLogin={() => setLoggingIn(true)} />
           <Center mt="md">{loggingIn && <Loader size="md" />}</Center>
 
           {!loggingIn && (

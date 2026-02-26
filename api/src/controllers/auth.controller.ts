@@ -4,7 +4,7 @@ import { generateToken, TokenPayload, verifyToken } from "@/utils/jwt";
 import { User, MCPServer } from "@/entities";
 import { getRepository } from "@/config/database";
 import { createLogger } from "@/utils/logger";
-import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE } from "./html.templates";
+import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, OAUTH_ERROR_TEMPLATE } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
 
@@ -14,10 +14,20 @@ const runtimeCfg = globalConfig.runtime;
 // Create a router for auth routes
 export const router = Router();
 
+// OAuth providers list — always includes "local", adds enabled OAuth providers
+router.get("/providers", (_req, res) => {
+  const providers: string[] = ["local"];
+  if (globalConfig.oauth.google.enabled) providers.push("google");
+  if (globalConfig.oauth.github.enabled) providers.push("github");
+  if (globalConfig.oauth.microsoft.enabled) providers.push("microsoft");
+  res.json(providers);
+});
+
 // Helper function to handle authentication and token generation
 const handleAuthResponse = (req: Request, res: Response) => {
   if (!req.user) {
-    res.status(401).json({ error: "Authentication failed" });
+    const html = OAUTH_ERROR_TEMPLATE.replace(/\{\{ERROR_DESCRIPTION\}\}/g, "Authentication failed.");
+    res.status(401).send(html);
     return;
   }
 
@@ -198,4 +208,12 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
     ).replace(/\{\{ERROR\}\}/g, "server_error");
     res.status(500).send(errorHtml);
   }
+});
+
+// Error handler for OAuth routes — return HTML page instead of JSON
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  logger.error(err, "Auth route error");
+  const html = OAUTH_ERROR_TEMPLATE.replace(/\{\{ERROR_DESCRIPTION\}\}/g, "Something went wrong.");
+  res.status(500).send(html);
 });

@@ -27,6 +27,15 @@ export const HTML_TEMPLATE = (title: string, content: string, script?: string) =
   </body>
 </html>`.replace(/\{\{FRONTEND_ORIGIN\}\}/g, getFrontendOrigin());
 
+export const OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
+  "Authentication Failed",
+  `
+    <h1 class="error">Authentication Failed</h1>
+    <p>{{ERROR_DESCRIPTION}}</p>
+    <p><a href="{{FRONTEND_ORIGIN}}/login">Return to login page</a></p>
+  `
+);
+
 export const MCP_OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
   "MCP Authorization Failed",
   `

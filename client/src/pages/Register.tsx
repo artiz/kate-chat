@@ -179,7 +179,7 @@ const RegisterForm: React.FC = () => {
             {t("auth.register")}
           </Button>
 
-          <OAuthButtons variant="light" />
+          <OAuthButtons />
 
           <Text ta="center" mt="md">
             {t("auth.haveAccount")}{" "}
