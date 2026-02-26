@@ -8,6 +8,8 @@ ARG RECAPTCHA_SITE_KEY=""
 ARG COMMIT_SHA=""
 
 WORKDIR /app
+# native build deps for sqlite3 (node-gyp fallback when prebuilt binary unavailable)
+RUN apk add --no-cache python3 make g++
 # prepare deps
 COPY package*.json ./
 RUN mkdir ./client
