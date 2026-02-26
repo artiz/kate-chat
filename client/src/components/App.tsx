@@ -37,6 +37,7 @@ import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
 import { ChatDocuments } from "@/pages/ChatDocuments";
+import { SimpleLayout } from "./SimpleLayout";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -149,9 +150,11 @@ const AppContent: React.FC = () => {
             </Center>
           ) : (
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
+              <Route path="/" element={<SimpleLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
+              </Route>
 
               {/* Protected routes */}
               <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>

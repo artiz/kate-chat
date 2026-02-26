@@ -115,7 +115,7 @@ const Login: React.FC = () => {
             </Anchor>
           </Group> */}
 
-          <Button type="submit" fullWidth mt="xl" loading={loading} disabled={loggingIn}>
+          <Button type="submit" size="md" mt="xl" loading={loading} disabled={loggingIn}>
             {t("auth.signIn")}
           </Button>
 

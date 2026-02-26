@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, Group, Divider, Text, Stack, Flex, Loader } from "@mantine/core";
 import { IconBrandGoogle, IconBrandGithub, IconBrandOffice, IconBrandAzure } from "@tabler/icons-react";
+import { useTranslation } from "react-i18next";
 import { APP_API_URL } from "@/lib/config";
 
 interface OAuthButtonsProps {
@@ -9,6 +10,7 @@ interface OAuthButtonsProps {
 }
 
 const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "outline", onLogin }) => {
+  const { t } = useTranslation();
   const [loggingIn, setLoggingIn] = React.useState(false);
 
   const handleGoogleLogin = () => {
@@ -31,7 +33,7 @@ const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "outline", onLogi
 
   return (
     <Stack gap="md">
-      <Divider label="Or continue with" labelPosition="center" my="lg" />
+      <Divider label={t("auth.orContinueWith")} labelPosition="center" my="lg" />
       <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
         <Button
           leftSection={<IconBrandGoogle size={16} />}
@@ -63,6 +65,7 @@ const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "outline", onLogi
           Microsoft
         </Button>
       </Flex>
+      <Divider labelPosition="center" my="lg" />
     </Stack>
   );
 };

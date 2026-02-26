@@ -2,8 +2,11 @@ import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../store/slices/authSlice";
+import { useTranslation } from "react-i18next";
+import { Container, Title, Text, Group, Anchor } from "@mantine/core";
 
 const OAuthCallbackHandler: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
@@ -15,18 +18,24 @@ const OAuthCallbackHandler: React.FC = () => {
       dispatch(loginSuccess(token));
       navigate("/");
     } else {
-      // If there's no token, redirect to login page
       navigate("/login", { replace: true });
     }
   }, [token, dispatch, navigate]);
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-      <div>
-        <h2>Authenticating...</h2>
-        <p>Please wait while we complete your sign-in.</p>
-      </div>
-    </div>
+    <Container size="sm" my={40}>
+      <Title ta="center" fw={900}>
+        {t("auth.authenticating")}
+      </Title>
+      <Group justify="center" mt="xl">
+        <Text c="dimmed" size="sm" mt={5}>
+          {t("auth.authenticatingMessage")}{" "}
+          <Anchor component="button" type="button" onClick={() => navigate("/login")}>
+            {t("auth.signIn")}
+          </Anchor>
+        </Text>
+      </Group>
+    </Container>
   );
 };
 

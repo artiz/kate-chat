@@ -126,7 +126,7 @@ const RegisterForm: React.FC = () => {
   };
 
   return (
-    <Container size={420} my={40}>
+    <Container size="sm" my={40}>
       <Title ta="center" fw={900}>
         {t("auth.createAccount")}
       </Title>
@@ -175,7 +175,7 @@ const RegisterForm: React.FC = () => {
             />
           </Stack>
 
-          <Button type="submit" fullWidth mt="xl" loading={loading}>
+          <Button type="submit" size="md" mt="xl" loading={loading}>
             {t("auth.register")}
           </Button>
 

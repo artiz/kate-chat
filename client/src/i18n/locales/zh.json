@@ -64,6 +64,8 @@
     "loginFailedMessage": "登录失败，请重试。",
     "microsoft": "Microsoft",
     "noAccount": "还没有账户？",
+    "authenticating": "正在认证...",
+    "authenticatingMessage": "请稍候，正在完成您的登录。",
     "orContinueWith": "或通过以下方式继续",
     "password": "密码",
     "passwordPlaceholder": "您的密码",

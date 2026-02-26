@@ -76,6 +76,8 @@
     "recaptchaError": "Ошибка reCAPTCHA",
     "recaptchaNotLoaded": "reCAPTCHA не загружена. Пожалуйста, попробуйте позже.",
     "recaptchaVerificationError": "Произошла ошибка при проверке reCAPTCHA.",
+    "authenticating": "Аутентификация...",
+    "authenticatingMessage": "Пожалуйста, подождите, пока мы завершаем вход.",
     "orContinueWith": "Или продолжить с",
     "google": "Google",
     "github": "GitHub",

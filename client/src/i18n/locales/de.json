@@ -64,6 +64,8 @@
     "loginFailedMessage": "Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "microsoft": "Microsoft",
     "noAccount": "Noch kein Konto?",
+    "authenticating": "Authentifizierung läuft...",
+    "authenticatingMessage": "Bitte warten Sie, während wir Ihre Anmeldung abschließen.",
     "orContinueWith": "Oder fortfahren mit",
     "password": "Passwort",
     "passwordPlaceholder": "Ihr Passwort",

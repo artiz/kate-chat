@@ -64,6 +64,8 @@
     "loginFailedMessage": "Failed to login. Please try again.",
     "microsoft": "Microsoft",
     "noAccount": "Don't have an account?",
+    "authenticating": "Authenticating...",
+    "authenticatingMessage": "Please wait while we complete your sign-in.",
     "orContinueWith": "Or continue with",
     "password": "Password",
     "passwordPlaceholder": "Your password",
