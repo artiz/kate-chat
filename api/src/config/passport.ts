@@ -302,6 +302,23 @@ export const configurePassport = () => {
               return done(new Error("No email provided by Microsoft"), false);
             }
 
+            // Fetch profile photo from Microsoft Graph
+            let avatarUrl: string | undefined;
+            try {
+              const photoResponse = await fetch("https://graph.microsoft.com/v1.0/me/photo/$value", {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              });
+              if (photoResponse.ok) {
+                const contentType = photoResponse.headers.get("content-type") || "image/jpeg";
+                const photoBuffer = Buffer.from(await photoResponse.arrayBuffer());
+                avatarUrl = `data:${contentType};base64,${photoBuffer.toString("base64")}`;
+              } else {
+                logger.warn(photoResponse, "Failed to fetch Microsoft profile photo, skipping");
+              }
+            } catch (photoError) {
+              logger.warn(photoError, "Failed to fetch Microsoft profile photo, skipping");
+            }
+
             // Check if user exists by microsoftId
             let user = await userRepository.findOne({
               where: { microsoftId },
@@ -316,6 +333,7 @@ export const configurePassport = () => {
                 user.microsoftId = microsoftId;
                 user.authProvider = AuthProvider.MICROSOFT;
                 user.password = ""; // No password for OAuth users
+                user.avatarUrl = user.avatarUrl || avatarUrl;
                 user = await userRepository.save(user);
                 logger.info({ userId: user.id }, "User linked with Microsoft account");
               }
@@ -325,10 +343,6 @@ export const configurePassport = () => {
             if (!user) {
               const firstName = userInfo.givenName || "User";
               const lastName = userInfo.surname || "";
-              // const avatarUrl = undefined;
-              // Microsoft Graph doesn't provide photo URL directly
-              // TODO: Fetch photo from /me/photo/$value endpoint if needed
-              // https://graph.microsoft.com/v1.0/me/photo/$value
 
               // Determine user role
               const role = globalConfig.app.defaultAdminEmails.includes(email.toLowerCase())
@@ -342,6 +356,7 @@ export const configurePassport = () => {
                 lastName,
                 role,
                 authProvider: AuthProvider.MICROSOFT,
+                avatarUrl,
                 ...userDefaults,
               });
 
@@ -351,11 +366,20 @@ export const configurePassport = () => {
             }
 
             // Update user role if they are in admin emails list
+            const isAdmin = globalConfig.app.defaultAdminEmails.includes(user.email.toLowerCase());
             if (
-              globalConfig.app.defaultAdminEmails.includes(user.email.toLowerCase()) &&
-              user.role !== UserRole.ADMIN
+              (isAdmin && user.role !== UserRole.ADMIN) ||
+              user.authProvider !== AuthProvider.MICROSOFT ||
+              (!user.avatarUrl && avatarUrl)
             ) {
-              user.role = UserRole.ADMIN;
+              if (isAdmin) {
+                user.role = UserRole.ADMIN;
+              }
+              user.authProvider = AuthProvider.MICROSOFT;
+              if (avatarUrl) {
+                user.avatarUrl = avatarUrl;
+              }
+
               user = await userRepository.save(user);
             }
 
