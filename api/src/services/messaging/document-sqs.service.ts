@@ -14,7 +14,11 @@ export class DocumentSqsService extends BaseSqsService {
   private documentQueueService: DocumentQueueService;
 
   constructor(subscriptionsService: SubscriptionsService) {
-    super({ maxNumberOfMessages: 1, waitTimeSeconds: 15, visibilityTimeout: 90 });
+    super({
+      maxNumberOfMessages: globalConfig.sqs.documentsQueueMaxMessagesCount,
+      waitTimeSeconds: 15,
+      visibilityTimeout: 90,
+    });
 
     const { documentsQueue, indexDocumentsQueue, endpoint, accessKeyId, region } = globalConfig.sqs;
 

@@ -80,7 +80,14 @@ locals {
     },
     {
       name  = "OPENAI_IGNORED_MODELS"
-      value = "o1-pro,chatgpt-image,gpt-image,sora,dall-e,o4,gpt-audio,gpt-4-0125-preview,gpt-4-0613,gpt-4-1106-preview,gpt-4o-2024-11-20,gpt-4o-mini-search-preview,gpt-5-2025-08-07,gpt-realtime,,whisper-1,gpt-5-codex,gpt-5.2-codex"
+      value = "o1-pro,chatgpt-image,gpt-image,dall-e,o4,gpt-audio,gpt-4-0125-preview,gpt-4-0613,gpt-4-1106-preview,gpt-4o-2024-11-20,gpt-4o-mini-search-preview,gpt-5-2025-08-07,gpt-realtime,whisper-1,gpt-5-codex,gpt-5.2-codex"
+    },
+    {
+      # Node's default thread pool size is 4, which can lead to performance issues under heavy load. 
+      # Increasing it to 16 allows for better concurrency when handling multiple requests that involve file I/O, 
+      # database access, or other operations that can benefit from additional threads.
+      name  = "UV_THREADPOOL_SIZE"
+      value = "16"
     }
   ]
 

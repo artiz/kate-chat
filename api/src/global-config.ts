@@ -165,6 +165,7 @@ export interface GlobalConfigShape {
     accessKeyId?: string;
     secretAccessKey?: string;
     documentsQueue?: string;
+    documentsQueueMaxMessagesCount: number;
     indexDocumentsQueue?: string;
     requestsQueue?: string;
     requestsQueueMaxMessagesCount: number;
@@ -397,9 +398,10 @@ export class GlobalConfig {
         accessKeyId: process.env.SQS_ACCESS_KEY_ID,
         secretAccessKey: process.env.SQS_SECRET_ACCESS_KEY,
         documentsQueue: process.env.SQS_DOCUMENTS_QUEUE,
+        documentsQueueMaxMessagesCount: Math.min(10, +(process.env.SQS_DOCUMENTS_QUEUE_MAX_MESSAGES_COUNT || 10)),
         indexDocumentsQueue: process.env.SQS_INDEX_DOCUMENTS_QUEUE,
         requestsQueue: process.env.SQS_REQUESTS_QUEUE,
-        requestsQueueMaxMessagesCount: +(process.env.SQS_REQUESTS_QUEUE_MAX_MESSAGES_COUNT || 5),
+        requestsQueueMaxMessagesCount: Math.min(10, +(process.env.SQS_REQUESTS_QUEUE_MAX_MESSAGES_COUNT || 10)),
         requestsQueueDelayMs: +(process.env.SQS_REQUESTS_QUEUE_DELAY_MS || 15000),
         requestsQueueExpirationMs: +(process.env.SQS_REQUESTS_QUEUE_EXPIRATION_MS || 120000),
         requestsRetryInitialDelayMs: +(process.env.SQS_REQUESTS_INITIAL_DELAY_MS || 500),

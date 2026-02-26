@@ -7,6 +7,7 @@ import { createServer } from "http";
 import path from "path";
 import fs from "fs";
 import cors from "cors";
+import compression from "compression";
 import expressStaticGzip from "express-static-gzip";
 import { config } from "dotenv";
 import { buildSchema } from "type-graphql";
@@ -129,6 +130,10 @@ async function bootstrap() {
   // Set up JWT auth middleware for GraphQL
   app.use(authMiddleware);
   app.use(servicesMiddleware(subscriptionsService, sqsService, messagesService));
+
+  // Compress API responses (zlib streams run in libuv thread pool, not event loop)
+  // Scoped to API routes only — static files are already served pre-compressed by express-static-gzip
+  app.use(["/graphql", "/health", "/auth", "/files"], compression());
 
   // Set up routes
   app.use("/health", healthRoutes);
