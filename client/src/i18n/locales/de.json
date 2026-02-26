@@ -356,6 +356,17 @@
     "ru": "Русский",
     "zh": "中文"
   },
+  "library": {
+    "failedToReload": "Neuladen fehlgeschlagen: {{error}}",
+    "failedToReloadInfo": "Bildinformationen konnten nicht neu geladen werden: {{error}}",
+    "loading": "Bildbibliothek wird geladen...",
+    "loadMoreImages": "Weitere Bilder laden",
+    "noImagesFound": "Keine Bilder gefunden",
+    "reloadInfo": "Info neu laden (Farbe & EXIF)",
+    "subtitle": "Alle Ihre hochgeladenen und generierten Bilder",
+    "title": "Bibliothek",
+    "uploadImagesHint": "Laden Sie Bilder in Ihren Chats hoch, um sie hier zu sehen"
+  },
   "mcp": {
     "addFirstServer": "Ersten Server hinzufügen",
     "addMcpServer": "MCP-Server hinzufügen",

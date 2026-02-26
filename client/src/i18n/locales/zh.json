@@ -356,6 +356,17 @@
     "ru": "Русский",
     "zh": "中文"
   },
+  "library": {
+    "failedToReload": "重新加载失败：{{error}}",
+    "failedToReloadInfo": "重新加载图片信息失败：{{error}}",
+    "loading": "正在加载图片库...",
+    "loadMoreImages": "加载更多图片",
+    "noImagesFound": "未找到图片",
+    "reloadInfo": "刷新信息（颜色与 EXIF）",
+    "subtitle": "您上传和生成的所有图片",
+    "title": "媒体库",
+    "uploadImagesHint": "在聊天中上传图片即可在此查看"
+  },
   "mcp": {
     "addFirstServer": "添加您的第一个服务器",
     "addMcpServer": "添加 MCP 服务器",

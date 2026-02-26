@@ -1,7 +1,7 @@
 import React from "react";
-import { Table, Text, Group, Badge, ActionIcon, Tooltip, Button, Box } from "@mantine/core";
+import { useTranslation } from "react-i18next";
+import { Table, Text, Group, Badge, ActionIcon, Tooltip } from "@mantine/core";
 import {
-  IconFile,
   IconRotateClockwise,
   IconTrash,
   IconMessage2Plus,
@@ -48,11 +48,12 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onViewSummary,
   disableActions = false,
 }) => {
+  const { t } = useTranslation();
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   if (documents.length === 0) {
     return (
       <Text ta="center" c="dimmed" py="xl">
-        No documents found
+        {t("documents.noDocumentsFound")}
       </Text>
     );
   }
@@ -111,11 +112,11 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
     <Table striped highlightOnHover horizontalSpacing="xs" style={{ tableLayout: "fixed", width: "100%" }}>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th style={{ width: "45%" }}>File Name</Table.Th>
-          <Table.Th visibleFrom="lg">Size</Table.Th>
-          <Table.Th>Status</Table.Th>
-          <Table.Th>Actions</Table.Th>
-          <Table.Th visibleFrom="lg">Created At</Table.Th>
+          <Table.Th style={{ width: "45%" }}>{t("documents.fileName")}</Table.Th>
+          <Table.Th visibleFrom="lg">{t("documents.size")}</Table.Th>
+          <Table.Th>{t("common.status")}</Table.Th>
+          <Table.Th>{t("common.actions")}</Table.Th>
+          <Table.Th visibleFrom="lg">{t("documents.createdAt")}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -160,7 +161,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
             <Table.Td>
               <ActionIcon.Group>
                 {chatDocumentsMap[doc.id] ? (
-                  <Tooltip label="Remove from chat">
+                  <Tooltip label={t("documents.removeFromChat")}>
                     <ActionIcon
                       variant="light"
                       color="red"
@@ -172,7 +173,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     </ActionIcon>
                   </Tooltip>
                 ) : chatId ? (
-                  <Tooltip label="Add to chat">
+                  <Tooltip label={t("documents.addToChat")}>
                     <ActionIcon
                       variant="light"
                       color="blue"
@@ -188,7 +189,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </Tooltip>
                 ) : null}
 
-                <Tooltip label="Reindex document">
+                <Tooltip label={t("documents.reindexDocument")}>
                   <ActionIcon
                     variant="light"
                     color="orange"
@@ -200,7 +201,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </ActionIcon>
                 </Tooltip>
 
-                <Tooltip label="Delete document">
+                <Tooltip label={t("documents.deleteDocument")}>
                   <ActionIcon
                     variant="light"
                     color="red"
@@ -212,7 +213,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </ActionIcon>
                 </Tooltip>
 
-                <Tooltip label="View summary">
+                <Tooltip label={t("documents.viewSummary")}>
                   <ActionIcon variant="light" color="blue" size="md" onClick={() => onViewSummary(doc)}>
                     <IconFileStack size="1.2rem" />
                   </ActionIcon>

@@ -591,6 +591,8 @@ export const GET_ALL_IMAGES = gql`
         message {
           id
           content
+          modelId
+          modelName
         }
         chat {
           id

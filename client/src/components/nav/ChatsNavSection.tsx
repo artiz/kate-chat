@@ -130,7 +130,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
         ))}
         {chats.length > CHATS_TO_SHOW_WHEN_COLLAPSED && onToggleExpand && (
           <Tooltip label={t("chat.showAllChats")} position="right">
-            <NavLink leftSection={<IconDots size={16} />} onClick={onToggleExpand} />
+            <NavLink pl="md" leftSection={<IconDots size={16} />} onClick={onToggleExpand} />
           </Tooltip>
         )}
       </>

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
   Title,
@@ -59,6 +60,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const [searchInput, setSearchInput] = useState("");
   const [documents, setDocuments] = useState<Document[]>([]);
   const { appConfig } = useAppSelector(state => state.user);
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const itemsPerPage = 10;
@@ -72,8 +74,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       errorPolicy: "all",
       onError: error => {
         notifications.show({
-          title: "Error",
-          message: error.message || "Failed to load documents",
+          title: t("common.error"),
+          message: error.message || t("documents.failedToLoadDocuments"),
           color: "red",
         });
       },
@@ -175,8 +177,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     },
     onError: error => {
       notifications.show({
-        title: "Reindex Error",
-        message: error.message || "Failed to reindex document",
+        title: t("documents.reindexError"),
+        message: error.message || t("documents.failedToReindex"),
         color: "red",
       });
     },
@@ -188,8 +190,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     },
     onError: error => {
       notifications.show({
-        title: "Delete Error",
-        message: error.message || "Failed to delete document",
+        title: t("documents.deleteError"),
+        message: error.message || t("documents.failedToDeleteDocument"),
         color: "red",
       });
     },
@@ -201,8 +203,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
       if (error) {
         notifications.show({
-          title: "Error Adding Document",
-          message: error || "Failed to add document to chat",
+          title: t("documents.errorAddingDocument"),
+          message: error || t("documents.failedToAddToChat"),
           color: "red",
         });
       } else {
@@ -212,8 +214,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to add document to chat",
+        title: t("common.error"),
+        message: error.message || t("documents.failedToAddToChat"),
         color: "red",
       });
     },
@@ -225,8 +227,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
       if (error) {
         notifications.show({
-          title: "Error Removing Document",
-          message: error || "Failed to remove document from chat",
+          title: t("documents.errorRemovingDocument"),
+          message: error || t("documents.failedToRemoveFromChat"),
           color: "red",
         });
       } else {
@@ -236,8 +238,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
     },
     onError: error => {
       notifications.show({
-        title: "Error",
-        message: error.message || "Failed to remove document from chat",
+        title: t("common.error"),
+        message: error.message || t("documents.failedToRemoveFromChat"),
         color: "red",
       });
     },
@@ -311,8 +313,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       const filesToAdd = files.filter(f => f.size < MAX_UPLOAD_FILE_SIZE);
       if (filesToAdd.length < files.length) {
         notifications.show({
-          title: "Warning",
-          message: `Some files are too large and were not added (max size: ${MAX_UPLOAD_FILE_SIZE / 1024 / 1024} MB)`,
+          title: t("common.warning"),
+          message: t("documents.filesTooLarge", { maxSize: MAX_UPLOAD_FILE_SIZE / 1024 / 1024 }),
           color: "yellow",
         });
       }
@@ -323,8 +325,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       // Limit to MAX_IMAGES
       if (imageFiles.length) {
         notifications.show({
-          title: "Warning",
-          message: `You can upload only non-image files here`,
+          title: t("common.warning"),
+          message: t("documents.nonImageFilesOnly"),
           color: "yellow",
         });
       }
@@ -332,8 +334,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       if (documents.length) {
         if (!appConfig?.ragEnabled) {
           return notifications.show({
-            title: "Warning",
-            message: "RAG is not enabled. Documents will not be processed.",
+            title: t("common.warning"),
+            message: t("chat.ragNotEnabled"),
             color: "yellow",
           });
         }
@@ -344,8 +346,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
           })
           .catch(error => {
             notifications.show({
-              title: "Error",
-              message: error.message || "Failed to upload documents",
+              title: t("common.error"),
+              message: error.message || t("chat.failedToUploadDocs"),
               color: "red",
             });
           });
@@ -387,8 +389,13 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
   if (error) {
     return (
-      <Alert icon={<IconAlertCircle size="1rem" />} title="Error Loading Documents" color="red" variant="light">
-        {error.message || "Failed to load documents. Please try again."}
+      <Alert
+        icon={<IconAlertCircle size="1rem" />}
+        title={t("documents.errorLoadingDocuments")}
+        color="red"
+        variant="light"
+      >
+        {error.message || t("documents.failedToLoadRetry")}
       </Alert>
     );
   }
@@ -404,17 +411,17 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       <Stack gap="xl">
         <Group justify="space-between" align="center">
           <Title order={2} mb="lg">
-            Documents {chat ? `for "${chat.title || chat.id}"` : ""}
+            {chat ? t("documents.documentsForChat", { title: chat.title || chat.id }) : t("documents.title")}
           </Title>
           <Group>
             {chatId ? (
-              <Tooltip label="Back to chat">
+              <Tooltip label={t("documents.backToChat")}>
                 <ActionIcon onClick={() => navigate(`/chat/${chatId}`)}>
                   <IconX size="1.2rem" />
                 </ActionIcon>
               </Tooltip>
             ) : null}
-            <Tooltip label="Refresh documents">
+            <Tooltip label={t("documents.refreshDocuments")}>
               <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh} loading={loading}>
                 <IconRefresh size="1.2rem" />
               </ActionIcon>
@@ -425,12 +432,12 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
         <Paper withBorder p="lg" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2}>Document Library</Title>
+              <Title order={2}>{t("documents.documentLibrary")}</Title>
               <Group>
                 {uploadLoading && <Loader size="sm" />}
 
                 <TextInput
-                  placeholder="Search documents..."
+                  placeholder={t("documents.searchDocuments")}
                   value={searchInput}
                   onChange={e => setSearchInput(e.currentTarget.value)}
                   onKeyDown={e => e.key === "Enter" && handleSearch()}
@@ -458,9 +465,9 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                   isOpen={!!documentToDelete}
                   onClose={() => setDocumentToDelete(undefined)}
                   onConfirm={confirmDeleteDocument}
-                  title="Delete Document"
-                  message={`Are you sure you want to delete "${documentToDelete?.fileName}"? This action cannot be undone and will remove the document and all its associated data.`}
-                  confirmLabel="Delete Document"
+                  title={t("documents.deleteDocument")}
+                  message={t("documents.deleteDocumentMessage", { fileName: documentToDelete?.fileName })}
+                  confirmLabel={t("documents.deleteDocument")}
                   isLoading={deleteLoading}
                 />
 
@@ -468,16 +475,16 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                   isOpen={!!documentToReindex}
                   onClose={() => setDocumentToReindex(undefined)}
                   onConfirm={confirmReindexDocument}
-                  title="Reindex Document"
-                  message={`Are you sure you want to reindex "${documentToReindex?.fileName}"? This action cannot be undone and will remove all the document embeddings and summary.`}
-                  confirmLabel="Reindex Document"
+                  title={t("documents.reindexDocument")}
+                  message={t("documents.reindexDocumentMessage", { fileName: documentToReindex?.fileName })}
+                  confirmLabel={t("documents.reindexDocument")}
                   isLoading={reindexLoading}
                 />
 
                 <Modal
                   opened={!!summaryDocument}
                   onClose={() => setSummaryDocument(undefined)}
-                  title={summaryDocument?.fileName || "Document Info"}
+                  title={summaryDocument?.fileName || t("documents.documentInfo")}
                   centered
                   size="xl"
                   fullScreen={isMobile}
@@ -498,18 +505,18 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                       </Box>
                     </ScrollArea.Autosize>
                     {summaryDocument?.summaryModelId && (
-                      <Alert p="md" title="Summarization Model" color="blue">
+                      <Alert p="md" title={t("documents.summarizationModel")} color="blue">
                         {summaryDocument.summaryModelId}
                       </Alert>
                     )}
                     {summaryDocument?.embeddingsModelId && (
-                      <Alert p="md" title="Embeddings Model" color="green">
+                      <Alert p="md" title={t("documents.embeddingsModel")} color="green">
                         {summaryDocument?.embeddingsModelId}
                       </Alert>
                     )}
 
                     <Group mt="md" justify="flex-end">
-                      <Button onClick={() => setSummaryDocument(undefined)}>Close</Button>
+                      <Button onClick={() => setSummaryDocument(undefined)}>{t("common.close")}</Button>
                     </Group>
                   </Stack>
                 </Modal>
@@ -533,12 +540,12 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                 )}
 
                 <Text size="sm" c="dimmed" ta="center">
-                  Showing {documents.length} of {totalDocuments} documents
+                  {t("documents.showingOf", { count: documents.length, total: totalDocuments })}
                 </Text>
               </>
             ) : (
               <Text ta="center" c="dimmed" py="xl">
-                No documents found
+                {t("documents.noDocumentsFound")}
               </Text>
             )}
           </Stack>

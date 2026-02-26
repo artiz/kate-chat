@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, use } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useApolloClient, useMutation } from "@apollo/client";
+import { useTranslation } from "react-i18next";
 import {
   Container,
   Title,
@@ -10,7 +11,6 @@ import {
   Badge,
   Center,
   Loader,
-  Alert,
   Group,
   Button,
   Stack,
@@ -53,6 +53,7 @@ const ImageCard: React.FC<{
   onOpenSource?: () => void;
   onClick: () => void;
 }> = ({ image, onClick, onReloadInfo, reloading, onOpenSource }) => {
+  const { t } = useTranslation();
   const handleReloadInfo = useCallback(
     (e: React.MouseEvent) => {
       onReloadInfo(e, image.id);
@@ -68,6 +69,9 @@ const ImageCard: React.FC<{
     () => (image.predominantColor ? image.predominantColor : "var(--mantine-color-body)"),
     [image.predominantColor]
   );
+
+  const modelName = useMemo(() => image.message?.modelName || image.message?.modelId || "", [image.message]);
+  const chatTitle = useMemo(() => image.chat.title || image.chat.id || t("chat.untitledChat"), [image.chat]);
 
   const textColor = useMemo(() => {
     if (!image.predominantColor) return undefined;
@@ -101,7 +105,7 @@ const ImageCard: React.FC<{
               onClick={onClick}
             />
             <Group gap={4} pos="absolute" top={8} right={8}>
-              <Tooltip label="Reload Info (Color & EXIF)">
+              <Tooltip label={t("library.reloadInfo")}>
                 <ActionIcon variant="default" size="sm" loading={reloading} onClick={handleReloadInfo}>
                   <IconRefresh size={14} />
                 </ActionIcon>
@@ -132,17 +136,27 @@ const ImageCard: React.FC<{
             </Text>
           </Group>
 
-          <Group gap="xs" wrap="nowrap">
-            <IconMessage size={14} color={textColor} />
-            <Text
-              size="xs"
-              c={textColor || "blue"}
-              style={{ cursor: "pointer", textDecoration: "underline", color: textColor || undefined }}
-              onClick={onOpenSource}
-              lineClamp={1}
-            >
-              {image.chat.title || image.chat.id}
-            </Text>
+          <Group gap="xs" justify="space-between" align="flex-start" wrap="nowrap">
+            <Group gap="xs" wrap="nowrap">
+              <IconMessage size={14} color={textColor} />
+              <Text
+                size="xs"
+                c={textColor || "blue"}
+                style={{ cursor: "pointer", textDecoration: "underline", color: textColor || undefined }}
+                onClick={onOpenSource}
+                lineClamp={1}
+              >
+                {chatTitle}
+              </Text>
+            </Group>
+
+            {modelName ? (
+              <Tooltip label={modelName}>
+                <Text size="xs" lineClamp={1}>
+                  {modelName}
+                </Text>
+              </Tooltip>
+            ) : null}
           </Group>
         </Stack>
       </Card>
@@ -151,6 +165,7 @@ const ImageCard: React.FC<{
 };
 
 export const ImageLibrary: React.FC = () => {
+  const { t } = useTranslation();
   const client = useApolloClient();
   const navigate = useNavigate();
   const [opened, { open, close }] = useDisclosure(false);
@@ -181,8 +196,8 @@ export const ImageLibrary: React.FC = () => {
       }
     } catch (err) {
       notifications.show({
-        title: "Error",
-        message: `Failed to reload image info: ${err instanceof Error ? err.message : String(err)}`,
+        title: t("common.error"),
+        message: t("library.failedToReloadInfo", { error: err instanceof Error ? err.message : String(err) }),
         color: "red",
       });
     } finally {
@@ -210,7 +225,7 @@ export const ImageLibrary: React.FC = () => {
 
         if (data.error) {
           notifications.show({
-            title: "Error",
+            title: t("common.error"),
             message: data.error,
             color: "red",
           });
@@ -226,8 +241,8 @@ export const ImageLibrary: React.FC = () => {
         setNextPage(data.nextPage);
       } catch (err) {
         notifications.show({
-          title: "Error",
-          message: `Failed to reload: ${err instanceof Error ? err.message : String(err)}`,
+          title: t("common.error"),
+          message: t("library.failedToReload", { error: err instanceof Error ? err.message : String(err) }),
           color: "red",
         });
       } finally {
@@ -263,7 +278,7 @@ export const ImageLibrary: React.FC = () => {
         <Center h="50vh">
           <Stack align="center">
             <Loader size="xl" />
-            <Text>Loading your image library...</Text>
+            <Text>{t("library.loading")}</Text>
           </Stack>
         </Center>
       </Container>
@@ -278,10 +293,10 @@ export const ImageLibrary: React.FC = () => {
             <Title order={2} mb="lg">
               <Group gap="xs">
                 <IconPhoto size={32} />
-                Library
+                {t("library.title")}
               </Group>
             </Title>
-            <Text c="dimmed">All your uploaded and generated images</Text>
+            <Text c="dimmed">{t("library.subtitle")}</Text>
           </div>
         </Group>
 
@@ -290,10 +305,10 @@ export const ImageLibrary: React.FC = () => {
             <Stack align="center" gap="md">
               <IconPhoto size={64} color="var(--mantine-color-gray-5)" />
               <Text size="lg" c="dimmed">
-                No images found
+                {t("library.noImagesFound")}
               </Text>
               <Text size="sm" c="dimmed" ta="center">
-                Upload images in your chats to see them here
+                {t("library.uploadImagesHint")}
               </Text>
             </Stack>
           </Center>
@@ -315,7 +330,7 @@ export const ImageLibrary: React.FC = () => {
         {nextPage && images.length > 0 && (
           <Center mt="lg">
             <Button variant="outline" loading={loading} onClick={loadMore}>
-              Load More Images
+              {t("library.loadMoreImages")}
             </Button>
           </Center>
         )}

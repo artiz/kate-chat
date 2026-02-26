@@ -82,6 +82,8 @@ export interface LibraryImage {
   message: {
     id: string;
     content: string;
+    modelId?: string;
+    modelName?: string;
   };
   chat: {
     id: string;

@@ -356,7 +356,17 @@
     "ru": "Русский",
     "zh": "中文"
   },
-
+  "library": {
+    "failedToReload": "Failed to reload: {{error}}",
+    "failedToReloadInfo": "Failed to reload image info: {{error}}",
+    "loading": "Loading your image library...",
+    "loadMoreImages": "Load More Images",
+    "noImagesFound": "No images found",
+    "reloadInfo": "Reload Info (Color & EXIF)",
+    "subtitle": "All your uploaded and generated images",
+    "title": "Library",
+    "uploadImagesHint": "Upload images in your chats to see them here"
+  },
   "mcp": {
     "addFirstServer": "Add Your First Server",
     "addMcpServer": "Add MCP Server",
