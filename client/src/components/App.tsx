@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride, Alert, Box } from "@mantine/core";
 import { notifications, Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
@@ -38,20 +38,29 @@ import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
 import { ChatDocuments } from "@/pages/ChatDocuments";
 import { SimpleLayout } from "./SimpleLayout";
+import { set } from "lodash";
+
+const BASE_URLS = ["/", "/chat"];
+const STORAGE_RETURN_URL_KEY = "return-url";
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
-  return isAuthenticated ? element : <Navigate to="/login" replace />;
+  const location = useLocation();
+  const path = location.pathname;
+  const returnUrl = BASE_URLS.includes(path) ? "" : path;
+  if (returnUrl) {
+    localStorage.setItem(STORAGE_RETURN_URL_KEY, returnUrl);
+  }
+  return isAuthenticated ? element : <Navigate to={"/login"} replace />;
 };
 
 // AdminRoute component for admin-only routes
 const AdminRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const { isAuthenticated } = useAppSelector(state => state.auth);
   const { currentUser } = useAppSelector(state => state.user);
-
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={"/login"} replace />;
   }
 
   if (currentUser?.role !== UserRole.ADMIN) {
@@ -67,6 +76,7 @@ const AppContent: React.FC = () => {
   const { isAuthenticated, token, loginTime } = useAppSelector(state => state.auth);
   const mantineTheme = React.useMemo(() => createAppTheme(), []);
   const { t, i18n } = useTranslation();
+  const location = useLocation();
 
   // Get theme from context
   const { colorScheme } = useTheme();
@@ -86,6 +96,14 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
+      const returnUrl = localStorage.getItem(STORAGE_RETURN_URL_KEY);
+      if (returnUrl) {
+        localStorage.removeItem(STORAGE_RETURN_URL_KEY);
+        setTimeout(() => {
+          navigate(returnUrl, { replace: true });
+        }, 200);
+      }
+
       dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
@@ -120,13 +138,16 @@ const AppContent: React.FC = () => {
 
       if (authFailed) {
         dispatch(logout());
-        navigate("/login");
+        const path = location.pathname;
+        const returnUrl = BASE_URLS.includes(path) ? "" : path;
+        localStorage.setItem(STORAGE_RETURN_URL_KEY, returnUrl);
+        navigate("/login", { replace: true });
       }
     }
   }, [isError, error, loginTime]);
 
   // Make sure the theme is applied to the document element
-  React.useEffect(() => {
+  useEffect(() => {
     if (colorScheme === "auto") {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.dataset.mantine = prefersDark ? "dark" : "light";

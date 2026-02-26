@@ -417,7 +417,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             ) : (
               <Group gap="xs" className={classes.title}>
                 <Title order={4} className={classes.titleText}>
-                  {chat?.title || t("chat.untitledChat")}
+                  {chat ? chat.title || t("chat.untitledChat") : ""}
                 </Title>
 
                 <ActionIcon onClick={handleTitleEdit} size="md" variant="subtle" className={classes.editTitleButton}>

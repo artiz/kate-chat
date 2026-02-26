@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useMutation } from "@apollo/client";
 import { useForm } from "@mantine/form";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { LOGIN_MUTATION } from "../store/services/graphql.queries";
 import {
   TextInput,
@@ -31,11 +31,17 @@ const Login: React.FC = () => {
   const [loggingIn, setLoggingIn] = React.useState(false);
   const { appTitle } = getClientConfig();
   const { t } = useTranslation();
+  const location = useLocation();
+
+  const returnUrl = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("return") || "/chat";
+  }, [location.search]);
 
   // If already authenticated, redirect to chat
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/chat");
+      navigate(returnUrl, { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -44,7 +50,7 @@ const Login: React.FC = () => {
     onCompleted: data => {
       dispatch(loginSuccess(data.login.token));
       dispatch(setUser(data.login.user));
-      navigate("/chat");
+      navigate(returnUrl, { replace: true });
     },
     onError: error => {
       dispatch(logout());
