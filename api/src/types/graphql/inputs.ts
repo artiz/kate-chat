@@ -2,7 +2,7 @@ import { InputType, Field } from "type-graphql";
 import { UserSettings, AuthProvider, MCPAuthConfig } from "@/entities";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
-import { ApiProvider, MCPAuthType, ToolType } from "../api";
+import { ApiProvider, MCPAuthType, ModelType, ToolType } from "../api";
 import { ChatSettings } from "@/entities/Chat";
 
 @InputType()
@@ -292,6 +292,9 @@ export class CreateCustomModelInput {
   @Field()
   modelName: string;
 
+  @Field(() => ModelType, { nullable: true, defaultValue: ModelType.CHAT })
+  type: ModelType;
+
   @Field()
   protocol: string;
 
@@ -375,6 +378,9 @@ export class UpdateCustomModelInput {
 
   @Field()
   modelName: string;
+
+  @Field(() => ModelType)
+  type: ModelType;
 
   @Field()
   protocol: string;

@@ -48,8 +48,11 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 * Put status update time into document processing, load pages count and show it and full processing time and average proc speed
+* Check OpenAI protocol to process all the possible metadata, extend MessageMetadata, add ChatMetadata where totalTokens,totalInputTokens,totalOutputTokens should be stored. 
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
+* Render: add sortable headers to HTML tables and button to copy/download as csv
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.
+* Introduce video generation, reuse requests queue
 * Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
 * Google Vertex AI provider support
 * Finish "Forgot password?" logic for local login

@@ -110,7 +110,6 @@ export class ModelResolver extends BaseResolver {
           modelId: modelId,
           description: info.description || `${info.name} by ${info.provider}`,
           isActive: modelId in enabledMap ? enabledMap[modelId] : true,
-          isCustom: false,
           tools: info.tools,
         });
 
@@ -237,10 +236,15 @@ export class ModelResolver extends BaseResolver {
     const timestamp = new Date();
 
     if (model.type === ModelType.EMBEDDING) {
-      const result = await this.aiService.getEmbeddings(model.apiProvider, connectionParams, {
-        modelId: model.modelId,
-        input: text,
-      });
+      const result = await this.aiService.getEmbeddings(
+        model.apiProvider,
+        connectionParams,
+        {
+          modelId: model.modelId,
+          input: text,
+        },
+        model
+      );
 
       const previewLength = 10;
       const preview = result.embedding.slice(0, previewLength).join(", ");
@@ -343,6 +347,7 @@ export class ModelResolver extends BaseResolver {
         endpoint,
         apiKey,
         modelName,
+        type,
         protocol,
         streaming,
         imageInput,
@@ -377,7 +382,7 @@ export class ModelResolver extends BaseResolver {
         description,
         provider: "Custom",
         apiProvider: ApiProvider.CUSTOM_REST_API,
-        type: ModelType.CHAT,
+        type,
         streaming,
         imageInput: imageInput || false,
         maxInputTokens: maxInputTokens || globalConfig.ai.defaultModelMaxInputTokens,
@@ -438,7 +443,7 @@ export class ModelResolver extends BaseResolver {
   async updateCustomModel(@Arg("input") input: UpdateCustomModelInput, @Ctx() context: GraphQLContext): Promise<Model> {
     const user = await this.validateContextToken(context);
     try {
-      const { id, name, modelId, apiKey, protocol, streaming, imageInput } = input;
+      const { id, name, modelId, apiKey, protocol, type, streaming, imageInput } = input;
 
       // Validate protocol
       if (
@@ -478,6 +483,7 @@ export class ModelResolver extends BaseResolver {
       model.apiProvider = ApiProvider.CUSTOM_REST_API; // Ensure provider is set correctly
       model.streaming = streaming === undefined ? model.streaming : streaming;
       model.imageInput = imageInput === undefined ? model.imageInput : imageInput;
+      model.type = type === undefined ? model.type : type;
       model.maxInputTokens = input.maxInputTokens === undefined ? model.maxInputTokens : input.maxInputTokens;
       model.description = input.description === undefined ? model.description : input.description;
 
@@ -488,7 +494,7 @@ export class ModelResolver extends BaseResolver {
       model.tools = [ToolType.WEB_SEARCH, ToolType.MCP];
 
       // update apiKey only if provided
-      if (apiKey) {
+      if (apiKey || apiKey === "") {
         model.customSettings.apiKey = apiKey;
       }
 
@@ -520,9 +526,6 @@ export class ModelResolver extends BaseResolver {
           if (existing) {
             apiKey = existing.customSettings?.apiKey;
           }
-        }
-        if (!apiKey) {
-          throw new Error("API Key is required");
         }
       }
 

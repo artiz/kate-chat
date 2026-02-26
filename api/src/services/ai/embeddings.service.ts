@@ -72,10 +72,15 @@ export class EmbeddingsService {
     }
 
     // Get embeddings for chunk text
-    const embeddingResponse = await this.aiService.getEmbeddings(model.apiProvider, connection, {
-      modelId: model.modelId,
-      input: chunk.text,
-    });
+    const embeddingResponse = await this.aiService.getEmbeddings(
+      model.apiProvider,
+      connection,
+      {
+        modelId: model.modelId,
+        input: chunk.text,
+      },
+      model
+    );
 
     const embedding = embeddingResponse.embedding;
     if (embedding.length < EMBEDDINGS_DIMENSIONS) {
@@ -152,10 +157,15 @@ export class EmbeddingsService {
       const documentsChunks: DocumentChunk[] = [];
 
       const model = modelsMap[modelId];
-      const queryEmbeddingRes = await this.aiService.getEmbeddings(model.apiProvider, connection, {
-        modelId,
-        input: query,
-      });
+      const queryEmbeddingRes = await this.aiService.getEmbeddings(
+        model.apiProvider,
+        connection,
+        {
+          modelId,
+          input: query,
+        },
+        model
+      );
       const queryEmbedding = queryEmbeddingRes.embedding;
       if (queryEmbedding.length < EMBEDDINGS_DIMENSIONS) {
         queryEmbedding.push(...Array(EMBEDDINGS_DIMENSIONS - queryEmbedding.length).fill(0));

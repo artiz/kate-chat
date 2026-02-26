@@ -20,7 +20,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { addChat } from "@/store/slices/chatSlice";
 import { GqlCostsInfo, Message, Model } from "@/types/graphql";
-import { CustomModelProtocol } from "@katechat/ui";
+import { CustomModelProtocol, ModelType } from "@katechat/ui";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
 import { CustomModelDialog, CustomModelFormData } from "../CustomModelDialog";
@@ -570,6 +570,7 @@ export const ModelsDashboard: React.FC = () => {
                 description: editingModel.customSettings?.description || editingModel.description || "",
                 endpoint: editingModel.customSettings?.endpoint || "",
                 apiKey: editingModel.customSettings?.apiKey || "",
+                type: editingModel.type || ModelType.CHAT,
                 modelName: editingModel.customSettings?.modelName || "",
                 protocol: editingModel.customSettings?.protocol || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
                 streaming: editingModel.streaming !== undefined ? editingModel.streaming : true,

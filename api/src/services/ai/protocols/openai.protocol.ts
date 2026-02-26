@@ -63,15 +63,11 @@ export class OpenAIProtocol implements ModelProtocol {
   }: {
     apiType: OpenAIApiType;
     baseURL: string;
-    apiKey: string;
+    apiKey?: string;
     modelIdOverride?: string;
     connection?: ConnectionParams;
     fileLoader?: FileContentLoader;
   }) {
-    if (!apiKey) {
-      logger.warn("API key is not defined.");
-    }
-
     this.apiType = apiType;
 
     // be used in tools

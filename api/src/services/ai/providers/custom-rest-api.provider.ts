@@ -106,15 +106,15 @@ export class CustomRestApiProvider extends BaseApiProvider {
     }
 
     const { endpoint, apiKey, modelName } = this.modelSettings!;
+    let {} = this.modelSettings!;
     ok(endpoint, "Endpoint is required in custom settings");
-    ok(apiKey, "API key is required in custom settings");
 
     switch (this.modelProtocol) {
       case CustomModelProtocol.OPENAI_RESPONSES:
         return new OpenAIProtocol({
           apiType: "responses",
           baseURL: endpoint,
-          apiKey: apiKey,
+          apiKey,
           modelIdOverride: modelName,
           connection: this.connection,
           fileLoader: this.fileLoader,
@@ -124,7 +124,7 @@ export class CustomRestApiProvider extends BaseApiProvider {
         return new OpenAIProtocol({
           apiType: "completions",
           baseURL: endpoint,
-          apiKey: apiKey,
+          apiKey,
           modelIdOverride: modelName,
           connection: this.connection,
           fileLoader: this.fileLoader,

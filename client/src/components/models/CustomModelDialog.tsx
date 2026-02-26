@@ -13,7 +13,7 @@ import {
   Switch,
   NumberInput,
 } from "@mantine/core";
-import { CustomModelProtocol } from "@katechat/ui";
+import { CustomModelProtocol, ModelType } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useMutation } from "@apollo/client";
 import { TEST_CUSTOM_MODEL_MUTATION } from "@/store/services/graphql.queries";
@@ -36,6 +36,7 @@ export interface CustomModelFormData {
   endpoint: string;
   apiKey?: string;
   modelName: string;
+  type: ModelType;
   protocol: string;
   streaming: boolean;
   imageInput: boolean;
@@ -58,6 +59,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
     endpoint: "",
     apiKey: "",
     modelName: "",
+    type: ModelType.CHAT,
     protocol: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
     streaming: true,
     imageInput: false,
@@ -100,6 +102,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
           endpoint: "",
           apiKey: "",
           modelName: "",
+          type: ModelType.CHAT,
           protocol: CustomModelProtocol.OPENAI_CHAT_COMPLETIONS,
           streaming: true,
           imageInput: false,
@@ -156,13 +159,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (
-      !formData.name ||
-      !formData.modelId ||
-      (!noEndpointRequired && !formData.endpoint) ||
-      (!noEndpointRequired && !formData.apiKey && !initialData?.apiKey) ||
-      !formData.modelName
-    ) {
+    if (!formData.name || !formData.modelId || (!noEndpointRequired && !formData.endpoint) || !formData.modelName) {
       notifications.show({
         title: t("models.validationError"),
         message: t("models.fillRequiredFields"),
@@ -185,7 +182,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
     }
   };
 
-  const canTest = !!(((formData.endpoint && formData.apiKey) || noEndpointRequired) && formData.modelName);
+  const canTest = !!((formData.endpoint || noEndpointRequired) && formData.modelName);
 
   return (
     <Modal
@@ -240,7 +237,6 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
               label={t("models.apiKey")}
               placeholder="sk-..."
               type={initialData?.apiKey ? "text" : "password"}
-              required
               value={formData.apiKey}
               onChange={e => updateFormField("apiKey", e.target.value)}
               disabled={isLoading || noEndpointRequired}
@@ -270,6 +266,18 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             ]}
             value={formData.protocol}
             onChange={value => updateFormField("protocol", value || CustomModelProtocol.OPENAI_CHAT_COMPLETIONS)}
+            disabled={isLoading}
+          />
+          <Select
+            label={t("models.modelType")}
+            required
+            data={[
+              { value: ModelType.CHAT, label: t("models.modelTypeChat") },
+              { value: ModelType.EMBEDDING, label: t("models.modelTypeEmbedding") },
+              { value: ModelType.IMAGE_GENERATION, label: t("models.modelTypeImageGeneration") },
+            ]}
+            value={formData.type}
+            onChange={value => updateFormField("type", value || ModelType.CHAT)}
             disabled={isLoading}
           />
         </Group>

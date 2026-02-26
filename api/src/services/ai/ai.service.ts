@@ -91,7 +91,7 @@ export class AIService {
     apiProvider: ApiProvider,
     connection: ConnectionParams,
     request: GetEmbeddingsRequest,
-    model?: Model
+    model: Model
   ): Promise<EmbeddingsResponse> {
     return this.getApiProvider(apiProvider, connection, undefined, model).getEmbeddings(request);
   }
