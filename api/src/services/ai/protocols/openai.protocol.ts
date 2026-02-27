@@ -369,7 +369,7 @@ export class OpenAIProtocol implements ModelProtocol {
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
     const { modelId: requestModelId, mcpServers, mcpTokens, settings = {} } = inputRequest;
-    const { systemPrompt, temperature, maxTokens, thinking, thinkingBudget } = settings;
+    const { systemPrompt, temperature, maxTokens, thinking, thinkingBudget, imageOrientation, imageQuality } = settings;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
@@ -414,7 +414,28 @@ export class OpenAIProtocol implements ModelProtocol {
       }
 
       if (inputRequest.tools.find(t => t.type === ToolType.IMAGE_GENERATION)) {
-        tools.push({ type: "image_generation", partial_images: 2 });
+        let size: "1024x1024" | "1024x1536" | "1536x1024" | "auto" = "1024x1024" as const;
+        const quality: "low" | "medium" | "high" | "auto" = imageQuality || "auto";
+
+        if (imageOrientation) {
+          switch (imageOrientation) {
+            case "landscape":
+              size = "1536x1024";
+              break;
+            case "portrait":
+              size = "1024x1536";
+              break;
+            default:
+              size = "1024x1024";
+          }
+        }
+
+        tools.push({
+          type: "image_generation",
+          partial_images: 2,
+          size,
+          quality,
+        });
       }
 
       const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);

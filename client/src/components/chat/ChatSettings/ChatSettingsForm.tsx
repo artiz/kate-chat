@@ -26,7 +26,16 @@ import {
   IconSquare,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { ChatSettings, ImageQuality, ImageOrientation, Model, ModelFeature } from "@/types/graphql";
+import {
+  ChatSettings,
+  ImageQuality,
+  ImageOrientation,
+  Model,
+  ModelFeature,
+  ChatTool,
+  ToolType,
+  ToolType,
+} from "@/types/graphql";
 
 import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
@@ -45,6 +54,7 @@ export const DEFAULT_CHAT_SETTINGS = {
 
 interface ChatSettingsComponentProps extends ChatSettings {
   model?: Model;
+  chatTools?: ChatTool[];
   onSettingsChange: (settings: ChatSettings) => void;
 }
 
@@ -59,6 +69,7 @@ export function ChatSettingsForm({
   thinking = false,
   thinkingBudget = DEFAULT_CHAT_SETTINGS.thinkingBudget,
   model,
+  chatTools = [],
   onSettingsChange,
 }: ChatSettingsComponentProps) {
   const { t } = useTranslation();
@@ -181,7 +192,11 @@ export function ChatSettingsForm({
     [handleSettingsChange]
   );
 
-  const isImageGeneration = useMemo(() => model?.type === ModelType.IMAGE_GENERATION, [model?.type]);
+  const isImageGeneration = useMemo(
+    () =>
+      model?.type === ModelType.IMAGE_GENERATION || chatTools?.some(tool => tool.type === ToolType.IMAGE_GENERATION),
+    [model?.type, chatTools]
+  );
   const isReasoning = useMemo(() => model?.features?.includes(ModelFeature.REASONING), [model?.features]);
 
   return (

@@ -269,7 +269,12 @@ export const ChatInputHeader = ({
           yOffset="auto"
           styles={{ content: { marginTop: "auto", marginBottom: "1rem" } }}
         >
-          <ChatSettingsForm {...chatSettings} onSettingsChange={handleSettingsChange} model={selectedModel} />
+          <ChatSettingsForm
+            {...chatSettings}
+            onSettingsChange={handleSettingsChange}
+            model={selectedModel}
+            chatTools={chatTools}
+          />
           <Button mt="md" onClick={closeSettings}>
             {t("common.close")}
           </Button>
