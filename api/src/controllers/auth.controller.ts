@@ -7,6 +7,7 @@ import { createLogger } from "@/utils/logger";
 import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, OAUTH_ERROR_TEMPLATE } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
+import { getErrorMessage } from "@/utils/errors";
 
 const logger = createLogger(__filename);
 const runtimeCfg = globalConfig.runtime;
@@ -214,6 +215,6 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error(err, "Auth route error");
-  const html = OAUTH_ERROR_TEMPLATE.replace(/\{\{ERROR_DESCRIPTION\}\}/g, "Something went wrong.");
+  const html = OAUTH_ERROR_TEMPLATE.replace(/\{\{ERROR_DESCRIPTION\}\}/g, getErrorMessage(err));
   res.status(500).send(html);
 });
