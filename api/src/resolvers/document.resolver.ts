@@ -192,6 +192,7 @@ export class DocumentResolver extends BaseResolver {
           metadata.embeddingEndedAt = payload.endTime || payload.currentTime;
           break;
         case DocumentStatus.SUMMARIZING:
+        case DocumentStatus.READY: // in case of READY status, summarization is the last step, so we can set summarization end time
           metadata.summarizationEndedAt = payload.endTime || payload.currentTime;
           break;
       }

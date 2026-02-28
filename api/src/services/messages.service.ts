@@ -396,6 +396,7 @@ export class MessagesService {
     const messagesToDelete = await query.getMany();
 
     let assistantMessage: Message | undefined = messagesToDelete.find(m => m.role === MessageRole.ASSISTANT);
+    const { documentIds } = (assistantMessage ? assistantMessage.metadata : originalMessage.metadata) || {};
 
     // Remove any files from following messages before deleting them
     const deletedFiles: ChatFile[] = [];
@@ -477,8 +478,24 @@ export class MessagesService {
     // Add the edited user message to context
     contextMessages.push(originalMessage);
 
-    // Re/generate assistant response
-    await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, assistantMessage);
+    if (documentIds && documentIds.length > 0) {
+      await this.publishRagMessage(
+        {
+          ...request,
+          content: originalMessage.content,
+          documentIds,
+          modelId: originalMessage.modelId || model.modelId,
+        },
+        connection,
+        model,
+        chat,
+        originalMessage,
+        assistantMessage
+      );
+    } else {
+      // Re/generate assistant response
+      await this.publishAssistantMessage(request, connection, user, model, chat, contextMessages, assistantMessage);
+    }
 
     return originalMessage;
   }
@@ -1116,13 +1133,16 @@ export class MessagesService {
       }
     };
 
+    ragMessage.content = "";
+    ragMessage.jsonContent = undefined;
+
     do {
       await this.subscriptionsService.publishChatMessage(
         chat,
-        this.messageRepository.create({
+        {
           ...ragMessage,
           status: ResponseStatus.RAG_SEARCH,
-        }),
+        },
         true
       );
 
@@ -1216,10 +1236,17 @@ export class MessagesService {
 
       logger.trace("RAG response raw: " + content);
 
-      const ragResponse = content ? (JSON.parse(content) as RagResponse) : {};
+      let parsed = content ? (JSON.parse(content) as any) : {};
+      // Some models (e.g. Yandex FM) return the schema structure with embedded `value` fields
+      // instead of a flat object — detect and flatten that format
+      if (parsed?.schema?.properties) {
+        const props = parsed.schema.properties as Record<string, { value?: unknown }>;
+        parsed = Object.fromEntries(Object.entries(props).map(([k, v]) => [k, v.value]));
+      }
+      const ragResponse = parsed as RagResponse;
       logger.debug(ragResponse, "RAG response");
 
-      ragMessage.content = ragResponse.final_answer || "N/A";
+      ragMessage.content = ragResponse.final_answer || aiResponse.content || "N/A";
       if (ragResponse.reasoning_summary) {
         ragMessage.content += `\n\n> ${ragResponse.reasoning_summary}`;
       }
@@ -1250,7 +1277,7 @@ export class MessagesService {
       await completeRequest(ragMessage);
       await this.chatRepository.save(chat);
     } catch (error: unknown) {
-      logger.error(error, "Error processing RAG response");
+      logger.error({ error, response: aiResponse.content }, "Error processing RAG response");
       ragMessage.content = getErrorMessage(error);
       ragMessage.role = MessageRole.ERROR;
       await completeRequest(ragMessage);

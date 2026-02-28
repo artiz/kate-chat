@@ -386,7 +386,13 @@
     "ragDocuments": "RAG-документы ({{selected}}/{{total}})",
     "selectAll": "Выбрать все",
     "unselectAll": "Снять выделение",
-    "documentsButton": "Документы..."
+    "documentsButton": "Документы...",
+    "processingAlert": "Обработка",
+    "pages": "Страницы",
+    "batchingPagesPerSec": "Страниц/сек (разбивка)",
+    "parsingPagesPerSec": "Страниц/сек (парсинг)",
+    "chunkingPagesPerSec": "Страниц/сек (чанкинг)",
+    "embeddingPagesPerSec": "Страниц/сек (эмбеддинг)"
   },
   "models": {
     "title": "Модели ИИ",

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
 import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert, Stack } from "@mantine/core";
 import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
-import { useAppSelector, useChat } from "@/store";
+import { useAppSelector } from "@/store";
 import {
   assert,
   ModelType,
@@ -510,6 +510,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             {appConfig?.ragEnabled && (
               <ChatDocumentsSelector
                 chatId={chatId}
+                chatTitle={chat?.title}
                 selectedDocIds={selectedRagDocIds}
                 onSelectionChange={setSelectedRagDocIds}
                 disabled={!uploadAllowed || isExternalChat || messagesLoading}

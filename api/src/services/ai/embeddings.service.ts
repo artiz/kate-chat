@@ -228,28 +228,26 @@ export class EmbeddingsService {
       }
 
       if (loadFullPage) {
-        const loadedChunkIds = new Set(documentsChunks.map(c => c.id));
-        for (var docId of documentIds) {
-          // TODO: optimize with single query to get all chunks for all pages
-          // ``` && c.document?.pagesCount > 1 ```
-          // pagesCount load must be implemented on document processor
-          const chunkPages = new Set(
-            documentsChunks
-              .filter(c => c.documentId === docId)
-              .map(c => c.page)
-              .filter(p => p > 0)
-          );
-          if (chunkPages.size) {
-            const chunks = await this.documentChunksRepo.find({
-              where: {
-                page: In([...chunkPages]),
-                documentId: docId,
-              },
-            });
+        const loadedChunkIds = documentsChunks.map(c => c.id);
 
-            documentsChunks.push(...chunks.filter(c => !loadedChunkIds.has(c.id)));
-          }
-        }
+        const chunks = await this.documentChunksRepo
+          .createQueryBuilder("document_chunk")
+          .leftJoinAndSelect("document_chunk.document", "document")
+          .where(qb => {
+            const subQuery = qb
+              .subQuery()
+              .select("dc.page")
+              .from(DocumentChunk, "dc")
+              .where("dc.id IN (:...chunkIds)")
+              .andWhere("dc.documentId = document_chunk.documentId")
+              .getQuery();
+            return `document_chunk.page IN ${subQuery}`;
+          })
+          .andWhere("document.pagesCount > 1")
+          .setParameter("chunkIds", loadedChunkIds)
+          .getMany();
+
+        documentsChunks.push(...chunks.filter(c => !loadedChunkIds.includes(c.id)));
       }
 
       results.push(

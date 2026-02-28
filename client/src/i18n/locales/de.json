@@ -330,7 +330,13 @@
     "summarizationModel": "Zusammenfassungsmodell",
     "title": "Dokumente",
     "unselectAll": "Auswahl aufheben",
-    "viewSummary": "Zusammenfassung anzeigen"
+    "viewSummary": "Zusammenfassung anzeigen",
+    "processingAlert": "Verarbeitung",
+    "pages": "Seiten",
+    "batchingPagesPerSec": "Seiten/Sek. (Batching)",
+    "parsingPagesPerSec": "Seiten/Sek. (Parsing)",
+    "chunkingPagesPerSec": "Seiten/Sek. (Chunking)",
+    "embeddingPagesPerSec": "Seiten/Sek. (Embedding)"
   },
   "errors": {
     "apiError": "API-Fehler",

@@ -114,7 +114,7 @@ export class DocumentQueueService {
       document.statusProgress = 1;
 
       await this.documentRepo.save(document);
-      this.subService.publishDocumentStatus(document);
+      this.subService.publishDocumentStatus(document, { endTime: Date.now() * 1000000, sync: true });
 
       logger.info(`Successfully indexed document ${documentId}`);
 

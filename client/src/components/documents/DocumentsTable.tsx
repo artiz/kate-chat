@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Table, Text, Group, Badge, ActionIcon, Tooltip } from "@mantine/core";
+import { Table, Text, Group, Badge, ActionIcon, Tooltip, Checkbox, Box } from "@mantine/core";
 import {
   IconRotateClockwise,
   IconTrash,
@@ -34,19 +34,20 @@ interface DocumentsTableProps {
   onReindexDocument: (doc: Document) => void;
   onDeleteDocument: (doc: Document) => void;
   onViewSummary: (doc: Document) => void;
-  disableActions: boolean;
+  disableActions?: boolean;
+  selectorView?: boolean;
 }
 
 export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   documents,
   chatDocumentsMap = {},
-  chatId,
   onAddToChat,
   onRemoveFromChat,
   onReindexDocument,
   onDeleteDocument,
   onViewSummary,
   disableActions = false,
+  selectorView = false,
 }) => {
   const { t } = useTranslation();
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
@@ -108,6 +109,71 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
     }
   };
 
+  const handleAddToChat = (doc: Document) => {
+    return (evt: React.ChangeEvent<HTMLInputElement>) => {
+      if (evt.target.checked) {
+        onAddToChat(doc);
+      } else {
+        onRemoveFromChat(doc);
+      }
+    };
+  };
+
+  if (selectorView) {
+    return (
+      <>
+        {documents.map((doc: Document) => (
+          <Group key={doc.id} align="center" justify="space-between" wrap="nowrap" gap="lg">
+            <Group align="center" wrap="nowrap" gap="xs">
+              <Checkbox
+                checked={!!chatDocumentsMap[doc.id]}
+                onChange={handleAddToChat(doc)}
+                size="sm"
+                disabled={doc.status !== DocumentStatus.READY && doc.status !== DocumentStatus.SUMMARIZING}
+              />
+              {doc.downloadUrlMarkdown && (
+                <Tooltip label={doc.fileName + " Markdown"}>
+                  <Box mt="sm">
+                    <a href={doc.downloadUrlMarkdown} target="_blank" rel="noopener noreferrer">
+                      <IconMarkdown size="1.2rem" />
+                    </a>
+                  </Box>
+                </Tooltip>
+              )}
+              <Tooltip label={doc.fileName}>
+                <Text truncate>{doc.fileName}</Text>
+              </Tooltip>
+            </Group>
+            <Group align="center" wrap="nowrap">
+              <Badge color={getStatusColor(doc.status)} leftSection={getStatusIcon(doc.status)}>
+                {doc.status}
+              </Badge>
+              <ActionIcon.Group>
+                <Tooltip label={t("documents.reindexDocument")}>
+                  <ActionIcon
+                    variant="light"
+                    color="orange"
+                    size="md"
+                    onClick={() => onReindexDocument(doc)}
+                    disabled={disableActions || !documentCanBeReindexed(doc)}
+                  >
+                    <IconRotateClockwise size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
+
+                <Tooltip label={t("documents.viewSummary")}>
+                  <ActionIcon variant="light" color="blue" size="md" onClick={() => onViewSummary(doc)}>
+                    <IconFileStack size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
+              </ActionIcon.Group>
+            </Group>
+          </Group>
+        ))}
+      </>
+    );
+  }
+
   return (
     <Table striped highlightOnHover horizontalSpacing="xs" style={{ tableLayout: "fixed", width: "100%" }}>
       <Table.Thead>
@@ -160,35 +226,6 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
 
             <Table.Td>
               <ActionIcon.Group>
-                {chatDocumentsMap[doc.id] ? (
-                  <Tooltip label={t("documents.removeFromChat")}>
-                    <ActionIcon
-                      variant="light"
-                      color="red"
-                      size="md"
-                      onClick={() => onRemoveFromChat(doc)}
-                      disabled={disableActions}
-                    >
-                      <IconMessageMinus size="1.2rem" />
-                    </ActionIcon>
-                  </Tooltip>
-                ) : chatId ? (
-                  <Tooltip label={t("documents.addToChat")}>
-                    <ActionIcon
-                      variant="light"
-                      color="blue"
-                      size="md"
-                      onClick={() => onAddToChat(doc)}
-                      disabled={
-                        disableActions ||
-                        (doc.status !== DocumentStatus.READY && doc.status !== DocumentStatus.SUMMARIZING)
-                      }
-                    >
-                      <IconMessage2Plus size="1.2rem" />
-                    </ActionIcon>
-                  </Tooltip>
-                ) : null}
-
                 <Tooltip label={t("documents.reindexDocument")}>
                   <ActionIcon
                     variant="light"
@@ -212,7 +249,6 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     <IconTrash size="1.2rem" />
                   </ActionIcon>
                 </Tooltip>
-
                 <Tooltip label={t("documents.viewSummary")}>
                   <ActionIcon variant="light" color="blue" size="md" onClick={() => onViewSummary(doc)}>
                     <IconFileStack size="1.2rem" />

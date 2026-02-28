@@ -1,14 +1,6 @@
 .button {
-  position: relative;
   &[disabled],
   &[disabled="true"] {
     cursor: "not-allowed";
   }
-}
-
-.badge {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  padding: 0.25rem !important;
 }

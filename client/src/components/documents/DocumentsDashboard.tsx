@@ -41,18 +41,21 @@ import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
 import { getStatusColor } from "@/types/ai";
 import { useMediaQuery } from "@mantine/hooks";
+import { set } from "lodash";
 
 interface IProps {
   chatId?: string;
+  selectorView?: boolean;
 }
 
 const DEBOUNCE_DELAY_MS = 250;
 
-export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
+export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = false }) => {
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
   const [processedSummary, setProcessedSummary] = useState<string>("");
   const [documentToDelete, setDocumentToDelete] = useState<Document | undefined>(undefined);
   const [documentToReindex, setDocumentToReindex] = useState<Document | undefined>(undefined);
+  const [chatDocumentsMap, setChatDocumentsMap] = useState<Record<string, Document>>({});
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [chat, setChat] = useState<Chat | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,7 +65,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
   const { appConfig } = useAppSelector(state => state.user);
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const itemsPerPage = 10;
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
@@ -95,20 +97,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       setChat(data.chatById || undefined);
     }
   }, [data, chatId]);
-
-  const chatDocumentsMap = useMemo<Record<string, Document>>(() => {
-    if (!chat?.chatDocuments) return {};
-
-    return chat.chatDocuments.reduce(
-      (acc, doc: ChatDocument) => {
-        if (doc.document) {
-          acc[doc.document.id] = doc.document;
-        }
-        return acc;
-      },
-      {} as Record<string, Document>
-    );
-  }, [chat]);
 
   const monitoredDocumentIds = useMemo(
     () => [
@@ -247,13 +235,34 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
 
   const handleAddToChat = (doc: Document) => {
     assert.ok(chatId);
+    setChatDocumentsMap(prev => ({ ...prev, [doc.id]: doc }));
     addToChat({ variables: { documentIds: [doc.id], chatId } });
   };
 
   const handleRemoveFromChat = (doc: Document) => {
     assert.ok(chatId);
+    setChatDocumentsMap(prev => {
+      const newMap = { ...prev };
+      delete newMap[doc.id];
+      return newMap;
+    });
     removeFromChat({ variables: { documentIds: [doc.id], chatId } });
   };
+
+  useEffect(() => {
+    if (!chat?.chatDocuments) return;
+
+    const map = chat.chatDocuments.reduce(
+      (acc, doc: ChatDocument) => {
+        if (doc.document) {
+          acc[doc.document.id] = doc.document;
+        }
+        return acc;
+      },
+      {} as Record<string, Document>
+    );
+    setChatDocumentsMap(map);
+  }, [chat]);
 
   const handleRefresh = () => {
     refetch();
@@ -410,29 +419,16 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
       />
       <Stack gap="xl">
         <Group justify="space-between" align="center">
-          <Title order={2} mb="lg">
-            {chat ? t("documents.documentsForChat", { title: chat.title || chat.id }) : t("documents.title")}
-          </Title>
-          <Group>
-            {chatId ? (
-              <Tooltip label={t("documents.backToChat")}>
-                <ActionIcon onClick={() => navigate(`/chat/${chatId}`)}>
-                  <IconX size="1.2rem" />
-                </ActionIcon>
-              </Tooltip>
-            ) : null}
-            <Tooltip label={t("documents.refreshDocuments")}>
-              <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh} loading={loading}>
-                <IconRefresh size="1.2rem" />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
+          {!selectorView && (
+            <Title order={2} mb="lg">
+              {t("documents.title")}
+            </Title>
+          )}
         </Group>
 
         <Paper withBorder p="lg" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
           <Stack gap="md">
             <Group justify="space-between" align="center">
-              <Title order={2}>{t("documents.documentLibrary")}</Title>
               <Group>
                 {uploadLoading && <Loader size="sm" />}
 
@@ -452,6 +448,12 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                   disabled={!appConfig?.s3Connected || uploadLoading}
                   uploadFormats={SUPPORTED_UPLOAD_FORMATS}
                 />
+
+                <Tooltip label={t("documents.refreshDocuments")}>
+                  <ActionIcon variant="light" color="blue" size="lg" onClick={handleRefresh} loading={loading}>
+                    <IconRefresh size="1.2rem" />
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Group>
 
@@ -459,7 +461,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
               <Group justify="center" p="xl">
                 <Loader size="lg" />
               </Group>
-            ) : documentsResponse && documents.length > 0 ? (
+            ) : documentsResponse && totalDocuments > 0 ? (
               <>
                 <DeleteConfirmationModal
                   isOpen={!!documentToDelete}
@@ -487,6 +489,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                   title={summaryDocument?.fileName || t("documents.documentInfo")}
                   centered
                   size="xl"
+                  padding="lg"
                   fullScreen={isMobile}
                 >
                   <Stack gap="sm">
@@ -504,16 +507,56 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                         <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
                       </Box>
                     </ScrollArea.Autosize>
-                    {summaryDocument?.summaryModelId && (
-                      <Alert p="md" title={t("documents.summarizationModel")} color="blue">
-                        {summaryDocument.summaryModelId}
+                    <Group w="100%" my="md" align="stretch">
+                      {summaryDocument?.summaryModelId && (
+                        <Alert p="md" title={t("documents.summarizationModel")} color="blue">
+                          {summaryDocument.summaryModelId}
+                        </Alert>
+                      )}
+                      {summaryDocument?.embeddingsModelId && (
+                        <Alert p="md" title={t("documents.embeddingsModel")} color="indigo">
+                          {summaryDocument?.embeddingsModelId}
+                        </Alert>
+                      )}
+
+                      <Alert p="md" title={t("documents.processingAlert")} color="green">
+                        <Stack gap="xs">
+                          <Group gap="lg" align="center" justify="space-between">
+                            <Text fz="12">{t("documents.pages")}</Text>
+                            <Text>
+                              {summaryDocument?.statusProgress && (summaryDocument?.pagesCount || 1) > 1
+                                ? `${Math.round(summaryDocument.statusProgress * (summaryDocument?.pagesCount || 1))} / `
+                                : ""}
+                              {summaryDocument?.pagesCount || 1}
+                            </Text>
+                          </Group>
+                          {summaryDocument?.metadata?.batchingPagePerSecond && (
+                            <Group gap="lg" align="center" justify="space-between">
+                              <Text fz="12">{t("documents.batchingPagesPerSec")}</Text>
+                              <Text>{summaryDocument.metadata.batchingPagePerSecond.toFixed(2)}</Text>
+                            </Group>
+                          )}
+                          {summaryDocument?.metadata?.parsingPagePerSecond && (
+                            <Group gap="lg" align="center" justify="space-between">
+                              <Text fz="12">{t("documents.parsingPagesPerSec")}</Text>
+                              <Text>{summaryDocument.metadata.parsingPagePerSecond.toFixed(2)}</Text>
+                            </Group>
+                          )}
+                          {summaryDocument?.metadata?.chunkingPagePerSecond && (
+                            <Group gap="lg" align="center" justify="space-between">
+                              <Text fz="12">{t("documents.chunkingPagesPerSec")}</Text>
+                              <Text>{summaryDocument.metadata.chunkingPagePerSecond.toFixed(2)}</Text>
+                            </Group>
+                          )}
+                          {summaryDocument?.metadata?.embeddingPagePerSecond && (
+                            <Group gap="lg" align="center" justify="space-between">
+                              <Text fz="12">{t("documents.embeddingPagesPerSec")}</Text>
+                              <Text>{summaryDocument.metadata.embeddingPagePerSecond.toFixed(2)}</Text>
+                            </Group>
+                          )}
+                        </Stack>
                       </Alert>
-                    )}
-                    {summaryDocument?.embeddingsModelId && (
-                      <Alert p="md" title={t("documents.embeddingsModel")} color="green">
-                        {summaryDocument?.embeddingsModelId}
-                      </Alert>
-                    )}
+                    </Group>
 
                     <Group mt="md" justify="flex-end">
                       <Button onClick={() => setSummaryDocument(undefined)}>{t("common.close")}</Button>
@@ -531,6 +574,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                   onDeleteDocument={handleDeleteDocument}
                   onViewSummary={setSummaryDocument}
                   disableActions={addingToChat || removingFromChat || reindexLoading || deleteLoading}
+                  selectorView={selectorView}
                 />
 
                 {totalPages > 1 && (
@@ -543,11 +587,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId }) => {
                   {t("documents.showingOf", { count: documents.length, total: totalDocuments })}
                 </Text>
               </>
-            ) : (
-              <Text ta="center" c="dimmed" py="xl">
-                {t("documents.noDocumentsFound")}
-              </Text>
-            )}
+            ) : null}
           </Stack>
         </Paper>
       </Stack>

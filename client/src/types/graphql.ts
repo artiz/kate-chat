@@ -2,6 +2,7 @@ import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole, M
 import { User } from "@/store/slices/userSlice";
 import { DocumentStatus } from "./ai";
 import { Api } from "@reduxjs/toolkit/query";
+import e from "express";
 
 export interface ProviderDetail {
   key: string;
@@ -374,6 +375,23 @@ export interface Chat {
   tools?: ChatTool[];
 }
 
+export interface DocumentMetadata {
+  parsingStartedAt?: number; // ns
+  parsingEndedAt?: number; // ns
+  parsingPagePerSecond?: number;
+  chunkingStartedAt?: number; // ns
+  chunkingEndedAt?: number; // ns
+  chunkingPagePerSecond?: number;
+  batchingStartedAt?: number;
+  batchingEndedAt?: number;
+  batchingPagePerSecond?: number;
+  embeddingStartedAt?: number;
+  embeddingEndedAt?: number;
+  embeddingPagePerSecond?: number;
+  summarizationStartedAt?: number;
+  summarizationEndedAt?: number;
+}
+
 export interface Document {
   id: string;
   fileName?: string;
@@ -394,6 +412,7 @@ export interface Document {
   updatedAt?: Date;
   downloadUrl?: string;
   downloadUrlMarkdown?: string;
+  metadata?: DocumentMetadata;
 }
 
 export interface DocumentStatusMessage {

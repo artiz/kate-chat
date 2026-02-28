@@ -330,7 +330,13 @@
     "summarizationModel": "摘要模型",
     "title": "文档",
     "unselectAll": "取消全选",
-    "viewSummary": "查看摘要"
+    "viewSummary": "查看摘要",
+    "processingAlert": "处理中",
+    "pages": "页数",
+    "batchingPagesPerSec": "页/秒（分批）",
+    "parsingPagesPerSec": "页/秒（解析）",
+    "chunkingPagesPerSec": "页/秒（分块）",
+    "embeddingPagesPerSec": "页/秒（嵌入）"
   },
   "errors": {
     "apiError": "API 错误",

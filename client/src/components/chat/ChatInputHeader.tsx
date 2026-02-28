@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button, Group, Loader } from "@mantine/core";
+import { ActionIcon, Select, Tooltip, Modal, Box, Menu, Button, Group, Loader, Drawer } from "@mantine/core";
 import {
   IconRobot,
   IconSettings,
@@ -260,15 +260,8 @@ export const ChatInputHeader = ({
             <IconSettings size="1.2rem" />
           </ActionIcon>
         </Tooltip>
-        <Modal
-          opened={settingsOpened}
-          onClose={closeSettings}
-          title={t("chat.chatSettings")}
-          fullScreen={isMobile}
-          size="lg"
-          yOffset="auto"
-          styles={{ content: { marginTop: "auto", marginBottom: "1rem" } }}
-        >
+
+        <Drawer opened={settingsOpened} onClose={closeSettings} title={t("chat.chatSettings")} size="lg">
           <ChatSettingsForm
             {...chatSettings}
             onSettingsChange={handleSettingsChange}
@@ -278,7 +271,7 @@ export const ChatInputHeader = ({
           <Button mt="md" onClick={closeSettings}>
             {t("common.close")}
           </Button>
-        </Modal>
+        </Drawer>
 
         {/* Tool buttons */}
         {selectedModel?.tools?.includes(ToolType.WEB_SEARCH) && (

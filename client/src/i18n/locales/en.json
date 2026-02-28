@@ -330,7 +330,13 @@
     "summarizationModel": "Summarization Model",
     "title": "Documents",
     "unselectAll": "Unselect All",
-    "viewSummary": "View summary"
+    "viewSummary": "View summary",
+    "processingAlert": "Processing",
+    "pages": "Pages",
+    "batchingPagesPerSec": "Batching pages/sec",
+    "parsingPagesPerSec": "Parsing pages/sec",
+    "chunkingPagesPerSec": "Chunking pages/sec",
+    "embeddingPagesPerSec": "Embedding pages/sec"
   },
   "errors": {
     "apiError": "API Error",

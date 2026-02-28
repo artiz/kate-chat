@@ -301,7 +301,7 @@ export class GlobalConfig {
         summarizingOutputTokens: +(process.env.AI_SUMMARIZING_OUTPUT_TOKENS || 2000) | 0,
         summarizingTemperature: +(process.env.AI_SUMMARIZING_TEMPERATURE || 0.25),
         ragQueryChunksLimit: +(process.env.RAG_QUERY_CHUNKS_LIMIT || 10) | 0,
-        ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, true),
+        ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, false),
         reasoningMinTokenBudget: Math.max(+(process.env.AI_REASONING_MIN_TOKEN_BUDGET || 1024) | 0, 1024),
         reasoningMaxTokenBudget: +(process.env.AI_REASONING_MAX_TOKEN_BUDGET || 50_000) | 0,
       },

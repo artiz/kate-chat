@@ -3,11 +3,12 @@ import { useApolloClient, useMutation } from "@apollo/client";
 import { parseChatMessages, parseMarkdown, MessageRole } from "@katechat/ui";
 import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
 import { notifications } from "@mantine/notifications";
-import { ChatLink, useAppDispatch, useAppSelector, useChat } from "@/store";
+import { useAppDispatch, useAppSelector } from "@/store";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { pick } from "lodash";
 import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings, Chat } from "@/types/graphql";
 import { updateFolderChat } from "@/store/slices/folderSlice";
+import { ChatLink } from "./useChat";
 
 type RemoveMessagesArgs = {
   messagesToDelete?: Message[];
@@ -55,6 +56,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const [chat, setChat] = useState<Chat | undefined>(undefined);
   const updateTimeout = useRef<NodeJS.Timeout | null>(null);
   const loadTimeout = useRef<NodeJS.Timeout | null>(null);
+  const { chats, pinnedChats } = useAppSelector(state => state.chats);
+  const folderChats = useAppSelector(state => state.folders.folderChats);
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -114,6 +117,39 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     },
     [chatId]
   );
+
+  useEffect(() => {
+    if (!chat?.id) return;
+
+    if (chat.isPinned) {
+      const ch = pinnedChats.find(c => c.id === chat.id);
+      if (ch) {
+        setChat(ch);
+        return;
+      }
+
+      if (chat.folderId) {
+        const ch = folderChats[chat.folderId].chats.find(c => c.id === chat.id);
+        if (ch) {
+          setChat(ch);
+          return;
+        }
+      } else {
+        for (const folderId in folderChats) {
+          const ch = folderChats[folderId].chats.find(c => c.id === chat.id);
+          if (ch) {
+            setChat(ch);
+            return;
+          }
+        }
+      }
+    }
+
+    const ch = chats.find(c => c.id === chat.id);
+    if (ch) {
+      setChat(ch);
+    }
+  }, [chat?.id, chats, pinnedChats, folderChats]);
 
   const loadMoreMessages = () => {
     if (!chatId || messagesLoading) return;
