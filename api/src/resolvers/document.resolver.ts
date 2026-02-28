@@ -201,15 +201,15 @@ export class DocumentResolver extends BaseResolver {
     if (metadata.pagesCount) {
       if (metadata.parsingEndedAt && metadata.parsingStartedAt) {
         metadata.parsingPagePerSecond =
-          metadata.pagesCount / ((metadata.parsingEndedAt - metadata.parsingStartedAt) / 100_000_000);
+          metadata.pagesCount / ((metadata.parsingEndedAt - metadata.parsingStartedAt) / 1_000_000_000);
       }
       if (metadata.chunkingEndedAt && metadata.chunkingStartedAt) {
         metadata.chunkingPagePerSecond =
-          metadata.pagesCount / ((metadata.chunkingEndedAt - metadata.chunkingStartedAt) / 100_000_000);
+          metadata.pagesCount / ((metadata.chunkingEndedAt - metadata.chunkingStartedAt) / 1_000_000_000);
       }
       if (metadata.embeddingEndedAt && metadata.embeddingStartedAt) {
         metadata.embeddingPagePerSecond =
-          metadata.pagesCount / ((metadata.embeddingEndedAt - metadata.embeddingStartedAt) / 100_000_000);
+          metadata.pagesCount / ((metadata.embeddingEndedAt - metadata.embeddingStartedAt) / 1_000_000_000);
       }
     }
 
@@ -219,7 +219,6 @@ export class DocumentResolver extends BaseResolver {
 
     // from documents processor, so we need to update document status
     if (payload.sync) {
-      const metadata = this.statusMap.get(payload.documentId);
       await this.documentRepo.update(
         { id: payload.documentId },
         {

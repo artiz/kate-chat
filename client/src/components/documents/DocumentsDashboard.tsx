@@ -41,7 +41,6 @@ import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
 import { getStatusColor } from "@/types/ai";
 import { useMediaQuery } from "@mantine/hooks";
-import { set } from "lodash";
 
 interface IProps {
   chatId?: string;
@@ -587,7 +586,11 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
                   {t("documents.showingOf", { count: documents.length, total: totalDocuments })}
                 </Text>
               </>
-            ) : null}
+            ) : (
+              <Text ta="center" c="dimmed" py="xl">
+                {t("documents.noDocumentsFound")}
+              </Text>
+            )}
           </Stack>
         </Paper>
       </Stack>

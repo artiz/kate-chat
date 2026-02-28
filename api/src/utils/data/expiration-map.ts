@@ -1,14 +1,9 @@
-import { createLogger } from "@/utils/logger";
-
-const logger = createLogger(__filename);
-
 interface MapValue<V> {
   value: V;
   ts: NodeJS.Timeout;
 }
 
 export class ExpirationMap<K, V> {
-  private prefix: string;
   private store: Map<K, MapValue<V>> = new Map();
   private expirationMs: number;
 

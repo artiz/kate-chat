@@ -228,26 +228,51 @@ export class EmbeddingsService {
       }
 
       if (loadFullPage) {
-        const loadedChunkIds = documentsChunks.map(c => c.id);
+        const loadedChunkIds = new Set(documentsChunks.map(c => c.id));
 
-        const chunks = await this.documentChunksRepo
-          .createQueryBuilder("document_chunk")
-          .leftJoinAndSelect("document_chunk.document", "document")
-          .where(qb => {
-            const subQuery = qb
-              .subQuery()
-              .select("dc.page")
-              .from(DocumentChunk, "dc")
-              .where("dc.id IN (:...chunkIds)")
-              .andWhere("dc.documentId = document_chunk.documentId")
-              .getQuery();
-            return `document_chunk.page IN ${subQuery}`;
-          })
-          .andWhere("document.pagesCount > 1")
-          .setParameter("chunkIds", loadedChunkIds)
-          .getMany();
+        if (globalConfig.db.type === "mssql") {
+          // Single query to get pagesCount for all documents
+          const docs = await this.documentRepo.find({
+            select: ["id", "pagesCount"],
+            where: { id: In(documentIds) },
+          });
+          const multiPageDocIds = new Set(docs.filter(d => d.pagesCount > 1).map(d => d.id));
 
-        documentsChunks.push(...chunks.filter(c => !loadedChunkIds.includes(c.id)));
+          for (const docId of documentIds) {
+            if (!multiPageDocIds.has(docId)) continue;
+            const chunkPages = new Set(
+              documentsChunks
+                .filter(c => c.documentId === docId)
+                .map(c => c.page)
+                .filter(p => p > 0)
+            );
+            if (chunkPages.size) {
+              const chunks = await this.documentChunksRepo.find({
+                where: { documentId: docId, page: In([...chunkPages]) },
+              });
+              documentsChunks.push(...chunks.filter(c => !loadedChunkIds.has(c.id)));
+            }
+          }
+        } else {
+          const chunks = await this.documentChunksRepo
+            .createQueryBuilder("document_chunk")
+            .leftJoinAndSelect("document_chunk.document", "document")
+            .where(qb => {
+              const subQuery = qb
+                .subQuery()
+                .select("dc.page")
+                .from(DocumentChunk, "dc")
+                .where("dc.id IN (:...chunkIds)")
+                .andWhere("dc.documentId = document_chunk.documentId")
+                .getQuery();
+              return `document_chunk.page IN ${subQuery}`;
+            })
+            .andWhere("document.pagesCount > 1")
+            .setParameter("chunkIds", [...loadedChunkIds])
+            .getMany();
+
+          documentsChunks.push(...chunks.filter(c => !loadedChunkIds.has(c.id)));
+        }
       }
 
       results.push(

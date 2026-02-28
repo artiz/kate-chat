@@ -193,7 +193,7 @@ class DocumentProcessor:
 
         try:
             if await self._s3_object_exists(parsed_json_key):
-                await self._finalize_partitioned_doc(
+                processed_parts = await self._finalize_partitioned_doc(
                     redis,
                     document_id,
                     parent_s3_key,

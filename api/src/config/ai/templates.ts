@@ -1,5 +1,3 @@
-import e from "express";
-
 // 1x1 gray pixel PNG (base64)
 export const GRAY_PIXEL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mM0NTX9DwADRgHBbU8fhQAAAABJRU5ErkJggg==";

@@ -419,6 +419,7 @@ export class MessagesService {
     originalMessage.content = newContent.trim();
     originalMessage.jsonContent = undefined; // Clear jsonContent to regenerate it
     originalMessage = await this.messageRepository.save(originalMessage);
+    await this.subscriptionsService.publishChatMessage(chat, originalMessage, true);
 
     // Find the model for the chat
     const model = await this.modelRepository.findOne({
