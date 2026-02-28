@@ -76,11 +76,18 @@ export const BASE_DOCUMENT_FRAGMENT = `
       fileName
       fileSize
       status
+      pagesCount
       summary
       statusInfo
       statusProgress
       createdAt
       updatedAt
+      metadata {
+        parsingPagePerSecond
+        chunkingPagePerSecond
+        batchingPagePerSecond
+        embeddingPagePerSecond
+     }
       downloadUrl
       downloadUrlMarkdown
       embeddingsModelId

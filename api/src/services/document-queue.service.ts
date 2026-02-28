@@ -94,7 +94,6 @@ export class DocumentQueueService {
         document.status = DocumentStatus.EMBEDDING;
         document.statusProgress = 0;
         await this.documentRepo.save(document);
-        await this.subService.publishDocumentStatus(document);
         await this.processEmbeddings(document, chunkedData, embeddingsModelId, connection);
       }
 
@@ -105,9 +104,9 @@ export class DocumentQueueService {
         document.status = DocumentStatus.SUMMARIZING;
         document.statusProgress = 0.5;
         await this.documentRepo.save(document);
-        this.subService.publishDocumentStatus(document);
-
+        this.subService.publishDocumentStatus(document, { startTime: Date.now() * 1000000 });
         document.summary = await this.generateSummary(document, s3key, summarizationModelId, s3Service, connection);
+        this.subService.publishDocumentStatus(document, { endTime: Date.now() * 1000000, sync: true });
       }
 
       // Mark document as ready
@@ -156,6 +155,7 @@ export class DocumentQueueService {
       return;
     }
 
+    await this.subService.publishDocumentStatus(document, { startTime: Date.now() * 1_000_000 });
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
 
@@ -167,8 +167,11 @@ export class DocumentQueueService {
       document.status = DocumentStatus.EMBEDDING;
       document.statusProgress = progress;
       await this.documentRepo.save(document);
-      await this.subService.publishDocumentStatus(document);
+      await this.subService.publishDocumentStatus(document, { currentTime: Date.now() * 1_000_000 });
     }
+
+    document.statusProgress = 1.0;
+    await this.subService.publishDocumentStatus(document, { endTime: Date.now() * 1_000_000, sync: true });
   }
 
   private async generateSummary(

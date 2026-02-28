@@ -14,10 +14,14 @@ declare global {
 
 // Export the middleware
 export const servicesMiddleware =
-  (subscriptionsService?: SubscriptionsService, sqsService?: DocumentSqsService, messagesService?: MessagesService) =>
+  (
+    subscriptionsService?: SubscriptionsService,
+    documentSqsService?: DocumentSqsService,
+    messagesService?: MessagesService
+  ) =>
   (req: Request, res: Response, next: NextFunction) => {
     req.subscriptionsService = subscriptionsService;
-    req.documentSqsService = sqsService;
+    req.documentSqsService = documentSqsService;
     req.messagesService = messagesService;
     next();
   };

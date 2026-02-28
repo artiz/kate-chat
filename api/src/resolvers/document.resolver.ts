@@ -1,7 +1,7 @@
 import { Resolver, Mutation, Arg, Ctx, Query, Subscription, Root, ID, FieldResolver } from "type-graphql";
 import { getRepository } from "@/config/database";
 
-import { Document } from "@/entities/Document";
+import { Document, DocumentMetadata } from "@/entities/Document";
 import { GraphQLContext } from ".";
 import { BaseResolver } from "./base.resolver";
 import { Repository, ILike } from "typeorm";
@@ -10,14 +10,18 @@ import { DocumentStatusMessage, DocumentsResponse } from "@/types/graphql/respon
 import { GetDocumentsInput } from "@/types/graphql/inputs";
 import { DocumentStatus } from "@/types/api";
 import { globalConfig } from "@/global-config";
+import { ExpirationMap } from "@/utils/data/expiration-map";
+import { logger } from "@/utils/logger";
 
 @Resolver(Document)
 export class DocumentResolver extends BaseResolver {
   private documentRepo: Repository<Document>;
+  private statusMap: ExpirationMap<string, DocumentMetadata>;
 
   constructor() {
     super(); // Call the constructor of BaseResolver to initialize userRepository
     this.documentRepo = getRepository(Document);
+    this.statusMap = new ExpirationMap(60000);
   }
 
   @FieldResolver(() => String, { nullable: true })
@@ -153,24 +157,78 @@ export class DocumentResolver extends BaseResolver {
   ): Promise<DocumentStatusMessage[]> {
     await this.validateContextToken(context);
 
-    if (payload.sync) {
-      const document = await this.documentRepo.findOne({
-        where: { id: payload.documentId },
-      });
+    const metadata = this.statusMap.get(payload.documentId) || payload.metadata || {};
+    if (payload.pagesCount) {
+      metadata.pagesCount = payload.pagesCount;
+    }
 
-      if (document) {
-        document.status = payload.status;
-        document.statusInfo = payload.statusInfo;
-        document.statusProgress = payload.statusProgress;
-        const updated = await this.documentRepo.save(document);
-
-        return [
-          {
-            ...updated,
-            documentId: updated.id,
-          },
-        ];
+    if (payload.startTime || payload.currentTime) {
+      switch (payload.status) {
+        case DocumentStatus.PARSING:
+          if (!metadata.parsingStartedAt) metadata.parsingStartedAt = payload.startTime || payload.currentTime;
+          break;
+        case DocumentStatus.CHUNKING:
+          if (!metadata.chunkingStartedAt) metadata.chunkingStartedAt = payload.startTime || payload.currentTime;
+          break;
+        case DocumentStatus.EMBEDDING:
+          if (!metadata.embeddingStartedAt) metadata.embeddingStartedAt = payload.startTime || payload.currentTime;
+          break;
+        case DocumentStatus.SUMMARIZING:
+          if (!metadata.summarizationStartedAt)
+            metadata.summarizationStartedAt = payload.startTime || payload.currentTime;
+          break;
       }
+    }
+
+    if (payload.endTime || payload.currentTime) {
+      switch (payload.status) {
+        case DocumentStatus.PARSING:
+          metadata.parsingEndedAt = payload.endTime || payload.currentTime;
+          break;
+        case DocumentStatus.CHUNKING:
+          metadata.chunkingEndedAt = payload.endTime || payload.currentTime;
+          break;
+        case DocumentStatus.EMBEDDING:
+          metadata.embeddingEndedAt = payload.endTime || payload.currentTime;
+          break;
+        case DocumentStatus.SUMMARIZING:
+          metadata.summarizationEndedAt = payload.endTime || payload.currentTime;
+          break;
+      }
+    }
+
+    if (metadata.pagesCount) {
+      if (metadata.parsingEndedAt && metadata.parsingStartedAt) {
+        metadata.parsingPagePerSecond =
+          metadata.pagesCount / ((metadata.parsingEndedAt - metadata.parsingStartedAt) / 100_000_000);
+      }
+      if (metadata.chunkingEndedAt && metadata.chunkingStartedAt) {
+        metadata.chunkingPagePerSecond =
+          metadata.pagesCount / ((metadata.chunkingEndedAt - metadata.chunkingStartedAt) / 100_000_000);
+      }
+      if (metadata.embeddingEndedAt && metadata.embeddingStartedAt) {
+        metadata.embeddingPagePerSecond =
+          metadata.pagesCount / ((metadata.embeddingEndedAt - metadata.embeddingStartedAt) / 100_000_000);
+      }
+    }
+
+    this.statusMap.set(payload.documentId, metadata);
+
+    logger.trace({ documentId: payload.documentId, metadata }, "Updated document metadata");
+
+    // from documents processor, so we need to update document status
+    if (payload.sync) {
+      const metadata = this.statusMap.get(payload.documentId);
+      await this.documentRepo.update(
+        { id: payload.documentId },
+        {
+          status: payload.status,
+          statusInfo: payload.statusInfo,
+          statusProgress: payload.statusProgress,
+          pagesCount: metadata?.pagesCount || undefined,
+          metadata,
+        }
+      );
     }
 
     return [payload];

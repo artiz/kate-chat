@@ -187,7 +187,7 @@ export class SubscriptionsService extends EventEmitter {
     }
   }
 
-  async publishDocumentStatus(document: Document): Promise<void> {
+  async publishDocumentStatus(document: Document, statusData: Partial<DocumentStatusMessage> = {}): Promise<void> {
     const message: DocumentStatusMessage = {
       documentId: document.id,
       status: document.status,
@@ -195,6 +195,9 @@ export class SubscriptionsService extends EventEmitter {
       statusProgress: document.statusProgress,
       summary: document.summary,
       updatedAt: document.updatedAt,
+      metadata: document.metadata,
+      pagesCount: document.pagesCount,
+      ...statusData,
     };
 
     // Publish directly if Redis is not configured

@@ -9,9 +9,47 @@ import {
   OneToMany,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
+import { JSONTransformer } from "../utils/db";
 import { User } from "./User";
+import { DB_TYPE } from "../config/env";
 import { DocumentStatus } from "../types/api";
 import { ChatDocument } from "./ChatDocument";
+
+const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
+
+@ObjectType()
+export class DocumentMetadata {
+  @Field({ nullable: true })
+  pagesCount?: number;
+  @Field({ nullable: true })
+  parsingStartedAt?: number; // ns
+  @Field({ nullable: true })
+  parsingEndedAt?: number; // ns
+  @Field({ nullable: true })
+  parsingPagePerSecond?: number;
+  @Field({ nullable: true })
+  chunkingStartedAt?: number; // ns
+  @Field({ nullable: true })
+  chunkingEndedAt?: number; // ns
+  @Field({ nullable: true })
+  chunkingPagePerSecond?: number;
+  @Field({ nullable: true })
+  batchingStartedAt?: number;
+  @Field({ nullable: true })
+  batchingEndedAt?: number;
+  @Field({ nullable: true })
+  batchingPagePerSecond?: number;
+  @Field({ nullable: true })
+  embeddingStartedAt?: number;
+  @Field({ nullable: true })
+  embeddingEndedAt?: number;
+  @Field({ nullable: true })
+  embeddingPagePerSecond?: number;
+  @Field({ nullable: true })
+  summarizationStartedAt?: number;
+  @Field({ nullable: true })
+  summarizationEndedAt?: number;
+}
 
 @ObjectType()
 @Entity("documents")
@@ -93,6 +131,10 @@ export class Document {
   @Field()
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @Field(() => DocumentMetadata, { nullable: true })
+  @Column({ type: JSON_COLUMN_TYPE, nullable: true, transformer: JSONTransformer<DocumentMetadata>(), default: null })
+  metadata?: DocumentMetadata;
 
   @OneToMany(() => ChatDocument, chatDocument => chatDocument.document)
   chatDocuments: ChatDocument[];

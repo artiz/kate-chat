@@ -51,7 +51,7 @@ const isProd = globalConfig.runtime.nodeEnv === "production" || globalConfig.run
 const logger = createLogger("server");
 
 let subscriptionsService: SubscriptionsService | undefined;
-let sqsService: DocumentSqsService | undefined;
+let documentSqsService: DocumentSqsService | undefined;
 let requestsSqsService: RequestsSqsService | undefined;
 let messagesService: MessagesService | undefined;
 
@@ -65,10 +65,10 @@ async function bootstrap() {
   subscriptionsService = new SubscriptionsService();
   requestsSqsService = new RequestsSqsService();
   messagesService = new MessagesService(subscriptionsService, requestsSqsService);
-  sqsService = new DocumentSqsService(subscriptionsService);
+  documentSqsService = new DocumentSqsService(subscriptionsService);
 
   await requestsSqsService.startup();
-  await sqsService.startup();
+  await documentSqsService.startup();
 
   const schemaPubSub = {
     publish: (routingKey: string, ...args: unknown[]) => {
@@ -112,6 +112,10 @@ async function bootstrap() {
   app.use(express.json({ limit: globalConfig.app.maxInputJson }));
   app.use(cookieParser());
 
+  // Set up JWT auth middleware for GraphQL
+  app.use(authMiddleware);
+  app.use(servicesMiddleware(subscriptionsService, documentSqsService, messagesService));
+
   // Set up session and passport
   app.use(
     session({
@@ -126,10 +130,6 @@ async function bootstrap() {
   app.use(passport.initialize());
   app.use(passport.session());
   configurePassport();
-
-  // Set up JWT auth middleware for GraphQL
-  app.use(authMiddleware);
-  app.use(servicesMiddleware(subscriptionsService, sqsService, messagesService));
 
   // Compress API responses (zlib streams run in libuv thread pool, not event loop)
   // Scoped to API routes only — static files are already served pre-compressed by express-static-gzip
@@ -165,7 +165,7 @@ async function bootstrap() {
           tokenPayload: req.raw.tokenPayload,
           connectionParams: req.raw.connectionParams || {},
           subscriptionsService,
-          sqsService,
+          documentSqsService,
           messagesService,
         };
       },
@@ -303,8 +303,8 @@ async function bootstrap() {
 
 process.on("SIGINT", async () => {
   console.log("Gracefully shutting down from SIGINT (Ctrl-C)...");
-  if (sqsService) {
-    await sqsService.shutdown();
+  if (documentSqsService) {
+    await documentSqsService.shutdown();
   }
   if (subscriptionsService) {
     await subscriptionsService.shutdown();
@@ -316,8 +316,8 @@ process.on("SIGINT", async () => {
 // Start the application
 bootstrap().catch(async error => {
   logger.error(error, "Error starting server");
-  if (sqsService) {
-    await sqsService.shutdown();
+  if (documentSqsService) {
+    await documentSqsService.shutdown();
   }
   if (subscriptionsService) {
     await subscriptionsService.shutdown();

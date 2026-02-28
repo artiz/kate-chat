@@ -9,7 +9,7 @@ import { User, AuthProvider, UserRole } from "../entities/User";
 import { getRepository } from "./database";
 import { logger } from "../utils/logger";
 import { globalConfig } from "@/global-config";
-import { ensureInitialUserAssets } from "@/utils/initial-data";
+import { ensureInitialUserAssets } from "@/config/initial-data";
 
 const userDefaults = {
   defaultSystemPrompt: globalConfig.ai.defaultSystemPrompt,

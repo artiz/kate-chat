@@ -1,6 +1,7 @@
 import { ObjectType, Field, ID } from "type-graphql";
 import { User, Chat, ChatFolder, Message, Model, Document, MCPServer } from "@/entities";
 import { ApiProvider, CredentialSourceType, CredentialType, DocumentStatus, MessageRole, MessageType } from "../api";
+import { DocumentMetadata } from "@/entities/Document";
 
 @ObjectType()
 export class UserResponse {
@@ -374,13 +375,29 @@ export class DocumentStatusMessage {
   statusProgress?: number;
 
   @Field({ nullable: true })
+  pagesCount?: number;
+
+  @Field({ nullable: true })
+  startTime?: number;
+
+  @Field({ nullable: true })
+  currentTime?: number;
+
+  @Field({ nullable: true })
+  endTime?: number;
+
+  @Field({ nullable: true })
   summary?: string;
 
+  // returned from document
   @Field({ nullable: true })
   updatedAt?: Date;
 
   @Field({ nullable: true })
   sync?: boolean;
+
+  // exisitng metadata for the document to merge with
+  metadata?: DocumentMetadata;
 }
 
 @ObjectType()

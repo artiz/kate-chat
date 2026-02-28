@@ -8,7 +8,7 @@ import { verifyRecaptchaToken } from "@/utils/recaptcha";
 import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
-import { ensureInitialUserAssets } from "@/utils/initial-data";
+import { ensureInitialUserAssets } from "@/config/initial-data";
 import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
 
 @Resolver(User)
