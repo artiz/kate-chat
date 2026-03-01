@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useEffect, useState } from "react";
 import { useQuery } from "@apollo/client";
 import {
   ActionIcon,
@@ -63,6 +63,22 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   const selectedDocuments = useMemo(() => {
     return availableDocuments.filter(doc => selectedDocIds.includes(doc.id));
   }, [availableDocuments, selectedDocIds]);
+
+  // Auto-select newly available documents (e.g. after upload completes)
+  const prevAvailableIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const prev = prevAvailableIdsRef.current;
+    const newlyAvailableIds = [...availableDocumentsIds].filter(id => !prev.has(id));
+    if (newlyAvailableIds.length > 0) {
+      const toAdd = newlyAvailableIds.filter(id => !selectedDocIds.includes(id));
+      if (toAdd.length > 0) {
+        onSelectionChange?.([...selectedDocIds, ...toAdd].filter(id => availableDocumentsIds.has(id)));
+      }
+    }
+
+    prevAvailableIdsRef.current = new Set(availableDocumentsIds);
+  }, [availableDocumentsIds, selectedDocIds]);
 
   const handleDocumentToggle = (docId: string) => {
     if (!availableDocumentsIds.has(docId)) return;

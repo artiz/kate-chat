@@ -44,6 +44,7 @@ export const BASE_CHAT_FRAGMENT = `
           imagesCount
           thinking
           thinkingBudget
+          selectedRagDocIds
         }
         user {
           id
@@ -165,6 +166,11 @@ export const BASE_MESSAGE_FRAGMENT = `
           content
           relevance
         }
+        ragResponse {
+          step_by_step_analysis
+          reasoning_summary
+          final_answer
+        }
         tools {
           name
           content
@@ -263,6 +269,7 @@ export const UPDATE_CHAT_MUTATION = gql`
         imagesCount
         thinking
         thinkingBudget
+        selectedRagDocIds
       }
       tools {
         type

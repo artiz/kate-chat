@@ -11,7 +11,8 @@ import {
   ToolType,
 } from "./api";
 import { ChatSettings } from "@/entities/Chat";
-import { ImageInput } from "./graphql/inputs";
+import { ImageInput } from "@/types/graphql/inputs";
+import { RagResponse } from "@/services/ai/tools/rag";
 
 export interface ProviderInfo {
   id: ApiProvider;
@@ -170,6 +171,10 @@ export class MessageMetadata {
   // RAG: Step by step analysis
   @Field(() => String, { nullable: true })
   analysis?: string;
+
+  // RAG: raw json
+  @Field(() => RagResponse, { nullable: true })
+  ragResponse?: RagResponse;
 
   // tool calls
   @Field(() => [ChatToolCall], { nullable: true })

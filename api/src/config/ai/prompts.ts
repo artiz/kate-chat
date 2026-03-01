@@ -1,3 +1,4 @@
+import { RagRequest, RagInputChunk } from "../../services/ai/tools/rag";
 import { SearchResult } from "../../services/ai/tools/web_search";
 
 export const DEFAULT_CHAT_PROMPT = `You are a helpful, respectful and honest assistant. Do not make up answers.
@@ -17,25 +18,6 @@ export const PROMPT_CHAT_TITLE = ({ question, answer }: { question: string; answ
     Question: ${question}
     Answer: ${answer}
     The title should be concise and capture the essence of the conversation and have a maximum of 7 words.`;
-
-interface RagInputChunk {
-  id: string;
-  page: number;
-  content: string;
-}
-
-export interface RagRequest {
-  systemPrompt: string;
-  userInput: string;
-}
-
-export interface RagResponse {
-  step_by_step_analysis?: string;
-  reasoning_summary?: string;
-  final_answer?: string;
-  relevant_chunks_ids?: string[];
-  chunks_relevance?: number[];
-}
 
 // some info here: https://platform.openai.com/docs/guides/structured-outputs?type-restrictions=string-restrictions#examples
 const RAG_RESPONSE_SCHEMA = {

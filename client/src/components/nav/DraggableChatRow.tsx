@@ -19,7 +19,7 @@ import { DeleteConfirmationModal } from "@katechat/ui";
 import { useAppDispatch } from "@/store";
 import { UPDATE_CHAT_MUTATION, DELETE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { updateChat, removeChat } from "@/store/slices/chatSlice";
-import { removeFolderChat, updateFolderChat } from "@/store/slices/folderSlice";
+import { removeFolderChat } from "@/store/slices/folderSlice";
 import { Chat } from "@/types/graphql";
 import { MoveToChatModal } from "./MoveToChatModal";
 
@@ -52,7 +52,6 @@ export const DraggableChatRow: React.FC<Props> = ({ chat, navbarToggle, pl = "sm
   const [updateChatMutation] = useMutation(UPDATE_CHAT_MUTATION, {
     onCompleted: data => {
       dispatch(updateChat(data.updateChat));
-      dispatch(updateFolderChat(data.updateChat));
       setIsRenaming(false);
     },
     onError: error => {

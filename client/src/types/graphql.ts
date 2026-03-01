@@ -293,6 +293,14 @@ export interface ReasoningChunk {
   id?: string;
 }
 
+export interface RagResponse {
+  step_by_step_analysis?: string;
+  reasoning_summary?: string;
+  final_answer?: string;
+  relevant_chunks_ids?: string[];
+  chunks_relevance?: number[];
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -301,6 +309,7 @@ export interface MessageMetadata {
 
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
+  ragResponse?: RagResponse;
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
   requestId?: string;
@@ -343,6 +352,7 @@ export interface ChatSettings {
   systemPrompt?: string;
   thinking?: boolean;
   thinkingBudget?: number;
+  selectedRagDocIds?: string[];
 }
 
 export interface ChatFolder {

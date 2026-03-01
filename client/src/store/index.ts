@@ -7,8 +7,6 @@ import userReducer from "./slices/userSlice";
 import modelReducer from "./slices/modelSlice";
 import chatReducer from "./slices/chatSlice";
 import folderReducer from "./slices/folderSlice";
-import { Chat } from "@/types/graphql";
-import { useMemo } from "react";
 
 export const logout = createAction("logout");
 

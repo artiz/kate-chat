@@ -100,8 +100,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
         color: "yellow",
       });
     }
-    setSelectedRagDocIds([]);
   }, [chatId, loadCompleted]);
+
+  // Initialize selectedRagDocIds from chat settings when a chat loads
+  useEffect(() => {
+    if (chat?.id) {
+      setSelectedRagDocIds(chat.settings?.selectedRagDocIds || []);
+    } else {
+      setSelectedRagDocIds([]);
+    }
+  }, [chat?.id]);
 
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
@@ -268,6 +276,14 @@ export const ChatComponent = ({ chatId }: IProps) => {
       }
     },
     [updateChat, chat]
+  );
+
+  const handleRagDocSelectionChange = useCallback(
+    (newIds: string[]) => {
+      setSelectedRagDocIds(newIds);
+      handleChatUpdate({ settings: { ...chat?.settings, selectedRagDocIds: newIds } });
+    },
+    [chat?.settings, handleChatUpdate]
   );
 
   const handleTitleUpdate = useCallback(() => {
@@ -512,7 +528,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
                 chatId={chatId}
                 chatTitle={chat?.title}
                 selectedDocIds={selectedRagDocIds}
-                onSelectionChange={setSelectedRagDocIds}
+                onSelectionChange={handleRagDocSelectionChange}
                 disabled={!uploadAllowed || isExternalChat || messagesLoading}
                 documents={chatDocuments}
               />

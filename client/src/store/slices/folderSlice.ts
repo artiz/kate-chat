@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { Chat, ChatFolder } from "@/types/graphql";
 import { logout } from "..";
-import { init } from "i18next";
+import { updateChat } from "./chatSlice";
 
 interface FolderExpandedData {
   subfolders: ChatFolder[];
@@ -97,26 +97,6 @@ const folderSlice = createSlice({
         if (total !== undefined) state.folderChats[folderId].total = total;
       }
     },
-    updateFolderChat(state, action: PayloadAction<Chat>) {
-      const chat = action.payload;
-      if (!chat.folderId) return; // Only update if chat has a folder
-
-      if (state.folderChats[chat.folderId]) {
-        const folder = state.folderChats[chat.folderId];
-        if (folder.chats.some(c => c.id === chat.id)) {
-          folder.chats = folder.chats.map(c => (c.id === chat.id ? { ...c, ...chat } : c));
-        } else {
-          // If chat's folderId changed and it now belongs in this folder, add it
-          folder.chats = [...folder.chats, chat];
-        }
-      } else {
-        state.folderChats[chat.folderId] = {
-          subfolders: [],
-          chats: [chat],
-          loading: false,
-        };
-      }
-    },
     removeFolderChat(state, action: PayloadAction<string>) {
       for (const key of Object.keys(state.folderChats)) {
         state.folderChats[key].chats = state.folderChats[key].chats.filter(c => c.id !== action.payload);
@@ -125,6 +105,21 @@ const folderSlice = createSlice({
   },
   extraReducers: builder => {
     builder.addCase(logout, () => initialState);
+    builder.addCase(updateChat, (state, action) => {
+      const chat = action.payload;
+      if (!chat.folderId) return;
+
+      if (state.folderChats[chat.folderId]) {
+        const folder = state.folderChats[chat.folderId];
+        if (folder.chats.some(c => c.id === chat.id)) {
+          folder.chats = folder.chats.map(c => (c.id === chat.id ? { ...c, ...chat } : c));
+        } else {
+          folder.chats = [...folder.chats, chat];
+        }
+      } else {
+        state.folderChats[chat.folderId] = { subfolders: [], chats: [chat], loading: false };
+      }
+    });
   },
 });
 
@@ -136,7 +131,6 @@ export const {
   setFolderLoading,
   setFolderContents,
   appendFolderChats,
-  updateFolderChat,
   removeFolderChat,
 } = folderSlice.actions;
 export default folderSlice.reducer;

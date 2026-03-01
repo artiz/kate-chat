@@ -31,6 +31,8 @@ interface DocumentsTableProps {
   chatId?: string;
   onAddToChat: (doc: Document) => void;
   onRemoveFromChat: (doc: Document) => void;
+  onSelectAll?: (docs: Document[]) => void;
+  onUnselectAll?: (docs: Document[]) => void;
   onReindexDocument: (doc: Document) => void;
   onDeleteDocument: (doc: Document) => void;
   onViewSummary: (doc: Document) => void;
@@ -43,6 +45,8 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   chatDocumentsMap = {},
   onAddToChat,
   onRemoveFromChat,
+  onSelectAll,
+  onUnselectAll,
   onReindexDocument,
   onDeleteDocument,
   onViewSummary,
@@ -120,8 +124,41 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
 
   if (selectorView) {
+    const eligibleDocs = documents.filter(
+      doc => doc.status === DocumentStatus.READY || doc.status === DocumentStatus.SUMMARIZING
+    );
+    const eligibleSelectedCount = eligibleDocs.filter(doc => !!chatDocumentsMap[doc.id]).length;
+    const allEligibleSelected = eligibleDocs.length > 0 && eligibleSelectedCount === eligibleDocs.length;
+    const someEligibleSelected = eligibleSelectedCount > 0 && !allEligibleSelected;
+
+    const handleSelectAllToggle = () => {
+      if (allEligibleSelected) {
+        if (onUnselectAll) {
+          onUnselectAll(eligibleDocs);
+        } else {
+          eligibleDocs.filter(doc => !!chatDocumentsMap[doc.id]).forEach(doc => onRemoveFromChat(doc));
+        }
+      } else {
+        if (onSelectAll) {
+          onSelectAll(eligibleDocs);
+        } else {
+          eligibleDocs.filter(doc => !chatDocumentsMap[doc.id]).forEach(doc => onAddToChat(doc));
+        }
+      }
+    };
+
     return (
       <>
+        <Group align="center" justify="space-between" wrap="nowrap" gap="lg" mb="xs">
+          <Checkbox
+            checked={allEligibleSelected}
+            indeterminate={someEligibleSelected}
+            onChange={handleSelectAllToggle}
+            size="sm"
+            label={allEligibleSelected ? t("documents.unselectAll") : t("documents.selectAll")}
+            disabled={eligibleDocs.length === 0}
+          />
+        </Group>
         {documents.map((doc: Document) => (
           <Group key={doc.id} align="center" justify="space-between" wrap="nowrap" gap="lg">
             <Group align="center" wrap="nowrap" gap="xs">

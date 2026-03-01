@@ -49,6 +49,9 @@ export class ChatSettings {
 
   @Field({ nullable: true })
   thinkingBudget?: number;
+
+  @Field(() => [String], { nullable: true })
+  selectedRagDocIds?: string[];
 }
 
 @ObjectType()

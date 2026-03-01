@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { useAppDispatch } from "@/store";
 import { UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { updateChat } from "@/store/slices/chatSlice";
-import { removeFolderChat, updateFolderChat } from "@/store/slices/folderSlice";
+import { removeFolderChat } from "@/store/slices/folderSlice";
 import { Chat } from "@/types/graphql";
 
 interface Props {
@@ -46,9 +46,6 @@ export const ChatDndProvider: React.FC<Props> = ({ children }) => {
         dispatch(removeFolderChat(prev.id));
       }
       dispatch(updateChat(updated));
-      if (updated.folderId) {
-        dispatch(updateFolderChat(updated));
-      }
     },
     onError: error => {
       pendingRef.current = null;
@@ -107,7 +104,6 @@ export const ChatDndProvider: React.FC<Props> = ({ children }) => {
 
     if (chat.folderId) dispatch(removeFolderChat(chat.id));
     dispatch(updateChat(optimistic));
-    if (optimistic.folderId) dispatch(updateFolderChat(optimistic));
 
     pendingRef.current = chat;
     updateChatMutation({ variables: { id: chat.id, input } });

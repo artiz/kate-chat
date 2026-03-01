@@ -47,7 +47,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Demo mode when no LLM providers configured on Backend and `AWS_BEDROCK_...` or `OPENAI_API_...` settings are stored in local storage and sent to the backend as "x-aws-region", "x-aws-access-key-id", "x-aws-secret-access-key", "x-openai-api-key" headers
 
 ## TODO
-* Put status update time into document processing, load pages count and show it and full processing time and average proc speed
+
 * Check OpenAI protocol to process all the possible metadata, extend MessageMetadata, add ChatMetadata where totalTokens,totalInputTokens,totalOutputTokens should be stored. 
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Render: add sortable headers to HTML tables and button to copy/download as csv

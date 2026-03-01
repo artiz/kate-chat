@@ -30,12 +30,13 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
-import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST, RagResponse } from "@/config/ai/prompts";
+import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST } from "@/config/ai/prompts";
 import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
 import { ChatSettings } from "@/entities/Chat";
 import { IMAGE_GENERATION_PLACEHOLDER } from "@/config/ai/templates";
 import { pick } from "lodash";
 import { QueueLockService } from "./common/queue-lock.service";
+import { RagResponse } from "./ai/tools/rag";
 
 const aiConfig = globalConfig.ai;
 
@@ -1247,7 +1248,7 @@ export class MessagesService {
       const ragResponse = parsed as RagResponse;
       logger.debug(ragResponse, "RAG response");
 
-      ragMessage.content = ragResponse.final_answer || aiResponse.content || "N/A";
+      ragMessage.content = ragResponse.final_answer || "N/A";
       if (ragResponse.reasoning_summary) {
         ragMessage.content += `\n\n> ${ragResponse.reasoning_summary}`;
       }
@@ -1256,9 +1257,10 @@ export class MessagesService {
         ...aiResponse.metadata,
         documentIds: input.documentIds,
         analysis: ragResponse.step_by_step_analysis,
+        ragResponse,
         relevantsChunks:
           ragResponse.relevant_chunks_ids
-            ?.map((id, ndx) => {
+            ?.map((id: string, ndx: number) => {
               const inputChunk = chunksMap[id];
               if (!inputChunk) return null;
 

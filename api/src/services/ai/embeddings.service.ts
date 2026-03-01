@@ -9,6 +9,7 @@ import { In, Repository } from "typeorm";
 import { notEmpty, ok } from "@/utils/assert";
 import { globalConfig } from "@/global-config";
 import { EMBEDDINGS_DIMENSIONS } from "@/entities/DocumentChunk";
+import _ from "lodash";
 
 const logger = createLogger(__filename);
 
@@ -128,7 +129,14 @@ export class EmbeddingsService {
       id: In([...new Set(documentIds)]),
     });
 
-    logger.debug({ documentIds: documentIds || [], documents, query }, `Query chunks`);
+    logger.debug(
+      {
+        documentIds: documentIds || [],
+        documents: documents.map(doc => _.pick(doc, ["id", "fileName", "fileSize"])),
+        query,
+      },
+      `Query chunks`
+    );
 
     const modelIds = new Set(documents.map(doc => doc.embeddingsModelId).filter(notEmpty));
     ok(modelIds.size, `No valid embeddings model IDs found for documents`);
@@ -203,7 +211,7 @@ export class EmbeddingsService {
           .limit(limit)
           .getMany();
 
-        documentsChunks.push(...chunks);
+        documentsChunks.push(...chunks.map(c => ({ ...c, documentName: c?.document?.fileName })));
       } else if (globalConfig.db.type === "mssql") {
         const runner = AppDataSource.createQueryRunner();
         try {
@@ -271,7 +279,9 @@ export class EmbeddingsService {
             .setParameter("chunkIds", [...loadedChunkIds])
             .getMany();
 
-          documentsChunks.push(...chunks.filter(c => !loadedChunkIds.has(c.id)));
+          documentsChunks.push(
+            ...chunks.filter(c => !loadedChunkIds.has(c.id)).map(c => ({ ...c, documentName: c?.document?.fileName }))
+          );
         }
       }
 

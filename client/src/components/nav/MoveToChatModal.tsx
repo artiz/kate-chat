@@ -7,8 +7,8 @@ import { IconFolder, IconFolderOpen, IconPinned } from "@tabler/icons-react";
 import { useMantineTheme } from "@mantine/core";
 import { useAppDispatch } from "@/store";
 import { GET_ALL_FOLDERS, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
-import { updateFolderChat, removeFolderChat } from "@/store/slices/folderSlice";
-import { updateChat, setPinnedChats } from "@/store/slices/chatSlice";
+import { removeFolderChat } from "@/store/slices/folderSlice";
+import { updateChat } from "@/store/slices/chatSlice";
 import { Chat, ChatFolder } from "@/types/graphql";
 
 interface IProps {
@@ -84,7 +84,6 @@ export const MoveToChatModal: React.FC<IProps> = ({ isOpen, onClose, chat }) => 
       }
 
       dispatch(updateChat(updatedChat));
-      dispatch(updateFolderChat(updatedChat));
       onClose();
     },
     onError: error => {

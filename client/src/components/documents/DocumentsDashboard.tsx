@@ -248,6 +248,30 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
     removeFromChat({ variables: { documentIds: [doc.id], chatId } });
   };
 
+  const handleSelectAll = (docs: Document[]) => {
+    assert.ok(chatId);
+    const docsToAdd = docs.filter(doc => !chatDocumentsMap[doc.id]);
+    if (!docsToAdd.length) return;
+    setChatDocumentsMap(prev => {
+      const newMap = { ...prev };
+      docsToAdd.forEach(doc => (newMap[doc.id] = doc));
+      return newMap;
+    });
+    addToChat({ variables: { documentIds: docsToAdd.map(d => d.id), chatId } });
+  };
+
+  const handleUnselectAll = (docs: Document[]) => {
+    assert.ok(chatId);
+    const docsToRemove = docs.filter(doc => !!chatDocumentsMap[doc.id]);
+    if (!docsToRemove.length) return;
+    setChatDocumentsMap(prev => {
+      const newMap = { ...prev };
+      docsToRemove.forEach(doc => delete newMap[doc.id]);
+      return newMap;
+    });
+    removeFromChat({ variables: { documentIds: docsToRemove.map(d => d.id), chatId } });
+  };
+
   useEffect(() => {
     if (!chat?.chatDocuments) return;
 
@@ -569,6 +593,8 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
                   chatId={chatId}
                   onAddToChat={handleAddToChat}
                   onRemoveFromChat={handleRemoveFromChat}
+                  onSelectAll={chatId ? handleSelectAll : undefined}
+                  onUnselectAll={chatId ? handleUnselectAll : undefined}
                   onReindexDocument={handleReindexDocument}
                   onDeleteDocument={handleDeleteDocument}
                   onViewSummary={setSummaryDocument}

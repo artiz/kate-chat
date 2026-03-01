@@ -7,7 +7,6 @@ import { useAppDispatch, useAppSelector } from "@/store";
 import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphql.queries";
 import { pick } from "lodash";
 import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings, Chat } from "@/types/graphql";
-import { updateFolderChat } from "@/store/slices/folderSlice";
 import { ChatLink } from "./useChat";
 
 type RemoveMessagesArgs = {
@@ -101,7 +100,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             setChat(ch);
 
             dispatch(updateChatInState(ch));
-            dispatch(updateFolderChat(ch));
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
@@ -256,7 +254,6 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
     setChat(prev => (prev?.id === link.id ? ({ ...prev, ...input } as Chat) : prev));
     dispatch(updateChatInState({ ...link, ...input }));
-    dispatch(updateFolderChat({ ...link, ...input }));
 
     if (updateTimeout.current) {
       clearTimeout(updateTimeout.current);
