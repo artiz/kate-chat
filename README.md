@@ -49,6 +49,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ## TODO
 
 * Check OpenAI protocol to process all the possible metadata, extend MessageMetadata, add ChatMetadata where totalTokens,totalInputTokens,totalOutputTokens should be stored. 
+* OAuth: add new config to support login only from specific Github organization, show correct error message
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Render: add sortable headers to HTML tables and button to copy/download as csv
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.
