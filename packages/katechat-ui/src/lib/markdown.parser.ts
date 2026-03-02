@@ -1,5 +1,5 @@
 import hljs from "highlight.js";
-import { Marked, Renderer } from "marked";
+import { Marked, Renderer, Tokens } from "marked";
 import { markedHighlight } from "marked-highlight";
 import markedKatex from "marked-katex-extension";
 
@@ -62,6 +62,29 @@ renderer.link = ({ href, title, text }) => {
   // Sanitize URL to prevent XSS attacks
   const url = sanitizeUrl(href);
   return `<a target="_blank" rel="noopener noreferrer" href="${url}" title="${escapeHtml(title) || ""}">${escapeHtml(text)}</a>`;
+};
+renderer.table = (token: Tokens.Table): string => {
+  const header = token.header
+    .map((cell, i) => {
+      const align = token.align[i];
+      return `<th${align ? ` align="${align}"` : ""}>${renderer.parser.parseInline(cell.tokens)}</th>`;
+    })
+    .join("");
+
+  const body = token.rows
+    .map(
+      row =>
+        `<tr>${row
+          .map((cell, i) => {
+            const align = token.align[i];
+            return `<td${align ? ` align="${align}"` : ""}>${renderer.parser.parseInline(cell.tokens)}</td>`;
+          })
+          .join("")}</tr>`
+    )
+    .join("");
+
+  const colCount = token.header.length;
+  return `<table class="table"><thead><tr>${header}</tr></thead><tbody>${body}</tbody><tfoot><tr class="table-controls-row"><td class="table-controls" colspan="${colCount}">&nbsp;</td></tr></tfoot></table>`;
 };
 
 export function normalizeMatJax(input: string): string {

@@ -8,6 +8,20 @@ import { ChatMessage } from "./message/ChatMessage";
 import { ImagePopup } from "../modal/ImagePopup";
 import { getProgrammingLanguageExt } from "@/lib";
 
+const tableToCSV = (table: HTMLTableElement): string => {
+  const rows = [
+    ...Array.from(table.tHead?.querySelectorAll("tr") ?? []),
+    ...Array.from(table.tBodies[0]?.querySelectorAll("tr") ?? []),
+  ];
+  return rows
+    .map(row =>
+      Array.from(row.querySelectorAll("th, td"))
+        .map(cell => `"${(cell.textContent || "").replace(/"/g, '""')}"`)
+        .join(",")
+    )
+    .join("\n");
+};
+
 interface ChatMessagesProps {
   messages: Message[];
   onMessageDeleted?: (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => void;
@@ -59,6 +73,9 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
           "copy-message-btn",
           "code-header",
           "message-image",
+          "table-sort-btn",
+          "table-copy-csv-btn",
+          "table-download-csv-btn",
         ];
 
         let el: HTMLElement = e.target as HTMLElement;
@@ -208,6 +225,67 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
 
           setImageToShow(imageUrl);
           setImageFileName(fileName);
+        }
+        // sort table by column
+        else if (target.classList.contains("table-sort-btn")) {
+          const colIndex = parseInt(target.dataset["colIndex"] || "0");
+          const table = target.closest("table") as HTMLTableElement | null;
+          if (!table) return;
+          const tbody = table.querySelector("tbody");
+          if (!tbody) return;
+
+          const currentDir = target.dataset["sortDir"];
+          const newDir = currentDir === "asc" ? "desc" : "asc";
+
+          table.querySelectorAll("th.table-sort-btn").forEach(th => {
+            delete (th as HTMLElement).dataset["sortDir"];
+            th.classList.remove("sort-asc", "sort-desc");
+          });
+
+          target.dataset["sortDir"] = newDir;
+          target.classList.add(newDir === "asc" ? "sort-asc" : "sort-desc");
+
+          const rows = Array.from(tbody.querySelectorAll("tr"));
+          rows.sort((a, b) => {
+            const aText = a.querySelectorAll("td")[colIndex]?.textContent || "";
+            const bText = b.querySelectorAll("td")[colIndex]?.textContent || "";
+            const aNum = parseFloat(aText);
+            const bNum = parseFloat(bText);
+            if (!isNaN(aNum) && !isNaN(bNum)) return newDir === "asc" ? aNum - bNum : bNum - aNum;
+            return newDir === "asc" ? aText.localeCompare(bText) : bText.localeCompare(aText);
+          });
+          rows.forEach(row => tbody.appendChild(row));
+        }
+        // copy table as CSV
+        else if (target.classList.contains("table-copy-csv-btn")) {
+          const table = target.closest(".message-table") as HTMLTableElement | null;
+          if (!table) return;
+
+          navigator.clipboard.writeText(tableToCSV(table));
+
+          const copyIcon = target.querySelector(".copy-icon") as HTMLElement;
+          const checkIcon = target.querySelector(".check-icon") as HTMLElement;
+          if (copyIcon && checkIcon) {
+            copyIcon.style.display = "none";
+            checkIcon.style.display = "block";
+            setTimeout(() => {
+              copyIcon.style.display = "block";
+              checkIcon.style.display = "none";
+            }, 2000);
+          }
+        }
+        // download table as CSV
+        else if (target.classList.contains("table-download-csv-btn")) {
+          const table = target.closest(".message-table") as HTMLTableElement | null;
+          if (!table) return;
+
+          const blob = new Blob([tableToCSV(table)], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "table.csv";
+          a.click();
+          URL.revokeObjectURL(url);
         }
       },
       [messages, codePlugins]

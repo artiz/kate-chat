@@ -22,7 +22,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ## Features
 
 - Multiple chats creation, chats history, hierarchical folders structure, messages editing/deletion
-- Rich markdown formatting: code blocks, images, MathJax formulas etc.
+- Rich markdown formatting: code blocks, images, MathJax formulas, tables sorting and CSV copy/download etc.
 - Real-time communication with GraphQL subscriptions and WebSocket
 - Localization
 - "Switch model"/"Call other model" logic to process selected chat messages with another [model](#screenshots)
@@ -48,7 +48,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
-* Render: add sortable headers to HTML tables and button to copy/download as csv
 * Implement search in chat titles/messages, only for current user:
    - PostgreSQL Full-Text Search, https://iniakunhuda.medium.com/postgresql-full-text-search-a-powerful-alternative-to-elasticsearch-for-small-to-medium-d9524e001fe0
    - SQLite FTS5, https://sqlite.org/fts5.html

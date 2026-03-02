@@ -119,8 +119,49 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
 
   const donwloadTitle = useMemo(() => t("Download"), [i18n.language]);
   const copyTitle = useMemo(() => t("Copy"), [i18n.language]);
+  const copyCsvTitle = useMemo(() => t("Copy CSV"), [i18n.language]);
+  const downloadCsvTitle = useMemo(() => t("Download CSV"), [i18n.language]);
 
-  const processCodeElements = useCallback(
+  const tableHeaderTemplate = `
+    <div class="table-header-actions">
+      <div type="button" class="action-btn mantine-focus-auto mantine-active table-copy-csv-btn">
+        <div class="copy-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+              <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+          </svg>
+        </div>
+        <div class="check-icon" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+              <path d="M4.012 16.737a2 2 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+              <path d="M11 14l2 2l4 -4" />
+          </svg>
+        </div>
+        <span class="action-btn-label"><COPY_CSV_TITLE></span>
+      </div>
+      <div type="button" class="action-btn mantine-focus-auto mantine-active table-download-csv-btn">
+        <div class="download-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="icon icon-tabler icons-tabler-outline">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" />
+              <path d="M12 4l0 12" />
+          </svg>
+        </div>
+        <span class="action-btn-label"><DOWNLOAD_CSV_TITLE></span>
+      </div>
+    </div>
+  `;
+
+  const processMessageElements = useCallback(
     debounce(() => {
       if (!componentRef.current) return;
 
@@ -164,20 +205,51 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
           img.setAttribute("data-file-name", fileName);
         }
       });
+
+      componentRef.current.querySelectorAll("table").forEach(table => {
+        if (!table?.classList?.contains("message-table")) {
+          table.classList.add("message-table");
+
+          if (!table.tFoot) {
+            const tfoot = document.createElement("tfoot");
+            table.appendChild(tfoot);
+            const controlsRow = document.createElement("tr");
+            controlsRow.className = "table-controls-row";
+            tfoot.appendChild(controlsRow);
+            const cell = document.createElement("th");
+            cell.classList.add("table-controls");
+            cell.colSpan = table.querySelectorAll("th").length || 1;
+            controlsRow.appendChild(cell);
+          }
+
+          const controlsCell = table.querySelector("tfoot tr .table-controls") as HTMLTableCellElement;
+          controlsCell.innerHTML = tableHeaderTemplate
+            .replace("<COPY_CSV_TITLE>", copyCsvTitle)
+            .replace("<DOWNLOAD_CSV_TITLE>", downloadCsvTitle);
+
+          let ndx = 0;
+          table.querySelectorAll("th").forEach(th => {
+            if (!th.classList.contains("table-controls")) {
+              th.classList.add("table-sort-btn");
+              th.setAttribute("data-col-index", String(ndx++));
+            }
+          });
+        }
+      });
     }, ANIMATION_DURATION + 10),
-    [donwloadTitle, copyTitle, codePlugins]
+    [donwloadTitle, copyTitle, copyCsvTitle, downloadCsvTitle, codePlugins]
   );
 
   useEffect(() => {
     if (streaming) return;
 
     if (componentRef.current) {
-      const observer = new MutationObserver(processCodeElements);
+      const observer = new MutationObserver(processMessageElements);
       observer.observe(componentRef.current, { childList: true, subtree: true });
-      processCodeElements(); // Initial call to inject code elements
+      processMessageElements(); // Initial call to inject code elements
       return () => observer.disconnect();
     }
-  }, [role, streaming, processCodeElements]);
+  }, [role, streaming, processMessageElements]);
 
   const toggleDetails = () => setShowDetails(s => !s);
 
