@@ -1101,8 +1101,8 @@ export class MessagesService {
       case ResponseStatus.WEB_SEARCH:
       case ResponseStatus.TOOL_CALL:
       case ResponseStatus.OUTPUT_ITEM:
-      case ResponseStatus.REASONING:
         return status.detail || (status.sequenceNumber == null ? "" : `Step #${status.sequenceNumber}`);
+      case ResponseStatus.REASONING:
       default:
         return status.detail || undefined;
     }

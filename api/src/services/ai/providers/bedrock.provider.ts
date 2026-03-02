@@ -301,6 +301,7 @@ export class BedrockApiProvider extends BaseApiProvider {
               usage: {
                 inputTokens: usage.inputTokens,
                 outputTokens: usage.outputTokens,
+                totalTokens: usage.totalTokens,
                 cacheReadInputTokens: usage.cacheReadInputTokens,
                 cacheWriteInputTokens: usage.cacheWriteInputTokens,
                 invocationLatency: metrics?.latencyMs,

@@ -40,6 +40,7 @@ import {
   OPENAI_GLOBAL_IGNORED_MODELS,
   OPENAI_MODELS_SUPPORT_REASONING,
   OPENAI_MODELS_SUPPORT_TOOL_IMAGE_GENERATION,
+  OPENAI_MODELS_SUPPORT_TOOL_CODE_INTERPRETER,
 } from "@/config/ai/openai";
 import { YandexWebSearch } from "@/services/ai/tools/yandex.web_search";
 import { FileContentLoader } from "@/services/data";
@@ -320,9 +321,14 @@ export class OpenAIApiProvider extends BaseApiProvider {
         const tools = [];
 
         if ([ModelType.CHAT, ModelType.REALTIME].includes(type)) {
-          tools.push(ToolType.CODE_INTERPRETER, ToolType.MCP);
+          tools.push(ToolType.MCP);
+
           if (apiType === "responses" || searchAvailable) {
             tools.unshift(ToolType.WEB_SEARCH);
+          }
+
+          if (OPENAI_MODELS_SUPPORT_TOOL_CODE_INTERPRETER.includes(model.id)) {
+            tools.push(ToolType.CODE_INTERPRETER);
           }
 
           if (

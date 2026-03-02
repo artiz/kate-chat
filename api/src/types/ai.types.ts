@@ -106,6 +106,9 @@ export class ModelResponseUsage {
   outputTokens?: number;
 
   @Field({ nullable: true })
+  totalTokens?: number;
+
+  @Field({ nullable: true })
   cacheReadInputTokens?: number;
 
   @Field({ nullable: true })
@@ -242,13 +245,16 @@ export class ChatToolCallResult {
 @ObjectType()
 export class ChatResultAnnotation {
   @Field()
-  type: "url" | "file";
+  type: "url" | "file" | "file_path" | "container_file";
 
   @Field({ nullable: true })
   title?: string;
 
   @Field({ nullable: true })
   source?: string;
+
+  @Field({ nullable: true })
+  container?: string;
 
   @Field({ nullable: true })
   startIndex?: number;

@@ -708,6 +708,14 @@ export class OpenAIProtocol implements ModelProtocol {
     return contentParts.join("\n");
   }
 
+  /**
+   * Stream chat responses from OpenAI models
+   * @param inputRequest
+   * @param messages
+   * @param callbacks
+   * @param retry retries counter for "rate_limit_exceeded"
+   * @returns
+   */
   private async streamChatResponses(
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[],
@@ -770,7 +778,6 @@ export class OpenAIProtocol implements ModelProtocol {
         if (chunk.type == "response.created" || chunk.type == "response.queued") {
           if (!started) {
             progressInfo.requestId = chunk.response.id;
-
             stopped = await callbacks.onProgress(
               "",
               {
@@ -853,11 +860,14 @@ export class OpenAIProtocol implements ModelProtocol {
             meta.reasoning = [];
           }
 
-          meta.reasoning.push({
-            text: chunk.text || partResponse,
-            timestamp: new Date(),
-            id: chunk.item_id,
-          });
+          const text = chunk.text || partResponse;
+          if (text) {
+            meta.reasoning.push({
+              text,
+              timestamp: new Date(),
+              id: chunk.item_id,
+            });
+          }
         } else if (chunk.type == "response.output_item.added") {
           if (chunk.item.type === "reasoning") {
             if (lastStatus !== ResponseStatus.REASONING) {
@@ -924,12 +934,19 @@ export class OpenAIProtocol implements ModelProtocol {
               endIndex: annotation.end_index,
               startIndex: annotation.start_index,
             });
-          } else if (chunk.annotation.type === "file_citation") {
-            const annotation = chunk.annotation as { file_id: string; filename: string; type: string };
+          } else if (
+            chunk.annotation.type === "file_citation" ||
+            chunk.annotation.type === "file_path" ||
+            chunk.annotation.type === "container_file_citation"
+          ) {
+            const annotation = chunk.annotation as OpenAI.Responses.ResponseOutputText.ContainerFileCitation;
             meta.annotations.push({
               type: "file",
               title: annotation.filename,
               source: annotation.file_id,
+              container: annotation.container_id,
+              startIndex: annotation.start_index,
+              endIndex: annotation.end_index,
             });
           }
         } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
@@ -976,6 +993,7 @@ export class OpenAIProtocol implements ModelProtocol {
     if (stopped) {
       stream?.controller?.abort(); // ensure stopping the background request
     }
+
     await callbacks.onComplete({
       content: fullResponse || (stopped ? "_Cancelled_" : images.length ? "" : "_No response_"),
       images,
@@ -995,6 +1013,8 @@ export class OpenAIProtocol implements ModelProtocol {
       usage: {
         inputTokens: usage?.input_tokens || 0,
         outputTokens: usage?.output_tokens || 0,
+        totalTokens: usage?.total_tokens || 0,
+
         cacheReadInputTokens: usage?.input_tokens_details?.cached_tokens || 0,
       },
     };
@@ -1043,6 +1063,33 @@ export class OpenAIProtocol implements ModelProtocol {
                     metadata.annotations.push({
                       type: "file",
                       title: ann.filename,
+                      source: ann.file_id,
+                    });
+                  } else if (ann.type === "container_file_citation") {
+                    if (extendText && !processedSources.has(ann.filename)) {
+                      processedSources.add(ann.filename);
+                      text += `* ${ann.filename}\n`;
+                    }
+
+                    ok(metadata.annotations);
+                    metadata.annotations.push({
+                      type: "file",
+                      title: ann.filename,
+                      container: ann.container_id,
+                      source: ann.file_id,
+                      startIndex: ann.start_index,
+                      endIndex: ann.end_index,
+                    });
+                  } else if (ann.type === "file_path") {
+                    const key = "file_path" + ann.file_id;
+                    if (extendText && !processedSources.has(key)) {
+                      processedSources.add(key);
+                      text += `* file path ${ann.file_id}\n`;
+                    }
+
+                    ok(metadata.annotations);
+                    metadata.annotations.push({
+                      type: "file_path",
                       source: ann.file_id,
                     });
                   }
