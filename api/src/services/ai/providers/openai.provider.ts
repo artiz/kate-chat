@@ -233,7 +233,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
     const costsPerProject = costsResults.reduce(
       (acc, item) => {
         const projectId = item.project_id || "unknown";
-        const amount = item.amount?.value || 0;
+        const amount = +item.amount?.value || 0;
         const currency = item.amount?.currency;
 
         if (currency) {
@@ -254,7 +254,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
         name: projectId,
         type: "project",
         amounts: Object.entries(amounts).map(([currency, amount]) => ({
-          amount,
+          amount: Math.round(amount * 100) / 100,
           currency,
         })),
       };
