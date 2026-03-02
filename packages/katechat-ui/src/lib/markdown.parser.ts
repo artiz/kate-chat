@@ -84,7 +84,7 @@ renderer.table = (token: Tokens.Table): string => {
     .join("");
 
   const colCount = token.header.length;
-  return `<table class="table"><thead><tr>${header}</tr></thead><tbody>${body}</tbody><tfoot><tr class="table-controls-row"><td class="table-controls" colspan="${colCount}">&nbsp;</td></tr></tfoot></table>`;
+  return `<table><thead><tr>${header}</tr></thead><tbody>${body}</tbody><tfoot><tr class="table-controls-row"><td class="table-controls" colspan="${colCount}">&nbsp;</td></tr></tfoot></table>`;
 };
 
 export function normalizeMatJax(input: string): string {
