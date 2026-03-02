@@ -64,15 +64,16 @@ export async function ensureInitialUserAssets(user: User) {
       serverConfig.authConfig && typeof serverConfig.authConfig === "object"
         ? (serverConfig.authConfig as MCPAuthConfig)
         : undefined;
-    const token = serverConfig.tokenEnv ? process.env[serverConfig.tokenEnv] : undefined;
-    let mergedAuthConfig: MCPAuthConfig | undefined = authConfig ? { ...authConfig } : undefined;
-    if (token) {
-      if (mergedAuthConfig) {
-        mergedAuthConfig.clientSecret = token;
-      } else {
-        mergedAuthConfig = { clientSecret: token };
+
+    if (authConfig) {
+      if (serverConfig.authConfig?.clientIdEnv) {
+        authConfig.clientId = process.env[serverConfig.authConfig.clientIdEnv];
+      }
+      if (serverConfig.authConfig?.clientSecretEnv) {
+        authConfig.clientSecret = process.env[serverConfig.authConfig.clientSecretEnv];
       }
     }
+
     const server = mcpRepo.create({
       user,
       userId: user.id,
@@ -81,7 +82,7 @@ export async function ensureInitialUserAssets(user: User) {
       description: serverConfig.description,
       transportType: (serverConfig.transportType as MCPTransportType) || MCPTransportType.STREAMABLE_HTTP,
       authType: (serverConfig.authType as MCPAuthType) || MCPAuthType.NONE,
-      authConfig: mergedAuthConfig,
+      authConfig,
       isActive: true,
     });
 

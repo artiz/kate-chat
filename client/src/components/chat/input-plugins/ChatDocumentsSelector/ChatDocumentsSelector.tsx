@@ -46,7 +46,6 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   chatId,
   chatTitle,
 }) => {
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const [opened, setOpened] = useState(false);
   const [documentsOpened, { open: openDocuments, close: closeDocuments }] = useDisclosure(false);
@@ -70,7 +69,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   useEffect(() => {
     const prev = prevAvailableIdsRef.current;
     const newlyAvailableIds = [...availableDocumentsIds].filter(id => !prev.has(id));
-    if (newlyAvailableIds.length > 0) {
+    if (newlyAvailableIds.length) {
       const toAdd = newlyAvailableIds.filter(id => !selectedDocIds.includes(id));
       if (toAdd.length > 0) {
         onSelectionChange?.([...selectedDocIds, ...toAdd].filter(id => availableDocumentsIds.has(id)));
@@ -145,7 +144,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                     variant="light"
                     color="blue"
                     onClick={handleSelectAll}
-                    disabled={isAllSelected || availableDocuments.length === 0}
+                    disabled={disabled || isAllSelected || availableDocuments.length === 0}
                   >
                     <IconCheck size={12} />
                   </ActionIcon>
@@ -156,7 +155,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                     variant="light"
                     color="gray"
                     onClick={handleUnselectAll}
-                    disabled={selectedDocIds.length === 0 || availableDocuments.length === 0}
+                    disabled={disabled || selectedDocIds.length === 0 || availableDocuments.length === 0}
                   >
                     <IconX size={12} />
                   </ActionIcon>
@@ -172,7 +171,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                       checked={selectedDocIds.includes(doc.id)}
                       onChange={() => handleDocumentToggle(doc.id)}
                       size="sm"
-                      disabled={!availableDocumentsIds.has(doc.id)}
+                      disabled={disabled || !availableDocumentsIds.has(doc.id)}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Text size="sm" truncate title={doc.fileName}>

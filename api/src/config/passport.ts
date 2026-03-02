@@ -10,6 +10,8 @@ import { getRepository } from "./database";
 import { logger } from "../utils/logger";
 import { globalConfig } from "@/global-config";
 import { ensureInitialUserAssets } from "@/config/initial-data";
+import { getErrorMessage } from "@/utils/errors";
+import { json } from "stream/consumers";
 
 const userDefaults = {
   defaultSystemPrompt: globalConfig.ai.defaultSystemPrompt,
@@ -128,10 +130,46 @@ export const configurePassport = () => {
         clientID: oauth.github.clientId,
         clientSecret: oauth.github.clientSecret,
         callbackURL: `${runtime.callbackUrlBase}/auth/github/callback`,
-        scope: ["user:email"], // Request email scope
+        scope: ["user:email"],
       },
       async (accessToken: string, refreshToken: string, profile: passport.Profile, done: VerifyCallback) => {
         try {
+          // If a GitHub organization is configured, ensure the user is a member
+          if (oauth.github.organization) {
+            try {
+              const orgsRes = await fetch("https://api.github.com/user/orgs", {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "User-Agent": globalConfig.app.userAgent,
+                  Accept: "application/json",
+                },
+              });
+
+              if (orgsRes.ok) {
+                const orgs = (await orgsRes.json()) as any[];
+                const requiredOrg = String(oauth.github.organization).toLowerCase();
+                const isMember = orgs.some(o => String(o.login).toLowerCase() === requiredOrg);
+                if (!isMember) {
+                  logger.warn(
+                    { profileId: profile.id, requiredOrg },
+                    "GitHub account is not a member of required organization"
+                  );
+                  return done(new Error("GitHub account is not a member of the required organization"), false);
+                }
+              } else {
+                const json = (await orgsRes.json()) as any;
+                logger.warn(
+                  { status: orgsRes.status, body: json },
+                  "Failed to fetch GitHub organizations for membership check"
+                );
+                // If we can't verify org membership, deny access to be safe
+                return done(json.message || "Failed to verify GitHub organization membership", false);
+              }
+            } catch (err) {
+              logger.error(err, "Error checking GitHub organization membership");
+              return done(getErrorMessage(err, "Failed to verify GitHub organization membership"), false);
+            }
+          }
           // Check if user exists by githubId
           let user = await userRepository.findOne({
             where: { githubId: profile.id },

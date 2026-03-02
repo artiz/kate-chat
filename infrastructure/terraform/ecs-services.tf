@@ -181,27 +181,27 @@ locals {
         valueFrom = aws_secretsmanager_secret.recaptcha_secret_key.arn
       },
       {
-        name      = "GOOGLE_CLIENT_ID"
+        name      = "GOOGLE_OAUTH_CLIENT_ID"
         valueFrom = aws_secretsmanager_secret.google_client_id.arn
       },
       {
-        name      = "GOOGLE_CLIENT_SECRET"
+        name      = "GOOGLE_OAUTH_CLIENT_SECRET"
         valueFrom = aws_secretsmanager_secret.google_client_secret.arn
       },
       {
-        name      = "GITHUB_CLIENT_ID"
+        name      = "GITHUB_OAUTH_CLIENT_ID"
         valueFrom = aws_secretsmanager_secret.github_client_id.arn
       },
       {
-        name      = "GITHUB_CLIENT_SECRET"
+        name      = "GITHUB_OAUTH_CLIENT_SECRET"
         valueFrom = aws_secretsmanager_secret.github_client_secret.arn
       },
       {
-        name      = "MICROSOFT_CLIENT_ID"
+        name      = "MICROSOFT_OAUTH_CLIENT_ID"
         valueFrom = aws_secretsmanager_secret.microsoft_client_id.arn
       },
       {
-        name      = "MICROSOFT_CLIENT_SECRET"
+        name      = "MICROSOFT_OAUTH_CLIENT_SECRET"
         valueFrom = aws_secretsmanager_secret.microsoft_client_secret.arn
       },
       {

@@ -30,9 +30,8 @@ export interface InitialMCPServer {
   url: string;
   description?: string;
   authType?: string;
-  authConfig?: Record<string, unknown>;
+  authConfig?: Record<string, string>;
   transportType?: string;
-  tokenEnv?: string;
 }
 
 export enum APPLICATION_FEATURE {
@@ -96,6 +95,7 @@ export interface GlobalConfigShape {
       enabled: boolean;
       clientId: string;
       clientSecret: string;
+      organization?: string;
     };
 
     microsoft: {
@@ -307,20 +307,21 @@ export class GlobalConfig {
       },
       oauth: {
         google: {
-          enabled: !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET,
-          clientId: process.env.GOOGLE_CLIENT_ID || "",
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+          enabled: !!process.env.GOOGLE_OAUTH_CLIENT_ID && !!process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+          clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || "",
+          clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || "",
         },
         github: {
-          enabled: !!process.env.GITHUB_CLIENT_ID && !!process.env.GITHUB_CLIENT_SECRET,
-          clientId: process.env.GITHUB_CLIENT_ID || "",
-          clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
+          enabled: !!process.env.GITHUB_OAUTH_CLIENT_ID && !!process.env.GITHUB_OAUTH_CLIENT_SECRET,
+          clientId: process.env.GITHUB_OAUTH_CLIENT_ID || "",
+          clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET || "",
+          organization: process.env.GITHUB_OAUTH_ORGANIZATION || process.env.GITHUB_OAUTH_ORG,
         },
         microsoft: {
-          enabled: !!process.env.MICROSOFT_CLIENT_ID && !!process.env.MICROSOFT_CLIENT_SECRET,
-          clientId: process.env.MICROSOFT_CLIENT_ID || "",
-          clientSecret: process.env.MICROSOFT_CLIENT_SECRET || "",
-          tenantId: process.env.MICROSOFT_TENANT_ID || "common",
+          enabled: !!process.env.MICROSOFT_OAUTH_CLIENT_ID && !!process.env.MICROSOFT_OAUTH_CLIENT_SECRET,
+          clientId: process.env.MICROSOFT_OAUTH_CLIENT_ID || "",
+          clientSecret: process.env.MICROSOFT_OAUTH_CLIENT_SECRET || "",
+          tenantId: process.env.MICROSOFT_OAUTH_TENANT_ID || "common",
         },
       },
       db: {

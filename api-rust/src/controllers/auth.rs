@@ -397,6 +397,42 @@ pub async fn github_callback(
     let email = user_email
         .ok_or_else(|| AppError::Auth("No email address available from GitHub".to_string()))?;
 
+    // If an organization is configured, verify membership
+    if let Some(required_org) = &config.github_oauth_organization {
+        let orgs_response = http_client
+            .get("https://api.github.com/user/orgs")
+            .bearer_auth(access_token.secret())
+            .header("User-Agent", "kate-chat-backend")
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to fetch user orgs: {}", e)))?;
+
+        if !orgs_response.status().is_success() {
+            return Err(AppError::Auth(
+                "Failed to verify GitHub organization membership".to_string(),
+            ));
+        }
+
+        let orgs: Vec<serde_json::Value> = orgs_response
+            .json()
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to parse user orgs: {}", e)))?;
+
+        let required = required_org.to_lowercase();
+        let is_member = orgs.iter().any(|o| {
+            o.get("login")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_lowercase() == required)
+                .unwrap_or(false)
+        });
+
+        if !is_member {
+            return Err(AppError::Auth(
+                "GitHub account is not a member of the required organization".to_string(),
+            ));
+        }
+    }
+
     let mut conn = db_pool
         .get()
         .map_err(|e| AppError::Database(e.to_string()))?;

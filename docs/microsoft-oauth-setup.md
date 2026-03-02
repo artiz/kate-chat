@@ -26,8 +26,8 @@ This guide walks you through setting up Microsoft Azure OAuth authentication for
 
 ### Get Application Details
 After registration, copy these values from the **Overview** page:
-- **Application (client) ID** → This is your `MICROSOFT_CLIENT_ID`
-- **Directory (tenant) ID** → This is your `MICROSOFT_TENANT_ID` (or use "common" for multi-tenant)
+- **Application (client) ID** → This is your `MICROSOFT_OAUTH_CLIENT_ID`
+- **Directory (tenant) ID** → This is your `MICROSOFT_OAUTH_TENANT_ID` (or use "common" for multi-tenant)
 
 ## Step 3: Create Client Secret
 
@@ -35,7 +35,7 @@ After registration, copy these values from the **Overview** page:
 2. Click **New client secret**
 3. Add a description and choose expiration period
 4. **Important**: Copy the secret value immediately (it won't be shown again)
-5. This value is your `MICROSOFT_CLIENT_SECRET`
+5. This value is your `MICROSOFT_OAUTH_CLIENT_SECRET`
 
 ## Step 4: Set API Permissions
 
@@ -59,9 +59,9 @@ Add these to your `.env` file in the API directory:
 
 ```env
 # Microsoft OAuth Configuration
-MICROSOFT_CLIENT_ID=your_application_client_id_here
-MICROSOFT_CLIENT_SECRET=your_client_secret_here
-MICROSOFT_TENANT_ID=common
+MICROSOFT_OAUTH_CLIENT_ID=your_application_client_id_here
+MICROSOFT_OAUTH_CLIENT_SECRET=your_client_secret_here
+MICROSOFT_OAUTH_TENANT_ID=common
 
 # Base URLs (adjust for production)
 CALLBACK_URL_BASE=http://localhost:4000
@@ -70,9 +70,9 @@ FRONTEND_URL=http://localhost:3000
 
 ### Tenant Configuration Options
 
-- `MICROSOFT_TENANT_ID=common` - Allow users from any Azure AD tenant + personal Microsoft accounts
-- `MICROSOFT_TENANT_ID=organizations` - Allow users from any Azure AD tenant (no personal accounts)
-- `MICROSOFT_TENANT_ID=your-tenant-id` - Restrict to your specific organization only
+- `MICROSOFT_OAUTH_TENANT_ID=common` - Allow users from any Azure AD tenant + personal Microsoft accounts
+- `MICROSOFT_OAUTH_TENANT_ID=organizations` - Allow users from any Azure AD tenant (no personal accounts)
+- `MICROSOFT_OAUTH_TENANT_ID=your-tenant-id` - Restrict to your specific organization only
 
 ## Step 6: Test the Integration
 

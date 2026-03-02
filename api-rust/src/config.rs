@@ -21,6 +21,7 @@ pub struct AppConfig {
     pub google_client_secret: Option<String>,
     pub github_client_id: Option<String>,
     pub github_client_secret: Option<String>,
+    pub github_oauth_organization: Option<String>,
     pub callback_url_base: Option<String>,
     pub frontend_url: Option<String>,
 
@@ -79,10 +80,13 @@ impl AppConfig {
             yandex_folder_id: env::var("YANDEX_FM_API_FOLDER").ok(),
 
             // OAuth
-            google_client_id: env::var("GOOGLE_CLIENT_ID").ok(),
-            google_client_secret: env::var("GOOGLE_CLIENT_SECRET").ok(),
-            github_client_id: env::var("GITHUB_CLIENT_ID").ok(),
-            github_client_secret: env::var("GITHUB_CLIENT_SECRET").ok(),
+            google_client_id: env::var("GOOGLE_OAUTH_CLIENT_ID").ok(),
+            google_client_secret: env::var("GOOGLE_OAUTH_CLIENT_SECRET").ok(),
+            github_client_id: env::var("GITHUB_OAUTH_CLIENT_ID").ok(),
+            github_client_secret: env::var("GITHUB_OAUTH_CLIENT_SECRET").ok(),
+            github_oauth_organization: env::var("GITHUB_OAUTH_ORGANIZATION")
+                .ok()
+                .or(env::var("GITHUB_OAUTH_ORG").ok()),
             callback_url_base: env::var("CALLBACK_URL_BASE").ok(),
             frontend_url: env::var("FRONTEND_URL").ok(),
 

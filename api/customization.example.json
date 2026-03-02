@@ -46,6 +46,17 @@
         "description": "Sample MCP server entry",
         "authType": "API_KEY",
         "tokenEnv": "MCP_DEMO_TOKEN"
+      },
+      {
+        "name": "GitHub Copilot",
+        "url": "https://api.githubcopilot.com/mcp",
+        "authType": "OAUTH2",
+        "authConfig": {
+          "clientIdEnv": "GITHUB_MCP_CLIENT_ID",
+          "authorizationUrl": "https://github.com/login/oauth/authorize",
+          "tokenUrl": "https://github.com/login/oauth/access_token",
+          "clientSecretEnv": "GITHUB_MCP_CLIENT_SECRET"
+        }
       }
     ]
   }

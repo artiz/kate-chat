@@ -32,7 +32,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
 - Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
 - Client-side Python code [execution](#python-code-run-in-browser) with [Pyodide](https://pyodide.org/) 
-- Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
+- Reusable [@katechat/ui](https://www.nopepmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
   * Voice-to-voice demo for OpenAI realtime WebRTC API.
 - External users authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
@@ -49,7 +49,11 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ## TODO
 
 * Check OpenAI protocol to process all the possible metadata, extend MessageMetadata, add ChatMetadata where totalTokens,totalInputTokens,totalOutputTokens should be stored. 
-* OAuth: add new config to support login only from specific Github organization, show correct error message
+* Implement search in chat titles/messages, only for current user:
+   - PostgreSQL Full-Text Search, https://iniakunhuda.medium.com/postgresql-full-text-search-a-powerful-alternative-to-elasticsearch-for-small-to-medium-d9524e001fe0
+   - SQLite FTS5, https://sqlite.org/fts5.html
+   - MySQL, https://dev.mysql.com/doc/refman/8.4/en/fulltext-search.html
+   - MSSQL, https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search?view=sql-server-ver17
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Render: add sortable headers to HTML tables and button to copy/download as csv
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.

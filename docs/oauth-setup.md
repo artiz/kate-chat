@@ -8,13 +8,14 @@ Add these variables to your `.env` file in the backend directory:
 
 ```
 # OAuth Configuration
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-MICROSOFT_CLIENT_ID=your_microsoft_client_id
-MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
-MICROSOFT_TENANT_ID=common
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+GITHUB_OAUTH_ORGANIZATION=your_github_organization (optional - restrict login to this org)
+MICROSOFT_OAUTH_CLIENT_ID=your_microsoft_client_id
+MICROSOFT_OAUTH_CLIENT_SECRET=your_microsoft_client_secret
+MICROSOFT_OAUTH_TENANT_ID=common
 CALLBACK_URL_BASE=http://localhost:4000
 FRONTEND_URL=http://localhost:3000
 SESSION_SECRET=your_session_secret
@@ -65,11 +66,11 @@ SESSION_SECRET=your_session_secret
      - "Accounts in any organizational directory (Any Azure AD directory - Multitenant) and personal Microsoft accounts (e.g. Skype, Xbox)" for broader access
    - Redirect URI: Select "Web" and enter `http://localhost:4000/api/auth/microsoft/callback` (adjust based on your CALLBACK_URL_BASE)
 5. Click "Register"
-6. In the app overview page, copy the "Application (client) ID" - this is your `MICROSOFT_CLIENT_ID`
-7. Copy the "Directory (tenant) ID" - this can be your `MICROSOFT_TENANT_ID`, or use "common" for multi-tenant
+6. In the app overview page, copy the "Application (client) ID" - this is your `MICROSOFT_OAUTH_CLIENT_ID`
+7. Copy the "Directory (tenant) ID" - this can be your `MICROSOFT_OAUTH_TENANT_ID`, or use "common" for multi-tenant
 8. Go to "Certificates & secrets" in the left menu
 9. Click "New client secret", add a description and expiration period
-10. Copy the secret value immediately (it won't be shown again) - this is your `MICROSOFT_CLIENT_SECRET`
+10. Copy the secret value immediately (it won't be shown again) - this is your `MICROSOFT_OAUTH_CLIENT_SECRET`
 11. Go to "API permissions" and ensure the following Microsoft Graph permissions are granted:
     - `User.Read` (should be added by default)
     - `profile`
@@ -79,8 +80,8 @@ SESSION_SECRET=your_session_secret
 
 ### Tenant Configuration
 
-- Use `MICROSOFT_TENANT_ID=common` to allow users from any Azure AD tenant and personal Microsoft accounts
-- Use `MICROSOFT_TENANT_ID=organizations` to allow users from any Azure AD tenant (no personal accounts)
+- Use `MICROSOFT_OAUTH_TENANT_ID=common` to allow users from any Azure AD tenant and personal Microsoft accounts
+- Use `MICROSOFT_OAUTH_TENANT_ID=organizations` to allow users from any Azure AD tenant (no personal accounts)
 - Use your specific tenant ID to restrict to your organization only
 
 ## Configuring Session Secret

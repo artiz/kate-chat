@@ -8,6 +8,7 @@ import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, OAUTH_ERROR_TEMPL
 import { escapeHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
 import { getErrorMessage } from "@/utils/errors";
+import { notEmpty } from "@/utils/assert";
 
 const logger = createLogger(__filename);
 const runtimeCfg = globalConfig.runtime;
@@ -56,7 +57,12 @@ router.get(
 );
 
 // GitHub OAuth routes
-router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
+router.get(
+  "/github",
+  passport.authenticate("github", {
+    scope: ["user:email", globalConfig.oauth.github.organization ? "read:org" : ""].filter(notEmpty),
+  })
+);
 
 router.get(
   "/github/callback",
