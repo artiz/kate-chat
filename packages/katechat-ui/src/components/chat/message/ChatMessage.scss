@@ -27,9 +27,10 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  word-break: break-all;
+  word-break: normal;
   border-radius: var(--mantine-radius-md);
   margin-top: var(--mantine-spacing-md);
+  overflow-x: auto;
 
   p {
     margin-block-start: 0;
@@ -163,6 +164,7 @@
     margin-top: var(--mantine-spacing-md);
     margin-bottom: var(--mantine-spacing-md);
     border-spacing: 0;
+    table-layout: fixed;
 
     td,
     th {

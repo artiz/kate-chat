@@ -161,6 +161,14 @@ export class ChatResolver extends BaseResolver {
     const chat = await this.chatService.getChat(chatId, user.userId);
     if (chat) {
       chat.isPristine = false;
+      if (!chat.settings) chat.settings = {};
+      if (!chat.settings.selectedRagDocIds) chat.settings.selectedRagDocIds = [];
+      for (const docId of idsToAdd) {
+        if (!chat.settings.selectedRagDocIds.includes(docId)) {
+          chat.settings.selectedRagDocIds.push(docId);
+        }
+      }
+
       await this.chatRepository.save(chat);
     }
     return chat ? { chat } : { error: "Chat not found" };

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Table, Text, Group, Badge, ActionIcon, Tooltip, Checkbox, Box } from "@mantine/core";
+import { Table, Text, Group, Badge, ActionIcon, Tooltip, Checkbox, Box, Stack } from "@mantine/core";
 import {
   IconRotateClockwise,
   IconTrash,
@@ -159,54 +159,58 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
             disabled={eligibleDocs.length === 0}
           />
         </Group>
-        {documents.map((doc: Document) => (
-          <Group key={doc.id} align="center" justify="space-between" wrap="nowrap" gap="lg">
-            <Group align="center" wrap="nowrap" gap="xs">
-              <Checkbox
-                checked={!!chatDocumentsMap[doc.id]}
-                onChange={handleAddToChat(doc)}
-                size="sm"
-                disabled={doc.status !== DocumentStatus.READY && doc.status !== DocumentStatus.SUMMARIZING}
-              />
-              {doc.downloadUrlMarkdown && (
-                <Tooltip label={doc.fileName + " Markdown"}>
-                  <Box mt="sm">
-                    <a href={doc.downloadUrlMarkdown} target="_blank" rel="noopener noreferrer">
-                      <IconMarkdown size="1.2rem" />
-                    </a>
-                  </Box>
-                </Tooltip>
-              )}
-              <Tooltip label={doc.fileName}>
-                <Text truncate>{doc.fileName}</Text>
-              </Tooltip>
-            </Group>
-            <Group align="center" wrap="nowrap">
-              <Badge color={getStatusColor(doc.status)} leftSection={getStatusIcon(doc.status)}>
-                {doc.status}
-              </Badge>
-              <ActionIcon.Group>
-                <Tooltip label={t("documents.reindexDocument")}>
-                  <ActionIcon
-                    variant="light"
-                    color="orange"
-                    size="md"
-                    onClick={() => onReindexDocument(doc)}
-                    disabled={disableActions || !documentCanBeReindexed(doc)}
-                  >
-                    <IconRotateClockwise size="1.2rem" />
-                  </ActionIcon>
-                </Tooltip>
+        <Stack gap="0">
+          {documents.map((doc: Document) => (
+            <Group key={doc.id} align="center" justify="space-between" wrap="nowrap" gap="lg">
+              <Group align="center" wrap="nowrap" gap="xs" className="fixed-width-truncate">
+                <Checkbox
+                  checked={!!chatDocumentsMap[doc.id]}
+                  onChange={handleAddToChat(doc)}
+                  size="sm"
+                  disabled={doc.status !== DocumentStatus.READY && doc.status !== DocumentStatus.SUMMARIZING}
+                />
+                {doc.downloadUrlMarkdown && (
+                  <Tooltip label={doc.fileName + " Markdown"}>
+                    <Box mt="sm">
+                      <a href={doc.downloadUrlMarkdown} target="_blank" rel="noopener noreferrer">
+                        <IconMarkdown size="1.2rem" />
+                      </a>
+                    </Box>
+                  </Tooltip>
+                )}
+                <Box className="fixed-width-truncate">
+                  <Tooltip label={doc.fileName}>
+                    <Text truncate>{doc.fileName}</Text>
+                  </Tooltip>
+                </Box>
+              </Group>
+              <Group align="center" wrap="nowrap">
+                <Badge color={getStatusColor(doc.status)} leftSection={getStatusIcon(doc.status)}>
+                  {isMobile ? null : doc.status}
+                </Badge>
+                <ActionIcon.Group>
+                  <Tooltip label={t("documents.reindexDocument")}>
+                    <ActionIcon
+                      variant="light"
+                      color="orange"
+                      size="md"
+                      onClick={() => onReindexDocument(doc)}
+                      disabled={disableActions || !documentCanBeReindexed(doc)}
+                    >
+                      <IconRotateClockwise size="1.2rem" />
+                    </ActionIcon>
+                  </Tooltip>
 
-                <Tooltip label={t("documents.viewSummary")}>
-                  <ActionIcon variant="light" color="blue" size="md" onClick={() => onViewSummary(doc)}>
-                    <IconFileStack size="1.2rem" />
-                  </ActionIcon>
-                </Tooltip>
-              </ActionIcon.Group>
+                  <Tooltip label={t("documents.viewSummary")}>
+                    <ActionIcon variant="light" color="blue" size="md" onClick={() => onViewSummary(doc)}>
+                      <IconFileStack size="1.2rem" />
+                    </ActionIcon>
+                  </Tooltip>
+                </ActionIcon.Group>
+              </Group>
             </Group>
-          </Group>
-        ))}
+          ))}
+        </Stack>
       </>
     );
   }

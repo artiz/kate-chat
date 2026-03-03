@@ -1,13 +1,10 @@
-import React, { useMemo, useRef, useEffect, useState } from "react";
-import { useQuery } from "@apollo/client";
+import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActionIcon,
   Button,
   Checkbox,
   Group,
-  Loader,
-  Paper,
-  Popover,
   ScrollArea,
   Stack,
   Text,
@@ -16,26 +13,19 @@ import {
   Box,
   Menu,
   Indicator,
-  Drawer,
 } from "@mantine/core";
-import { IconFile, IconChevronDown, IconCheck, IconX, IconFileDatabase } from "@tabler/icons-react";
+import { IconCheck, IconX, IconFileDatabase } from "@tabler/icons-react";
 import { Document } from "@/types/graphql";
-import { useTranslation } from "react-i18next";
 
-import classes from "./ChatDocumentsSelector.module.scss";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
-import { useNavigate } from "react-router-dom";
-import { assert } from "@katechat/ui";
-import { useDisclosure } from "@mantine/hooks";
-import { DocumentsDashboard } from "@/components/documents";
+import classes from "./ChatDocumentsSelector.module.scss";
 
 interface ChatDocumentsSelectorProps {
-  chatId?: string;
   selectedDocIds?: string[];
   onSelectionChange?: (selectedIds: string[]) => void;
   disabled?: boolean;
   documents: Document[];
-  chatTitle?: string;
+  openDocuments: () => void;
 }
 
 export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
@@ -43,12 +33,10 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
   onSelectionChange,
   documents = [],
   disabled = false,
-  chatId,
-  chatTitle,
+  openDocuments,
 }) => {
   const { t } = useTranslation();
   const [opened, setOpened] = useState(false);
-  const [documentsOpened, { open: openDocuments, close: closeDocuments }] = useDisclosure(false);
 
   // Filter documents that are ready for RAG search
   const availableDocuments = useMemo(() => {
@@ -63,23 +51,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
     return availableDocuments.filter(doc => selectedDocIds.includes(doc.id));
   }, [availableDocuments, selectedDocIds]);
 
-  // Auto-select newly available documents (e.g. after upload completes)
-  const prevAvailableIdsRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    const prev = prevAvailableIdsRef.current;
-    const newlyAvailableIds = [...availableDocumentsIds].filter(id => !prev.has(id));
-    if (newlyAvailableIds.length) {
-      const toAdd = newlyAvailableIds.filter(id => !selectedDocIds.includes(id));
-      if (toAdd.length > 0) {
-        onSelectionChange?.([...selectedDocIds, ...toAdd].filter(id => availableDocumentsIds.has(id)));
-      }
-    }
-
-    prevAvailableIdsRef.current = new Set(availableDocumentsIds);
-  }, [availableDocumentsIds, selectedDocIds]);
-
-  const handleDocumentToggle = (docId: string) => {
+  const handleDocumentToggle = (docId: string) => () => {
     if (!availableDocumentsIds.has(docId)) return;
 
     const newSelection = selectedDocIds.includes(docId)
@@ -107,15 +79,11 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
     openDocuments();
   };
 
-  const handleCloseDocuments = () => {
-    closeDocuments();
-  };
-
   const isAllSelected = availableDocuments.length > 0 && selectedDocIds.length === availableDocuments.length;
 
   return (
     <>
-      <Menu shadow="md" withArrow opened={opened} onChange={setOpened}>
+      <Menu shadow="md" withArrow opened={opened} trapFocus={false} onClose={() => setOpened(false)}>
         <Menu.Target>
           <Group justify="start" className="drop-zone-control" gap="xs">
             <Tooltip label={t("documents.attachDocuments")} position="bottom">
@@ -125,7 +93,7 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
                 </ActionIcon>
               </Indicator>
             </Tooltip>
-            <Box hiddenFrom="xs" pe="sm">
+            <Box hiddenFrom="xs" pe="sm" className="pointer" onClick={handleToggle}>
               {t("documents.selectDocuments")}
             </Box>
           </Group>
@@ -163,17 +131,23 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
               </Group>
             </Group>
 
-            <ScrollArea.Autosize mah={300}>
-              <Stack gap="xs">
+            <ScrollArea.Autosize mah={300} maw="90vw">
+              <Stack gap="xs" className="fixed-width-truncate">
                 {availableDocuments.map(doc => (
-                  <Group key={doc.id} gap="sm" wrap="nowrap">
+                  <Group
+                    key={doc.id}
+                    gap="sm"
+                    wrap="nowrap"
+                    onMouseDown={e => e.stopPropagation()}
+                    onTouchStart={e => e.stopPropagation()}
+                  >
                     <Checkbox
                       checked={selectedDocIds.includes(doc.id)}
-                      onChange={() => handleDocumentToggle(doc.id)}
+                      onChange={handleDocumentToggle(doc.id)}
                       size="sm"
                       disabled={disabled || !availableDocumentsIds.has(doc.id)}
                     />
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="fixed-width-truncate">
                       <Text size="sm" truncate title={doc.fileName}>
                         {doc.downloadUrl ? (
                           <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
@@ -207,17 +181,6 @@ export const ChatDocumentsSelector: React.FC<ChatDocumentsSelectorProps> = ({
           </Stack>
         </Menu.Dropdown>
       </Menu>
-      <Drawer
-        opened={documentsOpened}
-        onClose={handleCloseDocuments}
-        title={t("documents.documentsForChat", { title: chatTitle || chatId })}
-        size="xl"
-      >
-        <DocumentsDashboard chatId={chatId} selectorView />
-        <Button mt="md" onClick={handleCloseDocuments}>
-          {t("common.close")}
-        </Button>
-      </Drawer>
     </>
   );
 };

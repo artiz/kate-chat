@@ -26,6 +26,14 @@ body,
   box-sizing: border-box;
 }
 
+.fixed-width-truncate {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .mantine-Container-root {
   --container-size-md: calc(60rem * var(--mantine-scale)) !important;
   --container-size-lg: calc(75rem * var(--mantine-scale)) !important;

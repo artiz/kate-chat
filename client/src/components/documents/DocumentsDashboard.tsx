@@ -18,6 +18,7 @@ import {
   TextInput,
   Badge,
   ScrollArea,
+  Drawer,
 } from "@mantine/core";
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
@@ -41,6 +42,7 @@ import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
 import { getStatusColor } from "@/types/ai";
 import { useMediaQuery } from "@mantine/hooks";
+import { ChatInputHeader } from "../chat/ChatInputHeader";
 
 interface IProps {
   chatId?: string;
@@ -185,7 +187,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
   });
 
   const [addToChat, { loading: addingToChat }] = useMutation(ADD_TO_CHAT_MUTATION, {
-    onCompleted: res => {
+    onCompleted: (res, options) => {
       const { chat, error } = res.addDocumentsToChat;
 
       if (error) {
@@ -506,14 +508,12 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
                   isLoading={reindexLoading}
                 />
 
-                <Modal
+                <Drawer
                   opened={!!summaryDocument}
                   onClose={() => setSummaryDocument(undefined)}
                   title={summaryDocument?.fileName || t("documents.documentInfo")}
-                  centered
                   size="xl"
                   padding="lg"
-                  fullScreen={isMobile}
                 >
                   <Stack gap="sm">
                     <Group>
@@ -585,7 +585,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
                       <Button onClick={() => setSummaryDocument(undefined)}>{t("common.close")}</Button>
                     </Group>
                   </Stack>
-                </Modal>
+                </Drawer>
 
                 <DocumentsTable
                   documents={documents}

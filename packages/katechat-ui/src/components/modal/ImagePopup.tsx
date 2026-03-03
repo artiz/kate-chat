@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { Image, Text, Group, Stack, ActionIcon, Modal, Tooltip } from "@mantine/core";
+import { Image, Text, Group, Stack, ActionIcon, Modal, Tooltip, Drawer } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconExternalLink } from "@tabler/icons-react";
 import { formatDate } from "@/i18n";
@@ -45,7 +45,7 @@ export const ImagePopup: React.FC<IProps> = ({
   const { t } = useTranslation();
   // Image Preview Modal
   return (
-    <Modal opened={opened} onClose={handleClose} size="xl" title={t("Image Preview")} centered>
+    <Drawer size="xl" opened={opened} onClose={handleClose} title={t("Image Preview")}>
       {fileUrl && (
         <Stack gap="md">
           <Image src={fileUrl} alt={fileName} fit="contain" mah="70vh" />
@@ -81,6 +81,6 @@ export const ImagePopup: React.FC<IProps> = ({
           )}
         </Stack>
       )}
-    </Modal>
+    </Drawer>
   );
 };

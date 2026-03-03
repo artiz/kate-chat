@@ -1,7 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@apollo/client";
-import { Container, Text, Group, Title, ActionIcon, Tooltip, TextInput, Alert, Stack } from "@mantine/core";
+import {
+  Container,
+  Text,
+  Group,
+  Title,
+  ActionIcon,
+  Tooltip,
+  TextInput,
+  Alert,
+  Stack,
+  Drawer,
+  Button,
+} from "@mantine/core";
 import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import {
@@ -46,6 +58,8 @@ import { getClientConfig } from "@/global-config";
 
 import classes from "./Chat.module.scss";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
+import { DocumentsDashboard } from "../documents";
+import { useDisclosure } from "@mantine/hooks";
 
 interface IProps {
   chatId?: string;
@@ -71,6 +85,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const [selectedRagDocIds, setSelectedRagDocIds] = useState<string[]>([]);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
+  const [documentsOpened, { open: openDocuments, close: closeDocuments }] = useDisclosure(false);
 
   const {
     messages,
@@ -109,7 +124,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     } else {
       setSelectedRagDocIds([]);
     }
-  }, [chat?.id]);
+  }, [chat?.id, chat?.settings?.selectedRagDocIds]);
 
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
@@ -531,6 +546,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
                 onSelectionChange={handleRagDocSelectionChange}
                 disabled={!uploadAllowed || isExternalChat || messagesLoading}
                 documents={chatDocuments}
+                openDocuments={openDocuments}
               />
             )}
           </>
@@ -553,6 +569,18 @@ export const ChatComponent = ({ chatId }: IProps) => {
       ) : null}
 
       {PythonCodeModal}
+
+      <Drawer
+        opened={documentsOpened}
+        onClose={closeDocuments}
+        title={t("documents.documentsForChat", { title: chat?.title || chatId })}
+        size="xl"
+      >
+        <DocumentsDashboard chatId={chatId} selectorView />
+        <Button mt="md" onClick={closeDocuments}>
+          {t("common.close")}
+        </Button>
+      </Drawer>
     </Container>
   );
 };
