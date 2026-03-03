@@ -72,11 +72,18 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose }) =
 
       const highlight = () => {
         const el = document.getElementById(elId);
+        const firstMsgEl = document.getElementById(`${chatId}-first-message`);
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
           el.classList.add("search-highlight");
-          setTimeout(() => el.classList.remove("search-highlight"), 3000);
-        } else if (retries < 5) {
+          // for first message in chat, scroll into view again after a delay to ensure it's properly centered
+          setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 1000);
+          setTimeout(() => el.classList.remove("search-highlight"), 5000);
+        } else if (retries < 10) {
+          if (firstMsgEl) {
+            // If message element is not found, scroll to the first message and retry after a short delay
+            firstMsgEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
           retries++;
           setTimeout(highlight, 500);
         }

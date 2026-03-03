@@ -505,6 +505,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           streaming={streaming}
           loading={messagesLoading}
           loadCompleted={loadCompleted}
+          id={chatId}
         />
       </ChatPluginsContextProvider>
       {messagesLimitReached && (

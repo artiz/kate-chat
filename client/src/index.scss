@@ -27,7 +27,7 @@ body,
 }
 
 .search-highlight {
-  animation: search-highlight-fade 2s ease-out;
+  animation: search-highlight-fade 1000ms ease-in-out infinite alternate;
 }
 
 @keyframes search-highlight-fade {

@@ -20,6 +20,7 @@ interface IProps {
   loading?: boolean;
   loadCompleted?: boolean;
   autoScroll?: boolean;
+  id?: string;
 }
 
 export interface ChatMessagesContainerRef {
@@ -41,6 +42,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       loadCompleted = true,
       loading = false,
       autoScroll = true,
+      id = "chat",
     },
     ref
   ) => {
@@ -134,7 +136,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
         ].join(" ")}
       >
         <div className="katechat-messages-container-scroller" ref={messagesContainerRef} onScroll={handleScroll}>
-          <div ref={firstMessageRef} />
+          <div ref={firstMessageRef} id={`${id}-first-message`} />
           {loading && (
             <Group justify="center" align="center" py="xl">
               <Loader />
