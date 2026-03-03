@@ -193,6 +193,7 @@
     "today": "Heute",
     "topP": "Top P",
     "topPTooltip": "Steuert die Vielfalt: niedrigere Werte filtern unwahrscheinliche Optionen heraus, höhere Werte bewahren mehr Möglichkeiten.",
+    "disableTopP": "Deaktivieren",
     "unpin": "Lösen",
     "untitledChat": "Unbenannter Chat",
     "webSearch": "Websuche",

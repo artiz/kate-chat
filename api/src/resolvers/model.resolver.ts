@@ -389,6 +389,7 @@ export class ModelResolver extends BaseResolver {
         isActive: true,
         isCustom: true,
         user: { id: user.userId },
+        tools: [ToolType.WEB_SEARCH, ToolType.MCP],
         customSettings: {
           endpoint,
           apiKey,

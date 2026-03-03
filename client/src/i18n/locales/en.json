@@ -193,6 +193,7 @@
     "today": "Today",
     "topP": "Top P",
     "topPTooltip": "Controls diversity: lower values filter out unlikely options, higher values preserve more possibilities.",
+    "disableTopP": "Disable",
     "unpin": "Unpin",
     "untitledChat": "Untitled Chat",
     "webSearch": "Web Search",

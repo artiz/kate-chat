@@ -26,16 +26,7 @@ import {
   IconSquare,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import {
-  ChatSettings,
-  ImageQuality,
-  ImageOrientation,
-  Model,
-  ModelFeature,
-  ChatTool,
-  ToolType,
-  ToolType,
-} from "@/types/graphql";
+import { ChatSettings, ImageQuality, ImageOrientation, Model, ModelFeature, ChatTool, ToolType } from "@/types/graphql";
 
 import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
@@ -66,6 +57,7 @@ export function ChatSettingsForm({
   imageQuality = DEFAULT_CHAT_SETTINGS.imageQuality,
   imageOrientation = DEFAULT_CHAT_SETTINGS.imageOrientation,
   systemPrompt = DEFAULT_CHAT_SETTINGS.systemPrompt,
+  disableTopP = false,
   thinking = false,
   thinkingBudget = DEFAULT_CHAT_SETTINGS.thinkingBudget,
   model,
@@ -82,6 +74,7 @@ export function ChatSettingsForm({
   const [imageQualityValue, setImageQualityValue] = useState<ImageQuality>(imageQuality);
   const [imageOrientationValue, setImageOrientationValue] = useState<ImageOrientation>(imageOrientation);
   const [systemPromptValue, setSystemPromptValue] = useState<string>(systemPrompt);
+  const [disableTopPValue, setDisableTopPValue] = useState<boolean>(disableTopP);
   const [thinkingValue, setThinkingValue] = useState<boolean>(thinking);
   const [thinkingBudgetValue, setThinkingBudgetValue] = useState<number>(thinkingBudget);
 
@@ -94,6 +87,7 @@ export function ChatSettingsForm({
     setImageQualityValue(imageQuality);
     setImageOrientationValue(imageOrientation);
     setSystemPromptValue(systemPrompt);
+    setDisableTopPValue(disableTopP);
     setThinkingValue(thinking);
     setThinkingBudgetValue(thinkingBudget || DEFAULT_CHAT_SETTINGS.thinkingBudget);
   }, [
@@ -104,6 +98,7 @@ export function ChatSettingsForm({
     imageQuality,
     imageOrientation,
     systemPrompt,
+    disableTopP,
     thinking,
     thinkingBudget,
   ]);
@@ -118,12 +113,24 @@ export function ChatSettingsForm({
         imageQuality,
         imageOrientation,
         systemPrompt,
+        disableTopP,
         thinking,
         thinkingBudget,
         ...settings,
       });
     },
-    [temperature, maxTokens, topP, imagesCount, imageQuality, imageOrientation, systemPrompt, thinking, thinkingBudget]
+    [
+      temperature,
+      maxTokens,
+      topP,
+      imagesCount,
+      imageQuality,
+      imageOrientation,
+      systemPrompt,
+      disableTopP,
+      thinking,
+      thinkingBudget,
+    ]
   );
 
   const handleTemperatureChange = (value: number) => {
@@ -154,6 +161,12 @@ export function ChatSettingsForm({
   const handleTopPChange = (value: number) => {
     setTopPValue(value);
     handleSettingsChange({ topP: value });
+  };
+
+  const handleDisableTopPChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = event.currentTarget.checked;
+    setDisableTopPValue(checked);
+    handleSettingsChange({ disableTopP: checked });
   };
 
   const handleSystemPromptChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -274,6 +287,13 @@ export function ChatSettingsForm({
                 </Tooltip>
               </Group>
             </Group>
+            <Switch
+              label={t("chat.disableTopP")}
+              checked={disableTopPValue}
+              onChange={handleDisableTopPChange}
+              disabled={thinkingValue || isImageGeneration}
+              mb="xs"
+            />
             <Slider
               value={topPValue}
               onChange={handleTopPChange}
@@ -286,7 +306,7 @@ export function ChatSettingsForm({
                 { value: 0.5, label: "0.5" },
                 { value: 1, label: "1" },
               ]}
-              disabled={thinkingValue || isImageGeneration}
+              disabled={thinkingValue || isImageGeneration || disableTopPValue}
             />
           </Box>
 

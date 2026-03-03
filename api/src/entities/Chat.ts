@@ -45,6 +45,9 @@ export class ChatSettings {
   systemPrompt?: string;
 
   @Field({ nullable: true })
+  disableTopP?: boolean;
+
+  @Field({ nullable: true })
   thinking?: boolean;
 
   @Field({ nullable: true })

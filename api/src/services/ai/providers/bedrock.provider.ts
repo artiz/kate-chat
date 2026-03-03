@@ -13,6 +13,7 @@ import {
   ToolUseBlock,
   ConverseStreamCommandOutput,
   ValidationException,
+  InferenceConfiguration,
 } from "@aws-sdk/client-bedrock-runtime";
 import { DocumentType } from "@smithy/types";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
@@ -828,7 +829,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     messages: ModelMessage[] = [],
     requestTools: BedrockToolCallable[] = []
   ): Promise<ConverseCommandInput> {
-    const { systemPrompt, temperature, maxTokens, topP, thinking, thinkingBudget } = request.settings || {};
+    const { systemPrompt, temperature, maxTokens, topP, disableTopP, thinking, thinkingBudget } =
+      request.settings || {};
     const modelId = this.modelOverride || request.modelId;
 
     const requestMessages: ConverseMessage[] = [];
@@ -890,12 +892,16 @@ export class BedrockApiProvider extends BaseApiProvider {
       });
     }
 
-    const inferenceConfig = {
+    const inferenceConfig: InferenceConfiguration = {
       maxTokens,
       temperature,
-      topP,
       stopSequences: [],
     };
+
+    if (!disableTopP) {
+      inferenceConfig.topP = topP;
+    }
+
     const additionalModelRequestFields: DocumentType = {};
 
     if (thinking && thinkingBudget) {
@@ -917,10 +923,6 @@ export class BedrockApiProvider extends BaseApiProvider {
       inferenceConfig,
       additionalModelRequestFields,
     };
-
-    if (modelId.includes("claude-sonnet-4-5") && temperature != null && topP != null) {
-      delete command.inferenceConfig?.topP;
-    }
 
     if (systemPrompt && !modelId.includes("amazon.titan")) {
       command.system = [{ text: systemPrompt }];

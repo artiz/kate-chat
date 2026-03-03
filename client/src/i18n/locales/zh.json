@@ -193,6 +193,7 @@
     "today": "今天",
     "topP": "Top P",
     "topPTooltip": "控制多样性：较低的值过滤掉不太可能的选项，较高的值保留更多可能性。",
+    "disableTopP": "禁用",
     "unpin": "取消置顶",
     "untitledChat": "未命名聊天",
     "webSearch": "网络搜索",

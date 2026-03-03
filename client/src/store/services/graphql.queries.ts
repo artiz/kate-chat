@@ -41,6 +41,7 @@ export const BASE_CHAT_FRAGMENT = `
           temperature
           maxTokens
           topP
+          disableTopP
           imagesCount
           thinking
           thinkingBudget

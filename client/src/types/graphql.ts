@@ -350,6 +350,7 @@ export interface ChatSettings {
   imageQuality?: ImageQuality;
   imageOrientation?: ImageOrientation;
   systemPrompt?: string;
+  disableTopP?: boolean;
   thinking?: boolean;
   thinkingBudget?: number;
   selectedRagDocIds?: string[];
