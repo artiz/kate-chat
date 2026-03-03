@@ -21,7 +21,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## Features
 
-- Multiple chats creation, chats history, hierarchical folders structure, messages editing/deletion
+- Multiple chats creation, chats history, hierarchical folders structure, messages editing/deletion, search in chat titles/messages
 - Rich markdown formatting: code blocks, images, MathJax formulas, tables sorting and CSV copy/download etc.
 - Real-time communication with GraphQL subscriptions and WebSocket
 - Localization
@@ -48,11 +48,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
-* Implement search in chat titles/messages, only for current user:
-   - PostgreSQL Full-Text Search, https://iniakunhuda.medium.com/postgresql-full-text-search-a-powerful-alternative-to-elasticsearch-for-small-to-medium-d9524e001fe0
-   - SQLite FTS5, https://sqlite.org/fts5.html
-   - MySQL, https://dev.mysql.com/doc/refman/8.4/en/fulltext-search.html
-   - MSSQL, https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search?view=sql-server-ver17
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.
 * Introduce video generation, reuse requests queue
