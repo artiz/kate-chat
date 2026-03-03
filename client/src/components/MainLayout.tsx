@@ -14,7 +14,16 @@ import {
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
 import { SearchDrawer } from "./search/SearchDrawer";
-import { IconLogout, IconChevronRight, IconSun, IconMoon, IconUser, IconWifi, IconRobot } from "@tabler/icons-react";
+import {
+  IconLogout,
+  IconChevronRight,
+  IconSun,
+  IconMoon,
+  IconUser,
+  IconWifi,
+  IconRobot,
+  IconSearch,
+} from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { LanguageSelector, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
@@ -26,7 +35,7 @@ import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 
 export const MainLayout: React.FC = () => {
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle, close: closeNavbar }] = useDisclosure();
   const [searchOpened, { open: openSearch, close: closeSearch }] = useDisclosure(false);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   const navigate = useNavigate();
@@ -89,6 +98,13 @@ export const MainLayout: React.FC = () => {
             )}
           </Group>
           <Group>
+            {isMobile && (
+              <Tooltip label={t("search.title")}>
+                <ActionIcon variant="subtle" onClick={openSearch} size="lg" color="gray">
+                  <IconSearch size={20} />
+                </ActionIcon>
+              </Tooltip>
+            )}
             <Tooltip label={colorScheme === "dark" ? t("nav.switchToLight") : t("nav.switchToDark")}>
               <ActionIcon
                 variant="subtle"
@@ -99,7 +115,7 @@ export const MainLayout: React.FC = () => {
                 }}
                 aria-label="Toggle theme"
               >
-                {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+                {colorScheme === "dark" ? <IconSun size={20} /> : <IconMoon size={20} />}
               </ActionIcon>
             </Tooltip>
 
@@ -161,7 +177,7 @@ export const MainLayout: React.FC = () => {
         <Outlet />
       </AppShell.Main>
 
-      <SearchDrawer opened={searchOpened} onClose={closeSearch} />
+      <SearchDrawer opened={searchOpened} onClose={closeSearch} navbarToggle={isMobile ? closeNavbar : undefined} />
     </AppShell>
   );
 };

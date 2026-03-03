@@ -4,7 +4,13 @@ import { IconLanguage } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { LANGUAGE_STORAGE_KEY, BASE_SUPPORTED_LANGUAGES } from "@/i18n";
 
-export const LanguageSelector = ({ languages = BASE_SUPPORTED_LANGUAGES }: { languages?: string[] }) => {
+export const LanguageSelector = ({
+  languages = BASE_SUPPORTED_LANGUAGES,
+  size = 20,
+}: {
+  languages?: string[];
+  size?: number;
+}) => {
   const { t, i18n } = useTranslation();
 
   const handleLanguageChange = (lang: string) => {
@@ -17,7 +23,7 @@ export const LanguageSelector = ({ languages = BASE_SUPPORTED_LANGUAGES }: { lan
       <Menu.Target>
         <Tooltip label={t("language.label")}>
           <ActionIcon variant="subtle" aria-label={t("language.label")}>
-            <IconLanguage size={18} />
+            <IconLanguage size={size} />
           </ActionIcon>
         </Tooltip>
       </Menu.Target>

@@ -12,7 +12,6 @@ import {
   Loader,
   Divider,
   NavLink,
-  ScrollArea,
   Highlight,
   ActionIcon,
 } from "@mantine/core";
@@ -24,9 +23,10 @@ import drawerClasses from "./SearchDrawer.module.scss";
 interface SearchDrawerProps {
   opened: boolean;
   onClose: () => void;
+  navbarToggle?: () => void;
 }
 
-export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose }) => {
+export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose, navbarToggle }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -57,14 +57,16 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose }) =
 
   const handleChatClick = useCallback(
     (chatId: string) => {
+      navbarToggle?.();
       navigate(`/chat/${chatId}`);
       handleClose();
     },
-    [navigate, handleClose]
+    [navigate, handleClose, navbarToggle]
   );
 
   const handleMessageClick = useCallback(
     (chatId: string, messageId: string) => {
+      navbarToggle?.();
       navigate(`/chat/${chatId}`);
       handleClose();
       const elId = `message-${messageId}`;
@@ -91,15 +93,16 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose }) =
 
       setTimeout(highlight, 600);
     },
-    [navigate, handleClose]
+    [navigate, handleClose, navbarToggle]
   );
 
   const handleDocumentClick = useCallback(
     (documentId: string) => {
       navigate(`/documents/${documentId}`);
       handleClose();
+      navbarToggle?.();
     },
-    [navigate, handleClose]
+    [navigate, handleClose, navbarToggle]
   );
 
   const hasResults =
