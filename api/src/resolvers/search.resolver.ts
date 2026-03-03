@@ -17,6 +17,6 @@ export class SearchResolver extends BaseResolver {
   @Query(() => SearchResults)
   async search(@Arg("input") input: SearchInput, @Ctx() context: GraphQLContext): Promise<SearchResults> {
     const user = await this.validateContextToken(context);
-    return this.searchService.search(input.query, user.userId, input.limit ?? 10);
+    return this.searchService.search(input.query, user.userId, Math.min(input.limit ?? 10, 50));
   }
 }

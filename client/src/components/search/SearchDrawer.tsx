@@ -19,8 +19,7 @@ import {
 import { IconSearch, IconMessage, IconMessages, IconFile, IconX } from "@tabler/icons-react";
 import { useLazySearchQuery } from "@/store/services/graphql";
 import { SearchResults } from "@/types/graphql";
-import e from "express";
-import { set } from "lodash";
+import drawerClasses from "./SearchDrawer.module.scss";
 
 interface SearchDrawerProps {
   opened: boolean;
@@ -33,7 +32,7 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose }) =
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResults | undefined>(undefined);
   const [debouncedQuery] = useDebouncedValue(query, 300);
-  const [triggerSearch, { data, isLoading, isFetching }] = useLazySearchQuery();
+  const [triggerSearch, { data, isLoading, isFetching, isError }] = useLazySearchQuery();
 
   useEffect(() => {
     if (debouncedQuery.trim().length >= 2) {
@@ -108,126 +107,132 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ opened, onClose }) =
     <Drawer
       opened={opened}
       onClose={handleClose}
+      classNames={drawerClasses}
       title={
-        <Group gap="xs">
-          <IconSearch size={18} />
-          <Text fw={600}>{t("search.title")}</Text>
-        </Group>
+        <Stack gap="0" w="100%" flex="1">
+          <Group gap="xs" align="center" justify="stretch">
+            <IconSearch size={18} />
+            <Text fw={600}>{t("search.title")}</Text>
+          </Group>
+
+          <TextInput
+            placeholder={t("search.placeholder")}
+            value={query}
+            onChange={e => setQuery(e.currentTarget.value)}
+            autoFocus
+            my="sm"
+            me="lg"
+            rightSection={
+              isLoading || isFetching ? (
+                <Loader size="xs" />
+              ) : query ? (
+                <ActionIcon variant="subtle" size="sm" onClick={handleResetSearch}>
+                  <IconX size={14} />
+                </ActionIcon>
+              ) : null
+            }
+          />
+
+          {isError && (
+            <Text c="red" size="sm" ta="center" mt="xl">
+              {t("search.error")}
+            </Text>
+          )}
+        </Stack>
       }
       size="md"
       padding="md"
     >
-      <Stack gap="md" h="100%">
-        <TextInput
-          placeholder={t("search.placeholder")}
-          leftSection={<IconSearch size={16} />}
-          value={query}
-          onChange={e => setQuery(e.currentTarget.value)}
-          autoFocus
-          rightSection={
-            isLoading || isFetching ? (
-              <Loader size="xs" />
-            ) : query ? (
-              <ActionIcon variant="subtle" size="sm" onClick={handleResetSearch}>
-                <IconX size={14} />
-              </ActionIcon>
-            ) : null
-          }
-        />
+      <Stack gap="xs">
+        {noResults && (
+          <Text c="dimmed" size="sm" ta="center" mt="xl">
+            {t("search.noResults")}
+          </Text>
+        )}
 
-        <ScrollArea flex={1} offsetScrollbars h="100%">
-          <Stack gap="xs">
-            {noResults && (
-              <Text c="dimmed" size="sm" ta="center" mt="xl">
-                {t("search.noResults")}
+        {searchResults && searchResults.chatResults.length > 0 && (
+          <Box>
+            <Group gap="xs" mb="xs">
+              <IconMessages size={14} />
+              <Text size="xs" fw={600} tt="uppercase" c="dimmed">
+                {t("search.chats")}
               </Text>
+            </Group>
+            <Stack gap={2}>
+              {searchResults.chatResults.map(result => (
+                <NavLink
+                  key={result.chatId}
+                  label={
+                    <Highlight highlight={searchTerm} size="sm">
+                      {result.title || t("search.untitled")}
+                    </Highlight>
+                  }
+                  onClick={() => handleChatClick(result.chatId)}
+                />
+              ))}
+            </Stack>
+            {(searchResults.messageResults.length > 0 || searchResults.documentResults.length > 0) && (
+              <Divider mt="xs" />
             )}
+          </Box>
+        )}
 
-            {searchResults && searchResults.chatResults.length > 0 && (
-              <Box>
-                <Group gap="xs" mb="xs">
-                  <IconMessages size={14} />
-                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">
-                    {t("search.chats")}
-                  </Text>
-                </Group>
-                <Stack gap={2}>
-                  {searchResults.chatResults.map(result => (
-                    <NavLink
-                      key={result.chatId}
-                      label={
-                        <Highlight highlight={searchTerm} size="sm">
-                          {result.title || t("search.untitled")}
-                        </Highlight>
-                      }
-                      onClick={() => handleChatClick(result.chatId)}
-                    />
-                  ))}
-                </Stack>
-                {(searchResults.messageResults.length > 0 || searchResults.documentResults.length > 0) && (
-                  <Divider mt="xs" />
-                )}
-              </Box>
-            )}
+        {searchResults && searchResults.messageResults.length > 0 && (
+          <Box>
+            <Group gap="xs" mb="xs">
+              <IconMessage size={14} />
+              <Text size="xs" fw={600} tt="uppercase" c="dimmed">
+                {t("search.messages")}
+              </Text>
+            </Group>
+            <Stack gap={2}>
+              {searchResults.messageResults.map(result => (
+                <NavLink
+                  key={result.messageId}
+                  label={
+                    <Highlight highlight={searchTerm} size="sm">
+                      {result.snippet}
+                    </Highlight>
+                  }
+                  description={result.chatTitle}
+                  onClick={() => handleMessageClick(result.chatId, result.messageId)}
+                />
+              ))}
+            </Stack>
+            {searchResults.documentResults.length > 0 && <Divider mt="xs" />}
+          </Box>
+        )}
 
-            {searchResults && searchResults.messageResults.length > 0 && (
-              <Box>
-                <Group gap="xs" mb="xs">
-                  <IconMessage size={14} />
-                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">
-                    {t("search.messages")}
-                  </Text>
-                </Group>
-                <Stack gap={2}>
-                  {searchResults.messageResults.map(result => (
-                    <NavLink
-                      key={result.messageId}
-                      label={
-                        <Highlight highlight={searchTerm} size="sm">
-                          {result.snippet}
-                        </Highlight>
-                      }
-                      description={result.chatTitle}
-                      onClick={() => handleMessageClick(result.chatId, result.messageId)}
-                    />
-                  ))}
-                </Stack>
-                {searchResults.documentResults.length > 0 && <Divider mt="xs" />}
-              </Box>
-            )}
-
-            {searchResults && searchResults.documentResults.length > 0 && (
-              <Box>
-                <Group gap="xs" mb="xs">
-                  <IconFile size={14} />
-                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">
-                    {t("search.documents")}
-                  </Text>
-                </Group>
-                <Stack gap={2}>
-                  {searchResults.documentResults.map(result => (
-                    <NavLink
-                      key={result.documentId}
-                      label={
-                        <Highlight highlight={searchTerm} size="sm">
-                          {result.fileName}
-                        </Highlight>
-                      }
-                      description={
-                        result.snippet ? (
-                          <Highlight highlight={searchTerm} size="xs">
-                            {result.snippet}
-                          </Highlight>
-                        ) : undefined
-                      }
-                      onClick={() => handleDocumentClick(result.documentId)}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            )}
-          </Stack>
-        </ScrollArea>
+        {searchResults && searchResults.documentResults.length > 0 && (
+          <Box>
+            <Group gap="xs" mb="xs">
+              <IconFile size={14} />
+              <Text size="xs" fw={600} tt="uppercase" c="dimmed">
+                {t("search.documents")}
+              </Text>
+            </Group>
+            <Stack gap={2}>
+              {searchResults.documentResults.map(result => (
+                <NavLink
+                  key={result.documentId}
+                  label={
+                    <Highlight highlight={searchTerm} size="sm">
+                      {result.fileName}
+                    </Highlight>
+                  }
+                  description={
+                    result.snippet ? (
+                      <Highlight highlight={searchTerm} size="xs">
+                        {result.snippet}
+                      </Highlight>
+                    ) : undefined
+                  }
+                  onClick={() => handleDocumentClick(result.documentId)}
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
       </Stack>
     </Drawer>
   );

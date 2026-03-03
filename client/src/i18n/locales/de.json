@@ -643,6 +643,7 @@
     "title": "Suche",
     "placeholder": "Chats, Nachrichten, Dokumente suchen…",
     "noResults": "Keine Ergebnisse gefunden",
+    "error": "Suche fehlgeschlagen. Bitte erneut versuchen.",
     "chats": "Chats",
     "messages": "Nachrichten",
     "documents": "Dokumente",

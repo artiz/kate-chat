@@ -39,7 +39,6 @@ import { UserRole } from "@/store/slices/userSlice";
 import { ChatDocuments } from "@/pages/ChatDocuments";
 import { DocumentDetail } from "@/pages/DocumentDetail";
 import { SimpleLayout } from "./SimpleLayout";
-import { set } from "lodash";
 
 const BASE_URLS = ["/", "/chat"];
 const STORAGE_RETURN_URL_KEY = "return-url";

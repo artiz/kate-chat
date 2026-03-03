@@ -1,0 +1,12 @@
+.header {
+  justify-content: space-between;
+}
+.title {
+  flex: 1;
+  align-items: stretch;
+}
+
+.close {
+  align-self: flex-start;
+  width: 2rem;
+}

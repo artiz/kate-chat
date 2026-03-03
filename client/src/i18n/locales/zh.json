@@ -643,6 +643,7 @@
     "title": "搜索",
     "placeholder": "搜索聊天、消息、文档…",
     "noResults": "未找到结果",
+    "error": "搜索失败，请重试。",
     "chats": "聊天",
     "messages": "消息",
     "documents": "文档",

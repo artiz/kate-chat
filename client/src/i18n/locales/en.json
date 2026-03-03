@@ -565,6 +565,7 @@
     "title": "Search",
     "placeholder": "Search chats, messages, documents…",
     "noResults": "No results found",
+    "error": "Search failed. Please try again.",
     "chats": "Chats",
     "messages": "Messages",
     "documents": "Documents",
