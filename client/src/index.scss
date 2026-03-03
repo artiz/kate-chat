@@ -26,6 +26,19 @@ body,
   box-sizing: border-box;
 }
 
+.search-highlight {
+  animation: search-highlight-fade 2s ease-out;
+}
+
+@keyframes search-highlight-fade {
+  0% {
+    background-color: var(--mantine-color-yellow-3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 .fixed-width-truncate {
   overflow: hidden;
   flex: 1;

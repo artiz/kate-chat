@@ -476,6 +476,15 @@ export class DeleteMCPServerInput {
 }
 
 @InputType()
+export class SearchInput {
+  @Field()
+  query: string;
+
+  @Field({ nullable: true, defaultValue: 10 })
+  limit?: number;
+}
+
+@InputType()
 export class TestMCPToolInput {
   @Field()
   serverId: string;

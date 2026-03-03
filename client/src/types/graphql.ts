@@ -487,3 +487,39 @@ export interface MCPServer {
   updatedAt: string;
   tools?: MCPTool[];
 }
+
+export interface SearchChatResult {
+  chatId: string;
+  title: string;
+}
+
+export interface SearchMessageResult {
+  messageId: string;
+  chatId: string;
+  chatTitle: string;
+  snippet: string;
+}
+
+export interface SearchDocumentResult {
+  documentId: string;
+  fileName: string;
+  snippet?: string;
+}
+
+export interface SearchResults {
+  chatResults: SearchChatResult[];
+  messageResults: SearchMessageResult[];
+  documentResults: SearchDocumentResult[];
+}
+
+export interface SearchResponse {
+  data: {
+    search: SearchResults;
+  };
+}
+
+export interface DocumentByIdResponse {
+  data: {
+    documentById: Document | null;
+  };
+}

@@ -39,6 +39,14 @@ export class DocumentResolver extends BaseResolver {
       : undefined;
   }
 
+  @Query(() => Document, { nullable: true })
+  async documentById(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Document | null> {
+    const user = await this.validateContextToken(context);
+    return this.documentRepo.findOne({
+      where: { id, owner: { id: user.userId } },
+    });
+  }
+
   @Mutation(() => Document)
   async reindexDocument(@Arg("id", () => ID) id: string, @Ctx() context: GraphQLContext): Promise<Document> {
     await this.validateContextToken(context);

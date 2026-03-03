@@ -13,17 +13,14 @@ import {
   Tooltip,
   Modal,
   Button,
-  Box,
   Pagination,
   TextInput,
-  Badge,
-  ScrollArea,
   Drawer,
 } from "@mantine/core";
 import { IconRefresh, IconAlertCircle, IconX, IconSearch } from "@tabler/icons-react";
 import { useQuery, useSubscription, useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
-import { assert, parseMarkdown, DeleteConfirmationModal, FileDropzone, DropFilesOverlay } from "@katechat/ui";
+import { assert, DeleteConfirmationModal, FileDropzone, DropFilesOverlay } from "@katechat/ui";
 
 import { updateChat } from "@/store/slices/chatSlice";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -40,7 +37,7 @@ import { Chat, ChatDocument, Document, DocumentStatusMessage, GetDocumentsForCha
 import { MAX_UPLOAD_FILE_SIZE, MOBILE_BREAKPOINT, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentsTable } from "./DocumentsTable";
-import { getStatusColor } from "@/types/ai";
+import { DocumentInfo } from "./DocumentInfo";
 import { useMediaQuery } from "@mantine/hooks";
 import { ChatInputHeader } from "../chat/ChatInputHeader";
 
@@ -53,7 +50,6 @@ const DEBOUNCE_DELAY_MS = 250;
 
 export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = false }) => {
   const [summaryDocument, setSummaryDocument] = useState<Document | undefined>(undefined);
-  const [processedSummary, setProcessedSummary] = useState<string>("");
   const [documentToDelete, setDocumentToDelete] = useState<Document | undefined>(undefined);
   const [documentToReindex, setDocumentToReindex] = useState<Document | undefined>(undefined);
   const [chatDocumentsMap, setChatDocumentsMap] = useState<Record<string, Document>>({});
@@ -325,20 +321,6 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
     }
   };
 
-  useEffect(() => {
-    if (!summaryDocument?.summary) {
-      setProcessedSummary("");
-    } else {
-      try {
-        const summary = parseMarkdown(summaryDocument?.summary || "");
-        setProcessedSummary(summary.join("\n"));
-      } catch (err: unknown) {
-        console.error("Error processing markdown", err);
-        setProcessedSummary("Error processing summary: " + (err instanceof Error ? err.message : String(err)));
-      }
-    }
-  }, [summaryDocument?.summary]);
-
   const handleAddFiles = useCallback(
     (files: File[]) => {
       setIsDragging(false);
@@ -516,71 +498,7 @@ export const DocumentsDashboard: React.FC<IProps> = ({ chatId, selectorView = fa
                   padding="lg"
                 >
                   <Stack gap="sm">
-                    <Group>
-                      <Badge color={getStatusColor(summaryDocument?.status)} p="sm">
-                        {summaryDocument?.status}
-                      </Badge>
-                      <Box size="sm" fz="12">
-                        {summaryDocument?.statusInfo}
-                      </Box>
-                    </Group>
-
-                    <ScrollArea.Autosize mah={"40vh"}>
-                      <Box size="sm" fz="12">
-                        <div dangerouslySetInnerHTML={{ __html: processedSummary }} />
-                      </Box>
-                    </ScrollArea.Autosize>
-                    <Group w="100%" my="md" align="stretch">
-                      {summaryDocument?.summaryModelId && (
-                        <Alert p="md" title={t("documents.summarizationModel")} color="blue">
-                          {summaryDocument.summaryModelId}
-                        </Alert>
-                      )}
-                      {summaryDocument?.embeddingsModelId && (
-                        <Alert p="md" title={t("documents.embeddingsModel")} color="indigo">
-                          {summaryDocument?.embeddingsModelId}
-                        </Alert>
-                      )}
-
-                      <Alert p="md" title={t("documents.processingAlert")} color="green">
-                        <Stack gap="xs">
-                          <Group gap="lg" align="center" justify="space-between">
-                            <Text fz="12">{t("documents.pages")}</Text>
-                            <Text>
-                              {summaryDocument?.statusProgress && (summaryDocument?.pagesCount || 1) > 1
-                                ? `${Math.round(summaryDocument.statusProgress * (summaryDocument?.pagesCount || 1))} / `
-                                : ""}
-                              {summaryDocument?.pagesCount || 1}
-                            </Text>
-                          </Group>
-                          {summaryDocument?.metadata?.batchingPagePerSecond && (
-                            <Group gap="lg" align="center" justify="space-between">
-                              <Text fz="12">{t("documents.batchingPagesPerSec")}</Text>
-                              <Text>{summaryDocument.metadata.batchingPagePerSecond.toFixed(2)}</Text>
-                            </Group>
-                          )}
-                          {summaryDocument?.metadata?.parsingPagePerSecond && (
-                            <Group gap="lg" align="center" justify="space-between">
-                              <Text fz="12">{t("documents.parsingPagesPerSec")}</Text>
-                              <Text>{summaryDocument.metadata.parsingPagePerSecond.toFixed(2)}</Text>
-                            </Group>
-                          )}
-                          {summaryDocument?.metadata?.chunkingPagePerSecond && (
-                            <Group gap="lg" align="center" justify="space-between">
-                              <Text fz="12">{t("documents.chunkingPagesPerSec")}</Text>
-                              <Text>{summaryDocument.metadata.chunkingPagePerSecond.toFixed(2)}</Text>
-                            </Group>
-                          )}
-                          {summaryDocument?.metadata?.embeddingPagePerSecond && (
-                            <Group gap="lg" align="center" justify="space-between">
-                              <Text fz="12">{t("documents.embeddingPagesPerSec")}</Text>
-                              <Text>{summaryDocument.metadata.embeddingPagePerSecond.toFixed(2)}</Text>
-                            </Group>
-                          )}
-                        </Stack>
-                      </Alert>
-                    </Group>
-
+                    <DocumentInfo document={summaryDocument!} />
                     <Group mt="md" justify="flex-end">
                       <Button onClick={() => setSummaryDocument(undefined)}>{t("common.close")}</Button>
                     </Group>

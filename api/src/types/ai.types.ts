@@ -10,9 +10,9 @@ import {
   ResponseStatus,
   ToolType,
 } from "./api";
-import { ChatSettings } from "@/entities/Chat";
-import { ImageInput } from "@/types/graphql/inputs";
-import { RagResponse } from "@/services/ai/tools/rag";
+import { ChatSettings } from "../entities/Chat";
+import { ImageInput } from "../types/graphql/inputs";
+import { RagResponse } from "../services/ai/tools/rag";
 
 export interface ProviderInfo {
   id: ApiProvider;

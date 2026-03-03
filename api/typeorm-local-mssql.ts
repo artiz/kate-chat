@@ -15,6 +15,7 @@ export default new DataSource({
     trustServerCertificate: true,
   },
   migrationsRun: true,
+  migrationsTransactionMode: "each",
   synchronize: false,
   entities: ENTITIES,
   migrations: ["../db-migrations/mssql/*-*.ts"],

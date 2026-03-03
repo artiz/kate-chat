@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
+import { SearchDrawer } from "./search/SearchDrawer";
 import { IconLogout, IconChevronRight, IconSun, IconMoon, IconUser, IconWifi, IconRobot } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { LanguageSelector, useTheme } from "@katechat/ui";
@@ -26,6 +27,7 @@ import { SUPPORTED_LANGUAGES } from "@/i18n";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle }] = useDisclosure();
+  const [searchOpened, { open: openSearch, close: closeSearch }] = useDisclosure(false);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -151,12 +153,15 @@ export const MainLayout: React.FC = () => {
           navbarToggle={isMobile ? toggle : undefined}
           expanded={isMobile ? true : navbarExpanded}
           onToggleExpand={isMobile ? undefined : () => setNavbarExpanded(v => !v)}
+          onOpenSearch={openSearch}
         />
       </AppShell.Navbar>
 
       <AppShell.Main>
         <Outlet />
       </AppShell.Main>
+
+      <SearchDrawer opened={searchOpened} onClose={closeSearch} />
     </AppShell>
   );
 };

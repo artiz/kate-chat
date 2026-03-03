@@ -457,14 +457,22 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
 
   if (!linkedMessagesCarouselCmp) {
     return (
-      <div className={["katechat-message", `katechat-message__${role || ""}`].join(" ")} ref={componentRef}>
+      <div
+        id={`message-${message.id}`}
+        className={["katechat-message", `katechat-message__${role || ""}`].join(" ")}
+        ref={componentRef}
+      >
         <div className="katechat-message-main">{mainMessage}</div>
       </div>
     );
   }
 
   return (
-    <div className={["katechat-message", `katechat-message__${role || ""}`].join(" ")} ref={componentRef}>
+    <div
+      id={`message-${message.id}`}
+      className={["katechat-message", `katechat-message__${role || ""}`].join(" ")}
+      ref={componentRef}
+    >
       <div className="katechat-message-linked-toggle">
         <Switch
           checked={showMainMessage}

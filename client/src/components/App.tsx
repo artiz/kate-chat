@@ -37,6 +37,7 @@ import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
 import { UserRole } from "@/store/slices/userSlice";
 import { ChatDocuments } from "@/pages/ChatDocuments";
+import { DocumentDetail } from "@/pages/DocumentDetail";
 import { SimpleLayout } from "./SimpleLayout";
 import { set } from "lodash";
 
@@ -196,6 +197,7 @@ const AppContent: React.FC = () => {
                 {/* Library section */}
                 <Route path="library" element={<Library />} />
                 <Route path="documents" element={<Documents />} />
+                <Route path="documents/:id" element={<DocumentDetail />} />
               </Route>
 
               {/* Fallback route */}

@@ -8,14 +8,18 @@ import {
   Chat,
   ChatFolder,
   CurrentUserResponse,
+  Document,
+  DocumentByIdResponse,
   GetChatsResponse,
   GetInitialDataResponse,
   GetModelsResponse,
   MCPServer,
   Model,
   ProviderInfo,
+  SearchResponse,
+  SearchResults,
 } from "@/types/graphql";
-import { BASE_MODEL_FRAGMENT, FULL_USER_FRAGMENT } from "./graphql.queries";
+import { BASE_MODEL_FRAGMENT, DOCUMENT_BY_ID_QUERY, FULL_USER_FRAGMENT, SEARCH_QUERY } from "./graphql.queries";
 import { CHAT_PAGE_SIZE } from "@/lib/config";
 
 export const handleError = (error: { status?: string | number }, meta: unknown) => {
@@ -297,7 +301,41 @@ export const graphqlApi = api.injectEndpoints({
       transformErrorResponse: handleError,
       providesTags: ["User", "Model", { type: "Chat", id: "LIST" }],
     }),
+
+    search: builder.query<SearchResults, { query: string; limit?: number }>({
+      query: ({ query, limit = 10 }) => ({
+        url: "/graphql",
+        method: "POST",
+        body: {
+          query: SEARCH_QUERY,
+          variables: { input: { query, limit } },
+        },
+      }),
+      transformResponse: (response: SearchResponse) => response.data.search,
+      transformErrorResponse: handleError,
+    }),
+
+    documentById: builder.query<Document | null, string>({
+      query: id => ({
+        url: "/graphql",
+        method: "POST",
+        body: {
+          query: DOCUMENT_BY_ID_QUERY,
+          variables: { id },
+        },
+      }),
+      transformResponse: (response: DocumentByIdResponse) => response.data.documentById,
+      transformErrorResponse: handleError,
+    }),
   }),
 });
 
-export const { useGetCurrentUserQuery, useGetModelsQuery, useGetChatsQuery, useGetInitialDataQuery } = graphqlApi;
+export const {
+  useGetCurrentUserQuery,
+  useGetModelsQuery,
+  useGetChatsQuery,
+  useGetInitialDataQuery,
+  useSearchQuery,
+  useLazySearchQuery,
+  useDocumentByIdQuery,
+} = graphqlApi;

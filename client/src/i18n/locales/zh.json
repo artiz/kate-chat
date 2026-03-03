@@ -336,7 +336,15 @@
     "batchingPagesPerSec": "页/秒（分批）",
     "parsingPagesPerSec": "页/秒（解析）",
     "chunkingPagesPerSec": "页/秒（分块）",
-    "embeddingPagesPerSec": "页/秒（嵌入）"
+    "embeddingPagesPerSec": "页/秒（嵌入）",
+    "backToDocuments": "返回文档",
+    "notFound": "文档未找到",
+    "fileSize": "文件大小",
+    "uploaded": "上传时间",
+    "summary": "摘要",
+    "downloads": "下载",
+    "downloadOriginal": "下载原文件",
+    "downloadMarkdown": "下载 Markdown"
   },
   "errors": {
     "apiError": "API 错误",
@@ -630,5 +638,14 @@
     "passwordMinLength": "密码至少需要8个字符",
     "passwordRequired": "密码为必填项",
     "passwordsDoNotMatch": "两次输入的密码不一致"
+  },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索聊天、消息、文档…",
+    "noResults": "未找到结果",
+    "chats": "聊天",
+    "messages": "消息",
+    "documents": "文档",
+    "untitled": "无标题"
   }
 }

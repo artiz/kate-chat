@@ -392,7 +392,15 @@
     "batchingPagesPerSec": "Страниц/сек (разбивка)",
     "parsingPagesPerSec": "Страниц/сек (парсинг)",
     "chunkingPagesPerSec": "Страниц/сек (чанкинг)",
-    "embeddingPagesPerSec": "Страниц/сек (эмбеддинг)"
+    "embeddingPagesPerSec": "Страниц/сек (эмбеддинг)",
+    "backToDocuments": "Назад к документам",
+    "notFound": "Документ не найден",
+    "fileSize": "Размер файла",
+    "uploaded": "Загружен",
+    "summary": "Краткое содержание",
+    "downloads": "Скачать",
+    "downloadOriginal": "Скачать оригинал",
+    "downloadMarkdown": "Скачать Markdown"
   },
   "models": {
     "title": "Модели ИИ",
@@ -630,6 +638,15 @@
     "result": "Результат:",
     "page": "Страница {{page}}",
     "webSearch": "Веб-поиск"
+  },
+  "search": {
+    "title": "Поиск",
+    "placeholder": "Поиск по чатам, сообщениям, документам…",
+    "noResults": "Ничего не найдено",
+    "chats": "Чаты",
+    "messages": "Сообщения",
+    "documents": "Документы",
+    "untitled": "Без названия"
   },
   "AI-generated, for reference only.": "Сгенерировано ИИ, только для справки."
 }

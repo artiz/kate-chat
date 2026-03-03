@@ -37,6 +37,7 @@ import {
   IconMessages,
   IconNetwork,
   IconLink,
+  IconSearch,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -52,9 +53,10 @@ interface IProps {
   navbarToggle?: () => void;
   expanded?: boolean;
   onToggleExpand?: () => void;
+  onOpenSearch?: () => void;
 }
 
-const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onToggleExpand }) => {
+const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onToggleExpand, onOpenSearch }) => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -147,6 +149,13 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
             </Group>
 
             <Group>
+              {onOpenSearch && (
+                <Tooltip label={t("search.title")}>
+                  <ActionIcon variant="subtle" onClick={onOpenSearch} size="lg" color="gray">
+                    <IconSearch size={20} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
               {onToggleExpand && (
                 <Tooltip label={expanded ? t("nav.collapseSidebar") : t("nav.expandSidebar")}>
                   <ActionIcon variant="subtle" onClick={onToggleExpand} size="lg" color="gray">

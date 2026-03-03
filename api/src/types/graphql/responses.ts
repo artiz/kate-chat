@@ -506,3 +506,51 @@ export class MCPToolTestResponse {
   @Field({ nullable: true })
   result?: string;
 }
+
+@ObjectType()
+export class SearchChatResult {
+  @Field(() => ID)
+  chatId: string;
+
+  @Field()
+  title: string;
+}
+
+@ObjectType()
+export class SearchMessageResult {
+  @Field(() => ID)
+  messageId: string;
+
+  @Field()
+  chatId: string;
+
+  @Field()
+  chatTitle: string;
+
+  @Field()
+  snippet: string;
+}
+
+@ObjectType()
+export class SearchDocumentResult {
+  @Field(() => ID)
+  documentId: string;
+
+  @Field()
+  fileName: string;
+
+  @Field({ nullable: true })
+  snippet?: string;
+}
+
+@ObjectType()
+export class SearchResults {
+  @Field(() => [SearchChatResult])
+  chatResults: SearchChatResult[];
+
+  @Field(() => [SearchMessageResult])
+  messageResults: SearchMessageResult[];
+
+  @Field(() => [SearchDocumentResult])
+  documentResults: SearchDocumentResult[];
+}

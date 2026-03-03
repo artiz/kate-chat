@@ -825,3 +825,34 @@ export const DELETE_MCP_SERVER = gql`
     deleteMCPServer(input: $input)
   }
 `;
+
+export const SEARCH_QUERY = `
+  query Search($input: SearchInput!) {
+    search(input: $input) {
+      chatResults {
+        chatId
+        title
+      }
+      messageResults {
+        messageId
+        chatId
+        chatTitle
+        snippet
+      }
+      documentResults {
+        documentId
+        fileName
+        snippet
+      }
+    }
+  }
+`;
+
+export const DOCUMENT_BY_ID_QUERY = `
+  ${BASE_DOCUMENT_FRAGMENT}
+  query DocumentById($id: ID!) {
+    documentById(id: $id) {
+      ...BaseDocument
+    }
+  }
+`;

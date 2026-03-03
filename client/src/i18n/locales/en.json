@@ -336,7 +336,15 @@
     "batchingPagesPerSec": "Batching pages/sec",
     "parsingPagesPerSec": "Parsing pages/sec",
     "chunkingPagesPerSec": "Chunking pages/sec",
-    "embeddingPagesPerSec": "Embedding pages/sec"
+    "embeddingPagesPerSec": "Embedding pages/sec",
+    "backToDocuments": "Back to Documents",
+    "notFound": "Document not found",
+    "fileSize": "File Size",
+    "uploaded": "Uploaded",
+    "summary": "Summary",
+    "downloads": "Downloads",
+    "downloadOriginal": "Download Original",
+    "downloadMarkdown": "Download Markdown"
   },
   "errors": {
     "apiError": "API Error",
@@ -552,6 +560,15 @@
     "yandexConfig": "Yandex Configuration",
     "yandexRequiresEnv": "Yandex requires an API key. Set the following environment variable:",
     "yandexRequiresSetup": "Yandex requires an API key. Please setup connection credentials on connectivity page."
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search chats, messages, documents…",
+    "noResults": "No results found",
+    "chats": "Chats",
+    "messages": "Messages",
+    "documents": "Documents",
+    "untitled": "Untitled"
   },
   "nav": {
     "admin": "Admin",

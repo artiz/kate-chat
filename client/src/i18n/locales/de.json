@@ -336,7 +336,15 @@
     "batchingPagesPerSec": "Seiten/Sek. (Batching)",
     "parsingPagesPerSec": "Seiten/Sek. (Parsing)",
     "chunkingPagesPerSec": "Seiten/Sek. (Chunking)",
-    "embeddingPagesPerSec": "Seiten/Sek. (Embedding)"
+    "embeddingPagesPerSec": "Seiten/Sek. (Embedding)",
+    "backToDocuments": "Zurück zu Dokumenten",
+    "notFound": "Dokument nicht gefunden",
+    "fileSize": "Dateigröße",
+    "uploaded": "Hochgeladen",
+    "summary": "Zusammenfassung",
+    "downloads": "Downloads",
+    "downloadOriginal": "Original herunterladen",
+    "downloadMarkdown": "Markdown herunterladen"
   },
   "errors": {
     "apiError": "API-Fehler",
@@ -630,5 +638,14 @@
     "passwordMinLength": "Das Passwort muss mindestens 8 Zeichen lang sein",
     "passwordRequired": "Passwort ist erforderlich",
     "passwordsDoNotMatch": "Passwörter stimmen nicht überein"
+  },
+  "search": {
+    "title": "Suche",
+    "placeholder": "Chats, Nachrichten, Dokumente suchen…",
+    "noResults": "Keine Ergebnisse gefunden",
+    "chats": "Chats",
+    "messages": "Nachrichten",
+    "documents": "Dokumente",
+    "untitled": "Ohne Titel"
   }
 }
