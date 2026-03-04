@@ -1,3 +1,5 @@
+@use "sass:meta";
+
 [data-mantine-color-scheme="light"] {
   @include meta.load-css("highlight.js/styles/panda-syntax-light");
 }
