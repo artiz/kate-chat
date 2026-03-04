@@ -94,3 +94,5 @@ export enum MCPAuthType {
 export type ImageQuality = "low" | "medium" | "high";
 
 export type ImageOrientation = "landscape" | "portrait" | "square";
+
+export type ThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";

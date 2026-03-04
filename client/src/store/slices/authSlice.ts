@@ -27,6 +27,10 @@ const initialState: AuthState = {
   loginTime: null,
 };
 
+export const getAuthToken = (): string | undefined => {
+  return localStorage.getItem(STORAGE_AUTH_TOKEN) || undefined;
+};
+
 const authSlice = createSlice({
   name: "auth",
   initialState,

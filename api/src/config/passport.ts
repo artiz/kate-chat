@@ -11,7 +11,6 @@ import { logger } from "../utils/logger";
 import { globalConfig } from "@/global-config";
 import { ensureInitialUserAssets } from "@/config/initial-data";
 import { getErrorMessage } from "@/utils/errors";
-import { json } from "stream/consumers";
 
 const userDefaults = {
   defaultSystemPrompt: globalConfig.ai.defaultSystemPrompt,

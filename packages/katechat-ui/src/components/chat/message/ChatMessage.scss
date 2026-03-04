@@ -129,34 +129,38 @@
     }
   }
 
-  .table-controls {
-    .table-header-actions {
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
-      gap: 0.5rem;
-      align-items: center;
-    }
+  .table-controls-row {
+    height: 3rem;
 
-    .action-btn {
-      padding: 0.1rem;
-      line-height: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: fit-content;
-      gap: 0.25rem;
-      cursor: pointer;
-      font-size: 90%;
-      opacity: 0.8;
-
-      &:hover {
-        opacity: 1;
+    .table-controls {
+      .table-header-actions {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        align-items: center;
       }
-    }
 
-    .action-btn-label {
-      display: none;
+      .action-btn {
+        padding: 0.1rem;
+        line-height: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: fit-content;
+        gap: 0.25rem;
+        cursor: pointer;
+        font-size: 90%;
+        opacity: 0.8;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+
+      .action-btn-label {
+        display: none;
+      }
     }
   }
 
@@ -624,7 +628,7 @@
 @media (min-width: 720px) {
   .katechat-message-content {
     .code-header,
-    .table-controls {
+    .table-controls-row .table-controls {
       .action-btn-label {
         display: inline-block;
       }

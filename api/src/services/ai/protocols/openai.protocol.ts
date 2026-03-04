@@ -32,6 +32,7 @@ import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
+import { sanitizeSurrogates } from "@/utils/format";
 
 const logger = createLogger(__filename);
 
@@ -197,7 +198,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
   // Text generation for OpenAI proto
   // https://platform.openai.com/docs/guides/text?api-mode=chat
-  private async formatMessages(
+  private async formatCompletionMessages(
     modelId: string,
     messages: ModelMessage[],
     systemPrompt: string | undefined
@@ -229,9 +230,7 @@ export class OpenAIProtocol implements ModelProtocol {
             continue;
           }
 
-          const fileData = await this.fileLoader.getFileContent(part.fileName);
-          const fileContent = fileData.toString("base64");
-
+          const fileContent = await this.fileLoader.getFileContentBase64(part.fileName);
           parts.push({
             type: "image_url" as const,
             image_url: {
@@ -323,7 +322,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
-      messages: await this.formatMessages(modelId, messages, systemPrompt),
+      messages: await this.formatCompletionMessages(modelId, messages, systemPrompt),
       temperature,
       max_completion_tokens: maxTokens,
     };
@@ -503,7 +502,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
       for (const part of msg.body) {
         if (part.contentType === "text") {
-          content.push({ type: "input_text" as const, text: part.content });
+          content.push({ type: "input_text" as const, text: sanitizeSurrogates(part.content) });
         } else if (part.contentType === "image") {
           // send previous image as user message to give model more context
           if (role === "assistant") {
@@ -515,9 +514,7 @@ export class OpenAIProtocol implements ModelProtocol {
             continue;
           }
 
-          const fileData = await this.fileLoader.getFileContent(part.fileName);
-          const fileContent = fileData.toString("base64");
-
+          const fileContent = await this.fileLoader.getFileContentBase64(part.fileName);
           content.push({
             type: "input_image" as const,
             image_url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,

@@ -8,7 +8,6 @@ import { Chat, ChatDocument } from "@/entities";
 import { BaseResolver } from "./base.resolver";
 import { ChatsService } from "@/services/chats.service";
 import { globalConfig } from "@/global-config";
-import { DEFAULT_CHAT_PROMPT } from "@/config/ai/prompts";
 import { ChatSettings } from "@/entities/Chat";
 
 const aiConfig = globalConfig.ai;
@@ -198,9 +197,10 @@ export class ChatResolver extends BaseResolver {
   settings(@Root() chat: Chat) {
     const user = chat.user;
     return {
-      systemPrompt: user?.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      systemPrompt: user?.settings?.defaultSystemPrompt || aiConfig.defaultSystemPrompt,
       temperature: user?.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
       maxTokens: user?.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      disableTopP: true,
       topP: user?.settings?.defaultTopP ?? aiConfig.defaultTopP,
       imagesCount: user?.settings?.defaultImagesCount ?? 1,
       ...(chat.settings || {}),

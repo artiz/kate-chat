@@ -53,6 +53,7 @@ export const MCPCall = (message: Message, t: TFunction = globalT): React.ReactNo
             <div key={call.callId || idx} className="message-details-content">
               <Text size="xs" fw={500}>
                 {displayName}
+                {call.callId ? ` / ${call.callId}` : ""}
               </Text>
               {call.args && (
                 <Box fz="12" mt={4}>
@@ -105,6 +106,7 @@ export const MCPCall = (message: Message, t: TFunction = globalT): React.ReactNo
           <div key={result.callId || idx} className="message-details-content">
             <Text size="xs" fw={500}>
               {extractToolName(result.name)}
+              {result.callId ? ` / ${result.callId}` : ""}
             </Text>
             {result.content && (
               <Box fz="12" mt={4}>
@@ -119,7 +121,7 @@ export const MCPCall = (message: Message, t: TFunction = globalT): React.ReactNo
     detailsNodes.push(cmp);
   }
 
-  return detailsNodes.length ? detailsNodes : null;
+  return detailsNodes;
 };
 
 const MAX_CONTENT_LENGTH = 4096; // Limit content length for display

@@ -66,7 +66,7 @@ export const WebSearchCall = (message: Message, t: TFunction = globalT): React.R
     detailsNodes.push(cmp);
   }
 
-  return detailsNodes.length ? detailsNodes : null;
+  return detailsNodes;
 };
 
 interface WebSearchEntry {

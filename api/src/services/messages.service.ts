@@ -30,7 +30,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
 import { DeleteMessageResponse } from "@/types/graphql/responses";
 import { EmbeddingsService } from "./ai/embeddings.service";
-import { DEFAULT_CHAT_PROMPT, PROMPT_CHAT_TITLE, RAG_REQUEST } from "@/config/ai/prompts";
+import { PROMPT_CHAT_TITLE, RAG_REQUEST } from "@/config/ai/prompts";
 import { APPLICATION_FEATURE, globalConfig } from "@/global-config";
 import { ChatSettings } from "@/entities/Chat";
 import { IMAGE_GENERATION_PLACEHOLDER } from "@/config/ai/templates";
@@ -833,7 +833,7 @@ export class MessagesService {
       maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
       topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
       imagesCount: user.settings?.defaultImagesCount ?? 1,
-      systemPrompt: user.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      systemPrompt: user.settings?.defaultSystemPrompt || aiConfig.defaultSystemPrompt,
       ...chat.settings,
     };
 
@@ -870,15 +870,6 @@ export class MessagesService {
 
     const completeRequest = async (message: Message, data?: ModelResponse): Promise<boolean> => {
       ok(message);
-      logger.debug(
-        {
-          messageId: message.id,
-          requestId: request.requestId,
-          modelId: model.modelId,
-          content: message.content,
-        },
-        "Complete assistant message"
-      );
 
       const titleModel =
         model.type !== ModelType.CHAT
@@ -1427,7 +1418,7 @@ export class MessagesService {
       maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
       topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
       imagesCount: user.settings?.defaultImagesCount ?? 1,
-      systemPrompt: user.settings?.defaultSystemPrompt || DEFAULT_CHAT_PROMPT,
+      systemPrompt: user.settings?.defaultSystemPrompt || aiConfig.defaultSystemPrompt,
       ...chat.settings,
     };
 

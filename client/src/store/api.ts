@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "./index";
 import {
+  getAuthToken,
   STORAGE_AWS_BEDROCK_ACCESS_KEY_ID,
   STORAGE_AWS_BEDROCK_PROFILE,
   STORAGE_AWS_BEDROCK_REGION,
@@ -38,8 +39,7 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: APP_API_URL,
     prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-
+      const token = getAuthToken();
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }

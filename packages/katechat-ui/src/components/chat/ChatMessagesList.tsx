@@ -314,10 +314,10 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
 
     const messageDetailsLoader = useCallback(
       (msg: Message) => {
-        const details = detailsPlugins.map((plugin, idx) => plugin(msg)).filter(notEmpty);
+        const details = detailsPlugins.map(plugin => plugin(msg)).filter(notEmpty);
         return details.length ? details : null;
       },
-      [plugins, detailsPlugins]
+      [detailsPlugins]
     );
 
     return (

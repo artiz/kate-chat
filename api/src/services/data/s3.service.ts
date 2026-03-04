@@ -1,7 +1,4 @@
-import { Repository } from "typeorm";
 import fs from "fs";
-import { PassThrough } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import {
   S3Client,
   PutObjectCommand,
@@ -27,6 +24,7 @@ const ConnectionSettingsCache: Map<string, UserSettings> = new Map();
 
 export interface FileContentLoader {
   getFileContent(fileName: string): Promise<Buffer>;
+  getFileContentBase64(fileName: string): Promise<string>;
 }
 
 export class S3Service implements FileContentLoader {
@@ -306,13 +304,14 @@ export class S3Service implements FileContentLoader {
     });
 
     const s3Object = await client.send(command);
-
     const buffer = await s3Object?.Body?.transformToByteArray();
-    if (!buffer) {
-      throw new Error(`No content found for key ${fileKey}`);
-    }
-
+    ok(buffer, `No data found for key ${fileKey}`);
     return Buffer.from(buffer);
+  }
+
+  async getFileContentBase64(fileKey: string): Promise<string> {
+    const binary = await this.getFileContent(fileKey);
+    return binary.toString("base64");
   }
 
   /**

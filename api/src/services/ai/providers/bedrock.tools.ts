@@ -1,13 +1,12 @@
 import { Tool, ToolResultBlock, ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
-import { MCPClient } from "../tools/mcp.client";
-import { MCPServer } from "@/entities";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
 import { createLogger } from "@/utils/logger";
 import { ResponseStatus, ToolType } from "@/types/api";
 import { ChatTool, IMCPServer, MCPAuthToken } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
+import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
+import { MCPClient } from "../tools/mcp.client";
 
 // Re-export for backward compatibility
 export { WEB_SEARCH_TOOL_NAME };
@@ -210,7 +209,6 @@ export function formatBedrockRequestTools(inputTools?: ChatTool[], mcpServers?: 
     tools.push(WEB_SEARCH_TOOL);
   }
 
-  // Add MCP tools
   const mcpTools = formatBedrockMcpTools(
     inputTools.filter(t => t.type === ToolType.MCP),
     mcpServers

@@ -263,23 +263,25 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
 
     return (
       <>
-        <Group align="center" pt="sm">
-          <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
-            {isUserMessage ? (
-              <IconUser />
-            ) : model ? (
-              <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
-            ) : (
-              <IconRobot />
-            )}
-          </Avatar>
-          <Group gap="sm">
+        <Group align="center" p="0">
+          <Group gap="sm" wrap="nowrap">
+            <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
+              {isUserMessage ? (
+                <IconUser />
+              ) : model ? (
+                <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} />
+              ) : (
+                <IconRobot />
+              )}
+            </Avatar>
             <Text size="sm" fw={500} c={isUserMessage ? "blue" : "teal"}>
               {username}
             </Text>
             <Text size="sm" c="dimmed">
               {timestamp}
             </Text>
+          </Group>
+          <Group>
             {status && <MessageStatus status={status} />}
             {statusInfo && status !== ResponseStatus.REASONING && (
               <Text size="sm" c="dimmed">

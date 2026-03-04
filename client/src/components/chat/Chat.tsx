@@ -153,6 +153,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
     return docs;
   }, [chat?.chatDocuments, uploadingDocs]);
 
+  const ragPlugin = useMemo(() => RAG(chatDocuments), [chatDocuments]);
+  const detailsPlugins = useMemo(
+    () => [ragPlugin, CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning],
+    [ragPlugin]
+  );
+  const messagePlugins = useMemo(() => [EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens], []);
+
   const handleAutoScroll = useCallback((enabled: boolean) => {
     setAutoScroll(enabled);
     if (enabled) {
@@ -499,8 +506,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
           addChatMessage={addChatMessage}
           removeMessages={removeMessages}
           loadMoreMessages={loadMoreMessages}
-          plugins={[EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]}
-          detailsPlugins={[RAG(chatDocuments), CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning]}
+          plugins={messagePlugins}
+          detailsPlugins={detailsPlugins}
           codePlugins={codePlugins}
           streaming={streaming}
           loading={messagesLoading}
@@ -541,8 +548,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
           <>
             {appConfig?.ragEnabled && (
               <ChatDocumentsSelector
-                chatId={chatId}
-                chatTitle={chat?.title}
                 selectedDocIds={selectedRagDocIds}
                 onSelectionChange={handleRagDocSelectionChange}
                 disabled={!uploadAllowed || isExternalChat || messagesLoading}
