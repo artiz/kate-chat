@@ -1,3 +1,11 @@
+[data-mantine-color-scheme="light"] {
+  @include meta.load-css("highlight.js/styles/panda-syntax-light");
+}
+
+[data-mantine-color-scheme="dark"] {
+  @include meta.load-css("highlight.js/styles/a11y-dark");
+}
+
 .katechat-message {
   width: 100%;
   overflow-x: hidden;
