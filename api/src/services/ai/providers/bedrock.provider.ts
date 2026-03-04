@@ -33,6 +33,7 @@ import {
   ProviderInfo,
   ChatToolCallResult,
   MCPAuthToken,
+  ChatToolCall,
 } from "@/types/ai.types";
 import {
   ApiProvider,
@@ -65,7 +66,8 @@ import {
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
 } from "@/config/ai/bedrock";
 import { ok } from "@/utils/assert";
-import { sanitizeSurrogates } from "@/utils/format";
+import { sanitizeSurrogates, simpleHash } from "@/utils/format";
+import { log } from "console";
 
 const logger = createLogger(__filename);
 
@@ -205,6 +207,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     let conversationMessages: ConverseMessage[] = [];
     let requestCompleted = false;
+    let metadata: MessageMetadata | undefined = undefined;
 
     // Format tools from request
     const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
@@ -256,15 +259,17 @@ export class BedrockApiProvider extends BaseApiProvider {
             }
           }
 
+          logger.warn(command, `Error calling ConverseStreamCommand: ${getErrorMessage(error)}`);
+
           // Re-throw if not the specific validation error we handle
           throw error;
         }
 
         let fullResponse = "";
         let reasoningContent = "";
-        let metadata: MessageMetadata | undefined = undefined;
         let streamedToolUse: ToolUseBlock[] = [];
         let currentToolUse: ToolUseBlock | null = null;
+        let thinkingBlocks: ContentBlock[] = [];
 
         // Process the stream
         if (!streamResponse?.stream) {
@@ -284,13 +289,23 @@ export class BedrockApiProvider extends BaseApiProvider {
               await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: reasoningContent });
 
               if (delta.reasoningContent.signature && reasoningContent) {
+                // Capture thinking block with signature for conversation history replay
+                thinkingBlocks.push({
+                  reasoningContent: {
+                    reasoningText: {
+                      text: reasoningContent,
+                      signature: delta.reasoningContent.signature,
+                    },
+                  },
+                } as ContentBlock);
+
                 if (!metadata) metadata = {};
                 if (!metadata.reasoning) metadata.reasoning = [];
-
                 metadata.reasoning.push({
                   text: reasoningContent,
                   timestamp: new Date(),
                 });
+
                 reasoningContent = "";
               }
             } else if (delta.toolUse && currentToolUse) {
@@ -336,12 +351,14 @@ export class BedrockApiProvider extends BaseApiProvider {
               fullResponse,
               conversationMessages,
               requestTools,
-              request.mcpTokens
+              request.mcpTokens,
+              thinkingBlocks
             );
 
             // Reset for next iteration
             fullResponse = "";
             streamedToolUse = [];
+            thinkingBlocks = [];
             requestCompleted = false;
             break; // Break to restart streaming with tool results
           } else if (chunk.internalServerException) {
@@ -419,13 +436,19 @@ export class BedrockApiProvider extends BaseApiProvider {
     fullResponse: string,
     conversationMessages: ConverseMessage[],
     requestTools: BedrockToolCallable[],
-    mcpTokens?: MCPAuthToken[]
+    mcpTokens?: MCPAuthToken[],
+    thinkingBlocks: ContentBlock[] = []
   ) {
-    const toolCalls = streamedToolUse.map(tu => ({
-      name: tu.name || "unknown",
-      callId: tu.toolUseId || tu.name || "unknown",
-      args: typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input || {}),
-    }));
+    const toolCalls: ChatToolCall[] = streamedToolUse.map(tu => {
+      const args = typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input || {});
+      return {
+        name: tu.name || "unknown",
+        callId: tu.toolUseId || simpleHash(args),
+        args,
+      };
+    });
+
+    logger.debug({ toolCalls }, "Processing tool use from model response");
 
     const status =
       streamedToolUse.length === 1 && streamedToolUse[0].name === WEB_SEARCH_TOOL_NAME
@@ -440,7 +463,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     await callbacks.onProgress("", { status, detail, toolCalls });
 
     // Build assistant message with tool use for conversation history
-    const assistantContent: ContentBlock[] = [];
+    // When thinking is enabled, thinking blocks must precede tool_use blocks
+    const assistantContent: ContentBlock[] = [...thinkingBlocks];
     if (fullResponse) {
       assistantContent.push({ text: fullResponse });
     }
@@ -463,8 +487,9 @@ export class BedrockApiProvider extends BaseApiProvider {
     const toolResultContent: ContentBlock[] = [];
     const toolResults: ChatToolCallResult[] = [];
 
-    for (const toolUse of streamedToolUse) {
-      const toolCall = parseToolUse(toolUse, requestTools);
+    for (let ndx = 0; ndx < streamedToolUse.length; ndx++) {
+      const toolUse = streamedToolUse[ndx];
+      const toolCall = parseToolUse(toolUse, requestTools, toolCalls[ndx]);
 
       if (toolCall.error) {
         toolResultContent.push({
@@ -487,6 +512,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         });
 
         const content = result.content?.[0] && "text" in result.content[0] ? result.content[0].text || "" : "";
+
         toolResults.push({
           name: toolCall.name,
           content,
@@ -914,9 +940,9 @@ export class BedrockApiProvider extends BaseApiProvider {
       let budget = Math.min(Math.max(thinkingBudget, AWS_BEDROCK_MIN_THINKING_BUDGET), AWS_BEDROCK_MAX_THINKING_BUDGET);
       inferenceConfig.temperature = 1;
       if (maxTokens) {
-        budget = Math.min(budget, 0.8 * maxTokens);
+        budget = Math.min(budget, 0.8 * maxTokens) | 0;
       } else {
-        inferenceConfig.maxTokens = Math.ceil(budget * 1.2);
+        inferenceConfig.maxTokens = Math.ceil(budget * 1.2) | 0;
       }
       additionalModelRequestFields.thinking = {
         type: "enabled",

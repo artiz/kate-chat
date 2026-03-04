@@ -3,7 +3,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
 import { createLogger } from "@/utils/logger";
 import { ResponseStatus, ToolType } from "@/types/api";
-import { ChatTool, IMCPServer, MCPAuthToken } from "@/types/ai.types";
+import { ChatTool, ChatToolCall, IMCPServer, MCPAuthToken } from "@/types/ai.types";
 import { notEmpty, ok } from "@/utils/assert";
 import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
 import { MCPClient } from "../tools/mcp.client";
@@ -218,8 +218,12 @@ export function formatBedrockRequestTools(inputTools?: ChatTool[], mcpServers?: 
   return tools;
 }
 
-export function parseToolUse(toolUse: ToolUseBlock, tools: BedrockToolCallable[]): BedrockToolCall {
-  const toolUseId = toolUse.toolUseId || "unknown_id";
+export function parseToolUse(
+  toolUse: ToolUseBlock,
+  tools: BedrockToolCallable[],
+  call?: ChatToolCall
+): BedrockToolCall {
+  const toolUseId = toolUse.toolUseId || call?.callId || "unknown_id";
   const name = toolUse.name || "";
 
   // Find the tool in the provided tools list by name

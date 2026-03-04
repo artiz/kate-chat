@@ -48,3 +48,16 @@ export function sanitizeSurrogates(text: string): string {
   // Replace unpaired low surrogates (0xDC00-0xDFFF not preceded by high surrogate)
   return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
 }
+
+/**
+ * Simple hash function for cache keys (not cryptographic)
+ */
+export function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+}

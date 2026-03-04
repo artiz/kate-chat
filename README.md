@@ -48,13 +48,33 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ## TODO
 
+### Features/bugfixes
+
+* Make Client ID fo MCP hidden as Secret (add xx***xxx for both of them)
+* Use maxInputTokens to limit/trim messages content
+* Use cacheRetention like in PI agent for Bedrock and OpenAI proto
+* Add configurable localDiskCache to S3Service to increase models interaction with files
+* Use TS/JavaScript-REPL from https://github.com/microsoft/TypeScript-Website/tree/v2/packages/playground to run JS/TS on client
+* Extract IndexedDB chat data layer to katechat/ui
+* Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
+* Introduce Shared/System (shared could be cloned and reconfigured, shared one could be edited only be owner, system - admin only) MCP
+* Add System Github MCP (existing one with GITHUB_MCP_CLIENT_ID=Ov...)
+* Add System Gmail MCP (https://github.com/node2flow-th/gmail-mcp-community)
+* Add System Teams MCP (https://learn.microsoft.com/en-us/microsoft-agent-365/mcp-server-reference/teams)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
-* Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.
 * Introduce video generation, reuse requests queue
-* Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
-* Google Vertex AI provider support
 * Finish "Forgot password?" logic for local login
 * @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
+
+### Agents
+* Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.
+* New entities Agent, AgentSession
+* Setup with AGENTS.md, SOUL.md, BOOTSTRAP.md
+* Use refresh token im MCP, save tokens encoded in Redis for agents
+
+### APIs
+* Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
+* Google Vertex AI provider support
 * SerpApi for Web Search (new setting in UI)
 * Python API (FastAPI)
 * MySQL: check whether https://github.com/stephenc222/mysql_vss/ could be used for RAG

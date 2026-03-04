@@ -7,21 +7,9 @@ import { IMCPServer, MCPAuthToken } from "@/types/ai.types";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { MCPAuthType, MCPTransportType } from "@/types/api";
+import { simpleHash } from "@/utils/format";
 
 const logger = createLogger(__filename);
-
-/**
- * Simple hash function for cache keys (not cryptographic)
- */
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash).toString(36);
-}
 
 export interface MCPToolAnnotations {
   title?: string | undefined;
@@ -300,7 +288,7 @@ export class MCPClient {
       arguments: args,
     });
 
-    logger.debug({ toolName, serverId: this.server.id, result }, "Called MCP tool");
+    logger.debug({ toolName, serverId: this.server.id }, "Called MCP tool");
 
     return {
       content: Array.isArray(result?.content) ? result.content : [],
