@@ -4,7 +4,7 @@ import { Message } from "@/types/graphql";
 import { IconWorldSearch } from "@tabler/icons-react";
 import { TFunction, t as globalT } from "i18next";
 
-const WEB_SEARCH_TOOL_NAME = "internal-web_search";
+const WEB_SEARCH_TOOL_NAME = "internal_web_search";
 
 /** Web Search Details - Display web search tool results */
 export const WebSearchCall = (message: Message, t: TFunction = globalT): React.ReactNode => {

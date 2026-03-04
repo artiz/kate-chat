@@ -9,7 +9,7 @@ import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
 
-export const WEB_SEARCH_TOOL_NAME = "internal-web_search";
+export const WEB_SEARCH_TOOL_NAME = "internal_web_search";
 
 const dispatcher = new Agent({
   connectTimeout: 10_000,

@@ -11,9 +11,10 @@ import {
   IconVideo,
   IconMicrophone,
   IconPhoto,
+  IconBrain,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { Model, ToolType } from "@/types/graphql";
+import { Model, ModelFeature, ToolType } from "@/types/graphql";
 import { ModelType } from "@katechat/ui";
 
 interface IProps {
@@ -25,6 +26,8 @@ interface IProps {
 export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = false }) => {
   const { t } = useTranslation();
   const tools = new Set(model.tools || []);
+  const features = new Set(model.features || []);
+
   return (
     <Group gap="xs" wrap="nowrap" align="center">
       <Tooltip label={t("models.textInput")}>
@@ -86,6 +89,11 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
           {tools.has(ToolType.IMAGE_GENERATION) && (
             <Tooltip label={t("chat.imageGeneration")}>
               <IconPhoto size={size} />
+            </Tooltip>
+          )}
+          {features.has(ModelFeature.REASONING) && (
+            <Tooltip label={t("chat.thinking")}>
+              <IconBrain size={size} />
             </Tooltip>
           )}
         </>

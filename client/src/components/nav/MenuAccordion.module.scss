@@ -7,10 +7,6 @@
 .content {
   padding: 0 !important;
   margin: 0 !important;
-
-  :global(.mantine-NavLink-root) {
-    padding-inline: var(--mantine-spacing-md) !important;
-  }
 }
 
 .label {
@@ -21,7 +17,7 @@
 }
 
 .header {
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-md) var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-sm) var(--mantine-spacing-sm);
   font-weight: 600 !important;
   font-size: 80%;
   color: var(--mantine-color-brand-5);

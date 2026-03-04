@@ -214,16 +214,11 @@ export class BedrockApiProvider extends BaseApiProvider {
     const modelId = this.getModelId(request.modelId);
     let contextMessages = messages || [];
     let tooLongErrorRetries = 0;
+    let input: ConverseCommandInput | undefined = undefined;
 
     do {
       try {
-        const input = await this.formatConverseParams(request, contextMessages, requestTools, conversationMessages);
-
-        // reset tool choice for nova models after first call to avoid infinite loops
-        if (modelId.includes("amazon.nova") && conversationMessages.length > 0 && input.toolConfig) {
-          input.toolConfig.toolChoice = undefined;
-        }
-
+        input = await this.formatConverseParams(request, contextMessages, requestTools, conversationMessages);
         const command = new ConverseStreamCommand(input);
         let streamResponse: ConverseStreamCommandOutput | undefined = undefined;
 
@@ -259,10 +254,13 @@ export class BedrockApiProvider extends BaseApiProvider {
             }
           }
 
-          logger.warn(command, `Error calling ConverseStreamCommand: ${getErrorMessage(error)}`);
+          logger.error({ command, input }, `Error calling ConverseStreamCommand: ${getErrorMessage(error)}`);
+          if ("$response" in (error as any)) {
+            logger.error({ response: (error as any).$response }, "Detailed error response from AWS Bedrock");
+          }
 
-          // Re-throw if not the specific validation error we handle
-          throw error;
+          await callbacks.onError(error instanceof Error ? error : new Error(getErrorMessage(error)));
+          break;
         }
 
         let fullResponse = "";
@@ -345,7 +343,7 @@ export class BedrockApiProvider extends BaseApiProvider {
             };
           } else if (chunk.messageStop?.stopReason === "tool_use" && streamedToolUse.length > 0) {
             // Tool use detected - notify callback
-            await this.processConverseToolUse(
+            const inlineThinking = await this.processConverseToolUse(
               streamedToolUse,
               callbacks,
               fullResponse,
@@ -354,6 +352,11 @@ export class BedrockApiProvider extends BaseApiProvider {
               request.mcpTokens,
               thinkingBlocks
             );
+            if (inlineThinking.length) {
+              if (!metadata) metadata = {};
+              if (!metadata.reasoning) metadata.reasoning = [];
+              inlineThinking.forEach(text => metadata!.reasoning!.push({ text, timestamp: new Date() }));
+            }
 
             // Reset for next iteration
             fullResponse = "";
@@ -392,12 +395,17 @@ export class BedrockApiProvider extends BaseApiProvider {
             metadata,
           });
         }
-      } catch (e: unknown) {
-        logger.error(e, "ConverseStreamCommand failed");
-        if ("$response" in (e as any)) {
-          logger.error({ response: (e as any).$response }, "Detailed error response from AWS Bedrock");
+      } catch (error: unknown) {
+        logger.error(error, "ConverseCommand streaming failed");
+        if (input) {
+          logger.error({ input }, "Command input");
         }
-        await callbacks.onError(e instanceof Error ? e : new Error(getErrorMessage(e)));
+
+        if ("$response" in (error as any)) {
+          logger.error({ response: (error as any).$response }, "Detailed error response from AWS Bedrock");
+        }
+
+        await callbacks.onError(error instanceof Error ? error : new Error(getErrorMessage(error)));
         requestCompleted = true;
       }
     } while (!requestCompleted);
@@ -438,7 +446,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     requestTools: BedrockToolCallable[],
     mcpTokens?: MCPAuthToken[],
     thinkingBlocks: ContentBlock[] = []
-  ) {
+  ): Promise<string[]> {
     const toolCalls: ChatToolCall[] = streamedToolUse.map(tu => {
       const args = typeof tu.input === "string" ? tu.input : JSON.stringify(tu.input || {});
       return {
@@ -464,9 +472,12 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     // Build assistant message with tool use for conversation history
     // When thinking is enabled, thinking blocks must precede tool_use blocks
+    // Strip Nova's inline <thinking>...</thinking> from the text response
     const assistantContent: ContentBlock[] = [...thinkingBlocks];
-    if (fullResponse) {
-      assistantContent.push({ text: fullResponse });
+    const { cleanedText: cleanedResponse, thinkingBlocks: inlineThinking } =
+      BedrockApiProvider.stripThinkingTags(fullResponse);
+    if (cleanedResponse) {
+      assistantContent.push({ text: cleanedResponse });
     }
     streamedToolUse.forEach((tu, ndx) => {
       assistantContent.push({
@@ -528,6 +539,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     });
 
     await callbacks.onProgress("", { status: ResponseStatus.TOOL_CALL_COMPLETED, detail, tools: toolResults });
+    return inlineThinking;
   }
 
   public async getInfo(checkConnection = false): Promise<ProviderInfo> {
@@ -934,7 +946,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       inferenceConfig.topP = topP;
     }
 
-    const additionalModelRequestFields: DocumentType = {};
+    let additionalModelRequestFields: DocumentType | undefined;
 
     if (thinking && thinkingBudget) {
       let budget = Math.min(Math.max(thinkingBudget, AWS_BEDROCK_MIN_THINKING_BUDGET), AWS_BEDROCK_MAX_THINKING_BUDGET);
@@ -944,9 +956,11 @@ export class BedrockApiProvider extends BaseApiProvider {
       } else {
         inferenceConfig.maxTokens = Math.ceil(budget * 1.2) | 0;
       }
-      additionalModelRequestFields.thinking = {
-        type: "enabled",
-        budget_tokens: budget,
+      additionalModelRequestFields = {
+        thinking: {
+          type: "enabled",
+          budget_tokens: budget,
+        },
       };
     }
 
@@ -964,34 +978,38 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     // Add tool configuration if tools are provided
     if (requestTools.length > 0) {
-      const tools: Tool[] = requestTools;
-
-      if (modelId?.includes("amazon.nova")) {
-        command.toolConfig = {
-          tools,
-          toolChoice: {
-            tool: { name: tools[0]?.toolSpec?.name || "" },
-          },
-        };
-      } else {
-        command.toolConfig = {
-          tools,
-        };
-      }
+      command.toolConfig = {
+        toolChoice: { auto: {} },
+        tools: requestTools.map(t => ({ toolSpec: t.toolSpec })) as Tool[],
+      };
     }
 
     logger.trace(command, "Call Bedrock Converse API");
     return command;
   }
 
+  private static stripThinkingTags(text: string): { cleanedText: string; thinkingBlocks: string[] } {
+    const thinkingBlocks: string[] = [];
+    const cleanedText = text
+      .replace(/<thinking>([\s\S]*?)<\/thinking>\n?/g, (_, content) => {
+        thinkingBlocks.push(content.trim());
+        return "";
+      })
+      .trim();
+    return { cleanedText, thinkingBlocks };
+  }
+
   private async formatConverseMessages(messages: ModelMessage[]): Promise<ConverseMessage[]> {
     const requestMessages: ConverseMessage[] = [];
 
     for (const msg of messages) {
+      const isAssistant = msg.role === MessageRole.ASSISTANT;
       if (typeof msg.body === "string") {
+        const text = isAssistant ? BedrockApiProvider.stripThinkingTags(msg.body).cleanedText : msg.body;
+        if (!text) continue;
         requestMessages.push({
-          role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
-          content: [{ text: msg.body }],
+          role: isAssistant ? "assistant" : "user",
+          content: [{ text }],
         });
         continue;
       }
@@ -1031,14 +1049,15 @@ export class BedrockApiProvider extends BaseApiProvider {
             content.push(video);
           }
         } else if (part.contentType === "text") {
-          content.push({
-            text: sanitizeSurrogates(part.content),
-          });
+          let text = sanitizeSurrogates(part.content);
+          if (isAssistant) text = BedrockApiProvider.stripThinkingTags(text).cleanedText;
+          if (text) content.push({ text });
         }
       }
 
+      if (!content.length) continue;
       requestMessages.push({
-        role: msg.role === MessageRole.ASSISTANT ? "assistant" : "user",
+        role: isAssistant ? "assistant" : "user",
         content,
       });
     }
