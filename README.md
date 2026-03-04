@@ -55,7 +55,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
 * Add configurable localDiskCache to S3Service to increase models interaction with files
 * Use TS/JavaScript-REPL from https://github.com/microsoft/TypeScript-Website/tree/v2/packages/playground to run JS/TS on client
-* Extract IndexedDB chat data layer to katechat/ui
 * Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
 * Introduce Shared/System (shared could be cloned and reconfigured, shared one could be edited only be owner, system - admin only) MCP
 * Add System Github MCP (existing one with GITHUB_MCP_CLIENT_ID=Ov...)

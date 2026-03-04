@@ -264,7 +264,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
     return (
       <>
         <Group align="center" p="0">
-          <Group gap="sm" wrap="nowrap">
+          <Group gap="sm" wrap="nowrap" p="0">
             <Avatar color="gray" radius="xl" size="md" src={isUserMessage ? message?.user?.avatarUrl : undefined}>
               {isUserMessage ? (
                 <IconUser />
@@ -281,7 +281,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
               {timestamp}
             </Text>
           </Group>
-          <Group>
+          <Group p="0">
             {status && <MessageStatus status={status} />}
             {statusInfo && status !== ResponseStatus.REASONING && (
               <Text size="sm" c="dimmed">
@@ -290,7 +290,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
             )}
           </Group>
         </Group>
-        <div className={["katechat-message-content", streaming ? "streaming" : ""].join(" ")}>
+        <Box className={["katechat-message-content", streaming ? "streaming" : ""].join(" ")}>
           <StreamingStatus status={status} content={content} statusInfo={statusInfo} streaming={streaming} />
 
           {html ? (
@@ -299,7 +299,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
             <div>{content}</div>
           )}
 
-          <div className="katechat-message-footer">
+          <Box className="katechat-message-footer">
             <CopyMessageButton messageId={id} messageIndex={index} />
 
             {details && (
@@ -319,11 +319,11 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
             )}
 
             {plugins}
-          </div>
+          </Box>
           <Collapse in={showDetails}>
-            <div className="katechat-message-content-details">{details}</div>
+            <Box className="katechat-message-content-details">{details}</Box>
           </Collapse>
-        </div>
+        </Box>
       </>
     );
   }, [
