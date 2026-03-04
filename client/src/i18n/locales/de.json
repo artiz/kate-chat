@@ -598,6 +598,7 @@
     "newPassword": "Neues Passwort"
   },
   "profile": {
+    "admin": "Admin",
     "provider": "Anbieter: {{provider}}",
     "saveProfile": "Profil speichern",
     "theme": "Erscheinungsbild",

@@ -11,6 +11,7 @@ import {
   Divider,
   ActionIcon,
   Tooltip,
+  Indicator,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
 import { SearchDrawer } from "./search/SearchDrawer";
@@ -33,6 +34,7 @@ import NavbarContent from "./nav/NavbarContent";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
+import { UserRole } from "@/store/slices/userSlice";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle, close: closeNavbar }] = useDisclosure();
@@ -79,23 +81,24 @@ export const MainLayout: React.FC = () => {
         <Group h="100%" px="md" justify="space-between">
           <Group>
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-            <Text size="lg" fw={700}>
-              {appTitle}
-            </Text>
-            {appConfig?.demoMode && (
-              <Tooltip
-                label={t("nav.demoModeTooltip", {
-                  maxChats: appConfig.maxChats,
-                  maxChatMessages: appConfig.maxChatMessages,
-                  maxImages: appConfig.maxImages,
-                })}
-                color="red"
-              >
-                <Text size="sm" c="red" fw={500}>
-                  {t("nav.demoMode")}
+            <Tooltip
+              label={
+                appConfig?.demoMode
+                  ? t("nav.demoModeTooltip", {
+                      maxChats: appConfig?.maxChats,
+                      maxChatMessages: appConfig?.maxChatMessages,
+                      maxImages: appConfig?.maxImages,
+                    })
+                  : undefined
+              }
+              color={appConfig?.demoMode ? "red" : undefined}
+            >
+              <Indicator color="red" label={t("nav.demoMode")} disabled={!appConfig?.demoMode}>
+                <Text size="lg" fw={700}>
+                  {appTitle}
                 </Text>
-              </Tooltip>
-            )}
+              </Indicator>
+            </Tooltip>
           </Group>
           <Group>
             {isMobile && (
@@ -125,9 +128,11 @@ export const MainLayout: React.FC = () => {
               <Menu.Target>
                 <UnstyledButton>
                   <Group gap={8}>
-                    <Avatar color="blue" radius="xl" src={currentUser?.avatarUrl}>
-                      {userInitials}
-                    </Avatar>
+                    <Indicator color="red" label={t("profile.admin")} disabled={currentUser.role !== UserRole.ADMIN}>
+                      <Avatar color="blue" radius="xl" src={currentUser?.avatarUrl}>
+                        {userInitials}
+                      </Avatar>
+                    </Indicator>
                     <div>
                       <Text visibleFrom="sm" size="sm" fw={500}>
                         {currentUser?.firstName} {currentUser?.lastName}

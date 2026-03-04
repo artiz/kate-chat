@@ -100,7 +100,7 @@ const AppContent: React.FC = () => {
       if (returnUrl) {
         localStorage.removeItem(STORAGE_RETURN_URL_KEY);
         setTimeout(() => {
-          navigate(returnUrl, { replace: true });
+          navigate(returnUrl);
         }, 200);
       }
 
@@ -141,7 +141,7 @@ const AppContent: React.FC = () => {
         const path = location.pathname;
         const returnUrl = BASE_URLS.includes(path) ? "" : path;
         localStorage.setItem(STORAGE_RETURN_URL_KEY, returnUrl);
-        navigate("/login", { replace: true });
+        navigate("/login");
       }
     }
   }, [isError, error, loginTime]);

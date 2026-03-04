@@ -598,6 +598,7 @@
     "newPassword": "新密码"
   },
   "profile": {
+    "admin": "管理员",
     "provider": "提供者：{{provider}}",
     "saveProfile": "保存资料",
     "theme": "主题",

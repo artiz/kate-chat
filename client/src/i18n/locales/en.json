@@ -609,6 +609,7 @@
     "newPassword": "New Password"
   },
   "profile": {
+    "admin": "Admin",
     "provider": "Provider: {{provider}}",
     "saveProfile": "Save Profile",
     "theme": "Theme",

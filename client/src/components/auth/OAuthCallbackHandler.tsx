@@ -18,7 +18,7 @@ const OAuthCallbackHandler: React.FC = () => {
       dispatch(loginSuccess(token));
       navigate("/");
     } else {
-      navigate("/login", { replace: true });
+      navigate("/login");
     }
   }, [token, dispatch, navigate]);
 
