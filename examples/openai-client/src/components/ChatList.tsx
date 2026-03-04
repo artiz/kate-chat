@@ -17,8 +17,7 @@ import {
   IconPin,
   IconPinFilled,
 } from "@tabler/icons-react";
-import { sortItemsBySections } from "@katechat/ui";
-import { Chat } from "../lib/db";
+import { sortItemsBySections, Chat } from "@katechat/ui";
 
 interface ChatListProps {
   chats: Chat[];

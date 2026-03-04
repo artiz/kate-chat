@@ -67,7 +67,7 @@ renderer.table = (token: Tokens.Table): string => {
   const header = token.header
     .map((cell, i) => {
       const align = token.align[i];
-      return `<th${align ? ` align="${align}"` : ""}>${renderer.parser.parseInline(cell.tokens)}</th>`;
+      return `<th class="table-sort-btn" ${align ? ` align="${align}"` : ""}>${renderer.parser.parseInline(cell.tokens)}</th>`;
     })
     .join("");
 

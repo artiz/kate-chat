@@ -19,13 +19,14 @@ import {
   parseMarkdown,
   escapeHtml,
   LanguageSelector,
+  Chat,
+  useDatabaseChats,
+  useDatabaseMessages,
+  assert,
 } from "@katechat/ui";
 import { DEFAULT_MODEL, SettingsForm } from "./components/SettingsForm";
 import { ChatList } from "./components/ChatList";
 import { OpenAIClient, ApiMode } from "./lib/openai-client";
-import { useChats } from "./hooks/useChats";
-import { useMessages } from "./hooks/useMessages";
-import { Chat } from "./lib/db";
 
 import "./App.scss";
 
@@ -57,9 +58,9 @@ export const App: React.FC = () => {
     updateChat,
     deleteChat,
     updateChatTitle,
-  } = useChats();
+  } = useDatabaseChats();
   const { messages, addMessage, updateMessage, deleteMessages } =
-    useMessages(currentChatId);
+    useDatabaseMessages(currentChatId);
 
   // Initialize client when settings change
   React.useEffect(() => {
@@ -123,6 +124,8 @@ export const App: React.FC = () => {
         chatId = newChat.id;
         setCurrentChatId(chatId);
       }
+
+      assert.ok(chatId);
 
       // Add user message
       const userMessage: Message = {

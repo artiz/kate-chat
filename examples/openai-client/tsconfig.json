@@ -18,6 +18,10 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "../../packages/katechat-ui/src/hooks/data/useDatabaseMessages.ts",
+    "../../packages/katechat-ui/src/hooks/data/useDatabaseChats.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
