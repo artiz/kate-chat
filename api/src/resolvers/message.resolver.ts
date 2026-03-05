@@ -286,6 +286,31 @@ export class MessageResolver extends BaseResolver {
     }
   }
 
+  @Mutation(() => EditMessageResponse)
+  async updateMessageContent(
+    @Arg("messageId", () => ID) messageId: string,
+    @Arg("content") content: string,
+    @Ctx() context: GraphQLContext
+  ): Promise<EditMessageResponse> {
+    try {
+      const token = await this.validateContextToken(context);
+      const message = await this.messageRepository.findOne({ where: { id: messageId } });
+      if (!message) return { error: "Message not found" };
+      if (!message.chatId) return { error: "Message is not associated with a chat" };
+
+      // Verify the message belongs to a chat owned by this user (or admin)
+      const chat = await this.chatsService.getChat(message.chatId, isAdmin(token) ? undefined : token.userId);
+      if (!chat) return { error: "Chat not found or access denied" };
+
+      message.content = content;
+      await this.messageRepository.save(message);
+      return { message };
+    } catch (error) {
+      logger.error(error, "Error updating message content");
+      return { error: `Failed to update message: ${error instanceof Error ? error.message : String(error)}` };
+    }
+  }
+
   @Mutation(() => StopMessageGenerationResponse)
   async stopMessageGeneration(
     @Arg("input") input: StopMessageGenerationInput,

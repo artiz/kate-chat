@@ -1,16 +1,35 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Modal, Button, Group, Text, Loader, ScrollArea, Box, Textarea, ActionIcon, Tooltip } from "@mantine/core";
-import { IconPlayerPlay, IconTrash, IconDownload, IconCopy, IconCheck } from "@tabler/icons-react";
+import { IconPlayerPlay, IconTrash, IconDownload, IconCopy, IconCheck, IconDeviceFloppy } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
+import { useMutation } from "@apollo/client";
+import { UPDATE_MESSAGE_CONTENT_MUTATION } from "@/store/services/graphql.queries";
 
 import "./PythonExecutorModal.scss";
 
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/";
 
+/** Replace the blockIndex-th fenced code block in markdown content with newCode */
+function replaceCodeBlock(content: string, blockIndex: number, newCode: string): string {
+  let count = -1;
+  return content.replace(/```[^\n]*\n[\s\S]*?```/g, match => {
+    count++;
+    if (count === blockIndex) {
+      const langLine = match.split("\n")[0];
+      return `${langLine}\n${newCode}\n\`\`\``;
+    }
+    return match;
+  });
+}
+
 interface PythonExecutorModalProps {
   opened: boolean;
   onClose: () => void;
   initialCode: string;
+  messageId?: string;
+  blockIndex?: number;
+  messageContent?: string;
+  onSaved?: (messageId: string, newContent: string) => void;
 }
 
 interface OutputEntry {
@@ -143,9 +162,18 @@ const CopyImageButton: React.FC<{ dataUrl: string }> = ({ dataUrl }) => {
   );
 };
 
-export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened, onClose, initialCode }) => {
+export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
+  opened,
+  onClose,
+  initialCode,
+  messageId,
+  blockIndex,
+  messageContent,
+  onSaved,
+}) => {
   const { t } = useTranslation();
   const [code, setCode] = useState(initialCode);
+  const [updateMessageContent, { loading: saving }] = useMutation(UPDATE_MESSAGE_CONTENT_MUTATION);
   const [output, setOutput] = useState<OutputEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [pyodideReady, setPyodideReady] = useState(!!pyodideInstance);
@@ -297,6 +325,15 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
     [runCode]
   );
 
+  const saveCode = useCallback(async () => {
+    if (!messageId || messageContent === undefined || blockIndex === undefined) return;
+    const newContent = replaceCodeBlock(messageContent, blockIndex, code);
+    const result = await updateMessageContent({ variables: { messageId, content: newContent } });
+    if (!result.data?.updateMessageContent?.error) {
+      onSaved?.(messageId, newContent);
+    }
+  }, [messageId, messageContent, blockIndex, code, updateMessageContent, onSaved]);
+
   return (
     <Modal
       opened={opened}
@@ -433,6 +470,17 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         <Button variant="default" onClick={onClose}>
           {t("common.close")}
         </Button>
+        {messageId && (
+          <Button
+            color="green"
+            onClick={saveCode}
+            disabled={!pyodideReady || loading || saving}
+            loading={saving}
+            leftSection={<IconDeviceFloppy size={16} />}
+          >
+            {t("codePlugin.save")}
+          </Button>
+        )}
         <Button
           color="teal"
           onClick={runCode}

@@ -617,6 +617,7 @@
     "downloadOutput": "下载输出",
     "output": "输出",
     "outputPlaceholder": "输出将在此显示...",
+    "save": "保存",
     "javascript": {
       "enterCode": "输入 JavaScript 代码...",
       "title": "JavaScript 执行器"

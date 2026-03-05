@@ -628,6 +628,7 @@
     "downloadOutput": "Download output",
     "output": "Output",
     "outputPlaceholder": "Output will appear here...",
+    "save": "Save",
     "javascript": {
       "enterCode": "Enter JavaScript code...",
       "title": "JavaScript Executor"

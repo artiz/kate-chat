@@ -50,7 +50,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
-* Use TS/JavaScript-REPL from https://github.com/microsoft/TypeScript-Website/tree/v2/packages/playground to run JS/TS on client
 * Use maxInputTokens to limit/trim messages content
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
 * Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)

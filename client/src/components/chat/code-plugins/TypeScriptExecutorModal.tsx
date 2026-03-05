@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Modal, Button, Group, Text, Loader, ScrollArea, Box, Textarea, ActionIcon, Tooltip } from "@mantine/core";
-import { IconPlayerPlay, IconTrash, IconDownload } from "@tabler/icons-react";
+import { IconPlayerPlay, IconTrash, IconDownload, IconDeviceFloppy } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
+import { useMutation } from "@apollo/client";
+import { UPDATE_MESSAGE_CONTENT_MUTATION } from "@/store/services/graphql.queries";
 
 import "./TypeScriptExecutorModal.scss";
 
@@ -9,11 +11,28 @@ const TS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/typescript/5.7.3/typescri
 
 export type TSExecutorLanguage = "typescript" | "javascript";
 
+/** Replace the blockIndex-th fenced code block in markdown content with newCode */
+function replaceCodeBlock(content: string, blockIndex: number, newCode: string): string {
+  let count = -1;
+  return content.replace(/```[^\n]*\n[\s\S]*?```/g, match => {
+    count++;
+    if (count === blockIndex) {
+      const langLine = match.split("\n")[0];
+      return `${langLine}\n${newCode}\n\`\`\``;
+    }
+    return match;
+  });
+}
+
 interface TypeScriptExecutorModalProps {
   opened: boolean;
   onClose: () => void;
   initialCode: string;
   language: TSExecutorLanguage;
+  messageId?: string;
+  blockIndex?: number;
+  messageContent?: string;
+  onSaved?: (messageId: string, newContent: string) => void;
 }
 
 interface OutputEntry {
@@ -127,9 +146,14 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
   onClose,
   initialCode,
   language,
+  messageId,
+  blockIndex,
+  messageContent,
+  onSaved,
 }) => {
   const { t } = useTranslation();
   const isTypeScript = language === "typescript";
+  const [updateMessageContent, { loading: saving }] = useMutation(UPDATE_MESSAGE_CONTENT_MUTATION);
 
   const [code, setCode] = useState(initialCode);
   const [output, setOutput] = useState<OutputEntry[]>([]);
@@ -237,6 +261,15 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
     },
     [runCode]
   );
+
+  const saveCode = useCallback(async () => {
+    if (!messageId || messageContent === undefined || blockIndex === undefined) return;
+    const newContent = replaceCodeBlock(messageContent, blockIndex, code);
+    const result = await updateMessageContent({ variables: { messageId, content: newContent } });
+    if (!result.data?.updateMessageContent?.error) {
+      onSaved?.(messageId, newContent);
+    }
+  }, [messageId, messageContent, blockIndex, code, updateMessageContent, onSaved]);
 
   const title = isTypeScript ? t("codePlugin.typescript.title") : t("codePlugin.javascript.title");
   const color = isTypeScript ? "blue" : "yellow";
@@ -349,6 +382,17 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
         <Button variant="default" onClick={onClose}>
           {t("common.close")}
         </Button>
+        {messageId && (
+          <Button
+            color="green"
+            onClick={saveCode}
+            disabled={loading || saving}
+            loading={saving}
+            leftSection={<IconDeviceFloppy size={16} />}
+          >
+            {t("codePlugin.save")}
+          </Button>
+        )}
         <Button
           color={color}
           onClick={runCode}

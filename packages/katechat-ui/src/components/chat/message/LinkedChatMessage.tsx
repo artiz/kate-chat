@@ -24,7 +24,7 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
   }, [models, message.modelId]);
 
   return (
-    <Box key={message.id}>
+    <Box key={message.id} data-linked-message-id={message.id}>
       <Group align="center" pt="sm">
         <Avatar radius="xl" size="md">
           {model ? <ProviderIcon apiProvider={model.apiProvider} provider={model.provider} /> : <IconRobot />}

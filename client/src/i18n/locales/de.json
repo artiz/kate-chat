@@ -617,6 +617,7 @@
     "downloadOutput": "Ausgabe herunterladen",
     "output": "Ausgabe",
     "outputPlaceholder": "Ausgabe erscheint hier...",
+    "save": "Speichern",
     "javascript": {
       "enterCode": "JavaScript-Code eingeben...",
       "title": "JavaScript-Executor"

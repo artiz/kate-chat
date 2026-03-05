@@ -26,6 +26,7 @@ import {
   ChatInput,
   ChatInputRef,
   DropFilesOverlay,
+  parseMarkdown,
 } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -69,7 +70,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const { codePlugins, PythonCodeModal, TSCodeModal } = useCodePlugins();
   const [editedTitle, setEditedTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [sending, setSending] = useState(false);
@@ -98,6 +98,23 @@ export const ChatComponent = ({ chatId }: IProps) => {
     streaming,
     chat,
   } = useChatMessages({ chatId });
+
+  const { codePlugins, PythonCodeModal, TSCodeModal } = useCodePlugins({
+    onMessageSaved: useCallback(
+      (messageId: string, newContent: string) => {
+        // Search top-level messages first, then inside linkedMessages
+        let msg = messages?.find(m => m.id === messageId);
+        if (!msg) {
+          for (const m of messages ?? []) {
+            msg = m.linkedMessages?.find(lm => lm.id === messageId);
+            if (msg) break;
+          }
+        }
+        if (msg) addChatMessage({ ...msg, content: newContent, html: parseMarkdown(newContent) });
+      },
+      [messages, addChatMessage]
+    ),
+  });
 
   const { wsConnected, messageMetadata } = useChatSubscription({
     id: chatId,

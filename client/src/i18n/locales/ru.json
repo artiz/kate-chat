@@ -617,6 +617,7 @@
     "downloadOutput": "Скачать вывод",
     "output": "Вывод",
     "outputPlaceholder": "Вывод появится здесь...",
+    "save": "Сохранить",
     "javascript": {
       "enterCode": "Введите код JavaScript...",
       "title": "JavaScript-исполнитель"

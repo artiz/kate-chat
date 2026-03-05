@@ -341,6 +341,19 @@ export const EDIT_MESSAGE_MUTATION = gql`
   }
 `;
 
+export const UPDATE_MESSAGE_CONTENT_MUTATION = gql`
+  mutation UpdateMessageContent($messageId: ID!, $content: String!) {
+    updateMessageContent(messageId: $messageId, content: $content) {
+      message {
+        ...BaseMessage
+      }
+      error
+    }
+  }
+
+  ${BASE_MESSAGE_FRAGMENT}
+`;
+
 export const STOP_MESSAGE_GENERATION_MUTATION = gql`
   mutation StopMessageGeneration($input: StopMessageGenerationInput!) {
     stopMessageGeneration(input: $input) {

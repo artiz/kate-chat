@@ -131,7 +131,24 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
                 });
               }
 
-              codePlugins?.[lang]?.execute(code, lang);
+              const messageEl = target.closest('[id^="message-"]') as HTMLElement | null;
+              const parentMessageId = messageEl?.id.replace("message-", "");
+              const parentMsg = parentMessageId ? messages.find(m => m.id === parentMessageId) : undefined;
+
+              // Check if inside a linked message (carousel)
+              const linkedEl = target.closest("[data-linked-message-id]") as HTMLElement | null;
+              const linkedMessageId = linkedEl?.dataset["linkedMessageId"];
+              const msg = linkedMessageId ? parentMsg?.linkedMessages?.find(m => m.id === linkedMessageId) : parentMsg;
+
+              // Count code blocks within the same message container
+              const containerEl = linkedEl ?? messageEl;
+              const allCodeBlocks = containerEl?.querySelectorAll(".code-block");
+              const thisCodeBlock = target.closest(".code-block");
+              const blockIndex =
+                allCodeBlocks && thisCodeBlock ? Array.from(allCodeBlocks).indexOf(thisCodeBlock as Element) : 0;
+
+              const context = msg ? { messageId: msg.id, blockIndex, messageContent: msg.content } : undefined;
+              codePlugins?.[lang]?.execute(code, lang, context);
             } else {
               const fileName = `code.${getProgrammingLanguageExt(lang || "txt")}`;
               const blob = new Blob([code], { type: "text/plain" });

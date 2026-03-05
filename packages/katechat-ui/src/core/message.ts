@@ -62,10 +62,17 @@ export interface ImageInput {
   bytesBase64: string;
 }
 
+/** Context passed to a CodePlugin when the user clicks Execute */
+export interface CodePluginContext {
+  messageId: string;
+  blockIndex: number;
+  messageContent: string;
+}
+
 /** Plugin for executing code blocks of a specific language (e.g. Python via Pyodide) */
 export interface CodePlugin {
   /** Human-readable label for the execute button, e.g. "Run Python" */
   label: string;
   /** Called when the user clicks Execute on a code block */
-  execute: (code: string, language: string) => void;
+  execute: (code: string, language: string, context?: CodePluginContext) => void;
 }
