@@ -41,6 +41,7 @@ import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MessagesService } from "@/services/messages.service";
+import { S3Service } from "@/services/data/s3.service";
 import { HttpError } from "./types/exceptions";
 import { DocumentSqsService, RequestsSqsService, SubscriptionsService } from "./services/messaging";
 import { servicesMiddleware } from "./middleware/services.middleware";
@@ -63,6 +64,8 @@ async function bootstrap() {
   if (!dbConnected) {
     process.exit(1);
   }
+
+  S3Service.initDiskCache();
 
   subscriptionsService = new SubscriptionsService();
   requestsSqsService = new RequestsSqsService();

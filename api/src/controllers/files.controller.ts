@@ -1,7 +1,5 @@
 import { Router, Request, Response } from "express";
-import { Readable } from "stream";
 import { IncomingForm, File as FormidableFile } from "formidable";
-import { GetObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 import fs from "fs";
 import { createLogger } from "@/utils/logger";
@@ -217,7 +215,27 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
   });
 });
 
-// Get file from S3
+const CONTENT_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".webp": "image/webp",
+  ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".json": "application/json",
+  ".mp4": "video/mp4",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+};
+
+function getContentType(name: string): string {
+  const ext = path.extname(name).toLowerCase();
+  return CONTENT_TYPES[ext] || "application/octet-stream";
+}
+
+// Get file from S3 (with local disk cache when configured)
 router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, res: Response) => {
   try {
     let fileKey = Array.isArray(req.params.fileKey) ? req.params.fileKey.join("/") : req.params.fileKey;
@@ -227,46 +245,20 @@ router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, r
       fileKey = fileKey.substring(0, fileKey.length - 1);
     }
 
-    // Create S3 service with connection params from request
     const s3Service = new S3Service(req.tokenPayload);
 
     logger.debug({ fileKey, ...req.tokenPayload }, "Fetching file from S3");
 
-    // Use the internal S3 client of S3Service class
-    // This is a bit of a hack but avoids duplicating S3 client code
-    const s3Client = await s3Service.getClient();
-    const bucketName = s3Service.bucket;
+    const buffer = await s3Service.getFileContent(fileKey);
 
-    if (!s3Client) {
-      res.status(501).send("S3 client not configured");
-      return;
-    }
-
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: fileKey,
-    });
-
-    const s3Object = await s3Client.send(command);
-
-    // Set appropriate headers
-    if (s3Object.ContentType) {
-      res.setHeader("Content-Type", s3Object.ContentType);
-    }
+    const contentType = getContentType(fileName || fileKey);
+    res.setHeader("Content-Type", contentType);
     if (fileName) {
       res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
     }
-
-    // Set cache control headers
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1 year
 
-    // Stream the file to the response
-    if (s3Object.Body instanceof Readable) {
-      s3Object.Body.pipe(res);
-    } else {
-      const buffer = await s3Object?.Body?.transformToByteArray();
-      res.send(buffer);
-    }
+    res.send(buffer);
   } catch (error) {
     logger.error(error, `Error fetching ${req.params.fileKey} from S3`);
 

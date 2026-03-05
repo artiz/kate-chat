@@ -93,7 +93,7 @@ export const MainLayout: React.FC = () => {
               }
               color={appConfig?.demoMode ? "red" : undefined}
             >
-              <Indicator color="red" label={t("nav.demoMode")} disabled={!appConfig?.demoMode}>
+              <Indicator color="red" size="md" label={t("nav.demoMode")} disabled={!appConfig?.demoMode}>
                 <Text size="lg" fw={700}>
                   {appTitle}
                 </Text>
@@ -128,7 +128,12 @@ export const MainLayout: React.FC = () => {
               <Menu.Target>
                 <UnstyledButton>
                   <Group gap={8}>
-                    <Indicator color="red" label={t("profile.admin")} disabled={currentUser.role !== UserRole.ADMIN}>
+                    <Indicator
+                      color="red"
+                      size="md"
+                      label={t("profile.admin")}
+                      disabled={currentUser.role !== UserRole.ADMIN}
+                    >
                       <Avatar color="blue" radius="xl" src={currentUser?.avatarUrl}>
                         {userInitials}
                       </Avatar>

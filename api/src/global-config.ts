@@ -129,6 +129,8 @@ export interface GlobalConfigShape {
     accessKeyId?: string;
     secretAccessKey?: string;
     filesBucketName?: string;
+    filesDriveCacheSizeMb?: number;
+    filesDriveCachePath?: string;
     profile?: string;
     credentialsSource?: CredentialSourceType;
   };
@@ -348,6 +350,8 @@ export class GlobalConfig {
         accessKeyId: process.env.S3_ACCESS_KEY_ID,
         secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
         filesBucketName: process.env.S3_FILES_BUCKET_NAME,
+        filesDriveCacheSizeMb: +(process.env.S3_FILES_DRIVE_CACHE_SIZE_MB || 2048) | 0, // AWS Fargate provides 20 GB of free ephemeral storage
+        filesDriveCachePath: process.env.S3_FILES_DRIVE_CACHE_PATH || "/tmp/katechat-s3-cache",
         profile: process.env.S3_AWS_PROFILE,
         credentialsSource:
           process.env.S3_FILES_BUCKET_NAME &&

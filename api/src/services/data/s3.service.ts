@@ -1,4 +1,6 @@
 import fs from "fs";
+import path from "path";
+import crypto from "crypto";
 import {
   S3Client,
   PutObjectCommand,
@@ -31,8 +33,30 @@ export class S3Service implements FileContentLoader {
   private s3client: S3Client;
   private connecting: boolean = true;
   private bucketName: string;
+  private diskCachePath: string | null = null;
+  private diskCacheSizeMb: number = 0;
+
+  static initDiskCache(): void {
+    const cacheSizeMb = globalConfig.s3.filesDriveCacheSizeMb ?? 0;
+    const cachePath = globalConfig.s3.filesDriveCachePath;
+    if (cacheSizeMb > 0 && cachePath) {
+      try {
+        fs.mkdirSync(cachePath, { recursive: true });
+        logger.debug({ cachePath, cacheSizeMb }, "S3 disk cache initialized");
+      } catch (err) {
+        logger.warn({ err, cachePath }, "Failed to create S3 disk cache directory");
+      }
+    }
+  }
 
   constructor(token?: TokenPayload) {
+    const cacheSizeMb = globalConfig.s3.filesDriveCacheSizeMb ?? 0;
+    const cachePath = globalConfig.s3.filesDriveCachePath;
+    if (cacheSizeMb > 0 && cachePath) {
+      this.diskCacheSizeMb = cacheSizeMb;
+      this.diskCachePath = cachePath;
+    }
+
     const envSettings: UserSettings = {
       s3FilesBucketName: globalConfig.s3.filesBucketName,
       s3Endpoint: globalConfig.s3.endpoint,
@@ -161,6 +185,9 @@ export class S3Service implements FileContentLoader {
 
       logger.debug({ key }, "Uploading file to S3");
       await client.send(new PutObjectCommand(params));
+      if (this.diskCachePath) {
+        this.writeToCacheBackground(key, content);
+      }
       return key;
     } catch (error) {
       logger.error(error, "Failed to upload file to S3");
@@ -293,6 +320,30 @@ export class S3Service implements FileContentLoader {
   }
 
   async getFileContent(fileKey: string): Promise<Buffer> {
+    if (this.diskCachePath) {
+      const cacheFile = this.getCacheFilePath(fileKey);
+      try {
+        const data = await fs.promises.readFile(cacheFile);
+        // Update mtime to track last access for LRU eviction
+        const now = new Date();
+        fs.promises.utimes(cacheFile, now, now).catch(() => {});
+        logger.debug({ fileKey }, "Disk cache hit");
+        return data;
+      } catch {
+        // Cache miss — fall through to S3
+      }
+    }
+
+    const buffer = await this.fetchFromS3(fileKey);
+
+    if (this.diskCachePath) {
+      this.writeToCacheBackground(fileKey, buffer);
+    }
+
+    return buffer;
+  }
+
+  private async fetchFromS3(fileKey: string): Promise<Buffer> {
     const client = await this.getClient();
     if (!client) {
       throw new Error("S3 client is not configured");
@@ -321,5 +372,65 @@ export class S3Service implements FileContentLoader {
    */
   public static getFileUrl(key: string, fileName?: string): string {
     return `/files/${key}${fileName ? `?name=${encodeURIComponent(fileName)}` : ""}`;
+  }
+
+  private getCacheFilePath(key: string): string {
+    // Use a hash of the key so the cache is always flat — no subdirs regardless of S3 key format
+    const hash = crypto.createHash("sha256").update(key).digest("hex");
+    return path.join(this.diskCachePath!, hash);
+  }
+
+  private writeToCacheBackground(key: string, content: Buffer): void {
+    const cacheFile = this.getCacheFilePath(key);
+    fs.promises
+      .writeFile(cacheFile, content)
+      .then(() => this.evictIfNeeded())
+      .catch(err => logger.warn({ err, key }, "Failed to write to disk cache"));
+  }
+
+  private async evictIfNeeded(): Promise<void> {
+    if (!this.diskCachePath || !this.diskCacheSizeMb) return;
+
+    const maxBytes = this.diskCacheSizeMb * 1024 * 1024;
+
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(this.diskCachePath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const files: { path: string; size: number; mtime: number }[] = [];
+    await Promise.all(
+      entries
+        .filter(e => e.isFile())
+        .map(async entry => {
+          const fullPath = path.join(this.diskCachePath!, entry.name);
+          try {
+            const stat = await fs.promises.stat(fullPath);
+            files.push({ path: fullPath, size: stat.size, mtime: stat.mtimeMs });
+          } catch {
+            // deleted concurrently
+          }
+        })
+    );
+
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize <= maxBytes) return;
+
+    // Sort oldest (by mtime) first
+    files.sort((a, b) => a.mtime - b.mtime);
+
+    let currentSize = totalSize;
+    for (const file of files) {
+      if (currentSize <= maxBytes * 0.9) break; // evict down to 90% to reduce churn
+      try {
+        await fs.promises.unlink(file.path);
+        currentSize -= file.size;
+        logger.debug({ file: file.path }, "Evicted file from disk cache");
+      } catch {
+        // ignore
+      }
+    }
   }
 }
