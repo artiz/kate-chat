@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { CodePlugin, CodePluginContext } from "@katechat/ui";
 import { PythonExecutorModal } from "./PythonExecutorModal";
 import { TypeScriptExecutorModal, TSExecutorLanguage } from "./TypeScriptExecutorModal";
+import { GoExecutorModal } from "./GoExecutorModal";
 import { useTranslation } from "react-i18next";
 
 interface UseCodePluginsOptions {
@@ -9,13 +10,14 @@ interface UseCodePluginsOptions {
 }
 
 /**
- * Hook providing Python, TypeScript, and JavaScript CodePlugins.
+ * Hook providing Python, TypeScript, JavaScript, and Go CodePlugins.
  * Returns the codePlugins record and the modal components to render.
  */
 export function useCodePlugins(options?: UseCodePluginsOptions): {
   codePlugins: Record<string, CodePlugin>;
   PythonCodeModal: React.ReactNode;
   TSCodeModal: React.ReactNode;
+  GoCodeModal: React.ReactNode;
 } {
   const { onMessageSaved } = options ?? {};
 
@@ -27,6 +29,10 @@ export function useCodePlugins(options?: UseCodePluginsOptions): {
   const [tsCode, setTsCode] = useState("");
   const [tsLanguage, setTsLanguage] = useState<TSExecutorLanguage>("typescript");
   const [tsContext, setTsContext] = useState<CodePluginContext | undefined>();
+
+  const [openedGo, setOpenedGo] = useState(false);
+  const [goCode, setGoCode] = useState("");
+  const [goContext, setGoContext] = useState<CodePluginContext | undefined>();
 
   const { t, i18n } = useTranslation();
 
@@ -43,13 +49,20 @@ export function useCodePlugins(options?: UseCodePluginsOptions): {
     setOpenedTS(true);
   }, []);
 
+  const executeGo = useCallback((code: string, _language: string, context?: CodePluginContext) => {
+    setGoCode(code);
+    setGoContext(context);
+    setOpenedGo(true);
+  }, []);
+
   const codePlugins = useMemo<Record<string, CodePlugin>>(
     () => ({
       python: { label: t("chat.codeRun"), execute: executePython },
       typescript: { label: t("chat.codeRun"), execute: executeTypeScript },
       javascript: { label: t("chat.codeRun"), execute: executeTypeScript },
+      go: { label: t("chat.codeRun"), execute: executeGo },
     }),
-    [executePython, executeTypeScript, i18n.language]
+    [executePython, executeTypeScript, executeGo, i18n.language]
   );
 
   const PythonCodeModal = (
@@ -77,5 +90,17 @@ export function useCodePlugins(options?: UseCodePluginsOptions): {
     />
   );
 
-  return { codePlugins, PythonCodeModal, TSCodeModal };
+  const GoCodeModal = (
+    <GoExecutorModal
+      opened={openedGo}
+      onClose={() => setOpenedGo(false)}
+      initialCode={goCode}
+      messageId={goContext?.messageId}
+      blockIndex={goContext?.blockIndex}
+      messageContent={goContext?.messageContent}
+      onSaved={onMessageSaved}
+    />
+  );
+
+  return { codePlugins, PythonCodeModal, TSCodeModal, GoCodeModal };
 }

@@ -217,6 +217,55 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
   }
 });
 
+// CORS proxy for external APIs (e.g., Go Playground)
+router.post("/proxy", async (req: Request, res: Response) => {
+  try {
+    const { url, body, method = "POST" } = req.body;
+
+    if (!url) {
+      res.status(400).json({ error: "Missing 'url' parameter" });
+      return;
+    }
+
+    // Whitelist allowed domains to prevent abuse (from global config)
+    const allowedDomains = globalConfig.app.allowedProxyDomains;
+    const targetUrl = new URL(url);
+    const isDomainAllowed = allowedDomains.some(domain => targetUrl.hostname.endsWith(domain));
+
+    if (!isDomainAllowed) {
+      logger.warn({ url, hostname: targetUrl.hostname }, "Proxy request to unauthorized domain blocked");
+      res.status(403).json({ error: "Domain not allowed" });
+      return;
+    }
+
+    logger.debug({ url, method }, "Proxying request");
+
+    const proxyResponse = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: body ? new URLSearchParams(body).toString() : undefined,
+    });
+
+    const responseData = await proxyResponse.text();
+
+    // Try to parse as JSON, otherwise return as text
+    let parsedData;
+    try {
+      parsedData = JSON.parse(responseData);
+    } catch {
+      parsedData = { output: responseData };
+    }
+
+    res.status(proxyResponse.status).json(parsedData);
+  } catch (err) {
+    logger.error(err, "Proxy request failed");
+    res.status(500).json({ error: err instanceof Error ? err.message : "Proxy request failed" });
+  }
+});
+
 // Error handler for OAuth routes — return HTML page instead of JSON
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 router.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

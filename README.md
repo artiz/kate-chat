@@ -52,6 +52,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 * Use maxInputTokens to limit/trim messages content
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
+* Add Java code executor loke Go one with https://codapi.org/java/
 * Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
 * Introduce Shared/System (shared could be cloned and reconfigured, shared one could be edited only be owner, system - admin only) MCP
 * Add System Github MCP (existing one with GITHUB_MCP_CLIENT_ID=Ov...)

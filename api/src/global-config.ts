@@ -49,6 +49,7 @@ export interface GlobalConfigShape {
     maxInputJson: string;
     allowedOrigins: string[];
     defaultAdminEmails: string[];
+    allowedProxyDomains: string[];
   };
   runtime: {
     port: number;
@@ -266,6 +267,7 @@ export class GlobalConfig {
         allowedOrigins: (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:4000")
           .split(",")
           .map(o => o.trim()),
+        allowedProxyDomains: (process.env.ALLOWED_PROXY_DOMAINS || "go.dev,goplay.space").split(",").map(d => d.trim()),
       },
       demoMode,
       limits: {

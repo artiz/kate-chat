@@ -645,6 +645,13 @@
       "failedToLoad": "Failed to load TypeScript compiler: {{error}}",
       "runtimeReady": "(TypeScript ready)",
       "title": "TypeScript Executor"
+    },
+    "go": {
+      "enterCode": "Enter Go code...",
+      "title": "Go Executor",
+      "format": "Format",
+      "executedOn": "Executed on go.dev",
+      "disclaimer": "Code is executed on the official Go Playground (https://go.dev/play). Internet connection required."
     }
   },
   "settings": {

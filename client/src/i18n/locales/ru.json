@@ -634,6 +634,13 @@
       "failedToLoad": "Не удалось загрузить компилятор TypeScript: {{error}}",
       "runtimeReady": "(TypeScript готов)",
       "title": "TypeScript-исполнитель"
+    },
+    "go": {
+      "enterCode": "Введите код Go...",
+      "title": "Go-исполнитель",
+      "format": "Форматировать",
+      "executedOn": "Выполнено на go.dev",
+      "disclaimer": "Код выполняется на официальной Go Playground (https://go.dev/play). Требуется подключение к Интернету."
     }
   },
   "messageDetails": {

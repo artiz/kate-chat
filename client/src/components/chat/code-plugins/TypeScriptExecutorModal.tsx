@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation } from "@apollo/client";
 import { UPDATE_MESSAGE_CONTENT_MUTATION } from "@/store/services/graphql.queries";
 
-import "./TypeScriptExecutorModal.scss";
+import "./CodeExecutorModal.scss";
 
 const TS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/typescript/5.7.3/typescript.min.js";
 
@@ -301,8 +301,8 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
         </Text>
       )}
 
-      <div className="ts-executor-container">
-        <div className="ts-executor-editor">
+      <div className="code-executor-container">
+        <div className="executor-editor">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
               {t("codePlugin.code")}
@@ -331,7 +331,7 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
           />
         </div>
 
-        <div className="ts-executor-output">
+        <div className="executor-output">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
               {t("codePlugin.output")}
@@ -354,8 +354,8 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
             </Group>
           </Group>
 
-          <ScrollArea className="ts-executor-output-scroll" viewportRef={outputRef}>
-            <Box className="ts-executor-output-content">
+          <ScrollArea className="executor-output-scroll" viewportRef={outputRef}>
+            <Box className="executor-output-content">
               {output.length === 0 && (
                 <Text size="xs" c="dimmed" fs="italic">
                   {t("codePlugin.outputPlaceholder")}
@@ -379,11 +379,12 @@ export const TypeScriptExecutorModal: React.FC<TypeScriptExecutorModalProps> = (
       </div>
 
       <Group justify="flex-end" mt="md">
-        <Button variant="default" onClick={onClose}>
+        <Button variant="light" onClick={onClose}>
           {t("common.close")}
         </Button>
         {messageId && (
           <Button
+            variant="light"
             color="green"
             onClick={saveCode}
             disabled={loading || saving}

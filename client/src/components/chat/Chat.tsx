@@ -99,7 +99,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     chat,
   } = useChatMessages({ chatId });
 
-  const { codePlugins, PythonCodeModal, TSCodeModal } = useCodePlugins({
+  const { codePlugins, PythonCodeModal, TSCodeModal, GoCodeModal } = useCodePlugins({
     onMessageSaved: useCallback(
       (messageId: string, newContent: string) => {
         // Search top-level messages first, then inside linkedMessages
@@ -593,6 +593,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
       {PythonCodeModal}
       {TSCodeModal}
+      {GoCodeModal}
 
       <Drawer
         opened={documentsOpened}

@@ -634,6 +634,13 @@
       "failedToLoad": "加载 TypeScript 编译器失败：{{error}}",
       "runtimeReady": "（TypeScript 就绪）",
       "title": "TypeScript 执行器"
+    },
+    "go": {
+      "enterCode": "输入 Go 代码...",
+      "title": "Go 执行器",
+      "format": "格式化",
+      "executedOn": "在 go.dev 上执行",
+      "disclaimer": "代码在官方 Go Playground 上执行（https://go.dev/play）。需要互联网连接。"
     }
   },
   "settings": {

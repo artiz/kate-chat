@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation } from "@apollo/client";
 import { UPDATE_MESSAGE_CONTENT_MUTATION } from "@/store/services/graphql.queries";
 
-import "./PythonExecutorModal.scss";
+import "./CodeExecutorModal.scss";
 
 const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/";
 
@@ -361,8 +361,8 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
         </Text>
       )}
 
-      <div className="python-executor-container">
-        <div className="python-executor-editor">
+      <div className="code-executor-container">
+        <div className="executor-editor">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
               {t("codePlugin.code")}
@@ -391,7 +391,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
           />
         </div>
 
-        <div className="python-executor-output">
+        <div className="executor-output">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
               {t("codePlugin.output")}
@@ -414,8 +414,8 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
             </Group>
           </Group>
 
-          <ScrollArea className="python-executor-output-scroll" viewportRef={outputRef}>
-            <Box className="python-executor-output-content">
+          <ScrollArea className="executor-output-scroll" viewportRef={outputRef}>
+            <Box className="executor-output-content">
               {output.length === 0 && !waitingForInput && (
                 <Text size="xs" c="dimmed" fs="italic">
                   {t("codePlugin.outputPlaceholder")}
@@ -443,11 +443,11 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
                 )
               )}
               {waitingForInput && (
-                <div className="python-input-inline">
-                  <span className="python-input-caret">&gt;&gt;&gt; </span>
+                <div className="input-inline">
+                  <span className="input-caret">&gt;&gt;&gt; </span>
                   <input
                     ref={inputRef}
-                    className="python-input-field"
+                    className="input-field"
                     value={inputValue}
                     onChange={e => setInputValue(e.target.value)}
                     onKeyDown={e => {
@@ -467,11 +467,12 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
       </div>
 
       <Group justify="flex-end" mt="md">
-        <Button variant="default" onClick={onClose}>
+        <Button variant="light" onClick={onClose}>
           {t("common.close")}
         </Button>
         {messageId && (
           <Button
+            variant="light"
             color="green"
             onClick={saveCode}
             disabled={!pyodideReady || loading || saving}
