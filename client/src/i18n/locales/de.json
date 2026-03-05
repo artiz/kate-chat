@@ -610,18 +610,30 @@
     "updateFailed": "Aktualisierung fehlgeschlagen",
     "updateFailedMessage": "Profil konnte nicht aktualisiert werden"
   },
-  "python": {
+  "codePlugin": {
     "clearOutput": "Ausgabe löschen",
     "code": "Code",
     "ctrlEnterToRun": "Strg+Eingabe zum Ausführen",
     "downloadOutput": "Ausgabe herunterladen",
-    "enterInput": "Eingabe eingeben...",
-    "enterPythonCode": "Python-Code eingeben...",
-    "failedToLoadRuntime": "Python-Laufzeit konnte nicht geladen werden: {{error}}",
     "output": "Ausgabe",
     "outputPlaceholder": "Ausgabe erscheint hier...",
-    "pyodideReady": "(Pyodide bereit)",
-    "title": "Python-Executor"
+    "javascript": {
+      "enterCode": "JavaScript-Code eingeben...",
+      "title": "JavaScript-Executor"
+    },
+    "python": {
+      "enterCode": "Python-Code eingeben...",
+      "enterInput": "Eingabe eingeben...",
+      "failedToLoad": "Python-Laufzeit konnte nicht geladen werden: {{error}}",
+      "runtimeReady": "(Pyodide bereit)",
+      "title": "Python-Executor"
+    },
+    "typescript": {
+      "enterCode": "TypeScript-Code eingeben...",
+      "failedToLoad": "TypeScript-Compiler konnte nicht geladen werden: {{error}}",
+      "runtimeReady": "(TypeScript bereit)",
+      "title": "TypeScript-Executor"
+    }
   },
   "settings": {
     "aiSettings": "KI-Einstellungen",

@@ -621,18 +621,30 @@
     "updateFailed": "Update Failed",
     "updateFailedMessage": "Failed to update profile"
   },
-  "python": {
+  "codePlugin": {
     "clearOutput": "Clear output",
     "code": "Code",
     "ctrlEnterToRun": "Ctrl+Enter to run",
     "downloadOutput": "Download output",
-    "enterInput": "Enter input...",
-    "enterPythonCode": "Enter Python code...",
-    "failedToLoadRuntime": "Failed to load Python runtime: {{error}}",
     "output": "Output",
     "outputPlaceholder": "Output will appear here...",
-    "pyodideReady": "(Pyodide ready)",
-    "title": "Python Executor"
+    "javascript": {
+      "enterCode": "Enter JavaScript code...",
+      "title": "JavaScript Executor"
+    },
+    "python": {
+      "enterCode": "Enter Python code...",
+      "enterInput": "Enter input...",
+      "failedToLoad": "Failed to load Python runtime: {{error}}",
+      "runtimeReady": "(Pyodide ready)",
+      "title": "Python Executor"
+    },
+    "typescript": {
+      "enterCode": "Enter TypeScript code...",
+      "failedToLoad": "Failed to load TypeScript compiler: {{error}}",
+      "runtimeReady": "(TypeScript ready)",
+      "title": "TypeScript Executor"
+    }
   },
   "settings": {
     "aiSettings": "AI Settings",

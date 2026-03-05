@@ -610,18 +610,30 @@
     "updateFailed": "更新失败",
     "updateFailedMessage": "无法更新个人资料"
   },
-  "python": {
+  "codePlugin": {
     "clearOutput": "清除输出",
     "code": "代码",
     "ctrlEnterToRun": "Ctrl+Enter 运行",
     "downloadOutput": "下载输出",
-    "enterInput": "输入内容...",
-    "enterPythonCode": "输入 Python 代码...",
-    "failedToLoadRuntime": "加载 Python 运行时失败：{{error}}",
     "output": "输出",
     "outputPlaceholder": "输出将在此显示...",
-    "pyodideReady": "（Pyodide 就绪）",
-    "title": "Python 执行器"
+    "javascript": {
+      "enterCode": "输入 JavaScript 代码...",
+      "title": "JavaScript 执行器"
+    },
+    "python": {
+      "enterCode": "输入 Python 代码...",
+      "enterInput": "输入内容...",
+      "failedToLoad": "加载 Python 运行时失败：{{error}}",
+      "runtimeReady": "（Pyodide 就绪）",
+      "title": "Python 执行器"
+    },
+    "typescript": {
+      "enterCode": "输入 TypeScript 代码...",
+      "failedToLoad": "加载 TypeScript 编译器失败：{{error}}",
+      "runtimeReady": "（TypeScript 就绪）",
+      "title": "TypeScript 执行器"
+    }
   },
   "settings": {
     "aiSettings": "AI 设置",

@@ -182,7 +182,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         setLoading(false);
       })
       .catch(err => {
-        setError(t("python.failedToLoadRuntime", { error: err.message }));
+        setError(t("codePlugin.python.failedToLoad", { error: err.message }));
         setLoading(false);
       });
   }, [opened]);
@@ -304,11 +304,11 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
       fullScreen
       title={
         <Group gap="xs">
-          <Text fw={600}>{t("python.title")}</Text>
+          <Text fw={600}>{t("codePlugin.python.title")}</Text>
           {!pyodideReady && !error && <Loader size="xs" />}
           {pyodideReady && (
             <Text size="xs" c="teal">
-              {t("python.pyodideReady")}
+              {t("codePlugin.python.runtimeReady")}
             </Text>
           )}
         </Group>
@@ -328,10 +328,10 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         <div className="python-executor-editor">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
-              {t("python.code")}
+              {t("codePlugin.code")}
             </Text>
             <Text size="xs" c="dimmed">
-              {t("python.ctrlEnterToRun")}
+              {t("codePlugin.ctrlEnterToRun")}
             </Text>
           </Group>
           <Textarea
@@ -349,7 +349,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
                 overflowWrap: "normal",
               },
             }}
-            placeholder={t("python.enterPythonCode")}
+            placeholder={t("codePlugin.python.enterCode")}
             readOnly={loading}
           />
         </div>
@@ -357,17 +357,17 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
         <div className="python-executor-output">
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={500}>
-              {t("python.output")}
+              {t("codePlugin.output")}
             </Text>
             <Group gap="xs">
               {output.length > 0 && (
                 <>
-                  <Tooltip label={t("python.downloadOutput")}>
+                  <Tooltip label={t("codePlugin.downloadOutput")}>
                     <ActionIcon size="sm" variant="subtle" color="gray" onClick={downloadOutput}>
                       <IconDownload size={20} />
                     </ActionIcon>
                   </Tooltip>
-                  <Tooltip label={t("python.clearOutput")}>
+                  <Tooltip label={t("codePlugin.clearOutput")}>
                     <ActionIcon size="sm" variant="subtle" color="gray" onClick={clearOutput}>
                       <IconTrash size={20} />
                     </ActionIcon>
@@ -381,7 +381,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
             <Box className="python-executor-output-content">
               {output.length === 0 && !waitingForInput && (
                 <Text size="xs" c="dimmed" fs="italic">
-                  {t("python.outputPlaceholder")}
+                  {t("codePlugin.outputPlaceholder")}
                 </Text>
               )}
               {output.map((entry, idx) =>
@@ -419,7 +419,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({ opened
                         submitInput();
                       }
                     }}
-                    placeholder={t("python.enterInput")}
+                    placeholder={t("codePlugin.python.enterInput")}
                     autoFocus
                   />
                 </div>

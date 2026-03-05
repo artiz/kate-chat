@@ -610,18 +610,30 @@
     "summarizationModelDescription": "Модель для генерации сводок документов (до 1024 слов)",
     "selectChatModel": "Выберите чат-модель"
   },
-  "python": {
-    "title": "Python-исполнитель",
-    "pyodideReady": "(Pyodide готов)",
+  "codePlugin": {
+    "clearOutput": "Очистить вывод",
     "code": "Код",
     "ctrlEnterToRun": "Ctrl+Enter для запуска",
-    "enterPythonCode": "Введите код Python...",
-    "output": "Вывод",
     "downloadOutput": "Скачать вывод",
-    "clearOutput": "Очистить вывод",
+    "output": "Вывод",
     "outputPlaceholder": "Вывод появится здесь...",
-    "enterInput": "Введите ввод...",
-    "failedToLoadRuntime": "Не удалось загрузить Python: {{error}}"
+    "javascript": {
+      "enterCode": "Введите код JavaScript...",
+      "title": "JavaScript-исполнитель"
+    },
+    "python": {
+      "enterCode": "Введите код Python...",
+      "enterInput": "Введите ввод...",
+      "failedToLoad": "Не удалось загрузить Python: {{error}}",
+      "runtimeReady": "(Pyodide готов)",
+      "title": "Python-исполнитель"
+    },
+    "typescript": {
+      "enterCode": "Введите код TypeScript...",
+      "failedToLoad": "Не удалось загрузить компилятор TypeScript: {{error}}",
+      "runtimeReady": "(TypeScript готов)",
+      "title": "TypeScript-исполнитель"
+    }
   },
   "messageDetails": {
     "codeInterpreter": "Интерпретатор кода",

@@ -69,7 +69,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const { codePlugins, PythonCodeModal } = useCodePlugins();
+  const { codePlugins, PythonCodeModal, TSCodeModal } = useCodePlugins();
   const [editedTitle, setEditedTitle] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [sending, setSending] = useState(false);
@@ -575,6 +575,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
       ) : null}
 
       {PythonCodeModal}
+      {TSCodeModal}
 
       <Drawer
         opened={documentsOpened}
