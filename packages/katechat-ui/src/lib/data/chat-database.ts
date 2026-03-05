@@ -19,7 +19,7 @@ interface ChatDBSchema extends DBSchema {
   };
 }
 
-interface ChatDatabaseOptions {
+export interface ChatDatabaseOptions {
   name?: string;
   version?: number;
 }

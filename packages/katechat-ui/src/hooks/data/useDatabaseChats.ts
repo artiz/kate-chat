@@ -1,21 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChatDatabase } from "@/lib/data/chat-database";
+import { ChatDatabase, ChatDatabaseOptions } from "@/lib/data/chat-database";
 import { assert } from "@/lib";
 import { Chat } from "@/core/chat";
 
-export function useDatabaseChats() {
+export function useDatabaseChats(options?: ChatDatabaseOptions) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [db, setDb] = useState<ChatDatabase | null>(null);
 
   useEffect(() => {
-    const chatDb = new ChatDatabase();
+    const chatDb = new ChatDatabase(options);
     setDb(chatDb);
 
     return () => {
       chatDb.close();
     };
-  }, []);
+  }, [options]);
 
   const loadChats = useCallback(async () => {
     if (!db) return;
