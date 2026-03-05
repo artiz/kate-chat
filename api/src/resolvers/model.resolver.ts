@@ -23,6 +23,7 @@ import { getErrorMessage } from "@/utils/errors";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
+import { obfuscateSecret } from "@/utils/format";
 
 const logger = createLogger(__filename);
 const MAX_TEST_TEXT_LENGTH = 256;
@@ -582,15 +583,6 @@ export class ModelResolver extends BaseResolver {
 export class CustomModelSettingsResolver {
   @FieldResolver(() => String, { nullable: true })
   apiKey(@Root() settings: CustomModelSettings): string | undefined {
-    if (!settings.apiKey) {
-      return undefined;
-    }
-
-    // Mask the API key if it's shorter than 10 chars, otherwise show parts
-    if (settings.apiKey.length <= 10) {
-      return "********";
-    }
-    // Show first 3 and last 4 characters
-    return `${settings.apiKey.substring(0, 3)}...${settings.apiKey.substring(settings.apiKey.length - 4)}`;
+    return obfuscateSecret(settings.apiKey);
   }
 }

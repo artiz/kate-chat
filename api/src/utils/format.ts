@@ -61,3 +61,19 @@ export function simpleHash(str: string): string {
   }
   return Math.abs(hash).toString(36);
 }
+
+/**
+ * REplace all but the first 3 and last 2 characters of a secret with asterisks for safe display.
+ * @param secret
+ * @returns
+ */
+export function obfuscateSecret(secret?: string): string | undefined {
+  if (!secret) {
+    return undefined;
+  }
+
+  if (secret.length <= 8) {
+    return "********";
+  }
+  return `${secret.substring(0, 3)}...${secret.substring(secret.length - 2)}`;
+}

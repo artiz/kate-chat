@@ -66,7 +66,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
           authType: server.authType,
           headerName: server.authConfig?.headerName || "",
           clientId: server.authConfig?.clientId || "",
-          clientSecret: "",
+          clientSecret: server.authConfig?.clientSecret || "",
           tokenUrl: server.authConfig?.tokenUrl || "",
           authorizationUrl: server.authConfig?.authorizationUrl || "",
           scope: server.authConfig?.scope || "",
@@ -137,11 +137,11 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
     if (formData.authType === "API_KEY") {
       authConfig.headerName = formData.headerName;
     } else if (formData.authType === "OAUTH2") {
-      if (formData.clientId) authConfig.clientId = formData.clientId;
-      if (formData.clientSecret) authConfig.clientSecret = formData.clientSecret;
-      if (formData.tokenUrl) authConfig.tokenUrl = formData.tokenUrl;
-      if (formData.authorizationUrl) authConfig.authorizationUrl = formData.authorizationUrl;
-      if (formData.scope) authConfig.scope = formData.scope;
+      if (formData.clientId != server?.authConfig?.clientId) authConfig.clientId = formData.clientId;
+      if (formData.clientSecret != server?.authConfig?.clientSecret) authConfig.clientSecret = formData.clientSecret;
+      authConfig.tokenUrl = formData.tokenUrl;
+      authConfig.authorizationUrl = formData.authorizationUrl;
+      authConfig.scope = formData.scope;
     }
 
     const input = {
@@ -246,8 +246,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
             />
             <TextInput
               label={t("mcp.clientSecret")}
-              placeholder={isEditMode ? t("mcp.clientSecretPlaceholderEdit") : t("mcp.clientSecretPlaceholder")}
-              type="password"
+              placeholder={t("mcp.clientSecretPlaceholder")}
               value={formData.clientSecret}
               onChange={e => setFormData({ ...formData, clientSecret: e.target.value })}
             />

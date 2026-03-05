@@ -551,7 +551,6 @@
     "clientId": "ID клиента",
     "clientIdPlaceholder": "ID клиента OAuth-приложения",
     "clientSecret": "Секрет клиента",
-    "clientSecretPlaceholderEdit": "Оставьте пустым, чтобы сохранить текущий",
     "clientSecretPlaceholder": "Секрет клиента OAuth (необязательно для PKCE)",
     "authorizationUrl": "URL авторизации",
     "tokenUrl": "URL токена",

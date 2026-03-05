@@ -401,7 +401,6 @@
     "clientIdPlaceholder": "OAuth 应用客户端 ID",
     "clientSecret": "客户端密钥",
     "clientSecretPlaceholder": "OAuth 客户端密钥（PKCE 可选）",
-    "clientSecretPlaceholderEdit": "留空以保留现有值",
     "deleteMcpServer": "删除 MCP 服务器",
     "deleteMcpServerMessage": "您确定要删除「{{name}}」吗？此操作无法撤消。",
     "descriptionPlaceholder": "可选描述",

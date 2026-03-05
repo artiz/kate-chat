@@ -32,6 +32,7 @@ import {
   CustomModelSettingsResolver,
   MCPServerResolver,
   SearchResolver,
+  MCPAuthConfigResolver,
 } from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 
@@ -93,6 +94,7 @@ async function bootstrap() {
       AdminResolver,
       DocumentResolver,
       MCPServerResolver,
+      MCPAuthConfigResolver,
       SearchResolver,
     ],
     validate: false,

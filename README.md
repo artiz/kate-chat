@@ -50,10 +50,9 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
-* Make Client ID fo MCP hidden as Secret (add xx***xxx for both of them)
+* Add configurable localDiskCache to S3Service to increase models interaction with files
 * Use maxInputTokens to limit/trim messages content
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
-* Add configurable localDiskCache to S3Service to increase models interaction with files
 * Use TS/JavaScript-REPL from https://github.com/microsoft/TypeScript-Website/tree/v2/packages/playground to run JS/TS on client
 * Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
 * Introduce Shared/System (shared could be cloned and reconfigured, shared one could be edited only be owner, system - admin only) MCP

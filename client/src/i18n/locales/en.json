@@ -401,7 +401,6 @@
     "clientIdPlaceholder": "OAuth application client ID",
     "clientSecret": "Client Secret",
     "clientSecretPlaceholder": "OAuth client secret (optional for PKCE)",
-    "clientSecretPlaceholderEdit": "Leave blank to keep existing",
     "deleteMcpServer": "Delete MCP Server",
     "deleteMcpServerMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
     "descriptionPlaceholder": "Optional description",

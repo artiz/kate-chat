@@ -20,6 +20,7 @@ import { MCPClient } from "@/services/ai/tools/mcp.client";
 import { Repository } from "typeorm";
 import { MCPAuthToken } from "@/types/ai.types";
 import { MCPAuthType, MCPTransportType } from "@/types/api";
+import { obfuscateSecret } from "@/utils/format";
 
 const logger = createLogger(__filename);
 
@@ -140,17 +141,14 @@ export class MCPServerResolver extends BaseResolver {
         "authConfig",
         "isActive",
       ];
+
       for (const field of fields) {
         if (input[field] !== undefined) {
           if (field === "authConfig") {
             if (input.authType === MCPAuthType.NONE) {
               server.authConfig = undefined;
             } else if (input.authType === MCPAuthType.OAUTH2) {
-              const currentSecret = server.authConfig?.clientSecret;
               server.authConfig = { ...server.authConfig, ...input.authConfig };
-              if (currentSecret && !server.authConfig.clientSecret) {
-                server.authConfig.clientSecret = currentSecret;
-              }
             } else {
               server.authConfig = input.authConfig;
             }
@@ -296,14 +294,6 @@ export class MCPServerResolver extends BaseResolver {
 export class MCPAuthConfigResolver {
   @FieldResolver(() => String, { nullable: true })
   clientSecret(@Root() config: MCPAuthConfig): string | undefined {
-    if (!config.clientSecret) {
-      return undefined;
-    }
-
-    // Mask the client secret
-    if (config.clientSecret.length <= 10) {
-      return "********";
-    }
-    return `${config.clientSecret.substring(0, 3)}...${config.clientSecret.substring(config.clientSecret.length - 4)}`;
+    return obfuscateSecret(config.clientSecret);
   }
 }
