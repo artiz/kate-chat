@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChatDatabase, ChatDatabaseOptions } from "@/lib/data/chat-database";
 import { assert } from "@/lib";
-import { Chat } from "@/core/chat";
+import { Chat, Message } from "@/core";
 
 export function useDatabaseChats(options?: ChatDatabaseOptions) {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -85,6 +85,22 @@ export function useDatabaseChats(options?: ChatDatabaseOptions) {
     [chats, db, loadChats]
   );
 
+  const saveMessage = useCallback(
+    async (message: Message): Promise<void> => {
+      assert.ok(db, "Database instance is not available");
+      await db.saveMessage(message);
+    },
+    [db]
+  );
+
+  const getChatMessages = useCallback(
+    async (chatId: string): Promise<Message[]> => {
+      assert.ok(db, "Database instance is not available");
+      return db.getMessagesByChatId(chatId);
+    },
+    [db]
+  );
+
   return {
     chats,
     loading,
@@ -93,5 +109,7 @@ export function useDatabaseChats(options?: ChatDatabaseOptions) {
     deleteChat,
     updateChatTitle,
     refreshChats: loadChats,
+    saveMessage,
+    getChatMessages,
   };
 }
