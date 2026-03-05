@@ -182,7 +182,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                 <Accordion.Control icon={expanded ? <IconSettings /> : undefined}>
                   {expanded ? t("nav.settings") : null}
                 </Accordion.Control>
-                <Accordion.Panel>
+                <Accordion.Panel pl="xs">
                   <Tooltip label={t("nav.models")} position="right" disabled={expanded}>
                     <NavLink
                       label={expanded ? t("nav.models") : null}

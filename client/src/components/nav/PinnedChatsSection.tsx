@@ -76,7 +76,7 @@ export const PinnedChatsSection: React.FC<IProps> = ({ navbarToggle, expanded = 
         classNames={accordionClasses}
       >
         <Accordion.Item value="pinned">
-          <Accordion.Control icon={<IconPinFilled />}>
+          <Accordion.Control icon={<IconPinFilled />} className={accordionClasses.fixedHeader}>
             <Group justify="space-between" p="0" m="0">
               <Box>{t("chat.pinned")}</Box>
               <Tooltip label={t("chat.folder.new")} withArrow>

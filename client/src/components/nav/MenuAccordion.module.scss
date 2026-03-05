@@ -22,3 +22,22 @@
   font-size: 80%;
   color: var(--mantine-color-brand-5);
 }
+
+.fixedHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--mantine-color-body);
+}
+
+[data-mantine-color-scheme="dark"] {
+  .fixedHeader {
+    background-color: var(--mantine-color-dark-8) !important;
+  }
+}
+
+[data-mantine-color-scheme="light"] {
+  .fixedHeader {
+    background-color: var(--mantine-color-gray-1) !important;
+  }
+}
