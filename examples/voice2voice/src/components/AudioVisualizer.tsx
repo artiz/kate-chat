@@ -10,7 +10,7 @@ interface AudioVisualizerProps {
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   inputAnalyser,
   outputAnalyser,
-  width = 300,
+  width = 400,
   height = 100,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,8 +51,6 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       }
 
       // Visual style: Center mirrored bars
-      // Input (User) = Blue-ish
-      // Output (AI) = Purple-ish
 
       const barWidth = w / bufferLength;
 

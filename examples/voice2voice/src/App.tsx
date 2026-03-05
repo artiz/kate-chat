@@ -24,11 +24,16 @@ import {
 } from "@tabler/icons-react";
 import { Notifications, notifications } from "@mantine/notifications";
 import { SettingsForm, DEFAULT_MODEL } from "./components/SettingsForm";
-import { useChats } from "./hooks/useChats";
 import { useWebRTC } from "./hooks/useWebRTC";
 import { AudioVisualizer } from "./components/AudioVisualizer";
-import { Chat, saveMessage, getChatMessages } from "./lib/db";
-import { Message, MessageRole } from "@katechat/ui";
+import {
+  Message,
+  MessageRole,
+  useDatabaseChats,
+  useDatabaseMessages,
+} from "@katechat/ui";
+
+const dbConfig = { name: "voice2voice-demo-db" };
 
 const App = () => {
   const [opened, { toggle }] = useDisclosure();
@@ -48,9 +53,11 @@ const App = () => {
     chats,
     createChat,
     deleteChat,
-    updateChatTitle,
     loading: chatsLoading,
-  } = useChats();
+    getChatMessages,
+    saveMessage,
+  } = useDatabaseChats(dbConfig);
+
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollViewport = useRef<HTMLDivElement>(null);
@@ -73,8 +80,6 @@ const App = () => {
     inputAnalyser,
     outputAnalyser,
   } = useWebRTC({ apiKey, model: modelName });
-
-  const activeChat = chats.find((c) => c.id === activeChatId);
 
   // Load messages for active chat
   useEffect(() => {
