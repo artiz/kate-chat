@@ -8,7 +8,7 @@ import {
   formatBedrockRequestTools,
 } from "../ai/providers/bedrock.tools";
 import { ToolUseBlock } from "@aws-sdk/client-bedrock-runtime";
-import { MCPAuthType, MCPTransportType, ResponseStatus, ToolType } from "../../types/api";
+import { EntityAccessType, MCPAuthType, MCPTransportType, ResponseStatus, ToolType } from "../../types/api";
 import { MCPServer } from "../../entities";
 
 // Mock the MCP client
@@ -224,6 +224,7 @@ describe("Bedrock Tools", () => {
       user: null as any,
       createdAt: new Date(),
       updatedAt: new Date(),
+      access: EntityAccessType.PRIVATE,
     });
 
     it("should return empty array when no tools provided", () => {
@@ -317,6 +318,7 @@ describe("Bedrock Tools", () => {
         user: null as any,
         createdAt: new Date(),
         updatedAt: new Date(),
+        access: EntityAccessType.PRIVATE,
       };
 
       const tools = [
