@@ -5,6 +5,9 @@ interface AudioVisualizerProps {
   outputAnalyser: AnalyserNode | null;
   width?: number;
   height?: number;
+  colorUser?: string;
+  colorAI?: string;
+  delimiterColor?: string;
 }
 
 export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
@@ -12,6 +15,9 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   outputAnalyser,
   width = 400,
   height = 100,
+  colorUser = "#FF922B",
+  colorAI: colorAssistant = "#FD7E14",
+  delimiterColor = "#FFFFFF44",
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -59,7 +65,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       // Top half: User, Bottom half: AI
 
       // Draw User
-      ctx.fillStyle = "#FF922B"; // Orange 5
+      ctx.fillStyle = colorUser; // Orange 5
       for (let i = 0; i < bufferLength; i++) {
         const v = dataArrayInput[i] / 255;
         const barHeight = v * (h / 2) * 1.5; // Scale up a bit
@@ -70,7 +76,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       }
 
       // Draw AI
-      ctx.fillStyle = "#FD7E14"; // Orange 6
+      ctx.fillStyle = colorAssistant; // Orange 6
       for (let i = 0; i < bufferLength; i++) {
         const v = dataArrayOutput[i] / 255;
         const barHeight = v * (h / 2) * 1.5;
@@ -84,7 +90,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
       ctx.beginPath();
       ctx.moveTo(0, h / 2);
       ctx.lineTo(w, h / 2);
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+      ctx.strokeStyle = delimiterColor;
       ctx.stroke();
     };
 

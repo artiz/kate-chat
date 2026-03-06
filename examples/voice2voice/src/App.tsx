@@ -13,7 +13,6 @@ import {
   Badge,
   Container,
   Box,
-  LoadingOverlay,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -22,7 +21,7 @@ import {
   IconSettings,
   IconTrash,
 } from "@tabler/icons-react";
-import { Notifications, notifications } from "@mantine/notifications";
+import { notifications } from "@mantine/notifications";
 import { SettingsForm, DEFAULT_MODEL } from "./components/SettingsForm";
 import { useWebRTC } from "./hooks/useWebRTC";
 import { AudioVisualizer } from "./components/AudioVisualizer";
@@ -115,7 +114,7 @@ const App = () => {
       // Handle transcriptions
       if (msg.type === "response.audio_transcript.done") {
         // Assistant said something
-        const text = msg.transcript;
+        const text = msg.transcript || "N/A";
         const newMessage: Message = {
           id: msg.item_id || Date.now().toString(),
           role: MessageRole.ASSISTANT,

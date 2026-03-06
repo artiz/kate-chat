@@ -1,11 +1,51 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
+
+interface RealtimeMessageResponse {
+  status: "success" | "failed";
+  status_details?: {
+    error?: Error;
+  };
+}
+
+type RealtimeMessageType =
+  | "response.audio_transcript.done"
+  | "response.done"
+  | "response.partial_transcript"
+  | "function_call"
+  | "conversation.item.input_audio_transcription.completed"
+  | "error"; // For generic error events
+
+export interface RealtimeMessage {
+  item_id: string;
+  error?: Error;
+  type: RealtimeMessageType;
+  transcript: string;
+  response?: RealtimeMessageResponse;
+}
 
 interface UseWebRTCProps {
   apiKey: string;
   model: string;
+  transcriptionModel?: string; // e.g. "whisper-1" or "none"
 }
 
-export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
+export interface UseWebRTCResult {
+  status: "disconnected" | "connecting" | "connected" | "error";
+  error: string | null;
+  connect: () => Promise<void>;
+  disconnect: (newStatus?: "disconnected" | "error") => void;
+  registerMessageHandler: (
+    handler: (msg: RealtimeMessage) => void,
+  ) => () => void;
+  inputAnalyser: AnalyserNode | null;
+  outputAnalyser: AnalyserNode | null;
+}
+
+export function useWebRTC({
+  apiKey,
+  model,
+  transcriptionModel = "whisper-1",
+}: UseWebRTCProps): UseWebRTCResult {
   const [status, setStatus] = useState<
     "disconnected" | "connecting" | "connected" | "error"
   >("disconnected");
@@ -15,17 +55,21 @@ export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
   const audioContextRef = useRef<AudioContext | null>(null);
   const inputAnalyserRef = useRef<AnalyserNode | null>(null);
   const outputAnalyserRef = useRef<AnalyserNode | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   // Keep track of message handlers
-  const messageHandlersRef = useRef<Set<(msg: any) => void>>(new Set());
+  const messageHandlersRef = useRef<Set<(msg: RealtimeMessage) => void>>(
+    new Set(),
+  );
 
-  const registerMessageHandler = useCallback((handler: (msg: any) => void) => {
-    messageHandlersRef.current.add(handler);
-    return () => {
-      messageHandlersRef.current.delete(handler);
-    };
-  }, []);
+  const registerMessageHandler = useCallback(
+    (handler: (msg: RealtimeMessage) => void) => {
+      messageHandlersRef.current.add(handler);
+      return () => {
+        messageHandlersRef.current.delete(handler);
+      };
+    },
+    [],
+  );
 
   const disconnect = useCallback(
     (newStatus: "disconnected" | "error" = "disconnected") => {
@@ -46,7 +90,6 @@ export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
         audioElRef.current.remove();
         audioElRef.current = null;
       }
-      setRemoteStream(null);
       setStatus(newStatus);
     },
     [],
@@ -74,9 +117,11 @@ export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
           body: JSON.stringify({
             model: model,
             voice: "shimmer",
-            input_audio_transcription: {
-              model: "whisper-1",
-            },
+            input_audio_transcription: transcriptionModel
+              ? {
+                  model: transcriptionModel,
+                }
+              : undefined,
           }),
         },
       );
@@ -119,7 +164,6 @@ export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
         if (event.streams[0]) {
           const stream = event.streams[0];
           audioEl.srcObject = stream;
-          setRemoteStream(stream);
 
           // Connect remote stream to analyser
           const source = audioCtx.createMediaStreamSource(stream);
@@ -155,7 +199,7 @@ export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
       dc.onmessage = (e) => {
         // Handle server events (transcriptions, function calls, etc.)
         try {
-          const msg = JSON.parse(e.data);
+          const msg = JSON.parse(e.data) as RealtimeMessage;
           console.log("Received event:", msg);
 
           // Error handling for response.done with failed status
@@ -218,9 +262,9 @@ export function useWebRTC({ apiKey, model }: UseWebRTCProps) {
       await pc.setRemoteDescription(answer);
 
       setStatus("connected");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Connection failed:", err);
-      setError(err.message || "Connection failed");
+      setError(err instanceof Error ? err.message : "Connection failed");
       disconnect("error");
     }
   }, [apiKey, model, disconnect]);
