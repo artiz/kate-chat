@@ -103,8 +103,7 @@ export const storeMcpToken = (serverId: string, token: string, expiresAt?: numbe
  */
 export const initiateMcpOAuth = (server: MCPServer, userToken: string): Window | null => {
   if (!server.authConfig?.authorizationUrl || !server.authConfig?.clientId) {
-    console.error("MCP server OAuth config is incomplete", server);
-    return null;
+    throw new Error("MCP server OAuth config is incomplete");
   }
 
   const redirectUri = `${APP_API_URL}/auth/mcp/callback`;
@@ -308,12 +307,21 @@ export const useMcpAuth = (servers: MCPServer[], chatId?: string): UseMcpAuthRes
     (server: MCPServer, userToken: string, force: boolean = false): boolean => {
       // If OAuth is required, initiate OAuth flow
       if (requiresOAuth(server) && (force || !hasValidMcpToken(server.id))) {
-        const popup = initiateMcpOAuth(server, userToken);
-        if (popup) {
-          oauthPopupRef.current = popup;
-          expectingOAuthCallback.current = true;
-          return true;
+        try {
+          const popup = initiateMcpOAuth(server, userToken);
+          if (popup) {
+            oauthPopupRef.current = popup;
+            expectingOAuthCallback.current = true;
+            return true;
+          }
+        } catch (error) {
+          notifications.show({
+            title: "Error",
+            message: `Failed to initiate MCP OAuth flow: ${error instanceof Error ? error.message : "Unknown error"}`,
+            color: "red",
+          });
         }
+
         return false;
       }
 

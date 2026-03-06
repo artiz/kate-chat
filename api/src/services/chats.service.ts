@@ -1,4 +1,4 @@
-import { Brackets, ILike, ObjectLiteral, Repository } from "typeorm";
+import { ILike, ObjectLiteral, Repository } from "typeorm";
 
 import { Chat, Message } from "@/entities";
 import { getRepository } from "@/config/database";

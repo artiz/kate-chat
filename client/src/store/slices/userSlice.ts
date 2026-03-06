@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User as BaseUser } from "@katechat/ui";
 
 import { logout } from "..";
-import { ApplicationConfig } from "@/types/graphql";
+import { ApplicationConfig, MCPServer } from "@/types/graphql";
 
 export interface UserSettings {
   language?: string;
@@ -55,11 +55,13 @@ interface UserState {
   loading: boolean;
   error?: string;
   appConfig?: ApplicationConfig;
+  mcpServers: MCPServer[];
 }
 
 const initialState: UserState = {
   currentUser: null,
   loading: false,
+  mcpServers: [],
 };
 
 const userSlice = createSlice({
@@ -83,7 +85,11 @@ const userSlice = createSlice({
         lastUpdate: action.payload.lastUpdate ? action.payload.lastUpdate : Date.now(),
       };
     },
+    setMcpServers(state, action: PayloadAction<MCPServer[]>) {
+      state.mcpServers = action.payload;
+    },
   },
+
   extraReducers: builder => {
     builder.addCase(logout, state => {
       state = initialState;
@@ -92,5 +98,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setUser, setUserLoading, setUserError, setAppConfig } = userSlice.actions;
+export const { setUser, setUserLoading, setUserError, setAppConfig, setMcpServers } = userSlice.actions;
 export default userSlice.reducer;

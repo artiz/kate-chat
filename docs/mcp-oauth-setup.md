@@ -43,7 +43,7 @@ In the Auth Config section:
 
 ```graphql
 mutation CreateMCPServer {
-  createMCPServer(input: {
+  createMcpServer(input: {
     name: "GitHub Copilot"
     url: "https://api.githubcopilot.com/mcp"
     transportType: STREAMABLE_HTTP

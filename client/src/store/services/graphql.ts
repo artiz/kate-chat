@@ -228,6 +228,7 @@ export const graphqlApi = api.injectEndpoints({
                 s3Connected
                 ragSupported
                 ragEnabled
+                mcpEnabled
                 maxChats
                 maxChatMessages
                 maxImages
@@ -237,12 +238,14 @@ export const graphqlApi = api.injectEndpoints({
                 }
               }
 
-              getMCPServers {
+              mcpServers {
                 servers {
                   id
                   name
+                  userId
                   isActive
                   authType
+                  access
                   authConfig {
                     clientId
                     authorizationUrl
@@ -273,7 +276,7 @@ export const graphqlApi = api.injectEndpoints({
           },
           folders,
           appConfig,
-          getMCPServers,
+          mcpServers,
         } = response.data || {};
 
         for (const chat of pinnedChats.chats) {
@@ -295,7 +298,7 @@ export const graphqlApi = api.injectEndpoints({
           pinnedChats,
           folders: folders?.folders || [],
           appConfig,
-          mcpServers: getMCPServers?.servers || [],
+          mcpServers: mcpServers?.servers || [],
         };
       },
       transformErrorResponse: handleError,

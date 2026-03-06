@@ -91,6 +91,12 @@ export enum MCPAuthType {
   OAUTH2 = "OAUTH2",
 }
 
+export enum EntityAccessType {
+  PRIVATE = "PRIVATE",
+  SYSTEM = "SYSTEM",
+  SHARED = "SHARED",
+}
+
 export type ImageQuality = "low" | "medium" | "high";
 
 export type ImageOrientation = "landscape" | "portrait" | "square";

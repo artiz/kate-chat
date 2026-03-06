@@ -37,6 +37,7 @@ import { IMAGE_GENERATION_PLACEHOLDER } from "@/config/ai/templates";
 import { pick } from "lodash";
 import { QueueLockService } from "./common/queue-lock.service";
 import { RagResponse } from "./ai/tools/rag";
+import { McpServersService } from "./mcp.service";
 
 const aiConfig = globalConfig.ai;
 
@@ -51,7 +52,7 @@ export class MessagesService {
   private chatRepository: Repository<Chat>;
   private chatFileRepository: Repository<ChatFile>;
   private modelRepository: Repository<Model>;
-  private mcpServerRepository: Repository<MCPServer>;
+  private mcpService: McpServersService;
 
   private subscriptionsService: SubscriptionsService;
   private aiService: AIService;
@@ -69,7 +70,7 @@ export class MessagesService {
     this.chatRepository = getRepository(Chat);
     this.chatFileRepository = getRepository(ChatFile);
     this.modelRepository = getRepository(Model);
-    this.mcpServerRepository = getRepository(MCPServer);
+    this.mcpService = new McpServersService();
     this.requestsLock = new QueueLockService<string, string>("requests", globalConfig.sqs.requestsQueueExpirationMs); // slightly longer than SQS delay
 
     subscriptionsService.on(globalConfig.redis.channelChatMessage, this.handleMessageEvent.bind(this));
@@ -857,13 +858,7 @@ export class MessagesService {
       ?.map(tool => tool.id)
       ?.filter(notEmpty);
     if (mcpTools?.length) {
-      request.mcpServers = await this.mcpServerRepository.find({
-        where: {
-          id: In(mcpTools),
-          isActive: true,
-          user: { id: user.id },
-        },
-      });
+      request.mcpServers = await this.mcpService.findByIds(mcpTools, user.id);
     }
 
     const s3Service = new S3Service(user.toToken());

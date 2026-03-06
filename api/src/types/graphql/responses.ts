@@ -216,6 +216,9 @@ export class ApplicationConfig {
   ragEnabled: boolean;
 
   @Field({ nullable: true })
+  mcpEnabled: boolean;
+
+  @Field({ nullable: true })
   maxChats?: number;
 
   @Field({ nullable: true })

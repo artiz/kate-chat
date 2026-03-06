@@ -238,7 +238,14 @@
     "submit": "Absenden",
     "success": "Erfolg",
     "test": "Testen",
-    "warning": "Warnung"
+    "warning": "Warnung",
+    "access": {
+      "private": "Privat",
+      "shared": "Geteilt",
+      "system": "System"
+    },
+    "clone": "Klonen",
+    "view": "Anzeigen"
   },
   "connectivity": {
     "awsAccessKeyId": "AWS-Zugriffsschlüssel-ID",
@@ -448,7 +455,10 @@
     "urlPlaceholder": "https://beispiel.de/mcp",
     "viewTools": "Tools anzeigen",
     "yourApiKey": "Ihr API-Schlüssel",
-    "yourBearerToken": "Ihr Bearer-Token"
+    "yourBearerToken": "Ihr Bearer-Token",
+    "access": "Zugriffsmodus",
+    "accessDescription": "Privat: Nur der aktuelle Benutzer kann diesen Server verwenden. Geteilt/System: Alle Benutzer können diesen Server verwenden. Geteilte Server können geklont werden.",
+    "authTypeDescription": "Authentifizierungsmodus einrichten"
   },
   "messageDetails": {
     "arguments": "Argumente:",

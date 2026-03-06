@@ -1,7 +1,13 @@
-import { ApiProvider, Model as BaseModel, Message as BaseMessage, MessageRole, ModelType } from "@katechat/ui";
+import {
+  ApiProvider,
+  Model as BaseModel,
+  Message as BaseMessage,
+  MessageRole,
+  ModelType,
+  Chat as BaseChat,
+} from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
 import { DocumentStatus } from "./ai";
-import { Api } from "@reduxjs/toolkit/query";
 
 export interface ProviderDetail {
   key: string;
@@ -26,6 +32,12 @@ export enum ToolType {
 export enum ModelFeature {
   REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
   REASONING = "REASONING",
+}
+
+export enum EntityAccessType {
+  PRIVATE = "PRIVATE",
+  SYSTEM = "SYSTEM",
+  SHARED = "SHARED",
 }
 
 export interface Model extends BaseModel {
@@ -150,6 +162,7 @@ export interface ApplicationConfig {
   s3Connected: boolean;
   ragSupported: boolean;
   ragEnabled: boolean;
+  mcpEnabled: boolean;
   maxChats?: number;
   maxChatMessages?: number;
   maxImages?: number;
@@ -179,7 +192,7 @@ export interface GetInitialDataResponse {
       folders: ChatFolder[];
     };
     appConfig: ApplicationConfig;
-    getMCPServers?: {
+    mcpServers?: {
       servers: MCPServer[];
     };
   };
@@ -366,14 +379,10 @@ export interface ChatFolder {
   updatedAt: string;
 }
 
-export interface Chat {
-  id: string;
-  title?: string;
+export interface Chat extends BaseChat {
   description?: string;
-  updatedAt?: string;
   modelId?: string;
   isPristine?: boolean;
-  isPinned?: boolean;
   folderId?: string;
   messagesCount?: number;
   lastBotMessage?: string;
@@ -478,10 +487,12 @@ export interface MCPTool {
 export interface MCPServer {
   id: string;
   name: string;
+  userId?: string;
   url: string;
   description?: string;
   transportType: string;
   authType: string;
+  access: EntityAccessType;
   authConfig?: MCPAuthConfig;
   isActive: boolean;
   createdAt: string;

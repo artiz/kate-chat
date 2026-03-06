@@ -5,7 +5,7 @@ import { User } from "./User";
 import { JSONTransformer, EnumTransformer } from "../utils/db";
 import { IsPublicUrl } from "../utils/validators";
 import { IMCPAuthConfig, IMCPServer, IMCPToolInfo } from "../types/ai.types";
-import { MCPAuthType, MCPTransportType } from "../types/api";
+import { EntityAccessType, MCPAuthType, MCPTransportType } from "../types/api";
 import { DB_TYPE } from "../config/env";
 
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
@@ -20,6 +20,11 @@ registerEnumType(MCPTransportType, {
 registerEnumType(MCPAuthType, {
   name: "MCPAuthType",
   description: "Authentication type for MCP server",
+});
+
+registerEnumType(EntityAccessType, {
+  name: "EntityAccessType",
+  description: "Access type for system entity (MCP server, Model...)",
 });
 
 @ObjectType("MCPAuthConfig")
@@ -99,6 +104,10 @@ export class MCPServer implements IMCPServer {
   @Field()
   @Column({ default: true })
   isActive: boolean;
+
+  @Field(() => EntityAccessType, { nullable: true })
+  @Column({ nullable: true, default: EntityAccessType.PRIVATE, transformer: EnumTransformer<EntityAccessType>() })
+  access: EntityAccessType;
 
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User, { onDelete: "CASCADE" })

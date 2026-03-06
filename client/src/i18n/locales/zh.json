@@ -238,7 +238,14 @@
     "submit": "提交",
     "success": "成功",
     "test": "测试",
-    "warning": "警告"
+    "warning": "警告",
+    "access": {
+      "private": "私有",
+      "shared": "共享",
+      "system": "系统"
+    },
+    "clone": "克隆",
+    "view": "查看"
   },
   "connectivity": {
     "awsAccessKeyId": "AWS 访问密钥 ID",
@@ -448,7 +455,10 @@
     "urlPlaceholder": "https://example.com/mcp",
     "viewTools": "查看工具",
     "yourApiKey": "您的 API 密钥",
-    "yourBearerToken": "您的 Bearer 令牌"
+    "yourBearerToken": "您的 Bearer 令牌",
+    "access": "访问模式",
+    "accessDescription": "私有：只有当前用户可以使用此服务器。共享/系统：所有用户均可使用此服务器。共享服务器可以被克隆。",
+    "authTypeDescription": "设置认证模式"
   },
   "messageDetails": {
     "arguments": "参数：",

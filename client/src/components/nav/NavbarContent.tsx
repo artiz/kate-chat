@@ -199,7 +199,7 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                       onClick={handleSectionClick("/ai-settings")}
                     />
                   </Tooltip>
-                  {currentUser?.role === UserRole.ADMIN && (
+                  {appConfig?.mcpEnabled && (
                     <Tooltip label={t("nav.mcpServers")} position="right" disabled={expanded}>
                       <NavLink
                         label={expanded ? t("nav.mcpServers") : null}

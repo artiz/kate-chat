@@ -216,9 +216,15 @@
   "common": {
     "actions": "Actions",
     "active": "Active",
+    "access": {
+      "private": "Private",
+      "shared": "Shared",
+      "system": "System"
+    },
     "back": "Back",
     "cancel": "Cancel",
     "close": "Close",
+    "clone": "Clone",
     "confirm": "Confirm",
     "copy": "Copy",
     "delete": "Delete",
@@ -238,6 +244,7 @@
     "submit": "Submit",
     "success": "Success",
     "test": "Test",
+    "view": "View",
     "warning": "Warning"
   },
   "connectivity": {
@@ -388,6 +395,8 @@
     "addFirstServer": "Add Your First Server",
     "addMcpServer": "Add MCP Server",
     "addServer": "Add Server",
+    "access": "Access Mode",
+    "accessDescription": "Private: only current user can use this server. Shared/System: all users can use this server. Shared one could be cloned.",
     "apiKeyAuth": "API Key",
     "apiKeyDescription": "This MCP server requires an API key for authentication. Enter your API key below.",
     "authenticate": "Authenticate",
@@ -443,6 +452,7 @@
     "toolsRefreshed": "Tools refreshed successfully",
     "transportType": "Transport Type",
     "transportTypeDescription": "Use Legacy for servers that use the older SSE protocol",
+    "authTypeDescription": "Setup authentication mode",
     "updateServer": "Update Server",
     "url": "URL",
     "urlPlaceholder": "https://example.com/mcp",

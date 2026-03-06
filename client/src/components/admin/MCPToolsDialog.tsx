@@ -28,10 +28,11 @@ import {
   MCPAuthType,
 } from "@/components/auth/McpAuthentication";
 import { REFETCH_MCP_SERVER_TOOLS, TEST_MCP_TOOL } from "@/store/services/graphql.queries";
-import { MCPServer, MCPTool } from "@/types/graphql";
-import { RootState } from "@/store";
+import { EntityAccessType, MCPServer, MCPTool } from "@/types/graphql";
+import { RootState, useAppSelector } from "@/store";
 import { useSelector } from "react-redux";
 import { assert } from "@katechat/ui";
+import { UserRole } from "@/store/slices/userSlice";
 
 interface SchemaProperty {
   type?: string;
@@ -99,10 +100,10 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
 
   const [testTool, { loading: testLoading }] = useMutation(TEST_MCP_TOOL, {
     onCompleted: data => {
-      if (data.testMCPTool.error) {
-        setTestResult(`Error: ${data.testMCPTool.error}`);
+      if (data.testMcpTool.error) {
+        setTestResult(`Error: ${data.testMcpTool.error}`);
       } else {
-        setTestResult(data.testMCPTool.result);
+        setTestResult(data.testMcpTool.result);
       }
     },
     onError: error => {
@@ -403,6 +404,15 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
   const [tools, setTools] = useState<MCPTool[]>([]);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const { token: userToken } = useSelector((state: RootState) => state.auth);
+  const { currentUser } = useAppSelector(state => state.user);
+
+  const isEditable = useMemo(() => {
+    return (
+      currentUser &&
+      (server?.userId === currentUser.id ||
+        (currentUser.role === UserRole.ADMIN && server?.access === EntityAccessType.SYSTEM))
+    );
+  }, [server, currentUser]);
 
   // MCP authentication hook
   const servers = useMemo(() => (server ? [server] : []), [server]);
@@ -538,15 +548,17 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
                     {t("mcp.reAuthenticate")}
                   </Button>
                 ) : null}
-                <Button
-                  size="xs"
-                  variant="light"
-                  leftSection={<IconRefresh size="1rem" />}
-                  onClick={handleRefetchTools}
-                  loading={refetchLoading}
-                >
-                  {t("mcp.refetchTools")}
-                </Button>
+                {isEditable && (
+                  <Button
+                    size="xs"
+                    variant="light"
+                    leftSection={<IconRefresh size="1rem" />}
+                    onClick={handleRefetchTools}
+                    loading={refetchLoading}
+                  >
+                    {t("mcp.refetchTools")}
+                  </Button>
+                )}
               </Group>
             </Group>
             {!tools.length ? (

@@ -14,7 +14,6 @@ import {
   IconArrowDown,
   IconPhoto,
 } from "@tabler/icons-react";
-import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
 import { ChatSettingsForm, DEFAULT_CHAT_SETTINGS } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
@@ -53,7 +52,8 @@ export const ChatInputHeader = ({
 }: IHeaderProps) => {
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const { t } = useTranslation();
-  const { models: allModels, mcpServers } = useAppSelector(state => state.models);
+  const { models: allModels } = useAppSelector(state => state.models);
+  const { mcpServers: allMcpServers } = useAppSelector(state => state.user);
 
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
@@ -65,6 +65,10 @@ export const ChatInputHeader = ({
   const models = useMemo(() => {
     return allModels.filter(model => model.isActive && model.type !== ModelType.EMBEDDING);
   }, [allModels]);
+
+  const mcpServers = useMemo(() => {
+    return allMcpServers.filter(server => server.isActive);
+  }, [allMcpServers]);
 
   const mcpServerMap = useMemo(() => new Map(mcpServers.map((s: MCPServer) => [s.id, s.name])), [mcpServers]);
 

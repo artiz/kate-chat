@@ -2,7 +2,7 @@ import { InputType, Field } from "type-graphql";
 import { UserSettings, AuthProvider, MCPAuthConfig } from "@/entities";
 import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
-import { ApiProvider, MCPAuthType, ModelType, ToolType } from "../api";
+import { ApiProvider, EntityAccessType, MCPAuthType, ModelType, ToolType } from "../api";
 import { ChatSettings } from "@/entities/Chat";
 
 @InputType()
@@ -439,6 +439,9 @@ export class CreateMCPServerInput {
 
   @Field(() => MCPAuthConfig, { nullable: true })
   authConfig?: MCPAuthConfig;
+
+  @Field({ nullable: true })
+  access: EntityAccessType;
 }
 
 @InputType()
@@ -467,6 +470,9 @@ export class UpdateMCPServerInput {
 
   @Field({ nullable: true })
   isActive?: boolean;
+
+  @Field({ nullable: true })
+  access: EntityAccessType;
 }
 
 @InputType()

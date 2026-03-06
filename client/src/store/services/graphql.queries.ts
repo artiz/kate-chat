@@ -739,35 +739,16 @@ export const REFETCH_MCP_SERVER_TOOLS = gql`
 
 export const TEST_MCP_TOOL = gql`
   mutation TestMCPTool($input: TestMCPToolInput!) {
-    testMCPTool(input: $input) {
+    testMcpTool(input: $input) {
       result
       error
     }
   }
 `;
 
-// MCP servers query for MCP tool dropdown
-export const GET_MCP_SERVERS_FOR_CHAT = gql`
-  query GetMCPServersForChat {
-    getMCPServers {
-      servers {
-        id
-        name
-        isActive
-        authType
-        authConfig {
-          clientId
-          authorizationUrl
-          scope
-        }
-      }
-    }
-  }
-`;
-
 export const CREATE_MCP_SERVER = gql`
-  mutation CreateMCPServer($input: CreateMCPServerInput!) {
-    createMCPServer(input: $input) {
+  mutation CreateMcpServer($input: CreateMCPServerInput!) {
+    createMcpServer(input: $input) {
       server {
         id
         name
@@ -784,7 +765,7 @@ export const CREATE_MCP_SERVER = gql`
 
 export const UPDATE_MCP_SERVER = gql`
   mutation UpdateMCPServer($input: UpdateMCPServerInput!) {
-    updateMCPServer(input: $input) {
+    updateMcpServer(input: $input) {
       server {
         id
         name
@@ -801,15 +782,17 @@ export const UPDATE_MCP_SERVER = gql`
 
 // GraphQL queries and mutations
 export const GET_MCP_SERVERS = gql`
-  query GetMCPServers {
-    getMCPServers {
+  query GetMcpServers {
+    mcpServers {
       servers {
         id
         name
+        userId
         url
         description
         transportType
         authType
+        access
         authConfig {
           headerName
           clientId
@@ -836,7 +819,7 @@ export const GET_MCP_SERVERS = gql`
 
 export const DELETE_MCP_SERVER = gql`
   mutation DeleteMCPServer($input: DeleteMCPServerInput!) {
-    deleteMCPServer(input: $input)
+    deleteMcpServer(input: $input)
   }
 `;
 

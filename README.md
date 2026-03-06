@@ -50,19 +50,20 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
+* Introduce Shared/System (shared could be cloned and reconfigured, shared one could be edited only be owner, system - admin only) MCP
+* Add System Github MCP (existing one with GITHUB_MCP_CLIENT_ID=Ov...)
 * Use maxInputTokens to limit/trim messages content
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
 * Add Java code executor loke Go one with https://codapi.org/java/
-* Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
 * Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
-* Introduce Shared/System (shared could be cloned and reconfigured, shared one could be edited only be owner, system - admin only) MCP
-* Add System Github MCP (existing one with GITHUB_MCP_CLIENT_ID=Ov...)
 * Add System Gmail MCP (https://github.com/node2flow-th/gmail-mcp-community)
 * Add System Teams MCP (https://learn.microsoft.com/en-us/microsoft-agent-365/mcp-server-reference/teams)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Introduce video generation, reuse requests queue
 * Finish "Forgot password?" logic for local login
 * @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
+* Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
+
 
 ### Agents
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on.

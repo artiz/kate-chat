@@ -8,7 +8,8 @@ import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, OAUTH_ERROR_TEMPL
 import { escapeHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
 import { getErrorMessage } from "@/utils/errors";
-import { notEmpty } from "@/utils/assert";
+import { notEmpty, ok } from "@/utils/assert";
+import { McpServersService } from "@/services/mcp.service";
 
 const logger = createLogger(__filename);
 const runtimeCfg = globalConfig.runtime;
@@ -119,11 +120,11 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
   }
 
   try {
+    ok(tokenPayload);
+
     // Look up the MCP server to get OAuth config
-    const mcpServerRepository = getRepository(MCPServer);
-    const server = await mcpServerRepository.findOne({
-      where: { id: serverId, isActive: true, userId: tokenPayload?.userId },
-    });
+    const service = new McpServersService();
+    const server = await service.getServerById({ id: serverId, userId: tokenPayload.userId });
 
     if (!server) {
       logger.error({ serverId }, "MCP server not found for OAuth callback");

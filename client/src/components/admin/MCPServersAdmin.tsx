@@ -15,6 +15,8 @@ import {
   em,
   Flex,
   Grid,
+  Switch,
+  Indicator,
 } from "@mantine/core";
 import {
   IconPlus,
@@ -24,6 +26,7 @@ import {
   IconEdit,
   IconPlugConnected,
   IconTool,
+  IconEye,
 } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { useQuery, useMutation } from "@apollo/client";
@@ -33,10 +36,11 @@ import { useMediaQuery } from "@mantine/hooks";
 import { useTranslation } from "react-i18next";
 import { MCPToolsDialog } from "./MCPToolsDialog";
 import { MCPServerFormDialog } from "./MCPServerFormDialog";
-import { MCPServer } from "@/types/graphql";
+import { EntityAccessType, MCPServer } from "@/types/graphql";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
-import { DELETE_MCP_SERVER, GET_MCP_SERVERS } from "@/store/services/graphql.queries";
-import { setMcpServers } from "@/store/slices/modelSlice";
+import { DELETE_MCP_SERVER, GET_MCP_SERVERS, UPDATE_MCP_SERVER } from "@/store/services/graphql.queries";
+import { setMcpServers, UserRole } from "@/store/slices/userSlice";
+import { useAppSelector } from "@/store";
 
 const AUTH_TYPES = [
   { value: "NONE", label: "No Authentication" },
@@ -50,6 +54,7 @@ export const MCPServersAdmin: React.FC = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<MCPServer | null>(null);
+  const { currentUser } = useAppSelector(state => state.user);
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
 
   // Queries
@@ -60,8 +65,8 @@ export const MCPServersAdmin: React.FC = () => {
   } = useQuery(GET_MCP_SERVERS, {
     errorPolicy: "all",
     onCompleted: data => {
-      if (data?.getMCPServers?.servers?.length) {
-        dispatch(setMcpServers(data.getMCPServers.servers));
+      if (data?.mcpServers?.servers?.length) {
+        dispatch(setMcpServers(data.mcpServers.servers));
       }
     },
   });
@@ -70,6 +75,26 @@ export const MCPServersAdmin: React.FC = () => {
   const [deleteServer] = useMutation(DELETE_MCP_SERVER, {
     onCompleted: () => {
       refetchServers();
+    },
+    onError: error => {
+      notifications.show({
+        title: t("common.error"),
+        message: error.message,
+        color: "red",
+      });
+    },
+  });
+
+  const [updateServer, { loading: serverUpdating }] = useMutation(UPDATE_MCP_SERVER, {
+    onCompleted: data => {
+      if (data?.updateMcpServer?.server) {
+        refetchServers();
+        notifications.show({
+          title: t("common.success"),
+          message: `${data.updateMcpServer.server.name} is now ${data.updateMcpServer.server.isActive ? t("common.active").toLowerCase() : t("common.inactive").toLowerCase()}`,
+          color: "green",
+        });
+      }
     },
     onError: error => {
       notifications.show({
@@ -105,13 +130,24 @@ export const MCPServersAdmin: React.FC = () => {
     setIsToolsModalOpen(true);
   };
 
+  const handleToggleServerStatus = (server: MCPServer, isActive: boolean) => {
+    updateServer({
+      variables: {
+        input: {
+          id: server.id,
+          isActive,
+        },
+      },
+    });
+  };
+
   const handleServerDialogClose = () => {
     setIsFormDialogOpen(false);
     setSelectedServer(null);
   };
 
   const { servers = [], error: serversError }: { servers?: MCPServer[]; error?: string } =
-    serversData?.getMCPServers || {};
+    serversData?.mcpServers || {};
 
   if (serversError) {
     return (
@@ -165,58 +201,85 @@ export const MCPServersAdmin: React.FC = () => {
         </Paper>
       ) : (
         <Grid gutter="lg">
-          {servers.map((server: any) => (
-            <Grid.Col key={server.id} span={{ base: 12, md: 6, lg: 4 }}>
-              <Card key={server.id} withBorder padding="md" mih="12rem">
-                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                  <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                    <Group gap="sm" wrap="nowrap">
-                      <IconPlugConnected size="1rem" />
-                      <Text fw={600} truncate>
-                        {server.name}
+          {servers.map((server: any) => {
+            const isEditable =
+              currentUser &&
+              (server.userId === currentUser.id ||
+                (currentUser.role === UserRole.ADMIN && server.access === EntityAccessType.SYSTEM));
+
+            return (
+              <Grid.Col key={server.id} span={{ base: 12, md: 6, lg: 4 }}>
+                <Card key={server.id} withBorder padding="md" mih="12rem">
+                  <Group justify="space-between" align="flex-start" wrap="nowrap">
+                    <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+                      <Indicator
+                        label={server.access}
+                        disabled={server.userId === currentUser?.id}
+                        color="orange"
+                        size="lg"
+                        position="top-end"
+                        withBorder
+                      >
+                        <Group gap="sm" wrap="nowrap">
+                          <IconPlugConnected size="1rem" />
+
+                          <Text fw={600} truncate>
+                            {server.name}
+                          </Text>
+                        </Group>
+                      </Indicator>
+                      <Text size="sm" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                        {server.url}
                       </Text>
+                      {server.description && (
+                        <Text size="sm" c="dimmed" lineClamp={2}>
+                          {server.description}
+                        </Text>
+                      )}
+                    </Stack>
+                    <ActionIcon.Group>
+                      <Tooltip label={t("mcp.viewTools")}>
+                        <ActionIcon variant="light" color="blue" size="lg" onClick={() => handleViewTools(server)}>
+                          <IconTool size="20" />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label={isEditable ? t("common.edit") : t("common.view")}>
+                        <ActionIcon variant="light" color="gray" size="lg" onClick={() => handleEditServer(server)}>
+                          {isEditable ? <IconEdit size="20" /> : <IconEye size="20" />}
+                        </ActionIcon>
+                      </Tooltip>
+                      {isEditable && (
+                        <Tooltip label={t("common.delete")}>
+                          <ActionIcon variant="light" color="red" size="lg" onClick={() => handleDeleteServer(server)}>
+                            <IconTrash size="20" />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </ActionIcon.Group>
+                  </Group>
+                  <Group gap="sm" mt="sm" justify="space-between" align="center">
+                    <Group gap="sm">
+                      <Badge variant="light" color="blue" size="sm">
+                        {t("mcp.toolsCount", { count: server.tools?.length || 0 })}
+                      </Badge>
+                      <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="sm">
+                        {AUTH_TYPES.find(at => at.value === server.authType)?.label || server.authType}
+                      </Badge>
                     </Group>
-                    <Text size="sm" c="dimmed" style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
-                      {server.url}
-                    </Text>
-                    {server.description && (
-                      <Text size="sm" c="dimmed" lineClamp={2}>
-                        {server.description}
-                      </Text>
+                    {isEditable && (
+                      <Switch
+                        label={t(`common.${server.isActive ? "active" : "inactive"}`)}
+                        checked={server.isActive}
+                        disabled={serverUpdating}
+                        onChange={event => handleToggleServerStatus(server, event.currentTarget.checked)}
+                        size="md"
+                      />
                     )}
-                  </Stack>
-                  <ActionIcon.Group>
-                    <Tooltip label={t("mcp.viewTools")}>
-                      <ActionIcon variant="light" color="blue" size="lg" onClick={() => handleViewTools(server)}>
-                        <IconTool size="20" />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label={t("common.edit")}>
-                      <ActionIcon variant="light" color="gray" size="lg" onClick={() => handleEditServer(server)}>
-                        <IconEdit size="20" />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label={t("common.delete")}>
-                      <ActionIcon variant="light" color="red" size="lg" onClick={() => handleDeleteServer(server)}>
-                        <IconTrash size="20" />
-                      </ActionIcon>
-                    </Tooltip>
-                  </ActionIcon.Group>
-                </Group>
-                <Group gap="sm" mt="sm">
-                  <Badge variant="light" color="blue" size="sm">
-                    {t("mcp.toolsCount", { count: server.tools?.length || 0 })}
-                  </Badge>
-                  <Badge variant="light" color={server.authType === "NONE" ? "gray" : "blue"} size="sm">
-                    {AUTH_TYPES.find(at => at.value === server.authType)?.label || server.authType}
-                  </Badge>
-                  <Badge color={server.isActive ? "green" : "red"} size="sm">
-                    {server.isActive ? t("common.active") : t("common.inactive")}
-                  </Badge>
-                </Group>
-              </Card>
-            </Grid.Col>
-          ))}
+                  </Group>
+                </Card>
+              </Grid.Col>
+            );
+          })}
         </Grid>
       )}
 

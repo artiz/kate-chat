@@ -9,8 +9,8 @@ import { LANGUAGE_STORAGE_KEY, ThemeProvider, useTheme } from "@katechat/ui";
 import { ApolloWrapper } from "@/lib/apollo-provider";
 import { createAppTheme } from "@/theme";
 import { useGetInitialDataQuery } from "../store/services/graphql";
-import { setAppConfig, setUser } from "../store/slices/userSlice";
-import { setMcpServers, setModelsAndProviders } from "../store/slices/modelSlice";
+import { setAppConfig, setMcpServers, setUser } from "../store/slices/userSlice";
+import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats, setPinnedChats } from "../store/slices/chatSlice";
 import { setFolders } from "../store/slices/folderSlice";
 import { logout, useAppSelector } from "../store";
@@ -188,7 +188,7 @@ const AppContent: React.FC = () => {
                 <Route path="models" element={<Models />} />
                 <Route path="ai-settings" element={<AISettings onReloadAppData={refetchInitialData} />} />
                 <Route path="connectivity" element={<Connectivity onReloadAppData={refetchInitialData} />} />
-                <Route path="mcp-servers" element={<AdminRoute element={<MCPServers />} />} />
+                <Route path="mcp-servers" element={<MCPServers />} />
                 {/* Admin section */}
                 <Route path="profile" element={<Profile onReloadAppData={refetchInitialData} />} />
                 <Route path="password" element={<Password />} />

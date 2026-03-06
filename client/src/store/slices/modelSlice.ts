@@ -27,7 +27,6 @@ interface ModelState {
   error: string | null;
   costsInfo?: UsageCostsInfo;
   costsLoading: boolean;
-  mcpServers: MCPServer[];
 }
 
 const initialState: ModelState = {
@@ -36,7 +35,6 @@ const initialState: ModelState = {
   loading: false,
   error: null,
   costsLoading: false,
-  mcpServers: [],
 };
 
 const modelSlice = createSlice({
@@ -50,10 +48,6 @@ const modelSlice = createSlice({
 
     setProviders(state, action: PayloadAction<ProviderInfo[]>) {
       state.providers = action.payload;
-    },
-
-    setMcpServers(state, action: PayloadAction<MCPServer[]>) {
-      state.mcpServers = action.payload;
     },
 
     setModelsAndProviders(state, action: PayloadAction<{ models: Model[]; providers: ProviderInfo[] }>) {
@@ -95,7 +89,6 @@ const modelSlice = createSlice({
 export const {
   setModels,
   setProviders,
-  setMcpServers,
   setModelsAndProviders,
   setModelLoading,
   setModelError,
