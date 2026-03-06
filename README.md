@@ -30,6 +30,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Distributed messages processing using external queue (SQS + Redis), specific queue for long-running requests (images generation, agents) that allows to continue requests processing after service crash/restart
 - Request statistics (input/output tokens, tool calls), request cancellation to stop reasoning or web search
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
+- Internal MCP servers (Gmail for the moment)
 - Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
 - Client-side Python code [execution](#python-code-run-in-browser) with [Pyodide](https://pyodide.org/) 
 - Reusable [@katechat/ui](https://www.nopepmjs.com/package/@katechat/ui) that includes basic chatbot controls.
@@ -50,12 +51,11 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
-* Add System Gmail MCP (https://github.com/node2flow-th/gmail-mcp-community)
+* Add System Teams MCP (https://learn.microsoft.com/en-us/microsoft-agent-365/mcp-server-reference/teams)
 * Use maxInputTokens to limit/trim messages content
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
 * Add Java code executor loke Go one with https://codapi.org/java/
 * Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
-* Add System Teams MCP (https://learn.microsoft.com/en-us/microsoft-agent-365/mcp-server-reference/teams)
 * Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * Introduce video generation, reuse requests queue
 * Finish "Forgot password?" logic for local login
