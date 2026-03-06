@@ -189,6 +189,14 @@ locals {
         valueFrom = aws_secretsmanager_secret.google_client_secret.arn
       },
       {
+        name      = "MCP_SERVER_GMAIL_CLIENT_ID"
+        valueFrom = aws_secretsmanager_secret.google_client_id.arn
+      },
+      {
+        name      = "MCP_SERVER_GMAIL_CLIENT_SECRET"
+        valueFrom = aws_secretsmanager_secret.google_client_secret.arn
+      },
+      {
         name      = "GITHUB_OAUTH_CLIENT_ID"
         valueFrom = aws_secretsmanager_secret.github_client_id.arn
       },

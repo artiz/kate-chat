@@ -17,6 +17,7 @@ import { GraphQLContext } from ".";
 import { createLogger } from "@/utils/logger";
 import { obfuscateSecret } from "@/utils/format";
 import { McpServersService } from "@/services/mcp.service";
+import { EntityAccessType } from "@/types/api";
 
 const logger = createLogger(__filename);
 
@@ -94,7 +95,13 @@ export class MCPServerResolver extends BaseResolver {
     try {
       const server = await this.service.getServerById({ id: serverId, userId: user.id });
       if (!server) return { error: "MCP server not found" };
-      if (server.userId !== user.id) return { error: "Server cousl be updated only by owner" };
+      if (server.access !== EntityAccessType.SYSTEM && server.userId !== user.id) {
+        return { error: "Server could be updated only by owner" };
+      }
+      if (server.access === EntityAccessType.SYSTEM && !user.isAdmin()) {
+        return { error: "System server could be updated only by admin" };
+      }
+
       const savedServer = await this.service.fetchAndStoreTools(server, authToken);
       return { server: savedServer };
     } catch (error) {

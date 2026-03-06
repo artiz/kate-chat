@@ -86,7 +86,83 @@ OAuth tokens are stored in browser localStorage with keys:
 3. **Token Expiration**: Tokens should have reasonable expiration times
 4. **HTTPS Required**: Always use HTTPS for MCP server endpoints
 
-## Supported MCP Servers
+## System MCP Servers (Built-in)
+
+Kate-Chat can host built-in MCP servers inside the API process, available at `CALLBACK_URL_BASE/mcp/<name>`. These are registered as **System** MCP servers (visible to all users) and require provider-specific OAuth to access user data.
+
+### Enabling System MCP Servers
+
+Add an `ai.enabledMcp` array to your `customization.json`:
+
+```json
+{
+  "ai": {
+    "enabledMcp": ["gmail"]
+  }
+}
+```
+
+Set the corresponding environment variables (pattern: `MCP_SERVER_<NAME>_CLIENT_ID` / `MCP_SERVER_<NAME>_CLIENT_SECRET`):
+```
+MCP_SERVER_GMAIL_CLIENT_ID=your-google-client-id
+MCP_SERVER_GMAIL_CLIENT_SECRET=your-google-client-secret
+```
+
+Alternatively, configure via the `ENABLED_MCP_SERVICES` environment variable (comma-separated list):
+```
+ENABLED_MCP_SERVICES=gmail
+```
+
+On startup, Kate-Chat will:
+1. Register the system MCP server at `/mcp/gmail`
+2. Create a `System`-access MCP server record in the database with the OAuth2 configuration
+
+Users then see the **Gmail** server in MCP settings and can authorize it via the standard OAuth2 popup flow.
+
+---
+
+### Gmail MCP Server
+
+Provides tools to read, search, and send emails via the Gmail API.
+
+**Available tools:**
+| Tool | Description |
+|------|-------------|
+| `list_emails` | List emails from inbox (or any label) |
+| `get_email` | Get full email content by message ID |
+| `search_emails` | Search using Gmail search syntax |
+| `send_email` | Send an email |
+| `create_draft` | Create a draft email |
+| `list_labels` | List all Gmail labels |
+
+**Prerequisites:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a project
+2. Enable the **Gmail API** for the project
+3. Create OAuth 2.0 credentials (type: **Web application**)
+4. Add an authorized redirect URI:
+   ```
+   https://your-domain.com/auth/mcp/callback
+   ```
+5. Copy the **Client ID** and **Client Secret** to your environment variables
+
+**Required OAuth scopes** (requested automatically during user authorization):
+```
+https://www.googleapis.com/auth/gmail.send
+https://www.googleapis.com/auth/gmail.readonly
+https://www.googleapis.com/auth/gmail.compose
+```
+
+**Authentication flow:**
+1. Admin enables Gmail MCP in `customization.json` with Google OAuth credentials
+2. The system Gmail MCP server is registered at `CALLBACK_URL_BASE/mcp/gmail`
+3. Users open Admin > MCP Servers and see the system **Gmail** server
+4. Clicking **Authorize** opens a Google OAuth popup
+5. After authorization, the Google access token is stored and used automatically
+
+---
+
+## Supported External MCP Servers
 
 ### GitHub Copilot MCP
 

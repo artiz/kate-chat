@@ -4,7 +4,9 @@ import { MCPAuthConfig, MCPServer, Model } from "@/entities";
 import { CustomModelProtocol } from "@/entities/Model";
 import { User } from "@/entities/User";
 import { logger } from "@/utils/logger";
-import { ApiProvider, MCPAuthType, MCPTransportType, ModelType } from "@/types/api";
+import { ApiProvider, EntityAccessType, MCPAuthType, MCPTransportType, ModelType } from "@/types/api";
+import { MCP_SERVERS } from "@/services/mcp";
+import { McpServersService } from "@/services/mcp.service";
 
 function resolveApiKey(modelConfig: InitialCustomModel): string | undefined {
   if (modelConfig.apiKeyEnv) {
@@ -17,6 +19,48 @@ const resolveProtocol = (protocol?: string): CustomModelProtocol | undefined => 
   if (!protocol) return undefined;
   return protocol as CustomModelProtocol;
 };
+
+export async function ensureSystemMCPServers() {
+  const { enabledMcp } = globalConfig.ai;
+  if (!enabledMcp || !enabledMcp.length) return;
+
+  const { callbackUrlBase } = globalConfig.runtime;
+  const mcpService = new McpServersService();
+
+  for (const mcpName of enabledMcp) {
+    const mcpEntry = MCP_SERVERS[mcpName];
+    if (!mcpEntry) {
+      logger.warn({ mcpName }, "No system MCP server implementation found, skipping");
+      continue;
+    }
+
+    const url = `${callbackUrlBase}/mcp/${mcpName}`;
+    const existing = await mcpService.findSystemMcpByUrl(url);
+    if (existing) continue;
+
+    const envKey = mcpName.toUpperCase();
+    const clientId = process.env[`MCP_SERVER_${envKey}_CLIENT_ID`];
+    const clientSecret = process.env[`MCP_SERVER_${envKey}_CLIENT_SECRET`];
+
+    await mcpService.createServer({
+      name: mcpEntry.name,
+      url,
+      description: mcpEntry.description,
+      transportType: MCPTransportType.STREAMABLE_HTTP,
+      authType: MCPAuthType.OAUTH2,
+      authConfig: {
+        clientId,
+        clientSecret,
+        authorizationUrl: mcpEntry.authorizationUrl,
+        tokenUrl: mcpEntry.tokenUrl,
+        scope: mcpEntry.scope,
+      } as MCPAuthConfig,
+      access: EntityAccessType.SYSTEM,
+    });
+
+    logger.info({ url, name: mcpEntry.name }, "Created system MCP server");
+  }
+}
 
 export async function ensureInitialUserAssets(user: User) {
   const { initial } = globalConfig;

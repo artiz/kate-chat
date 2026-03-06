@@ -13,6 +13,8 @@ const DEFAULT_PROVIDERS: ApiProvider[] = [
   ApiProvider.CUSTOM_REST_API,
 ];
 
+const DEFAULT_MCP_SERVICES = "gmail";
+
 export interface InitialCustomModel {
   name: string;
   modelId: string;
@@ -23,6 +25,12 @@ export interface InitialCustomModel {
   type?: "CHAT" | "EMBEDDING";
   baseUrl?: string;
   apiKeyEnv?: string;
+}
+
+export interface SystemMCPConfig {
+  service: string;
+  clientIdEnv?: string;
+  clientSecretEnv?: string;
 }
 
 export interface InitialMCPServer {
@@ -85,6 +93,7 @@ export interface GlobalConfigShape {
     ragLoadFullPages: boolean;
     reasoningMinTokenBudget: number;
     reasoningMaxTokenBudget: number;
+    enabledMcp: string[];
   };
   oauth: {
     google: {
@@ -308,6 +317,7 @@ export class GlobalConfig {
         ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, false),
         reasoningMinTokenBudget: Math.max(+(process.env.AI_REASONING_MIN_TOKEN_BUDGET || 1024) | 0, 1024),
         reasoningMaxTokenBudget: +(process.env.AI_REASONING_MAX_TOKEN_BUDGET || 50_000) | 0,
+        enabledMcp: (process.env.ENABLED_MCP_SERVICES || DEFAULT_MCP_SERVICES).split(",").map(s => s.trim()) || [],
       },
       oauth: {
         google: {

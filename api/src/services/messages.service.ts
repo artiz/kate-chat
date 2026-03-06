@@ -858,7 +858,17 @@ export class MessagesService {
       ?.map(tool => tool.id)
       ?.filter(notEmpty);
     if (mcpTools?.length) {
-      request.mcpServers = await this.mcpService.findByIds(mcpTools, user.id);
+      const mcpServers = await this.mcpService.findByIds(mcpTools, user.id);
+
+      // verify that MCP has loaded tools
+      for (const server of mcpServers) {
+        if (!server.tools || server.tools.length === 0) {
+          const token = input.mcpTokens?.find(t => t.serverId === server.id)?.accessToken;
+          await this.mcpService.fetchAndStoreTools(server, token);
+        }
+      }
+
+      request.mcpServers = mcpServers;
     }
 
     const s3Service = new S3Service(user.toToken());

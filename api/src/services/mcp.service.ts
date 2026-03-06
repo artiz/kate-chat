@@ -24,13 +24,20 @@ export class McpServersService {
     return this.buildAccessibleServersQuery(userId).where({ id }).getOne();
   }
 
+  public async findSystemMcpByUrl(url: string) {
+    return this.mcpServerRepository
+      .createQueryBuilder("server")
+      .where({ url, access: EntityAccessType.SYSTEM })
+      .getOne();
+  }
+
   public async findByIds(ids: string[], userId: string): Promise<MCPServer[]> {
     return this.buildAccessibleServersQuery(userId)
       .where({ id: In(ids) })
       .getMany();
   }
 
-  public async createServer(input: CreateMCPServerInput, userId: string): Promise<MCPServer> {
+  public async createServer(input: CreateMCPServerInput, userId?: string): Promise<MCPServer> {
     const existing = await this.mcpServerRepository.findOne({
       where: { url: input.url, user: { id: userId } },
     });
@@ -45,14 +52,12 @@ export class McpServersService {
       transportType: (input.transportType as MCPTransportType) || MCPTransportType.STREAMABLE_HTTP,
       authType: (input.authType as MCPAuthType) || MCPAuthType.NONE,
       authConfig: input.authConfig as MCPAuthConfig,
-      user: { id: userId },
+      user: userId ? { id: userId } : undefined,
       isActive: true,
       access: (input.access as EntityAccessType) || EntityAccessType.PRIVATE,
     });
 
     const savedServer = await this.mcpServerRepository.save(server);
-    logger.debug({ serverId: savedServer.id, name: savedServer.name }, "Created MCP server");
-
     if (savedServer.authType === MCPAuthType.NONE) {
       await this.fetchAndStoreTools(savedServer);
     }

@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { Field, ID, ObjectType } from "type-graphql";
 import {
   ApiProvider,
+  EntityAccessType,
   MCPAuthType,
   MCPTransportType,
   MessageRole,
@@ -307,6 +308,7 @@ export interface IMCPServer {
   tools?: IMCPToolInfo[];
   isActive: boolean;
   userId?: string;
+  access?: EntityAccessType;
   createdAt: Date;
   updatedAt: Date;
 }

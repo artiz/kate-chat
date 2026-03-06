@@ -16,7 +16,7 @@ import {
   MCPAuthToken,
   IMCPServer,
 } from "@/types/ai.types";
-import { MCPAuthType, MessageRole, ResponseStatus, ToolType } from "@/types/api";
+import { EntityAccessType, MCPAuthType, MessageRole, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -335,7 +335,7 @@ export class OpenAIProtocol implements ModelProtocol {
       params.temperature = 1;
     }
 
-    const requestTools = this.formatRequestTools(tools, mcpServers);
+    const requestTools = this.formatCompletionRequestTools(tools, mcpServers);
     if (requestTools.length) {
       params.tools = requestTools;
     }
@@ -343,7 +343,10 @@ export class OpenAIProtocol implements ModelProtocol {
     return params;
   }
 
-  private formatRequestTools(inputTools?: ChatTool[], mcpServers?: IMCPServer[]): ChatCompletionToolCallable[] {
+  private formatCompletionRequestTools(
+    inputTools?: ChatTool[],
+    mcpServers?: IMCPServer[]
+  ): ChatCompletionToolCallable[] {
     if (inputTools?.length) {
       const tools: ChatCompletionToolCallable[] = [];
 
@@ -439,11 +442,22 @@ export class OpenAIProtocol implements ModelProtocol {
 
       const serverMap = new Map(mcpServers?.map(server => [server.id, server]) || []);
 
+      const localMcpServers: { server: IMCPServer; tool: ChatTool }[] = [];
+
       inputRequest.tools
         .filter(t => t.type === ToolType.MCP)
         .forEach(tool => {
           const server = serverMap.get(tool.id || tool.name);
           ok(server);
+
+          // System servers could be hosted on localhost so we will add them a callable
+          if (server.url?.startsWith("http://localhost") || server.url?.startsWith("http://127.0.0.1")) {
+            localMcpServers.push({
+              server,
+              tool,
+            });
+            return;
+          }
 
           const mcpTool: OpenAI.Responses.Tool.Mcp = {
             type: "mcp",
@@ -466,6 +480,24 @@ export class OpenAIProtocol implements ModelProtocol {
 
           tools.push(mcpTool);
         });
+
+      const localTools: Array<OpenAI.Responses.FunctionTool> = formatOpenAIMcpTools(
+        localMcpServers.map(s => s.tool),
+        localMcpServers.map(s => s.server)
+      )
+        .filter(t => t.type === "function")
+        .map((t: OpenAI.Chat.Completions.ChatCompletionFunctionTool) => {
+          const fn = t.function;
+          return {
+            type: "function" as const,
+            name: fn.name,
+            description: fn.description,
+            parameters: fn.parameters as Record<string, unknown>,
+            strict: fn.strict ?? false,
+          };
+        });
+
+      tools.push(...localTools);
     }
 
     if (tools.length) {
@@ -556,7 +588,7 @@ export class OpenAIProtocol implements ModelProtocol {
       });
     }
 
-    const callableTools = this.formatRequestTools(input.tools, input.mcpServers);
+    const callableTools = this.formatCompletionRequestTools(input.tools, input.mcpServers);
 
     const cyclesLimit = 100; // to prevent infinite loops in case of bugs
     let cycleNo = 0;
@@ -719,14 +751,19 @@ export class OpenAIProtocol implements ModelProtocol {
     callbacks: StreamCallbacks,
     retry: number = 0
   ): Promise<void> {
-    const params: OpenAI.Responses.ResponseCreateParamsStreaming = {
+    const baseParams: OpenAI.Responses.ResponseCreateParamsStreaming = {
       ...(await this.formatResponsesRequest(inputRequest, messages)),
       stream: true,
       background: true, // to cancel it
     };
+    const callableTools = this.getResponsesCallableTools(baseParams.tools || [], inputRequest.mcpServers || []);
+    let lastResponseId: string | undefined;
 
     if (logger.isLevelEnabled("trace")) {
-      logger.trace({ ...params, input: this.debugResponseInput(params.input) }, "invoking streaming responses...");
+      logger.trace(
+        { ...baseParams, input: this.debugResponseInput(baseParams.input) },
+        "invoking streaming responses..."
+      );
     }
 
     let fullResponse = "";
@@ -742,7 +779,7 @@ export class OpenAIProtocol implements ModelProtocol {
           starting_after: inputRequest.lastSequenceNumber,
         });
       } else {
-        stream = await this.openai.responses.create(params);
+        stream = await this.openai.responses.create(baseParams);
       }
 
       await callbacks.onStart({ status: ResponseStatus.STARTED });
@@ -760,231 +797,318 @@ export class OpenAIProtocol implements ModelProtocol {
     let started = false;
     let requestId: string | undefined = inputRequest.requestId;
     const images: string[] = [];
+    const cyclesLimit = 20;
+    let cycleNo = 0;
 
     try {
       const progressInfo: ChatResponseStatus = {
         requestId,
       };
 
-      for await (const chunk of stream) {
-        if (stopped) break;
+      do {
+        const pendingFunctionCalls: Array<{ name: string; callId: string; arguments: string }> = [];
 
-        logger.trace(chunk, "got responses chunk");
-        progressInfo.sequenceNumber = chunk.sequence_number;
+        for await (const chunk of stream) {
+          if (stopped) break;
 
-        if (chunk.type == "response.created" || chunk.type == "response.queued") {
-          if (!started) {
-            progressInfo.requestId = chunk.response.id;
+          logger.trace(chunk, "got responses chunk");
+          progressInfo.sequenceNumber = chunk.sequence_number;
+
+          if (chunk.type == "response.created" || chunk.type == "response.queued") {
+            if (!started) {
+              progressInfo.requestId = chunk.response.id;
+              stopped = await callbacks.onProgress(
+                "",
+                {
+                  status: ResponseStatus.STARTED,
+                  queue: inputRequest.requestPolling,
+                  ...progressInfo,
+                },
+                true
+              );
+              started = true;
+            }
+          } else if (chunk.type == "response.in_progress") {
+            stopped = await callbacks.onProgress("", { status: ResponseStatus.IN_PROGRESS, ...progressInfo }, true);
+          } else if (chunk.type == "response.output_text.delta") {
+            stopped = await callbacks.onProgress(chunk.delta, {
+              status: ResponseStatus.IN_PROGRESS,
+              ...progressInfo,
+            });
+            fullResponse += chunk.delta;
+          } else if (
+            chunk.type == "response.web_search_call.in_progress" ||
+            chunk.type == "response.web_search_call.searching" ||
+            chunk.type == "response.web_search_call.completed"
+          ) {
+            if (lastStatus !== ResponseStatus.WEB_SEARCH) {
+              lastStatus = ResponseStatus.WEB_SEARCH;
+              stopped = await callbacks.onProgress("", {
+                status: ResponseStatus.WEB_SEARCH,
+                ...progressInfo,
+              });
+            }
+          } else if (
+            chunk.type == "response.mcp_list_tools.in_progress" ||
+            chunk.type == "response.mcp_call.in_progress"
+          ) {
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.MCP_CALL,
+              detail: chunk.type == "response.mcp_list_tools.in_progress" ? "Loading MCP tools..." : undefined,
+              ...progressInfo,
+            });
+          } else if (chunk.type == "response.code_interpreter_call.in_progress") {
+            if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
+              lastStatus = ResponseStatus.CODE_INTERPRETER;
+              stopped = await callbacks.onProgress("", {
+                status: ResponseStatus.CODE_INTERPRETER,
+                ...progressInfo,
+              });
+            }
+          } else if (chunk.type == "response.code_interpreter_call_code.delta") {
+            stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
+          } else if (chunk.type == "response.code_interpreter_call.interpreting") {
+            stopped = await callbacks.onProgress(genProcessSymbol(), {
+              status: ResponseStatus.CODE_INTERPRETER,
+              ...progressInfo,
+            });
+          } else if (chunk.type == "response.code_interpreter_call_code.done") {
+            logger.debug(chunk, "code interpreter call completed");
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.CODE_INTERPRETER,
+              ...progressInfo,
+              tools: [
+                {
+                  name: "code_interpreter",
+                  content: chunk.code || "",
+                  callId: chunk.item_id,
+                },
+              ],
+            });
+          } else if (chunk.type == "response.reasoning_summary_part.added") {
+            partResponse = "";
+          } else if (chunk.type == "response.reasoning_summary_text.delta") {
+            partResponse += chunk.delta;
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.REASONING,
+              ...progressInfo,
+              detail: partResponse,
+            });
+          } else if (chunk.type == "response.reasoning_summary_text.done") {
+            if (!meta.reasoning) {
+              meta.reasoning = [];
+            }
+
+            const text = chunk.text || partResponse;
+            if (text) {
+              meta.reasoning.push({
+                text,
+                timestamp: new Date(),
+                id: chunk.item_id,
+              });
+            }
+          } else if (chunk.type == "response.output_item.added") {
+            if (chunk.item.type === "reasoning") {
+              if (lastStatus !== ResponseStatus.REASONING) {
+                lastStatus = ResponseStatus.REASONING;
+                stopped = await callbacks.onProgress("", {
+                  status: ResponseStatus.REASONING,
+                  ...progressInfo,
+                });
+              }
+            }
+          } else if (chunk.type == "response.output_item.done") {
+            let status: ResponseStatus | undefined = undefined;
+            const item = chunk.item;
+            let detail: string | undefined = undefined;
+
+            if (item.type === "web_search_call") {
+              status = ResponseStatus.WEB_SEARCH;
+            } else if (item.type === "code_interpreter_call") {
+              status = ResponseStatus.CODE_INTERPRETER;
+            } else if (item.type === "function_call") {
+              status = ResponseStatus.TOOL_CALL;
+              if (callableTools.length) {
+                pendingFunctionCalls.push({
+                  name: (item as any).name as string,
+                  callId: (item as any).call_id as string,
+                  arguments: ((item as any).arguments as string) || "{}",
+                });
+              }
+            } else if (item.type === "reasoning") {
+              if (item.summary?.length || item.content?.length) {
+                status = ResponseStatus.REASONING;
+              } else {
+                status = undefined;
+              }
+            } else if (item.type === "image_generation_call") {
+              status = ResponseStatus.CONTENT_GENERATION;
+              detail = (item as any)?.revised_prompt as string;
+            }
+
+            if (status) {
+              lastStatus = status;
+              stopped = await callbacks.onProgress("", {
+                status,
+                ...progressInfo,
+                detail,
+              });
+            }
+          } else if (
+            chunk.type == "response.output_text.annotation.added" &&
+            chunk.annotation &&
+            typeof chunk.annotation === "object"
+          ) {
+            if (!("type" in chunk.annotation)) return;
+
+            if (!meta.annotations) {
+              meta.annotations = [];
+            }
+
+            if (chunk.annotation.type === "url_citation") {
+              const annotation = chunk.annotation as {
+                start_index?: number;
+                end_index?: number;
+                type: string;
+                title?: string;
+                url: string;
+              };
+              meta.annotations.push({
+                type: "url",
+                title: annotation.title,
+                source: annotation.url,
+                endIndex: annotation.end_index,
+                startIndex: annotation.start_index,
+              });
+            } else if (
+              chunk.annotation.type === "file_citation" ||
+              chunk.annotation.type === "file_path" ||
+              chunk.annotation.type === "container_file_citation"
+            ) {
+              const annotation = chunk.annotation as OpenAI.Responses.ResponseOutputText.ContainerFileCitation;
+              meta.annotations.push({
+                type: "file",
+                title: annotation.filename,
+                source: annotation.file_id,
+                container: annotation.container_id,
+                startIndex: annotation.start_index,
+                endIndex: annotation.end_index,
+              });
+            }
+          } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
+            lastResponseId = chunk.response.id;
+            const { content, metadata } = this.parseResponsesOutput(chunk.response);
+            if (metadata) {
+              meta = {
+                ...meta,
+                ...metadata,
+              };
+            }
+
+            if (content) {
+              fullResponse = content;
+            }
+          } else if (chunk.type == "response.image_generation_call.generating") {
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.CONTENT_GENERATION,
+              ...progressInfo,
+            });
+          } else if (chunk.type == "response.image_generation_call.partial_image") {
+            const imageUrl = IMAGE_BASE64_TPL("png", chunk.partial_image_b64);
+            images[0] = imageUrl;
             stopped = await callbacks.onProgress(
-              "",
+              IMAGE_MARKDOWN_TPL(imageUrl),
               {
-                status: ResponseStatus.STARTED,
-                queue: inputRequest.requestPolling,
+                status: ResponseStatus.CONTENT_GENERATION,
                 ...progressInfo,
               },
               true
             );
-            started = true;
-          }
-        } else if (chunk.type == "response.in_progress") {
-          // do nothing
-        } else if (chunk.type == "response.output_text.delta") {
-          stopped = await callbacks.onProgress(chunk.delta, {
-            status: ResponseStatus.IN_PROGRESS,
-            ...progressInfo,
-          });
-          fullResponse += chunk.delta;
-        } else if (
-          chunk.type == "response.web_search_call.in_progress" ||
-          chunk.type == "response.web_search_call.searching" ||
-          chunk.type == "response.web_search_call.completed"
-        ) {
-          if (lastStatus !== ResponseStatus.WEB_SEARCH) {
-            lastStatus = ResponseStatus.WEB_SEARCH;
-            stopped = await callbacks.onProgress("", {
-              status: ResponseStatus.WEB_SEARCH,
-              ...progressInfo,
-            });
-          }
-        } else if (
-          chunk.type == "response.mcp_list_tools.in_progress" ||
-          chunk.type == "response.mcp_call.in_progress"
-        ) {
-          stopped = await callbacks.onProgress("", {
-            status: ResponseStatus.MCP_CALL,
-            detail: chunk.type == "response.mcp_list_tools.in_progress" ? "Loading MCP tools..." : undefined,
-            ...progressInfo,
-          });
-        } else if (chunk.type == "response.code_interpreter_call.in_progress") {
-          if (lastStatus !== ResponseStatus.CODE_INTERPRETER) {
-            lastStatus = ResponseStatus.CODE_INTERPRETER;
-            stopped = await callbacks.onProgress("", {
-              status: ResponseStatus.CODE_INTERPRETER,
-              ...progressInfo,
-            });
-          }
-        } else if (chunk.type == "response.code_interpreter_call_code.delta") {
-          stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
-        } else if (chunk.type == "response.code_interpreter_call.interpreting") {
-          stopped = await callbacks.onProgress(genProcessSymbol(), {
-            status: ResponseStatus.CODE_INTERPRETER,
-            ...progressInfo,
-          });
-        } else if (chunk.type == "response.code_interpreter_call_code.done") {
-          logger.debug(chunk, "code interpreter call completed");
-          stopped = await callbacks.onProgress("", {
-            status: ResponseStatus.CODE_INTERPRETER,
-            ...progressInfo,
-            tools: [
-              {
-                name: "code_interpreter",
-                content: chunk.code || "",
-                callId: chunk.item_id,
-              },
-            ],
-          });
-        } else if (chunk.type == "response.reasoning_summary_part.added") {
-          partResponse = "";
-        } else if (chunk.type == "response.reasoning_summary_text.delta") {
-          partResponse += chunk.delta;
-          stopped = await callbacks.onProgress("", {
-            status: ResponseStatus.REASONING,
-            ...progressInfo,
-            detail: partResponse,
-          });
-        } else if (chunk.type == "response.reasoning_summary_text.done") {
-          if (!meta.reasoning) {
-            meta.reasoning = [];
-          }
-
-          const text = chunk.text || partResponse;
-          if (text) {
-            meta.reasoning.push({
-              text,
-              timestamp: new Date(),
-              id: chunk.item_id,
-            });
-          }
-        } else if (chunk.type == "response.output_item.added") {
-          if (chunk.item.type === "reasoning") {
-            if (lastStatus !== ResponseStatus.REASONING) {
-              lastStatus = ResponseStatus.REASONING;
-              stopped = await callbacks.onProgress("", {
-                status: ResponseStatus.REASONING,
-                ...progressInfo,
-              });
-            }
-          }
-        } else if (chunk.type == "response.output_item.done") {
-          let status: ResponseStatus | undefined = undefined;
-          const item = chunk.item;
-          let detail: string | undefined = undefined;
-
-          if (item.type === "web_search_call") {
-            status = ResponseStatus.WEB_SEARCH;
-          } else if (item.type === "code_interpreter_call") {
-            status = ResponseStatus.CODE_INTERPRETER;
-          } else if (item.type === "function_call") {
-            status = ResponseStatus.TOOL_CALL;
-          } else if (item.type === "reasoning") {
-            if (item.summary?.length || item.content?.length) {
-              status = ResponseStatus.REASONING;
-            } else {
-              status = undefined;
-            }
-          } else if (item.type === "image_generation_call") {
-            status = ResponseStatus.CONTENT_GENERATION;
-            detail = (item as any)?.revised_prompt as string;
-          }
-
-          if (status) {
-            lastStatus = status;
-            stopped = await callbacks.onProgress("", {
-              status,
-              ...progressInfo,
-              detail,
-            });
-          }
-        } else if (
-          chunk.type == "response.output_text.annotation.added" &&
-          chunk.annotation &&
-          typeof chunk.annotation === "object"
-        ) {
-          if (!("type" in chunk.annotation)) return;
-
-          if (!meta.annotations) {
-            meta.annotations = [];
-          }
-
-          if (chunk.annotation.type === "url_citation") {
-            const annotation = chunk.annotation as {
-              start_index?: number;
-              end_index?: number;
-              type: string;
-              title?: string;
-              url: string;
-            };
-            meta.annotations.push({
-              type: "url",
-              title: annotation.title,
-              source: annotation.url,
-              endIndex: annotation.end_index,
-              startIndex: annotation.start_index,
-            });
           } else if (
-            chunk.annotation.type === "file_citation" ||
-            chunk.annotation.type === "file_path" ||
-            chunk.annotation.type === "container_file_citation"
+            chunk.type == "response.image_generation_call.completed" ||
+            chunk.type == "response.image_generation_call.in_progress"
           ) {
-            const annotation = chunk.annotation as OpenAI.Responses.ResponseOutputText.ContainerFileCitation;
-            meta.annotations.push({
-              type: "file",
-              title: annotation.filename,
-              source: annotation.file_id,
-              container: annotation.container_id,
-              startIndex: annotation.start_index,
-              endIndex: annotation.end_index,
-            });
-          }
-        } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
-          const { content, metadata } = this.parseResponsesOutput(chunk.response);
-          if (metadata) {
-            meta = {
-              ...meta,
-              ...metadata,
-            };
-          }
-
-          if (content) {
-            fullResponse = content;
-          }
-        } else if (chunk.type == "response.image_generation_call.generating") {
-          stopped = await callbacks.onProgress("", {
-            status: ResponseStatus.CONTENT_GENERATION,
-            ...progressInfo,
-          });
-        } else if (chunk.type == "response.image_generation_call.partial_image") {
-          const imageUrl = IMAGE_BASE64_TPL("png", chunk.partial_image_b64);
-          images[0] = imageUrl;
-          stopped = await callbacks.onProgress(
-            IMAGE_MARKDOWN_TPL(imageUrl),
-            {
-              status: ResponseStatus.CONTENT_GENERATION,
+            // do nothing
+          } else if (chunk.type == "response.function_call_arguments.delta") {
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.TOOL_CALL,
               ...progressInfo,
-            },
-            true
-          );
-        } else if (
-          chunk.type == "response.image_generation_call.completed" ||
-          chunk.type == "response.image_generation_call.in_progress"
-        ) {
-          // do nothing
-        } else if (!["keepalive"].includes(chunk.type)) {
-          logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
-        }
-      }
+            });
+          } else if (chunk.type == "response.function_call_arguments.done") {
+            // arguments collected via response.output_item.done
+          } else if (!["keepalive"].includes(chunk.type)) {
+            logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
+          }
+        } // end for await
+
+        if (stopped || !pendingFunctionCalls.length || !callableTools.length) break;
+
+        const toolCalls: ChatCompletionToolCall[] = pendingFunctionCalls.map(fc => ({
+          callId: fc.callId,
+          type: "function" as const,
+          name: fc.name,
+          arguments: (() => {
+            try {
+              return JSON.parse(fc.arguments);
+            } catch {
+              return {};
+            }
+          })(),
+        }));
+
+        stopped = await callbacks.onProgress(genProcessSymbol(), {
+          status: ResponseStatus.TOOL_CALL,
+          toolCalls: toolCalls.map(c => ({ ...c, name: c.name || "unknown", args: JSON.stringify(c.arguments || {}) })),
+        });
+        if (stopped) break;
+
+        const toolResults = await this.callCompletionTools(
+          toolCalls,
+          callableTools,
+          callbacks.onProgress,
+          inputRequest.mcpTokens
+        );
+
+        const completedTools: ChatToolCallResult[] = toolResults
+          .map(({ call, result }) => ({
+            name: call.name || "unknown",
+            content: this.parseCompletionToolCallResult(result),
+            callId: call.callId,
+          }))
+          .filter(notEmpty);
+
+        await callbacks.onProgress("", {
+          status: ResponseStatus.TOOL_CALL_COMPLETED,
+          tools: completedTools,
+          toolCalls: toolCalls.map(tc => ({
+            name: tc.name || "unknown",
+            type: tc.type,
+            callId: tc.callId,
+            args: tc.arguments ? JSON.stringify(tc.arguments) : undefined,
+          })),
+        });
+
+        stopped = toolResults.some(tr => tr.stopped);
+        if (stopped) break;
+
+        const functionOutputs = toolResults.map(({ call, result }) => ({
+          type: "function_call_output" as const,
+          call_id: call.callId,
+          output: this.parseCompletionToolCallResult(result),
+        }));
+
+        stream = await this.openai.responses.create({
+          ...baseParams,
+          previous_response_id: lastResponseId,
+          input: functionOutputs,
+        } as OpenAI.Responses.ResponseCreateParamsStreaming);
+      } while (cycleNo++ < cyclesLimit);
     } catch (err: unknown) {
       stopped = await callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+      if (stopped) {
+        stream?.controller?.abort();
+      }
+      return;
     }
 
     if (stopped) {
@@ -1151,6 +1275,44 @@ export class OpenAIProtocol implements ModelProtocol {
           return m;
         })
       : [];
+  }
+
+  private getResponsesCallableTools(
+    tools: OpenAI.Responses.Tool[],
+    mcpServers: IMCPServer[]
+  ): ChatCompletionToolCallable[] {
+    if (!tools) return [];
+    const functionTools = tools.filter(t => t.type === "function");
+    const serverMap = new Map(mcpServers?.map(s => [`M_${s.id.replace(/-/g, "")}`, s]) || []);
+    const mcpTools = functionTools.filter(t => t.name?.startsWith("M_"));
+
+    const result: ChatCompletionToolCallable[] = [];
+    if (mcpTools.length) {
+      const localServers: { server: IMCPServer; tool: ChatTool }[] = [];
+      mcpTools.forEach(tool => {
+        const serverName = (tool.name || "")?.replace(/_\d+$/, "");
+        const server = serverMap.get(serverName);
+        if (!server) return;
+        localServers.push({
+          server,
+          tool: {
+            type: ToolType.MCP,
+            name: server.name,
+            id: server.id,
+          },
+        });
+      });
+
+      result.push(
+        ...formatOpenAIMcpTools(
+          localServers.map(s => s.tool),
+          localServers.map(s => s.server)
+        )
+      );
+    }
+
+    // add WebSearch and CodeInterpreter if requested
+    return result;
   }
 
   private callCompletionTools(

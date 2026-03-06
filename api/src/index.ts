@@ -19,6 +19,7 @@ import { configurePassport } from "./config/passport";
 import { router as authRoutes } from "./controllers/auth.controller";
 import { router as healthRoutes } from "./controllers/health.controller";
 import { router as filesRoutes } from "./controllers/files.controller";
+import { createSystemMCPRouter } from "./controllers/system-mcp.controller";
 import { initializeDatabase } from "./config/database";
 import {
   ChatResolver,
@@ -46,6 +47,7 @@ import { HttpError } from "./types/exceptions";
 import { DocumentSqsService, RequestsSqsService, SubscriptionsService } from "./services/messaging";
 import { servicesMiddleware } from "./middleware/services.middleware";
 import { globalConfig } from "./global-config";
+import { ensureSystemMCPServers } from "./config/initial-data";
 
 // Load environment variables
 config();
@@ -74,6 +76,7 @@ async function bootstrap() {
 
   await requestsSqsService.startup();
   await documentSqsService.startup();
+  await ensureSystemMCPServers();
 
   const schemaPubSub = {
     publish: (routingKey: string, ...args: unknown[]) => {
@@ -146,6 +149,7 @@ async function bootstrap() {
   app.use("/health", healthRoutes);
   app.use("/auth", authRoutes);
   app.use("/files", filesRoutes);
+  app.use("/mcp", createSystemMCPRouter());
 
   /**
    * Development-time endpoint for esbuild hot reloading to test Docker container locally.
