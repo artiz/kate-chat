@@ -86,7 +86,7 @@ export const ChatInputHeader = ({
     mcpSetTokenValue,
     mcpCloseTokenModal,
     mcpAuthStatus,
-  } = useMcpAuth(mcpServers, currentUser?.id, chatId);
+  } = useMcpAuth(mcpServers, currentUser?.id, chatId, userToken ?? undefined);
 
   useEffect(() => {
     if (chatTools) {

@@ -79,6 +79,47 @@ router.get(
   handleAuthResponse
 );
 
+// MCP token refresh - exchanges refresh_token for a new access_token
+router.post("/mcp/refresh", async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  let tokenPayload: TokenPayload | null = null;
+  try {
+    tokenPayload = verifyToken(authHeader.slice(7));
+  } catch {
+    res.status(401).json({ error: "Invalid token" });
+    return;
+  }
+
+  const { serverId, refreshToken } = req.body as { serverId?: string; refreshToken?: string };
+  if (!serverId || !refreshToken) {
+    res.status(400).json({ error: "serverId and refreshToken are required" });
+    return;
+  }
+
+  try {
+    ok(tokenPayload);
+    const service = new McpServersService();
+    const {
+      accessToken,
+      expiresAt,
+      refreshToken: newRefreshToken,
+    } = await service.refreshOauthToken({
+      serverId,
+      refreshToken,
+      userId: tokenPayload.userId,
+    });
+    res.json({ accessToken, expiresAt, refreshToken: newRefreshToken });
+  } catch (err) {
+    logger.error(err, "Error during MCP token refresh");
+    res.status(500).json({ error: getErrorMessage(err) });
+  }
+});
+
 // MCP OAuth callback - exchanges authorization code for access token and returns HTML that writes token to localStorage
 router.get("/mcp/callback", async (req: Request, res: Response) => {
   const { code, state, error, error_description } = req.query;

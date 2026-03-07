@@ -8,6 +8,7 @@ import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { MCPAuthType, MCPTransportType } from "@/types/api";
 import { simpleHash } from "@/utils/format";
+import { McpServersService } from "@/services/mcp.service";
 
 const logger = createLogger(__filename);
 
@@ -193,6 +194,38 @@ export class MCPClient {
         // logger.warn(e, "Error closing existing MCP transport during re-init");
       }
       this.transport = undefined;
+    }
+
+    // Auto-refresh OAuth token if expiring soon
+    if (this.authToken?.expiresAt && this.server.authType === MCPAuthType.OAUTH2) {
+      const timeUntilExpiration = this.authToken.expiresAt - Date.now();
+      const refreshBeforeSec = globalConfig.oauth.refreshBeforeExpirationSec * 1000;
+
+      if (timeUntilExpiration > 0 && timeUntilExpiration <= refreshBeforeSec) {
+        try {
+          logger.debug({ serverId: this.server.id }, "Auto-refreshing OAuth token before expiration");
+          const service = new McpServersService();
+          const {
+            accessToken,
+            refreshToken: newRefreshToken,
+            expiresAt,
+          } = await service.refreshOauthToken({
+            serverId: this.server.id,
+            refreshToken: this.authToken.refreshToken || "",
+          });
+          this.authToken.accessToken = accessToken;
+          this.authToken.expiresAt = expiresAt;
+          if (newRefreshToken) {
+            this.authToken.refreshToken = newRefreshToken;
+          }
+          logger.debug({ serverId: this.server.id }, "OAuth token refreshed successfully");
+        } catch (err) {
+          logger.warn(
+            { serverId: this.server.id, err },
+            "Failed to auto-refresh OAuth token, proceeding with current token"
+          );
+        }
+      }
     }
 
     this.client = new Client({

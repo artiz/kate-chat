@@ -13,7 +13,7 @@ const DEFAULT_PROVIDERS: ApiProvider[] = [
   ApiProvider.CUSTOM_REST_API,
 ];
 
-const DEFAULT_MCP_SERVICES = "gmail";
+const ENABLED_MCP_SERVICES = "gmail";
 
 export interface InitialCustomModel {
   name: string;
@@ -114,6 +114,7 @@ export interface GlobalConfigShape {
       clientSecret: string;
       tenantId: string;
     };
+    refreshBeforeExpirationSec: number;
   };
   db: {
     type: string;
@@ -317,7 +318,7 @@ export class GlobalConfig {
         ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, false),
         reasoningMinTokenBudget: Math.max(+(process.env.AI_REASONING_MIN_TOKEN_BUDGET || 1024) | 0, 1024),
         reasoningMaxTokenBudget: +(process.env.AI_REASONING_MAX_TOKEN_BUDGET || 50_000) | 0,
-        enabledMcp: (process.env.ENABLED_MCP_SERVICES || DEFAULT_MCP_SERVICES).split(",").map(s => s.trim()) || [],
+        enabledMcp: (process.env.ENABLED_MCP_SERVICES || ENABLED_MCP_SERVICES).split(",").map(s => s.trim()) || [],
       },
       oauth: {
         google: {
@@ -337,6 +338,7 @@ export class GlobalConfig {
           clientSecret: process.env.MICROSOFT_OAUTH_CLIENT_SECRET || "",
           tenantId: process.env.MICROSOFT_OAUTH_TENANT_ID || "common",
         },
+        refreshBeforeExpirationSec: +(process.env.OAUTH_REFRESH_BEFORE_EXPIRATION_SEC || 600) | 0, // 10 minutes
       },
       db: {
         type: DB_TYPE,

@@ -102,6 +102,44 @@ export const storeMcpToken = (serverId: string, token: string, expiresAt?: numbe
 };
 
 /**
+ * Attempt to refresh an expired MCP token using the stored refresh_token.
+ * Returns true if refresh succeeded and new token is stored.
+ */
+export const refreshMcpToken = async (
+  serverId: string,
+  userId: string | undefined,
+  userToken: string
+): Promise<boolean> => {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY(serverId, userId));
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${APP_API_URL}/auth/mcp/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+      body: JSON.stringify({ serverId, refreshToken }),
+    });
+
+    if (!response.ok) return false;
+
+    const { accessToken, expiresAt, refreshToken: newRefreshToken } = await response.json();
+    if (!accessToken) return false;
+
+    localStorage.setItem(ACCESS_TOKEN_KEY(serverId, userId), accessToken);
+    localStorage.setItem(
+      EXPIRES_AT_KEY(serverId, userId),
+      expiresAt ? String(expiresAt) : String(Date.now() + TOKEN_EXPIRATION_MS)
+    );
+    if (newRefreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY(serverId, userId), newRefreshToken);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Initiate OAuth flow for an MCP server
  * Returns the popup window reference for origin validation
  */
@@ -118,6 +156,8 @@ export const initiateMcpOAuth = (server: MCPServer, userToken: string): Window |
     state: `${server.id}@${userToken}`,
     nonce: crypto.randomUUID().replace(/-/g, ""), // simple nonce for CSRF protection
     scope: server.authConfig.scope || "",
+    access_type: "offline", // request refresh token
+    prompt: "consent", // force consent screen so refresh token is always returned
   });
 
   const authUrl = `${server.authConfig.authorizationUrl}?${params.toString()}`;
@@ -157,7 +197,12 @@ export interface UseMcpAuthResult {
   mcpInitiateAuth: (server: MCPServer, userToken: string, force?: boolean) => boolean;
 }
 
-export const useMcpAuth = (servers: MCPServer[], userId: string | undefined, chatId?: string): UseMcpAuthResult => {
+export const useMcpAuth = (
+  servers: MCPServer[],
+  userId: string | undefined,
+  chatId?: string,
+  userToken?: string
+): UseMcpAuthResult => {
   const [mcpAuthStatus, setAuthStatus] = useState<Map<string, boolean>>(new Map());
   const [mcpTokenModalServer, setTokenModalServer] = useState<MCPServer | null>(null);
   const [mcpTokenValue, mcpSetTokenValue] = useState("");
@@ -180,16 +225,28 @@ export const useMcpAuth = (servers: MCPServer[], userId: string | undefined, cha
     return url.origin;
   }, []);
 
-  // Check auth status for all servers
+  // Check auth status for all servers, auto-refreshing expired tokens when possible
   useEffect(() => {
-    const statusMap = new Map<string, boolean>();
-    servers.forEach(server => {
-      if (requiresAuth(server)) {
-        statusMap.set(server.id, hasValidMcpToken(server.id, userId));
-      }
-    });
-    setAuthStatus(statusMap);
-  }, [servers, chatId]);
+    const check = async () => {
+      const statusMap = new Map<string, boolean>();
+      await Promise.all(
+        servers
+          .filter(server => requiresAuth(server))
+          .map(async server => {
+            if (hasValidMcpToken(server.id, userId)) {
+              statusMap.set(server.id, true);
+            } else if (userToken && localStorage.getItem(REFRESH_TOKEN_KEY(server.id, userId))) {
+              const refreshed = await refreshMcpToken(server.id, userId, userToken);
+              statusMap.set(server.id, refreshed);
+            } else {
+              statusMap.set(server.id, false);
+            }
+          })
+      );
+      setAuthStatus(statusMap);
+    };
+    check();
+  }, [servers, chatId, userToken]);
 
   // Listen for OAuth callback messages from popup
   useEffect(() => {

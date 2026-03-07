@@ -169,6 +169,59 @@ export class McpServersService {
     }
   }
 
+  public async refreshOauthToken({
+    serverId,
+    refreshToken,
+    userId,
+  }: {
+    serverId: string;
+    refreshToken: string;
+    userId?: string;
+  }): Promise<{ accessToken: string; expiresAt?: number; refreshToken?: string }> {
+    const server = userId
+      ? await this.getServerById({ id: serverId, userId })
+      : await this.mcpServerRepository.findOne({ where: { id: serverId } });
+
+    if (!server) throw new Error("MCP server not found");
+
+    const { authConfig } = server;
+    if (!authConfig?.tokenUrl || !authConfig?.clientId) {
+      throw new Error("OAuth configuration incomplete - missing tokenUrl or clientId");
+    }
+
+    const tokenParams = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: authConfig.clientId,
+      ...(authConfig.clientSecret && { client_secret: authConfig.clientSecret }),
+    });
+
+    const tokenResponse = await fetch(authConfig.tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      body: tokenParams.toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      logger.warn({ status: tokenResponse.status, error: errorText, serverId }, "OAuth token refresh failed");
+      throw new Error(`OAuth token refresh failed: ${tokenResponse.status}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      throw new Error("No access_token in OAuth refresh response");
+    }
+
+    const expiresIn = tokenData.expires_in;
+    const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : undefined;
+    const newRefreshToken = tokenData.refresh_token || undefined;
+
+    logger.debug({ serverId, expiresIn }, "OAuth token refresh successful");
+    return { accessToken, expiresAt, refreshToken: newRefreshToken };
+  }
+
   private buildAccessibleServersQuery(userId: string): SelectQueryBuilder<MCPServer> {
     return this.mcpServerRepository
       .createQueryBuilder("server")

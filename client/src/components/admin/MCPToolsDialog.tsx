@@ -434,7 +434,7 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
     mcpSetTokenValue,
     mcpCloseTokenModal,
     mcpAuthStatus,
-  } = useMcpAuth(servers, currentUser?.id);
+  } = useMcpAuth(servers, currentUser?.id, undefined, userToken ?? undefined);
 
   // Check if auth is needed - use hook's auth status for reactivity
   const needsAuth = server && requiresAuth(server) && !mcpAuthStatus.get(server.id);
