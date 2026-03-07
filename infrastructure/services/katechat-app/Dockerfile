@@ -48,6 +48,7 @@ COPY --from=build /app/db-migrations ./db-migrations
 
 # copy built frontend client files
 COPY --from=build /app/client/dist ./client
+COPY --from=build /app/client/microsoft-identity-association.json ./client
 
 # Copy nginx configuration
 EXPOSE 80
