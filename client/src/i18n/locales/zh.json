@@ -161,6 +161,7 @@
     "noActiveProviders": "无活跃提供商",
     "noActiveProvidersMessage": "没有已连接的 AI 提供商。",
     "noChatsYet": "暂无聊天",
+    "owner": "所有者：",
     "noMessageToStop": "未找到要停止的消息",
     "noModelsAvailable": "无可用模型",
     "noRequestId": "未找到当前消息的请求 ID",

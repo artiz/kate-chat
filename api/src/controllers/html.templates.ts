@@ -61,17 +61,14 @@ export const MCP_OAUTH_SUCCESS_TEMPLATE = HTML_TEMPLATE(
     `,
   `<script>
       const serverId = '{{SERVER_ID}}';
+      const userId = '{{USER_ID}}' || 'user';
       const accessToken = '{{ACCESS_TOKEN}}';
       const refreshToken = '{{REFRESH_TOKEN}}';
       const expiresAt = '{{EXPIRES_AT}}';
       
-      localStorage.setItem('mcp.' + serverId + '.access_token', accessToken);
-      if (refreshToken) {
-        localStorage.setItem('mcp.' + serverId + '.refresh_token', refreshToken);
-      }
-      if (expiresAt) {
-        localStorage.setItem('mcp.' + serverId + '.expires_at', expiresAt);
-      }
+      localStorage.setItem(userId + '-mcp.' + serverId + '.access_token', accessToken);
+      localStorage.setItem(userId + '-mcp.' + serverId + '.refresh_token', refreshToken);
+      localStorage.setItem(userId + '-mcp.' + serverId + '.expires_at', expiresAt);
       
       if (window.opener) {
         window.opener.postMessage({ 

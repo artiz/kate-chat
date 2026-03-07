@@ -1,8 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { generateToken, TokenPayload, verifyToken } from "@/utils/jwt";
-import { User, MCPServer } from "@/entities";
-import { getRepository } from "@/config/database";
+import { User } from "@/entities";
 import { createLogger } from "@/utils/logger";
 import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, OAUTH_ERROR_TEMPLATE } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
@@ -203,6 +202,7 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
 
     // Return HTML that stores the access token and notifies parent window
     const successHtml = MCP_OAUTH_SUCCESS_TEMPLATE.replace(/\{\{SERVER_ID\}\}/g, escapeHtml(serverId))
+      .replace(/\{\{USER_ID\}\}/g, escapeHtml(tokenPayload.userId))
       .replace(/\{\{SERVER_NAME\}\}/g, escapeHtml(server.name))
       .replace(/\{\{ACCESS_TOKEN\}\}/g, escapeHtml(accessToken))
       .replace(/\{\{REFRESH_TOKEN\}\}/g, escapeHtml(refreshToken || ""))

@@ -306,6 +306,7 @@
     "chatDeleted": "Чат успешно удалён",
     "failedToDelete": "Не удалось удалить чат",
     "noChatsYet": "Пока нет чатов",
+    "owner": "Владелец:",
     "errorLoadingChats": "Ошибка загрузки чатов",
     "folder": {
       "new": "Новая папка",

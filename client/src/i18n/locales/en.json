@@ -161,6 +161,7 @@
     "noActiveProviders": "No Active Providers",
     "noActiveProvidersMessage": "No active AI providers connected.",
     "noChatsYet": "No chats yet",
+    "owner": "Owner:",
     "noMessageToStop": "No message found to stop",
     "noModelsAvailable": "No Models Available",
     "noRequestId": "No request ID found for current message",

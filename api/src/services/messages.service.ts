@@ -450,6 +450,8 @@ export class MessagesService {
 
       assistantMessage.jsonContent = undefined;
       assistantMessage.metadata = undefined;
+      assistantMessage.modelId = model.modelId;
+      assistantMessage.modelName = model.name;
     } else {
       assistantMessage = await this.messageRepository.save(
         this.messageRepository.create({

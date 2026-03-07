@@ -13,8 +13,15 @@ import { setAppConfig, setMcpServers, setUser } from "../store/slices/userSlice"
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats, setPinnedChats } from "../store/slices/chatSlice";
 import { setFolders } from "../store/slices/folderSlice";
-import { logout, useAppSelector } from "../store";
+import { getStorageValue, logout, removeStorageValue, useAppSelector, writeStorageValue } from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
+import { MainLayout } from "../components/MainLayout";
+import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
+import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
+import { UserRole } from "@/store/slices/userSlice";
+import { ChatDocuments } from "@/pages/ChatDocuments";
+import { DocumentDetail } from "@/pages/DocumentDetail";
+import { SimpleLayout } from "./SimpleLayout";
 
 // Pages
 import Login from "@/pages/Login";
@@ -32,13 +39,6 @@ import { Password } from "@/pages/Password";
 import { Users } from "@/pages/Users";
 import { Library } from "@/pages/Library";
 import { Documents } from "@/pages/Documents";
-import { MainLayout } from "../components/MainLayout";
-import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
-import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
-import { UserRole } from "@/store/slices/userSlice";
-import { ChatDocuments } from "@/pages/ChatDocuments";
-import { DocumentDetail } from "@/pages/DocumentDetail";
-import { SimpleLayout } from "./SimpleLayout";
 
 const BASE_URLS = ["/", "/chat"];
 const STORAGE_RETURN_URL_KEY = "return-url";
@@ -46,11 +46,12 @@ const STORAGE_RETURN_URL_KEY = "return-url";
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const currentUser = useAppSelector(state => state.user.currentUser);
   const location = useLocation();
   const path = location.pathname;
   const returnUrl = BASE_URLS.includes(path) ? "" : path;
   if (returnUrl) {
-    localStorage.setItem(STORAGE_RETURN_URL_KEY, returnUrl);
+    writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, currentUser);
   }
   return isAuthenticated ? element : <Navigate to={"/login"} replace />;
 };
@@ -96,9 +97,9 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
-      const returnUrl = localStorage.getItem(STORAGE_RETURN_URL_KEY);
+      const returnUrl = getStorageValue(STORAGE_RETURN_URL_KEY, initData.appConfig.currentUser);
       if (returnUrl) {
-        localStorage.removeItem(STORAGE_RETURN_URL_KEY);
+        removeStorageValue(STORAGE_RETURN_URL_KEY, initData.appConfig.currentUser);
         setTimeout(() => {
           navigate(returnUrl);
         }, 200);
@@ -140,11 +141,11 @@ const AppContent: React.FC = () => {
         dispatch(logout());
         const path = location.pathname;
         const returnUrl = BASE_URLS.includes(path) ? "" : path;
-        localStorage.setItem(STORAGE_RETURN_URL_KEY, returnUrl);
+        writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, initData?.appConfig?.currentUser);
         navigate("/login");
       }
     }
-  }, [isError, error, loginTime]);
+  }, [isError, error, loginTime, initData, location.pathname]);
 
   // Make sure the theme is applied to the document element
   useEffect(() => {

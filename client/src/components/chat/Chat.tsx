@@ -80,7 +80,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const allModels = useAppSelector(state => state.models.models);
-  const { appConfig } = useAppSelector(state => state.user);
+  const { appConfig, currentUser } = useAppSelector(state => state.user);
   const { aiUsageAlert } = getClientConfig();
 
   const [selectedRagDocIds, setSelectedRagDocIds] = useState<string[]>([]);
@@ -146,8 +146,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const mcpTokens = useMemo(() => {
-    return getChatMcpTokens(chat?.tools);
-  }, [chat?.tools]);
+    return getChatMcpTokens(chat?.tools, currentUser?.id);
+  }, [chat?.tools, currentUser]);
 
   const chatDocuments = useMemo(() => {
     let docs = (chat?.chatDocuments || []).map((doc: ChatDocument) => doc.document).filter(assert.notEmpty);
@@ -175,7 +175,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
     () => [ragPlugin, CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning],
     [ragPlugin]
   );
-  const messagePlugins = useMemo(() => [EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens], []);
+
+  const isExternalChat = useMemo(() => {
+    if (!chat?.user || !appConfig?.currentUser) return false;
+    return chat.user.id && appConfig.currentUser.id !== chat.user.id;
+  }, [chat?.user, appConfig?.currentUser]);
+
+  const messagePlugins = useMemo(
+    () => (isExternalChat ? [InOutTokens] : [EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]),
+    [isExternalChat]
+  );
 
   const handleAutoScroll = useCallback((enabled: boolean) => {
     setAutoScroll(enabled);
@@ -356,11 +365,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }, 0);
   }, [chat?.title]);
 
-  const isExternalChat = useMemo(() => {
-    if (!chat?.user || !appConfig?.currentUser) return false;
-    return chat.user.id && appConfig.currentUser.id !== chat.user.id;
-  }, [chat?.user, appConfig?.currentUser]);
-
   const handleAddDocuments = useCallback(
     (documents: File[]) => {
       if (documents.length) {
@@ -481,7 +485,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
               </Group>
             )}
 
-            {isExternalChat && chat?.user ? `Owner: ${chat.user.firstName} ${chat.user.lastName}` : null}
+            {isExternalChat && chat?.user ? `${t("chat.owner")} ${chat.user.firstName} ${chat.user.lastName}` : null}
           </div>
         )}
 

@@ -214,7 +214,7 @@ export const MCPServersAdmin: React.FC = () => {
                     <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
                       <Indicator
                         label={server.access}
-                        disabled={server.userId === currentUser?.id}
+                        disabled={server.userId === currentUser?.id && server.access === EntityAccessType.PRIVATE}
                         color="orange"
                         size="lg"
                         position="top-end"

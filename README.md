@@ -50,7 +50,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ## TODO
 
 ### Features/bugfixes
-
+* Update localStorage settings keys with user id to do not share auth between accounts
 * Add System Teams MCP (https://learn.microsoft.com/en-us/microsoft-agent-365/mcp-server-reference/teams)
 * Use maxInputTokens to limit/trim messages content
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto

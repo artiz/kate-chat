@@ -97,6 +97,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [showInputSchema, setShowInputSchema] = useState(false);
   const [showOutputSchema, setShowOutputSchema] = useState(false);
+  const { currentUser } = useAppSelector(state => state.user);
 
   const [testTool, { loading: testLoading }] = useMutation(TEST_MCP_TOOL, {
     onCompleted: data => {
@@ -168,7 +169,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ tool, serverId }) => {
           serverId,
           toolName: tool.name,
           argsJson: JSON.stringify(args),
-          authToken: getMcpAuthToken(serverId)?.accessToken,
+          authToken: getMcpAuthToken(serverId, currentUser?.id)?.accessToken,
         },
       },
     });
@@ -433,7 +434,7 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
     mcpSetTokenValue,
     mcpCloseTokenModal,
     mcpAuthStatus,
-  } = useMcpAuth(servers);
+  } = useMcpAuth(servers, currentUser?.id);
 
   // Check if auth is needed - use hook's auth status for reactivity
   const needsAuth = server && requiresAuth(server) && !mcpAuthStatus.get(server.id);
@@ -488,7 +489,9 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
   const handleRefetchTools = () => {
     if (server?.id) {
       setTools([]);
-      refetchTools({ variables: { serverId: server.id, authToken: getMcpAuthToken(server.id)?.accessToken } });
+      refetchTools({
+        variables: { serverId: server.id, authToken: getMcpAuthToken(server.id, currentUser?.id)?.accessToken },
+      });
     }
   };
 

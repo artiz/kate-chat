@@ -53,7 +53,7 @@ export const ChatInputHeader = ({
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const { t } = useTranslation();
   const { models: allModels } = useAppSelector(state => state.models);
-  const { mcpServers: allMcpServers } = useAppSelector(state => state.user);
+  const { mcpServers: allMcpServers, currentUser } = useAppSelector(state => state.user);
 
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
@@ -86,7 +86,7 @@ export const ChatInputHeader = ({
     mcpSetTokenValue,
     mcpCloseTokenModal,
     mcpAuthStatus,
-  } = useMcpAuth(mcpServers, chatId);
+  } = useMcpAuth(mcpServers, currentUser?.id, chatId);
 
   useEffect(() => {
     if (chatTools) {

@@ -18,7 +18,7 @@ import {
 import { IconHelp } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import type { ApiProvider } from "@katechat/ui";
-import { useAppSelector } from "@/store";
+import { getStorageValue, removeStorageValue, useAppSelector, writeStorageValue } from "@/store";
 import { UpdateUserInput, User, UserSettings } from "@/store/slices/userSlice";
 import {
   STORAGE_AWS_BEDROCK_ACCESS_KEY_ID,
@@ -94,13 +94,13 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
 
     // Load initial connection settings from localStorage or defaults
     if (enabledApiProviders.has("AWS_BEDROCK")) {
-      setAwsRegion(localStorage.getItem(STORAGE_AWS_BEDROCK_REGION) || settings.awsBedrockRegion || "");
-      setAwsProfile(localStorage.getItem(STORAGE_AWS_BEDROCK_PROFILE) || settings.awsBedrockProfile || "");
+      setAwsRegion(getStorageValue(STORAGE_AWS_BEDROCK_REGION, user) || settings.awsBedrockRegion || "");
+      setAwsProfile(getStorageValue(STORAGE_AWS_BEDROCK_PROFILE, user) || settings.awsBedrockProfile || "");
       setAwsAccessKeyId(
-        localStorage.getItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID) || settings.awsBedrockAccessKeyId || ""
+        getStorageValue(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, user) || settings.awsBedrockAccessKeyId || ""
       );
       setAwsSecretAccessKey(
-        localStorage.getItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY) || settings.awsBedrockSecretAccessKey || ""
+        getStorageValue(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY, user) || settings.awsBedrockSecretAccessKey || ""
       );
 
       setAwsBedrockServerSave(
@@ -113,14 +113,14 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
       );
     }
     if (enabledApiProviders.has("OPEN_AI")) {
-      setOpenaiApiKey(localStorage.getItem(STORAGE_OPENAI_API_KEY) || settings.openaiApiKey || "");
-      setOpenaiApiAdminKey(localStorage.getItem(STORAGE_OPENAI_API_ADMIN_KEY) || settings.openaiApiAdminKey || "");
+      setOpenaiApiKey(getStorageValue(STORAGE_OPENAI_API_KEY, user) || settings.openaiApiKey || "");
+      setOpenaiApiAdminKey(getStorageValue(STORAGE_OPENAI_API_ADMIN_KEY, user) || settings.openaiApiAdminKey || "");
 
       setOpenAiServerSave(Boolean(settings.openaiApiKey || settings.openaiApiAdminKey));
     }
     if (enabledApiProviders.has("YANDEX_FM")) {
-      setYandexApiKey(localStorage.getItem(STORAGE_YANDEX_FM_API_KEY) || settings.yandexFmApiKey || "");
-      setYandexApiFolderId(localStorage.getItem(STORAGE_YANDEX_FM_API_FOLDER) || settings.yandexFmApiFolderId || "");
+      setYandexApiKey(getStorageValue(STORAGE_YANDEX_FM_API_KEY, user) || settings.yandexFmApiKey || "");
+      setYandexApiFolderId(getStorageValue(STORAGE_YANDEX_FM_API_FOLDER, user) || settings.yandexFmApiFolderId || "");
 
       setYandexFmServerSave(Boolean(settings.yandexFmApiKey || settings.yandexFmApiFolderId));
     }
@@ -151,31 +151,31 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
     const initialData = user?.settings || {};
 
     if (awsBedrockServerSave) {
-      localStorage.removeItem(STORAGE_AWS_BEDROCK_REGION);
-      localStorage.removeItem(STORAGE_AWS_BEDROCK_PROFILE);
-      localStorage.removeItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID);
-      localStorage.removeItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY);
+      removeStorageValue(STORAGE_AWS_BEDROCK_REGION, user);
+      removeStorageValue(STORAGE_AWS_BEDROCK_PROFILE, user);
+      removeStorageValue(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, user);
+      removeStorageValue(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY);
     } else {
-      localStorage.setItem(STORAGE_AWS_BEDROCK_REGION, awsRegion || "");
-      localStorage.setItem(STORAGE_AWS_BEDROCK_PROFILE, awsProfile || "");
-      localStorage.setItem(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, awsAccessKeyId || "");
-      localStorage.setItem(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY, awsSecretAccessKey || "");
+      writeStorageValue(STORAGE_AWS_BEDROCK_REGION, awsRegion || "", user);
+      writeStorageValue(STORAGE_AWS_BEDROCK_PROFILE, awsProfile || "", user);
+      writeStorageValue(STORAGE_AWS_BEDROCK_ACCESS_KEY_ID, awsAccessKeyId || "", user);
+      writeStorageValue(STORAGE_AWS_BEDROCK_SECRET_ACCESS_KEY, awsSecretAccessKey || "");
     }
 
     if (openAiServerSave) {
-      localStorage.removeItem(STORAGE_OPENAI_API_KEY);
-      localStorage.removeItem(STORAGE_OPENAI_API_ADMIN_KEY);
+      removeStorageValue(STORAGE_OPENAI_API_KEY, user);
+      removeStorageValue(STORAGE_OPENAI_API_ADMIN_KEY, user);
     } else {
-      localStorage.setItem(STORAGE_OPENAI_API_KEY, openaiApiKey || "");
-      localStorage.setItem(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
+      writeStorageValue(STORAGE_OPENAI_API_KEY, openaiApiKey || "", user);
+      writeStorageValue(STORAGE_OPENAI_API_ADMIN_KEY, openaiApiAdminKey || "");
     }
 
     if (yandexFmServerSave) {
-      localStorage.removeItem(STORAGE_YANDEX_FM_API_KEY);
-      localStorage.removeItem(STORAGE_YANDEX_FM_API_FOLDER);
+      removeStorageValue(STORAGE_YANDEX_FM_API_KEY, user);
+      removeStorageValue(STORAGE_YANDEX_FM_API_FOLDER, user);
     } else {
-      localStorage.setItem(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "");
-      localStorage.setItem(STORAGE_YANDEX_FM_API_FOLDER, yandexApiFolderId || "");
+      writeStorageValue(STORAGE_YANDEX_FM_API_KEY, yandexApiKey || "", user);
+      writeStorageValue(STORAGE_YANDEX_FM_API_FOLDER, yandexApiFolderId || "", user);
     }
 
     const settings: UserSettings = {
