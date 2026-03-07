@@ -48,7 +48,7 @@ COPY --from=build /app/db-migrations ./db-migrations
 
 # copy built frontend client files
 COPY --from=build /app/client/dist ./client
-COPY --from=build /app/client/.well-known ./.well-known
+COPY --from=build /app/client/.well-known ./client/.well-known
 
 # Copy nginx configuration
 EXPOSE 80
