@@ -213,6 +213,7 @@ async function bootstrap() {
     index: false,
     serveStatic: {
       etag: true,
+      dotfiles: "allow",
     },
   });
   app.use("/", staticHandler);
