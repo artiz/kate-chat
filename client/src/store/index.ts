@@ -10,6 +10,14 @@ import folderReducer from "./slices/folderSlice";
 
 export const logout = createAction("logout");
 
+const logoutMiddleware: Middleware = storeApi => next => action => {
+  const result = next(action);
+  if (logout.match(action)) {
+    storeApi.dispatch(api.util.resetApiState());
+  }
+  return result;
+};
+
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
@@ -19,7 +27,7 @@ export const store = configureStore({
     chats: chatReducer,
     folders: folderReducer,
   },
-  middleware: getDefaultMiddleware => getDefaultMiddleware().concat(api.middleware),
+  middleware: getDefaultMiddleware => getDefaultMiddleware().concat(api.middleware, logoutMiddleware),
 });
 
 setupListeners(store.dispatch);

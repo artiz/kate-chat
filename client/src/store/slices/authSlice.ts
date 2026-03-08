@@ -55,6 +55,7 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.loading = false;
+      state.loginTime = null;
       document.cookie = `${STORAGE_AUTH_TOKEN}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
       localStorage.removeItem(STORAGE_AUTH_TOKEN);
     });

@@ -1,9 +1,9 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { ApolloClient, ApolloProvider, InMemoryCache, HttpLink, split, from, gql } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
-import { createClient } from "graphql-ws";
+import { createClient, Client as WsClient } from "graphql-ws";
 import { getMainDefinition } from "@apollo/client/utilities";
 import { notifications } from "@mantine/notifications";
 import { useSelector } from "react-redux";
@@ -31,8 +31,18 @@ import {
 // Setup the Apollo Client provider with authentication and error handling
 export function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const token = useSelector((state: RootState) => state.auth.token);
+  const prevClientRef = useRef<ApolloClient<any> | null>(null);
+  const wsClientRef = useRef<WsClient | null>(null);
 
   const client = useMemo(() => {
+    // Clean up previous Apollo client and WS connection
+    if (prevClientRef.current) {
+      prevClientRef.current.clearStore().catch(() => {});
+    }
+    if (wsClientRef.current) {
+      wsClientRef.current.dispose();
+      wsClientRef.current = null;
+    }
     // Extract the base URL from the API URL
     const apiUrl = APP_API_URL + "/graphql";
 
@@ -56,38 +66,33 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
     });
 
     // Create WebSocket link for subscriptions
-    const wsLink =
+    const wsClient =
       typeof window !== "undefined"
-        ? new GraphQLWsLink(
-            createClient({
-              url: wsUrl,
-              connectionParams: () => {
-                const params = {
-                  authorization: token ? `Bearer ${token}` : "",
-                };
-                return params;
-              },
-              retryAttempts: 5,
-              retryWait: retries =>
-                new Promise(resolve => {
-                  // Exponential backoff with jitter
-                  const delay = Math.min(1000 * 2 ** retries, 30000);
-                  const jitter = Math.random() * 1000;
-                  console.log(`WS reconnecting in ${(delay + jitter) / 1000}s (attempt ${retries + 1})`);
-                  setTimeout(resolve, delay + jitter);
-                }),
-              on: {
-                // connected: ws => {
-                //   console.debug("WebSocket connected successfully", ws);
-                // },
-                // closed: () => console.debug("WebSocket connection closed"),
-                // connecting: () => console.debug("WebSocket connecting..."),
-                // opened: socket => console.debug("WebSocket connection opened"),
-                error: e => console.error("WebSocket connection error:", e),
-              },
-            })
-          )
+        ? createClient({
+            url: wsUrl,
+            connectionParams: () => {
+              const params = {
+                authorization: token ? `Bearer ${token}` : "",
+              };
+              return params;
+            },
+            retryAttempts: 5,
+            retryWait: retries =>
+              new Promise(resolve => {
+                // Exponential backoff with jitter
+                const delay = Math.min(1000 * 2 ** retries, 30000);
+                const jitter = Math.random() * 1000;
+                console.log(`WS reconnecting in ${(delay + jitter) / 1000}s (attempt ${retries + 1})`);
+                setTimeout(resolve, delay + jitter);
+              }),
+            on: {
+              error: e => console.error("WebSocket connection error:", e),
+            },
+          })
         : null;
+
+    wsClientRef.current = wsClient;
+    const wsLink = wsClient ? new GraphQLWsLink(wsClient) : null;
 
     // Authentication link that adds the token to every request
     const authLink = setContext((_, { headers }) => {
@@ -183,6 +188,10 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
 
     return clientInstance;
   }, [token]);
+
+  useEffect(() => {
+    prevClientRef.current = client;
+  }, [client]);
 
   return <ApolloProvider client={client}>{children}</ApolloProvider>;
 }
