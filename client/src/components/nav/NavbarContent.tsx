@@ -38,6 +38,8 @@ import {
   IconNetwork,
   IconLink,
   IconSearch,
+  IconScale,
+  IconLock,
 } from "@tabler/icons-react";
 import { useAppSelector } from "../../store";
 import { ChatsNavSection } from "./ChatsNavSection";
@@ -305,14 +307,29 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
       </AppShell.Section>
 
       <AppShell.Section p="sm" className={styles.footer}>
-        <Group justify={expanded ? "flex-start" : "center"} gap="sm">
-          {navLinks.map(link => (
-            <Tooltip key={link.url} label={link.tooltip} position="right">
-              <ActionIcon component="a" variant="subtle" href={link.url} target="_blank" color={link.color || "dark"}>
-                {renderNavIcon(link.icon)}
+        <Group justify="space-between" gap="sm">
+          <Group justify="flex-start" gap="sm">
+            {navLinks.map(link => (
+              <Tooltip key={link.url} label={link.tooltip} position="right">
+                <ActionIcon component="a" variant="subtle" href={link.url} target="_blank" color={link.color || "dark"}>
+                  {renderNavIcon(link.icon)}
+                </ActionIcon>
+              </Tooltip>
+            ))}
+          </Group>
+
+          <Group justify="flex-end" mt="xs">
+            <Tooltip label={t("legal.privacyPolicy")} position="right">
+              <ActionIcon variant="subtle" color="dark" onClick={handleSectionClick("/privacy")}>
+                <IconLock size={24} />
               </ActionIcon>
             </Tooltip>
-          ))}
+            <Tooltip label={t("legal.termsOfService")} position="right">
+              <ActionIcon variant="subtle" color="dark" onClick={handleSectionClick("/terms")}>
+                <IconScale size={42} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         </Group>
       </AppShell.Section>
     </>

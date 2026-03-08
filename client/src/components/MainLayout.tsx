@@ -1,5 +1,5 @@
 import React from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import {
   AppShell,
   Burger,
@@ -91,6 +91,7 @@ export const MainLayout: React.FC = () => {
                     })
                   : undefined
               }
+              disabled={!appConfig?.demoMode}
               color={appConfig?.demoMode ? "red" : undefined}
             >
               <Indicator color="red" size="md" label={t("nav.demoMode")} disabled={!appConfig?.demoMode}>

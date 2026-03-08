@@ -5,11 +5,13 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getClientConfig } from "@/global-config";
 import { OAuthButtons } from "@/components/auth";
+import { useAppSelector } from "@/store";
 
 const TermsOfService: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { appTitle } = getClientConfig();
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
 
   return (
     <Container size="md" my={40}>
@@ -65,20 +67,22 @@ const TermsOfService: React.FC = () => {
         </Stack>
       </Paper>
 
-      <Paper withBorder shadow="sm" p="xl" radius="md" mt="xl">
-        <Stack gap="md" align="center">
-          <Title order={4}>{t("home.getStarted")}</Title>
-          <Group justify="center" gap="md">
-            <Anchor component="button" size="sm" onClick={() => navigate("/login")}>
-              {t("auth.signIn")}
-            </Anchor>
-            <Anchor component="button" size="sm" onClick={() => navigate("/register")}>
-              {t("auth.register")}
-            </Anchor>
-          </Group>
-          <OAuthButtons variant="outline" />
-        </Stack>
-      </Paper>
+      {isAuthenticated ? null : (
+        <Paper withBorder shadow="sm" p="xl" radius="md" mt="xl">
+          <Stack gap="md" align="center">
+            <Title order={4}>{t("home.getStarted")}</Title>
+            <Group justify="center" gap="md">
+              <Anchor component="button" size="sm" onClick={() => navigate("/login")}>
+                {t("auth.signIn")}
+              </Anchor>
+              <Anchor component="button" size="sm" onClick={() => navigate("/register")}>
+                {t("auth.register")}
+              </Anchor>
+            </Group>
+            <OAuthButtons variant="outline" />
+          </Stack>
+        </Paper>
+      )}
     </Container>
   );
 };
