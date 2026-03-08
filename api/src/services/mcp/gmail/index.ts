@@ -4,6 +4,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { Request, Response } from "express";
 import { createLogger } from "@/utils/logger";
 import { ok } from "@/utils/assert";
+import { SystemMCPServerEntry } from "..";
 
 const logger = createLogger(__filename);
 
@@ -131,13 +132,15 @@ const TOOLS = [
   },
 ];
 
-function createGmailServer(googleToken: string): Server {
+function createGmailServer(): Server {
   const server = new Server({ name: "Gmail", version: "1.0.0" }, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
-  server.setRequestHandler(CallToolRequestSchema, async request => {
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
     const { name, arguments: args = {} } = request.params;
+    const accessToken = extra.authInfo?.token;
+    ok(accessToken, "Google API access token is required");
 
     switch (name) {
       case "list_emails": {
@@ -149,7 +152,7 @@ function createGmailServer(googleToken: string): Server {
         for (const id of labelIds) params.append("labelIds", id);
         if (query) params.set("q", query);
 
-        const data = await gmailFetch(`/users/me/messages?${params}`, googleToken);
+        const data = await gmailFetch(`/users/me/messages?${params}`, accessToken);
         const messages: { id: string }[] = data.messages || [];
 
         if (!messages.length) return { content: [{ type: "text", text: "No emails found." }] };
@@ -158,7 +161,7 @@ function createGmailServer(googleToken: string): Server {
           messages.map(async m => {
             const msg = await gmailFetch(
               `/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
-              googleToken
+              accessToken
             );
 
             const hdrs: { name: string; value: string }[] = msg.payload?.headers || [];
@@ -174,7 +177,7 @@ function createGmailServer(googleToken: string): Server {
         const emailId = (args.emailId as string)?.trim();
         ok(emailId, "emailId is required");
 
-        const msg = await gmailFetch(`/users/me/messages/${emailId}?format=full`, googleToken);
+        const msg = await gmailFetch(`/users/me/messages/${emailId}?format=full`, accessToken);
         const hdrs: { name: string; value: string }[] = msg.payload?.headers || [];
         const get = (n: string) => hdrs.find(h => h.name === n)?.value || "";
         const body = extractBody(msg.payload);
@@ -187,7 +190,7 @@ function createGmailServer(googleToken: string): Server {
         const maxResults = (args.maxResults as number) || 10;
         const data = await gmailFetch(
           `/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${maxResults}`,
-          googleToken
+          accessToken
         );
         const messages: { id: string }[] = data.messages || [];
 
@@ -197,7 +200,7 @@ function createGmailServer(googleToken: string): Server {
           messages.map(async m => {
             const msg = await gmailFetch(
               `/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
-              googleToken
+              accessToken
             );
             const hdrs: { name: string; value: string }[] = msg.payload?.headers || [];
             const get = (n: string) => hdrs.find(h => h.name === n)?.value || "";
@@ -219,7 +222,7 @@ function createGmailServer(googleToken: string): Server {
           .filter(Boolean)
           .join("\r\n");
         const raw = Buffer.from(`${headerLines}\r\n\r\n${body}`).toString("base64url");
-        await gmailFetch(`/users/me/messages/send`, googleToken, { method: "POST", body: JSON.stringify({ raw }) });
+        await gmailFetch(`/users/me/messages/send`, accessToken, { method: "POST", body: JSON.stringify({ raw }) });
         return { content: [{ type: "text", text: `Email sent to ${to} with subject: "${subject}"` }] };
       }
 
@@ -235,7 +238,7 @@ function createGmailServer(googleToken: string): Server {
           .filter(Boolean)
           .join("\r\n");
         const raw = Buffer.from(`${headerLines}\r\n\r\n${body}`).toString("base64url");
-        const draft = await gmailFetch(`/users/me/drafts`, googleToken, {
+        const draft = await gmailFetch(`/users/me/drafts`, accessToken, {
           method: "POST",
           body: JSON.stringify({ message: { raw } }),
         });
@@ -243,7 +246,7 @@ function createGmailServer(googleToken: string): Server {
       }
 
       case "list_labels": {
-        const data = await gmailFetch(`/users/me/labels`, googleToken);
+        const data = await gmailFetch(`/users/me/labels`, accessToken);
         const labels: { id: string; name: string; type: string }[] = data.labels || [];
         const text = labels.map(l => `${l.name} (ID: ${l.id}, type: ${l.type})`).join("\n");
         return { content: [{ type: "text", text: text || "No labels found." }] };
@@ -265,12 +268,17 @@ interface GmailSession {
 
 const sessions = new Map<string, GmailSession>();
 
-export async function handleGmailMCPRequest(req: Request, res: Response, token: string): Promise<void> {
+export async function handleGmailMCPRequest(
+  req: Request,
+  res: Response,
+  config: SystemMCPServerEntry,
+  token: string
+): Promise<void> {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   let session = sessionId ? sessions.get(sessionId) : undefined;
 
   if (!session) {
-    const server = createGmailServer(token);
+    const server = createGmailServer();
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => crypto.randomUUID(),
       onsessioninitialized: id => {
@@ -282,6 +290,10 @@ export async function handleGmailMCPRequest(req: Request, res: Response, token: 
     session = { server, transport };
     await server.connect(transport);
   }
+
+  // Set auth on the request so the SDK passes it as extra.authInfo to handlers
+  const clientId = process.env.MCP_SERVER_GMAIL_CLIENT_ID || "katechat";
+  (req as any).auth = { token, clientId, scopes: [config.scope || "katechat"] };
 
   await session.transport.handleRequest(req, res, req.body);
 }

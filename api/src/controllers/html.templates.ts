@@ -33,6 +33,13 @@ export const OAUTH_ERROR_TEMPLATE = HTML_TEMPLATE(
     <h1 class="error">Authentication Failed</h1>
     <p>{{ERROR_DESCRIPTION}}</p>
     <p><a href="{{FRONTEND_ORIGIN}}/login">Return to login page</a></p>
+  `,
+  `<script>
+  if (window.opener) {
+      window.opener.postMessage({ type: 'mcp-oauth-error', error: '{{ERROR}}' }, '{{FRONTEND_ORIGIN}}');
+    }
+    setTimeout(() => window.close(), 3000);
+    </script>
   `
 );
 
@@ -73,8 +80,9 @@ export const MCP_OAUTH_SUCCESS_TEMPLATE = HTML_TEMPLATE(
       if (window.opener) {
         window.opener.postMessage({ 
           type: 'mcp-oauth-callback', 
-          serverId: serverId,
-          accessToken: accessToken,
+          serverId,
+          accessToken,
+          refreshToken,
           expiresAt: expiresAt ? parseInt(expiresAt, 10) : undefined
         }, '{{FRONTEND_ORIGIN}}');
       }

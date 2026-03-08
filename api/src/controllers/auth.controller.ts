@@ -195,6 +195,7 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
       grant_type: "authorization_code",
       code: String(code),
       redirect_uri: redirectUri,
+      scope: authConfig.scope || "",
       client_id: authConfig.clientId,
       ...(authConfig.clientSecret && { client_secret: authConfig.clientSecret }),
     });

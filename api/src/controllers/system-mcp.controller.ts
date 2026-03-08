@@ -27,7 +27,7 @@ export function createSystemMCPRouter(): Router {
       const authToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
 
       try {
-        await config.handler(req, res, authToken);
+        await config.handler(req, res, config, authToken);
       } catch (error) {
         logger.error(error, `Error handling ${displayName} request`);
         if (!res.headersSent) {

@@ -133,6 +133,8 @@ export class MCPServerResolver extends BaseResolver {
   ): Promise<MCPToolTestResponse> {
     const user = await this.validateContextUser(context);
     try {
+      logger.debug(input, "Testing MCP tool with input");
+
       const result = await this.service.testTool(
         input.serverId,
         user.id,

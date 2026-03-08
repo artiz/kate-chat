@@ -281,7 +281,7 @@ export const useMcpAuth = (
           });
         }
 
-        const { serverId, accessToken, expiresAt } = event.data;
+        const { serverId, accessToken, refreshToken, expiresAt } = event.data;
 
         // Validate serverId is known before storing tokens
         if (!knownServerIds.has(serverId)) {
@@ -297,6 +297,7 @@ export const useMcpAuth = (
         if (accessToken) {
           // Token was also sent via postMessage, ensure it's stored
           localStorage.setItem(ACCESS_TOKEN_KEY(serverId, userId), accessToken);
+          localStorage.setItem(REFRESH_TOKEN_KEY(serverId, userId), refreshToken);
           // expire in 1h if not provided
           localStorage.setItem(
             EXPIRES_AT_KEY(serverId, userId),

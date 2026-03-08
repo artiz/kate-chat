@@ -13,6 +13,8 @@ const DEFAULT_PROVIDERS: ApiProvider[] = [
   ApiProvider.CUSTOM_REST_API,
 ];
 
+// "microsoft_teams" is disabled for now, as I does not with personal Microsoft account
+//  and testing with test tenant is inconvenient.
 const ENABLED_MCP_SERVICES = "gmail";
 
 export interface InitialCustomModel {
