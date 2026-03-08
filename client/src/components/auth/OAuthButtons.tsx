@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Divider, Flex, Loader, Stack } from "@mantine/core";
+import { ActionIcon, Button, Divider, Flex, Loader, Stack, Tooltip } from "@mantine/core";
 import { IconBrandGoogle, IconBrandGithub, IconBrandAzure } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { APP_API_URL } from "@/lib/config";
@@ -7,11 +7,12 @@ import { APP_API_URL } from "@/lib/config";
 interface OAuthButtonsProps {
   variant?: "outline" | "filled" | "light";
   onLogin?: () => void;
+  condensed?: boolean;
 }
 
 type AuthProvider = "local" | "google" | "github" | "microsoft";
 
-const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "filled", onLogin }) => {
+const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "filled", onLogin, condensed = false }) => {
   const { t } = useTranslation();
   const [loggingIn, setLoggingIn] = React.useState(false);
   const [providers, setProviders] = React.useState<AuthProvider[] | null>(null);
@@ -44,41 +45,83 @@ const OAuthButtons: React.FC<OAuthButtonsProps> = ({ variant = "filled", onLogin
     <Stack gap="md">
       <Divider label={t("auth.orContinueWith")} labelPosition="center" my="lg" />
       <Flex gap="md" wrap="wrap" justify="flex-start" align="flex-start" direction="row">
-        {oauthProviders.includes("google") && (
-          <Button
-            leftSection={<IconBrandGoogle size={16} />}
-            variant={variant}
-            color="red"
-            onClick={() => handleLogin("google")}
-            disabled={loggingIn}
-          >
-            Google
-          </Button>
-        )}
+        {oauthProviders.includes("google") &&
+          (condensed ? (
+            <Tooltip label="Google">
+              <ActionIcon
+                size="xl"
+                variant={variant}
+                color="red"
+                radius="xl"
+                component="a"
+                href={`${APP_API_URL}/auth/google`}
+              >
+                <IconBrandGoogle size={24} />
+              </ActionIcon>
+            </Tooltip>
+          ) : (
+            <Button
+              leftSection={<IconBrandGoogle size={16} />}
+              variant={variant}
+              color="red"
+              onClick={() => handleLogin("google")}
+              disabled={loggingIn}
+            >
+              Google
+            </Button>
+          ))}
 
-        {oauthProviders.includes("github") && (
-          <Button
-            leftSection={<IconBrandGithub size={16} />}
-            variant={variant}
-            color="gray"
-            onClick={() => handleLogin("github")}
-            disabled={loggingIn}
-          >
-            GitHub
-          </Button>
-        )}
+        {oauthProviders.includes("github") &&
+          (condensed ? (
+            <Tooltip label="GitHub">
+              <ActionIcon
+                size="xl"
+                variant={variant}
+                color="gray"
+                radius="xl"
+                component="a"
+                href={`${APP_API_URL}/auth/github`}
+              >
+                <IconBrandGithub size={24} />
+              </ActionIcon>
+            </Tooltip>
+          ) : (
+            <Button
+              leftSection={<IconBrandGithub size={16} />}
+              variant={variant}
+              color="gray"
+              onClick={() => handleLogin("github")}
+              disabled={loggingIn}
+            >
+              GitHub
+            </Button>
+          ))}
 
-        {oauthProviders.includes("microsoft") && (
-          <Button
-            leftSection={<IconBrandAzure size={16} />}
-            variant={variant}
-            color="blue"
-            onClick={() => handleLogin("microsoft")}
-            disabled={loggingIn}
-          >
-            Microsoft
-          </Button>
-        )}
+        {oauthProviders.includes("microsoft") &&
+          (condensed ? (
+            <Tooltip label="Microsoft">
+              <ActionIcon
+                size="xl"
+                variant={variant}
+                color="blue"
+                radius="xl"
+                component="a"
+                href={`${APP_API_URL}/auth/microsoft`}
+              >
+                <IconBrandAzure size={24} />
+              </ActionIcon>
+            </Tooltip>
+          ) : (
+            <Button
+              leftSection={<IconBrandAzure size={16} />}
+              variant={variant}
+              color="blue"
+              onClick={() => handleLogin("microsoft")}
+              disabled={loggingIn}
+            >
+              Microsoft
+            </Button>
+          ))}
       </Flex>
       <Divider labelPosition="center" my="lg" />
     </Stack>

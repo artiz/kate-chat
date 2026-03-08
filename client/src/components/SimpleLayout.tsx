@@ -1,31 +1,14 @@
 import React from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import {
-  AppShell,
-  Burger,
-  Group,
-  Avatar,
-  Text,
-  UnstyledButton,
-  Menu,
-  Divider,
-  ActionIcon,
-  Tooltip,
-} from "@mantine/core";
-import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
-import { IconLogout, IconChevronRight, IconSun, IconMoon, IconUser, IconWifi, IconRobot } from "@tabler/icons-react";
-import { useDispatch } from "react-redux";
+import { AppShell, Group, Text, ActionIcon, Tooltip, Anchor } from "@mantine/core";
+import { IconSun, IconMoon } from "@tabler/icons-react";
 import { LanguageSelector, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
-import { useAppSelector } from "../store";
-import { logout } from "../store";
-import NavbarContent from "./nav/NavbarContent";
-import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 
 export const SimpleLayout: React.FC = () => {
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { colorScheme, toggleColorScheme } = useTheme();
   const { t } = useTranslation();
   const { appTitle } = getClientConfig();
@@ -35,9 +18,11 @@ export const SimpleLayout: React.FC = () => {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            <Text size="lg" fw={700}>
-              {appTitle}
-            </Text>
+            <Anchor onClick={() => navigate("/")} underline="never" c="inherit">
+              <Text size="lg" fw={700}>
+                {appTitle}
+              </Text>
+            </Anchor>
           </Group>
           <Group>
             <Tooltip label={colorScheme === "dark" ? t("nav.switchToLight") : t("nav.switchToDark")}>

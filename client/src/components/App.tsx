@@ -39,9 +39,18 @@ import { Password } from "@/pages/Password";
 import { Users } from "@/pages/Users";
 import { Library } from "@/pages/Library";
 import { Documents } from "@/pages/Documents";
+import Home from "@/pages/Home";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
 
 const BASE_URLS = ["/", "/chat"];
 const STORAGE_RETURN_URL_KEY = "return-url";
+
+// PublicRoute component - redirects to /chat if already authenticated
+const PublicRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
+  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  return isAuthenticated ? <Navigate to="/chat" replace /> : element;
+};
 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
@@ -173,14 +182,16 @@ const AppContent: React.FC = () => {
           ) : (
             <Routes>
               <Route path="/" element={<SimpleLayout />}>
+                <Route index element={<PublicRoute element={<Home />} />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
               </Route>
 
               {/* Protected routes */}
               <Route path="/" element={<PrivateRoute element={<MainLayout />} />}>
-                <Route index element={<Navigate to="/chat" replace />} />
                 <Route path="chat" element={<ChatList />} />
                 <Route path="chat/:id" element={<Chat />} />
                 <Route path="chat/:id/documents" element={<ChatDocuments />} />
