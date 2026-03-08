@@ -69,7 +69,6 @@ const Home: React.FC = () => {
       <Stack gap="xl" align="center">
         {/* Hero Section */}
         <Stack align="center" gap="md">
-          <Image src={logo} alt={appTitle} w={80} h={80} fit="contain" />
           <Title order={1} ta="center">
             {appTitle}
           </Title>

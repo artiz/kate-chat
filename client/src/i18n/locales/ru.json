@@ -88,7 +88,10 @@
     "orContinueWith": "Или продолжить с",
     "google": "Google",
     "github": "GitHub",
-    "microsoft": "Microsoft"
+    "microsoft": "Microsoft",
+    "loginWithGoogle": "Войти через Google",
+    "loginWithGithub": "Войти через GitHub",
+    "loginWithMicrosoft": "Войти через Microsoft"
   },
   "validation": {
     "invalidEmail": "Некорректный адрес электронной почты",

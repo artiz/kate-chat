@@ -62,7 +62,7 @@ const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) =>
   if (returnUrl) {
     writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, currentUser);
   }
-  return isAuthenticated ? element : <Navigate to={"/login"} replace />;
+  return isAuthenticated ? element : <Navigate to={"/"} replace />;
 };
 
 // AdminRoute component for admin-only routes

@@ -56,7 +56,7 @@ export const MainLayout: React.FC = () => {
   // Handle logout
   const handleLogout = () => {
     dispatch(logout());
-    navigate("/login");
+    navigate("/");
   };
 
   if (!currentUser) {

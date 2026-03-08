@@ -6,6 +6,7 @@ import { LanguageSelector, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
 import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
+import { OAuthButtons } from "./auth";
 
 export const SimpleLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export const SimpleLayout: React.FC = () => {
             </Anchor>
           </Group>
           <Group>
+            <OAuthButtons variant="outline" size="16" condensed inline />
             <Tooltip label={colorScheme === "dark" ? t("nav.switchToLight") : t("nav.switchToDark")}>
               <ActionIcon
                 variant="subtle"
