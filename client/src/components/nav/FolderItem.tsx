@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { NavLink, Menu, ActionIcon, Group, Button, TextInput, Loader, Box, Text } from "@mantine/core";
+import { NavLink, Menu, ActionIcon, Group, Button, TextInput, Loader, Box, Text, Badge } from "@mantine/core";
 import {
   IconFolderOpen,
   IconFolderPlus,
@@ -185,7 +185,12 @@ export const FolderItem: React.FC<FolderItemProps> = ({ folder, depth = 0, navba
             <NavLink
               label={
                 <Text size="sm" c={folderColor}>
-                  {folder.name}
+                  {folder.name}{" "}
+                  {folderChats.length ? (
+                    <Badge component="span" color={folderColor} variant="light">
+                      {folderChats.length}
+                    </Badge>
+                  ) : null}
                 </Text>
               }
               leftSection={

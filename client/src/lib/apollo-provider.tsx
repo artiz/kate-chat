@@ -165,6 +165,11 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         typePolicies: {
           Chat: {
             fields: {
+              settings: {
+                merge(existing: any, incoming: any) {
+                  return incoming;
+                },
+              },
               tools: {
                 merge(existing = [], incoming: any[]) {
                   return incoming;

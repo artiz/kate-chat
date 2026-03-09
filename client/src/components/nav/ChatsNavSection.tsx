@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Button, NavLink, Text, Group, Loader, Accordion, Tooltip } from "@mantine/core";
+import { Button, NavLink, Text, Group, Loader, Accordion, Tooltip, Indicator, Badge } from "@mantine/core";
 import { IconDots, IconMessage, IconMessage2Code } from "@tabler/icons-react";
 import { useQuery } from "@apollo/client";
 import { useDroppable } from "@dnd-kit/core";
@@ -166,7 +166,14 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
       >
         {sortedChats.map(block => (
           <Accordion.Item key={block.label} value={block.label}>
-            <Accordion.Control icon={block.icon || <IconMessage2Code />}>{block.label}</Accordion.Control>
+            <Accordion.Control icon={block.icon || <IconMessage2Code />}>
+              {block.label}{" "}
+              {block.items.length ? (
+                <Badge component="span" variant="light">
+                  {block.items.length}
+                </Badge>
+              ) : null}
+            </Accordion.Control>
             <Accordion.Panel>
               {block.items.map(chat => (
                 <DraggableChatRow key={chat.id} chat={chat} navbarToggle={navbarToggle} />
