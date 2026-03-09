@@ -16,6 +16,7 @@ import { CopyMessageButton } from "./controls/CopyMessageButton";
 import "./ChatMessage.scss";
 import { useTranslation } from "react-i18next";
 import { StreamingStatus } from "./StreamingStatus";
+import { DetailsButton } from "./controls/DetailsButton";
 
 const ANIMATION_DURATION = 250; // Duration of the carousel animation in milliseconds
 
@@ -50,7 +51,6 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
   const componentRef = useRef<HTMLDivElement>(null);
   const disableActions = useMemo(() => disabled || streaming, [disabled, streaming]);
   const [showMainMessage, setShowMainMessage] = React.useState(true);
-  const [showDetails, setShowDetails] = React.useState(false);
   const { t, i18n } = useTranslation();
 
   const timestamp = new Date(updatedAt).toLocaleString();
@@ -251,8 +251,6 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
     }
   }, [role, streaming, processMessageElements]);
 
-  const toggleDetails = () => setShowDetails(s => !s);
-
   const details = useMemo(() => {
     return messageDetailsLoader ? messageDetailsLoader(message) : null;
   }, [messageDetailsLoader, message]);
@@ -301,28 +299,10 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
 
           <Box className="katechat-message-footer">
             <CopyMessageButton messageId={id} messageIndex={index} />
-
-            {details && (
-              <Tooltip label={t("Details")} position="top" withArrow>
-                <ActionIcon
-                  className="edit-message-btn"
-                  data-message-id={id}
-                  size="sm"
-                  variant="subtle"
-                  color="gray"
-                  disabled={disabled}
-                  onClick={toggleDetails}
-                >
-                  {showDetails ? <IconInfoSquareFilled /> : <IconInfoSquare />}
-                </ActionIcon>
-              </Tooltip>
-            )}
-
+            {details && <DetailsButton messageId={id} messageIndex={index} />}
             {plugins}
           </Box>
-          <Collapse in={showDetails}>
-            <Box className="katechat-message-content-details">{details}</Box>
-          </Collapse>
+          {details && <Box className="katechat-message-content-details">{details}</Box>}
         </Box>
       </>
     );
@@ -339,7 +319,6 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
     index,
     disableActions,
     details,
-    showDetails,
     streaming,
     i18n.language,
   ]);
@@ -369,6 +348,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
         index={carouselIndex}
         models={models}
         plugins={pluginsLoader?.(lm)}
+        messageDetailsLoader={messageDetailsLoader}
       />
     ));
   }, [linkedMessages, models, index, i18n.language]);

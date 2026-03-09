@@ -9,6 +9,7 @@ import { CopyMessageButton } from "./controls/CopyMessageButton";
 
 import "./ChatMessage.scss";
 import { StreamingStatus } from "./StreamingStatus";
+import { DetailsButton } from "./controls/DetailsButton";
 
 interface IProps {
   message: Message;
@@ -16,12 +17,17 @@ interface IProps {
   index: number;
   models?: Model[];
   plugins?: React.ReactNode;
+  messageDetailsLoader?: (message: Message) => React.ReactNode;
 }
 
-export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models }: IProps) => {
+export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models, messageDetailsLoader }: IProps) => {
   const model = useMemo(() => {
     return models?.find(m => m.modelId === message.modelId);
   }, [models, message.modelId]);
+
+  const details = useMemo(() => {
+    return messageDetailsLoader?.(message) || null;
+  }, [messageDetailsLoader, message]);
 
   return (
     <Box key={message.id} data-linked-message-id={message.id}>
@@ -59,9 +65,10 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
 
         <div className="katechat-message-footer">
           <CopyMessageButton messageId={message.id} messageIndex={parentIndex} linkedMessageIndex={index} />
-
+          {details && <DetailsButton messageId={message.id} messageIndex={index} linkedMessageIndex={index} />}
           {plugins}
         </div>
+        {details && <Box className="katechat-message-content-details">{details}</Box>}
       </div>
     </Box>
   );

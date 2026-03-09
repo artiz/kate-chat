@@ -40,7 +40,7 @@
   word-break: normal;
   border-radius: var(--mantine-radius-md);
   margin-top: var(--mantine-spacing-md);
-  overflow-x: auto;
+  overflow-y: hidden;
 
   p {
     margin-block-start: 0;
@@ -105,14 +105,46 @@
     }
   }
 
+  .message-details-btn {
+    .icon-collapsed {
+      display: inline-block;
+    }
+    .icon-expanded {
+      display: none;
+    }
+
+    &.expanded {
+      .icon-collapsed {
+        display: none;
+      }
+      .icon-expanded {
+        display: inline-block;
+      }
+    }
+  }
+
   .katechat-message-content-details {
     margin-top: 1rem;
     font-size: 80%;
-    display: flex;
     flex-direction: column;
     gap: 0;
     border-top: 1px dashed var(--mantine-color-gray-7);
     padding-top: 0.5rem;
+    display: none;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      max-height var(--theme-default-time) ease,
+      opacity var(--theme-default-time) ease,
+      padding-top var(--theme-default-time) ease;
+
+    &.expanded {
+      display: flex;
+      max-height: fit-content;
+      opacity: 1;
+      padding-top: 0.5rem;
+    }
 
     p {
       padding: 0;

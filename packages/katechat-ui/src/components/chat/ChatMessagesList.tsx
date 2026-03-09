@@ -71,6 +71,7 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
           "code-download-btn",
           "code-toggle-all",
           "copy-message-btn",
+          "message-details-btn",
           "code-header",
           "message-image",
           "table-sort-btn",
@@ -101,6 +102,15 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
             header.classList.add("collapsed");
             codeBlock && codeBlock.classList.add("collapsed");
           }
+        };
+
+        const toggleDetails = (btn: HTMLElement) => {
+          const detailsBlock = (btn?.parentElement?.parentElement as HTMLElement).querySelector(
+            ".katechat-message-content-details"
+          );
+          if (!detailsBlock) return;
+          detailsBlock.classList.toggle("expanded");
+          btn.classList.toggle("expanded");
         };
 
         // execute code block
@@ -191,6 +201,8 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
           componentRef.current?.querySelectorAll(".code-header").forEach(header => {
             toggleCodeBlock(header as HTMLElement);
           });
+        } else if (target.classList.contains("message-details-btn")) {
+          toggleDetails(target);
         }
         // copy message
         else if (target.classList.contains("copy-message-btn")) {
