@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import { Stream } from "openai/core/streaming";
-
 import {
   ModelMessage,
   ModelResponse,
@@ -16,7 +15,7 @@ import {
   MCPAuthToken,
   IMCPServer,
 } from "@/types/ai.types";
-import { EntityAccessType, MCPAuthType, MessageRole, ResponseStatus, ToolType } from "@/types/api";
+import { MCPAuthType, MessageRole, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -27,7 +26,7 @@ import {
   CustomWebSearchTool,
 } from "./openai.tools";
 import { FileContentLoader } from "@/services/data";
-import { ModelProtocol } from "./common";
+import { ModelProtocol, ModelProtocolErrorProcessor } from "./common";
 import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
@@ -42,9 +41,23 @@ const RETRY_COUNT = 10;
 export type OpenAIApiType = "completions" | "responses";
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
 
+type CompletionModelMessage = ModelMessage & {
+  toolCalls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+  toolResult?: OpenAI.Chat.Completions.ChatCompletionMessageParam;
+};
+
 function genProcessSymbol(): string {
   const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢", "🧠", "🦾"];
   return symbols[Math.floor(Math.random() * symbols.length)];
+}
+
+class OpenaAIProtocolErrorProcessor implements ModelProtocolErrorProcessor {
+  isInputTooLargeError(error: unknown): boolean {
+    return false;
+  }
+  isRateLimitError(error: unknown): boolean {
+    return error instanceof OpenAI.APIError && error.code === "rate_limit_exceeded";
+  }
 }
 
 export class OpenAIProtocol implements ModelProtocol {
@@ -52,6 +65,7 @@ export class OpenAIProtocol implements ModelProtocol {
   private openai: OpenAI;
   private connection?: ConnectionParams;
   private fileLoader?: FileContentLoader;
+  private errorProcessor: ModelProtocolErrorProcessor;
   private modelIdOverride?: string;
 
   constructor({
@@ -61,6 +75,7 @@ export class OpenAIProtocol implements ModelProtocol {
     modelIdOverride,
     connection,
     fileLoader,
+    errorProcessor = new OpenaAIProtocolErrorProcessor(),
   }: {
     apiType: OpenAIApiType;
     baseURL: string;
@@ -68,6 +83,7 @@ export class OpenAIProtocol implements ModelProtocol {
     modelIdOverride?: string;
     connection?: ConnectionParams;
     fileLoader?: FileContentLoader;
+    errorProcessor?: ModelProtocolErrorProcessor;
   }) {
     this.apiType = apiType;
 
@@ -75,6 +91,7 @@ export class OpenAIProtocol implements ModelProtocol {
     this.connection = connection;
     this.fileLoader = fileLoader;
     this.modelIdOverride = modelIdOverride;
+    this.errorProcessor = errorProcessor;
 
     this.openai = new OpenAI({
       apiKey,
@@ -187,7 +204,7 @@ export class OpenAIProtocol implements ModelProtocol {
         },
       };
     } catch (error: unknown) {
-      if (error instanceof OpenAI.APIError && error.code === "rate_limit_exceeded" && retry < RETRY_COUNT) {
+      if (this.errorProcessor.isRateLimitError(error) && retry < RETRY_COUNT) {
         return new Promise(res => setTimeout(res, RETRY_TIMEOUT_MS)).then(() => this.getEmbeddings(request, retry + 1));
       }
 
@@ -200,7 +217,7 @@ export class OpenAIProtocol implements ModelProtocol {
   // https://platform.openai.com/docs/guides/text?api-mode=chat
   private async formatCompletionMessages(
     modelId: string,
-    messages: ModelMessage[],
+    messages: CompletionModelMessage[],
     systemPrompt: string | undefined
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
@@ -251,6 +268,18 @@ export class OpenAIProtocol implements ModelProtocol {
 
     for (const msg of messages) {
       const role = this.mapMessageRole(msg.role);
+      if (msg.toolCalls) {
+        requestMessages.push({
+          role: "assistant",
+          tool_calls: msg.toolCalls,
+        });
+        continue;
+      }
+
+      if (msg.toolResult) {
+        requestMessages.push(msg.toolResult);
+        continue;
+      }
 
       const toolCalls =
         msg.metadata?.toolCalls && msg.metadata.toolCalls.length > 0
@@ -313,7 +342,7 @@ export class OpenAIProtocol implements ModelProtocol {
    */
   private async formatCompletionRequest(
     inputRequest: CompleteChatRequest,
-    messages: ModelMessage[] = []
+    messages: CompletionModelMessage[] = []
   ): Promise<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming> {
     const { settings = {}, modelId: requestModelId, tools, mcpServers } = inputRequest;
     const { systemPrompt, temperature, maxTokens } = settings;
@@ -571,12 +600,6 @@ export class OpenAIProtocol implements ModelProtocol {
     messages: ModelMessage[] = [],
     callbacks: StreamCallbacks
   ): Promise<void> {
-    const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
-      ...(await this.formatCompletionRequest(input, messages)),
-      stream: true,
-      stream_options: { include_usage: true },
-    };
-
     let fullResponse = "";
     let meta: MessageMetadata | undefined = undefined;
 
@@ -589,128 +612,103 @@ export class OpenAIProtocol implements ModelProtocol {
     }
 
     const callableTools = this.formatCompletionRequestTools(input.tools, input.mcpServers);
-
     const cyclesLimit = 100; // to prevent infinite loops in case of bugs
     let cycleNo = 0;
+    let stream: Stream<OpenAI.Chat.Completions.ChatCompletionChunk> | undefined = undefined;
+    let sessionMessages: CompletionModelMessage[] = [...messages];
+
     do {
-      logger.debug({ ...params }, "invoking streaming chat.completions...");
-      const stream = await this.openai.chat.completions.create(params);
+      try {
+        const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+          ...(await this.formatCompletionRequest(input, sessionMessages)),
+          stream: true,
+          stream_options: { include_usage: true },
+        };
 
-      let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
+        logger.debug(
+          { ...params, messages: params.messages.map(m => m.role), tools: undefined },
+          "invoking streaming chat.completions..."
+        );
+        stream = await this.openai.chat.completions.create(params);
 
-      for await (const chunk of stream) {
-        if (stopped) {
-          stream?.controller?.abort();
-          break;
-        }
+        ok(stream);
 
-        logger.trace(chunk, "got chunk");
-        const choice = chunk.choices?.[0];
+        let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
 
-        if (choice?.finish_reason === "tool_calls" && (streamedToolCalls.length || choice?.delta?.tool_calls?.length)) {
-          const requestedToolCalls = (streamedToolCalls.length ? streamedToolCalls : choice.delta.tool_calls) || [];
-          logger.debug({ tool_calls: requestedToolCalls }, "Tool calls requested");
-          const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(call =>
-            this.parseCompletionToolCall(call, callableTools)
-          );
-          const failedCall = toolCalls.find(call => call.error);
-
-          if (failedCall) {
-            await callbacks.onError(new Error(failedCall.error));
-            stopped = true;
-            break;
-          }
-
-          const metaCalls = toolCalls.map(c => ({
-            ...c,
-            name: c.name || "unknown",
-            args: JSON.stringify(c.arguments || {}),
-          }));
-          stopped = await callbacks.onProgress(genProcessSymbol(), {
-            status: ResponseStatus.TOOL_CALL,
-            toolCalls: metaCalls,
-          });
-
+        for await (const chunk of stream) {
           if (stopped) {
+            stream?.controller?.abort();
             break;
           }
 
-          const toolResults = await this.callCompletionTools(
-            toolCalls,
-            callableTools,
-            callbacks.onProgress,
-            input.mcpTokens
-          );
+          logger.trace(chunk, "got chunk");
+          const choice = chunk.choices?.[0];
 
-          // Add tool calls as last assistant message
-          params.messages.push({
-            role: "assistant",
-            tool_calls: requestedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[],
-          });
-          params.messages.push(...toolResults.map(tr => tr.result));
+          if (
+            choice?.finish_reason === "tool_calls" &&
+            (streamedToolCalls.length || choice?.delta?.tool_calls?.length)
+          ) {
+            const requestedToolCalls = (streamedToolCalls.length ? streamedToolCalls : choice.delta.tool_calls) || [];
+            logger.debug({ tool_calls: requestedToolCalls }, "Tool calls requested");
 
-          const tools: ChatToolCallResult[] = toolResults
-            .map(({ call, result }) => {
-              if (!result) return undefined;
-              const content = this.parseCompletionToolCallResult(result);
-              return {
-                name: call.name || "unknown",
-                content,
-                callId: call.callId,
-              };
-            })
-            .filter(notEmpty);
+            stopped = await this.processCompletionToolCall(
+              requestedToolCalls,
+              callableTools,
+              callbacks,
+              input.mcpTokens,
+              sessionMessages
+            );
+            break; // break for await to restart the request with new messages
+          }
 
-          await callbacks.onProgress("", {
-            status: ResponseStatus.TOOL_CALL_COMPLETED,
-            tools,
-            toolCalls: toolCalls.map(tc => ({
-              name: tc.name || "unknown",
-              type: tc.type,
-              callId: tc.callId,
-              args: tc.arguments ? JSON.stringify(tc.arguments) : undefined,
-            })),
-          });
-
-          stopped = toolResults.some(tr => tr.stopped);
-          break; // break for await to restart the request with new messages
-        }
-
-        if (choice?.delta?.tool_calls) {
-          choice?.delta?.tool_calls.forEach(tc => {
-            if (!streamedToolCalls[tc.index]) {
-              streamedToolCalls[tc.index] = tc;
-            } else if (streamedToolCalls[tc.index].function && tc.function?.arguments) {
-              const func = streamedToolCalls[tc.index].function || {};
-              if (!func.arguments) {
-                func.arguments = "";
+          if (choice?.delta?.tool_calls) {
+            choice?.delta?.tool_calls.forEach(tc => {
+              if (!streamedToolCalls[tc.index]) {
+                streamedToolCalls[tc.index] = tc;
+              } else if (streamedToolCalls[tc.index].function && tc.function?.arguments) {
+                const func = streamedToolCalls[tc.index].function || {};
+                if (!func.arguments) {
+                  func.arguments = "";
+                }
+                func.arguments += tc.function.arguments;
               }
-              func.arguments += tc.function.arguments;
+            });
+          } else {
+            const token = choice?.delta?.content || (choice?.delta as any)?.reasoning_content || "";
+            if (token) {
+              fullResponse += token;
+              stopped = await callbacks.onProgress(token);
             }
-          });
-        } else {
-          const token = choice?.delta?.content || (choice?.delta as any)?.reasoning_content || "";
-          if (token) {
-            fullResponse += token;
-            stopped = await callbacks.onProgress(token);
+          }
+
+          const usage = chunk.usage;
+          if (usage) {
+            meta = {
+              usage: {
+                inputTokens: usage.prompt_tokens || 0,
+                outputTokens: usage.completion_tokens || 0,
+                cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
+              },
+            };
+          }
+
+          if (!stopped && choice?.finish_reason) {
+            stopped = true;
+          }
+        } // for await (const chunk of stream)
+      } catch (error: unknown) {
+        if (this.errorProcessor.isInputTooLargeError(error) && cycleNo < cyclesLimit) {
+          if (sessionMessages.length > 1) {
+            // Keep only the most recent half of the conversation
+            stopped = await callbacks.onProgress("", {
+              status: ResponseStatus.IN_PROGRESS,
+              detail: `Compacting conversation history, got error: ${(error as Error).message}`,
+            });
+
+            sessionMessages = sessionMessages.slice(-Math.floor(sessionMessages.length / 2));
           }
         }
-
-        const usage = chunk.usage;
-        if (usage) {
-          meta = {
-            usage: {
-              inputTokens: usage.prompt_tokens || 0,
-              outputTokens: usage.completion_tokens || 0,
-              cacheReadInputTokens: usage.prompt_tokens_details?.cached_tokens || 0,
-            },
-          };
-        }
-
-        if (!stopped && choice?.finish_reason) {
-          stopped = true;
-        }
-      } // for await (const chunk of stream)
+      }
     } while (!stopped && cycleNo++ < cyclesLimit);
 
     await callbacks.onComplete({
@@ -718,6 +716,79 @@ export class OpenAIProtocol implements ModelProtocol {
       metadata: meta,
       completed: true,
     });
+  }
+
+  private async processCompletionToolCall(
+    requestedToolCalls: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall[],
+    callableTools: ChatCompletionToolCallable[],
+    callbacks: StreamCallbacks,
+    mcpTokens: MCPAuthToken[] | undefined,
+    sessionMessages: CompletionModelMessage[]
+  ): Promise<boolean> {
+    const toolCalls: ChatCompletionToolCall[] = requestedToolCalls.map(call =>
+      this.parseCompletionToolCall(call, callableTools)
+    );
+    const failedCall = toolCalls.find(call => call.error);
+
+    if (failedCall) {
+      await callbacks.onError(new Error(failedCall.error));
+      return true;
+    }
+
+    const metaCalls = toolCalls.map(c => ({
+      ...c,
+      name: c.name || "unknown",
+      args: JSON.stringify(c.arguments || {}),
+    }));
+    let stopped = await callbacks.onProgress(genProcessSymbol(), {
+      status: ResponseStatus.TOOL_CALL,
+      toolCalls: metaCalls,
+    });
+
+    if (stopped) {
+      return stopped;
+    }
+
+    const toolResults = await this.callCompletionTools(toolCalls, callableTools, callbacks.onProgress, mcpTokens);
+
+    // Add tool calls as last assistant message
+    sessionMessages.push({
+      role: MessageRole.ASSISTANT,
+      body: [],
+      toolCalls: requestedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[],
+    });
+    sessionMessages.push(
+      ...toolResults.map(tr => ({
+        role: MessageRole.ASSISTANT,
+        body: [],
+        toolResult: tr.result,
+      }))
+    );
+
+    const tools: ChatToolCallResult[] = toolResults
+      .map(({ call, result }) => {
+        if (!result) return undefined;
+        const content = this.parseCompletionToolCallResult(result);
+        return {
+          name: call.name || "unknown",
+          content,
+          callId: call.callId,
+        };
+      })
+      .filter(notEmpty);
+
+    await callbacks.onProgress("", {
+      status: ResponseStatus.TOOL_CALL_COMPLETED,
+      tools,
+      toolCalls: toolCalls.map(tc => ({
+        name: tc.name || "unknown",
+        type: tc.type,
+        callId: tc.callId,
+        args: tc.arguments ? JSON.stringify(tc.arguments) : undefined,
+      })),
+    });
+
+    return toolResults.some(tr => tr.stopped);
   }
 
   private parseCompletionToolCallResult(result: OpenAI.Chat.Completions.ChatCompletionMessageParam): string {
@@ -742,7 +813,7 @@ export class OpenAIProtocol implements ModelProtocol {
    * @param inputRequest
    * @param messages
    * @param callbacks
-   * @param retry retries counter for "rate_limit_exceeded"
+   * @param retry retries counter for rate limit errors, used internally for recursive calls
    * @returns
    */
   private async streamChatResponses(
@@ -783,11 +854,24 @@ export class OpenAIProtocol implements ModelProtocol {
       }
 
       await callbacks.onStart({ status: ResponseStatus.STARTED });
-    } catch (error) {
-      if (error instanceof OpenAI.APIError && error.code === "rate_limit_exceeded" && retry < RETRY_COUNT) {
+    } catch (error: unknown) {
+      if (this.errorProcessor.isRateLimitError(error) && retry < RETRY_COUNT) {
         return new Promise(res => setTimeout(res, RETRY_TIMEOUT_MS)).then(() =>
           this.streamChatResponses(inputRequest, messages, callbacks, retry + 1)
         );
+      }
+
+      if (this.errorProcessor.isInputTooLargeError(error) && retry < RETRY_COUNT) {
+        if (messages.length > 1) {
+          // Keep only the most recent half of the conversation
+          await callbacks.onProgress("", {
+            status: ResponseStatus.IN_PROGRESS,
+            detail: `Compacting conversation history, got error: ${(error as Error).message}`,
+          });
+
+          const lastMessages = messages.slice(-Math.floor(messages.length / 2));
+          return this.streamChatResponses(inputRequest, lastMessages, callbacks, retry + 1);
+        }
       }
 
       throw error;
@@ -1091,17 +1175,39 @@ export class OpenAIProtocol implements ModelProtocol {
         stopped = toolResults.some(tr => tr.stopped);
         if (stopped) break;
 
-        const functionOutputs = toolResults.map(({ call, result }) => ({
+        let functionOutputs = toolResults.map(({ call, result }) => ({
           type: "function_call_output" as const,
           call_id: call.callId,
           output: this.parseCompletionToolCallResult(result),
         }));
 
-        stream = await this.openai.responses.create({
-          ...baseParams,
-          previous_response_id: lastResponseId,
-          input: functionOutputs,
-        } as OpenAI.Responses.ResponseCreateParamsStreaming);
+        while (retry < RETRY_COUNT) {
+          try {
+            stream = await this.openai.responses.create({
+              ...baseParams,
+              previous_response_id: lastResponseId,
+              input: functionOutputs,
+            } as OpenAI.Responses.ResponseCreateParamsStreaming);
+
+            break;
+          } catch (error: unknown) {
+            if (this.errorProcessor.isInputTooLargeError(error) && retry < RETRY_COUNT) {
+              ++retry;
+              await callbacks.onProgress("", {
+                status: ResponseStatus.IN_PROGRESS,
+                detail: `Compacting function call results, got error: ${(error as Error).message}`,
+              });
+
+              functionOutputs = functionOutputs
+                .filter(msg => msg.output)
+                .map(msg => ({
+                  ...msg,
+                  output: msg.output.substring((msg.output.length * 0.5) | 0),
+                }));
+              break;
+            }
+          }
+        }
       } while (cycleNo++ < cyclesLimit);
     } catch (err: unknown) {
       stopped = await callbacks.onError(err instanceof Error ? err : new Error(String(err)));

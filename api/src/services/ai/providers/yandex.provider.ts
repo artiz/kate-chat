@@ -21,6 +21,16 @@ import { FileContentLoader } from "@/services/data/s3.service";
 import { notEmpty } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { ApiProvider, CredentialSourceType, MessageRole, ModelType, ResponseStatus, ToolType } from "@/types/api";
+import { ModelProtocolErrorProcessor } from "../protocols/common";
+
+class YandexProtocolErrorProcessor implements ModelProtocolErrorProcessor {
+  isInputTooLargeError(error: unknown): boolean {
+    return error instanceof Error && error.message.includes("number of input tokens must be no more than");
+  }
+  isRateLimitError(error: unknown): boolean {
+    return false;
+  }
+}
 
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
@@ -39,6 +49,7 @@ export class YandexApiProvider extends BaseApiProvider {
         apiKey: this.apiKey,
         connection,
         fileLoader,
+        errorProcessor: new YandexProtocolErrorProcessor(),
       });
     }
   }

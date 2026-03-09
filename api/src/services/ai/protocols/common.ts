@@ -7,6 +7,11 @@ import {
   EmbeddingsResponse,
 } from "@/types/ai.types";
 
+export interface ModelProtocolErrorProcessor {
+  isInputTooLargeError(error: unknown): boolean;
+  isRateLimitError(error: unknown): boolean;
+}
+
 /**
  * Interface defining the protocol for interacting with AI models.
  * This includes methods for chat completion, streaming chat, and generating embeddings.

@@ -192,6 +192,11 @@ export class BedrockApiProvider extends BaseApiProvider {
     return finalResponse || { content: "" };
   }
 
+  isInputTooLargeError(error: Error): boolean {
+    const RETRYABLE_CONVERSE_ERRORS = ["prompt is too long", "Input is too long for requested model"];
+    return error instanceof ValidationException && RETRYABLE_CONVERSE_ERRORS.some(msg => error.message.includes(msg));
+  }
+
   async streamChatCompletion(
     request: CompleteChatRequest,
     messages: ModelMessage[],
@@ -222,15 +227,10 @@ export class BedrockApiProvider extends BaseApiProvider {
         const command = new ConverseStreamCommand(input);
         let streamResponse: ConverseStreamCommandOutput | undefined = undefined;
 
-        const RETRYABLE_CONVERSE_ERRORS = ["prompt is too long", "Input is too long for requested model"];
         try {
           streamResponse = await this.bedrockClient.send(command);
-        } catch (error) {
-          if (
-            error instanceof ValidationException &&
-            RETRYABLE_CONVERSE_ERRORS.some(msg => error.message.includes(msg)) &&
-            tooLongErrorRetries < 10
-          ) {
+        } catch (error: unknown) {
+          if (error instanceof Error && this.isInputTooLargeError(error) && tooLongErrorRetries < 10) {
             logger.warn(
               { modelId, messagesLength: JSON.stringify(input.messages).length },
               "Model input exceeded token limit, truncating conversation history and retrying"
