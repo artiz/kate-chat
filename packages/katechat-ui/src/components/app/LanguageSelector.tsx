@@ -22,7 +22,7 @@ export const LanguageSelector = ({
     <Menu shadow="md" width={150} position="bottom-end">
       <Menu.Target>
         <Tooltip label={t("language.label")}>
-          <ActionIcon variant="subtle" aria-label={t("language.label")}>
+          <ActionIcon variant="subtle" radius="xl" aria-label={t("language.label")}>
             <IconLanguage size={size} />
           </ActionIcon>
         </Tooltip>

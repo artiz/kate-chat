@@ -33,7 +33,7 @@ import { useTranslation } from "react-i18next";
 import { useChatSubscription, useChatMessages } from "@/hooks";
 
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
-import { DocumentUploadProgress } from "@/components/DocumentUploadProgress";
+import { DocumentUploadProgress } from "@/components/documents/DocumentUploadProgress";
 import {
   ChatDocument,
   CreateMessageResponse,

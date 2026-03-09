@@ -32,6 +32,8 @@ export const store = configureStore({
 
 setupListeners(store.dispatch);
 
+export const STORAGE_RETURN_URL_KEY = "return-url";
+
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 

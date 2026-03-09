@@ -14,12 +14,9 @@ const PrivacyPolicy: React.FC = () => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
 
   return (
-    <Container size="md" my={40}>
+    <Container size="md" pb="xl" my={40}>
       <Anchor component="button" size="sm" mb="md" onClick={() => navigate("/")}>
-        <Group gap={4}>
-          <IconArrowLeft size={16} />
-          {appTitle}
-        </Group>
+        <IconArrowLeft size={24} />
       </Anchor>
       <Paper withBorder shadow="sm" p="xl" radius="md">
         <Stack gap="lg">

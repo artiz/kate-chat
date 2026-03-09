@@ -118,27 +118,22 @@ const Home: React.FC = () => {
 
         {/* Auth Section */}
         <Paper withBorder shadow="md" p="xl" radius="md" w="100%">
-          <Stack gap="md" align="center">
+          <Stack gap="md" align="stretch">
             <Title order={3}>{t("home.getStarted")}</Title>
             <Text ta="center" c="dimmed">
               {t("home.getStartedText", { appTitle })}
             </Text>
 
             <Group justify="center" gap="md">
-              <Button size="lg" leftSection={<IconLogin size={20} />} onClick={() => navigate("/login")}>
+              <Button leftSection={<IconLogin size={20} />} onClick={() => navigate("/login")}>
                 {t("auth.signIn")}
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                leftSection={<IconUserPlus size={20} />}
-                onClick={() => navigate("/register")}
-              >
+              <Button variant="outline" leftSection={<IconUserPlus size={20} />} onClick={() => navigate("/register")}>
                 {t("auth.register")}
               </Button>
             </Group>
 
-            <OAuthButtons variant="outline" condensed />
+            <OAuthButtons variant="filled" condensed />
           </Stack>
         </Paper>
 

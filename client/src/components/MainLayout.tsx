@@ -15,26 +15,18 @@ import {
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery, useLocalStorage } from "@mantine/hooks";
 import { SearchDrawer } from "./search/SearchDrawer";
-import {
-  IconLogout,
-  IconChevronRight,
-  IconSun,
-  IconMoon,
-  IconUser,
-  IconWifi,
-  IconRobot,
-  IconSearch,
-} from "@tabler/icons-react";
+import { IconLogout, IconChevronRight, IconUser, IconWifi, IconRobot, IconSearch } from "@tabler/icons-react";
 import { useDispatch } from "react-redux";
 import { LanguageSelector, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
-import { useAppSelector } from "../store";
+import { removeStorageValue, STORAGE_RETURN_URL_KEY, useAppSelector } from "../store";
 import { logout } from "../store/";
 import NavbarContent from "./nav/NavbarContent";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import { UserRole } from "@/store/slices/userSlice";
+import { ThemeSelector } from "./common/ThemeSelector";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle, close: closeNavbar }] = useDisclosure();
@@ -42,7 +34,6 @@ export const MainLayout: React.FC = () => {
   const isMobile = useMediaQuery(MOBILE_BREAKPOINT);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { colorScheme, toggleColorScheme } = useTheme();
   const { t } = useTranslation();
 
   // Get user data from Redux store
@@ -55,6 +46,7 @@ export const MainLayout: React.FC = () => {
 
   // Handle logout
   const handleLogout = () => {
+    removeStorageValue(STORAGE_RETURN_URL_KEY, currentUser);
     dispatch(logout());
     navigate("/");
   };
@@ -109,20 +101,7 @@ export const MainLayout: React.FC = () => {
                 </ActionIcon>
               </Tooltip>
             )}
-            <Tooltip label={colorScheme === "dark" ? t("nav.switchToLight") : t("nav.switchToDark")}>
-              <ActionIcon
-                variant="subtle"
-                onClick={() => {
-                  toggleColorScheme();
-                  // Force UI update
-                  setTimeout(() => window.dispatchEvent(new Event("resize")), 100);
-                }}
-                aria-label="Toggle theme"
-              >
-                {colorScheme === "dark" ? <IconSun size={20} /> : <IconMoon size={20} />}
-              </ActionIcon>
-            </Tooltip>
-
+            <ThemeSelector />
             <LanguageSelector languages={SUPPORTED_LANGUAGES} />
 
             <Menu shadow="md" width={200} position="bottom-end">

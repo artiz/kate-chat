@@ -7,12 +7,13 @@ import { useTranslation } from "react-i18next";
 import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import { OAuthButtons } from "./auth";
+import { useAppSelector } from "@/store";
+import { ThemeSelector } from "./common/ThemeSelector";
 
 export const SimpleLayout: React.FC = () => {
   const navigate = useNavigate();
-  const { colorScheme, toggleColorScheme } = useTheme();
-  const { t } = useTranslation();
   const { appTitle } = getClientConfig();
+  const { isAuthenticated } = useAppSelector(state => state.auth);
 
   return (
     <AppShell header={{ height: 60 }} padding="0" withBorder>
@@ -25,21 +26,9 @@ export const SimpleLayout: React.FC = () => {
               </Text>
             </Anchor>
           </Group>
-          <Group>
-            <OAuthButtons variant="outline" size="16" condensed inline />
-            <Tooltip label={colorScheme === "dark" ? t("nav.switchToLight") : t("nav.switchToDark")}>
-              <ActionIcon
-                variant="subtle"
-                onClick={() => {
-                  toggleColorScheme();
-                  // Force UI update
-                  setTimeout(() => window.dispatchEvent(new Event("resize")), 100);
-                }}
-                aria-label="Toggle theme"
-              >
-                {colorScheme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
-              </ActionIcon>
-            </Tooltip>
+          <Group gap="0">
+            {!isAuthenticated && <OAuthButtons variant="subtle" condensed inline />}
+            <ThemeSelector />
             <LanguageSelector languages={SUPPORTED_LANGUAGES} />
           </Group>
         </Group>

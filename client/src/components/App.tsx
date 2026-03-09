@@ -13,7 +13,14 @@ import { setAppConfig, setMcpServers, setUser } from "../store/slices/userSlice"
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats, setPinnedChats } from "../store/slices/chatSlice";
 import { setFolders } from "../store/slices/folderSlice";
-import { getStorageValue, logout, removeStorageValue, useAppSelector, writeStorageValue } from "../store";
+import {
+  getStorageValue,
+  logout,
+  removeStorageValue,
+  STORAGE_RETURN_URL_KEY,
+  useAppSelector,
+  writeStorageValue,
+} from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
@@ -44,7 +51,6 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 
 const BASE_URLS = ["/", "/chat"];
-const STORAGE_RETURN_URL_KEY = "return-url";
 
 // PublicRoute component - redirects to /chat if already authenticated
 const PublicRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
