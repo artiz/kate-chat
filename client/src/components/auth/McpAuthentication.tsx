@@ -194,7 +194,7 @@ export interface UseMcpAuthResult {
   /** Submit token and store it */
   mcpSubmitToken: () => boolean;
   /** Initiate authentication for a server (OAuth or token modal) */
-  mcpInitiateAuth: (server: MCPServer, userToken: string, force?: boolean) => boolean;
+  mcpInitiateAuth: (server: MCPServer, userToken: string, force?: boolean, onAuthenticated?: () => void) => boolean;
 }
 
 export const useMcpAuth = (
@@ -211,7 +211,7 @@ export const useMcpAuth = (
   const oauthPopupRef = useRef<Window | null>(null);
 
   // Track whether we're actively expecting an OAuth callback
-  const expectingOAuthCallback = useRef<boolean>(false);
+  const expectingOAuthCallback = useRef<() => void | null>(null);
 
   // Track known server IDs for validation
   const knownServerIds = useMemo(() => new Set(servers.map(s => s.id)), [servers]);
@@ -303,6 +303,8 @@ export const useMcpAuth = (
             EXPIRES_AT_KEY(serverId, userId),
             expiresAt ? String(expiresAt) : String(Date.now() + TOKEN_EXPIRATION_MS)
           );
+
+          expectingOAuthCallback.current();
         }
 
         // Update auth status
@@ -310,7 +312,7 @@ export const useMcpAuth = (
 
         // Clear the popup reference and expecting flag
         oauthPopupRef.current = null;
-        expectingOAuthCallback.current = false;
+        expectingOAuthCallback.current = null;
       } else if (event.data?.type === "mcp-oauth-error") {
         notifications.show({
           title: "Error",
@@ -319,7 +321,7 @@ export const useMcpAuth = (
         });
 
         oauthPopupRef.current = null;
-        expectingOAuthCallback.current = false;
+        expectingOAuthCallback.current = null;
       }
     };
 
@@ -357,6 +359,7 @@ export const useMcpAuth = (
 
     // Update auth status
     setAuthStatus(prev => new Map(prev).set(mcpTokenModalServer.id, true));
+    expectingOAuthCallback.current?.();
 
     // Close modal
     setTokenModalServer(null);
@@ -366,14 +369,14 @@ export const useMcpAuth = (
   }, [mcpTokenModalServer, mcpTokenValue]);
 
   const mcpInitiateAuth = useCallback(
-    (server: MCPServer, userToken: string, force: boolean = false): boolean => {
+    (server: MCPServer, userToken: string, force: boolean = false, onAuthenticated?: () => void): boolean => {
       // If OAuth is required, initiate OAuth flow
       if (requiresOAuth(server) && (force || !hasValidMcpToken(server.id, userId))) {
         try {
           const popup = initiateMcpOAuth(server, userToken);
           if (popup) {
             oauthPopupRef.current = popup;
-            expectingOAuthCallback.current = true;
+            expectingOAuthCallback.current = onAuthenticated || (() => {});
             return true;
           }
         } catch (error) {
@@ -390,6 +393,7 @@ export const useMcpAuth = (
       // If API Key or Bearer token is required, show token entry dialog
       if (requiresTokenEntry(server) && (force || !hasValidMcpToken(server.id, userId))) {
         mcpOpenTokenModal(server);
+        expectingOAuthCallback.current = onAuthenticated || (() => {});
         return true;
       }
 

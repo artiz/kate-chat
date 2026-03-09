@@ -38,9 +38,10 @@ export class McpServersService {
   }
 
   public async createServer(input: CreateMCPServerInput, userId?: string): Promise<MCPServer> {
-    const existing = await this.mcpServerRepository.findOne({
-      where: { url: input.url, user: { id: userId } },
-    });
+    const isSystem = input.access === EntityAccessType.SYSTEM;
+    const existing = isSystem
+      ? await this.mcpServerRepository.findOne({ where: { url: input.url, access: EntityAccessType.SYSTEM } })
+      : await this.mcpServerRepository.findOne({ where: { url: input.url, user: { id: userId } } });
     if (existing) {
       throw new Error("An MCP server with this URL already exists");
     }

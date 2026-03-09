@@ -26,9 +26,6 @@ import { useSelector } from "react-redux";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
 import { useMediaQuery, useDisclosure, useLocalStorage } from "@mantine/hooks";
 
-// Re-export for backwards compatibility
-export { getMcpAuthToken } from "@/components/auth/McpAuthentication";
-
 interface IHeaderProps {
   chatId?: string;
   disabled?: boolean;
@@ -155,7 +152,7 @@ export const ChatInputHeader = ({
     // If auth is required and user not authenticated, initiate auth flow
     if (server && mcpNeedsAuthentication(server)) {
       assert.ok(userToken);
-      mcpInitiateAuth(server, userToken);
+      mcpInitiateAuth(server, userToken, false, () => toggleMcpServer(serverId));
       return; // Don't toggle yet - wait for auth to complete
     }
 
