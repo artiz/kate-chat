@@ -99,7 +99,7 @@ export const MoveToChatModal: React.FC<IProps> = ({ isOpen, onClose, chat }) => 
     updateChatMutation({
       variables: {
         id: chat.id,
-        input: { folderId: selectedFolderId },
+        input: { folderId: selectedFolderId, isPinned: true },
       },
     });
   };

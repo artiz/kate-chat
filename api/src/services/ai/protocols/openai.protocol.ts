@@ -700,6 +700,10 @@ export class OpenAIProtocol implements ModelProtocol {
 
           if (!stopped && choice?.finish_reason) {
             stopped = true;
+
+            if (!fullResponse && choice.finish_reason !== "stop") {
+              fullResponse = `Response finished with reason: ${choice.finish_reason}`;
+            }
           }
         } // for await (const chunk of stream)
       } catch (error: unknown) {
