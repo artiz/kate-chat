@@ -1,4 +1,4 @@
-import { In, IsNull, MoreThanOrEqual, Not, Repository } from "typeorm";
+import { In, IsNull, LessThan, MoreThanOrEqual, Not, Repository } from "typeorm";
 import type { WebSocket } from "ws";
 import { IncomingMessage } from "http";
 import { Message } from "../entities/Message";
@@ -379,12 +379,34 @@ export class MessagesService {
 
     if (!originalMessage) throw new Error("Message not found");
     if (!originalMessage.chat) throw new Error("Chat not found for this message");
+
+    const chat = originalMessage.chat;
+    const chatId = originalMessage.chatId;
+    ok(chatId);
+    ok(originalMessage.createdAt);
+
+    // If attempting to reset context on an assistant message, find and edit the last user message instead
+    let modelId = chat.modelId || user.settings?.defaultModelId;
+    if (originalMessage.role === MessageRole.ASSISTANT) {
+      modelId ||= originalMessage.modelId;
+      const lastUserMessage = await this.messageRepository.findOne({
+        where: {
+          chatId: originalMessage.chatId,
+          role: MessageRole.USER,
+          createdAt: LessThan(formatDateFloor(originalMessage.createdAt)),
+        },
+        order: { createdAt: "DESC" },
+        relations: ["chat", "chat.user", "user"],
+      });
+
+      if (!lastUserMessage) throw new Error("No user message found to reset context from");
+      originalMessage = lastUserMessage;
+      newContent = lastUserMessage.content; // keep original content if resetting context
+    }
+
     if (originalMessage.role !== MessageRole.USER) throw new Error("Only user messages can be edited");
     // Verify the message belongs to the current user's chat
     if (originalMessage.user?.id !== user.id) throw new Error("Unauthorized access to this message");
-    const chat = originalMessage.chat;
-    const chatId = chat.id;
-
     ok(originalMessage.createdAt);
 
     // Delete all messages after this one in the chat
@@ -426,7 +448,7 @@ export class MessagesService {
     // Find the model for the chat
     const model = await this.modelRepository.findOne({
       where: {
-        modelId: chat.modelId || user.settings?.defaultModelId,
+        modelId,
         user: { id: user.id },
       },
     });
@@ -434,7 +456,7 @@ export class MessagesService {
     this.checkModelFeatures(model, user);
 
     // Get context messages (up to the edited message, excluding it)
-    const contextMessages = await this.getContextMessages(chatId, originalMessage);
+    const contextMessages = await this.getContextMessages(chatId, originalMessage, messageContext?.resetContextLimit);
 
     // Create new assistant message
     if (assistantMessage) {
@@ -1392,7 +1414,7 @@ export class MessagesService {
     }
   }
 
-  protected async getContextMessages(chatId: string, currentMessage?: Message) {
+  protected async getContextMessages(chatId: string, currentMessage?: Message, resetContextLimit?: boolean) {
     // Get previous messages for context (up to the original message)
     let query = this.messageRepository
       .createQueryBuilder("message")
@@ -1407,7 +1429,19 @@ export class MessagesService {
     }
 
     const messages = await query.orderBy("message.createdAt", "DESC").take(aiConfig.contextMessagesLimit).getMany();
-    return messages.reverse();
+    const contextMessages = messages.reverse();
+
+    // If resetContextLimit is true, skip the context message filtering and use all available messages
+    if (resetContextLimit) {
+      return contextMessages;
+    }
+
+    const lastContextMsg = contextMessages.findLast(m => m.metadata?.contextMessages);
+    if (lastContextMsg) {
+      const set = new Set([lastContextMsg.id].concat(lastContextMsg.metadata?.contextMessages || []));
+      return contextMessages.filter(m => set.has(m.id));
+    }
+    return contextMessages;
   }
 
   protected formatMessageRequest(

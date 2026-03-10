@@ -84,6 +84,7 @@ export class UserResolver extends BaseResolver {
       credentialsSource,
       reasoningMaxTokenBudget: globalConfig.ai.reasoningMaxTokenBudget,
       reasoningMinTokenBudget: globalConfig.ai.reasoningMinTokenBudget,
+      contextMessagesLimit: globalConfig.ai.contextMessagesLimit,
     };
   }
 

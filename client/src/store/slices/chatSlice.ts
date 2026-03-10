@@ -12,6 +12,9 @@ interface ChatsState {
   pinnedChats: Chat[];
   pinnedNext: number | undefined;
   pinnedTotal: number;
+  contextMessages: {
+    [chatId: string]: { ids?: string[]; before?: string }; // chatId to array of context message ids
+  };
 }
 
 const initialState: ChatsState = {
@@ -23,6 +26,7 @@ const initialState: ChatsState = {
   pinnedChats: [],
   pinnedNext: undefined,
   pinnedTotal: 0,
+  contextMessages: {},
 };
 
 const chatSlice = createSlice({
@@ -123,6 +127,14 @@ const chatSlice = createSlice({
       state.error = action.payload;
       state.loading = false;
     },
+    setContextMessages(state, action: PayloadAction<{ chatId: string; ids?: string[]; before?: string }>) {
+      const { chatId, ids, before } = action.payload;
+      if (ids || before) {
+        state.contextMessages[chatId] = { ids, before };
+      } else {
+        delete state.contextMessages[chatId];
+      }
+    },
   },
   extraReducers: builder => {
     builder.addCase(logout, state => {
@@ -143,5 +155,6 @@ export const {
   removeChat,
   setChatLoading,
   setChatError,
+  setContextMessages,
 } = chatSlice.actions;
 export default chatSlice.reducer;

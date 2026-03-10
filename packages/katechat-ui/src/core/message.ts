@@ -50,6 +50,8 @@ export interface Message<TUser = User, TMetadata = Record<string, unknown>, TCha
 export interface PluginProps<TMessage = Message> {
   message: TMessage;
   disabled?: boolean;
+  isLast?: boolean;
+  messagesCount: number;
   onAddMessage?: (message: TMessage) => void;
   onAction?: (messageId: string) => void;
   onActionEnd?: (messageId: string) => void;

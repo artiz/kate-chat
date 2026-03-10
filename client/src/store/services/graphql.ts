@@ -236,6 +236,9 @@ export const graphqlApi = api.injectEndpoints({
                   type
                   source
                 }
+                reasoningMaxTokenBudget
+                reasoningMinTokenBudget
+                contextMessagesLimit
               }
 
               mcpServers {

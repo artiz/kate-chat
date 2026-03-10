@@ -33,7 +33,7 @@ interface ChatMessagesProps {
 }
 
 export const ChatMessagesList = React.memo<ChatMessagesProps>(
-  ({ messages, onMessageDeleted, onAddMessage, plugins = [], detailsPlugins = [], codePlugins, models = [] }) => {
+  ({ messages = [], onMessageDeleted, onAddMessage, plugins = [], detailsPlugins = [], codePlugins, models = [] }) => {
     const { t } = useTranslation();
     const componentRef = useRef<HTMLDivElement>(null);
 
@@ -321,13 +321,15 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
     );
 
     const pluginsLoader = useCallback(
-      (msg: Message) => {
+      (msg: Message, { isLast = false }: { isLast?: boolean } = {}) => {
         return (
           <>
             {plugins.map((PluginComponent, idx) => (
               <PluginComponent
                 key={idx}
                 message={msg}
+                isLast={isLast}
+                messagesCount={messages.length}
                 onAddMessage={onAddMessage}
                 onAction={addEditedMessage}
                 onActionEnd={clearEditedMessage}
@@ -338,7 +340,7 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
           </>
         );
       },
-      [plugins, onAddMessage, onMessageDeleted, updatedMessages, addEditedMessage, clearEditedMessage]
+      [plugins, messages.length, onAddMessage, onMessageDeleted, updatedMessages, addEditedMessage, clearEditedMessage]
     );
 
     const messageDetailsLoader = useCallback(
@@ -351,12 +353,13 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
 
     return (
       <>
-        <Stack gap="sm" ref={componentRef} onClick={handleMessageClick}>
+        <Stack gap="0" ref={componentRef} onClick={handleMessageClick}>
           {messages.map((msg, index) => (
             <ChatMessage
               key={msg.id}
               message={msg}
               index={index}
+              isLast={index === messages.length - 1}
               disabled={updatedMessages.has(msg.id)}
               pluginsLoader={pluginsLoader}
               messageDetailsLoader={messageDetailsLoader}

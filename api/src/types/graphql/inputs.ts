@@ -201,6 +201,9 @@ export class CreateMessageInput {
 export class MessageContext {
   @Field(() => [MCPAuthTokenInput], { nullable: true })
   mcpTokens?: MCPAuthTokenInput[];
+
+  @Field({ nullable: true })
+  resetContextLimit?: boolean;
 }
 
 @InputType()

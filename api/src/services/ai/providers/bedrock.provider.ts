@@ -65,7 +65,7 @@ import {
   AWS_BEDROCK_MIN_THINKING_BUDGET,
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
 } from "@/config/ai/bedrock";
-import { ok } from "@/utils/assert";
+import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
 import { log } from "console";
 
@@ -128,7 +128,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     this.bedrockManagementClient = new BedrockClient(config);
   }
 
-  async completeChat(request: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
+  public async completeChat(request: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
     if (!this.bedrockClient) {
       throw new Error("AWS Bedrock client is not initialized. Please check your AWS credentials and region.");
     }
@@ -184,17 +184,16 @@ export class BedrockApiProvider extends BaseApiProvider {
 
         requestCompleted = false;
       } else {
-        finalResponse = modelResponse;
+        finalResponse = {
+          ...modelResponse,
+          metadata: { contextMessages: messages.map(m => m.id).filter(notEmpty) },
+        };
+
         requestCompleted = true;
       }
     } while (!requestCompleted);
 
     return finalResponse || { content: "" };
-  }
-
-  isInputTooLargeError(error: Error): boolean {
-    const RETRYABLE_CONVERSE_ERRORS = ["prompt is too long", "Input is too long for requested model"];
-    return error instanceof ValidationException && RETRYABLE_CONVERSE_ERRORS.some(msg => error.message.includes(msg));
   }
 
   async streamChatCompletion(
@@ -212,7 +211,9 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     let conversationMessages: ConverseMessage[] = [];
     let requestCompleted = false;
-    let metadata: MessageMetadata | undefined = undefined;
+    let metadata: MessageMetadata = {
+      contextMessages: messages.map(m => m.id).filter(notEmpty),
+    };
 
     // Format tools from request
     const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
@@ -238,12 +239,13 @@ export class BedrockApiProvider extends BaseApiProvider {
             // Keep only the most recent half of the conversation
             await callbacks.onProgress("", {
               status: ResponseStatus.IN_PROGRESS,
-              detail: `Compacting conversation history, got error: ${error.message}`,
+              detail: "Compacting conversation history",
             });
 
             tooLongErrorRetries++;
             if (contextMessages.length > 1) {
               contextMessages = contextMessages.slice(-Math.floor(contextMessages.length / 2));
+              metadata.contextMessages = contextMessages.map(m => m.id).filter(notEmpty);
               continue;
             } else if (conversationMessages.length) {
               conversationMessages = conversationMessages.map(msg => ({
@@ -409,6 +411,11 @@ export class BedrockApiProvider extends BaseApiProvider {
         requestCompleted = true;
       }
     } while (!requestCompleted);
+  }
+
+  isInputTooLargeError(error: Error): boolean {
+    const RETRYABLE_CONVERSE_ERRORS = ["prompt is too long", "Input is too long for requested model"];
+    return error instanceof ValidationException && RETRYABLE_CONVERSE_ERRORS.some(msg => error.message.includes(msg));
   }
 
   private trimConverseContent(content: ContentBlock[] | undefined, ratio = 0.5): any {

@@ -203,7 +203,10 @@
     "webSearch": "Web Search",
     "yesterday": "Yesterday",
     "you": "You",
-    "yourChats": "Your Chats"
+    "yourChats": "Your Chats",
+    "contextMessages": "Context Messages",
+    "resetContextLimit": "Reset context limit",
+    "resetContextLimitMessage": "Would you like to reset context limit and regenerate message with max available context messages?"
   },
   "chatSettings": {
     "imageQuality": {

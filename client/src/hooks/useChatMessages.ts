@@ -8,6 +8,7 @@ import { GET_CHAT_MESSAGES, UPDATE_CHAT_MUTATION } from "@/store/services/graphq
 import { pick } from "lodash";
 import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings, Chat } from "@/types/graphql";
 import { ChatLink } from "./useChat";
+import { getClientConfig } from "@/global-config";
 
 type RemoveMessagesArgs = {
   messagesToDelete?: Message[];
@@ -44,8 +45,6 @@ export interface UpdateChatInput {
   lastBotMessageHtml?: string[];
 }
 
-const MESSAGES_PER_PAGE = 50;
-
 export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = {}) => {
   const [messages, setMessages] = useState<Message[] | undefined>();
   const [messagesLoading, setMessagesLoading] = useState<boolean>(false);
@@ -57,6 +56,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const loadTimeout = useRef<NodeJS.Timeout | null>(null);
   const { chats, pinnedChats } = useAppSelector(state => state.chats);
   const folderChats = useAppSelector(state => state.folders.folderChats);
+  const { chatMessagesPerPage } = getClientConfig();
 
   const dispatch = useAppDispatch();
   const client = useApolloClient();
@@ -77,7 +77,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           variables: {
             input: {
               chatId,
-              limit: MESSAGES_PER_PAGE,
+              limit: chatMessagesPerPage,
               offset,
             },
           },
@@ -253,7 +253,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     if (!link) return;
 
     setChat(prev => (prev?.id === link.id ? ({ ...prev, ...input } as Chat) : prev));
-    dispatch(updateChatInState({ ...link, ...input }));
+    dispatch(updateChatInState({ title: "", ...link, ...input }));
 
     if (updateTimeout.current) {
       clearTimeout(updateTimeout.current);

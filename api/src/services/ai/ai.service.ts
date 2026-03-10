@@ -206,6 +206,7 @@ export class AIService {
    */
   private formatMessages(messages: Message[]): ModelMessage[] {
     const modelMessages = messages.map(msg => ({
+      id: msg.id,
       role: msg.role,
       body: msg.jsonContent || msg.content,
       timestamp: msg.createdAt,

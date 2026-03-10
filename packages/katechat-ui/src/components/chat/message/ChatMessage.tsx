@@ -23,15 +23,16 @@ const ANIMATION_DURATION = 250; // Duration of the carousel animation in millise
 interface ChatMessageProps {
   message: Message;
   index: number;
+  isLast?: boolean;
   disabled?: boolean;
-  pluginsLoader?: (message: Message) => React.ReactNode;
+  pluginsLoader?: (message: Message, opts?: { isLast?: boolean }) => React.ReactNode;
   messageDetailsLoader?: (message: Message) => React.ReactNode;
   models?: Model[];
   codePlugins?: Record<string, CodePlugin>;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps) => {
-  const { message, index, disabled = false, pluginsLoader, messageDetailsLoader, models, codePlugins } = props;
+  const { message, index, isLast, disabled = false, pluginsLoader, messageDetailsLoader, models, codePlugins } = props;
 
   const {
     role,
@@ -256,7 +257,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
   }, [messageDetailsLoader, message]);
 
   const mainMessage = useMemo(() => {
-    const plugins = pluginsLoader ? pluginsLoader(message) : null;
+    const plugins = pluginsLoader ? pluginsLoader(message, { isLast }) : null;
     const model = models?.find(m => m.modelId === message?.modelId);
 
     return (
@@ -441,6 +442,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
     return (
       <div
         id={`message-${message.id}`}
+        data-message-id={message.id}
         className={["katechat-message", `katechat-message__${role || ""}`].join(" ")}
         ref={componentRef}
       >
@@ -452,6 +454,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
   return (
     <div
       id={`message-${message.id}`}
+      data-message-id={message.id}
       className={["katechat-message", `katechat-message__${role || ""}`].join(" ")}
       ref={componentRef}
     >

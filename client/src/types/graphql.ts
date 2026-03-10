@@ -170,6 +170,7 @@ export interface ApplicationConfig {
   credentialsSource?: CredentialSource[];
   reasoningMaxTokenBudget?: number;
   reasoningMinTokenBudget?: number;
+  contextMessagesLimit: number;
 }
 
 export interface GetInitialDataResponse {
@@ -327,6 +328,7 @@ export interface MessageMetadata {
   toolCalls?: ChatToolCall[];
   requestId?: string;
   reasoning?: ReasoningChunk[];
+  contextMessages?: string[];
 }
 
 export interface MessageChatInfo {

@@ -112,6 +112,8 @@ export class OpenAIProtocol implements ModelProtocol {
         content: "",
       };
 
+      const contextMessages = messages.map(m => m.id).filter(notEmpty);
+
       if (this.apiType === "responses") {
         const params = await this.formatResponsesRequest(input, messages);
         if (logger.isLevelEnabled("trace")) {
@@ -126,7 +128,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
         response.content = content;
         response.images = images.length ? images : undefined;
-        response.metadata = metadata;
+        response.metadata = { ...metadata, contextMessages };
       } else {
         const params = await this.formatCompletionRequest(input, messages);
         logger.debug({ ...params, messages: [] }, "invoking chat.completions...");
@@ -138,6 +140,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
         const usage = completion.usage;
         response.metadata = {
+          contextMessages,
           usage: {
             inputTokens: usage?.prompt_tokens || 0,
             outputTokens: usage?.completion_tokens || 0,
@@ -180,7 +183,7 @@ export class OpenAIProtocol implements ModelProtocol {
     }
   }
 
-  async getEmbeddings(request: GetEmbeddingsRequest, retry: number = 0): Promise<EmbeddingsResponse> {
+  public async getEmbeddings(request: GetEmbeddingsRequest, retry: number = 0): Promise<EmbeddingsResponse> {
     const { modelId: requestModelId, input, dimensions } = request;
     const modelId = this.modelIdOverride || requestModelId;
 
@@ -601,7 +604,9 @@ export class OpenAIProtocol implements ModelProtocol {
     callbacks: StreamCallbacks
   ): Promise<void> {
     let fullResponse = "";
-    let meta: MessageMetadata | undefined = undefined;
+    let meta: MessageMetadata | undefined = {
+      contextMessages: messages.map(m => m.id).filter(notEmpty),
+    };
 
     let stopped = await callbacks.onStart();
     if (stopped) {
@@ -684,6 +689,7 @@ export class OpenAIProtocol implements ModelProtocol {
           const usage = chunk.usage;
           if (usage) {
             meta = {
+              ...meta,
               usage: {
                 inputTokens: usage.prompt_tokens || 0,
                 outputTokens: usage.completion_tokens || 0,
@@ -702,10 +708,11 @@ export class OpenAIProtocol implements ModelProtocol {
             // Keep only the most recent half of the conversation
             stopped = await callbacks.onProgress("", {
               status: ResponseStatus.IN_PROGRESS,
-              detail: `Compacting conversation history, got error: ${(error as Error).message}`,
+              detail: `Compacting conversation history`,
             });
 
             sessionMessages = sessionMessages.slice(-Math.floor(sessionMessages.length / 2));
+            meta.contextMessages = sessionMessages.map(m => m.id).filter(notEmpty);
           }
         }
       }
@@ -839,7 +846,9 @@ export class OpenAIProtocol implements ModelProtocol {
 
     let fullResponse = "";
     let partResponse = "";
-    let meta: MessageMetadata = {};
+    let meta: MessageMetadata = {
+      contextMessages: messages.map(m => m.id).filter(notEmpty),
+    };
     let lastStatus: ResponseStatus | undefined = undefined;
 
     let stream: Stream<OpenAI.Responses.ResponseStreamEvent>;
@@ -866,7 +875,7 @@ export class OpenAIProtocol implements ModelProtocol {
           // Keep only the most recent half of the conversation
           await callbacks.onProgress("", {
             status: ResponseStatus.IN_PROGRESS,
-            detail: `Compacting conversation history, got error: ${(error as Error).message}`,
+            detail: "Compacting conversation history",
           });
 
           const lastMessages = messages.slice(-Math.floor(messages.length / 2));

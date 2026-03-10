@@ -233,6 +233,9 @@ export class ApplicationConfig {
   @Field({ nullable: true })
   reasoningMaxTokenBudget?: number;
 
+  @Field({ nullable: true })
+  contextMessagesLimit: number;
+
   @Field(() => [CredentialSource], { nullable: true })
   credentialsSource?: CredentialSource[];
 }

@@ -6,3 +6,21 @@
     font-size: 90%;
   }
 }
+
+.contextMessagesBtn {
+  :global .icon-active {
+    display: none;
+  }
+  :global .icon-inactive {
+    display: inline-block;
+  }
+
+  &:global(.active) {
+    :global .icon-active {
+      display: inline-block;
+    }
+    :global .icon-inactive {
+      display: none;
+    }
+  }
+}

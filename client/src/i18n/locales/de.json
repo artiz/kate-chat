@@ -203,7 +203,10 @@
     "webSearch": "Websuche",
     "yesterday": "Gestern",
     "you": "Sie",
-    "yourChats": "Ihre Chats"
+    "yourChats": "Ihre Chats",
+    "contextMessages": "Kontextnachrichten",
+    "resetContextLimit": "Kontextlimit zurücksetzen",
+    "resetContextLimitMessage": "Möchten Sie das Kontextlimit zurücksetzen und die Nachricht mit der maximalen verfügbaren Anzahl von Kontextnachrichten regenerieren?"
   },
   "chatSettings": {
     "imageQuality": {

@@ -92,6 +92,7 @@ export interface ModelMessageContentVideo {
 export type ModelMessageContent = ModelMessageContentText | ModelMessageContentImage | ModelMessageContentVideo;
 
 export interface ModelMessage {
+  id?: string | undefined;
   role: MessageRole;
   body: string | ModelMessageContent[];
   metadata?: MessageMetadata;
@@ -194,6 +195,9 @@ export class MessageMetadata {
   // reasoning chunks
   @Field(() => [ReasoningChunk], { nullable: true })
   reasoning?: ReasoningChunk[];
+
+  @Field(() => [ID], { nullable: true })
+  contextMessages?: string[];
 
   // --------------- user message meta ---------------
   // input document IDs

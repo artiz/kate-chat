@@ -41,7 +41,7 @@ import {
   StopMessageGenerationResponse,
   StopMessageGenerationInput,
 } from "@/types/graphql";
-import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens } from "./plugins";
+import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens, ContextMessages } from "./plugins";
 import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/services/graphql.queries";
 import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
@@ -182,7 +182,10 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, [chat?.user, appConfig?.currentUser]);
 
   const messagePlugins = useMemo(
-    () => (isExternalChat ? [InOutTokens] : [EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens]),
+    () =>
+      isExternalChat
+        ? [InOutTokens]
+        : [EditMessage, DeleteMessage, CallOtherModel, SwitchModel, ContextMessages, InOutTokens],
     [isExternalChat]
   );
 

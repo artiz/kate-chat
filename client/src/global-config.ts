@@ -27,6 +27,7 @@ export interface ClientConfig {
   appTitle: string;
   navLinks?: ClientNavLink[];
   aiUsageAlert?: string;
+  chatMessagesPerPage: number;
 }
 
 const defaultConfig: ClientConfig = {
@@ -91,6 +92,7 @@ const defaultConfig: ClientConfig = {
     { tooltip: "Author's CV", url: "https://artiz.github.io/", color: "indigo", icon: "cv" },
   ],
   aiUsageAlert: "AI-generated, for reference only.",
+  chatMessagesPerPage: 30,
 };
 
 let clientConfig: ClientConfig = { ...defaultConfig };

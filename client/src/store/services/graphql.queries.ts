@@ -185,6 +185,7 @@ export const BASE_MESSAGE_FRAGMENT = `
           text
           timestamp
         }
+        contextMessages
       }
     }
 `;

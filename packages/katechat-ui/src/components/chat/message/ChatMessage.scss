@@ -16,7 +16,7 @@
 
   .katechat-message-main,
   .katechat-message-linked {
-    padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+    padding: var(--mantine-spacing-lg) var(--mantine-spacing-lg) var(--mantine-spacing-sm);
     flex-grow: 1;
     width: 50%;
     display: flex;
@@ -588,6 +588,16 @@
         }
       }
     }
+
+    &.context-message {
+      background-color: var(--mantine-color-gray-7);
+
+      &.katechat-message__user {
+        background-color: var(--mantine-color-gray-8);
+        border-top: 1px solid var(--mantine-color-gray-9);
+        border-bottom: 1px solid var(--mantine-color-gray-9);
+      }
+    }
   }
 }
 
@@ -652,6 +662,16 @@
     thead tr,
     tfoot tr {
       background-color: var(--mantine-color-blue-1);
+    }
+
+    &.context-message {
+      background-color: var(--mantine-color-teal-0);
+
+      &.katechat-message__user {
+        background-color: var(--mantine-color-teal-1);
+        border-top: 1px solid var(--mantine-color-teal-2);
+        border-bottom: 1px solid var(--mantine-color-teal-2);
+      }
     }
   }
 

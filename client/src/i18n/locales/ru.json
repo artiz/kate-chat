@@ -431,7 +431,10 @@
     "failedToCreateChat": "Не удалось создать чат",
     "noModelsAvailable": "Нет доступных моделей",
     "configureModels": "Настройте модели ИИ перед созданием чата",
-    "codeRun": "Выполнить"
+    "codeRun": "Выполнить",
+    "contextMessages": "Контекстные сообщения",
+    "resetContextLimit": "Сбросить лимит контекста",
+    "resetContextLimitMessage": "Хотите ли вы сбросить лимит контекста и переформировать сообщение с максимальным доступным количеством контекстных сообщений?"
   },
   "chatSettings": {
     "imageQuality": {
