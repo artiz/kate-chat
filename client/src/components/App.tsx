@@ -61,13 +61,6 @@ const PublicRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
-  const currentUser = useAppSelector(state => state.user.currentUser);
-  const location = useLocation();
-  const path = location.pathname;
-  const returnUrl = BASE_URLS.includes(path) ? "" : path;
-  if (returnUrl) {
-    writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, currentUser);
-  }
   return isAuthenticated ? element : <Navigate to={"/"} replace />;
 };
 

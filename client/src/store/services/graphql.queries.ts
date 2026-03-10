@@ -640,6 +640,7 @@ export const RELOAD_CHAT_FILE_METADATA = gql`
     reloadChatFileMetadata(id: $id) {
       id
       predominantColor
+      mime
     }
   }
 `;

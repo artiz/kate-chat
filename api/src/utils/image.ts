@@ -8,7 +8,7 @@ const logger = createLogger(__filename);
 
 export async function getImageFeatures(
   buffer: Buffer
-): Promise<{ width?: number; height?: number; predominantColor?: string; exif?: any }> {
+): Promise<{ width?: number; height?: number; mime?: string; predominantColor?: string; exif?: any }> {
   try {
     const image = sharp(buffer);
     const metadata = await image.metadata();
@@ -104,7 +104,13 @@ export async function getImageFeatures(
       } catch (e) {}
     }
 
-    return { predominantColor, exif, width: metadata.width, height: metadata.height };
+    return {
+      predominantColor,
+      exif,
+      width: metadata.width,
+      height: metadata.height,
+      mime: metadata.format ? `image/${metadata.format}` : undefined,
+    };
   } catch (e) {
     logger.warn(e, "Failed to extract image features");
     return {};

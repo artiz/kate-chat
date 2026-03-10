@@ -72,6 +72,10 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
     onComplete: () => {
       resetSending();
       setWsConnected(false);
+      // dev mode reload
+      if (String(window.location.pathname || "").match(new RegExp(`chat\\/${id}`))) {
+        window.location.reload();
+      }
     },
     onData: (
       options: OnDataOptions<{

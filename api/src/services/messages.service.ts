@@ -93,7 +93,7 @@ export class MessagesService {
   public async reloadChatFileMetadata(chatFileId: string, user: User): Promise<ChatFile> {
     const chatFile = await this.chatFileRepository.findOne({
       where: { id: chatFileId },
-      relations: ["chat", "chat.user"],
+      relations: ["chat", "chat.user", "message"],
     });
 
     if (!chatFile || !chatFile.fileName) throw new Error("ChatFile not found");
@@ -103,10 +103,31 @@ export class MessagesService {
     const buffer = await s3Service.getFileContent(chatFile.fileName);
     const features = await getImageFeatures(buffer);
 
-    chatFile.predominantColor = features.predominantColor;
-    chatFile.exif = features.exif;
+    chatFile.predominantColor ||= features.predominantColor;
+    chatFile.exif ||= features.exif;
+    chatFile.mime ||= features.mime;
 
-    return this.chatFileRepository.save(chatFile);
+    const updated = await this.chatFileRepository.save(chatFile);
+    if (updated.message && updated.message.jsonContent) {
+      const msg = updated.message;
+      ok(msg.jsonContent);
+
+      // update mime in jsonContent of the message if it's an image message
+      msg.jsonContent = msg.jsonContent.map((content: ModelMessageContent) => {
+        if (content.contentType === "image" && content.fileName === chatFile.fileName) {
+          return {
+            ...content,
+            mimeType: chatFile.mime || content.mimeType,
+          };
+        } else {
+          return content;
+        }
+      });
+
+      await this.messageRepository.save(msg);
+    }
+
+    return updated;
   }
 
   public disconnectClient(socket: WebSocket) {
@@ -730,14 +751,14 @@ export class MessagesService {
           id: `${Date.now()}-${index}`,
         });
 
-        const { predominantColor, exif, width, height } = await getImageFeatures(buffer);
+        const { predominantColor, exif, width, height, mime } = await getImageFeatures(buffer);
 
         await this.chatFileRepository.save({
           chatId: chat.id,
           messageId: userMessage.id,
           type: ChatFileType.IMAGE,
           uploadFile: image.fileName,
-          mime: image.mimeType,
+          mime: mime || image.mimeType,
           fileName,
           predominantColor,
           exif,
@@ -811,7 +832,7 @@ export class MessagesService {
           id: `${Date.now()}-${images.length}`,
         });
 
-        const { predominantColor, exif } = await getImageFeatures(buffer);
+        const { predominantColor, exif, mime } = await getImageFeatures(buffer);
 
         await this.chatFileRepository.save({
           chatId: chat.id,
@@ -820,9 +841,10 @@ export class MessagesService {
           fileName,
           predominantColor,
           exif,
+          mime: mime || contentType,
         });
 
-        images.push({ contentType: "image", fileName, mimeType: contentType });
+        images.push({ contentType: "image", fileName, mimeType: mime || contentType });
       }
 
       if (!message.jsonContent) message.jsonContent = [];
