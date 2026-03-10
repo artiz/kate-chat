@@ -149,11 +149,14 @@ export const ChatInputHeader = ({
     // Find the server to check if auth is required
     const server = mcpServers.find(s => s.id === serverId);
 
-    // If auth is required and user not authenticated, initiate auth flow
-    if (server && mcpNeedsAuthentication(server)) {
-      assert.ok(userToken);
-      mcpInitiateAuth(server, userToken, false, () => toggleMcpServer(serverId));
-      return; // Don't toggle yet - wait for auth to complete
+    const servers = new Set(selectedMcpServers);
+    if (!servers.has(serverId)) {
+      // If auth is required and user not authenticated, initiate auth flow
+      if (server && mcpNeedsAuthentication(server)) {
+        assert.ok(userToken);
+        mcpInitiateAuth(server, userToken, false, () => toggleMcpServer(serverId));
+        return; // Don't toggle yet - wait for auth to complete
+      }
     }
 
     toggleMcpServer(serverId);
