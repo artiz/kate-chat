@@ -184,11 +184,11 @@ export class BedrockApiProvider extends BaseApiProvider {
 
         requestCompleted = false;
       } else {
-        finalResponse = {
-          ...modelResponse,
-          metadata: { contextMessages: messages.map(m => m.id).filter(notEmpty) },
+        modelResponse.metadata = {
+          ...modelResponse.metadata,
+          contextMessages: messages.map(m => m.id).filter(notEmpty),
         };
-
+        finalResponse = modelResponse;
         requestCompleted = true;
       }
     } while (!requestCompleted);

@@ -224,6 +224,7 @@ describe("AIService", () => {
         {
           content: "Hello, world!",
           metadata: {
+            contextMessages: ["1"],
             usage: {
               inputTokens: 5,
               outputTokens: 7,
