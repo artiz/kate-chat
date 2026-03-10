@@ -375,6 +375,7 @@
     "enterMessage": "Введите сообщение...",
     "saveAndRegenerate": "Сохранить и перегенерировать",
     "inputOutputTokens": "Токены ввода: {{input}}, Токены вывода: {{output}}",
+    "tokensCount": "Количество токенов: {{count}}",
     "na": "Н/Д",
     "failedToSwitchModel": "Не удалось сменить модель",
     "pinned": "Закреплённые",

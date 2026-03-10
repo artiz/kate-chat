@@ -67,8 +67,8 @@ import {
 } from "@/config/ai/bedrock";
 import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
-import { log } from "console";
 
+const TRIM_CONTEXT_TRIES_LIMIT = 20;
 const logger = createLogger(__filename);
 
 export type InvokeModelParams = {
@@ -231,7 +231,11 @@ export class BedrockApiProvider extends BaseApiProvider {
         try {
           streamResponse = await this.bedrockClient.send(command);
         } catch (error: unknown) {
-          if (error instanceof Error && this.isInputTooLargeError(error) && tooLongErrorRetries < 10) {
+          if (
+            error instanceof Error &&
+            this.isInputTooLargeError(error) &&
+            tooLongErrorRetries < TRIM_CONTEXT_TRIES_LIMIT
+          ) {
             logger.warn(
               { modelId, messagesLength: JSON.stringify(input.messages).length },
               "Model input exceeded token limit, truncating conversation history and retrying"

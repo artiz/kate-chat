@@ -329,6 +329,7 @@ export interface MessageMetadata {
   requestId?: string;
   reasoning?: ReasoningChunk[];
   contextMessages?: string[];
+  tokensCount?: number;
 }
 
 export interface MessageChatInfo {

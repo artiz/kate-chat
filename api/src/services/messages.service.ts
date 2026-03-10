@@ -730,7 +730,7 @@ export class MessagesService {
           id: `${Date.now()}-${index}`,
         });
 
-        const { predominantColor, exif } = await getImageFeatures(buffer);
+        const { predominantColor, exif, width, height } = await getImageFeatures(buffer);
 
         await this.chatFileRepository.save({
           chatId: chat.id,
@@ -747,6 +747,8 @@ export class MessagesService {
           contentType: "image",
           fileName,
           mimeType: image.mimeType,
+          width: image.width || width,
+          height: image.height || height,
         });
 
         // For display purposes, append image markdown to the content
@@ -1022,6 +1024,17 @@ export class MessagesService {
         content += token;
       }
 
+      if (status?.userMessageTokens) {
+        const userMessage = inputMessages.findLast(m => m.role === MessageRole.USER);
+        if (userMessage) {
+          userMessage.metadata = {
+            ...userMessage.metadata,
+            tokensCount: status.userMessageTokens,
+          };
+          await this.messageRepository.save(userMessage);
+        }
+      }
+
       const now = new Date();
 
       if (forceFlush || now.getTime() - lastPublish > MIN_STREAMING_UPDATE_MS) {
@@ -1096,7 +1109,7 @@ export class MessagesService {
     request.requestPolling = this.requestsSqsService.isConfigured();
 
     this.aiService
-      .streamChatCompletion(connection, request, inputMessages, handleStreaming, s3Service, model)
+      .streamChatCompletion(connection, request, inputMessages, model, handleStreaming, s3Service)
       .catch((error: unknown) => {
         logger.error(error, "Error streaming AI response");
         const content = getErrorMessage(error);

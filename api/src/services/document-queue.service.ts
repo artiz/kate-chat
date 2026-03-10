@@ -205,8 +205,13 @@ export class DocumentQueueService {
 
       const maxContentLength =
         (model.maxInputTokens || globalConfig.ai.defaultModelMaxInputTokens) * globalConfig.ai.charactersPerToken;
+      const contentLength = markdownContent.length;
+      const halfLength = Math.floor(maxContentLength / 2);
       const contentToSummarize =
-        markdownContent.length > maxContentLength ? markdownContent.substring(0, maxContentLength) : markdownContent;
+        markdownContent.length > maxContentLength
+          ? // "begin ... end" strategy for summarization input
+            markdownContent.substring(0, halfLength) + "..." + markdownContent.substring(contentLength - halfLength)
+          : markdownContent;
 
       // Generate summary
       const summaryResponse = await this.aiService.completeChat(

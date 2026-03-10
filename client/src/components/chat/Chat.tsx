@@ -14,7 +14,7 @@ import {
   Drawer,
   Button,
 } from "@mantine/core";
-import { IconEdit, IconCheck, IconArrowLeft, IconBrand4chan, IconAi } from "@tabler/icons-react";
+import { IconEdit, IconCheck, IconArrowLeft, IconAi } from "@tabler/icons-react";
 import { useAppSelector } from "@/store";
 import {
   assert,

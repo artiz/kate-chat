@@ -81,12 +81,17 @@ export interface ModelMessageContentImage {
   contentType: "image";
   fileName: string;
   mimeType: string;
+  width?: number;
+  height?: number;
 }
 
 export interface ModelMessageContentVideo {
   contentType: "video";
   fileName: string;
   mimeType: string;
+  width?: number;
+  height?: number;
+  lengthSec?: number;
 }
 
 export type ModelMessageContent = ModelMessageContentText | ModelMessageContentImage | ModelMessageContentVideo;
@@ -97,6 +102,7 @@ export interface ModelMessage {
   body: string | ModelMessageContent[];
   metadata?: MessageMetadata;
   timestamp?: Date;
+  tokensCount?: number;
 }
 
 @ObjectType()
@@ -168,6 +174,9 @@ export class MessageMetadata {
 
   @Field(() => ModelResponseUsage, { nullable: true })
   usage?: ModelResponseUsage;
+
+  @Field(() => Number, { nullable: true })
+  tokensCount?: number;
 
   // RAG: relevant document chunks selected by model sorted by relevance
   @Field(() => [MessageRelevantChunk], { nullable: true })
@@ -276,6 +285,7 @@ export interface ChatResponseStatus {
   detail?: string;
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
+  userMessageTokens?: number;
 }
 
 export interface StreamCallbacks {

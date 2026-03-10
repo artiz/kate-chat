@@ -10,19 +10,39 @@ export const InOutTokens = ({ message }: PluginProps<Message>) => {
   const { metadata } = message;
   const na = t("chat.na");
 
-  return metadata?.usage && (metadata.usage.inputTokens || metadata.usage.outputTokens) ? (
-    <Tooltip
-      label={t("chat.inputOutputTokens", {
-        input: metadata.usage.inputTokens?.toString() || na,
-        output: metadata.usage.outputTokens?.toString() || na,
-      })}
-      position="top"
-      withArrow
-    >
-      <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
-        {metadata.usage.inputTokens || na} {metadata.usage.inputTokens && metadata.usage.outputTokens ? ">" : ""}{" "}
-        {metadata.usage.outputTokens || na}
-      </Text>
-    </Tooltip>
-  ) : null;
+  if (metadata?.usage && (metadata.usage.inputTokens || metadata.usage.outputTokens)) {
+    return (
+      <Tooltip
+        label={t("chat.inputOutputTokens", {
+          input: metadata.usage.inputTokens?.toString() || na,
+          output: metadata.usage.outputTokens?.toString() || na,
+        })}
+        position="top"
+        withArrow
+      >
+        <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
+          {metadata.usage.inputTokens || na} {metadata.usage.inputTokens && metadata.usage.outputTokens ? ">" : ""}{" "}
+          {metadata.usage.outputTokens || na}
+        </Text>
+      </Tooltip>
+    );
+  }
+
+  if (metadata?.tokensCount) {
+    return (
+      <Tooltip
+        label={t("chat.tokensCount", {
+          count: metadata?.tokensCount,
+        })}
+        position="top"
+        withArrow
+      >
+        <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
+          {metadata.tokensCount}
+        </Text>
+      </Tooltip>
+    );
+  }
+
+  return null;
 };

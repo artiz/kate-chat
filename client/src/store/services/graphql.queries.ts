@@ -186,6 +186,7 @@ export const BASE_MESSAGE_FRAGMENT = `
           timestamp
         }
         contextMessages
+        tokensCount
       }
     }
 `;

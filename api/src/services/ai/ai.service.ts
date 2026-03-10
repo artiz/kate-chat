@@ -11,7 +11,7 @@ import {
   UsageCostInfo,
   ChatResponseStatus,
 } from "@/types/ai.types";
-import { MessageRole, ApiProvider, ModelType } from "@/types/api";
+import { MessageRole, ApiProvider, ModelType, ResponseStatus } from "@/types/api";
 import { logger } from "@/utils/logger";
 import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -33,57 +33,75 @@ export class AIService {
     fileLoader?: FileContentLoader,
     model?: Model
   ): Promise<ModelResponse> {
-    return this.getApiProvider(request.apiProvider, connection, fileLoader, model).completeChat(
-      request,
-      this.formatMessages(messages || [])
-    );
+    const provider = this.getApiProvider(request.apiProvider, connection, fileLoader, model);
+    const modelMessages = await this.formatMessages(messages || [], provider, model?.maxInputTokens, request.modelId);
+    const response = await provider.completeChat(request, modelMessages);
+
+    if (!response.metadata) {
+      response.metadata = {};
+    }
+    response.metadata.tokensCount =
+      response.metadata.usage?.outputTokens || (await provider.calcOutputTokens(response, request.modelId));
+    return response;
   }
 
   public async streamChatCompletion(
     connection: ConnectionParams,
     request: CompleteChatRequest,
     messages: Message[],
+    model: Model,
     callback: (
       data: ModelResponse & { error?: Error; status?: ChatResponseStatus },
       completed?: boolean,
       force?: boolean
     ) => Promise<boolean | undefined>,
-    fileLoader?: FileContentLoader,
-    model?: Model
+    fileLoader?: FileContentLoader
   ) {
+    const provider = this.getApiProvider(request.apiProvider, connection, fileLoader, model);
+    const modelMessages = await this.formatMessages(messages, provider, model?.maxInputTokens, request.modelId);
+    const userMessage = modelMessages.findLast((m: ModelMessage) => m.role === MessageRole.USER);
+    if (userMessage) {
+      await callback({
+        content: "",
+        status: { status: ResponseStatus.STARTED, userMessageTokens: userMessage.tokensCount },
+      });
+    }
+
     // Stream the completion in background
-    return this.getApiProvider(request.apiProvider, connection, fileLoader, model).streamChatCompletion(
-      request,
-      this.formatMessages(messages),
-      {
-        onStart: async (status?: ChatResponseStatus) => {
-          try {
-            return await callback({ content: "", status });
-          } catch (error) {
-            logger.error(error, "Error starting AI request");
-            return true;
-          }
-        },
-        onProgress: async (token: string, status?: ChatResponseStatus, force?: boolean) => {
-          try {
-            return await callback({ content: token, status }, false, force);
-          } catch (error) {
-            logger.error(error, "Error processing AI request");
-            return true;
-          }
-        },
-        onComplete: async (response: ModelResponse) => {
-          await callback({ ...response }, true);
-        },
-        onError: async (error: Error) => {
-          try {
-            return await callback({ content: "", error }, true);
-          } catch (error) {
-            return true;
-          }
-        },
-      }
-    );
+    return provider.streamChatCompletion(request, modelMessages, {
+      onStart: async (status?: ChatResponseStatus) => {
+        try {
+          return await callback({ content: "", status });
+        } catch (error) {
+          logger.error(error, "Error starting AI request");
+          return true; // stop further processing if callback fails
+        }
+      },
+      onProgress: async (token: string, status?: ChatResponseStatus, force?: boolean) => {
+        try {
+          return await callback({ content: token, status }, false, force);
+        } catch (error) {
+          logger.error(error, "Error processing AI request");
+          return true; // stop further processing if callback fails
+        }
+      },
+      onComplete: async (response: ModelResponse) => {
+        if (!response.metadata) {
+          response.metadata = {};
+        }
+        response.metadata.tokensCount =
+          response.metadata.usage?.outputTokens || (await provider.calcOutputTokens(response, request.modelId));
+
+        await callback({ ...response }, true);
+      },
+      onError: async (error: Error) => {
+        try {
+          return await callback({ content: "", error }, true);
+        } catch (error) {
+          return true; // stop further processing if callback fails
+        }
+      },
+    });
   }
 
   // Main method to interact with models
@@ -200,11 +218,23 @@ export class AIService {
   }
 
   /**
-   * Format messages for model invocation and preprocess messages to join duplicates if they are
+   * Format messages for model invocation and preprocess messages to join duplicates if they are.
+   * Also limits messages to fit within max input tokens if specified.
    * @param messages
+   * @param provider
+   * @param maxInputTokens
+   * @param modelId
    * @returns
    */
-  private formatMessages(messages: Message[]): ModelMessage[] {
+  private async formatMessages(
+    messages: Message[],
+    provider: BaseApiProvider,
+    maxInputTokens?: number,
+    modelId?: string
+  ): Promise<ModelMessage[]> {
+    const DEFAULT_MODEL_MAX_INPUT_TOKENS = 100_000;
+    const maxTokens = maxInputTokens || DEFAULT_MODEL_MAX_INPUT_TOKENS;
+
     const modelMessages = messages.map(msg => ({
       id: msg.id,
       role: msg.role,
@@ -221,7 +251,7 @@ export class AIService {
       return (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0);
     });
 
-    return modelMessages.reduce((acc: ModelMessage[], msg: ModelMessage) => {
+    let formattedMessages = modelMessages.reduce((acc: ModelMessage[], msg: ModelMessage) => {
       const lastMessage = acc.length ? acc[acc.length - 1] : null;
 
       // Check if the last message is of the same role and content
@@ -246,6 +276,59 @@ export class AIService {
 
       return acc;
     }, []);
+
+    // Calculate tokens for each message
+    let totalTokens = 0;
+    for (const msg of formattedMessages) {
+      if (msg.metadata?.tokensCount) {
+        msg.tokensCount = msg.metadata.tokensCount;
+      } else if (msg.metadata?.usage?.outputTokens) {
+        msg.tokensCount = msg.metadata.usage.outputTokens;
+      } else {
+        msg.tokensCount = await provider.calcInputTokens(msg, modelId || "");
+      }
+      totalTokens += msg.tokensCount;
+    }
+
+    // If total tokens exceed max, trim messages from the beginning (keep system/latest messages)
+    if (totalTokens > maxTokens) {
+      // Start from the last message and work backwards, keeping as many as we can
+      let tokensFromEnd = 0;
+      let firstKeptIndex = formattedMessages.length; // Start beyond the array
+
+      for (let i = formattedMessages.length - 1; i >= 0; i--) {
+        const msgTokens = formattedMessages[i].tokensCount || 0;
+
+        if (tokensFromEnd + msgTokens <= maxTokens) {
+          tokensFromEnd += msgTokens;
+          firstKeptIndex = i;
+        } else if (i === formattedMessages.length - 1) {
+          // Even the last message exceeds the limit, but we must keep it
+          firstKeptIndex = i;
+          break;
+        } else {
+          // Can't fit this message, stop here
+          break;
+        }
+      }
+
+      if (firstKeptIndex > 0) {
+        const skippedCount = firstKeptIndex;
+        const removedTokens = totalTokens - tokensFromEnd;
+        formattedMessages = formattedMessages.slice(firstKeptIndex);
+        logger.debug(
+          {
+            skippedCount,
+            removedTokens,
+            remainingTokens: tokensFromEnd,
+            maxTokens,
+          },
+          "Trimmed messages to fit max input tokens"
+        );
+      }
+    }
+
+    return formattedMessages;
   }
 
   /**

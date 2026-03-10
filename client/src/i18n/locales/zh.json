@@ -146,6 +146,7 @@
     "imageOrientation": "图片方向",
     "imageOrientationTooltip": "生成图片的方向。",
     "inputOutputTokens": "输入令牌：{{input}}, 输出令牌：{{output}}",
+    "tokensCount": "令牌数量：{{count}}",
     "last30Days": "最近 30 天",
     "last7Days": "最近 7 天",
     "loadMore": "加载更多...",

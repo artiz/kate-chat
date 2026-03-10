@@ -56,10 +56,10 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     },
     ref
   ) => {
-    const [userMessage, setUserMessage] = useState("");
     const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
-    const [prevImageNdx, setPrevImageNdx] = useState<number>(0);
-    const [isImagesSeek, setIsImagesSeek] = useState<boolean>(false);
+    const [userMessage, setUserMessage] = useState("");
+    const [prevMessageNdx, setPrevMessageNdx] = useState<number>(0);
+    const [isMessageSeek, setMessageSeek] = useState<boolean>(false);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const { t } = useTranslation();
 
@@ -72,7 +72,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     }, [loadCompleted, disabled]);
 
     useEffect(() => {
-      setPrevImageNdx(previousMessages?.length ? previousMessages.length : 0);
+      setPrevMessageNdx(previousMessages?.length ? previousMessages.length : 0);
     }, [loadCompleted, previousMessages]);
 
     const handleSendMessage = async () => {
@@ -100,22 +100,22 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
         if (event.key === "Enter" && !event.shiftKey && !event.altKey) {
           event.preventDefault();
           handleSendMessage();
-          setIsImagesSeek(false);
-        } else if (event.key === "ArrowUp" && (isEmpty || isImagesSeek)) {
-          const ndx = Math.max(0, prevImageNdx - 1);
+          setMessageSeek(false);
+        } else if (event.key === "ArrowUp" && (isEmpty || isMessageSeek)) {
+          const ndx = Math.max(0, prevMessageNdx - 1);
           setUserMessage(previousMessages[ndx]);
-          setPrevImageNdx(ndx);
-          setIsImagesSeek(true);
-        } else if (event.key === "ArrowDown" && (isEmpty || isImagesSeek)) {
-          const ndx = Math.min(previousMessages.length - 1, prevImageNdx + 1);
+          setPrevMessageNdx(ndx);
+          setMessageSeek(true);
+        } else if (event.key === "ArrowDown" && (isEmpty || isMessageSeek)) {
+          const ndx = Math.min(previousMessages.length - 1, prevMessageNdx + 1);
           setUserMessage(previousMessages[ndx]);
-          setPrevImageNdx(ndx);
-          setIsImagesSeek(true);
+          setPrevMessageNdx(ndx);
+          setMessageSeek(true);
         } else {
-          setIsImagesSeek(false);
+          setMessageSeek(false);
         }
       },
-      [handleSendMessage, userMessage, previousMessages, prevImageNdx]
+      [handleSendMessage, userMessage, previousMessages, prevMessageNdx, isMessageSeek]
     );
 
     const handleInputChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -170,11 +170,16 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                 reader.onload = e => {
                   if (e.target?.result) {
                     const bytesBase64 = e.target.result as string;
-                    resolve({
-                      fileName: file.name,
-                      mimeType: file.type,
-                      bytesBase64,
-                    });
+                    const img = new Image();
+                    img.onload = () =>
+                      resolve({
+                        fileName: file.name,
+                        mimeType: file.type,
+                        bytesBase64,
+                        width: img.width,
+                        height: img.height,
+                      });
+                    img.onerror = error => reject(error);
                   } else {
                     reject(new Error(t("Failed to read file: {{fileName}}", { fileName: file.name })));
                   }
@@ -255,7 +260,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
 
                 {selectedImages?.length > 0 && (
                   <div className={classes.imagesList}>
-                    {selectedImages.map(file => (
+                    {selectedImages.map((file, ndx) => (
                       <div key={file.fileName} className={classes.previewImage}>
                         <img src={file.bytesBase64} alt={file.fileName} />
                         <ActionIcon

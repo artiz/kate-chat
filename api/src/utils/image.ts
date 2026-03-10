@@ -2,10 +2,13 @@ import sharp from "sharp";
 import exifReader, { Exif } from "exif-reader";
 import { createLogger } from "./logger";
 import { S3Service } from "@/services/data";
+import e from "express";
 
 const logger = createLogger(__filename);
 
-export async function getImageFeatures(buffer: Buffer): Promise<{ predominantColor?: string; exif?: any }> {
+export async function getImageFeatures(
+  buffer: Buffer
+): Promise<{ width?: number; height?: number; predominantColor?: string; exif?: any }> {
   try {
     const image = sharp(buffer);
     const metadata = await image.metadata();
@@ -101,7 +104,7 @@ export async function getImageFeatures(buffer: Buffer): Promise<{ predominantCol
       } catch (e) {}
     }
 
-    return { predominantColor, exif };
+    return { predominantColor, exif, width: metadata.width, height: metadata.height };
   } catch (e) {
     logger.warn(e, "Failed to extract image features");
     return {};

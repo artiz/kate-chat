@@ -146,6 +146,7 @@
     "imageOrientation": "Image Orientation",
     "imageOrientationTooltip": "The orientation of the generated images.",
     "inputOutputTokens": "Input Tokens: {{input}}, Output Tokens: {{output}}",
+    "tokensCount": "Tokens count: {{count}}",
     "last30Days": "Last 30 Days",
     "last7Days": "Last 7 Days",
     "loadMore": "Load more...",

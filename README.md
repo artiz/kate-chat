@@ -51,7 +51,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
-* Use maxInputTokens to limit/trim messages content
+
 * Use cacheRetention like in PI agent for Bedrock and OpenAI proto
 * Add Java code executor loke Go one with https://codapi.org/java/
 * Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)

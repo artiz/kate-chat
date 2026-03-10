@@ -62,6 +62,8 @@ export interface ImageInput {
   fileName: string;
   mimeType: string;
   bytesBase64: string;
+  width?: number;
+  height?: number;
 }
 
 /** Context passed to a CodePlugin when the user clicks Execute */

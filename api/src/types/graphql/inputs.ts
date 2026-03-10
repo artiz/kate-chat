@@ -162,6 +162,12 @@ export class ImageInput {
 
   @Field()
   bytesBase64: string;
+
+  @Field()
+  width?: number;
+
+  @Field()
+  height?: number;
 }
 
 @InputType()
