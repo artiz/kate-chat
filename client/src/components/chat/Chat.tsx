@@ -134,15 +134,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
   }, [chatId, loadCompleted]);
 
-  // Initialize selectedRagDocIds from chat settings when a chat loads
-  useEffect(() => {
-    if (chat?.id) {
-      setSelectedRagDocIds(chat.settings?.selectedRagDocIds || []);
-    } else {
-      setSelectedRagDocIds([]);
-    }
-  }, [chat?.id, chat?.settings?.selectedRagDocIds]);
-
   const { uploadDocuments, uploadingDocs, uploadLoading, uploadError } = useDocumentsUpload();
 
   const mcpTokens = useMemo(() => {
@@ -169,6 +160,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
     }
     return docs;
   }, [chat?.chatDocuments, uploadingDocs]);
+
+  // Initialize selectedRagDocIds from chat settings when a chat loads
+  useEffect(() => {
+    if (chat?.id) {
+      const currentDocs = new Set(chatDocuments.map(d => d.id));
+      setSelectedRagDocIds(chat.settings?.selectedRagDocIds?.filter(id => currentDocs.has(id)) || []);
+    } else {
+      setSelectedRagDocIds([]);
+    }
+  }, [chat?.id, chat?.settings?.selectedRagDocIds, chatDocuments]);
 
   const ragPlugin = useMemo(() => RAG(chatDocuments), [chatDocuments]);
   const detailsPlugins = useMemo(

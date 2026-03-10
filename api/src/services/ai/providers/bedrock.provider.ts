@@ -18,6 +18,7 @@ import {
 import { DocumentType } from "@smithy/types";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
 import { CostExplorerClient, GetCostAndUsageCommand } from "@aws-sdk/client-cost-explorer";
+import { pick } from "lodash";
 
 import {
   AIModelInfo,
@@ -29,6 +30,7 @@ import {
   MessageMetadata,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
+  ModelMessageContent,
   ModelMessage,
   ProviderInfo,
   ChatToolCallResult,
@@ -67,6 +69,7 @@ import {
 } from "@/config/ai/bedrock";
 import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
+import { ca } from "zod/dist/types/v4/locales";
 
 const TRIM_CONTEXT_TRIES_LIMIT = 20;
 const logger = createLogger(__filename);
@@ -144,7 +147,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       // Get provider service and parameters
       const input = await this.formatConverseParams(request, messages, requestTools, conversationMessages);
       const command = new ConverseCommand(input);
-      const response = await this.bedrockClient.send(command);
+      const response: ConverseCommandOutput = await this.bedrockClient.send(command);
       const { modelResponse, stopReason, toolUse = [] } = this.parseConverseResponse(response, request);
 
       // Check if model wants to use a tool
@@ -259,8 +262,10 @@ export class BedrockApiProvider extends BaseApiProvider {
               continue;
             }
           }
-
-          logger.error({ command, input }, `Error calling ConverseStreamCommand: ${getErrorMessage(error)}`);
+          logger.error(
+            { input: pick(input, ["toolConfig", "modelId", "system", "inferenceConfig", "toolConfig"]) },
+            `Error calling ConverseStreamCommand: ${getErrorMessage(error)}`
+          );
           if ("$response" in (error as any)) {
             logger.error({ response: (error as any).$response }, "Detailed error response from AWS Bedrock");
           }
@@ -1014,7 +1019,8 @@ export class BedrockApiProvider extends BaseApiProvider {
     const requestMessages: ConverseMessage[] = [];
 
     for (const msg of messages) {
-      const isAssistant = msg.role === MessageRole.ASSISTANT;
+      let isAssistant = msg.role === MessageRole.ASSISTANT;
+
       if (typeof msg.body === "string") {
         const text = isAssistant ? BedrockApiProvider.stripThinkingTags(msg.body).cleanedText : msg.body;
         if (!text) continue;
@@ -1034,30 +1040,36 @@ export class BedrockApiProvider extends BaseApiProvider {
             continue;
           }
 
-          const bytes = await this.fileLoader.getFileContent(part.fileName);
-          let mediaType = part.mimeType?.split("/")[1];
-          let format = part.mimeType?.split("/")[0]; // "image" or "video"
+          isAssistant = false; // Treat all images as user content for better compatibility with Bedrock's content parsing
 
-          if (format === "image") {
-            const image: ContentBlock = {
-              image: {
-                format: mediaType as ImageFormat,
-                source: {
-                  bytes,
+          try {
+            const bytes = await this.fileLoader.getFileContent(part.fileName);
+            let mediaType = part.mimeType?.split("/")[1];
+            let format = part.mimeType?.split("/")[0]; // "image" or "video"
+
+            if (format === "image") {
+              const image: ContentBlock = {
+                image: {
+                  format: mediaType as ImageFormat,
+                  source: {
+                    bytes,
+                  },
                 },
-              },
-            };
-            content.push(image);
-          } else {
-            const video: ContentBlock = {
-              video: {
-                format: mediaType as VideoFormat,
-                source: {
-                  bytes,
+              };
+              content.push(image);
+            } else {
+              const video: ContentBlock = {
+                video: {
+                  format: mediaType as VideoFormat,
+                  source: {
+                    bytes,
+                  },
                 },
-              },
-            };
-            content.push(video);
+              };
+              content.push(video);
+            }
+          } catch (error: unknown) {
+            logger.error(error, `Error loading media content for ${part.fileName}`);
           }
         } else if (part.contentType === "text") {
           let text = sanitizeSurrogates(part.content);

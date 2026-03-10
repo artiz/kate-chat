@@ -171,6 +171,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                   if (e.target?.result) {
                     const bytesBase64 = e.target.result as string;
                     const img = new Image();
+                    img.src = bytesBase64;
+
                     img.onload = () =>
                       resolve({
                         fileName: file.name,
