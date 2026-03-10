@@ -91,7 +91,22 @@
     "microsoft": "Microsoft",
     "loginWithGoogle": "Войти через Google",
     "loginWithGithub": "Войти через GitHub",
-    "loginWithMicrosoft": "Войти через Microsoft"
+    "loginWithMicrosoft": "Войти через Microsoft",
+    "forgotPassword": "Забыли пароль?",
+    "forgotPasswordTitle": "Восстановление пароля",
+    "forgotPasswordSubtitle": "Введите email — мы отправим вам ссылку для сброса пароля",
+    "sendResetLink": "Отправить ссылку",
+    "resetEmailSent": "Письмо отправлено",
+    "resetEmailSentMessage": "Проверьте входящие сообщения. Ссылка действительна 15 минут.",
+    "backToLogin": "Вернуться ко входу",
+    "resetPasswordTitle": "Новый пароль",
+    "resetPasswordSubtitle": "Введите новый пароль",
+    "setNewPassword": "Установить пароль",
+    "resetLinkExpired": "Ссылка устарела",
+    "resetLinkExpiredMessage": "Ссылка для сброса пароля устарела. Пожалуйста, запросите новую.",
+    "resetTokenMissing": "Ссылка недействительна. Пожалуйста, запросите новую.",
+    "passwordResetSuccess": "Пароль изменён",
+    "passwordResetSuccessMessage": "Ваш пароль успешно изменён. Вы вошли в систему."
   },
   "validation": {
     "invalidEmail": "Некорректный адрес электронной почты",

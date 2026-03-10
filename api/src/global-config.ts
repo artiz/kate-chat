@@ -192,6 +192,14 @@ export interface GlobalConfigShape {
     requestsQueueWaitTimeSec: number;
     requestsQueueVisibilityTimeoutSec: number;
   };
+  smtp?: {
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    user?: string;
+    password?: string;
+    from?: string;
+  };
   initial?: {
     models?: InitialCustomModel[];
     mcpServers?: InitialMCPServer[];
@@ -431,6 +439,16 @@ export class GlobalConfig {
         requestsQueueWaitTimeSec: +(process.env.SQS_REQUESTS_QUEUE_WAIT_TIME_SEC || 10),
         requestsQueueVisibilityTimeoutSec: +(process.env.SQS_REQUESTS_QUEUE_VISIBILITY_TIMEOUT_SEC || 10),
       },
+      smtp: process.env.SMTP_HOST
+        ? {
+            host: process.env.SMTP_HOST,
+            port: +(process.env.SMTP_PORT || 587) | 0,
+            secure: this.parseBoolean(process.env.SMTP_SECURE, false),
+            user: process.env.SMTP_USER,
+            password: process.env.SMTP_PASSWORD,
+            from: process.env.SMTP_FROM || `no-reply@katechat.tech`,
+          }
+        : undefined,
       initial: {
         models: [],
         mcpServers: [],

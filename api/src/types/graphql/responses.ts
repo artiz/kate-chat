@@ -25,6 +25,12 @@ export class AuthResponse {
 }
 
 @ObjectType()
+export class ForgotPasswordResponse {
+  @Field()
+  success: boolean;
+}
+
+@ObjectType()
 export class GqlChat {
   @Field({ nullable: true })
   error?: string;

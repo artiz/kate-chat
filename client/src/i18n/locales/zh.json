@@ -81,7 +81,22 @@
     "registrationFailedMessage": "注册失败，请重试。",
     "signIn": "登录",
     "signInSubtitle": "登录以访问您的 AI 聊天",
-    "welcomeTo": "欢迎使用 {{appTitle}}！"
+    "welcomeTo": "欢迎使用 {{appTitle}}！",
+    "forgotPassword": "忘记密码？",
+    "forgotPasswordTitle": "忘记密码",
+    "forgotPasswordSubtitle": "输入您的邮箱，我们将发送重置链接",
+    "sendResetLink": "发送重置链接",
+    "resetEmailSent": "邮件已发送",
+    "resetEmailSentMessage": "请检查您的收件箱，查找密码重置链接。链接在15分钟内有效。",
+    "backToLogin": "返回登录",
+    "resetPasswordTitle": "重置密码",
+    "resetPasswordSubtitle": "在下方输入新密码",
+    "setNewPassword": "设置新密码",
+    "resetLinkExpired": "链接已过期",
+    "resetLinkExpiredMessage": "此重置链接已过期，请重新申请。",
+    "resetTokenMissing": "此重置链接无效，请重新申请。",
+    "passwordResetSuccess": "密码已重置",
+    "passwordResetSuccessMessage": "您的密码已成功重置，您已登录。"
   },
   "chat": {
     "afterThatCreateChat": "之后您可以创建新的聊天",

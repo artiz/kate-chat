@@ -87,11 +87,27 @@ locals {
       value = "gpt://{folder}/yandexgpt/rc,gpt://{folder}/yandexgpt/latest"
     },
     {
-      # Node's default thread pool size is 4, which can lead to performance issues under heavy load. 
-      # Increasing it to 16 allows for better concurrency when handling multiple requests that involve file I/O, 
+      # Node's default thread pool size is 4, which can lead to performance issues under heavy load.
+      # Increasing it to 16 allows for better concurrency when handling multiple requests that involve file I/O,
       # database access, or other operations that can benefit from additional threads.
       name  = "UV_THREADPOOL_SIZE"
       value = "16"
+    },
+    {
+      name  = "SMTP_HOST"
+      value = "email-smtp.${var.aws_region}.amazonaws.com"
+    },
+    {
+      name  = "SMTP_PORT"
+      value = "587"
+    },
+    {
+      name  = "SMTP_SECURE"
+      value = "false"
+    },
+    {
+      name  = "SMTP_FROM"
+      value = "no-reply@${var.domain_name}"
     }
   ]
 
@@ -227,6 +243,14 @@ locals {
       {
         name      = "OPENAI_API_KEY"
         valueFrom = aws_secretsmanager_secret.openai_api_key.arn
+      },
+      {
+        name      = "SMTP_USER"
+        valueFrom = aws_secretsmanager_secret.smtp_user.arn
+      },
+      {
+        name      = "SMTP_PASSWORD"
+        valueFrom = aws_secretsmanager_secret.smtp_password.arn
       }
     ]
 
