@@ -172,7 +172,7 @@ resource "aws_iam_user_policy" "ses_smtp_send" {
       {
         Effect   = "Allow"
         Action   = "ses:SendRawEmail"
-        Resource = "*"
+        Resource = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/${var.domain_name}"
       }
     ]
   })
@@ -180,10 +180,6 @@ resource "aws_iam_user_policy" "ses_smtp_send" {
 
 resource "aws_iam_access_key" "ses_smtp" {
   user = aws_iam_user.ses_smtp.name
-
-  lifecycle {
-    ignore_changes = [user]
-  }
 }
 
 # Store SMTP username (IAM Access Key ID)

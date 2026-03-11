@@ -52,7 +52,7 @@ const ResetPassword: React.FC = () => {
     return () => clearInterval(interval);
   }, [exp]);
 
-  const isExpired = secondsLeft === 0;
+  const isExpired = !exp || secondsLeft === 0;
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;

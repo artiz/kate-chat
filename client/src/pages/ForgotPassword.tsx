@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import { GoogleReCaptchaProvider, useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { FORGOT_PASSWORD_MUTATION } from "../store/services/graphql.queries";
 import { RECAPTCHA_SITE_KEY } from "@/lib/config";
-import { getClientConfig } from "@/global-config";
 
 const ForgotPasswordForm: React.FC = () => {
   const { t } = useTranslation();

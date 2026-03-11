@@ -270,22 +270,31 @@ export class UserResolver extends BaseResolver {
     if (input.recaptchaToken) {
       const isValid = await verifyRecaptchaToken(input.recaptchaToken, "forgot_password");
       if (!isValid) throw new Error("reCAPTCHA validation failed. Please try again.");
-    }
-
-    const user = await this.userRepository.findOne({ where: { email: input.email.toLowerCase() } });
-    if (!user || !user.password) {
-      return { success: false, error: `User not found for email ${input.email}` };
+    } else if (globalConfig.runtime.recaptchaSecretKey) {
+      throw new Error("reCAPTCHA token is required");
     }
 
     if (!globalConfig.smtp.enabled) {
       return { success: false, error: "SMTP is not enabled. Cannot send password reset email." };
     }
 
+    const user = await this.userRepository.findOne({ where: { email: input.email.toLowerCase() } });
+    if (!user || !user.password) {
+      // Return success silently to prevent user enumeration
+      return { success: true };
+    }
+
     const resetToken = generateResetToken({ userId: user.id, email: user.email });
     const resetUrl = `${globalConfig.runtime.frontendUrl}/reset-password?token=${resetToken}`;
 
-    logger.info({ email: user.email, resetUrl }, "Password reset requested");
-    await sendPasswordResetEmail(user.email, resetUrl);
+    logger.info({ email: user.email }, "Password reset requested");
+
+    try {
+      await sendPasswordResetEmail(user.email, resetUrl);
+    } catch (error) {
+      logger.error(error, "Failed to send password reset email");
+      return { success: false, error: "Failed to send reset email. Please try again later." };
+    }
 
     return { success: true };
   }
