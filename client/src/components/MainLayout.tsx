@@ -46,7 +46,7 @@ export const MainLayout: React.FC = () => {
 
   // Handle logout
   const handleLogout = () => {
-    removeStorageValue(STORAGE_RETURN_URL_KEY, currentUser);
+    removeStorageValue(STORAGE_RETURN_URL_KEY, currentUser?.id, false);
     dispatch(logout());
     navigate("/");
   };

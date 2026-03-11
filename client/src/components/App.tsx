@@ -61,6 +61,14 @@ const PublicRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => 
 // PrivateRoute component for protected routes
 const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) => {
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const currentUser = useAppSelector(state => state.user.currentUser);
+  const location = useLocation();
+  const path = location.pathname;
+  const returnUrl = BASE_URLS.includes(path) ? "" : path;
+  if (returnUrl) {
+    writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, currentUser?.id, false);
+  }
+
   return isAuthenticated ? element : <Navigate to={"/"} replace />;
 };
 
@@ -105,14 +113,6 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // If authenticated and data is loaded, update Redux store
     if (isAuthenticated && initData) {
-      const returnUrl = getStorageValue(STORAGE_RETURN_URL_KEY, initData.appConfig.currentUser);
-      if (returnUrl) {
-        removeStorageValue(STORAGE_RETURN_URL_KEY, initData.appConfig.currentUser);
-        setTimeout(() => {
-          navigate(returnUrl);
-        }, 200);
-      }
-
       dispatch(setUser(initData.appConfig.currentUser));
       dispatch(setAppConfig(initData.appConfig));
       dispatch(setModelsAndProviders(initData));
@@ -149,7 +149,7 @@ const AppContent: React.FC = () => {
         dispatch(logout());
         const path = location.pathname;
         const returnUrl = BASE_URLS.includes(path) ? "" : path;
-        writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, initData?.appConfig?.currentUser);
+        writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, initData?.appConfig?.currentUser?.id, false);
         navigate("/login");
       }
     }

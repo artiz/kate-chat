@@ -1,9 +1,11 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { loginSuccess } from "../../store/slices/authSlice";
 import { useTranslation } from "react-i18next";
 import { Container, Title, Text, Group, Anchor } from "@mantine/core";
+import { getUserIdFromToken, loginSuccess } from "@/store/slices/authSlice";
+import { getStorageValue, removeStorageValue, STORAGE_RETURN_URL_KEY } from "@/store";
+import { set } from "lodash";
 
 const OAuthCallbackHandler: React.FC = () => {
   const { t } = useTranslation();
@@ -16,11 +18,14 @@ const OAuthCallbackHandler: React.FC = () => {
     if (token) {
       // Store the token and redirect to home page
       dispatch(loginSuccess(token));
-      navigate("/");
+      const userId = getUserIdFromToken(token);
+      const url = getStorageValue(STORAGE_RETURN_URL_KEY, userId, false) || "/chat";
+      setTimeout(() => removeStorageValue(STORAGE_RETURN_URL_KEY, userId, false), 500);
+      navigate(url);
     } else {
       navigate("/login");
     }
-  }, [token, dispatch, navigate]);
+  }, [token]);
 
   return (
     <Container size="sm" my={40}>

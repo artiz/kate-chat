@@ -40,18 +40,22 @@ export type AppDispatch = typeof store.dispatch;
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
-export function formatStorageKey(key: string, user?: User | null): string {
-  return `${user?.id || "user"}-${key}`;
+export function formatStorageKey(key: string, userId?: string | null): string {
+  return `${userId || "user"}-${key}`;
 }
 
-export function writeStorageValue(key: string, value: string, user?: User | null) {
-  localStorage.setItem(formatStorageKey(key, user), value);
+export function writeStorageValue(key: string, value: string, userId?: string | null, useLocalStorage = true) {
+  (useLocalStorage ? localStorage : sessionStorage).setItem(formatStorageKey(key, userId), value);
 }
 
-export function getStorageValue(key: string, user: User | null): string | undefined {
-  return localStorage.getItem(formatStorageKey(key, user)) || undefined;
+export function getStorageValue(key: string, userId?: string | null, useLocalStorage = true): string | undefined {
+  return (
+    (useLocalStorage ? localStorage : sessionStorage).getItem(formatStorageKey(key, userId)) ||
+    (useLocalStorage ? localStorage : sessionStorage).getItem(formatStorageKey(key)) ||
+    undefined
+  );
 }
 
-export function removeStorageValue(key: string, user?: User | null) {
-  localStorage.removeItem(formatStorageKey(key, user));
+export function removeStorageValue(key: string, userId?: string | null, useLocalStorage = true) {
+  (useLocalStorage ? localStorage : sessionStorage).removeItem(formatStorageKey(key, userId));
 }

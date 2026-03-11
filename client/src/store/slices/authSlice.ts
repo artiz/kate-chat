@@ -62,5 +62,14 @@ const authSlice = createSlice({
   },
 });
 
+export function getUserIdFromToken(token: string): string | undefined {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.userId || undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+
 export const { loginStart, loginSuccess, loginFailure } = authSlice.actions;
 export default authSlice.reducer;

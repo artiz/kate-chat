@@ -18,8 +18,15 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
-import { logout, useAppDispatch, useAppSelector } from "../store";
-import { loginStart, loginSuccess, loginFailure } from "../store/slices/authSlice";
+import {
+  getStorageValue,
+  logout,
+  removeStorageValue,
+  STORAGE_RETURN_URL_KEY,
+  useAppDispatch,
+  useAppSelector,
+} from "../store";
+import { loginStart, loginSuccess, loginFailure, getUserIdFromToken } from "../store/slices/authSlice";
 import { OAuthButtons } from "../components/auth";
 import { setUser } from "@/store/slices/userSlice";
 import { getClientConfig } from "@/global-config";
@@ -27,30 +34,31 @@ import { getClientConfig } from "@/global-config";
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const { token } = useAppSelector(state => state.auth);
   const [loggingIn, setLoggingIn] = React.useState(false);
   const { appTitle } = getClientConfig();
   const { t } = useTranslation();
-  const location = useLocation();
 
-  const returnUrl = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return params.get("return") || "/chat";
-  }, [location.search]);
+  const returnUrl = (userId: string | undefined) => {
+    return getStorageValue(STORAGE_RETURN_URL_KEY, userId, false) || "/chat";
+  };
 
   // If already authenticated, redirect to chat
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate(returnUrl, { replace: true });
+    if (token) {
+      const url = returnUrl(getUserIdFromToken(token));
+      navigate(url, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [token, navigate]);
 
   // Define login mutation
   const [login, { loading }] = useMutation(LOGIN_MUTATION, {
     onCompleted: data => {
       dispatch(loginSuccess(data.login.token));
       dispatch(setUser(data.login.user));
-      navigate(returnUrl, { replace: true });
+      const url = returnUrl(data.login.user.id);
+      navigate(url);
+      removeStorageValue(STORAGE_RETURN_URL_KEY, data.login.user.id, false);
     },
     onError: error => {
       dispatch(logout());
