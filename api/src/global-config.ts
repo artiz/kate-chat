@@ -68,6 +68,7 @@ export interface GlobalConfigShape {
     callbackUrlBase: string;
     frontendUrl: string;
     jwtSecret: string;
+    jwtResetPasswordSecret: string;
     jwtExpirationSec: number;
     sessionSecret: string;
     recaptchaSecretKey?: string;
@@ -274,6 +275,8 @@ export class GlobalConfig {
         callbackUrlBase: process.env.CALLBACK_URL_BASE || "http://localhost:4000",
         frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
         jwtSecret: process.env.JWT_SECRET || "secret-string",
+        jwtResetPasswordSecret:
+          process.env.JWT_RESET_PASSWORD_SECRET || process.env.SESSION_SECRET || "reset-password-secret",
         jwtExpirationSec: +(process.env.JWT_EXPIRATION_SEC || 7200) | 0,
         sessionSecret: process.env.SESSION_SECRET || "secret-string",
         recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY,

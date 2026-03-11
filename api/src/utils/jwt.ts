@@ -25,11 +25,11 @@ export function generateToken(payload: TokenPayload): string {
 }
 
 export function generateResetToken(payload: Omit<ResetTokenPayload, "purpose">): string {
-  return jwt.sign({ ...payload, purpose: "reset_password" }, runtime.jwtSecret, { expiresIn: "15m" });
+  return jwt.sign({ ...payload, purpose: "reset_password" }, runtime.jwtResetPasswordSecret, { expiresIn: "15m" });
 }
 
 export function verifyResetToken(token: string): ResetTokenPayload {
-  const payload = jwt.verify(token, runtime.jwtSecret) as ResetTokenPayload;
+  const payload = jwt.verify(token, runtime.jwtResetPasswordSecret) as ResetTokenPayload;
   if (payload.purpose !== "reset_password") throw new Error("Invalid token purpose");
   return payload;
 }

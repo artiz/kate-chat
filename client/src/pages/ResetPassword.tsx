@@ -26,7 +26,8 @@ import { useAppDispatch } from "@/store";
 function decodeJwtPayload(token: string): { exp?: number } | null {
   try {
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(base64));
+    const paddedBase64 = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(atob(paddedBase64));
   } catch {
     return null;
   }

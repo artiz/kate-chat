@@ -45,7 +45,16 @@ const ForgotPasswordForm: React.FC = () => {
   });
 
   const handleSubmit = async (values: typeof form.values) => {
-    const recaptchaToken = executeRecaptcha ? await executeRecaptcha("forgot_password") : undefined;
+    if (!executeRecaptcha) {
+      notifications.show({
+        title: t("auth.recaptchaError"),
+        message: t("auth.recaptchaNotLoaded"),
+        color: "red",
+      });
+      return;
+    }
+
+    const recaptchaToken = await executeRecaptcha("forgot_password");
     await forgotPassword({ variables: { input: { email: values.email, recaptchaToken } } });
   };
 

@@ -18,6 +18,8 @@ import { GraphQLContext } from ".";
 import { ensureInitialUserAssets } from "@/config/initial-data";
 import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
 import { sendPasswordResetEmail } from "@/services/mail.service";
+import { ILike } from "typeorm";
+import { ok } from "assert";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -278,8 +280,11 @@ export class UserResolver extends BaseResolver {
       return { success: false, error: "SMTP is not enabled. Cannot send password reset email." };
     }
 
-    const user = await this.userRepository.findOne({ where: { email: input.email.toLowerCase() } });
+    ok(input.email);
+
+    const user = await this.userRepository.findOne({ where: { email: ILike(input.email) } });
     if (!user || !user.password) {
+      logger.warn({ email: input.email }, "Password reset requested for non-existent user");
       // Return success silently to prevent user enumeration
       return { success: true };
     }
