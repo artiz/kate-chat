@@ -56,11 +56,12 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
 * (hgh) Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * (mid) Telegram System MCP (https://github.com/dryeab/mcp-telegram, https://www.mcpserverfinder.com/servers/qpd-v/mcp-communicator-telegram)
-* (low) Add Java code executor loke Go one with https://codapi.org/java/
 * (hgh) Add browser notifications to notify user about conversation end, confirmation requests
+* (low) Add Java code executor like Go one with https://codapi.org/java/
 * (min) Introduce video generation, reuse requests queue, notify user about completion (wait untill AWS sponsorship)
 * (mid) @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * (mid) Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
+
 
 ### Agents (mid)
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on

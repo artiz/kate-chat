@@ -81,7 +81,22 @@
     "registrationFailedMessage": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "signIn": "Anmelden",
     "signInSubtitle": "Melden Sie sich an, um auf Ihre KI-Chats zuzugreifen",
-    "welcomeTo": "Willkommen bei {{appTitle}}!"
+    "welcomeTo": "Willkommen bei {{appTitle}}!",
+    "forgotPassword": "Passwort vergessen?",
+    "forgotPasswordTitle": "Passwort vergessen",
+    "forgotPasswordSubtitle": "Geben Sie Ihre E-Mail-Adresse ein, um einen Reset-Link zu erhalten",
+    "sendResetLink": "Reset-Link senden",
+    "resetEmailSent": "E-Mail gesendet",
+    "resetEmailSentMessage": "Überprüfen Sie Ihren Posteingang. Der Link ist 15 Minuten gültig.",
+    "backToLogin": "Zurück zur Anmeldung",
+    "resetPasswordTitle": "Passwort zurücksetzen",
+    "resetPasswordSubtitle": "Neues Passwort eingeben",
+    "setNewPassword": "Neues Passwort festlegen",
+    "resetLinkExpired": "Link abgelaufen",
+    "resetLinkExpiredMessage": "Dieser Reset-Link ist abgelaufen. Bitte fordern Sie einen neuen an.",
+    "resetTokenMissing": "Dieser Reset-Link ist ungültig. Bitte fordern Sie einen neuen an.",
+    "passwordResetSuccess": "Passwort zurückgesetzt",
+    "passwordResetSuccessMessage": "Ihr Passwort wurde erfolgreich zurückgesetzt. Sie sind jetzt angemeldet."
   },
   "chat": {
     "afterThatCreateChat": "Danach können Sie einen neuen Chat erstellen",

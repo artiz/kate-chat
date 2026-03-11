@@ -81,7 +81,22 @@
     "registrationFailedMessage": "Failed to register. Please try again.",
     "signIn": "Sign in",
     "signInSubtitle": "Sign in to access your AI chats",
-    "welcomeTo": "Welcome to {{appTitle}}!"
+    "welcomeTo": "Welcome to {{appTitle}}!",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Forgot Password",
+    "forgotPasswordSubtitle": "Enter your email and we'll send you a reset link",
+    "sendResetLink": "Send Reset Link",
+    "resetEmailSent": "Email Sent",
+    "resetEmailSentMessage": "Check your inbox for a password reset link. The link expires in 15 minutes.",
+    "backToLogin": "Back to login",
+    "resetPasswordTitle": "Reset Password",
+    "resetPasswordSubtitle": "Enter your new password below",
+    "setNewPassword": "Set New Password",
+    "resetLinkExpired": "Link Expired",
+    "resetLinkExpiredMessage": "This reset link has expired. Please request a new one.",
+    "resetTokenMissing": "This reset link is invalid. Please request a new one.",
+    "passwordResetSuccess": "Password Reset",
+    "passwordResetSuccessMessage": "Your password has been successfully reset. You are now logged in."
   },
   "chat": {
     "afterThatCreateChat": "After that, you can create a new chat",

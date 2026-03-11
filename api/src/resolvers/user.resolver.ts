@@ -1,15 +1,25 @@
 import { Resolver, Query, Mutation, Arg, Ctx, ID, FieldResolver, Root } from "type-graphql";
 import bcrypt from "bcryptjs";
 import { User, AuthProvider, UserRole, UserSettings } from "@/entities/User";
-import { generateToken } from "@/utils/jwt";
-import { RegisterInput, LoginInput, UpdateUserInput, ChangePasswordInput } from "@/types/graphql/inputs";
-import { ApplicationConfig, AuthResponse, CredentialSource } from "@/types/graphql/responses";
+import { generateToken, generateResetToken, verifyResetToken } from "@/utils/jwt";
+import {
+  RegisterInput,
+  LoginInput,
+  UpdateUserInput,
+  ChangePasswordInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+} from "@/types/graphql/inputs";
+import { ApplicationConfig, AuthResponse, CredentialSource, ForgotPasswordResponse } from "@/types/graphql/responses";
 import { verifyRecaptchaToken } from "@/utils/recaptcha";
 import { logger } from "@/utils/logger";
 import { BaseResolver } from "./base.resolver";
 import { GraphQLContext } from ".";
 import { ensureInitialUserAssets } from "@/config/initial-data";
 import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
+import { sendPasswordResetEmail } from "@/services/mail.service";
+import { ILike } from "typeorm";
+import { ok } from "assert";
 
 @Resolver(User)
 export class UserResolver extends BaseResolver {
@@ -255,6 +265,64 @@ export class UserResolver extends BaseResolver {
     await this.userRepository.save(user);
 
     return user.id;
+  }
+
+  @Mutation(() => ForgotPasswordResponse)
+  async forgotPassword(@Arg("input") input: ForgotPasswordInput): Promise<ForgotPasswordResponse> {
+    if (input.recaptchaToken) {
+      const isValid = await verifyRecaptchaToken(input.recaptchaToken, "forgot_password");
+      if (!isValid) throw new Error("reCAPTCHA validation failed. Please try again.");
+    } else if (globalConfig.runtime.recaptchaSecretKey) {
+      throw new Error("reCAPTCHA token is required");
+    }
+
+    const user = await this.userRepository.findOne({ where: { email: ILike(input.email) } });
+    if (!user || !user.password) {
+      logger.warn({ email: input.email }, "Password reset requested for non-existent user");
+      // Return success silently to prevent user enumeration
+      return { success: true };
+    }
+
+    const resetToken = generateResetToken({ userId: user.id, email: user.email });
+    const resetUrl = `${globalConfig.runtime.frontendUrl}/reset-password?token=${resetToken}`;
+
+    if (!globalConfig.smtp.enabled) {
+      if (globalConfig.runtime.nodeEnv === "development") {
+        logger.warn(
+          { email: input.email, resetUrl },
+          "SMTP not configured — skipping password reset email (reset URL logged above)"
+        );
+      }
+      return { success: false, error: "SMTP is not enabled. Cannot send password reset email." };
+    }
+
+    try {
+      await sendPasswordResetEmail(user.email, resetUrl);
+    } catch (error) {
+      logger.error(error, "Failed to send password reset email");
+      return { success: false, error: "Failed to send reset email. Please try again later." };
+    }
+
+    return { success: true };
+  }
+
+  @Mutation(() => AuthResponse)
+  async resetPassword(@Arg("input") input: ResetPasswordInput): Promise<AuthResponse> {
+    let payload: ReturnType<typeof verifyResetToken>;
+    try {
+      payload = verifyResetToken(input.token);
+    } catch {
+      throw new Error("Reset link is invalid or has expired.");
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: payload.userId } });
+    if (!user) throw new Error("User not found");
+
+    user.password = await bcrypt.hash(input.newPassword, 12);
+    await this.userRepository.save(user);
+
+    const token = generateToken({ userId: user.id, email: user.email, roles: [user.role] });
+    return { token, user };
   }
 }
 

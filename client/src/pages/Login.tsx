@@ -15,6 +15,7 @@ import {
   Anchor,
   Loader,
   Center,
+  Group,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -128,6 +129,12 @@ const Login: React.FC = () => {
               Forgot password?
             </Anchor>
           </Group> */}
+
+          <Group justify="flex-end" mt="lg">
+            <Anchor component="button" type="button" c="dimmed" size="sm" onClick={() => navigate("/forgot-password")}>
+              {t("auth.forgotPassword")}
+            </Anchor>
+          </Group>
 
           <Button type="submit" size="md" mt="xl" loading={loading} disabled={loggingIn}>
             {t("auth.signIn")}

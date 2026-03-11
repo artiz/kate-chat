@@ -213,6 +213,26 @@ export const LOGIN_MUTATION = gql`
   }
 `;
 
+export const FORGOT_PASSWORD_MUTATION = gql`
+  mutation ForgotPassword($input: ForgotPasswordInput!) {
+    forgotPassword(input: $input) {
+      success
+      error
+    }
+  }
+`;
+
+export const RESET_PASSWORD_MUTATION = gql`
+  mutation ResetPassword($input: ResetPasswordInput!) {
+    resetPassword(input: $input) {
+      token
+      user {
+        ...FullUser
+      }
+    }
+  }
+`;
+
 export const UPDATE_USER_MUTATION = gql`
   mutation UpdateUser($input: UpdateUserInput!) {
     updateUser(input: $input) {

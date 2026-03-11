@@ -68,6 +68,7 @@ export interface GlobalConfigShape {
     callbackUrlBase: string;
     frontendUrl: string;
     jwtSecret: string;
+    jwtResetPasswordSecret: string;
     jwtExpirationSec: number;
     sessionSecret: string;
     recaptchaSecretKey?: string;
@@ -192,6 +193,15 @@ export interface GlobalConfigShape {
     requestsQueueWaitTimeSec: number;
     requestsQueueVisibilityTimeoutSec: number;
   };
+  smtp: {
+    enabled: boolean;
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    user?: string;
+    password?: string;
+    from?: string;
+  };
   initial?: {
     models?: InitialCustomModel[];
     mcpServers?: InitialMCPServer[];
@@ -264,9 +274,10 @@ export class GlobalConfig {
         logLevel: process.env.LOG_LEVEL || "info",
         callbackUrlBase: process.env.CALLBACK_URL_BASE || "http://localhost:4000",
         frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
-        jwtSecret: process.env.JWT_SECRET || "secret-string",
+        jwtSecret: process.env.JWT_SECRET || "jwt-secret",
+        jwtResetPasswordSecret: process.env.JWT_RESET_PASSWORD_SECRET || "jwt-reset-password-secret",
         jwtExpirationSec: +(process.env.JWT_EXPIRATION_SEC || 7200) | 0,
-        sessionSecret: process.env.SESSION_SECRET || "secret-string",
+        sessionSecret: process.env.SESSION_SECRET || "session-secret",
         recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY,
       },
       app: {
@@ -431,6 +442,17 @@ export class GlobalConfig {
         requestsQueueWaitTimeSec: +(process.env.SQS_REQUESTS_QUEUE_WAIT_TIME_SEC || 10),
         requestsQueueVisibilityTimeoutSec: +(process.env.SQS_REQUESTS_QUEUE_VISIBILITY_TIMEOUT_SEC || 10),
       },
+      smtp: process.env.SMTP_HOST
+        ? {
+            enabled: true,
+            host: process.env.SMTP_HOST,
+            port: +(process.env.SMTP_PORT || 587) | 0,
+            secure: this.parseBoolean(process.env.SMTP_SECURE, false),
+            user: process.env.SMTP_USER,
+            password: process.env.SMTP_PASSWORD,
+            from: process.env.SMTP_FROM || `no-reply@katechat.tech`,
+          }
+        : { enabled: false },
       initial: {
         models: [],
         mcpServers: [],

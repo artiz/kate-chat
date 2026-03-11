@@ -33,6 +33,8 @@ import { SimpleLayout } from "./SimpleLayout";
 // Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import { OAuthCallbackHandler } from "@/components/auth";
 import { ChatList } from "@/pages/ChatList";
 import { Chat } from "@/pages/Chat";
@@ -184,6 +186,8 @@ const AppContent: React.FC = () => {
                 <Route index element={<PublicRoute element={<Home />} />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/oauth-callback" element={<OAuthCallbackHandler />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<TermsOfService />} />

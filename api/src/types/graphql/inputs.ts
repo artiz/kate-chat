@@ -90,6 +90,27 @@ export class ChangePasswordInput {
 }
 
 @InputType()
+export class ForgotPasswordInput {
+  @Field()
+  email: string;
+
+  @Field({ nullable: true })
+  language?: string;
+
+  @Field({ nullable: true })
+  recaptchaToken?: string;
+}
+
+@InputType()
+export class ResetPasswordInput {
+  @Field()
+  token: string;
+
+  @Field()
+  newPassword: string;
+}
+
+@InputType()
 export class CreateChatInput {
   @Field({ nullable: true })
   title?: string;
