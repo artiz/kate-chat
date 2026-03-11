@@ -62,6 +62,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * (mid) @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * (mid) Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
 
+
 ### Agents (mid)
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on
 * New entities Agent, AgentSession

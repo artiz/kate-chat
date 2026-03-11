@@ -272,9 +272,14 @@ export class UserResolver extends BaseResolver {
       if (!isValid) throw new Error("reCAPTCHA validation failed. Please try again.");
     }
 
-    // Always return success to avoid user enumeration
     const user = await this.userRepository.findOne({ where: { email: input.email.toLowerCase() } });
-    if (!user || !user.password) return { success: true };
+    if (!user || !user.password) {
+      return { success: false, error: `User not found for email ${input.email}` };
+    }
+
+    if (!globalConfig.smtp.enabled) {
+      return { success: false, error: "SMTP is not enabled. Cannot send password reset email." };
+    }
 
     const resetToken = generateResetToken({ userId: user.id, email: user.email });
     const resetUrl = `${globalConfig.runtime.frontendUrl}/reset-password?token=${resetToken}`;

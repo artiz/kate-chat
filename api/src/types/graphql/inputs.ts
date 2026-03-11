@@ -95,6 +95,9 @@ export class ForgotPasswordInput {
   email: string;
 
   @Field({ nullable: true })
+  language?: string;
+
+  @Field({ nullable: true })
   recaptchaToken?: string;
 }
 

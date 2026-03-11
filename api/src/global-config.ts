@@ -192,7 +192,8 @@ export interface GlobalConfigShape {
     requestsQueueWaitTimeSec: number;
     requestsQueueVisibilityTimeoutSec: number;
   };
-  smtp?: {
+  smtp: {
+    enabled: boolean;
     host?: string;
     port?: number;
     secure?: boolean;
@@ -441,6 +442,7 @@ export class GlobalConfig {
       },
       smtp: process.env.SMTP_HOST
         ? {
+            enabled: true,
             host: process.env.SMTP_HOST,
             port: +(process.env.SMTP_PORT || 587) | 0,
             secure: this.parseBoolean(process.env.SMTP_SECURE, false),
@@ -448,7 +450,7 @@ export class GlobalConfig {
             password: process.env.SMTP_PASSWORD,
             from: process.env.SMTP_FROM || `no-reply@katechat.tech`,
           }
-        : undefined,
+        : { enabled: false },
       initial: {
         models: [],
         mcpServers: [],

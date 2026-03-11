@@ -28,6 +28,9 @@ export class AuthResponse {
 export class ForgotPasswordResponse {
   @Field()
   success: boolean;
+
+  @Field({ nullable: true })
+  error?: string;
 }
 
 @ObjectType()

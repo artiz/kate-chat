@@ -2,7 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@apollo/client";
 import { useForm } from "@mantine/form";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { PasswordInput, Button, Stack, Container, Title, Paper, Text, Alert, Badge, Group } from "@mantine/core";
+import {
+  PasswordInput,
+  Button,
+  Stack,
+  Container,
+  Title,
+  Paper,
+  Text,
+  Alert,
+  Badge,
+  Group,
+  Anchor,
+} from "@mantine/core";
 import { IconAlertCircle, IconClock } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -99,40 +111,48 @@ const ResetPassword: React.FC = () => {
       </Text>
 
       <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        {isExpired ? (
-          <Alert icon={<IconAlertCircle />} color="red" title={t("auth.resetLinkExpired")}>
-            {t("auth.resetLinkExpiredMessage")}
-          </Alert>
-        ) : (
-          <>
-            <Group justify="flex-end" mb="md">
-              <Badge leftSection={<IconClock size={12} />} color="orange" variant="light">
-                {countdown}
-              </Badge>
-            </Group>
+        <Stack>
+          {isExpired ? (
+            <Alert icon={<IconAlertCircle />} color="red" title={t("auth.resetLinkExpired")}>
+              {t("auth.resetLinkExpiredMessage")}
+            </Alert>
+          ) : (
+            <>
+              <Group justify="flex-end" mb="md">
+                <Badge leftSection={<IconClock size={12} />} color="orange" variant="light">
+                  {countdown}
+                </Badge>
+              </Group>
 
-            <form onSubmit={form.onSubmit(handleSubmit)}>
-              <Stack>
-                <PasswordInput
-                  label={t("password.newPassword")}
-                  placeholder={t("auth.passwordPlaceholder")}
-                  required
-                  {...form.getInputProps("password")}
-                />
-                <PasswordInput
-                  label={t("auth.confirmPassword")}
-                  placeholder={t("auth.confirmPasswordPlaceholder")}
-                  required
-                  {...form.getInputProps("confirmPassword")}
-                />
-              </Stack>
+              <form onSubmit={form.onSubmit(handleSubmit)}>
+                <Stack>
+                  <PasswordInput
+                    label={t("password.newPassword")}
+                    placeholder={t("auth.passwordPlaceholder")}
+                    required
+                    {...form.getInputProps("password")}
+                  />
+                  <PasswordInput
+                    label={t("auth.confirmPassword")}
+                    placeholder={t("auth.confirmPasswordPlaceholder")}
+                    required
+                    {...form.getInputProps("confirmPassword")}
+                  />
+                </Stack>
 
-              <Button type="submit" size="md" mt="xl" fullWidth loading={loading}>
-                {t("auth.setNewPassword")}
-              </Button>
-            </form>
-          </>
-        )}
+                <Button type="submit" size="md" mt="xl" fullWidth loading={loading}>
+                  {t("auth.setNewPassword")}
+                </Button>
+              </form>
+            </>
+          )}
+        </Stack>
+
+        <Text ta="center" mt="md">
+          <Anchor component="button" onClick={() => navigate("/login")}>
+            {t("auth.backToLogin")}
+          </Anchor>
+        </Text>
       </Paper>
     </Container>
   );

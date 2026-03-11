@@ -4,7 +4,7 @@ import { logger } from "@/utils/logger";
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   const smtp = globalConfig.smtp;
-  if (!smtp?.host) {
+  if (!smtp.enabled) {
     logger.warn({ to, resetUrl }, "SMTP not configured — skipping password reset email (reset URL logged above)");
     return;
   }
@@ -16,6 +16,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
     auth: smtp.user && smtp.password ? { user: smtp.user, pass: smtp.password } : undefined,
   });
 
+  // TODO: Add email templates and support for multiple languages
   await transporter.sendMail({
     from: smtp.from,
     to,

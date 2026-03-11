@@ -104,6 +104,11 @@ resource "aws_ses_domain_identity" "main" {
   domain = var.domain_name
 }
 
+resource "aws_ses_domain_identity_verification" "main" {
+  domain     = aws_ses_domain_identity.main.id
+  depends_on = [aws_route53_record.ses_verification]
+}
+
 resource "aws_ses_domain_dkim" "main" {
   domain = aws_ses_domain_identity.main.domain
 }
@@ -127,6 +132,28 @@ resource "aws_route53_record" "ses_dkim" {
   records = ["${aws_ses_domain_dkim.main.dkim_tokens[count.index]}.dkim.amazonses.com"]
 }
 
+# MAIL FROM — sets bounce return-path to mail.katechat.tech
+resource "aws_ses_domain_mail_from" "main" {
+  domain           = aws_ses_domain_identity.main.domain
+  mail_from_domain = "mail.${var.domain_name}"
+}
+
+resource "aws_route53_record" "ses_mail_from_mx" {
+  zone_id = var.aws_route53_record_zone_id
+  name    = "mail.${var.domain_name}"
+  type    = "MX"
+  ttl     = 300
+  records = ["10 feedback-smtp.${var.aws_region}.amazonses.com"]
+}
+
+resource "aws_route53_record" "ses_mail_from_spf" {
+  zone_id = var.aws_route53_record_zone_id
+  name    = "mail.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 300
+  records = ["v=spf1 include:amazonses.com ~all"]
+}
+
 # IAM user dedicated to SES SMTP
 resource "aws_iam_user" "ses_smtp" {
   name = "${var.project_name}-${var.environment}-ses-smtp"
@@ -145,7 +172,7 @@ resource "aws_iam_user_policy" "ses_smtp_send" {
       {
         Effect   = "Allow"
         Action   = "ses:SendRawEmail"
-        Resource = "arn:aws:ses:${var.aws_region}:*:identity/${var.domain_name}"
+        Resource = "*"
       }
     ]
   })

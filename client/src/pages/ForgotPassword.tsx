@@ -18,7 +18,17 @@ const ForgotPasswordForm: React.FC = () => {
   const [sent, setSent] = useState(false);
 
   const [forgotPassword, { loading }] = useMutation(FORGOT_PASSWORD_MUTATION, {
-    onCompleted: () => setSent(true),
+    onCompleted: response => {
+      if (response.forgotPassword?.success) {
+        setSent(true);
+      } else {
+        notifications.show({
+          title: t("common.error"),
+          message: response.forgotPassword?.error || t("validation.invalidEmail"),
+          color: "red",
+        });
+      }
+    },
     onError: error => {
       notifications.show({
         title: t("common.error"),
