@@ -10,18 +10,7 @@ import { getRepository } from "@/config/database";
 import { ChatDocument, Document, Chat } from "@/entities";
 import { DocumentStatus } from "@/types/api";
 import { TokenPayload } from "@/utils/jwt";
-import { SubscriptionsService, DocumentSqsService } from "@/services/messaging";
-import { MessagesService } from "@/services/messages.service";
-
-declare global {
-  namespace Express {
-    interface Request {
-      subscriptionsService?: SubscriptionsService;
-      documentSqsService?: DocumentSqsService;
-      messagesService?: MessagesService;
-    }
-  }
-}
+import { getFileContentType } from "@/utils/file";
 
 const logger = createLogger(__filename);
 
@@ -41,20 +30,7 @@ router.get("/assets/:fileName", async (req: Request<{ fileName: string }>, res: 
 
     // Set cache control headers
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); // 1 year
-
-    // Determine content type
-    const ext = path.extname(fileName).toLowerCase();
-    const contentTypes: Record<string, string> = {
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".gif": "image/gif",
-      ".svg": "image/svg+xml",
-      ".webp": "image/webp",
-    };
-
-    const contentType = contentTypes[ext] || "application/octet-stream";
-    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Type", getFileContentType(fileName));
 
     // Stream the file
     const fileStream = fs.createReadStream(assetsPath);
@@ -215,26 +191,6 @@ router.post("/upload", async (req: Request<any, any, any, { chatId?: string }>, 
   });
 });
 
-const CONTENT_TYPES: Record<string, string> = {
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".svg": "image/svg+xml",
-  ".webp": "image/webp",
-  ".pdf": "application/pdf",
-  ".txt": "text/plain",
-  ".json": "application/json",
-  ".mp4": "video/mp4",
-  ".mp3": "audio/mpeg",
-  ".wav": "audio/wav",
-};
-
-function getContentType(name: string): string {
-  const ext = path.extname(name).toLowerCase();
-  return CONTENT_TYPES[ext] || "application/octet-stream";
-}
-
 // Get file from S3 (with local disk cache when configured)
 router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, res: Response) => {
   try {
@@ -251,7 +207,7 @@ router.get("/*fileKey", async (req: Request<any, any, any, { name?: string }>, r
 
     const buffer = await s3Service.getFileContent(fileKey);
 
-    const contentType = getContentType(fileName || fileKey);
+    const contentType = getFileContentType(fileName || fileKey);
     res.setHeader("Content-Type", contentType);
     if (fileName) {
       res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);

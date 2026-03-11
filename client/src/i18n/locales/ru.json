@@ -54,7 +54,7 @@
     "users": "Пользователи",
     "library": "Библиотека",
     "media": "Медиа",
-    "documents": "Документы",
+    "ragDocuments": "RAG Документы",
     "allChats": "Все чаты"
   },
   "auth": {

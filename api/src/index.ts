@@ -49,6 +49,16 @@ import { servicesMiddleware } from "./middleware/services.middleware";
 import { globalConfig } from "./global-config";
 import { ensureSystemMCPServers } from "./config/initial-data";
 
+declare global {
+  namespace Express {
+    interface Request {
+      subscriptionsService?: SubscriptionsService;
+      documentSqsService?: DocumentSqsService;
+      messagesService?: MessagesService;
+    }
+  }
+}
+
 // Load environment variables
 config();
 

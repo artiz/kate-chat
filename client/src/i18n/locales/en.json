@@ -684,7 +684,7 @@
     "connectivitySettings": "Connectivity Settings",
     "demoMode": "Demo Mode",
     "demoModeTooltip": "Demo mode, max chats per user: {{maxChats}}, max chat messages: {{maxChatMessages}}, max images: {{maxImages}}",
-    "documents": "Documents",
+    "ragDocuments": "Documents (RAG)",
     "expandSidebar": "Expand Sidebar",
     "library": "Library",
     "logout": "Logout",

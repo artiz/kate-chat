@@ -270,9 +270,9 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                     />
                   </Tooltip>
                   {appConfig?.ragEnabled && (
-                    <Tooltip label={t("nav.documents")} position="right" disabled={expanded}>
+                    <Tooltip label={t("nav.ragDocuments")} position="right" disabled={expanded}>
                       <NavLink
-                        label={expanded ? t("nav.documents") : null}
+                        label={expanded ? t("nav.ragDocuments") : null}
                         leftSection={<IconFile size={16} />}
                         active={location.pathname === "/documents"}
                         onClick={handleSectionClick("/documents")}

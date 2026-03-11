@@ -673,7 +673,7 @@
     "connectivitySettings": "Verbindungseinstellungen",
     "demoMode": "Demo-Modus",
     "demoModeTooltip": "Demo-Modus, max. Chats pro Benutzer: {{maxChats}}, max. Chat-Nachrichten: {{maxChatMessages}}, max. Bilder: {{maxImages}}",
-    "documents": "Dokumente",
+    "ragDocuments": "Dokumente (RAG)",
     "expandSidebar": "Seitenleiste ausklappen",
     "library": "Bibliothek",
     "logout": "Abmelden",

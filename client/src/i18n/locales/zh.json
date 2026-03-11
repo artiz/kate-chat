@@ -673,7 +673,7 @@
     "connectivitySettings": "连接设置",
     "demoMode": "演示模式",
     "demoModeTooltip": "演示模式，每用户最大聊天数：{{maxChats}}，最大消息数：{{maxChatMessages}}，最大图片数：{{maxImages}}",
-    "documents": "文档",
+    "ragDocuments": "RAG 文档",
     "expandSidebar": "展开侧边栏",
     "library": "媒体库",
     "logout": "退出登录",
