@@ -14,6 +14,30 @@ resource "random_password" "session_secret" {
   }
 }
 
+resource "random_password" "jwt_reset_password_secret" {
+  length  = 128
+  special = false
+
+  lifecycle {
+    ignore_changes = [
+      length,
+      special,
+    ]
+  }
+}
+
+resource "random_password" "jwt_secret" {
+  length  = 128
+  special = false
+
+  lifecycle {
+    ignore_changes = [
+      length,
+      special,
+    ]
+  }
+}
+
 # Local values for stable container definitions
 locals {
   # Static environment variables that don't change between deployments
@@ -64,7 +88,11 @@ locals {
     },
     {
       name  = "JWT_SECRET"
-      value = random_password.session_secret.result
+      value = random_password.jwt_secret.result
+    },
+    {
+      name  = "JWT_RESET_PASSWORD_SECRET"
+      value = random_password.jwt_reset_password_secret.result
     },
     {
       name  = "SESSION_SECRET"

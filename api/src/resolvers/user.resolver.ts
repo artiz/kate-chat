@@ -276,12 +276,6 @@ export class UserResolver extends BaseResolver {
       throw new Error("reCAPTCHA token is required");
     }
 
-    if (!globalConfig.smtp.enabled) {
-      return { success: false, error: "SMTP is not enabled. Cannot send password reset email." };
-    }
-
-    ok(input.email);
-
     const user = await this.userRepository.findOne({ where: { email: ILike(input.email) } });
     if (!user || !user.password) {
       logger.warn({ email: input.email }, "Password reset requested for non-existent user");
@@ -292,7 +286,15 @@ export class UserResolver extends BaseResolver {
     const resetToken = generateResetToken({ userId: user.id, email: user.email });
     const resetUrl = `${globalConfig.runtime.frontendUrl}/reset-password?token=${resetToken}`;
 
-    logger.info({ email: user.email }, "Password reset requested");
+    if (!globalConfig.smtp.enabled) {
+      if (globalConfig.runtime.nodeEnv === "development") {
+        logger.warn(
+          { email: input.email, resetUrl },
+          "SMTP not configured — skipping password reset email (reset URL logged above)"
+        );
+      }
+      return { success: false, error: "SMTP is not enabled. Cannot send password reset email." };
+    }
 
     try {
       await sendPasswordResetEmail(user.email, resetUrl);

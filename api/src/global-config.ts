@@ -274,11 +274,10 @@ export class GlobalConfig {
         logLevel: process.env.LOG_LEVEL || "info",
         callbackUrlBase: process.env.CALLBACK_URL_BASE || "http://localhost:4000",
         frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
-        jwtSecret: process.env.JWT_SECRET || "secret-string",
-        jwtResetPasswordSecret:
-          process.env.JWT_RESET_PASSWORD_SECRET || process.env.SESSION_SECRET || "reset-password-secret",
+        jwtSecret: process.env.JWT_SECRET || "jwt-secret",
+        jwtResetPasswordSecret: process.env.JWT_RESET_PASSWORD_SECRET || "jwt-reset-password-secret",
         jwtExpirationSec: +(process.env.JWT_EXPIRATION_SEC || 7200) | 0,
-        sessionSecret: process.env.SESSION_SECRET || "secret-string",
+        sessionSecret: process.env.SESSION_SECRET || "session-secret",
         recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY,
       },
       app: {

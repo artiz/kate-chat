@@ -5,9 +5,6 @@ import { logger } from "@/utils/logger";
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   const smtp = globalConfig.smtp;
   if (!smtp.enabled) {
-    if (globalConfig.runtime.nodeEnv === "development") {
-      logger.warn({ to, resetUrl }, "SMTP not configured — skipping password reset email (reset URL logged above)");
-    }
     return;
   }
 
