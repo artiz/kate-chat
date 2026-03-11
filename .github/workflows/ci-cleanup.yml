@@ -3,6 +3,7 @@ name: Clean up feature branch
 on:
     delete:
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   AWS_REGION: eu-central-1
   ECR_REPOSITORY_APP: katechat-app
   ECS_SERVICE_APP: app-service
