@@ -38,7 +38,7 @@ export const ProviderIcon = ({
         default:
           return <IconBrandAws size={size} />;
       }
-    case "YANDEX_FM":
+    case "YANDEX_AI":
       return <IconBrandYandex size={size} />;
     case "GOOGLE_VERTEX_AI":
       return <IconBrandGoogle size={size} />;

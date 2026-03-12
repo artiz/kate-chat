@@ -191,7 +191,7 @@ export class User {
           return "DATABASE";
         }
         return undefined;
-      case ApiProvider.YANDEX_FM:
+      case ApiProvider.YANDEX_AI:
         if (this.settings.yandexFmApiKey && this.settings.yandexFmApiFolderId) {
           return "DATABASE";
         }

@@ -173,6 +173,11 @@ export const BASE_MESSAGE_FRAGMENT = `
           reasoning_summary
           final_answer
         }
+        annotations {
+          type
+          title
+          source
+        }
         tools {
           name
           content

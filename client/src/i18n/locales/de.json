@@ -575,6 +575,7 @@
     "authTypeDescription": "Authentifizierungsmodus einrichten"
   },
   "messageDetails": {
+    "annotations": "Anmerkungen",
     "arguments": "Argumente:",
     "codeInterpreter": "Code-Interpreter",
     "mcpResults": "MCP-Ergebnisse",

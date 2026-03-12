@@ -9,7 +9,7 @@ import { notEmpty } from "./utils/assert";
 const ALL_API_PROVIDERS: ApiProvider[] = [
   ApiProvider.AWS_BEDROCK,
   ApiProvider.OPEN_AI,
-  ApiProvider.YANDEX_FM,
+  ApiProvider.YANDEX_AI,
   ApiProvider.CUSTOM_REST_API,
 ];
 
@@ -165,8 +165,8 @@ export interface GlobalConfigShape {
     ignoredModels: string[];
   };
   yandex: {
+    openApiUrl: string;
     fmApiUrl: string;
-    fmOpenApiUrl: string;
     fmApiKey?: string;
     fmApiFolder?: string;
     searchApiUrl: string;
@@ -412,8 +412,8 @@ export class GlobalConfig {
           .filter(Boolean),
       },
       yandex: {
+        openApiUrl: process.env.YANDEX_OPENAI_API_URL || "https://ai.api.cloud.yandex.net/v1",
         fmApiUrl: process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net",
-        fmOpenApiUrl: process.env.YANDEX_FM_OPENAI_API_URL || "https://llm.api.cloud.yandex.net/v1",
         fmApiKey: process.env.YANDEX_FM_API_KEY,
         fmApiFolder: process.env.YANDEX_FM_API_FOLDER,
         searchApiUrl: process.env.YANDEX_SEARCH_API_URL || "https://searchapi.api.cloud.yandex.net/v2/web/search",
@@ -421,7 +421,7 @@ export class GlobalConfig {
         searchApiFolder: process.env.YANDEX_SEARCH_API_FOLDER || process.env.YANDEX_FM_API_FOLDER,
         credentialsSource:
           process.env.YANDEX_FM_API_KEY && process.env.YANDEX_FM_API_FOLDER ? "ENVIRONMENT" : undefined,
-        ignoredModels: (process.env.YANDEX_FM_IGNORED_MODELS || "")
+        ignoredModels: (process.env.YANDEX_AI_IGNORED_MODELS || "")
           .split(",")
           .map(m => m.trim())
           .filter(Boolean),
@@ -500,7 +500,7 @@ export function getProviderCredentialsSource(provider: ApiProvider) {
       return globalConfig.bedrock.credentialsSource;
     case ApiProvider.OPEN_AI:
       return globalConfig.openai.credentialsSource;
-    case ApiProvider.YANDEX_FM:
+    case ApiProvider.YANDEX_AI:
       return globalConfig.yandex.credentialsSource;
     case ApiProvider.CUSTOM_REST_API:
       return "DATABASE";

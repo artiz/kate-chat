@@ -100,7 +100,7 @@ locals {
     },
     {
       name  = "ENABLED_API_PROVIDERS"
-      value = "AWS_BEDROCK,OPEN_AI,YANDEX_FM,CUSTOM_REST_API"
+      value = "AWS_BEDROCK,OPEN_AI,YANDEX_AI,CUSTOM_REST_API"
     },
     {
       name  = "DEFAULT_ADMIN_EMAILS"
@@ -111,8 +111,8 @@ locals {
       value = "o1-pro,chatgpt-image,gpt-image,dall-e,o4,gpt-audio,gpt-4-0125-preview,gpt-4-0613,gpt-4-1106-preview,gpt-4o-2024-11-20,gpt-4o-mini-search-preview,gpt-5-2025-08-07,gpt-realtime,whisper-1,gpt-5-codex,gpt-5.2-codex"
     },
     {
-      name  = "YANDEX_FM_IGNORED_MODELS"
-      value = "gpt://{folder}/yandexgpt/rc,gpt://{folder}/yandexgpt/latest"
+      name  = "YANDEX_AI_IGNORED_MODELS"
+      value = "gpt://{folder}/yandexgpt/rc,gpt://{folder}/yandexgpt/latest,gpt://{folder}/deepseek-v32/latest,gpt://{folder}/deepseek-vl2/latest"
     },
     {
       # Node's default thread pool size is 4, which can lead to performance issues under heavy load.

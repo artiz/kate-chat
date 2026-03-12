@@ -102,8 +102,8 @@ export abstract class BaseApiProvider {
         return "AWS Bedrock";
       case ApiProvider.OPEN_AI:
         return "OpenAI";
-      case ApiProvider.YANDEX_FM:
-        return "Yandex FM";
+      case ApiProvider.YANDEX_AI:
+        return "Yandex AI";
       case ApiProvider.CUSTOM_REST_API:
         return "Custom REST API";
       default:

@@ -32,6 +32,7 @@ import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
 import { sanitizeSurrogates } from "@/utils/format";
+import { Items } from "openai/resources/conversations/items";
 
 const logger = createLogger(__filename);
 
@@ -51,6 +52,17 @@ function genProcessSymbol(): string {
   return symbols[Math.floor(Math.random() * symbols.length)];
 }
 
+export interface OpenAiParamsProcessor {
+  responsesRequest(
+    inputRequest: CompleteChatRequest,
+    params: OpenAI.Responses.ResponseCreateParamsNonStreaming
+  ): OpenAI.Responses.ResponseCreateParamsNonStreaming;
+  completionRequest(
+    inputRequest: CompleteChatRequest,
+    params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+  ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
+}
+
 class OpenaAIProtocolErrorProcessor implements ModelProtocolErrorProcessor {
   isInputTooLargeError(error: unknown): boolean {
     return false;
@@ -66,16 +78,18 @@ export class OpenAIProtocol implements ModelProtocol {
   private connection?: ConnectionParams;
   private fileLoader?: FileContentLoader;
   private errorProcessor: ModelProtocolErrorProcessor;
+  private paramsProcessor?: OpenAiParamsProcessor;
   private modelIdOverride?: string;
 
   constructor({
     apiType,
     baseURL,
     apiKey,
-    modelIdOverride,
     connection,
     fileLoader,
     errorProcessor = new OpenaAIProtocolErrorProcessor(),
+    modelIdOverride,
+    paramsProcessor,
   }: {
     apiType: OpenAIApiType;
     baseURL: string;
@@ -84,6 +98,7 @@ export class OpenAIProtocol implements ModelProtocol {
     connection?: ConnectionParams;
     fileLoader?: FileContentLoader;
     errorProcessor?: ModelProtocolErrorProcessor;
+    paramsProcessor?: OpenAiParamsProcessor;
   }) {
     this.apiType = apiType;
 
@@ -92,6 +107,7 @@ export class OpenAIProtocol implements ModelProtocol {
     this.fileLoader = fileLoader;
     this.modelIdOverride = modelIdOverride;
     this.errorProcessor = errorProcessor;
+    this.paramsProcessor = paramsProcessor;
 
     this.openai = new OpenAI({
       apiKey,
@@ -104,6 +120,10 @@ export class OpenAIProtocol implements ModelProtocol {
 
   get api(): OpenAI {
     return this.openai;
+  }
+
+  get type(): OpenAIApiType {
+    return this.apiType;
   }
 
   public async completeChat(input: CompleteChatRequest, messages: ModelMessage[] = []): Promise<ModelResponse> {
@@ -372,7 +392,7 @@ export class OpenAIProtocol implements ModelProtocol {
       params.tools = requestTools;
     }
 
-    return params;
+    return this.paramsProcessor ? this.paramsProcessor.completionRequest(inputRequest, params) : params;
   }
 
   private formatCompletionRequestTools(
@@ -571,7 +591,7 @@ export class OpenAIProtocol implements ModelProtocol {
       delete params.temperature;
     }
 
-    return params;
+    return this.paramsProcessor ? this.paramsProcessor.responsesRequest(inputRequest, params) : params;
   }
 
   private async formatResponsesInput(messages: ModelMessage[]): Promise<OpenAI.Responses.ResponseInput> {
@@ -662,9 +682,6 @@ export class OpenAIProtocol implements ModelProtocol {
           "invoking streaming chat.completions..."
         );
         stream = await this.openai.chat.completions.create(params);
-
-        ok(stream);
-
         let streamedToolCalls: Array<OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall> = [];
 
         for await (const chunk of stream) {
@@ -746,6 +763,8 @@ export class OpenAIProtocol implements ModelProtocol {
             meta.contextMessages = sessionMessages.map(m => m.id).filter(notEmpty);
           }
         }
+
+        throw error;
       }
     } while (!stopped && cycleNo++ < cyclesLimit);
 
@@ -954,6 +973,8 @@ export class OpenAIProtocol implements ModelProtocol {
             }
           } else if (chunk.type == "response.in_progress") {
             stopped = await callbacks.onProgress("", { status: ResponseStatus.IN_PROGRESS, ...progressInfo }, true);
+          } else if (chunk.type == "response.content_part.done") {
+            // do nothing for now
           } else if (chunk.type == "response.output_text.delta") {
             stopped = await callbacks.onProgress(chunk.delta, {
               status: ResponseStatus.IN_PROGRESS,
@@ -1048,6 +1069,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
             if (item.type === "web_search_call") {
               status = ResponseStatus.WEB_SEARCH;
+              detail = (item as any)?.action?.query || "";
             } else if (item.type === "code_interpreter_call") {
               status = ResponseStatus.CODE_INTERPRETER;
             } else if (item.type === "function_call") {
@@ -1246,6 +1268,8 @@ export class OpenAIProtocol implements ModelProtocol {
                 }));
               break;
             }
+
+            throw error;
           }
         }
       } while (cycleNo++ < cyclesLimit);
@@ -1423,11 +1447,13 @@ export class OpenAIProtocol implements ModelProtocol {
       : [];
   }
 
+  // format tool to be called
   private getResponsesCallableTools(
-    tools: OpenAI.Responses.Tool[],
-    mcpServers: IMCPServer[]
+    tools: OpenAI.Responses.Tool[] = [],
+    mcpServers: IMCPServer[] = []
   ): ChatCompletionToolCallable[] {
-    if (!tools) return [];
+    if (!tools.length && !mcpServers.length) return [];
+
     const functionTools = tools.filter(t => t.type === "function");
     const serverMap = new Map(mcpServers?.map(s => [`M_${s.id.replace(/-/g, "")}`, s]) || []);
     const mcpTools = functionTools.filter(t => t.name?.startsWith("M_"));
@@ -1458,6 +1484,7 @@ export class OpenAIProtocol implements ModelProtocol {
     }
 
     // add WebSearch and CodeInterpreter if requested
+
     return result;
   }
 
