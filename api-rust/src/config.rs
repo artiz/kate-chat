@@ -124,7 +124,7 @@ impl AppConfig {
         let all_providers = vec![
             "AWS_BEDROCK".to_string(),
             "OPEN_AI".to_string(),
-            "YANDEX_FM".to_string(),
+            "YANDEX_AI".to_string(),
         ];
 
         match env::var("ENABLED_API_PROVIDERS") {

@@ -232,7 +232,7 @@ impl AIProviderService for YandexService {
         }
 
         Ok(ProviderInfo {
-            id: "YANDEX_FM".to_string(),
+            id: "YANDEX_AI".to_string(),
             name: "Yandex Foundation Models".to_string(),
             is_connected,
             costs_info_available: false,

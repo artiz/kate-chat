@@ -339,7 +339,7 @@ impl Mutation {
         let api_provider: ApiProvider = match model.api_provider.as_str() {
             "AWS_BEDROCK" => ApiProvider::AwsBedrock,
             "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_FM" => ApiProvider::YandexFm,
+            "YANDEX_AI" => ApiProvider::YandexFm,
             _ => return Err(async_graphql::Error::new("Unsupported API provider")),
         };
         let ai_service = AIService::new(gql_ctx.config.clone());
@@ -702,7 +702,7 @@ impl Mutation {
         let api_provider: ApiProvider = match model.api_provider.as_str() {
             "AWS_BEDROCK" => ApiProvider::AwsBedrock,
             "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_FM" => ApiProvider::YandexFm,
+            "YANDEX_AI" => ApiProvider::YandexFm,
             _ => return Err(async_graphql::Error::new("Unsupported API provider")),
         };
 

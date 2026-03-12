@@ -4,6 +4,15 @@ import { Message } from "@/types/graphql";
 import { IconAddressBook, IconFile, IconWorldSearch } from "@tabler/icons-react";
 import { TFunction, t as globalT } from "i18next";
 
+const isSafeUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+};
+
 export const Annotations = (message: Message, t: TFunction = globalT): React.ReactNode => {
   if (!message || !message.metadata) return null;
 
@@ -25,16 +34,20 @@ export const Annotations = (message: Message, t: TFunction = globalT): React.Rea
         {annotations.map((entry, idx) => {
           const { title, source, type } = entry;
 
-          if (type == "url") {
+          if (type === "url") {
             return (
               <Group key={idx} align="center">
                 <IconWorldSearch size={12} />{" "}
                 {source ? (
-                  <Anchor href={source} target="_blank" rel="noopener noreferrer" size="xs">
-                    {entry.title || source}
-                  </Anchor>
+                  isSafeUrl(source) ? (
+                    <Anchor href={source} target="_blank" rel="noopener noreferrer" size="xs">
+                      {entry.title || source}
+                    </Anchor>
+                  ) : (
+                    <Text size="xs">{source}</Text>
+                  )
                 ) : (
-                  <Text size="xs">{title || `#${idx + 1}`}</Text>
+                  <Text size="xs">{title || source || `#${idx + 1}`}</Text>
                 )}
               </Group>
             );

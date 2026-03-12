@@ -1266,7 +1266,7 @@ export class OpenAIProtocol implements ModelProtocol {
                   ...msg,
                   output: msg.output.substring((msg.output.length * 0.5) | 0),
                 }));
-              break;
+              continue;
             }
 
             throw error;
