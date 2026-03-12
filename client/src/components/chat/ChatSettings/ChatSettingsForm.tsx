@@ -15,6 +15,7 @@ import {
   Flex,
   Grid,
   Switch,
+  SegmentedControl,
 } from "@mantine/core";
 import {
   IconInfoCircle,
@@ -26,7 +27,16 @@ import {
   IconSquare,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
-import { ChatSettings, ImageQuality, ImageOrientation, Model, ModelFeature, ChatTool, ToolType } from "@/types/graphql";
+import {
+  ChatSettings,
+  ImageQuality,
+  ImageOrientation,
+  CacheRetention,
+  Model,
+  ModelFeature,
+  ChatTool,
+  ToolType,
+} from "@/types/graphql";
 
 import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
@@ -60,6 +70,7 @@ export function ChatSettingsForm({
   disableTopP = false,
   thinking = false,
   thinkingBudget = DEFAULT_CHAT_SETTINGS.thinkingBudget,
+  cacheRetention,
   model,
   chatTools = [],
   onSettingsChange,
@@ -77,6 +88,10 @@ export function ChatSettingsForm({
   const [disableTopPValue, setDisableTopPValue] = useState<boolean>(disableTopP);
   const [thinkingValue, setThinkingValue] = useState<boolean>(thinking);
   const [thinkingBudgetValue, setThinkingBudgetValue] = useState<number>(thinkingBudget);
+  const [cacheRetentionValue, setCacheRetentionValue] = useState<CacheRetention | undefined>(cacheRetention);
+
+  const reasoningMinTokenBudget = appConfig?.reasoningMinTokenBudget || 1024;
+  const reasoningMaxTokenBudget = appConfig?.reasoningMaxTokenBudget || 16_000;
 
   // Update local state when props change (e.g. when chat is switched)
   useEffect(() => {
@@ -90,6 +105,7 @@ export function ChatSettingsForm({
     setDisableTopPValue(disableTopP);
     setThinkingValue(thinking);
     setThinkingBudgetValue(thinkingBudget || DEFAULT_CHAT_SETTINGS.thinkingBudget);
+    setCacheRetentionValue(cacheRetention);
   }, [
     temperature,
     maxTokens,
@@ -101,6 +117,7 @@ export function ChatSettingsForm({
     disableTopP,
     thinking,
     thinkingBudget,
+    cacheRetention,
   ]);
 
   const handleSettingsChange = useCallback(
@@ -116,6 +133,7 @@ export function ChatSettingsForm({
         disableTopP,
         thinking,
         thinkingBudget,
+        cacheRetention,
         ...settings,
       });
     },
@@ -130,6 +148,7 @@ export function ChatSettingsForm({
       disableTopP,
       thinking,
       thinkingBudget,
+      cacheRetention,
     ]
   );
 
@@ -205,12 +224,22 @@ export function ChatSettingsForm({
     [handleSettingsChange]
   );
 
+  const handleCacheRetentionChange = useCallback(
+    (value: string) => {
+      const retention = value as CacheRetention;
+      setCacheRetentionValue(retention);
+      handleSettingsChange({ cacheRetention: retention });
+    },
+    [handleSettingsChange]
+  );
+
   const isImageGeneration = useMemo(
     () =>
       model?.type === ModelType.IMAGE_GENERATION || chatTools?.some(tool => tool.type === ToolType.IMAGE_GENERATION),
     [model?.type, chatTools]
   );
   const isReasoning = useMemo(() => model?.features?.includes(ModelFeature.REASONING), [model?.features]);
+  const hasCacheRetention = useMemo(() => model?.features?.includes(ModelFeature.CACHE_RETENTION), [model?.features]);
 
   return (
     <Box className={classes.settingsPanel}>
@@ -474,21 +503,46 @@ export function ChatSettingsForm({
               </Box>
               <Box m="md" miw="140px">
                 <Group p="apart" mb="md">
-                  <Text size="sm">{t("chat.thinkingBudget")}</Text>
+                  <Text size="sm">
+                    {t("chat.thinkingBudget")} {`(${reasoningMinTokenBudget}-${reasoningMaxTokenBudget})`}
+                  </Text>
                 </Group>
-
                 <NumberInput
                   disabled={!thinkingValue}
                   value={thinkingBudgetValue}
                   onChange={handleThinkingBudgetChange}
-                  min={appConfig?.reasoningMinTokenBudget || 1024}
-                  max={appConfig?.reasoningMaxTokenBudget || 50_000}
+                  min={reasoningMinTokenBudget}
+                  max={reasoningMaxTokenBudget}
                   clampBehavior="blur"
                   step={200}
                   size="xs"
                 />
               </Box>
             </>
+          )}
+
+          {hasCacheRetention && (
+            <Box m="md" miw="140px">
+              <Group p="apart" mb="md">
+                <Text size="sm">{t("chat.cacheRetention")}</Text>
+                <Tooltip label={t("chat.cacheRetentionTooltip")} maw="50vw" multiline>
+                  <ActionIcon size="xs" variant="subtle">
+                    <IconInfoCircle size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+
+              <SegmentedControl
+                size="xs"
+                value={cacheRetentionValue || "none"}
+                onChange={handleCacheRetentionChange}
+                data={[
+                  { label: t("chat.cacheRetentionNone"), value: "none" },
+                  { label: t("chat.cacheRetentionShort"), value: "short" },
+                  { label: t("chat.cacheRetentionLong"), value: "long" },
+                ]}
+              />
+            </Box>
           )}
         </Grid>
       </Stack>

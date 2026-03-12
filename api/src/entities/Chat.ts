@@ -16,7 +16,7 @@ import { ChatFile } from "./ChatFile";
 import { ChatFolder } from "./ChatFolder";
 import { ChatTool } from "../types/ai.types";
 import { DB_TYPE } from "../config/env";
-import { ImageQuality, ImageOrientation } from "@/types/api";
+import { ImageQuality, ImageOrientation, CacheRetention } from "@/types/api";
 
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 
@@ -52,6 +52,9 @@ export class ChatSettings {
 
   @Field({ nullable: true })
   thinkingBudget?: number;
+
+  @Field({ nullable: true })
+  cacheRetention?: CacheRetention;
 
   @Field(() => [String], { nullable: true })
   selectedRagDocIds?: string[];

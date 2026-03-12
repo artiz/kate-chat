@@ -14,6 +14,9 @@ import {
   ConverseStreamCommandOutput,
   ValidationException,
   InferenceConfiguration,
+  CachePointType,
+  CacheTTL,
+  SystemContentBlock,
 } from "@aws-sdk/client-bedrock-runtime";
 import { DocumentType } from "@smithy/types";
 import { BedrockClient, ListFoundationModelsCommand, ModelModality } from "@aws-sdk/client-bedrock";
@@ -66,6 +69,7 @@ import {
   AWS_BEDROCK_MAX_THINKING_BUDGET,
   AWS_BEDROCK_MIN_THINKING_BUDGET,
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
+  AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION,
 } from "@/config/ai/bedrock";
 import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
@@ -687,6 +691,9 @@ export class BedrockApiProvider extends BaseApiProvider {
       if (AWS_BEDROCK_MODELS_SUPPORT_REASONING.some(supportedModel => modelId.includes(supportedModel))) {
         features.push(ModelFeature.REASONING);
       }
+      if (AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION.some(supportedModel => modelId.includes(supportedModel))) {
+        features.push(ModelFeature.CACHE_RETENTION);
+      }
 
       models[modelId] = {
         apiProvider: ApiProvider.AWS_BEDROCK,
@@ -948,7 +955,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     requestTools: BedrockToolCallable[] = [],
     conversationMessages: ConverseMessage[] = []
   ): Promise<ConverseCommandInput> {
-    const { systemPrompt, temperature, maxTokens, topP, disableTopP, thinking, thinkingBudget } =
+    const { systemPrompt, temperature, maxTokens, topP, disableTopP, thinking, thinkingBudget, cacheRetention } =
       request.settings || {};
     const modelId = this.getModelId(request.modelId);
 
@@ -989,7 +996,30 @@ export class BedrockApiProvider extends BaseApiProvider {
     };
 
     if (systemPrompt && !modelId.includes("amazon.titan")) {
-      command.system = [{ text: systemPrompt }];
+      const systemBlocks: SystemContentBlock[] = [{ text: systemPrompt }];
+      if (cacheRetention && cacheRetention !== "none") {
+        systemBlocks.push({
+          cachePoint: {
+            type: CachePointType.DEFAULT,
+            ...(cacheRetention === "long" ? { ttl: CacheTTL.ONE_HOUR } : {}),
+          },
+        });
+      }
+      command.system = systemBlocks;
+    }
+
+    // Add cache point to the last user message for prompt caching
+    if (cacheRetention && cacheRetention !== "none" && command.messages?.length) {
+      const allMessages = command.messages;
+      const lastMessage = allMessages[allMessages.length - 1];
+      if (lastMessage.role === "user" && lastMessage.content) {
+        lastMessage.content.push({
+          cachePoint: {
+            type: CachePointType.DEFAULT,
+            ...(cacheRetention === "long" ? { ttl: CacheTTL.ONE_HOUR } : {}),
+          },
+        });
+      }
     }
 
     // Add tool configuration if tools are provided

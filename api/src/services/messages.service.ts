@@ -895,6 +895,8 @@ export class MessagesService {
       ...input,
       requestId,
       modelType: model.type,
+      modelFeatures: model.features || [],
+      cacheId: chat.id,
       apiProvider: model.apiProvider,
       settings: chatSettings,
       tools: chat.tools,
@@ -1229,6 +1231,8 @@ export class MessagesService {
           modelType: model.type,
           apiProvider: model.apiProvider,
           modelId: model.modelId,
+          modelFeatures: model.features || [],
+          cacheId: chat.id,
           settings: input.settings || {},
         };
 

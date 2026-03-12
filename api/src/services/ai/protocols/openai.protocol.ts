@@ -15,7 +15,7 @@ import {
   MCPAuthToken,
   IMCPServer,
 } from "@/types/ai.types";
-import { MCPAuthType, MessageRole, ResponseStatus, ToolType } from "@/types/api";
+import { MCPAuthType, MessageRole, ModelFeature, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
 import { ConnectionParams } from "@/middleware/auth.middleware";
@@ -402,8 +402,17 @@ export class OpenAIProtocol implements ModelProtocol {
     inputRequest: CompleteChatRequest,
     messages: ModelMessage[] = []
   ): Promise<OpenAI.Responses.ResponseCreateParamsNonStreaming> {
-    const { modelId: requestModelId, mcpServers, mcpTokens, settings = {} } = inputRequest;
-    const { systemPrompt, temperature, maxTokens, thinking, thinkingBudget, imageOrientation, imageQuality } = settings;
+    const { modelId: requestModelId, modelFeatures = [], mcpServers, mcpTokens, settings = {} } = inputRequest;
+    const {
+      systemPrompt,
+      temperature,
+      maxTokens,
+      thinking,
+      thinkingBudget,
+      imageOrientation,
+      imageQuality,
+      cacheRetention,
+    } = settings;
     const modelId = this.modelIdOverride || requestModelId;
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
@@ -413,6 +422,14 @@ export class OpenAIProtocol implements ModelProtocol {
       instructions: systemPrompt,
       temperature,
     };
+
+    // Prompt caching: when cacheRetention is set (not "none"), enable prompt caching
+    if (cacheRetention && cacheRetention !== "none") {
+      params.prompt_cache_key = inputRequest.cacheId || inputRequest.requestId || undefined;
+      if (cacheRetention === "long" && this.openai.baseURL?.includes("api.openai.com")) {
+        params.prompt_cache_retention = "24h";
+      }
+    }
 
     if (thinking) {
       const maxTokenBudget = globalConfig.ai.reasoningMaxTokenBudget;
@@ -431,6 +448,16 @@ export class OpenAIProtocol implements ModelProtocol {
         effort,
         summary: "auto",
       };
+    } else if (modelFeatures.includes(ModelFeature.REASONING)) {
+      if (["gpt-5-mini", "gpt-5"].includes(modelId)) {
+        params.reasoning = {
+          effort: "minimal",
+        };
+      } else {
+        params.reasoning = {
+          effort: "none",
+        };
+      }
     }
 
     const tools: Array<OpenAI.Responses.Tool> = [];

@@ -4,23 +4,26 @@ import { CreateChatInput, UpdateChatInput, GetChatsInput } from "../types/graphq
 import { getRepository } from "../config/database";
 import { GraphQLContext } from ".";
 import { AddDocumentsToChatResponse, GqlChatsList, RemoveDocumentsFromChatResponse } from "../types/graphql/responses";
-import { Chat, ChatDocument } from "@/entities";
+import { Chat, ChatDocument, Model } from "@/entities";
 import { BaseResolver } from "./base.resolver";
 import { ChatsService } from "@/services/chats.service";
 import { globalConfig } from "@/global-config";
 import { ChatSettings } from "@/entities/Chat";
+import { ModelFeature } from "@/types/api";
 
 const aiConfig = globalConfig.ai;
 
 @Resolver(Chat)
 export class ChatResolver extends BaseResolver {
   private chatRepository: Repository<Chat>;
+  private modelRepository: Repository<Model>;
   private chatDocumentRepo: Repository<ChatDocument>;
   private chatService: ChatsService;
 
   constructor() {
     super();
     this.chatRepository = getRepository(Chat);
+    this.modelRepository = getRepository(Model);
     this.chatDocumentRepo = getRepository(ChatDocument);
     this.chatService = new ChatsService();
   }
@@ -72,10 +75,36 @@ export class ChatResolver extends BaseResolver {
       }
     }
 
+    const models = await this.modelRepository.find({
+      where: {
+        user: { id: user.id }, // Ensure the model belongs to the user
+      },
+    });
+
+    const modelId = input.modelId || user.settings?.defaultModelId || models?.[0]?.id;
+    if (!modelId) {
+      throw new Error("No model available. Please add a model before creating a chat.");
+    }
+    const model = models.find(m => m.modelId === modelId);
+    if (!model) {
+      throw new Error(`Model not found or not accessible: ${modelId}`);
+    }
+
+    const settings: ChatSettings = {
+      systemPrompt: user.settings?.defaultSystemPrompt || aiConfig.defaultSystemPrompt,
+      cacheRetention: model?.features?.includes(ModelFeature.CACHE_RETENTION) ? "short" : undefined,
+      disableTopP: true,
+      maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,
+      temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
+      topP: user.settings?.defaultTopP ?? aiConfig.defaultTopP,
+      imagesCount: user.settings?.defaultImagesCount ?? 1,
+    };
+
     const chat = this.chatRepository.create({
       ...input,
-      modelId: input.modelId || user.settings?.defaultModelId,
+      modelId,
       title: input.title || "",
+      settings,
       user,
       isPristine: true,
     });

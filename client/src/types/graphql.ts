@@ -32,6 +32,7 @@ export enum ToolType {
 export enum ModelFeature {
   REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
   REASONING = "REASONING",
+  CACHE_RETENTION = "CACHE_RETENTION",
 }
 
 export enum EntityAccessType {
@@ -357,6 +358,7 @@ export interface ChatTool {
 
 export type ImageQuality = "low" | "medium" | "high";
 export type ImageOrientation = "landscape" | "portrait" | "square";
+export type CacheRetention = "none" | "short" | "long";
 
 export interface ChatSettings {
   temperature?: number;
@@ -369,6 +371,7 @@ export interface ChatSettings {
   disableTopP?: boolean;
   thinking?: boolean;
   thinkingBudget?: number;
+  cacheRetention?: CacheRetention;
   selectedRagDocIds?: string[];
 }
 

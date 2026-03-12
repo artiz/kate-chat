@@ -6,7 +6,7 @@ import { ApiProvider, CredentialSourceType } from "./types/api";
 import { DB_TYPE } from "./config/env";
 import { notEmpty } from "./utils/assert";
 
-const DEFAULT_PROVIDERS: ApiProvider[] = [
+const ALL_API_PROVIDERS: ApiProvider[] = [
   ApiProvider.AWS_BEDROCK,
   ApiProvider.OPEN_AI,
   ApiProvider.YANDEX_FM,
@@ -314,10 +314,12 @@ export class GlobalConfig {
       ai: {
         enabledProviders:
           process.env.ENABLED_API_PROVIDERS === "*"
-            ? DEFAULT_PROVIDERS
-            : ((process.env.ENABLED_API_PROVIDERS || DEFAULT_PROVIDERS.join(","))
-                .split(",")
-                .map(p => p.trim().toUpperCase()) as ApiProvider[]),
+            ? ALL_API_PROVIDERS
+            : (
+                (process.env.ENABLED_API_PROVIDERS || ALL_API_PROVIDERS.join(","))
+                  .split(",")
+                  .map(p => p.trim().toUpperCase()) as ApiProvider[]
+              ).filter(p => ALL_API_PROVIDERS.includes(p)),
         defaultSystemPrompt: DEFAULT_CHAT_PROMPT,
         defaultTemperature: 0.7,
         defaultMaxTokens: 2048,
@@ -330,7 +332,7 @@ export class GlobalConfig {
         ragQueryChunksLimit: +(process.env.RAG_QUERY_CHUNKS_LIMIT || 10) | 0,
         ragLoadFullPages: this.parseBoolean(process.env.RAG_LOAD_FULL_PAGES, false),
         reasoningMinTokenBudget: Math.max(+(process.env.AI_REASONING_MIN_TOKEN_BUDGET || 1024) | 0, 1024),
-        reasoningMaxTokenBudget: +(process.env.AI_REASONING_MAX_TOKEN_BUDGET || 50_000) | 0,
+        reasoningMaxTokenBudget: +(process.env.AI_REASONING_MAX_TOKEN_BUDGET || 16_000) | 0,
         enabledMcp: (process.env.ENABLED_MCP_SERVICES || ENABLED_MCP_SERVICES).split(",").map(s => s.trim()) || [],
       },
       oauth: {

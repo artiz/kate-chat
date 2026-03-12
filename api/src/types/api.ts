@@ -77,6 +77,7 @@ export enum ModelFeature {
   REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
   // same as tninking for Anthropic's models, but can be used for other providers as well
   REASONING = "REASONING",
+  CACHE_RETENTION = "CACHE_RETENTION",
 }
 
 export enum MCPTransportType {
@@ -100,5 +101,7 @@ export enum EntityAccessType {
 export type ImageQuality = "low" | "medium" | "high";
 
 export type ImageOrientation = "landscape" | "portrait" | "square";
+
+export type CacheRetention = "none" | "short" | "long";
 
 export type ThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";

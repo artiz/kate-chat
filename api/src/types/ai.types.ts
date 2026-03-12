@@ -347,6 +347,8 @@ export interface CompleteChatRequest {
   apiProvider: ApiProvider;
   modelId: string;
   modelType: ModelType;
+  modelFeatures?: ModelFeature[];
+  cacheId?: string;
   settings?: ChatSettings;
   tools?: ChatTool[];
   mcpServers?: IMCPServer[];

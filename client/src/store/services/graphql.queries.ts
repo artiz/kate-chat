@@ -45,6 +45,7 @@ export const BASE_CHAT_FRAGMENT = `
           imagesCount
           thinking
           thinkingBudget
+          cacheRetention
           selectedRagDocIds
         }
         user {

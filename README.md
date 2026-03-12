@@ -52,7 +52,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ### Features/bugfixes
 
 * (hgh) Introduce upload files type selector (RAG/chat context), upload chat context files like images to S3 and use them inline and show them in new Library page, Chat Data. Use "input_file" block in OpenAI input and introduce new interface ModelMessageContentFile.
-* (hgh) Use cacheRetention like in PI agent for Bedrock and OpenAI proto
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
 * (hgh) Add voice-to-voice interaction for OpenAI realtime models, put basic controls to katechat/ui and extend OpenAI protocol in main API.
 * (mid) Telegram System MCP (https://github.com/dryeab/mcp-telegram, https://www.mcpserverfinder.com/servers/qpd-v/mcp-communicator-telegram)

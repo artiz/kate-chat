@@ -1,5 +1,8 @@
 {
   "permissions": {
-    "allow": ["Bash(npm run test -- ai.service.test.ts)"]
+    "allow": [
+      "Bash(npm run test)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
   }
 }

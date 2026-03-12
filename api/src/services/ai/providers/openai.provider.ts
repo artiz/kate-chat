@@ -339,7 +339,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
           }
         }
 
-        const features: ModelFeature[] = apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION] : [];
+        const features: ModelFeature[] =
+          apiType === "responses" ? [ModelFeature.REQUEST_CANCELLATION, ModelFeature.CACHE_RETENTION] : [];
 
         if (OPENAI_MODELS_SUPPORT_REASONING.some(prefix => model.id.startsWith(prefix))) {
           features.push(ModelFeature.REASONING);
