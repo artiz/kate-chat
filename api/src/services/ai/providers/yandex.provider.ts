@@ -428,7 +428,9 @@ export class YandexApiProvider extends BaseApiProvider {
 
     const apiType = this.protocol.type;
     if (apiType !== "responses") {
-      throw new Error(`Request cancellation is only supported for OpenAI models using Responses API`);
+      throw new Error(
+        `Request cancellation is only supported for models using the Responses API (current apiType: ${apiType})`
+      );
     }
 
     await this.protocol.stopRequest(requestId);

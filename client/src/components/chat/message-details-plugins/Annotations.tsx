@@ -1,12 +1,9 @@
 import React, { Fragment } from "react";
-import { Text, Box, Group, Anchor } from "@mantine/core";
+import { Text, Group, Anchor } from "@mantine/core";
 import { Message } from "@/types/graphql";
 import { IconAddressBook, IconFile, IconWorldSearch } from "@tabler/icons-react";
 import { TFunction, t as globalT } from "i18next";
 
-const WEB_SEARCH_TOOL_NAME = "internal_web_search";
-
-/** Web Search Details - Display web search tool results */
 export const Annotations = (message: Message, t: TFunction = globalT): React.ReactNode => {
   if (!message || !message.metadata) return null;
 
@@ -41,7 +38,7 @@ export const Annotations = (message: Message, t: TFunction = globalT): React.Rea
                 )}
               </Group>
             );
-          } else if (type == "file" && source) {
+          } else if (["file", "file_path", "container_file"].includes(type) && source) {
             return (
               <Group key={idx} align="center">
                 <IconFile size={12} /> {title && <Text size="xs">{title || `#${idx + 1}`}&nbsp;</Text>}

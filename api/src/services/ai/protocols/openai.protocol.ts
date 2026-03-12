@@ -32,7 +32,6 @@ import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
 import { sanitizeSurrogates } from "@/utils/format";
-import { Items } from "openai/resources/conversations/items";
 
 const logger = createLogger(__filename);
 
@@ -761,6 +760,7 @@ export class OpenAIProtocol implements ModelProtocol {
 
             sessionMessages = sessionMessages.slice(-Math.floor(sessionMessages.length / 2));
             meta.contextMessages = sessionMessages.map(m => m.id).filter(notEmpty);
+            continue;
           }
         }
 
