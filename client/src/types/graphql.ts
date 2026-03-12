@@ -316,6 +316,15 @@ export interface RagResponse {
   chunks_relevance?: number[];
 }
 
+export interface ChatResultAnnotation {
+  type: "url" | "file" | "file_path" | "container_file";
+  title?: string;
+  source?: string;
+  container?: string;
+  startIndex?: number;
+  endIndex?: number;
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -325,6 +334,7 @@ export interface MessageMetadata {
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
   ragResponse?: RagResponse;
+  annotations?: ChatResultAnnotation[];
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
   requestId?: string;

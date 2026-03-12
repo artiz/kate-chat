@@ -27,6 +27,7 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 }) => {
   const [wsConnected, setWsConnected] = useState(false);
   const [messageMetadata, setMessageMetadata] = useState<MessageMetadata | undefined>(undefined);
+  const [reconnectKey, setReconnectKey] = useState(0);
 
   const lastTs = useRef(0);
   const addMessageTs = useRef<NodeJS.Timeout>(null);
@@ -65,16 +66,16 @@ export const useChatSubscription: (props: UseChatSubscriptionProps) => Subscript
 
   // Subscribe to new messages in this chat
   useSubscription(NEW_MESSAGE_SUBSCRIPTION, {
-    variables: { chatId: id },
+    variables: { chatId: id, _rk: reconnectKey },
     skip: !id,
     shouldResubscribe: true, // Resubscribe if variables change
     fetchPolicy: "no-cache", // Don't cache subscription data
     onComplete: () => {
       resetSending();
       setWsConnected(false);
-      // dev mode reload
+
       if (String(window.location.pathname || "").match(new RegExp(`chat\\/${id}`))) {
-        window.location.reload();
+        setReconnectKey(k => k + 1); // force resubscribe
       }
     },
     onData: (

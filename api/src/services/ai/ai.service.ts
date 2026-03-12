@@ -141,7 +141,7 @@ export class AIService {
           allowedTypes.push(ModelType.VIDEO_GENERATION);
         }
         if (user.isFeatureEnabled(APPLICATION_FEATURE.REALTIME)) {
-          allowedTypes.push(ModelType.VIDEO_GENERATION);
+          allowedTypes.push(ModelType.REALTIME);
         }
         if (user.isFeatureEnabled(APPLICATION_FEATURE.TRANSCRIPTION)) {
           allowedTypes.push(ModelType.TRANSCRIPTION);
@@ -205,8 +205,8 @@ export class AIService {
       return new BedrockApiProvider(connection, fileLoader);
     } else if (apiProvider === ApiProvider.OPEN_AI) {
       return new OpenAIApiProvider(connection, fileLoader, model?.modelId);
-    } else if (apiProvider === ApiProvider.YANDEX_FM) {
-      return new YandexApiProvider(connection, fileLoader);
+    } else if (apiProvider === ApiProvider.YANDEX_AI) {
+      return new YandexApiProvider(connection, fileLoader, model?.modelId);
     } else if (apiProvider === ApiProvider.CUSTOM_REST_API) {
       if (model?.customSettings?.protocol === CustomModelProtocol.AWS_BEDROCK_CUSTOM) {
         return new BedrockApiProvider(connection, fileLoader, model.customSettings?.modelName);

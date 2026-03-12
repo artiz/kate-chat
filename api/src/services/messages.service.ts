@@ -1298,7 +1298,7 @@ export class MessagesService {
       logger.trace("RAG response raw: " + content);
 
       let parsed = content ? (JSON.parse(content) as any) : {};
-      // Some models (e.g. Yandex FM) return the schema structure with embedded `value` fields
+      // Some models (e.g. Yandex) return the schema structure with embedded `value` fields
       // instead of a flat object — detect and flatten that format
       if (parsed?.schema?.properties) {
         const props = parsed.schema.properties as Record<string, { value?: unknown }>;

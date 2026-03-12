@@ -47,6 +47,7 @@ import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/li
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 import { WebSearchCall } from "./message-details-plugins/WebSearch";
+import { Annotations } from "./message-details-plugins/Annotations";
 import { MCPCall } from "./message-details-plugins/MCP";
 import { Reasoning } from "./message-details-plugins/Reasoning";
 
@@ -173,7 +174,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const ragPlugin = useMemo(() => RAG(chatDocuments), [chatDocuments]);
   const detailsPlugins = useMemo(
-    () => [ragPlugin, CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning],
+    () => [ragPlugin, CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning, Annotations],
     [ragPlugin]
   );
 

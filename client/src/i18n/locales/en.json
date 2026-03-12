@@ -576,6 +576,7 @@
   },
   "messageDetails": {
     "arguments": "Arguments:",
+    "annotations": "Annotations",
     "codeInterpreter": "Code Interpreter",
     "mcpResults": "MCP Results",
     "mcpToolCalls": "MCP Tool Calls",

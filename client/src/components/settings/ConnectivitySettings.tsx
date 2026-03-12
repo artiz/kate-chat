@@ -118,7 +118,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
 
       setOpenAiServerSave(Boolean(settings.openaiApiKey || settings.openaiApiAdminKey));
     }
-    if (enabledApiProviders.has("YANDEX_FM")) {
+    if (enabledApiProviders.has("YANDEX_AI")) {
       setYandexApiKey(getStorageValue(STORAGE_YANDEX_FM_API_KEY, user.id) || settings.yandexFmApiKey || "");
       setYandexApiFolderId(
         getStorageValue(STORAGE_YANDEX_FM_API_FOLDER, user.id) || settings.yandexFmApiFolderId || ""
@@ -141,7 +141,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
         return event => setAwsBedrockServerSave(event.currentTarget.checked);
       case "OPEN_AI":
         return event => setOpenAiServerSave(event.currentTarget.checked);
-      case "YANDEX_FM":
+      case "YANDEX_AI":
         return event => setYandexFmServerSave(event.currentTarget.checked);
       default:
         return undefined;
@@ -376,7 +376,7 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
             </Paper>
           )}
 
-          {enabledApiProviders.has("YANDEX_FM") && (
+          {enabledApiProviders.has("YANDEX_AI") && (
             <Paper withBorder p="md">
               <Group justify="space-between" align="center">
                 <Title order={3}>{t("connectivity.yandex")}</Title>
@@ -390,14 +390,14 @@ export const ConnectivitySettings: React.FC<AISettingsProps> = ({ user, updateUs
                 </ActionIcon>
               </Group>
               <Group my="md">
-                {apiProvidersCredSource["YANDEX_FM"] && (
+                {apiProvidersCredSource["YANDEX_AI"] && (
                   <Badge color="blue">
-                    {t("connectivity.source", { source: apiProvidersCredSource["YANDEX_FM"] })}
+                    {t("connectivity.source", { source: apiProvidersCredSource["YANDEX_AI"] })}
                   </Badge>
                 )}
                 <Switch
                   checked={yandexFmServerSave}
-                  onChange={toggleServerSave("YANDEX_FM")}
+                  onChange={toggleServerSave("YANDEX_AI")}
                   label={t("connectivity.storeOnServer")}
                 />
               </Group>

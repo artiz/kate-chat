@@ -20,8 +20,8 @@ pub enum ApiProvider {
     AwsBedrock,
     #[serde(rename = "OPEN_AI")]
     OpenAi,
-    #[serde(rename = "YANDEX_FM")]
-    YandexFm,
+    #[serde(rename = "YANDEX_AI")]
+    YandexAi,
 }
 
 impl ApiProvider {
@@ -29,7 +29,7 @@ impl ApiProvider {
         match self {
             ApiProvider::AwsBedrock => "AWS_BEDROCK",
             ApiProvider::OpenAi => "OPEN_AI",
-            ApiProvider::YandexFm => "YANDEX_FM",
+            ApiProvider::YandexAi => "YANDEX_AI",
         }
     }
 }
@@ -39,7 +39,7 @@ impl From<String> for ApiProvider {
         match msg_type.as_str() {
             "AWS_BEDROCK" => ApiProvider::AwsBedrock,
             "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_FM" => ApiProvider::YandexFm,
+            "YANDEX_AI" => ApiProvider::YandexAi,
             &_ => todo!(),
         }
     }
@@ -253,7 +253,7 @@ impl AIService {
         let provider_str = match api_provider {
             ApiProvider::AwsBedrock => "AWS_BEDROCK",
             ApiProvider::OpenAi => "OPEN_AI",
-            ApiProvider::YandexFm => "YANDEX_FM",
+            ApiProvider::YandexAi => "YANDEX_AI",
         };
 
         if !self.config.is_provider_enabled(provider_str) {
@@ -270,7 +270,7 @@ impl AIService {
             ApiProvider::OpenAi => Ok(AIProviderWrapper::OpenAi(OpenAIService::new(
                 self.config.clone(),
             ))),
-            ApiProvider::YandexFm => Ok(AIProviderWrapper::Yandex(YandexService::new(
+            ApiProvider::YandexAi => Ok(AIProviderWrapper::Yandex(YandexService::new(
                 self.config.clone(),
             ))),
         }
@@ -409,8 +409,8 @@ impl AIService {
         if self.config.is_provider_enabled("OPEN_AI") {
             providers.push(ApiProvider::OpenAi);
         }
-        if self.config.is_provider_enabled("YANDEX_FM") {
-            providers.push(ApiProvider::YandexFm);
+        if self.config.is_provider_enabled("YANDEX_AI") {
+            providers.push(ApiProvider::YandexAi);
         }
 
         providers
@@ -420,7 +420,7 @@ impl AIService {
         match provider {
             ApiProvider::AwsBedrock => "AWS Bedrock".to_string(),
             ApiProvider::OpenAi => "OpenAI".to_string(),
-            ApiProvider::YandexFm => "Yandex Foundation Models".to_string(),
+            ApiProvider::YandexAi => "Yandex Foundation Models".to_string(),
         }
     }
 
@@ -433,7 +433,7 @@ impl AIService {
         let provider: ApiProvider = match api_provider.as_str() {
             "AWS_BEDROCK" => ApiProvider::AwsBedrock,
             "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_FM" => ApiProvider::YandexFm,
+            "YANDEX_AI" => ApiProvider::YandexAi,
             _ => {
                 return Err(AppError::BadRequest(format!(
                     "Unsupported API provider: {}",

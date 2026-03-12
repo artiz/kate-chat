@@ -1,6 +1,7 @@
 // Yandex AI API Configuration
 
-import { ModelType } from "@/types/api";
+import { OpenAIApiType } from "@/services/ai/protocols/openai.protocol";
+import { ModelFeature, ModelType } from "@/types/api";
 
 export interface YandexModel {
   uri: string;
@@ -10,6 +11,8 @@ export interface YandexModel {
   maxInputTokens: number;
   imageInput?: boolean;
   type?: ModelType;
+  apiType?: OpenAIApiType;
+  features?: ModelFeature[];
 }
 
 // Available models
@@ -21,12 +24,14 @@ export const YANDEX_MODELS: YandexModel[] = [
     provider: "Yandex",
     uri: `gpt://{folder}/yandexgpt/latest`,
     maxInputTokens: 32_000,
+    apiType: "responses",
   },
   {
     name: "YandexGPT Lite",
     provider: "Yandex",
     uri: `gpt://{folder}/yandexgpt-lite/latest`,
     maxInputTokens: 32_000,
+    apiType: "responses",
   },
   {
     name: "YandexGPT 5.1 Pro",
@@ -34,6 +39,7 @@ export const YANDEX_MODELS: YandexModel[] = [
     provider: "Yandex",
     uri: `gpt://{folder}/yandexgpt/rc`,
     maxInputTokens: 32_000,
+    apiType: "responses",
   },
   {
     name: "Alice AI LLM",
@@ -41,6 +47,7 @@ export const YANDEX_MODELS: YandexModel[] = [
     uri: `gpt://{folder}/aliceai-llm/latest`,
     maxInputTokens: 128_000,
     imageInput: true,
+    apiType: "responses",
   },
   {
     name: "Yandex Text embeddings 1",
@@ -64,23 +71,41 @@ export const YANDEX_MODELS: YandexModel[] = [
     provider: "Alibaba Cloud",
     uri: `gpt://{folder}/qwen3-235b-a22b-fp8/latest`,
     maxInputTokens: 256_000,
+    apiType: "responses",
   },
   {
-    name: "Gemma3 27B",
+    name: "Gemma 3 27B IT",
     provider: "Google",
     uri: `gpt://{folder}/gemma-3-27b-it/latest`,
     maxInputTokens: 128_000,
   },
   {
-    name: "gpt-oss-120b",
+    name: "GPT OSS 120B",
     provider: "OpenAI",
     uri: `gpt://{folder}/gpt-oss-120b/latest`,
     maxInputTokens: 128_000,
   },
   {
-    name: "gpt-oss-20b",
+    name: "GPT OSS 20B",
     provider: "OpenAI",
     uri: `gpt://{folder}/gpt-oss-20b/latest`,
     maxInputTokens: 128_000,
+  },
+  {
+    name: "DeepSeek 3.2",
+    provider: "DeepSeek",
+    uri: `gpt://{folder}/deepseek-v32/latest`,
+    maxInputTokens: 131_072,
+    imageInput: true,
+    apiType: "responses",
+    features: [ModelFeature.REASONING],
+  },
+  {
+    name: "Yandex Speech Realtime v250923",
+    provider: "Yandex",
+    uri: `gpt://{folder}/speech-realtime-250923/latest`,
+    maxInputTokens: 32_768,
+    type: ModelType.REALTIME,
+    apiType: "responses",
   },
 ];

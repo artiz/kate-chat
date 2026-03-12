@@ -109,7 +109,7 @@ export const MainLayout: React.FC = () => {
                 <UnstyledButton>
                   <Group gap={8}>
                     <Indicator
-                      color="red"
+                      color="indigo"
                       size="md"
                       label={t("profile.admin")}
                       disabled={currentUser.role !== UserRole.ADMIN}

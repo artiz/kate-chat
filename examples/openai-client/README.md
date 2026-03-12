@@ -44,7 +44,7 @@ The build output will be in the `dist/` folder.
 
 1. Click the **Settings** button in the top right corner
 2. Enter your API key
-3. Select an API endpoint (OpenAI, Yandex FM, DeepSeek, or custom)
+3. Select an API endpoint (OpenAI, Yandex AI, DeepSeek, or custom)
 4. Choose API mode:
    - **Chat Completions**: Uses `/chat/completions` endpoint (recommended)
    - **Text Completions**: Uses `/completions` endpoint

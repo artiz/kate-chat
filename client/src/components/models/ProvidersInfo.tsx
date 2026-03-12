@@ -120,7 +120,7 @@ export const ProvidersInfo = React.memo<ProvidersInfoProps>(({ providers, onOpen
                   </Alert>
                 )}
 
-                {provider.id === "YANDEX_FM" && !provider.isConnected && (
+                {provider.id === "YANDEX_AI" && !provider.isConnected && (
                   <Alert color="yellow" title={t("models.yandexConfig")}>
                     {process.env.NODE_ENV === "development" && (
                       <>

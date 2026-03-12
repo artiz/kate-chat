@@ -768,6 +768,7 @@
     }
   },
   "messageDetails": {
+    "annotations": "Аннотации",
     "codeInterpreter": "Интерпретатор кода",
     "mcpToolCalls": "Вызовы MCP-инструментов",
     "arguments": "Аргументы:",

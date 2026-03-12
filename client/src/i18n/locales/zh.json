@@ -575,6 +575,7 @@
     "authTypeDescription": "设置认证模式"
   },
   "messageDetails": {
+    "annotations": "注释",
     "arguments": "参数：",
     "codeInterpreter": "代码解释器",
     "mcpResults": "MCP 结果",

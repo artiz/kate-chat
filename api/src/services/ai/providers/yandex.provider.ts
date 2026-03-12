@@ -10,11 +10,11 @@ import {
   ModelMessage,
   ChatResponseStatus,
 } from "@/types/ai.types";
-import { YANDEX_MODELS } from "@/config/ai/yandex";
+import { YANDEX_MODELS, YandexModel } from "@/config/ai/yandex";
 import { fetch } from "undici";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { OpenAIProtocol } from "../protocols/openai.protocol";
+import { OpenAiParamsProcessor, OpenAIProtocol } from "../protocols/openai.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { globalConfig } from "@/global-config";
 import { FileContentLoader } from "@/services/data/s3.service";
@@ -22,6 +22,7 @@ import { notEmpty } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { ApiProvider, CredentialSourceType, MessageRole, ModelType, ResponseStatus, ToolType } from "@/types/api";
 import { ModelProtocolErrorProcessor } from "../protocols/common";
+import OpenAI from "openai";
 
 class YandexProtocolErrorProcessor implements ModelProtocolErrorProcessor {
   isInputTooLargeError(error: unknown): boolean {
@@ -32,24 +33,61 @@ class YandexProtocolErrorProcessor implements ModelProtocolErrorProcessor {
   }
 }
 
+class YandexAiParamsProcessor implements OpenAiParamsProcessor {
+  completionRequest(
+    inputRequest: CompleteChatRequest,
+    params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming
+  ): OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming {
+    return params; // No special processing needed for chat completions
+  }
+
+  responsesRequest(
+    inputRequest: CompleteChatRequest,
+    params: OpenAI.Responses.ResponseCreateParamsNonStreaming
+  ): OpenAI.Responses.ResponseCreateParamsNonStreaming {
+    const { modelId, settings = {} } = inputRequest;
+    const { thinking } = settings;
+    if (modelId.includes("deepseek")) {
+      if (!thinking) {
+        params.reasoning = {
+          effort: "none",
+        } as unknown as OpenAI.Responses.ResponseCreateParamsNonStreaming["reasoning"];
+      }
+    }
+
+    return params;
+  }
+}
+
+const YANDEX_MODELS_MAP = YANDEX_MODELS.reduce(
+  (map, model) => {
+    map[model.uri] = model;
+    return map;
+  },
+  {} as Record<string, YandexModel>
+);
+
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
   private folderId: string;
   private protocol: OpenAIProtocol;
 
-  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader) {
+  constructor(connection: ConnectionParams, fileLoader?: FileContentLoader, modelId?: string) {
     super(connection, fileLoader);
     this.apiKey = connection.yandexFmApiKey || "";
     this.folderId = connection.yandexFmApiFolder || "";
 
     if (this.apiKey) {
+      const model = modelId ? YANDEX_MODELS_MAP[modelId] : undefined;
+
       this.protocol = new OpenAIProtocol({
-        apiType: "completions",
-        baseURL: globalConfig.yandex.fmOpenApiUrl,
+        apiType: model?.apiType || "completions",
+        baseURL: globalConfig.yandex.openApiUrl,
         apiKey: this.apiKey,
         connection,
         fileLoader,
         errorProcessor: new YandexProtocolErrorProcessor(),
+        paramsProcessor: new YandexAiParamsProcessor(),
       });
     }
   }
@@ -283,8 +321,8 @@ export class YandexApiProvider extends BaseApiProvider {
     }
 
     return {
-      id: ApiProvider.YANDEX_FM,
-      name: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_FM),
+      id: ApiProvider.YANDEX_AI,
+      name: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_AI),
       isConnected,
       costsInfoAvailable: false, // Yandex doesn't support cost retrieval via API
       details,
@@ -312,14 +350,15 @@ export class YandexApiProvider extends BaseApiProvider {
         }
 
         map[model.uri] = {
-          apiProvider: ApiProvider.YANDEX_FM,
-          provider: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_FM),
+          apiProvider: ApiProvider.YANDEX_AI,
+          provider: BaseApiProvider.getApiProviderName(ApiProvider.YANDEX_AI),
           name: model.name,
           description: model.description || "",
           streaming: true,
           maxInputTokens: model.maxInputTokens,
           tools: [searchAvailable ? ToolType.WEB_SEARCH : null, ToolType.MCP].filter(notEmpty),
           imageInput: model.imageInput || false,
+          features: model.features,
           type,
         };
 
@@ -383,7 +422,17 @@ export class YandexApiProvider extends BaseApiProvider {
   }
 
   async stopRequest(requestId: string, modelId: string): Promise<void> {
-    // Yandex FM does not support request cancellation
-    throw new Error("Request cancellation is not supported by Yandex FM");
+    if (!this.protocol) {
+      throw new Error("OpenAI protocol is not initialized");
+    }
+
+    const apiType = this.protocol.type;
+    if (apiType !== "responses") {
+      throw new Error(
+        `Request cancellation is only supported for models using the Responses API (current apiType: ${apiType})`
+      );
+    }
+
+    await this.protocol.stopRequest(requestId);
   }
 }

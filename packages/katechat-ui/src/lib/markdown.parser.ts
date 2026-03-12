@@ -91,6 +91,8 @@ export function normalizeMatJax(input: string): string {
   return input
     ? input
         .replace(/\\\(([\s\S]+?)\\\)/g, (_, expr) => `$${expr}$`)
+        // Inline math: ($ ... $) → $ ... $
+        .replace(/\(\$\s*([\s\S]+?)\s*\$\)/g, (_, expr) => `$${expr}$`)
         // Block math: \[ ... \] → $$ ... $$ (on newlines for KaTeX block mode)
         .replace(/\\\[([\s\S]+?)\\\]/g, (_, expr) => `\n$$${expr}$$\n`)
         .replace(/\$\$\n([\s\S]+?)\n\$\$\n/g, (_, expr) => `\n$$${expr}$$`)

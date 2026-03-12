@@ -232,7 +232,7 @@ impl AIProviderService for YandexService {
         }
 
         Ok(ProviderInfo {
-            id: "YANDEX_FM".to_string(),
+            id: "YANDEX_AI".to_string(),
             name: "Yandex Foundation Models".to_string(),
             is_connected,
             costs_info_available: false,
@@ -249,7 +249,7 @@ impl AIProviderService for YandexService {
             start: DateTime::from_timestamp(start_time, 0).unwrap_or_default(),
             end: end_time.and_then(|t| DateTime::from_timestamp(t, 0)),
             costs: vec![],
-            error: Some("Cost information not available for Yandex FM".to_string()),
+            error: Some("Cost information not available for Yandex AI".to_string()),
         })
     }
 }
