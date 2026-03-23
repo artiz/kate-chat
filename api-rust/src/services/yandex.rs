@@ -160,7 +160,7 @@ impl AIProviderService for YandexService {
     }
 
     async fn get_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError> {
-        // Yandex Foundation Models - hardcoded list since they don't have a models API
+        // Yandex AI - hardcoded list since they don't have a models API
         let mut models = HashMap::new();
 
         // YandexGPT models
@@ -233,7 +233,7 @@ impl AIProviderService for YandexService {
 
         Ok(ProviderInfo {
             id: "YANDEX_AI".to_string(),
-            name: "Yandex Foundation Models".to_string(),
+            name: "Yandex AI".to_string(),
             is_connected,
             costs_info_available: false,
             details,

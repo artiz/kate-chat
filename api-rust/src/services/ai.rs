@@ -420,7 +420,7 @@ impl AIService {
         match provider {
             ApiProvider::AwsBedrock => "AWS Bedrock".to_string(),
             ApiProvider::OpenAi => "OpenAI".to_string(),
-            ApiProvider::YandexAi => "Yandex Foundation Models".to_string(),
+            ApiProvider::YandexAi => "Yandex AI".to_string(),
         }
     }
 

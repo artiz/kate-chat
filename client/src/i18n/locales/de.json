@@ -398,7 +398,7 @@
     "validationError": "Validierungsfehler"
   },
   "home": {
-    "aboutText": "{{appTitle}} ist eine universelle Chatbot-Plattform, die mehrere große Sprachmodelle verschiedener Anbieter unterstützt, darunter AWS Bedrock, OpenAI und Yandex Foundation Models. Wechseln Sie nahtlos zwischen Modellen, generieren Sie Bilder, verarbeiten Sie Dokumente und mehr — alles in einer intuitiven Oberfläche.",
+    "aboutText": "{{appTitle}} ist eine universelle Chatbot-Plattform, die mehrere große Sprachmodelle verschiedener Anbieter unterstützt, darunter AWS Bedrock, OpenAI und Yandex AI Models. Wechseln Sie nahtlos zwischen Modellen, generieren Sie Bilder, verarbeiten Sie Dokumente und mehr — alles in einer intuitiven Oberfläche.",
     "aboutTitle": "Was ist {{appTitle}}?",
     "dataUsageText": "{{appTitle}} verwendet Benutzerdaten ausschließlich zur Bereitstellung und Verbesserung des Chat-Erlebnisses. Kontoinformationen (E-Mail, Name) werden für Authentifizierung und Personalisierung verwendet. Chat-Nachrichten werden an Ihre konfigurierten KI-Anbieter gesendet, um Antworten zu generieren. API-Schlüssel, die Sie bereitstellen, werden ausschließlich zur Verbindung mit KI-Diensten in Ihrem Namen verwendet. Wir verkaufen oder teilen Ihre persönlichen Daten nicht mit Dritten.",
     "dataUsageTitle": "Wie wir Ihre Daten verwenden",

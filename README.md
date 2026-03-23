@@ -15,7 +15,7 @@ Experience KateChat in action with our live demo:
 To interact with all supported AI models in the demo, you'll need to provide your own API keys for:
 - **AWS Bedrock** - Access to Claude, Llama, and other models
 - **OpenAI** - GPT-4, GPT-5, and other OpenAI models  
-- **Yandex Foundation Models** - YandexGPT and other Yandex models
+- **Yandex AI** - YandexGPT and other Yandex models
 
 > 📋 **Note**: API keys are stored by default locally in your browser and sent securely to our backend. See the [Getting Started](#getting-started) section below for detailed instructions on obtaining API keys.
 
@@ -40,7 +40,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Support for various LLM model Providers:
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
-  - [Yandex Foundation Models](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
+  - [Yandex AI](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
 - Custom OpenAI-compatible REST API endpoints support (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - Full-fledged production-like dev environment with docker-compose
@@ -122,7 +122,7 @@ The project consists of several parts:
 - Connection to an LLM, choose any from:
    * AWS Account with [Bedrock](#aws-bedrock-api-connection) access
    * [OpenAI API](#openai-api-connection) Account
-   * Yandex Foundation Models [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
+   * Yandex AI [API key](https://yandex.cloud/en/docs/iam/concepts/authorization/api-key).
    * Local [Ollama](#example-local-ollama-models) model
 - Docker and Docker Compose (optional, for development environment)
 
@@ -137,7 +137,7 @@ npm run dev
 ```
 
 App will be available at `http://localhost:3000`
-There you can use your own OpenAI API key, AWS Bedrock credentials, or Yandex Foundation Models to connect to cloud models.
+There you can use your own OpenAI API key, AWS Bedrock credentials, or Yandex AI to connect to cloud models.
 Local Ollama-compatible models can be added as Custom models.
 
 ### Production-like environment using Docker

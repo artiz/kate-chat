@@ -398,7 +398,7 @@
     "validationError": "验证错误"
   },
   "home": {
-    "aboutText": "{{appTitle}} 是一个通用聊天机器人平台，支持来自多个提供商的大型语言模型，包括 AWS Bedrock、OpenAI 和 Yandex Foundation Models。在对话中即时切换模型、生成图像、处理文档等——所有功能都在一个直观的界面中。",
+    "aboutText": "{{appTitle}} 是一个通用聊天机器人平台，支持来自多个提供商的大型语言模型，包括 AWS Bedrock、OpenAI 和 Yandex AI。在对话中即时切换模型、生成图像、处理文档等——所有功能都在一个直观的界面中。",
     "aboutTitle": "什么是 {{appTitle}}？",
     "dataUsageText": "{{appTitle}} 仅为提供和改善聊天体验而请求用户数据。账户信息（电子邮件、姓名）用于身份验证和个性化。聊天消息会发送到您配置的 AI 提供商以生成回复。您提供的 API 密钥仅用于代您连接 AI 服务。我们不会向第三方出售或分享您的个人数据。",
     "dataUsageTitle": "我们如何使用您的数据",
