@@ -14,7 +14,9 @@ import { YANDEX_MODELS, YandexModel } from "@/config/ai/yandex";
 import { fetch } from "undici";
 import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
-import { OpenAiParamsProcessor, OpenAIProtocol } from "../protocols/openai.protocol";
+import { type OpenAiParamsProcessor, type OpenAIProtocolBase } from "../protocols/openai.protocol";
+import { OpenAICompletionsProtocol } from "../protocols/openai.completions.protocol";
+import { OpenAIResponsesProtocol } from "../protocols/openai.responses.protocol";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 import { globalConfig } from "@/global-config";
 import { FileContentLoader } from "@/services/data/s3.service";
@@ -70,7 +72,7 @@ const YANDEX_MODELS_MAP = YANDEX_MODELS.reduce(
 export class YandexApiProvider extends BaseApiProvider {
   private apiKey: string;
   private folderId: string;
-  private protocol: OpenAIProtocol;
+  private protocol: OpenAIProtocolBase;
 
   constructor(connection: ConnectionParams, fileLoader?: FileContentLoader, modelId?: string) {
     super(connection, fileLoader);
@@ -79,16 +81,19 @@ export class YandexApiProvider extends BaseApiProvider {
 
     if (this.apiKey) {
       const model = modelId ? YANDEX_MODELS_MAP[modelId] : undefined;
-
-      this.protocol = new OpenAIProtocol({
-        apiType: model?.apiType || "completions",
+      const apiType = model?.apiType || "completions";
+      const protocolOptions = {
         baseURL: globalConfig.yandex.openApiUrl,
         apiKey: this.apiKey,
         connection,
         fileLoader,
         errorProcessor: new YandexProtocolErrorProcessor(),
         paramsProcessor: new YandexAiParamsProcessor(),
-      });
+      };
+      this.protocol =
+        apiType === "responses"
+          ? new OpenAIResponsesProtocol(protocolOptions)
+          : new OpenAICompletionsProtocol(protocolOptions);
     }
   }
 

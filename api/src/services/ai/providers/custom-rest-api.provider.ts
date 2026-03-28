@@ -13,7 +13,8 @@ import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 import { ApiProvider, CredentialSourceType, ModelType } from "@/types/api";
-import { OpenAIProtocol } from "../protocols/openai.protocol";
+import { OpenAICompletionsProtocol } from "../protocols/openai.completions.protocol";
+import { OpenAIResponsesProtocol } from "../protocols/openai.responses.protocol";
 import { FileContentLoader } from "@/services/data";
 import { Model } from "@/entities";
 import { CustomModelProtocol, CustomModelSettings } from "@/entities/Model";
@@ -111,8 +112,7 @@ export class CustomRestApiProvider extends BaseApiProvider {
 
     switch (this.modelProtocol) {
       case CustomModelProtocol.OPENAI_RESPONSES:
-        return new OpenAIProtocol({
-          apiType: "responses",
+        return new OpenAIResponsesProtocol({
           baseURL: endpoint,
           apiKey,
           modelIdOverride: modelName,
@@ -121,8 +121,7 @@ export class CustomRestApiProvider extends BaseApiProvider {
         });
 
       case CustomModelProtocol.OPENAI_CHAT_COMPLETIONS:
-        return new OpenAIProtocol({
-          apiType: "completions",
+        return new OpenAICompletionsProtocol({
           baseURL: endpoint,
           apiKey,
           modelIdOverride: modelName,

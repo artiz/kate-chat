@@ -28,7 +28,9 @@ import { BaseApiProvider } from "./base.provider";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 
 import { globalConfig } from "@/global-config";
-import { OpenAIApiType, OpenAIProtocol } from "../protocols/openai.protocol";
+import { type OpenAIApiType, type OpenAIProtocolBase } from "../protocols/openai.protocol";
+import { OpenAICompletionsProtocol } from "../protocols/openai.completions.protocol";
+import { OpenAIResponsesProtocol } from "../protocols/openai.responses.protocol";
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
   OPENAI_MODELS_AUDIO_GENERATION,
@@ -87,7 +89,7 @@ export type OpenAIList<T> = {
 };
 
 export class OpenAIApiProvider extends BaseApiProvider {
-  private protocol: OpenAIProtocol;
+  private protocol: OpenAIProtocolBase;
   private apiKey: string;
   private adminApiKey: string;
   private baseUrl: string;
@@ -101,13 +103,12 @@ export class OpenAIApiProvider extends BaseApiProvider {
     if (!this.apiKey) {
       logger.debug("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     } else {
-      this.protocol = new OpenAIProtocol({
-        apiType: modelId ? this.getChatApiType(modelId) : "completions",
-        baseURL: this.baseUrl,
-        apiKey: this.apiKey,
-        connection,
-        fileLoader,
-      });
+      const apiType: OpenAIApiType = modelId ? this.getChatApiType(modelId) : "completions";
+      const protocolOptions = { baseURL: this.baseUrl, apiKey: this.apiKey, connection, fileLoader };
+      this.protocol =
+        apiType === "responses"
+          ? new OpenAIResponsesProtocol(protocolOptions)
+          : new OpenAICompletionsProtocol(protocolOptions);
     }
   }
 
