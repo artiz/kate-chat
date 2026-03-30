@@ -43,7 +43,7 @@ const aiConfig = globalConfig.ai;
 
 const logger = createLogger(__filename);
 
-const MIN_STREAMING_UPDATE_MS = 30; // Minimum interval between streaming updates
+const MIN_STREAMING_UPDATE_MS = 50; // Minimum interval between streaming updates
 
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
@@ -995,11 +995,11 @@ export class MessagesService {
       if (completed) {
         if (error) {
           logger.error(error, "Error in streaming AI response");
-
+          const content = getErrorMessage(error);
           return completeRequest(
             {
               ...assistantMessage,
-              content: getErrorMessage(error),
+              content,
               role: MessageRole.ERROR,
             },
             {
@@ -1071,10 +1071,12 @@ export class MessagesService {
         assistantMessage.status = status?.status || ResponseStatus.STARTED;
         assistantMessage.statusInfo = this.getStatusInformation(status);
         assistantMessage.updatedAt = now;
+        assistantMessage.metadata = {
+          ...assistantMessage.metadata,
+          ...metadata,
+        };
 
         if (status?.tools || status?.toolCalls) {
-          if (!assistantMessage.metadata) assistantMessage.metadata = {};
-
           if (status.tools) {
             const existingToolsIds = new Set(assistantMessage.metadata.tools?.map(tool => tool.callId) || []);
             assistantMessage.metadata.tools = [
@@ -1093,8 +1095,6 @@ export class MessagesService {
 
           await this.messageRepository.save(assistantMessage);
         } else if (status?.status === ResponseStatus.STARTED && status.requestId) {
-          if (!assistantMessage.metadata) assistantMessage.metadata = {};
-
           assistantMessage.metadata.requestId = status.requestId;
           assistantMessage.metadata.lastSequenceNumber = status.sequenceNumber;
           logger.debug(

@@ -78,6 +78,7 @@ export enum ModelFeature {
   // same as tninking for Anthropic's models, but can be used for other providers as well
   REASONING = "REASONING",
   CACHE_RETENTION = "CACHE_RETENTION",
+  REASONING_CANCELLATION = "REASONING_CANCELLATION",
 }
 
 export enum MCPTransportType {

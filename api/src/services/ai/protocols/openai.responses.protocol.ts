@@ -13,12 +13,17 @@ import {
 import { MCPAuthType, ModelFeature, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
-import { ChatCompletionToolCall, ChatCompletionToolCallable, formatOpenAIMcpTools } from "./openai.tools";
+import {
+  ChatCompletionToolCall,
+  ChatCompletionToolCallable,
+  formatOpenAIMcpTools as formatOpenAIMcpFunctionTools,
+} from "./openai.tools";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT, RETRY_TIMEOUT_MS } from "./openai.protocol";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
 import { sanitizeSurrogates } from "@/utils/format";
+import { NATIVE_WEB_SEARCH_TOOL_NAME } from "../tools/web_search";
 
 const logger = createLogger(__filename);
 
@@ -117,34 +122,6 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
       }
     }
 
-    if (thinking) {
-      const maxTokenBudget = globalConfig.ai.reasoningMaxTokenBudget;
-      const budget = thinkingBudget || globalConfig.ai.reasoningMinTokenBudget;
-
-      const effort =
-        budget < maxTokenBudget * 0.1
-          ? "minimal"
-          : budget < maxTokenBudget * 0.25
-            ? "low"
-            : budget < maxTokenBudget * 0.75
-              ? "medium"
-              : "high";
-      params.reasoning = {
-        effort,
-        summary: "auto",
-      };
-    } else if (modelFeatures.includes(ModelFeature.REASONING)) {
-      if (["gpt-5-mini", "gpt-5"].includes(modelId)) {
-        params.reasoning = {
-          effort: "minimal",
-        };
-      } else {
-        params.reasoning = {
-          effort: "none",
-        };
-      }
-    }
-
     const tools: Array<OpenAI.Responses.Tool> = [];
 
     if (inputRequest.tools) {
@@ -193,7 +170,11 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
           const server = serverMap.get(tool.id || tool.name);
           ok(server);
 
-          if (server.url?.startsWith("http://localhost") || server.url?.startsWith("http://127.0.0.1")) {
+          if (
+            !this.nativeMcpSupport ||
+            server.url?.startsWith("http://localhost") ||
+            server.url?.startsWith("http://127.0.0.1")
+          ) {
             localMcpServers.push({ server, tool });
             return;
           }
@@ -215,12 +196,14 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
                 [server.authConfig?.headerName || MCP_DEFAULT_API_KEY_HEADER]: token?.accessToken || "",
               };
             }
+          } else {
+            mcpTool.authorization = "none";
           }
 
           tools.push(mcpTool);
         });
 
-      const localTools: Array<OpenAI.Responses.FunctionTool> = formatOpenAIMcpTools(
+      const localTools: Array<OpenAI.Responses.FunctionTool> = formatOpenAIMcpFunctionTools(
         localMcpServers.map(s => s.tool),
         localMcpServers.map(s => s.server)
       )
@@ -237,6 +220,40 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
         });
 
       tools.push(...localTools);
+    }
+
+    if (thinking) {
+      const maxTokenBudget = globalConfig.ai.reasoningMaxTokenBudget;
+      const budget = thinkingBudget || globalConfig.ai.reasoningMinTokenBudget;
+
+      let effort: "none" | "minimal" | "low" | "medium" | "high" =
+        budget < maxTokenBudget * 0.1
+          ? "minimal"
+          : budget < maxTokenBudget * 0.25
+            ? "low"
+            : budget < maxTokenBudget * 0.75
+              ? "medium"
+              : "high";
+      if (modelId.startsWith("gpt-5") && tools.find(t => t.type === "web_search")) {
+        if (effort === "minimal") {
+          effort = "medium";
+        }
+      }
+
+      params.reasoning = {
+        effort,
+        summary: "auto",
+      };
+    } else if (modelFeatures.includes(ModelFeature.REASONING_CANCELLATION)) {
+      if (["gpt-5-mini", "gpt-5"].includes(modelId)) {
+        params.reasoning = {
+          effort: "minimal",
+        };
+      } else {
+        params.reasoning = {
+          effort: "none",
+        };
+      }
     }
 
     if (tools.length) {
@@ -372,6 +389,7 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     const images: string[] = [];
     const cyclesLimit = 20;
     let cycleNo = 0;
+    let gotError: Error | undefined = undefined;
 
     try {
       const progressInfo: import("@/types/ai.types").ChatResponseStatus = {
@@ -481,6 +499,16 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
                 timestamp: new Date(),
                 id: chunk.item_id,
               });
+
+              stopped = await callbacks.onProgress(
+                "",
+                {
+                  status: ResponseStatus.REASONING,
+                  ...progressInfo,
+                  metadata: meta,
+                },
+                true
+              );
             }
           } else if (chunk.type == "response.output_item.added") {
             if (chunk.item.type === "reasoning") {
@@ -612,6 +640,12 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             });
           } else if (chunk.type == "response.function_call_arguments.done") {
             // arguments collected via response.output_item.done
+          } else if (chunk.type == "error") {
+            gotError = new Error(
+              chunk.message || `Unknown error from OpenAI Responses API, code: ${chunk.code || "unknown"}`
+            );
+            stopped = true;
+            break;
           } else if (!["keepalive"].includes(chunk.type)) {
             logger.trace(chunk, `Unhandled response chunk type: ${chunk.type}`);
           }
@@ -704,6 +738,12 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
         }
       } while (cycleNo++ < cyclesLimit);
     } catch (err: unknown) {
+      if (this.errorProcessor.isRateLimitError(err) && retry < RETRY_COUNT) {
+        return new Promise(res => setTimeout(res, RETRY_TIMEOUT_MS)).then(() =>
+          this.streamChatResponses(inputRequest, messages, callbacks, retry + 1)
+        );
+      }
+
       stopped = await callbacks.onError(err instanceof Error ? err : new Error(String(err)));
       if (stopped) {
         stream?.controller?.abort();
@@ -715,12 +755,16 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
       stream?.controller?.abort();
     }
 
-    await callbacks.onComplete({
-      content: fullResponse || (stopped ? "_Cancelled_" : images.length ? "" : "_No response_"),
-      images,
-      metadata: meta,
-      completed: true,
-    });
+    if (gotError) {
+      await callbacks.onError(gotError);
+    } else {
+      await callbacks.onComplete({
+        content: fullResponse || (stopped ? "_Cancelled_" : images.length ? "" : "_No response_"),
+        images,
+        metadata: meta,
+        completed: true,
+      });
+    }
   }
 
   private parseResponsesOutput(response: OpenAI.Responses.Response): {
@@ -819,6 +863,18 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
               return text;
             })
             .join("\n\n");
+        } else if (item.type === "reasoning" && item.summary?.length) {
+          res.content += item.summary.map(s => s.text).join("\n\n");
+        } else if (item.type === "web_search_call") {
+          metadata.toolCalls = metadata.toolCalls || [];
+
+          if (item.action.type === "search") {
+            metadata.toolCalls.push({
+              name: NATIVE_WEB_SEARCH_TOOL_NAME,
+              args: (item.action.queries || [item.action.query || "N/A"]).join("\n\n"),
+              callId: item.id,
+            });
+          }
         } else if (item.type === "image_generation_call") {
           if (item.result) {
             res.images.push(item.result);
@@ -889,7 +945,7 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
       });
 
       result.push(
-        ...formatOpenAIMcpTools(
+        ...formatOpenAIMcpFunctionTools(
           localServers.map(s => s.tool),
           localServers.map(s => s.server)
         )

@@ -98,7 +98,7 @@ export const YANDEX_MODELS: YandexModel[] = [
     maxInputTokens: 131_072,
     imageInput: true,
     apiType: "responses",
-    features: [ModelFeature.REASONING],
+    features: [ModelFeature.REASONING, ModelFeature.REASONING_CANCELLATION],
   },
   {
     name: "Yandex Speech Realtime v250923",

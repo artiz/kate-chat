@@ -18,7 +18,7 @@ import { ModelProtocol, ModelProtocolErrorProcessor } from "./common";
 
 const logger = createLogger(__filename);
 
-export const RETRY_TIMEOUT_MS = 100;
+export const RETRY_TIMEOUT_MS = 500;
 export const RETRY_COUNT = 10;
 
 export type OpenAIApiType = "completions" | "responses";
@@ -51,6 +51,8 @@ export interface OpenAIProtocolOptions {
   fileLoader?: FileContentLoader;
   errorProcessor?: ModelProtocolErrorProcessor;
   paramsProcessor?: OpenAiParamsProcessor;
+  // whether the protocol implementation supports native delegation to external MCP servers
+  nativeMcpSupport?: boolean;
 }
 
 export abstract class OpenAIProtocolBase implements ModelProtocol {
@@ -60,6 +62,7 @@ export abstract class OpenAIProtocolBase implements ModelProtocol {
   protected readonly errorProcessor: ModelProtocolErrorProcessor;
   protected readonly paramsProcessor?: OpenAiParamsProcessor;
   protected readonly modelIdOverride?: string;
+  protected readonly nativeMcpSupport: boolean;
 
   constructor({
     baseURL,
@@ -69,12 +72,14 @@ export abstract class OpenAIProtocolBase implements ModelProtocol {
     errorProcessor = new OpenAIDefaultErrorProcessor(),
     modelIdOverride,
     paramsProcessor,
+    nativeMcpSupport,
   }: OpenAIProtocolOptions) {
     this.connection = connection;
     this.fileLoader = fileLoader;
     this.modelIdOverride = modelIdOverride;
     this.errorProcessor = errorProcessor;
     this.paramsProcessor = paramsProcessor;
+    this.nativeMcpSupport = !!nativeMcpSupport;
 
     this.openai = new OpenAI({
       apiKey,

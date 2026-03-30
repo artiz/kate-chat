@@ -104,7 +104,13 @@ export class OpenAIApiProvider extends BaseApiProvider {
       logger.debug("OpenAI API key is not set. Set OPENAI_API_KEY in environment variables.");
     } else {
       const apiType: OpenAIApiType = modelId ? this.getChatApiType(modelId) : "completions";
-      const protocolOptions = { baseURL: this.baseUrl, apiKey: this.apiKey, connection, fileLoader };
+      const protocolOptions = {
+        baseURL: this.baseUrl,
+        apiKey: this.apiKey,
+        connection,
+        fileLoader,
+        nativeMcpSupport: apiType === "responses",
+      };
       this.protocol =
         apiType === "responses"
           ? new OpenAIResponsesProtocol(protocolOptions)

@@ -286,6 +286,7 @@ export interface ChatResponseStatus {
   tools?: ChatToolCallResult[];
   toolCalls?: ChatToolCall[];
   userMessageTokens?: number;
+  metadata?: MessageMetadata;
 }
 
 export interface StreamCallbacks {

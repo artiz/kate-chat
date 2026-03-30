@@ -120,7 +120,11 @@ export const refreshMcpToken = async (
       body: JSON.stringify({ serverId, refreshToken }),
     });
 
-    if (!response.ok) return false;
+    if (!response.ok) {
+      localStorage.setItem(ACCESS_TOKEN_KEY(serverId, userId), "");
+      localStorage.setItem(EXPIRES_AT_KEY(serverId, userId), "");
+      return false;
+    }
 
     const { accessToken, expiresAt, refreshToken: newRefreshToken } = await response.json();
     if (!accessToken) return false;

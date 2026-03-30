@@ -50,6 +50,7 @@ export class MCPClient {
   private transport?: SSEClientTransport | StreamableHTTPClientTransport;
   private closeTimeout: NodeJS.Timeout;
   private authToken?: MCPAuthToken;
+  private initPromise?: Promise<MCPClient>;
 
   private static readonly CLIENTS_CACHE: Map<string, MCPClient> = new Map();
 
@@ -180,18 +181,38 @@ export class MCPClient {
   }
 
   /**
-   * Connect to the MCP server using the configured transport type
+   * Connect to the MCP server using the configured transport type.
+   * Concurrent non-forced calls are deduplicated — all callers await the same
+   * in-flight init, preventing duplicate token refreshes and transport setup.
    */
   async init(force: boolean = false): Promise<MCPClient> {
     if (this.transport && !force) return this;
 
+    // Deduplicate concurrent non-forced init calls (e.g. parallel tool invocations)
+    if (!force && this.initPromise) {
+      return this.initPromise;
+    }
+
+    const promise = this.doInit(force).finally(() => {
+      if (this.initPromise === promise) {
+        this.initPromise = undefined;
+      }
+    });
+
+    if (!force) {
+      this.initPromise = promise;
+    }
+
+    return promise;
+  }
+
+  private async doInit(force: boolean = false): Promise<MCPClient> {
     if (force && this.transport) {
       try {
         await this.transport.close();
         await this.client.close();
       } catch (e) {
-        // eat error for now
-        // logger.warn(e, "Error closing existing MCP transport during re-init");
+        // eat error — transport may already be gone
       }
       this.transport = undefined;
     }

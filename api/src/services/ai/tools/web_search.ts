@@ -1,3 +1,5 @@
+export const NATIVE_WEB_SEARCH_TOOL_NAME = "web_search";
+
 export enum SearchSortMode {
   RELEVANCE,
   TIME,
