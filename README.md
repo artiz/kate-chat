@@ -57,7 +57,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * (mid) Telegram System MCP (https://github.com/dryeab/mcp-telegram, https://www.mcpserverfinder.com/servers/qpd-v/mcp-communicator-telegram)
 * (hgh) Add browser notifications to notify user about conversation end, confirmation requests
 * (low) Add Java code executor like Go one with https://codapi.org/java/
-* (min) Introduce video generation, reuse requests queue, notify user about completion (wait untill AWS sponsorship)
+* (min) Introduce video generation, reuse requests queue, notify user about completion
 * (mid) @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * (mid) Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
 
