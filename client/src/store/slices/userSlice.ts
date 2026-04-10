@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { User as BaseUser } from "@katechat/ui";
 
-import { logout } from "..";
+import { logout, removeStorageValue, STORAGE_RETURN_URL_KEY } from "..";
 import { ApplicationConfig, MCPServer } from "@/types/graphql";
 
 export interface UserSettings {
@@ -92,6 +92,8 @@ const userSlice = createSlice({
 
   extraReducers: builder => {
     builder.addCase(logout, state => {
+      removeStorageValue(STORAGE_RETURN_URL_KEY, state.currentUser?.id, false);
+      removeStorageValue(STORAGE_RETURN_URL_KEY, "", false);
       state = initialState;
       return initialState;
     });

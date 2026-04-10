@@ -104,6 +104,9 @@ export class GqlMessagesList {
   @Field({ nullable: true })
   error?: string;
 
+  @Field({ nullable: true })
+  errorStatus?: number;
+
   @Field(() => [Message], { nullable: true })
   messages?: Message[];
 

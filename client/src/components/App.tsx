@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { MantineProvider, ColorSchemeScript, Center, Loader, MantineThemeOverride, Alert, Box } from "@mantine/core";
-import { notifications, Notifications } from "@mantine/notifications";
+import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -13,14 +13,7 @@ import { setAppConfig, setMcpServers, setUser } from "../store/slices/userSlice"
 import { setModelsAndProviders } from "../store/slices/modelSlice";
 import { setChats, setPinnedChats } from "../store/slices/chatSlice";
 import { setFolders } from "../store/slices/folderSlice";
-import {
-  getStorageValue,
-  logout,
-  removeStorageValue,
-  STORAGE_RETURN_URL_KEY,
-  useAppSelector,
-  writeStorageValue,
-} from "../store";
+import { logout, STORAGE_RETURN_URL_KEY, useAppSelector, writeStorageValue } from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
@@ -65,9 +58,10 @@ const PrivateRoute: React.FC<{ element: React.ReactElement }> = ({ element }) =>
   const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
   const currentUser = useAppSelector(state => state.user.currentUser);
   const location = useLocation();
-  const path = location.pathname;
-  const returnUrl = BASE_URLS.includes(path) ? "" : path;
-  if (returnUrl) {
+
+  if (isAuthenticated) {
+    const path = location.pathname;
+    const returnUrl = BASE_URLS.includes(path) ? "" : path;
     writeStorageValue(STORAGE_RETURN_URL_KEY, returnUrl, currentUser?.id, false);
   }
 

@@ -610,6 +610,7 @@ export const GET_CHAT_MESSAGES = gql`
   query GetChatMessages($input: GetMessagesInput!) {
     getChatMessages(input: $input) {
       error
+      errorStatus
       messages {
         ...BaseMessage
         linkedMessages {

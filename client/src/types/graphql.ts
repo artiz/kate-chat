@@ -80,6 +80,7 @@ export interface GetChatMessagesResponse {
     total: number;
     hasMore: boolean;
     error?: string;
+    errorStatus?: number;
   };
 }
 

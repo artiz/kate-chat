@@ -71,6 +71,7 @@ export class MessageResolver extends BaseResolver {
     if (!chat) {
       return {
         error: "Chat not found",
+        errorStatus: 404,
         messages: [],
       };
     }

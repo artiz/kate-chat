@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApolloClient, useMutation } from "@apollo/client";
 import { parseChatMessages, parseMarkdown, MessageRole } from "@katechat/ui";
 import { updateChat as updateChatInState } from "@/store/slices/chatSlice";
@@ -58,6 +59,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
   const folderChats = useAppSelector(state => state.folders.folderChats);
   const { chatMessagesPerPage } = getClientConfig();
 
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const client = useApolloClient();
 
@@ -83,9 +85,13 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
           },
         })
         .then(response => {
-          const { chat: ch, messages = [], hasMore, error } = response.data.getChatMessages || {};
+          const { chat: ch, messages = [], hasMore, error, errorStatus } = response.data.getChatMessages || {};
 
           if (error) {
+            if (errorStatus === 404) {
+              return navigate("/", { replace: true });
+            }
+
             return notifications.show({
               title: "Error",
               message: error,
