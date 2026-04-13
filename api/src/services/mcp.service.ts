@@ -190,26 +190,88 @@ export class McpServersService {
       throw new Error("OAuth configuration incomplete - missing tokenUrl or clientId");
     }
 
-    const tokenParams = new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      client_id: authConfig.clientId,
-      ...(authConfig.clientSecret && { client_secret: authConfig.clientSecret }),
-    });
+    const tokenUrl = authConfig.tokenUrl;
+    const clientId = authConfig.clientId;
 
-    const tokenResponse = await fetch(authConfig.tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-      body: tokenParams.toString(),
-    });
+    const sendRefreshRequest = async (useBasicClientAuth: boolean) => {
+      const tokenParams = new URLSearchParams();
+      tokenParams.set("grant_type", "refresh_token");
+      tokenParams.set("refresh_token", refreshToken);
+      tokenParams.set("client_id", clientId);
+      if (!useBasicClientAuth && authConfig.clientSecret) {
+        tokenParams.set("client_secret", authConfig.clientSecret);
+      }
 
-    if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      logger.warn({ status: tokenResponse.status, error: errorText, serverId }, "OAuth token refresh failed");
-      throw new Error(`OAuth token refresh failed: ${tokenResponse.status}`);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      };
+
+      if (useBasicClientAuth && authConfig.clientSecret) {
+        const basic = Buffer.from(`${clientId}:${authConfig.clientSecret}`).toString("base64");
+        headers.Authorization = `Basic ${basic}`;
+      }
+
+      return fetch(tokenUrl, {
+        method: "POST",
+        headers,
+        body: tokenParams.toString(),
+      });
+    };
+
+    const readOAuthError = async (response: Response) => {
+      const errorText = await response.text();
+      let errorCode: string | undefined;
+      let errorDescription: string | undefined;
+
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed && typeof parsed === "object") {
+          errorCode = typeof parsed.error === "string" ? parsed.error : undefined;
+          errorDescription = typeof parsed.error_description === "string" ? parsed.error_description : undefined;
+        }
+      } catch {
+        // Ignore parse errors and fallback to raw error text.
+      }
+
+      return { errorText, errorCode, errorDescription };
+    };
+
+    let tokenResponse = await sendRefreshRequest(false);
+
+    if (!tokenResponse.ok && authConfig.clientSecret) {
+      const firstError = await readOAuthError(tokenResponse);
+      const retryWithBasic =
+        tokenResponse.status === 400 &&
+        (firstError.errorCode === "invalid_client" || firstError.errorCode === "invalid_grant");
+
+      if (retryWithBasic) {
+        logger.debug(
+          { serverId, status: tokenResponse.status, errorCode: firstError.errorCode },
+          "Retrying OAuth refresh with Basic client auth"
+        );
+        tokenResponse = await sendRefreshRequest(true);
+      } else {
+        logger.warn(
+          { status: tokenResponse.status, error: firstError.errorText, errorCode: firstError.errorCode, serverId },
+          "OAuth token refresh failed"
+        );
+        const detail = firstError.errorDescription || firstError.errorCode || `HTTP ${tokenResponse.status}`;
+        throw new Error(`OAuth token refresh failed: ${detail}`);
+      }
     }
 
-    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok) {
+      const oauthError = await readOAuthError(tokenResponse);
+      logger.warn(
+        { status: tokenResponse.status, error: oauthError.errorText, errorCode: oauthError.errorCode, serverId },
+        "OAuth token refresh failed"
+      );
+      const detail = oauthError.errorDescription || oauthError.errorCode || `HTTP ${tokenResponse.status}`;
+      throw new Error(`OAuth token refresh failed: ${detail}`);
+    }
+
+    const tokenData: any = await tokenResponse.json();
     const accessToken = tokenData.access_token;
     if (!accessToken) {
       throw new Error("No access_token in OAuth refresh response");
