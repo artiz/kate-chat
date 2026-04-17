@@ -7,7 +7,7 @@ docling==2.69.0
 easyocr==1.7.2
 fastapi==0.109.1
 langchain==1.2.6
-langchain-text-splitters==1.1.0
+langchain-text-splitters==1.1.2
 opencv-python-headless==4.13.0.90
 pydantic==2.12.5
 pydantic-settings==2.12.0
