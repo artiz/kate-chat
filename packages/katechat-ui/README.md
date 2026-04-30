@@ -40,7 +40,6 @@ This package requires the following peer dependencies:
   "@tabler/icons-react": "^3.1.0",
   "react": "19.1.0",
   "react-dom": "19.1.0",
-  "react-redux": "^9.2.0",
   "react-router-dom": "^6.23.1"
 }
 ```
