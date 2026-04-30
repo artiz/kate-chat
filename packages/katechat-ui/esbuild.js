@@ -19,7 +19,6 @@ const buildConfig = {
     "react",
     "react-dom",
     "react-router-dom",
-    "react-redux",
     "react-i18next",
     "i18next",
     "i18next-browser-languagedetector",
