@@ -114,7 +114,7 @@ export const FileDropzone: React.FC<IProps> = ({ onFilesAdd, disabled, uploadFor
             ref={fileInputRef}
             type="file"
             multiple
-            accept={uploadFormats?.join(",")}
+            accept={uploadFormats ? uploadFormats.join(",") : undefined}
             onChange={handleFileSelect}
             className={classes.fileInput}
             style={{ display: "none" }}
