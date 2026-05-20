@@ -42,7 +42,7 @@
   },
   "scripts": {
     "build": "npm run build:js && npm run build:types",
-    "build:js": "node --experimental-default-type=module esbuild.js",
+    "build:js": "node esbuild.js",
     "build:types": "tsc --project tsconfig.build.json",
     "prepublishOnly": "npm run build",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",

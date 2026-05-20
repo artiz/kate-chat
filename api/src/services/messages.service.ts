@@ -891,6 +891,10 @@ export class MessagesService {
       chatSettings.thinkingBudget = undefined;
     }
 
+    if (!model?.features?.includes(ModelFeature.CACHE_RETENTION)) {
+      chatSettings.cacheRetention = undefined;
+    }
+
     const request: CompleteChatRequest = {
       ...input,
       requestId,
