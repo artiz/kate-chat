@@ -297,7 +297,7 @@ jobs:
     name: Publish @katechat/ui to NPM
     runs-on: ubuntu-latest
     needs: [changes]
-    if: github.ref == 'refs/heads/master' && needs.changes.outputs.packages == 'true'
+    # if: github.ref == 'refs/heads/master' && needs.changes.outputs.packages == 'true'
     continue-on-error: true
     
     steps:
@@ -321,8 +321,8 @@ jobs:
 
     - name: Install dependencies and build package
       run: |
-        npm ci -w packages/katechat-ui
         cd packages/katechat-ui
+        npm install
         npx prettier -c ./src
         npm test
         npm run build
@@ -334,7 +334,20 @@ jobs:
 
         NEW_VERSION=$(node -p "require('./package.json').version")
         git commit -a -m "chore: bump @katechat/ui version to $NEW_VERSION [skip ci]"
-        git push origin HEAD:master --follow-tags
+
+        # Another push may have advanced master between checkout and now;
+        # rebase onto the latest remote tip and retry the push a few times.
+        for attempt in 1 2 3; do
+          git pull --rebase origin master
+          if git push origin HEAD:master --follow-tags; then
+            break
+          fi
+          if [ "$attempt" -eq 3 ]; then
+            echo "Failed to push version bump after $attempt attempts" >&2
+            exit 1
+          fi
+          echo "Push rejected, retrying ($attempt)..."
+        done
         echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
     - name: Publish to NPM
