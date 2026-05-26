@@ -93,7 +93,7 @@ export class MessagesService {
   public async reloadChatFileMetadata(chatFileId: string, user: User): Promise<ChatFile> {
     const chatFile = await this.chatFileRepository.findOne({
       where: { id: chatFileId },
-      relations: ["chat", "chat.user", "message"],
+      relations: { chat: { user: true }, message: true },
     });
 
     if (!chatFile || !chatFile.fileName) throw new Error("ChatFile not found");
@@ -319,7 +319,7 @@ export class MessagesService {
     // Find the original message
     let originalMessage = await this.messageRepository.findOne({
       where: { id: messageId },
-      relations: ["chat", "chat.user", "user"],
+      relations: { chat: { user: true }, user: true },
     });
 
     if (!originalMessage) throw new Error("Message not found");
@@ -395,7 +395,7 @@ export class MessagesService {
     // Find the original message
     let originalMessage = await this.messageRepository.findOne({
       where: { id: messageId },
-      relations: ["chat", "chat.user", "user"],
+      relations: { chat: { user: true }, user: true },
     });
 
     if (!originalMessage) throw new Error("Message not found");
@@ -417,7 +417,7 @@ export class MessagesService {
           createdAt: LessThan(formatDateFloor(originalMessage.createdAt)),
         },
         order: { createdAt: "DESC" },
-        relations: ["chat", "chat.user", "user"],
+        relations: { chat: { user: true }, user: true },
       });
 
       if (!lastUserMessage) throw new Error("No user message found to reset context from");
@@ -558,7 +558,7 @@ export class MessagesService {
     // Find the original message
     const originalMessage = await this.messageRepository.findOne({
       where: { id: messageId },
-      relations: ["chat", "chat.user", "user"],
+      relations: { chat: { user: true }, user: true },
     });
 
     if (!originalMessage) throw new Error("Message not found");
@@ -626,7 +626,7 @@ export class MessagesService {
   ): Promise<DeleteMessageResponse> {
     const message = await this.messageRepository.findOne({
       where: { id },
-      relations: ["chat"],
+      relations: { chat: true },
     });
 
     if (!message) throw new Error("Message not found");
@@ -1404,7 +1404,7 @@ export class MessagesService {
     // First verify that the message belongs to the user
     const message = await this.messageRepository.findOne({
       where: { id: messageId },
-      relations: ["chat"],
+      relations: { chat: true },
     });
     if (!message) {
       throw new Error("Message not found");

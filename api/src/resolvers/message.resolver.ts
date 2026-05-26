@@ -84,7 +84,7 @@ export class MessageResolver extends BaseResolver {
         skip,
         take,
         order: { createdAt: "DESC", role: "ASC" },
-        relations: ["user"],
+        relations: { user: true },
       })
       .then(messages => messages.reverse());
 
@@ -94,7 +94,7 @@ export class MessageResolver extends BaseResolver {
       await this.messageRepository.find({
         where: { linkedToMessageId: In(ids) },
         order: { linkedToMessageId: "ASC", createdAt: "DESC", role: "ASC" },
-        relations: ["user"],
+        relations: { user: true },
       })
     ).reduce(
       (acc, msg) => {
@@ -123,7 +123,7 @@ export class MessageResolver extends BaseResolver {
 
     const message = await this.messageRepository.findOne({
       where: { id },
-      relations: ["chat"],
+      relations: { chat: true },
     });
 
     if (!message) return null;

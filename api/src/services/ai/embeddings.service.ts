@@ -241,7 +241,7 @@ export class EmbeddingsService {
         if (globalConfig.db.type === "mssql") {
           // Single query to get pagesCount for all documents
           const docs = await this.documentRepo.find({
-            select: ["id", "pagesCount"],
+            select: { id: true, pagesCount: true },
             where: { id: In(documentIds) },
           });
           const multiPageDocIds = new Set(docs.filter(d => d.pagesCount > 1).map(d => d.id));

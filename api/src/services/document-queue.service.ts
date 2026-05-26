@@ -53,7 +53,7 @@ export class DocumentQueueService {
       // Get document
       const document = await this.documentRepo.findOne({
         where: { id: documentId },
-        relations: ["owner"],
+        relations: { owner: true },
       });
 
       if (!document) {
