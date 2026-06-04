@@ -39,7 +39,7 @@
     "react-google-recaptcha-v3": "^1.11.0",
     "react-i18next": "^16.5.4",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^6.23.1",
+    "react-router-dom": "^6.30.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
