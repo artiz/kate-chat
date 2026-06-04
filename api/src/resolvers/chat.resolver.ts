@@ -150,7 +150,7 @@ export class ChatResolver extends BaseResolver {
       where: {
         id,
       },
-      relations: ["files"],
+      relations: { files: true },
     });
 
     if (!chat) throw new Error("Chat not found");
