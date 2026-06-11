@@ -73,7 +73,6 @@ import {
 } from "@/config/ai/bedrock";
 import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
-import { ca } from "zod/dist/types/v4/locales";
 
 const TRIM_CONTEXT_TRIES_LIMIT = 20;
 const logger = createLogger(__filename);

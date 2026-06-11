@@ -84,7 +84,7 @@ export class QueueLockService<K, V> {
     const lockKey = `${this.prefix}:${key}`;
     if (this.redisClient) {
       await this.redisClient.set(lockKey, JSON.stringify(value), {
-        EX: this.expirationMs / 1000, // expiration in seconds
+        expiration: { type: "EX", value: this.expirationMs / 1000 }, // expiration in seconds
       });
     } else {
       const existing = this.memoryStore.get(key);

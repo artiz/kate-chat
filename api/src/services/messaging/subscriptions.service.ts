@@ -171,7 +171,7 @@ export class SubscriptionsService extends EventEmitter {
       await this.redisClient.set(
         `message:${messageId}`,
         JSON.stringify({ message, chat }),
-        { EX: redisCfg.chatMessageExpirationSec } // message expiration to prevent stale data
+        { expiration: { type: "EX", value: redisCfg.chatMessageExpirationSec } } // message expiration to prevent stale data
       );
 
       // Broadcast message to all clients using Redis PubSub
@@ -234,7 +234,9 @@ export class SubscriptionsService extends EventEmitter {
   async shutdown(): Promise<void> {
     if (this.redisClient) {
       try {
-        await this.redisClient.quit();
+        if (this.redisClient.isOpen) {
+          await this.redisClient.close();
+        }
         logger.info("Redis client disconnected");
         this.redisClient = null;
       } catch (error) {
@@ -244,7 +246,9 @@ export class SubscriptionsService extends EventEmitter {
 
     if (this.redisSub) {
       try {
-        await this.redisSub.quit();
+        if (this.redisSub.isOpen) {
+          await this.redisSub.close();
+        }
         logger.info("Redis subscriptions client disconnected");
         this.redisSub = null;
       } catch (error) {

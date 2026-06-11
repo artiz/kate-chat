@@ -42,6 +42,8 @@ FROM node:22-alpine
 # copy built api
 WORKDIR /app
 COPY --from=build /app/node_modules/ ./node_modules
+# workspace deps that npm could not hoist (e.g. redis pinned by typeorm peer range)
+COPY --from=build /app/api/node_modules/ ./node_modules
 COPY --from=build /app/api/dist ./
 COPY --from=build /app/api/src/assets ./assets
 COPY --from=build /app/db-migrations ./db-migrations

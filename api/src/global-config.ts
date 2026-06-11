@@ -6,6 +6,18 @@ import { ApiProvider, CredentialSourceType } from "./types/api";
 import { DB_TYPE } from "./config/env";
 import { notEmpty } from "./utils/assert";
 
+// Default migrations location depends on the runtime layout: <repo>/db-migrations two levels up
+// in dev/local builds, but next to the compiled output (/app/db-migrations) in the Docker image.
+// Extension follows the runtime: .ts under ts-node, compiled .js otherwise.
+function defaultMigrationsPath(): string {
+  const ext = __filename.endsWith(".ts") ? "ts" : "js";
+  const root =
+    [path.join(__dirname, "../../db-migrations"), path.join(__dirname, "db-migrations")].find(dir =>
+      fs.existsSync(path.join(dir, DB_TYPE))
+    ) || path.join(__dirname, "../../db-migrations");
+  return path.join(root, `${DB_TYPE}/*-*.${ext}`);
+}
+
 const ALL_API_PROVIDERS: ApiProvider[] = [
   ApiProvider.AWS_BEDROCK,
   ApiProvider.OPEN_AI,
@@ -363,7 +375,7 @@ export class GlobalConfig {
         password: process.env.DB_PASSWORD,
         name: process.env.DB_NAME || "katechat.sqlite",
         ssl: this.parseBoolean(process.env.DB_SSL),
-        migrationsPath: process.env.DB_MIGRATIONS_PATH || path.join(__dirname, `../../db-migrations/${DB_TYPE}/*-*.ts`),
+        migrationsPath: process.env.DB_MIGRATIONS_PATH || defaultMigrationsPath(),
         logging: !!process.env.DB_LOGGING,
       },
       redis: {
