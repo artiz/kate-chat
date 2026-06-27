@@ -72,18 +72,6 @@ jobs:
         cd client
         npx prettier -c .
 
-    # - name: Setup Rust
-    #   uses: actions-rust-lang/setup-rust-toolchain@v1
-    #   with:
-    #     toolchain: stable
-    #     components: rustfmt, clippy
-    # - name: Lint/Test Rust API
-    #   run: |
-    #     cd api-rust
-    #     cargo fmt --check
-    #     cargo clippy -- -D warnings
-    #     cargo test
-    
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -128,6 +116,38 @@ jobs:
             - 'docs/**'
             - 'README.md'
   
+  rust-document-processor:
+    name: Lint & Test document-processor (Rust)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.document_processor == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+        cache-workspaces: document-processor
+
+    - name: Format check
+      run: |
+        cd document-processor
+        cargo fmt --check
+
+    - name: Clippy
+      run: |
+        cd document-processor
+        cargo clippy --all-targets --locked -- -D warnings
+
+    - name: Test
+      run: |
+        cd document-processor
+        cargo test --locked
+
   build:
     name: Build and Push Images
     runs-on: ubuntu-latest

@@ -10,3 +10,11 @@
 **/*.sqlite
 node_modules
 **/node_modules
+
+# Rust build artifacts and downloaded ML assets
+**/target
+**/.pdfium
+**/models
+
+# Archived Python document processor (not built; keeps its training PDFs out of the context)
+document-processor-python

@@ -1,0 +1,52 @@
+[package]
+name = "katechat-document-processor"
+version = "0.1.0"
+edition = "2021"
+# `chunk` is edition 2024 → requires Rust 1.85+.
+rust-version = "1.85"
+description = "KateChat document processor — SQS-driven RAG ingestion pipeline (parse → chunk → index) built on the fleischwolf document converter."
+license = "MIT"
+
+[[bin]]
+name = "katechat-document-processor"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time", "sync", "net"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+futures = "0.3"
+
+# Document conversion (Rust port of docling)
+fleischwolf = "0.0.1"
+
+# Chunking: SIMD splitter + token-aware merge
+chunk = "0.10"
+tiktoken-rs = "0.6"
+
+# AWS — pin to rustls (ring) so the build needs no C toolchain (no aws-lc-rs / cmake / nasm)
+aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
+aws-sdk-s3 = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
+aws-sdk-sqs = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
+
+# Redis pub/sub + progress keys
+redis = { version = "0.27", default-features = false, features = ["tokio-comp"] }
+
+# HTTP health endpoint
+axum = { version = "0.7", default-features = false, features = ["tokio", "http1", "json"] }
+
+# Serialization, config, logging, misc
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dotenvy = "0.15"
+regex = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+thiserror = "1"
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+codegen-units = 1
+strip = true
