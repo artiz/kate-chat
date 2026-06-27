@@ -103,31 +103,19 @@ docker compose up --build document-processor
 
 ### Option C — native run with the PDF ML pipeline
 
-To exercise PDF/image parsing without Docker, fetch the native libs/models once and
-point the env vars at them, then `cargo run`:
+To exercise PDF/image parsing without Docker, run the setup script once. It downloads
+pdfium + the OCR model/dict and exports the RT-DETR layout model (into an isolated
+`.venv-models`), then prints the env vars to export:
 
 ```bash
-# pdfium
-mkdir -p .pdfium && curl -sSL \
-  https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz \
-  | tar xz -C .pdfium
-# OCR model + dictionary
-mkdir -p models
-curl -sSL -o models/ocr_rec.onnx \
-  https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_PP-OCRv3_rec_infer.onnx
-curl -sSL -o models/ppocr_keys_v1.txt \
-  https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/main/ppocr/utils/ppocr_keys_v1.txt
-# layout model (needs python + torch/transformers/onnx)
-pip install torch transformers onnx && python scripts/export_layout.py models/layout_heron.onnx
-
-export PDFIUM_DYNAMIC_LIB_PATH=$PWD/.pdfium/lib
-export DOCLING_LAYOUT_ONNX=$PWD/models/layout_heron.onnx
-export DOCLING_OCR_REC_ONNX=$PWD/models/ocr_rec.onnx
-export DOCLING_OCR_DICT=$PWD/models/ppocr_keys_v1.txt
+scripts/pdf_setup.sh
+# follow the printed `export …` lines (or add them to .env), then:
 cargo run
 ```
 
-(`.pdfium/` and `models/` are gitignored.)
+Knobs: `PDFIUM_PLATFORM` (e.g. `linux-arm64`, `mac-x64`), `PYTHON`, `USE_SYSTEM_PYTHON=1`
+(skip the venv), `SKIP_LAYOUT=1`. The downloaded `.pdfium/`, `models/` and
+`.venv-models/` are all gitignored.
 
 ## Develop
 

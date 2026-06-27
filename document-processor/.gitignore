@@ -3,6 +3,7 @@
 .env
 .env.local
 
-# PDF pipeline native libs + models (downloaded/built into the image, never committed)
+# PDF pipeline native libs + models (downloaded/built by scripts/pdf_setup.sh, never committed)
 /models
 /.pdfium
+/.venv-models
