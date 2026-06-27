@@ -60,7 +60,11 @@ async fn poll_loop(
             Ok(output) => output,
             Err(err) => {
                 tracing::error!(worker = idx, error = %err, "receive_message failed");
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                // Back off, but wake immediately on shutdown.
+                tokio::select! {
+                    _ = shutdown.cancelled() => break,
+                    _ = tokio::time::sleep(Duration::from_secs(5)) => {}
+                }
                 continue;
             }
         };

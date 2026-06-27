@@ -63,20 +63,26 @@ async fn main() -> anyhow::Result<()> {
         });
     }
 
-    // Graceful shutdown on SIGINT / SIGTERM.
+    // Run the SQS pollers in the background so the main task can wait on the
+    // shutdown signal and stop promptly — even while a worker is mid-conversion.
+    // A blocking ML parse can't be interrupted, so we must not block on draining it.
     let shutdown = CancellationToken::new();
-    {
+    let pollers = {
         let shutdown = shutdown.clone();
-        tokio::spawn(async move {
-            wait_for_shutdown().await;
-            tracing::info!("shutdown signal received");
-            shutdown.cancel();
-        });
-    }
+        let cfg = cfg.clone();
+        tokio::spawn(async move { sqs::run(processor, sqs_client, cfg, shutdown).await })
+    };
 
-    sqs::run(processor, sqs_client, cfg.clone(), shutdown).await;
+    // Graceful shutdown on SIGINT / SIGTERM.
+    wait_for_shutdown().await;
+    tracing::info!("shutdown signal received, stopping");
+    shutdown.cancel();
+
+    // Best-effort drain of idle pollers, then force-exit so an in-flight (blocking)
+    // conversion or a lingering background task can't keep the process alive.
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(5), pollers).await;
     tracing::info!("document processor stopped");
-    Ok(())
+    std::process::exit(0)
 }
 
 async fn wait_for_shutdown() {
