@@ -25,7 +25,8 @@ the contract the API and client already consume.
 
 - `{key}.chunked.json` — `{ "chunks": [{ page, length_tokens, text, id, type }], "pages": [{ page, text }] }`
 - `{key}.parsed.md` — Markdown used for document summarization
-- `{key}.parsed.json` — docling-native `DoclingDocument` JSON; internal to this service
+- `{key}.parsed.json` — internal page intermediate (`{pages_count, pages:[{page,text}]}`),
+  the parse→split handoff; not read by the API/client
 
 ## Supported formats
 
@@ -136,11 +137,14 @@ docker compose build document-processor
 
 ## Notes / differences from the Python service
 
-- **Single-pass processing.** The Python service split large PDFs into page
-  batches (a docling performance workaround) via several SQS round-trips. The
-  Rust service converts each document in one pass and keeps the SQS message alive
-  with a visibility-timeout heartbeat. The page-batching command fields
-  (`parentS3Key`/`part`/`partsCount`) are still accepted for compatibility.
-- **Page numbers.** fleischwolf `0.0.1` produces a flat document model without
-  per-element page provenance, so chunks are currently tagged `page: 1`. When
-  fleischwolf exposes provenance, the chunker can populate real page numbers.
+- **Page numbers.** fleischwolf `0.0.1` produces a flat document model with no
+  per-element page provenance. To still get real page numbers, PDFs are split into
+  single-page documents (`lopdf`) and converted page by page through one reused
+  `fleischwolf-pdf` pipeline (a single layout-model load); each page's chunks carry
+  its real page number, and `pagesCount` is accurate. Non-PDF formats are a single
+  logical page. If a PDF can't be split, it falls back to a one-pass parse (`page: 1`).
+- **No SQS page-batching.** The Python service split large PDFs into batches across
+  several SQS round-trips (a docling performance workaround). The Rust service
+  processes a document within one message and keeps it alive with a visibility-timeout
+  heartbeat. The old batching command fields (`parentS3Key`/`part`/`partsCount`) are
+  still accepted for compatibility.

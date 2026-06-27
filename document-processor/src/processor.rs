@@ -16,7 +16,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 use crate::config::Config;
-use crate::model::{ChunkedDocument, Command, OutCommand, PageText};
+use crate::model::{ChunkedDocument, Command, OutCommand, PageText, ParsedDocument};
 use crate::redis_status::{now_ns, ProgressArgs, StatusPublisher};
 use crate::s3::S3;
 
@@ -125,31 +125,38 @@ impl Processor {
             }
         };
 
+        // Internal page intermediate (parse → split handoff) + Markdown for summaries.
+        let parsed = ParsedDocument {
+            pages_count: output.pages_count,
+            pages: output.pages,
+        };
+        let parsed_json = serde_json::to_vec_pretty(&parsed).context("serialize parsed.json")?;
+        let markdown = parsed
+            .pages
+            .iter()
+            .map(|p| p.text.as_str())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+
         self.status
             .set_progress(ProgressArgs::new(&parsing_key, document_id, "parsing", 0.6))
             .await;
         self.s3
-            .put_object(
-                &parsed_json_key,
-                output.docling_json.into_bytes(),
-                "application/json",
-            )
+            .put_object(&parsed_json_key, parsed_json, "application/json")
             .await?;
 
         self.status
             .set_progress(ProgressArgs::new(&parsing_key, document_id, "parsing", 0.8))
             .await;
         self.s3
-            .put_object(
-                &parsed_md_key,
-                output.markdown.into_bytes(),
-                "text/markdown",
-            )
+            .put_object(&parsed_md_key, markdown.into_bytes(), "text/markdown")
             .await?;
 
         self.status
             .set_progress(
-                ProgressArgs::new(&parsing_key, document_id, "parsing", 1.0).end_time(now_ns()),
+                ProgressArgs::new(&parsing_key, document_id, "parsing", 1.0)
+                    .pages_count(parsed.pages_count)
+                    .end_time(now_ns()),
             )
             .await;
 
@@ -160,7 +167,7 @@ impl Processor {
 
     async fn split_document(&self, document_id: &str, s3_key: &str) -> Result<()> {
         let chunking_key = format!("{s3_key}.chunking");
-        let parsed_md_key = format!("{s3_key}.parsed.md");
+        let parsed_json_key = format!("{s3_key}.parsed.json");
         let chunked_json_key = format!("{s3_key}.chunked.json");
 
         // Idempotency: already chunked → just (re)trigger index.
@@ -177,31 +184,37 @@ impl Processor {
             )
             .await;
 
-        let markdown = self
+        let parsed_json = self
             .s3
-            .get_object_text(&parsed_md_key)
+            .get_object_text(&parsed_json_key)
             .await
-            .with_context(|| format!("download {parsed_md_key}"))?;
+            .with_context(|| format!("download {parsed_json_key}"))?;
+        let parsed: ParsedDocument = match serde_json::from_str(&parsed_json) {
+            Ok(parsed) => parsed,
+            Err(err) => {
+                // Malformed/stale intermediate is a poison message, not a transient
+                // failure: report and ack rather than redeliver forever.
+                let msg = format!("invalid {parsed_json_key}: {err}");
+                tracing::error!(document_id, error = %msg, "cannot read parsed intermediate");
+                self.report_error(&chunking_key, document_id, &msg).await;
+                return Ok(());
+            }
+        };
+        let pages_count = parsed.pages_count;
 
         self.status
-            .set_progress(ProgressArgs::new(
-                &chunking_key,
-                document_id,
-                "chunking",
-                0.3,
-            ))
+            .set_progress(
+                ProgressArgs::new(&chunking_key, document_id, "chunking", 0.3)
+                    .pages_count(pages_count),
+            )
             .await;
 
-        let cleaned = crate::chunker::clean_text(&markdown);
         let target = self.cfg.chunk_size_tokens;
-        let text_for_chunking = cleaned.clone();
-        let chunk_result = tokio::task::spawn_blocking(move || {
-            crate::chunker::chunk_page(&text_for_chunking, 1, target)
-        })
-        .await;
+        let chunk_result =
+            tokio::task::spawn_blocking(move || chunk_document(parsed, target)).await;
 
-        let chunks = match chunk_result {
-            Ok(chunks) => chunks,
+        let document = match chunk_result {
+            Ok(document) => document,
             Err(join_err) => {
                 let msg = format!("chunker task crashed: {join_err}");
                 tracing::error!(document_id, error = %msg, "chunker panicked");
@@ -211,30 +224,19 @@ impl Processor {
         };
 
         self.status
-            .set_progress(ProgressArgs::new(
-                &chunking_key,
-                document_id,
-                "chunking",
-                0.6,
-            ))
+            .set_progress(
+                ProgressArgs::new(&chunking_key, document_id, "chunking", 0.6)
+                    .pages_count(pages_count),
+            )
             .await;
 
-        let document = ChunkedDocument {
-            chunks,
-            pages: vec![PageText {
-                page: 1,
-                text: cleaned,
-            }],
-        };
         let json = serde_json::to_vec_pretty(&document).context("serialize chunked.json")?;
 
         self.status
-            .set_progress(ProgressArgs::new(
-                &chunking_key,
-                document_id,
-                "chunking",
-                0.8,
-            ))
+            .set_progress(
+                ProgressArgs::new(&chunking_key, document_id, "chunking", 0.8)
+                    .pages_count(pages_count),
+            )
             .await;
         self.s3
             .put_object(&chunked_json_key, json, "application/json")
@@ -242,12 +244,18 @@ impl Processor {
 
         self.status
             .set_progress(
-                ProgressArgs::new(&chunking_key, document_id, "chunking", 1.0).end_time(now_ns()),
+                ProgressArgs::new(&chunking_key, document_id, "chunking", 1.0)
+                    .pages_count(pages_count)
+                    .end_time(now_ns()),
             )
             .await;
 
         self.send_index(document_id, s3_key).await?;
-        tracing::info!(document_id, "successfully chunked document");
+        tracing::info!(
+            document_id,
+            pages = pages_count,
+            "successfully chunked document"
+        );
         Ok(())
     }
 
@@ -292,6 +300,26 @@ impl Processor {
             .with_context(|| format!("send_message to {queue_url}"))?;
         Ok(())
     }
+}
+
+/// Clean and chunk every page of a parsed document. Chunk `id`s reset per page
+/// (matching the Python splitter); `page` carries the real page number.
+fn chunk_document(parsed: ParsedDocument, target_tokens: usize) -> ChunkedDocument {
+    let mut chunks = Vec::new();
+    let mut pages = Vec::with_capacity(parsed.pages.len());
+    for page in parsed.pages {
+        let cleaned = crate::chunker::clean_text(&page.text);
+        chunks.extend(crate::chunker::chunk_page(
+            &cleaned,
+            page.page,
+            target_tokens,
+        ));
+        pages.push(PageText {
+            page: page.page,
+            text: cleaned,
+        });
+    }
+    ChunkedDocument { chunks, pages }
 }
 
 /// Filename stem of an S3 key (drops the directory prefix and extension).

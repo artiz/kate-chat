@@ -66,6 +66,10 @@ impl<'a> ProgressArgs<'a> {
         self.end_time = Some(t);
         self
     }
+    pub fn pages_count(mut self, n: u32) -> Self {
+        self.pages_count = Some(n);
+        self
+    }
 }
 
 impl StatusPublisher {

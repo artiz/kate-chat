@@ -56,6 +56,22 @@ pub struct StatusNotification {
     pub sync: bool,
 }
 
+/// One parsed page (Markdown) in the internal `*.parsed.json` intermediate.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ParsedPage {
+    pub page: u32,
+    /// Markdown for this page.
+    pub text: String,
+}
+
+/// The internal `*.parsed.json` artifact (parse → split handoff). Not consumed by
+/// the API or client; only this service reads it back during the split stage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ParsedDocument {
+    pub pages_count: u32,
+    pub pages: Vec<ParsedPage>,
+}
+
 /// One RAG chunk in `*.chunked.json`.
 #[derive(Debug, Serialize)]
 pub struct Chunk {
