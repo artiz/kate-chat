@@ -62,7 +62,8 @@ Environment variables (see `.env.example`). Required: `S3_REGION`, `SQS_REGION`,
 `SQS_DOCUMENTS_QUEUE`, `SQS_INDEX_DOCUMENTS_QUEUE`. Static AWS credentials are
 used when provided (local/LocalStack); otherwise the default provider chain (ECS
 task role). Notable tunables: `NUM_THREADS` (concurrent pollers),
-`CHUNK_SIZE_TOKENS`, `SQS_VISIBILITY_TIMEOUT`.
+`CHUNK_SIZE_TOKENS`, `SQS_VISIBILITY_TIMEOUT`, `PDF_PAGE_BATCH_SIZE` (PDF batching
+threshold; `0` disables).
 
 ## Run locally
 
@@ -143,8 +144,10 @@ docker compose build document-processor
   `fleischwolf-pdf` pipeline (a single layout-model load); each page's chunks carry
   its real page number, and `pagesCount` is accurate. Non-PDF formats are a single
   logical page. If a PDF can't be split, it falls back to a one-pass parse (`page: 1`).
-- **No SQS page-batching.** The Python service split large PDFs into batches across
-  several SQS round-trips (a docling performance workaround). The Rust service
-  processes a document within one message and keeps it alive with a visibility-timeout
-  heartbeat. The old batching command fields (`parentS3Key`/`part`/`partsCount`) are
-  still accepted for compatibility.
+- **PDF page-batching (parallel across workers).** PDFs with more than
+  `PDF_PAGE_BATCH_SIZE` pages (default 10) are split into part PDFs in S3
+  (`{key}.part{n}`) and a `parse_document` command is enqueued per part, so parts are
+  parsed **in parallel across workers/instances**; each part's pages are written with
+  global page numbers and the parent is reassembled (`parsed.json`/`parsed.md`) once all
+  parts finish. Smaller PDFs are parsed in a single message. Set `PDF_PAGE_BATCH_SIZE=0`
+  to disable. A single message is still kept alive with a visibility-timeout heartbeat.

@@ -65,7 +65,7 @@ fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
 /// Best-effort page-by-page PDF conversion. Returns `None` (so the caller falls
 /// back to a single pass) when the PDF cannot be split or any page fails.
 fn try_parse_pdf_per_page(name: &str, bytes: &[u8]) -> Option<Vec<ParsedPage>> {
-    let page_pdfs = split_pdf_pages(bytes).ok()?;
+    let page_pdfs = split_pdf_parts(bytes, 1).ok()?;
     if page_pdfs.len() <= 1 {
         return None;
     }
@@ -83,26 +83,42 @@ fn try_parse_pdf_per_page(name: &str, bytes: &[u8]) -> Option<Vec<ParsedPage>> {
     Some(pages)
 }
 
-/// Split a PDF into one single-page PDF per page (in document order). Returns an
-/// empty vec when the document has at most one page.
-fn split_pdf_pages(bytes: &[u8]) -> Result<Vec<Vec<u8>>, lopdf::Error> {
+/// Number of pages in a PDF, or `None` if it can't be read.
+pub fn pdf_page_count(bytes: &[u8]) -> Option<usize> {
+    PdfDocument::load_mem(bytes)
+        .ok()
+        .map(|d| d.get_pages().len())
+}
+
+/// True if the document resolves to PDF (by MIME or filename).
+pub fn is_pdf(name: &str, mime: Option<&str>) -> bool {
+    detect_format(name, mime) == Some(InputFormat::Pdf)
+}
+
+/// Split a PDF into parts of at most `group_size` pages each, in document order
+/// (`group_size = 1` → one PDF per page). Returns an empty vec for an empty PDF.
+pub fn split_pdf_parts(bytes: &[u8], group_size: usize) -> Result<Vec<Vec<u8>>, lopdf::Error> {
+    use std::collections::HashSet;
+
     let document = PdfDocument::load_mem(bytes)?;
     let page_numbers: Vec<u32> = document.get_pages().keys().copied().collect();
-    if page_numbers.len() <= 1 {
+    if page_numbers.is_empty() {
         return Ok(Vec::new());
     }
+    let group_size = group_size.max(1);
 
-    let mut result = Vec::with_capacity(page_numbers.len());
-    for &keep in &page_numbers {
-        let mut single = document.clone();
+    let mut result = Vec::with_capacity(page_numbers.len().div_ceil(group_size));
+    for group in page_numbers.chunks(group_size) {
+        let keep: HashSet<u32> = group.iter().copied().collect();
+        let mut part = document.clone();
         let to_delete: Vec<u32> = page_numbers
             .iter()
             .copied()
-            .filter(|p| *p != keep)
+            .filter(|p| !keep.contains(p))
             .collect();
-        single.delete_pages(&to_delete);
+        part.delete_pages(&to_delete);
         let mut buffer = Vec::new();
-        single.save_to(&mut buffer)?;
+        part.save_to(&mut buffer)?;
         result.push(buffer);
     }
     Ok(result)

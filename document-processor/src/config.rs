@@ -37,6 +37,9 @@ pub struct Config {
     pub chunk_size_tokens: usize,
     /// SQS visibility timeout (seconds) requested per received message.
     pub visibility_timeout: i32,
+    /// PDFs with more pages than this are split into parts of this many pages and
+    /// processed in parallel across workers (0 disables batching).
+    pub pdf_page_batch_size: usize,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -99,6 +102,7 @@ impl Config {
             num_threads,
             chunk_size_tokens: parse_or("CHUNK_SIZE_TOKENS", 300usize),
             visibility_timeout: parse_or("SQS_VISIBILITY_TIMEOUT", 300i32),
+            pdf_page_batch_size: parse_or("PDF_PAGE_BATCH_SIZE", 10usize),
         })
     }
 }

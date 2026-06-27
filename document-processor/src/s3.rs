@@ -81,4 +81,16 @@ impl S3 {
             }
         }
     }
+
+    /// Delete an object.
+    pub async fn delete(&self, key: &str) -> Result<()> {
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .with_context(|| format!("delete_object {key}"))?;
+        Ok(())
+    }
 }

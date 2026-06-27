@@ -9,9 +9,8 @@ use serde::{Deserialize, Serialize};
 
 /// Incoming SQS command (`parse_document` / `split_document`).
 ///
-/// The `parentS3Key` / `part` / `partsCount` fields existed for the Python
-/// PDF page-batching path; they are accepted for backward compatibility but the
-/// Rust pipeline processes each document in a single pass (see README).
+/// `parentS3Key` / `part` / `partsCount` are set when a large PDF is processed as
+/// page-batched parts (see [`PartCommand`]).
 #[derive(Debug, Clone, Deserialize)]
 pub struct Command {
     pub command: Option<String>,
@@ -21,6 +20,12 @@ pub struct Command {
     pub s3_key: Option<String>,
     #[serde(default)]
     pub mime: Option<String>,
+    #[serde(default, rename = "parentS3Key")]
+    pub parent_s3_key: Option<String>,
+    #[serde(default)]
+    pub part: Option<i64>,
+    #[serde(default, rename = "partsCount")]
+    pub parts_count: Option<i64>,
 }
 
 /// Outgoing SQS command envelope (`split_document` / `index_document`).
@@ -31,6 +36,22 @@ pub struct OutCommand<'a> {
     pub document_id: &'a str,
     #[serde(rename = "s3key")]
     pub s3_key: &'a str,
+}
+
+/// Outgoing `parse_document` command for one page-batched part of a large PDF.
+#[derive(Debug, Serialize)]
+pub struct PartCommand<'a> {
+    pub command: &'a str,
+    #[serde(rename = "documentId")]
+    pub document_id: &'a str,
+    #[serde(rename = "s3key")]
+    pub s3_key: &'a str,
+    pub mime: &'a str,
+    #[serde(rename = "parentS3Key")]
+    pub parent_s3_key: &'a str,
+    pub part: u32,
+    #[serde(rename = "partsCount")]
+    pub parts_count: u32,
 }
 
 /// Redis pub/sub progress notification. Field names and shape match the Python

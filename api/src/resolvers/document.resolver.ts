@@ -172,6 +172,9 @@ export class DocumentResolver extends BaseResolver {
 
     if (payload.startTime || payload.currentTime) {
       switch (payload.status) {
+        case DocumentStatus.BATCHING:
+          if (!metadata.batchingStartedAt) metadata.batchingStartedAt = payload.startTime || payload.currentTime;
+          break;
         case DocumentStatus.PARSING:
           if (!metadata.parsingStartedAt) metadata.parsingStartedAt = payload.startTime || payload.currentTime;
           break;
@@ -190,6 +193,9 @@ export class DocumentResolver extends BaseResolver {
 
     if (payload.endTime || payload.currentTime) {
       switch (payload.status) {
+        case DocumentStatus.BATCHING:
+          metadata.batchingEndedAt = payload.endTime || payload.currentTime;
+          break;
         case DocumentStatus.PARSING:
           metadata.parsingEndedAt = payload.endTime || payload.currentTime;
           break;
@@ -207,6 +213,10 @@ export class DocumentResolver extends BaseResolver {
     }
 
     if (metadata.pagesCount) {
+      if (metadata.batchingEndedAt && metadata.batchingStartedAt) {
+        metadata.batchingPagePerSecond =
+          metadata.pagesCount / ((metadata.batchingEndedAt - metadata.batchingStartedAt) / 1_000_000_000);
+      }
       if (metadata.parsingEndedAt && metadata.parsingStartedAt) {
         metadata.parsingPagePerSecond =
           metadata.pagesCount / ((metadata.parsingEndedAt - metadata.parsingStartedAt) / 1_000_000_000);
