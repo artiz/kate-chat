@@ -167,13 +167,21 @@ docker compose up redis localstack postgres mysql mssql -d
 npm run dev
 ```
 
-#### Documents processor (Python)
+#### Documents processor (Rust)
+
+The document processor is a Rust service built on
+[fleischwolf](https://github.com/artiz/fleischwolf) (a Rust port of docling). Declarative
+formats (DOCX/PPTX/XLSX/HTML/MD/CSV/EPUB/…) work out of the box; the PDF/image pipeline
+additionally needs pdfium + ONNX models at runtime (baked into the Docker image — see
+`document-processor/Dockerfile` and `document-processor/scripts/export_layout.py`).
+
 ```bash
-python -m venv document-processor/.venv
-source document-processor/.venv/bin/activate
-pip install -r document-processor/requirements.txt
-npm run dev:document_processor
+cp document-processor/.env.example document-processor/.env   # then edit as needed
+npm run dev:document_processor                               # cargo run in ./document-processor
 ```
+
+The previous Python implementation is archived under `document-processor-python/`
+(`npm run dev:document_processor_python`).
 
 #### Rust API (experiment)
 
@@ -254,7 +262,7 @@ DOCKER_BUILDKIT=1 docker build -t katechat-document-processor ./ -f infrastructu
 
 docker run -it --rm --pid=host --env-file=./document-processor/.env \
  --env PORT=8080 \
- --env NODE_ENV=production \
+ --env ENVIRONMENT=production \
  --env REDIS_URL="redis://host.docker.internal:6379" \
  --env S3_ENDPOINT="http://host.docker.internal:4566" \
  --env SQS_ENDPOINT="http://host.docker.internal:4566" \

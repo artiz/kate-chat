@@ -10,3 +10,13 @@
 **/*.sqlite
 node_modules
 **/node_modules
+
+# Rust build artifacts and downloaded ML assets (document-processor only — do NOT
+# use broad globs like **/models, which would also exclude client/src/components/models)
+document-processor/target
+document-processor/models
+document-processor/.pdfium
+document-processor/.venv-models
+
+# Archived Python document processor (not built; keeps its training PDFs out of the context)
+document-processor-python

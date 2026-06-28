@@ -1,27 +1,95 @@
-  
-FROM python:3.14
+# syntax=docker/dockerfile:1
+#
+# KateChat document processor (Rust / fleischwolf) with the full PDF ML pipeline.
+# Used by docker-compose for local development. Build context is the repo root.
+#
+# This mirrors infrastructure/services/katechat-document-processor/Dockerfile.
+#
+# Stages:
+#   models  — export the RT-DETR layout model (torch) + fetch OCR model/dict + pdfium
+#   builder — compile the Rust binary (ort downloads ONNX Runtime at build time)
+#   runtime — slim image with the binary, native libs and models baked in
+
+# ----------------------------------------------------------------------------
+# Stage 1: ML models + native libs
+# ----------------------------------------------------------------------------
+FROM python:3.12-slim AS models
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir "transformers>=4.45,<5" "onnx>=1.16,<2"
+
+WORKDIR /build
+COPY document-processor/scripts/export_layout.py ./export_layout.py
+
+RUN mkdir -p /opt/models /opt/pdfium \
+    && python export_layout.py /opt/models/layout_heron.onnx \
+    && curl -sSL -o /opt/models/ocr_rec.onnx \
+        "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_PP-OCRv3_rec_infer.onnx" \
+    && curl -sSL -o /opt/models/ppocr_keys_v1.txt \
+        "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/main/ppocr/utils/ppocr_keys_v1.txt" \
+    && curl -sSL -o /tmp/pdfium.tgz \
+        "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz" \
+    && tar xzf /tmp/pdfium.tgz -C /opt/pdfium \
+    && rm /tmp/pdfium.tgz
+
+# ----------------------------------------------------------------------------
+# Stage 2: Rust build
+# ----------------------------------------------------------------------------
+FROM rust:1-slim-trixie AS builder
+
+# build-essential / cmake / perl cover the C/C++/asm builds of aws-lc-sys
+# (rustls crypto) and ort-sys.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential cmake perl pkg-config ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Rust toolchain for building dependencies
-RUN apt-get update && apt-get install -y curl libglib2.0-0 libgl1 libsm6 libxext6 libxrender-dev  && \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+COPY document-processor/Cargo.toml document-processor/Cargo.lock ./
+RUN mkdir src \
+    && echo 'fn main() {}' > src/main.rs \
+    && cargo build --release --locked \
+    && rm -rf src
 
-# Copy requirements and install Python dependencies
-COPY document-processor/requirements.txt ./
-# Workaround for pydantic-core/pyo3 on Python 3.14
-ENV PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
-RUN pip install -r requirements.txt
+COPY document-processor/src ./src
+RUN touch src/main.rs && cargo build --release --locked
 
-# ensures that the python output is sent straight to terminal (e.g. your container log)
-# without being first buffered and that you can see the output of your application (e.g. django logs)
-# in real time. Equivalent to python -u: https://docs.python.org/3/using/cmdline.html#cmdoption-u
-ENV PYTHONUNBUFFERED 1
+RUN mkdir -p /artifacts && cp target/release/katechat-document-processor /artifacts/
+RUN find target -name 'libonnxruntime*.so*' -exec cp -av {} /artifacts/ \; || true
 
-COPY document-processor/ ./
+# ----------------------------------------------------------------------------
+# Stage 3: runtime
+# ----------------------------------------------------------------------------
+FROM debian:trixie-slim AS runtime
 
-# Expose port 8080 for health checks and API
+ARG COMMIT_SHA=""
+ENV COMMIT_SHA=$COMMIT_SHA
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /artifacts/ /tmp/artifacts/
+RUN cp /tmp/artifacts/katechat-document-processor /usr/local/bin/ \
+    && (cp /tmp/artifacts/libonnxruntime*.so* /usr/local/lib/ 2>/dev/null || true) \
+    && rm -rf /tmp/artifacts \
+    && ldconfig
+
+COPY --from=models /opt/models /opt/models
+COPY --from=models /opt/pdfium /opt/pdfium
+
+ENV PDFIUM_DYNAMIC_LIB_PATH=/opt/pdfium/lib \
+    DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx \
+    DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec.onnx \
+    DOCLING_OCR_DICT=/opt/models/ppocr_keys_v1.txt \
+    LD_LIBRARY_PATH=/usr/local/lib:/opt/pdfium/lib \
+    PORT=8080
+
 EXPOSE 8080
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]
+CMD ["katechat-document-processor"]
