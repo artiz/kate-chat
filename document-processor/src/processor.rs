@@ -79,7 +79,23 @@ impl Processor {
                     )
                     .await
                 } else {
-                    self.parse_document(&document_id, &s3_key, cmd.mime).await
+                    // Distributed lock so duplicate messages for the same document
+                    // aren't parsed by multiple workers concurrently.
+                    let lock_key = format!("{s3_key}.processing");
+                    if !self
+                        .status
+                        .try_acquire(&lock_key, self.cfg.parse_timeout_seconds + 120)
+                        .await
+                    {
+                        tracing::info!(
+                            document_id,
+                            "document already being processed by another worker; skipping duplicate"
+                        );
+                        return Ok(());
+                    }
+                    let result = self.parse_document(&document_id, &s3_key, cmd.mime).await;
+                    self.status.release(&lock_key).await;
+                    result
                 }
             }
             "split_document" => self.split_document(&document_id, &s3_key).await,
@@ -322,23 +338,35 @@ impl Processor {
     ) -> Result<bool> {
         let batch_size = self.cfg.pdf_page_batch_size;
 
-        // Counting pages and splitting are CPU/alloc-heavy (lopdf); keep them off
-        // the async runtime.
+        // Counting pages and splitting (pdfium) are blocking; keep them off the
+        // async runtime and time-bound them.
         let bytes_owned = bytes.to_vec();
-        let analysis = tokio::task::spawn_blocking(move || {
-            let page_count = crate::parser::pdf_page_count(&bytes_owned)?;
-            if page_count <= batch_size {
-                return Some((page_count, Vec::new()));
-            }
-            let parts =
-                crate::parser::split_pdf_parts(&bytes_owned, batch_size).unwrap_or_default();
-            Some((page_count, parts))
-        })
-        .await;
+        let split =
+            tokio::task::spawn_blocking(move || -> Result<(usize, Vec<Vec<u8>>), String> {
+                let page_count = crate::pdf::page_count(&bytes_owned)?;
+                if page_count <= batch_size {
+                    return Ok((page_count, Vec::new()));
+                }
+                let parts = crate::pdf::split_into_parts(&bytes_owned, batch_size)?;
+                Ok((page_count, parts))
+            });
+        let analysis =
+            match tokio::time::timeout(Duration::from_secs(self.cfg.parse_timeout_seconds), split)
+                .await
+            {
+                Ok(joined) => joined,
+                Err(_) => {
+                    tracing::error!(document_id, "pdf inspect/split timed out");
+                    return Ok(false);
+                }
+            };
 
         let (page_count, parts) = match analysis {
-            Ok(Some(result)) => result,
-            Ok(None) => return Ok(false), // unreadable as PDF → let the normal path try
+            Ok(Ok(result)) => result,
+            Ok(Err(e)) => {
+                tracing::error!(document_id, error = %e, "pdf inspect/split failed");
+                return Ok(false);
+            }
             Err(join_err) => {
                 tracing::error!(document_id, error = %join_err, "pdf split task crashed");
                 return Ok(false);

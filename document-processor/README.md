@@ -141,7 +141,8 @@ docker compose build document-processor
 
 - **Page numbers.** fleischwolf `0.0.1` produces a flat document model with no
   per-element page provenance. To still get real page numbers, PDFs are split into
-  single-page documents (`lopdf`) and converted page by page through one reused
+  single-page documents with **pdfium** (the same fast C library the ML pipeline
+  uses; see `src/pdf.rs`) and converted page by page through one reused
   `fleischwolf-pdf` pipeline (a single layout-model load); each page's chunks carry
   its real page number, and `pagesCount` is accurate. Non-PDF formats are a single
   logical page. If a PDF can't be split, it falls back to a one-pass parse (`page: 1`).

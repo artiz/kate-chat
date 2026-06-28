@@ -1,9 +1,9 @@
 //! Document parsing via the `fleischwolf` converter (the Rust port of docling).
 //!
-//! PDFs are split into single-page documents (`lopdf`) and converted page by page
-//! through one reused `fleischwolf-pdf` [`Pipeline`] (a single layout-model load),
-//! which gives real per-page Markdown and an accurate page count. Everything else
-//! is converted in one pass as a single logical page.
+//! PDFs are split into single-page documents (pdfium, via [`crate::pdf`]) and
+//! converted page by page through one reused `fleischwolf-pdf` [`Pipeline`] (a
+//! single layout-model load), which gives real per-page Markdown and an accurate
+//! page count. Everything else is converted in one pass as a single logical page.
 //!
 //! `parse` is CPU-bound and blocking (the PDF path runs pdfium + ONNX layout/OCR
 //! models), so callers must run it on a blocking thread
@@ -13,7 +13,6 @@ use std::path::Path;
 
 use fleischwolf::{DocumentConverter, InputFormat, SourceDocument};
 use fleischwolf_pdf::Pipeline;
-use lopdf::Document as PdfDocument;
 
 use crate::model::ParsedPage;
 
@@ -51,7 +50,7 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
 /// page is converted through one reused pipeline (real page numbers). Otherwise
 /// the whole document is converted as a single page.
 fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
-    let page_pdfs = split_pdf_parts(bytes, 1).unwrap_or_default();
+    let page_pdfs = crate::pdf::split_into_parts(bytes, 1).unwrap_or_default();
 
     if page_pdfs.len() > 1 {
         tracing::info!(pages = page_pdfs.len(), "parsing PDF page by page");
@@ -84,13 +83,6 @@ fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
     }])
 }
 
-/// Number of pages in a PDF, or `None` if it can't be read.
-pub fn pdf_page_count(bytes: &[u8]) -> Option<usize> {
-    PdfDocument::load_mem(bytes)
-        .ok()
-        .map(|d| d.get_pages().len())
-}
-
 /// True if the bytes look like a PDF (magic header), regardless of name/MIME.
 pub fn looks_like_pdf(bytes: &[u8]) -> bool {
     bytes.starts_with(b"%PDF")
@@ -100,35 +92,6 @@ pub fn looks_like_pdf(bytes: &[u8]) -> bool {
 /// [`looks_like_pdf`] for content sniffing).
 pub fn is_pdf(name: &str, mime: Option<&str>) -> bool {
     detect_format(name, mime) == Some(InputFormat::Pdf)
-}
-
-/// Split a PDF into parts of at most `group_size` pages each, in document order
-/// (`group_size = 1` → one PDF per page). Returns an empty vec for an empty PDF.
-pub fn split_pdf_parts(bytes: &[u8], group_size: usize) -> Result<Vec<Vec<u8>>, lopdf::Error> {
-    use std::collections::HashSet;
-
-    let document = PdfDocument::load_mem(bytes)?;
-    let page_numbers: Vec<u32> = document.get_pages().keys().copied().collect();
-    if page_numbers.is_empty() {
-        return Ok(Vec::new());
-    }
-    let group_size = group_size.max(1);
-
-    let mut result = Vec::with_capacity(page_numbers.len().div_ceil(group_size));
-    for group in page_numbers.chunks(group_size) {
-        let keep: HashSet<u32> = group.iter().copied().collect();
-        let mut part = document.clone();
-        let to_delete: Vec<u32> = page_numbers
-            .iter()
-            .copied()
-            .filter(|p| !keep.contains(p))
-            .collect();
-        part.delete_pages(&to_delete);
-        let mut buffer = Vec::new();
-        part.save_to(&mut buffer)?;
-        result.push(buffer);
-    }
-    Ok(result)
 }
 
 /// Resolve the `fleischwolf` input format from MIME type (preferred) or, failing

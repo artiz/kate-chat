@@ -12,6 +12,7 @@ mod health;
 mod logging;
 mod model;
 mod parser;
+mod pdf;
 mod processor;
 mod redis_status;
 mod s3;

@@ -82,6 +82,34 @@ impl StatusPublisher {
         })
     }
 
+    /// Try to acquire a short-lived distributed lock (`SET key 1 NX EX ttl`).
+    /// Returns `true` if acquired. Fails open (returns `true`) if Redis is
+    /// unreachable, so a Redis outage never blocks processing.
+    pub async fn try_acquire(&self, key: &str, ttl_secs: u64) -> bool {
+        let mut conn = self.conn.clone();
+        let mut command = redis::cmd("SET");
+        command.arg(key).arg("1").arg("NX").arg("EX").arg(ttl_secs);
+        let query = command.query_async::<Option<String>>(&mut conn);
+        match tokio::time::timeout(std::time::Duration::from_secs(5), query).await {
+            Ok(Ok(reply)) => reply.is_some(),
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, key, "redis lock acquire failed; proceeding");
+                true
+            }
+            Err(_) => {
+                tracing::warn!(key, "redis lock acquire timed out; proceeding");
+                true
+            }
+        }
+    }
+
+    /// Release a lock acquired with [`Self::try_acquire`] (best-effort).
+    pub async fn release(&self, key: &str) {
+        let mut conn = self.conn.clone();
+        let del = conn.del::<_, ()>(key);
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), del).await;
+    }
+
     /// Set the progress key (with TTL) and publish a status notification.
     /// Best-effort and time-bounded: failures/timeouts are logged, never propagated
     /// (so a dead Redis connection can't stall the pipeline).

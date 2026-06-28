@@ -1,0 +1,69 @@
+//! pdfium-based PDF utilities: page count + splitting into part PDFs.
+//!
+//! pdfium (the same fast C library the ML pipeline already uses) replaces lopdf,
+//! which deep-clones the whole document per part and froze on large PDFs. All
+//! pdfium access is serialized process-wide by pdfium-render's `thread_safe`
+//! feature, so these are safe to call from blocking worker threads.
+//!
+//! These functions are blocking; run them on `tokio::task::spawn_blocking`.
+
+use pdfium_render::prelude::*;
+
+/// Bind pdfium, honoring `PDFIUM_DYNAMIC_LIB_PATH` (matching fleischwolf-pdf), and
+/// falling back to the system library.
+fn pdfium() -> Result<Pdfium, String> {
+    if let Ok(path) = std::env::var("PDFIUM_DYNAMIC_LIB_PATH") {
+        let name = Pdfium::pdfium_platform_library_name_at_path(&path);
+        if let Ok(bindings) = Pdfium::bind_to_library(&name) {
+            return Ok(Pdfium::new(bindings));
+        }
+        if let Ok(bindings) = Pdfium::bind_to_library(&path) {
+            return Ok(Pdfium::new(bindings));
+        }
+    }
+    Pdfium::bind_to_system_library()
+        .map(Pdfium::new)
+        .map_err(|e| format!("pdfium bind: {e}"))
+}
+
+/// Number of pages in a PDF.
+pub fn page_count(bytes: &[u8]) -> Result<usize, String> {
+    let pdfium = pdfium()?;
+    let doc = pdfium
+        .load_pdf_from_byte_slice(bytes, None)
+        .map_err(|e| format!("pdfium load: {e}"))?;
+    Ok(doc.pages().len() as usize)
+}
+
+/// Split a PDF into parts of at most `group_size` pages each (in document order),
+/// each returned as standalone PDF bytes. `group_size = 1` → one PDF per page.
+/// Returns an empty vec for an empty PDF.
+pub fn split_into_parts(bytes: &[u8], group_size: usize) -> Result<Vec<Vec<u8>>, String> {
+    let group_size = group_size.clamp(1, u16::MAX as usize) as u16;
+    let pdfium = pdfium()?;
+    let source = pdfium
+        .load_pdf_from_byte_slice(bytes, None)
+        .map_err(|e| format!("pdfium load: {e}"))?;
+    let total = source.pages().len();
+    if total == 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut parts = Vec::with_capacity((total as usize).div_ceil(group_size as usize));
+    let mut start: u16 = 0;
+    while start < total {
+        let end = start.saturating_add(group_size - 1).min(total - 1); // inclusive
+        let mut part = pdfium
+            .create_new_pdf()
+            .map_err(|e| format!("pdfium create: {e}"))?;
+        part.pages_mut()
+            .copy_page_range_from_document(&source, start..=end, 0)
+            .map_err(|e| format!("pdfium copy {start}..={end}: {e}"))?;
+        parts.push(
+            part.save_to_bytes()
+                .map_err(|e| format!("pdfium save: {e}"))?,
+        );
+        start = end + 1;
+    }
+    Ok(parts)
+}
