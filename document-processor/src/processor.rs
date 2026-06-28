@@ -101,6 +101,7 @@ impl Processor {
         let parsed_md_key = format!("{s3_key}.parsed.md");
 
         // Idempotency: already parsed → just (re)trigger split.
+        tracing::info!(document_id, "checking for existing parse output");
         if self.s3.exists(&parsed_json_key).await? {
             tracing::info!(document_id, "already parsed, skipping to split");
             self.send_split(document_id, s3_key).await?;
@@ -115,11 +116,13 @@ impl Processor {
             .await;
 
         // Infrastructure error → propagate (redeliver).
+        tracing::info!(document_id, "downloading document from S3");
         let (bytes, content_type) = self
             .s3
             .get_object(s3_key)
             .await
             .with_context(|| format!("download {s3_key}"))?;
+        tracing::info!(document_id, bytes = bytes.len(), content_type = ?content_type, "downloaded document");
 
         let mime = mime.or(content_type);
 

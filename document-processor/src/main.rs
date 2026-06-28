@@ -40,7 +40,11 @@ async fn main() -> anyhow::Result<()> {
 
     let s3_client = aws::s3_client(&cfg).await;
     let sqs_client = aws::sqs_client(&cfg).await;
-    let s3 = s3::S3::new(s3_client, cfg.s3_files_bucket_name.clone());
+    let s3 = s3::S3::new(
+        s3_client,
+        cfg.s3_files_bucket_name.clone(),
+        std::time::Duration::from_secs(cfg.s3_timeout_seconds),
+    );
     let status =
         redis_status::StatusPublisher::connect(&cfg.redis_url, &cfg.document_status_channel)
             .await

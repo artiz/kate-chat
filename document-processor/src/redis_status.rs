@@ -83,15 +83,20 @@ impl StatusPublisher {
     }
 
     /// Set the progress key (with TTL) and publish a status notification.
-    /// Best-effort: failures are logged, never propagated.
+    /// Best-effort and time-bounded: failures/timeouts are logged, never propagated
+    /// (so a dead Redis connection can't stall the pipeline).
     pub async fn set_progress(&self, args: ProgressArgs<'_>) {
         let mut conn = self.conn.clone();
+        let timeout = std::time::Duration::from_secs(5);
 
-        if let Err(e) = conn
-            .set_ex::<_, _, ()>(args.progress_key, args.progress.to_string(), args.expire)
-            .await
-        {
-            tracing::warn!(error = %e, key = %args.progress_key, "redis setex failed");
+        let setex =
+            conn.set_ex::<_, _, ()>(args.progress_key, args.progress.to_string(), args.expire);
+        match tokio::time::timeout(timeout, setex).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, key = %args.progress_key, "redis setex failed")
+            }
+            Err(_) => tracing::warn!(key = %args.progress_key, "redis setex timed out"),
         }
 
         let notification = StatusNotification {
@@ -109,11 +114,11 @@ impl StatusPublisher {
 
         match serde_json::to_string(&notification) {
             Ok(payload) => {
-                if let Err(e) = conn
-                    .publish::<_, _, ()>(self.channel.as_str(), payload)
-                    .await
-                {
-                    tracing::warn!(error = %e, "redis publish failed");
+                let publish = conn.publish::<_, _, ()>(self.channel.as_str(), payload);
+                match tokio::time::timeout(timeout, publish).await {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => tracing::warn!(error = %e, "redis publish failed"),
+                    Err(_) => tracing::warn!("redis publish timed out"),
                 }
             }
             Err(e) => tracing::warn!(error = %e, "serialize status notification failed"),

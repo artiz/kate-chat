@@ -43,6 +43,9 @@ pub struct Config {
     /// Hard cap on a single parse (seconds); on timeout the document is failed
     /// instead of hanging the worker forever.
     pub parse_timeout_seconds: u64,
+    /// Per-operation timeout (seconds) for S3 calls, so a stalled download/upload
+    /// fails instead of hanging the worker.
+    pub s3_timeout_seconds: u64,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -107,6 +110,7 @@ impl Config {
             visibility_timeout: parse_or("SQS_VISIBILITY_TIMEOUT", 300i32),
             pdf_page_batch_size: parse_or("PDF_PAGE_BATCH_SIZE", 10usize),
             parse_timeout_seconds: parse_or("PARSE_TIMEOUT_SECONDS", 1800u64),
+            s3_timeout_seconds: parse_or("S3_TIMEOUT_SECONDS", 120u64),
         })
     }
 }
