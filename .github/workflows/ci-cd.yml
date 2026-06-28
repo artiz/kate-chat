@@ -151,7 +151,7 @@ jobs:
   build:
     name: Build and Push Images
     runs-on: ubuntu-latest
-    needs: [test, lint, changes]
+    needs: [test, lint, changes, rust-document-processor]
     if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true'
 
     outputs:

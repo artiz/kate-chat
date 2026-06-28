@@ -20,7 +20,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir "transformers>=4.45" onnx
+    && pip install --no-cache-dir "transformers>=4.45,<5" "onnx>=1.16,<2"
 
 WORKDIR /build
 COPY document-processor/scripts/export_layout.py ./export_layout.py

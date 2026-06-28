@@ -120,7 +120,11 @@ fn spawn_heartbeat(
     visibility: i32,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
-        let interval = Duration::from_secs(((visibility as u64) / 2).max(10));
+        // Refresh at half the visibility window (clamped to a sane positive range),
+        // so a tiny/negative misconfigured timeout can't make the interval exceed
+        // the window or underflow to ~forever.
+        let secs = visibility.clamp(2, 43_200) as u64;
+        let interval = Duration::from_secs((secs / 2).max(1));
         loop {
             tokio::time::sleep(interval).await;
             if let Err(err) = sqs

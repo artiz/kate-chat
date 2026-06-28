@@ -343,15 +343,9 @@ impl Processor {
         // Counting pages and splitting (pdfium) are blocking; keep them off the
         // async runtime and time-bound them.
         let bytes_owned = bytes.to_vec();
-        let split =
-            tokio::task::spawn_blocking(move || -> Result<(usize, Vec<Vec<u8>>), String> {
-                let page_count = crate::pdf::page_count(&bytes_owned)?;
-                if page_count <= batch_size {
-                    return Ok((page_count, Vec::new()));
-                }
-                let parts = crate::pdf::split_into_parts(&bytes_owned, batch_size)?;
-                Ok((page_count, parts))
-            });
+        let split = tokio::task::spawn_blocking(move || {
+            crate::pdf::inspect_for_batching(&bytes_owned, batch_size)
+        });
         let analysis =
             match tokio::time::timeout(Duration::from_secs(self.cfg.parse_timeout_seconds), split)
                 .await
@@ -521,17 +515,16 @@ impl Processor {
             return Ok(());
         }
 
-        // How many parts are done?
-        let mut completed = 0u32;
-        for i in 0..parts_count {
-            if self
-                .s3
-                .exists(&format!("{parent_s3_key}.part{i}.parsed.json"))
-                .await?
-            {
-                completed += 1;
-            }
-        }
+        // How many parts are done? Check concurrently.
+        let checks = (0..parts_count).map(|i| {
+            let key = format!("{parent_s3_key}.part{i}.parsed.json");
+            async move { self.s3.exists(&key).await }
+        });
+        let completed = futures::future::try_join_all(checks)
+            .await?
+            .into_iter()
+            .filter(|&done| done)
+            .count() as u32;
 
         if completed < parts_count {
             let progress = completed as f64 / parts_count as f64;
