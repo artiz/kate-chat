@@ -26,6 +26,8 @@ pub struct Command {
     pub part: Option<i64>,
     #[serde(default, rename = "partsCount")]
     pub parts_count: Option<i64>,
+    #[serde(default, rename = "totalPages")]
+    pub total_pages: Option<i64>,
 }
 
 /// Outgoing SQS command envelope (`split_document` / `index_document`).
@@ -52,6 +54,9 @@ pub struct PartCommand<'a> {
     pub part: u32,
     #[serde(rename = "partsCount")]
     pub parts_count: u32,
+    /// Total page count of the whole parent PDF (for early progress display).
+    #[serde(rename = "totalPages")]
+    pub total_pages: u32,
 }
 
 /// Redis pub/sub progress notification. Field names and shape match the Python

@@ -69,6 +69,7 @@ impl Processor {
                         tracing::warn!(?cmd, "invalid part command");
                         return Ok(());
                     }
+                    let total_pages = cmd.total_pages.unwrap_or(0).max(0) as u32;
                     self.parse_document_part(
                         &document_id,
                         &s3_key,
@@ -76,6 +77,7 @@ impl Processor {
                         &parent,
                         part as u32,
                         parts_count as u32,
+                        total_pages,
                     )
                     .await
                 } else {
@@ -410,6 +412,7 @@ impl Processor {
                 s3_key,
                 index as u32,
                 parts_count,
+                page_count as u32,
             )
             .await?;
 
@@ -434,6 +437,7 @@ impl Processor {
 
     /// Parse one page-batched part of a PDF, write its (globally-numbered) pages,
     /// and try to finalize the parent document.
+    #[allow(clippy::too_many_arguments)]
     async fn parse_document_part(
         &self,
         document_id: &str,
@@ -442,6 +446,7 @@ impl Processor {
         parent_s3_key: &str,
         part: u32,
         parts_count: u32,
+        total_pages: u32,
     ) -> Result<()> {
         let parsing_key = format!("{parent_s3_key}.parsing");
         let parent_parsed_key = format!("{parent_s3_key}.parsed.json");
@@ -495,7 +500,7 @@ impl Processor {
             let _ = self.s3.delete(part_s3_key).await;
         }
 
-        self.finalize_partitioned(document_id, parent_s3_key, parts_count)
+        self.finalize_partitioned(document_id, parent_s3_key, parts_count, total_pages)
             .await
     }
 
@@ -505,6 +510,7 @@ impl Processor {
         document_id: &str,
         parent_s3_key: &str,
         parts_count: u32,
+        total_pages: u32,
     ) -> Result<()> {
         let parsing_key = format!("{parent_s3_key}.parsing");
         let parent_parsed_key = format!("{parent_s3_key}.parsed.json");
@@ -529,12 +535,13 @@ impl Processor {
 
         if completed < parts_count {
             let progress = completed as f64 / parts_count as f64;
-            self.status
-                .set_progress(
-                    ProgressArgs::new(&parsing_key, document_id, "parsing", progress)
-                        .info(&format!("parsed {completed}/{parts_count} parts")),
-                )
-                .await;
+            let info = format!("parsed {completed}/{parts_count} parts");
+            let mut args =
+                ProgressArgs::new(&parsing_key, document_id, "parsing", progress).info(&info);
+            if total_pages > 0 {
+                args = args.pages_count(total_pages);
+            }
+            self.status.set_progress(args).await;
             return Ok(());
         }
 
@@ -624,6 +631,7 @@ impl Processor {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn send_parse_part(
         &self,
         document_id: &str,
@@ -632,6 +640,7 @@ impl Processor {
         parent_s3_key: &str,
         part: u32,
         parts_count: u32,
+        total_pages: u32,
     ) -> Result<()> {
         self.send(
             &self.cfg.sqs_documents_queue,
@@ -643,6 +652,7 @@ impl Processor {
                 parent_s3_key,
                 part,
                 parts_count,
+                total_pages,
             },
         )
         .await
