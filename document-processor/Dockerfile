@@ -39,7 +39,7 @@ RUN mkdir -p /opt/models /opt/pdfium \
 # ----------------------------------------------------------------------------
 # Stage 2: Rust build
 # ----------------------------------------------------------------------------
-FROM rust:1-slim-bookworm AS builder
+FROM rust:1-slim-trixie AS builder
 
 # build-essential / cmake / perl cover the C/C++/asm builds of aws-lc-sys
 # (rustls crypto) and ort-sys.
@@ -65,7 +65,7 @@ RUN find target -name 'libonnxruntime*.so*' -exec cp -av {} /artifacts/ \; || tr
 # ----------------------------------------------------------------------------
 # Stage 3: runtime
 # ----------------------------------------------------------------------------
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=$COMMIT_SHA
