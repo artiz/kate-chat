@@ -12,11 +12,13 @@
 
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 
 use crate::config::Config;
 use crate::model::{ChunkedDocument, Command, OutCommand, PageText, ParsedDocument, PartCommand};
+use crate::parser::ParseOutput;
 use crate::redis_status::{now_ns, ProgressArgs, StatusPublisher};
 use crate::s3::S3;
 
@@ -122,8 +124,10 @@ impl Processor {
         let mime = mime.or(content_type);
 
         // Large PDFs are split into page batches processed in parallel across workers.
+        let is_pdf =
+            crate::parser::is_pdf(s3_key, mime.as_deref()) || crate::parser::looks_like_pdf(&bytes);
         if self.cfg.pdf_page_batch_size > 0
-            && crate::parser::is_pdf(s3_key, mime.as_deref())
+            && is_pdf
             && self
                 .maybe_batch_pdf(document_id, s3_key, mime.as_deref(), &bytes)
                 .await?
@@ -137,22 +141,10 @@ impl Processor {
             .await;
 
         let name = file_stem(s3_key);
-        let parse_result = tokio::task::spawn_blocking(move || {
-            crate::parser::parse(&name, mime.as_deref(), bytes)
-        })
-        .await;
-
-        let output = match parse_result {
-            Ok(Ok(output)) => output,
-            Ok(Err(parse_err)) => {
-                tracing::error!(document_id, error = %parse_err, "failed to parse document");
-                self.report_error(&parsing_key, document_id, &parse_err)
-                    .await;
-                return Ok(());
-            }
-            Err(join_err) => {
-                let msg = format!("parser task crashed: {join_err}");
-                tracing::error!(document_id, error = %msg, "parser panicked");
+        let output = match self.run_parse(name, mime, bytes).await {
+            Ok(output) => output,
+            Err(msg) => {
+                tracing::error!(document_id, error = %msg, "failed to parse document");
                 self.report_error(&parsing_key, document_id, &msg).await;
                 return Ok(());
             }
@@ -292,6 +284,29 @@ impl Processor {
         Ok(())
     }
 
+    /// Run a (blocking) parse on a worker thread with a hard timeout, so a slow or
+    /// hung conversion fails the document instead of freezing the worker forever.
+    async fn run_parse(
+        &self,
+        name: String,
+        mime: Option<String>,
+        bytes: Vec<u8>,
+    ) -> Result<ParseOutput, String> {
+        let timeout = Duration::from_secs(self.cfg.parse_timeout_seconds);
+        let handle = tokio::task::spawn_blocking(move || {
+            crate::parser::parse(&name, mime.as_deref(), bytes)
+        });
+        match tokio::time::timeout(timeout, handle).await {
+            Ok(Ok(Ok(output))) => Ok(output),
+            Ok(Ok(Err(parse_err))) => Err(parse_err),
+            Ok(Err(join_err)) => Err(format!("parser task crashed: {join_err}")),
+            Err(_) => Err(format!(
+                "parse timed out after {}s",
+                self.cfg.parse_timeout_seconds
+            )),
+        }
+    }
+
     /// Split a large PDF into page batches, upload each as a part, and enqueue a
     /// `parse_document` command per part. Returns `true` if the document was
     /// batched (the caller should then ack without parsing it whole).
@@ -303,18 +318,39 @@ impl Processor {
         bytes: &[u8],
     ) -> Result<bool> {
         let batch_size = self.cfg.pdf_page_batch_size;
-        let page_count = match crate::parser::pdf_page_count(bytes) {
-            Some(n) => n,
-            None => return Ok(false), // unreadable as PDF → let the normal path try
+
+        // Counting pages and splitting are CPU/alloc-heavy (lopdf); keep them off
+        // the async runtime.
+        let bytes_owned = bytes.to_vec();
+        let analysis = tokio::task::spawn_blocking(move || {
+            let page_count = crate::parser::pdf_page_count(&bytes_owned)?;
+            if page_count <= batch_size {
+                return Some((page_count, Vec::new()));
+            }
+            let parts =
+                crate::parser::split_pdf_parts(&bytes_owned, batch_size).unwrap_or_default();
+            Some((page_count, parts))
+        })
+        .await;
+
+        let (page_count, parts) = match analysis {
+            Ok(Some(result)) => result,
+            Ok(None) => return Ok(false), // unreadable as PDF → let the normal path try
+            Err(join_err) => {
+                tracing::error!(document_id, error = %join_err, "pdf split task crashed");
+                return Ok(false);
+            }
         };
-        if page_count <= batch_size {
+        tracing::info!(
+            document_id,
+            pages = page_count,
+            "inspected PDF for batching"
+        );
+
+        // Not over the threshold, or could not split → parse as a single document.
+        if parts.len() <= 1 {
             return Ok(false);
         }
-
-        let parts = match crate::parser::split_pdf_parts(bytes, batch_size) {
-            Ok(parts) if parts.len() > 1 => parts,
-            _ => return Ok(false), // could not split → fall back to whole-doc parse
-        };
         let parts_count = parts.len() as u32;
         let parsing_key = format!("{s3_key}.parsing");
         let mime = mime.unwrap_or("application/pdf").to_string();
@@ -396,22 +432,10 @@ impl Processor {
             let mime = mime.or(content_type);
             let name = file_stem(parent_s3_key);
 
-            let parse_result = tokio::task::spawn_blocking(move || {
-                crate::parser::parse(&name, mime.as_deref(), bytes)
-            })
-            .await;
-
-            let output = match parse_result {
-                Ok(Ok(output)) => output,
-                Ok(Err(parse_err)) => {
-                    tracing::error!(document_id, part, error = %parse_err, "failed to parse part");
-                    self.report_error(&parsing_key, document_id, &parse_err)
-                        .await;
-                    return Ok(());
-                }
-                Err(join_err) => {
-                    let msg = format!("parser task crashed: {join_err}");
-                    tracing::error!(document_id, part, error = %msg, "parser panicked");
+            let output = match self.run_parse(name, mime, bytes).await {
+                Ok(output) => output,
+                Err(msg) => {
+                    tracing::error!(document_id, part, error = %msg, "failed to parse part");
                     self.report_error(&parsing_key, document_id, &msg).await;
                     return Ok(());
                 }

@@ -26,6 +26,7 @@ pub struct ParseOutput {
 /// Convert raw document bytes into per-page Markdown.
 pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutput, String> {
     let format = detect_format(name, mime)
+        .or_else(|| looks_like_pdf(&bytes).then_some(InputFormat::Pdf))
         .ok_or_else(|| format!("unsupported document type (name='{name}', mime={mime:?})"))?;
 
     let pages = if format == InputFormat::Pdf {
@@ -46,41 +47,41 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
     Ok(ParseOutput { pages, pages_count })
 }
 
-/// Convert a PDF page by page when it can be split; otherwise fall back to a
-/// single whole-document pass (one logical page).
+/// Convert a PDF to per-page Markdown. When the PDF can be split into pages, each
+/// page is converted through one reused pipeline (real page numbers). Otherwise
+/// the whole document is converted as a single page.
 fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
-    if let Some(pages) = try_parse_pdf_per_page(name, bytes) {
+    let page_pdfs = split_pdf_parts(bytes, 1).unwrap_or_default();
+
+    if page_pdfs.len() > 1 {
+        tracing::info!(pages = page_pdfs.len(), "parsing PDF page by page");
+        // One pipeline → the layout model loads once and is reused across pages.
+        let mut pipeline = Pipeline::new().map_err(|e| e.to_string())?;
+        let mut pages = Vec::with_capacity(page_pdfs.len());
+        for (index, page_bytes) in page_pdfs.iter().enumerate() {
+            tracing::info!(
+                page = index + 1,
+                total = page_pdfs.len(),
+                "converting PDF page"
+            );
+            let document = pipeline
+                .convert(page_bytes, None, name)
+                .map_err(|e| format!("page {}: {e}", index + 1))?;
+            pages.push(ParsedPage {
+                page: (index + 1) as u32,
+                text: document.export_to_markdown(),
+            });
+        }
         return Ok(pages);
     }
 
-    // Fallback: parse the whole document as a single page (e.g. lopdf could not
-    // split it, or it has a single page).
+    // Single page or un-splittable → whole-document conversion.
+    tracing::info!("parsing PDF as a single document");
     let document = fleischwolf_pdf::convert(bytes, None, name).map_err(|e| e.to_string())?;
     Ok(vec![ParsedPage {
         page: 1,
         text: document.export_to_markdown(),
     }])
-}
-
-/// Best-effort page-by-page PDF conversion. Returns `None` (so the caller falls
-/// back to a single pass) when the PDF cannot be split or any page fails.
-fn try_parse_pdf_per_page(name: &str, bytes: &[u8]) -> Option<Vec<ParsedPage>> {
-    let page_pdfs = split_pdf_parts(bytes, 1).ok()?;
-    if page_pdfs.len() <= 1 {
-        return None;
-    }
-
-    // One pipeline → the layout model loads once and is reused across pages.
-    let mut pipeline = Pipeline::new().ok()?;
-    let mut pages = Vec::with_capacity(page_pdfs.len());
-    for (index, page_bytes) in page_pdfs.iter().enumerate() {
-        let document = pipeline.convert(page_bytes, None, name).ok()?;
-        pages.push(ParsedPage {
-            page: (index + 1) as u32,
-            text: document.export_to_markdown(),
-        });
-    }
-    Some(pages)
 }
 
 /// Number of pages in a PDF, or `None` if it can't be read.
@@ -90,7 +91,13 @@ pub fn pdf_page_count(bytes: &[u8]) -> Option<usize> {
         .map(|d| d.get_pages().len())
 }
 
-/// True if the document resolves to PDF (by MIME or filename).
+/// True if the bytes look like a PDF (magic header), regardless of name/MIME.
+pub fn looks_like_pdf(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"%PDF")
+}
+
+/// True if the document resolves to PDF by MIME or filename (see also
+/// [`looks_like_pdf`] for content sniffing).
 pub fn is_pdf(name: &str, mime: Option<&str>) -> bool {
     detect_format(name, mime) == Some(InputFormat::Pdf)
 }
@@ -189,6 +196,13 @@ mod tests {
             detect_format("x", Some("text/markdown; charset=utf-8")),
             Some(InputFormat::Md)
         );
+    }
+
+    #[test]
+    fn detects_pdf_by_magic_bytes() {
+        assert!(looks_like_pdf(b"%PDF-1.7\n..."));
+        assert!(!looks_like_pdf(b"PK\x03\x04"));
+        assert!(!looks_like_pdf(b""));
     }
 
     #[test]

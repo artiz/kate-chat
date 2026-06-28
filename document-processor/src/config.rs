@@ -40,6 +40,9 @@ pub struct Config {
     /// PDFs with more pages than this are split into parts of this many pages and
     /// processed in parallel across workers (0 disables batching).
     pub pdf_page_batch_size: usize,
+    /// Hard cap on a single parse (seconds); on timeout the document is failed
+    /// instead of hanging the worker forever.
+    pub parse_timeout_seconds: u64,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -103,6 +106,7 @@ impl Config {
             chunk_size_tokens: parse_or("CHUNK_SIZE_TOKENS", 300usize),
             visibility_timeout: parse_or("SQS_VISIBILITY_TIMEOUT", 300i32),
             pdf_page_batch_size: parse_or("PDF_PAGE_BATCH_SIZE", 10usize),
+            parse_timeout_seconds: parse_or("PARSE_TIMEOUT_SECONDS", 1800u64),
         })
     }
 }

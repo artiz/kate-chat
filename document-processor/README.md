@@ -63,7 +63,8 @@ Environment variables (see `.env.example`). Required: `S3_REGION`, `SQS_REGION`,
 used when provided (local/LocalStack); otherwise the default provider chain (ECS
 task role). Notable tunables: `NUM_THREADS` (concurrent pollers),
 `CHUNK_SIZE_TOKENS`, `SQS_VISIBILITY_TIMEOUT`, `PDF_PAGE_BATCH_SIZE` (PDF batching
-threshold; `0` disables).
+threshold; `0` disables), `PARSE_TIMEOUT_SECONDS` (hard cap per parse; a slow/hung
+conversion fails the document instead of freezing the worker).
 
 ## Run locally
 
