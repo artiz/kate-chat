@@ -10,7 +10,7 @@ langchain==1.3.9
 langchain-text-splitters==1.1.2
 opencv-python-headless==4.13.0.90
 pydantic==2.12.5
-pydantic-settings==2.12.0
+pydantic-settings==2.14.2
 pypdf==6.13.0
 python-dotenv==1.2.2
 pytest==9.0.3
