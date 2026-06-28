@@ -58,7 +58,7 @@ fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
         let mut pipeline = Pipeline::new().map_err(|e| e.to_string())?;
         let mut pages = Vec::with_capacity(page_pdfs.len());
         for (index, page_bytes) in page_pdfs.iter().enumerate() {
-            tracing::info!(
+            tracing::debug!(
                 page = index + 1,
                 total = page_pdfs.len(),
                 "converting PDF page"
