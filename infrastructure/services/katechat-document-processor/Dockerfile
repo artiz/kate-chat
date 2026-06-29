@@ -6,7 +6,7 @@
 #   docker build -f infrastructure/services/katechat-document-processor/Dockerfile ./
 #
 # Stages:
-#   models  — export the RT-DETR layout model (torch) + fetch OCR model/dict + pdfium
+#   models  — export the RT-DETR layout + TableFormer models (torch) + fetch OCR model/dict + pdfium
 #   builder — compile the Rust binary (ort downloads ONNX Runtime at build time)
 #   runtime — slim image with the binary, native libs and models baked in
 
@@ -19,16 +19,25 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates tar \
     && rm -rf /var/lib/apt/lists/*
 
-# CPU-only torch is enough to export the layout model to ONNX.
+# CPU-only torch is enough to export the layout + TableFormer models to ONNX.
+# docling-ibm-models supplies the TableFormer weights/loader; onnxscript backs the
+# dynamo ONNX export and onnxruntime runs the export's self-check.
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir "transformers>=4.45,<5" "onnx>=1.16,<2"
+    && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu \
+        "transformers>=4.45,<5" "onnx>=1.16,<2" \
+        "docling-ibm-models[opencv-python-headless]" onnxscript onnxruntime huggingface_hub
 
 WORKDIR /build
 COPY document-processor/scripts/export_layout.py ./export_layout.py
+COPY document-processor/scripts/export_tableformer.py ./export_tableformer.py
 
 RUN mkdir -p /opt/models /opt/pdfium \
     # RT-DETR layout model (docling-layout-heron) → ONNX
     && python export_layout.py /opt/models/layout_heron.onnx \
+    # TableFormer table-structure models (encoder/decoder/bbox), exported from
+    # docling's own checkpoint → /opt/models/tableformer/*.onnx (+ external .data)
+    && ACC="$(python -c "from huggingface_hub import snapshot_download as d; print(d('docling-project/docling-models', allow_patterns=['model_artifacts/tableformer/accurate/*']))")/model_artifacts/tableformer/accurate" \
+    && python export_tableformer.py "$ACC" /opt/models/tableformer \
     # PP-OCRv3 recognition model + character dictionary
     && curl -sSL -o /opt/models/ocr_rec.onnx \
         "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_PP-OCRv3_rec_infer.onnx" \
@@ -97,6 +106,9 @@ ENV PDFIUM_DYNAMIC_LIB_PATH=/opt/pdfium/lib \
     DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx \
     DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec.onnx \
     DOCLING_OCR_DICT=/opt/models/ppocr_keys_v1.txt \
+    DOCLING_TABLEFORMER_ENCODER=/opt/models/tableformer/encoder.onnx \
+    DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder.onnx \
+    DOCLING_TABLEFORMER_BBOX=/opt/models/tableformer/bbox.onnx \
     LD_LIBRARY_PATH=/usr/local/lib:/opt/pdfium/lib \
     PORT=8080
 

@@ -44,9 +44,11 @@ these in):
 | `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (`layout_heron.onnx`) |
 | `DOCLING_OCR_REC_ONNX` | PP-OCRv3 recognition model |
 | `DOCLING_OCR_DICT` | PP-OCR character dictionary |
+| `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; fleischwolf falls back to geometric table reconstruction when unset |
 
-`scripts/export_layout.py` (vendored from fleischwolf) exports the layout model;
-the `Dockerfile` runs it and downloads pdfium + the OCR model/dict.
+`scripts/export_layout.py` and `scripts/export_tableformer.py` (vendored from
+fleischwolf) export the layout and TableFormer models; the `Dockerfile` runs them
+and downloads pdfium + the OCR model/dict.
 
 ## Chunking
 
@@ -139,7 +141,7 @@ docker compose build document-processor
 
 ## Notes / differences from the Python service
 
-- **Page numbers.** fleischwolf `0.0.1` produces a flat document model with no
+- **Page numbers.** fleischwolf `0.3.0` produces a flat document model with no
   per-element page provenance. To still get real page numbers, PDFs are split into
   single-page documents with **pdfium** (the same fast C library the ML pipeline
   uses; see `src/pdf.rs`) and converted page by page through one reused

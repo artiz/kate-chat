@@ -1291,9 +1291,9 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf"
-version = "0.0.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc6fa27a57bacc9740498f52978fbe49e37ff9f6a7c842cfe1944ccfd37ea9ce"
+checksum = "26d80e02078ff59d1c6bf0cda6b06018b54f997fcf7e0fb92dbffe5355c1d0e1"
 dependencies = [
  "calamine",
  "csv",
@@ -1307,23 +1307,24 @@ dependencies = [
  "roxmltree",
  "scraper",
  "serde_json",
+ "ureq",
  "zip",
 ]
 
 [[package]]
 name = "fleischwolf-core"
-version = "0.0.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28d6088daa26040ad68019cf53d43f3abd3758270641adfa386e796937615978"
+checksum = "ce31a908c7840d48d4f3e22f02a5f1fc1cc3fcefc5e9e3824297fd8f0dbf31a2"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "fleischwolf-pdf"
-version = "0.0.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a79157afb6edb628b0d062595153fc794e12317637498bce1aaa9e35d652113"
+checksum = "bcb96b9fc50057ad1e046681b29741243825dd8c4c784e9931782f45d8b53aa1"
 dependencies = [
  "flate2",
  "fleischwolf-core",
@@ -3694,6 +3695,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dea7109cdcd5864d4eeb1b58a1648dc9bf520360d7af16ec26d0a9354bafcfc0"
 dependencies = [
  "base64 0.22.1",
+ "flate2",
  "log",
  "percent-encoding",
  "rustls 0.23.41",

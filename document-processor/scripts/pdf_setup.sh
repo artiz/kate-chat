@@ -15,12 +15,16 @@
 #   - PP-OCR character dictionary     -> models/ppocr_keys_v1.txt
 # And exports the RT-DETR layout model -> models/layout_heron.onnx
 #   (torch+transformers+onnx, installed into an isolated .venv-models by default).
+# Optionally (WITH_TABLEFORMER=1) exports the TableFormer table-structure models
+#   -> models/tableformer/{encoder,decoder,bbox}.onnx (else geometric fallback).
 #
 # Knobs (env vars):
 #   PDFIUM_PLATFORM=linux-x64   pdfium release to fetch (e.g. linux-arm64, mac-x64)
 #   PYTHON=python3              interpreter used to create the export venv
-#   USE_SYSTEM_PYTHON=1         run export_layout.py with $PYTHON directly (no venv)
+#   USE_SYSTEM_PYTHON=1         run the export scripts with $PYTHON directly (no venv)
 #   SKIP_LAYOUT=1               skip the layout model (PDF/image parsing will fail)
+#   WITH_TABLEFORMER=1          also export TableFormer (heavy: docling-ibm-models
+#                               + the docling checkpoint); off by default
 set -euo pipefail
 cd "$(dirname "$0")/.."   # document-processor/
 
@@ -79,6 +83,36 @@ else
   "$VENV/bin/python" scripts/export_layout.py models/layout_heron.onnx
 fi
 
+# 5) TableFormer table-structure models (optional — fleischwolf falls back to
+#    geometric reconstruction without them). Heavy: needs docling-ibm-models and
+#    the docling checkpoint, so it is opt-in via WITH_TABLEFORMER=1.
+if [ "${WITH_TABLEFORMER:-0}" != "1" ]; then
+  echo "○ skipping TableFormer (set WITH_TABLEFORMER=1 to export; geometric fallback otherwise)"
+elif [ -f models/tableformer/encoder.onnx ] && [ -f models/tableformer/decoder.onnx ] \
+  && [ -f models/tableformer/bbox.onnx ]; then
+  echo "✓ tableformer models already present"
+else
+  TF_PKGS="transformers>=4.45 onnx docling-ibm-models[opencv-python-headless] onnxscript onnxruntime huggingface_hub"
+  CKPT='from huggingface_hub import snapshot_download as d; print(d("docling-project/docling-models", allow_patterns=["model_artifacts/tableformer/accurate/*"]))'
+  if [ "${USE_SYSTEM_PYTHON:-0}" = "1" ]; then
+    echo "→ exporting TableFormer with $PYTHON (expects $TF_PKGS)"
+    ACC="$("$PYTHON" -c "$CKPT")/model_artifacts/tableformer/accurate"
+    "$PYTHON" scripts/export_tableformer.py "$ACC" models/tableformer
+  else
+    echo "→ exporting TableFormer models (docling-ibm-models + checkpoint in .venv-models)"
+    VENV=".venv-models"
+    if [ ! -d "$VENV" ]; then
+      "$PYTHON" -m venv "$VENV"
+      "$VENV/bin/pip" install --quiet --upgrade pip
+      "$VENV/bin/pip" install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+    fi
+    # shellcheck disable=SC2086
+    "$VENV/bin/pip" install --quiet --extra-index-url https://download.pytorch.org/whl/cpu $TF_PKGS
+    ACC="$("$VENV/bin/python" -c "$CKPT")/model_artifacts/tableformer/accurate"
+    "$VENV/bin/python" scripts/export_tableformer.py "$ACC" models/tableformer
+  fi
+fi
+
 cat <<EOF
 
 done. export these before \`cargo run\` (or add them to document-processor/.env):
@@ -88,3 +122,11 @@ done. export these before \`cargo run\` (or add them to document-processor/.env)
   export DOCLING_OCR_REC_ONNX=$ROOT/models/ocr_rec.onnx
   export DOCLING_OCR_DICT=$ROOT/models/ppocr_keys_v1.txt
 EOF
+
+if [ -f models/tableformer/encoder.onnx ]; then
+  cat <<EOF
+  export DOCLING_TABLEFORMER_ENCODER=$ROOT/models/tableformer/encoder.onnx
+  export DOCLING_TABLEFORMER_DECODER=$ROOT/models/tableformer/decoder.onnx
+  export DOCLING_TABLEFORMER_BBOX=$ROOT/models/tableformer/bbox.onnx
+EOF
+fi
