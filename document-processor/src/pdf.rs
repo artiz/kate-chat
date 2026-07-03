@@ -58,18 +58,6 @@ fn split_loaded(
     Ok(parts)
 }
 
-/// Split a PDF into parts of at most `group_size` pages each (in document order),
-/// each returned as standalone PDF bytes. `group_size = 1` → one PDF per page.
-/// Returns an empty vec for an empty PDF.
-pub fn split_into_parts(bytes: &[u8], group_size: usize) -> Result<Vec<Vec<u8>>, String> {
-    let group_size = group_size.clamp(1, u16::MAX as usize) as u16;
-    let pdfium = pdfium()?;
-    let source = pdfium
-        .load_pdf_from_byte_slice(bytes, None)
-        .map_err(|e| format!("pdfium load: {e}"))?;
-    split_loaded(&pdfium, &source, group_size)
-}
-
 /// Inspect a PDF for batching in a single load: returns the page count and, when
 /// it exceeds `threshold`, the document split into `threshold`-page parts
 /// (otherwise an empty parts vec — the caller parses it as one document).
