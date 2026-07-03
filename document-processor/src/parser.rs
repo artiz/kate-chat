@@ -39,7 +39,11 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
         parse_pdf(name, &bytes)?
     } else {
         let source = SourceDocument::from_bytes(name, format, bytes);
+        // `strict` picks fleischwolf's cleaner Markdown over docling's legacy
+        // quirks (code-fence languages kept, no `\_` escaping, no inline-run
+        // spacing artifacts) — better chunk text for embedding.
         let document = DocumentConverter::new()
+            .strict(true)
             .convert(source)
             .map_err(|e| e.to_string())?
             .document;
@@ -88,9 +92,10 @@ fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
         .enumerate()
         .map(|(index, (nodes, links))| {
             // A fresh streamer per page renders that page's finalized blocks
-            // exactly like the buffered `export_to_markdown` (non-strict,
-            // placeholder images) while keeping the pages independent.
-            let mut streamer = MarkdownStreamer::new(false, ImageMode::Placeholder, false);
+            // exactly like the buffered `export_to_markdown` while keeping the
+            // pages independent. `strict` matches the declarative path above
+            // (and additionally inlines the page's recovered hyperlinks).
+            let mut streamer = MarkdownStreamer::new(true, ImageMode::Placeholder, false);
             let mut text = streamer.push(&nodes, &links);
             text.push_str(&streamer.finish());
             ParsedPage {

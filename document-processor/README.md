@@ -145,6 +145,12 @@ docker compose build document-processor
 
 ## Notes / differences from the Python service
 
+- **Strict Markdown.** Conversion runs with fleischwolf's `strict` mode (a
+  Rust-only switch): cleaner, more conformant Markdown than docling's legacy
+  export — code-fence languages preserved, no `\_` escaping, no inline-run
+  spacing artifacts — and hyperlinks recovered from PDFs are inlined as
+  `[text](url)`. Better chunk text for embedding and citation.
+
 - **Page numbers.** fleischwolf (as of `0.14.0`) produces a flat document model
   with no per-element page provenance. To still get real page numbers, PDFs are
   converted through `fleischwolf-pdf`'s **streaming** pipeline
