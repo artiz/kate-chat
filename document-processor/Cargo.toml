@@ -18,9 +18,9 @@ tokio-util = { version = "0.7", features = ["rt"] }
 futures = "0.3"
 
 # Document conversion (Rust port of docling)
-fleischwolf = "0.3.0"
+fleischwolf = "0.14.0"
 # PDF backend used directly for page-by-page conversion (one Pipeline, real page numbers)
-fleischwolf-pdf = "0.3.0"
+fleischwolf-pdf = "0.14.0"
 # pdfium (the same fast C library the ML pipeline uses) for page count + splitting
 pdfium-render = "0.8"
 

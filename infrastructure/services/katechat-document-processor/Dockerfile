@@ -6,48 +6,34 @@
 #   docker build -f infrastructure/services/katechat-document-processor/Dockerfile ./
 #
 # Stages:
-#   models  — export the RT-DETR layout + TableFormer models (torch) + fetch OCR model/dict + pdfium
+#   models  — fetch pdfium + the ONNX models (fp32 + INT8) from fleischwolf's
+#             GitHub Release via download_dependencies.sh (no torch export)
 #   builder — compile the Rust binary (ort downloads ONNX Runtime at build time)
 #   runtime — slim image with the binary, native libs and models baked in
 
 # ----------------------------------------------------------------------------
 # Stage 1: ML models + native libs
 # ----------------------------------------------------------------------------
-FROM python:3.12-slim AS models
+FROM debian:trixie-slim AS models
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates tar \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# CPU-only torch is enough to export the layout + TableFormer models to ONNX.
-# docling-ibm-models supplies the TableFormer weights/loader; onnxscript backs the
-# dynamo ONNX export and onnxruntime runs the export's self-check.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu \
-        "transformers>=4.45,<5" "onnx>=1.16,<2" \
-        "docling-ibm-models[opencv-python-headless]" onnxscript onnxruntime huggingface_hub
-
-WORKDIR /build
-COPY document-processor/scripts/export_layout.py ./export_layout.py
-COPY document-processor/scripts/export_tableformer.py ./export_tableformer.py
-
-RUN mkdir -p /opt/models /opt/pdfium \
-    # RT-DETR layout model (docling-layout-heron) → ONNX
-    && python export_layout.py /opt/models/layout_heron.onnx \
-    # TableFormer table-structure models (encoder/decoder/bbox), exported from
-    # docling's own checkpoint → /opt/models/tableformer/*.onnx (+ external .data)
-    && ACC="$(python -c "from huggingface_hub import snapshot_download as d; print(d('docling-project/docling-models', allow_patterns=['model_artifacts/tableformer/accurate/*']))")/model_artifacts/tableformer/accurate" \
-    && python export_tableformer.py "$ACC" /opt/models/tableformer \
-    # PP-OCRv3 recognition model + character dictionary
-    && curl -sSL -o /opt/models/ocr_rec.onnx \
-        "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_PP-OCRv3_rec_infer.onnx" \
-    && curl -sSL -o /opt/models/ppocr_keys_v1.txt \
-        "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/main/ppocr/utils/ppocr_keys_v1.txt" \
-    # pdfium prebuilt shared library (bblanchon) → /opt/pdfium/lib/libpdfium.so
-    && curl -sSL -o /tmp/pdfium.tgz \
-        "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-linux-x64.tgz" \
-    && tar xzf /tmp/pdfium.tgz -C /opt/pdfium \
-    && rm /tmp/pdfium.tgz
+# fleischwolf hosts ready-made model exports + pdfium in its GitHub Release
+# (tag models-v1): RT-DETR layout, TableFormer, PP-OCRv3 — plus the
+# INT8-quantized layout detector and TableFormer decoder (~2.4× faster layout
+# inference on CPU at validated-unchanged conformance; see fleischwolf's
+# PDF_PERFORMANCE.md). download_dependencies.sh (pinned to the fleischwolf
+# version in Cargo.toml) fetches everything into ./models and ./.pdfium.
+# --no-asr skips the Whisper audio models — this service doesn't ingest audio.
+WORKDIR /opt/fleischwolf
+RUN curl -fsSL https://raw.githubusercontent.com/artiz/fleischwolf/v0.14.0/scripts/download_dependencies.sh \
+        | sh -s -- --no-asr \
+    # The runtime pins the pipeline to the INT8 models; they are optional for
+    # the script, so fail the build loudly if the release stops hosting them.
+    && test -f models/layout_heron_int8.onnx \
+    && test -f models/tableformer/decoder_int8.onnx
 
 # ----------------------------------------------------------------------------
 # Stage 2: Rust build
@@ -99,15 +85,19 @@ RUN cp /tmp/artifacts/katechat-document-processor /usr/local/bin/ \
     && ldconfig
 
 # Models + pdfium.
-COPY --from=models /opt/models /opt/models
-COPY --from=models /opt/pdfium /opt/pdfium
+COPY --from=models /opt/fleischwolf/models /opt/models
+COPY --from=models /opt/fleischwolf/.pdfium/lib /opt/pdfium/lib
 
+# Layout + TableFormer decoder point at the INT8 models (both precisions are
+# baked in, so a container can pin fp32 explicitly, e.g.
+# -e DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx
+# -e DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder.onnx).
 ENV PDFIUM_DYNAMIC_LIB_PATH=/opt/pdfium/lib \
-    DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx \
+    DOCLING_LAYOUT_ONNX=/opt/models/layout_heron_int8.onnx \
     DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec.onnx \
     DOCLING_OCR_DICT=/opt/models/ppocr_keys_v1.txt \
     DOCLING_TABLEFORMER_ENCODER=/opt/models/tableformer/encoder.onnx \
-    DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder.onnx \
+    DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder_int8.onnx \
     DOCLING_TABLEFORMER_BBOX=/opt/models/tableformer/bbox.onnx \
     LD_LIBRARY_PATH=/usr/local/lib:/opt/pdfium/lib \
     PORT=8080

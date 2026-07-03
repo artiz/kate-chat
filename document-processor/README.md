@@ -41,14 +41,17 @@ these in):
 | Variable | Purpose |
 |---|---|
 | `PDFIUM_DYNAMIC_LIB_PATH` | directory containing `libpdfium.so` |
-| `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (`layout_heron.onnx`) |
+| `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (the Docker image points it at the INT8 quantization, `layout_heron_int8.onnx`; the fp32 `layout_heron.onnx` is also baked in) |
 | `DOCLING_OCR_REC_ONNX` | PP-OCRv3 recognition model |
 | `DOCLING_OCR_DICT` | PP-OCR character dictionary |
 | `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; fleischwolf falls back to geometric table reconstruction when unset |
 
+The `Dockerfile` fetches ready-made model exports (fp32 + INT8) and pdfium from
+fleischwolf's GitHub Release via its `download_dependencies.sh`, and pins the
+layout model and TableFormer decoder to the INT8 quantizations (~2.4× faster
+layout inference on CPU at validated-unchanged conformance).
 `scripts/export_layout.py` and `scripts/export_tableformer.py` (vendored from
-fleischwolf) export the layout and TableFormer models; the `Dockerfile` runs them
-and downloads pdfium + the OCR model/dict.
+fleischwolf) remain for building the models from source (`scripts/pdf_setup.sh`).
 
 ## Chunking
 
@@ -99,7 +102,8 @@ parse → chunk → index flow, and watch progress on the Redis `document:status
 ### Option B — full stack via docker-compose (PDF ML included)
 
 Builds the image (pdfium + ONNX models baked in), so PDFs/images work end to end.
-The first build is heavy (downloads torch + models).
+The first build downloads the prebuilt models (~350 MB) and compiles the Rust
+binary; no torch export anymore.
 
 ```bash
 docker compose up -d redis localstack
@@ -141,8 +145,8 @@ docker compose build document-processor
 
 ## Notes / differences from the Python service
 
-- **Page numbers.** fleischwolf `0.3.0` produces a flat document model with no
-  per-element page provenance. To still get real page numbers, PDFs are split into
+- **Page numbers.** fleischwolf (as of `0.14.0`) produces a flat document model
+  with no per-element page provenance. To still get real page numbers, PDFs are split into
   single-page documents with **pdfium** (the same fast C library the ML pipeline
   uses; see `src/pdf.rs`) and converted page by page through one reused
   `fleischwolf-pdf` pipeline (a single layout-model load); each page's chunks carry
