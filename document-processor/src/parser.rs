@@ -1,9 +1,10 @@
 //! Document parsing via the `fleischwolf` converter (the Rust port of docling).
 //!
-//! PDFs are split into single-page documents (pdfium, via [`crate::pdf`]) and
-//! converted page by page through one reused `fleischwolf-pdf` [`Pipeline`] (a
-//! single layout-model load), which gives real per-page Markdown and an accurate
-//! page count. Everything else is converted in one pass as a single logical page.
+//! PDFs are converted through one `fleischwolf-pdf` [`Pipeline`] in streaming
+//! mode: the pipeline emits each page's finalized nodes in document order (for
+//! documents with enough pages, inference fans out across its internal worker
+//! pool), which gives real per-page Markdown and an accurate page count.
+//! Everything else is converted in one pass as a single logical page.
 //!
 //! `parse` is CPU-bound and blocking (the PDF path runs pdfium + ONNX layout/OCR
 //! models), so callers must run it on a blocking thread
@@ -11,10 +12,16 @@
 
 use std::path::Path;
 
-use fleischwolf::{DocumentConverter, InputFormat, SourceDocument};
+use fleischwolf::{
+    DocumentConverter, ImageMode, InputFormat, MarkdownStreamer, Node, SourceDocument,
+};
 use fleischwolf_pdf::Pipeline;
 
 use crate::model::ParsedPage;
+
+/// One streamed page batch: its typed nodes plus the hyperlinks recovered from
+/// the same span (mirrors `fleischwolf-pdf`'s internal page output).
+type PageBatch = (Vec<Node>, Vec<(String, String)>);
 
 /// The result of parsing one document: its pages (Markdown) and page count.
 pub struct ParseOutput {
@@ -46,41 +53,52 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
     Ok(ParseOutput { pages, pages_count })
 }
 
-/// Convert a PDF to per-page Markdown. When the PDF can be split into pages, each
-/// page is converted through one reused pipeline (real page numbers). Otherwise
-/// the whole document is converted as a single page.
+/// Convert a PDF to per-page Markdown through one streaming [`Pipeline`] pass:
+/// pdfium renders pages on one thread while layout/OCR/TableFormer inference
+/// fans out across the pipeline's worker pool (for documents with at least
+/// `FLEISCHWOLF_PDF_PARALLEL_MIN` pages), and `emit` receives each page's
+/// finalized nodes back in document order — one call per page, plus a final
+/// flush of any block held back across the last page boundary. A block that
+/// spans a page boundary (a paragraph or list continuing onto the next page)
+/// is emitted whole with the page it finishes on.
 fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
-    let page_pdfs = crate::pdf::split_into_parts(bytes, 1).unwrap_or_default();
+    let mut pipeline = Pipeline::new().map_err(|e| e.to_string())?;
 
-    if page_pdfs.len() > 1 {
-        tracing::info!(pages = page_pdfs.len(), "parsing PDF page by page");
-        // One pipeline → the layout model loads once and is reused across pages.
-        let mut pipeline = Pipeline::new().map_err(|e| e.to_string())?;
-        let mut pages = Vec::with_capacity(page_pdfs.len());
-        for (index, page_bytes) in page_pdfs.iter().enumerate() {
-            tracing::debug!(
-                page = index + 1,
-                total = page_pdfs.len(),
-                "converting PDF page"
-            );
-            let document = pipeline
-                .convert(page_bytes, None, name)
-                .map_err(|e| format!("page {}: {e}", index + 1))?;
-            pages.push(ParsedPage {
-                page: (index + 1) as u32,
-                text: document.export_to_markdown(),
-            });
-        }
-        return Ok(pages);
+    // One (nodes, links) batch per page, in document order.
+    let mut batches: Vec<PageBatch> = Vec::new();
+    pipeline
+        .convert_streaming(bytes, None, name, |nodes, links| {
+            batches.push((nodes, links));
+            Ok(())
+        })
+        .map_err(|e| e.to_string())?;
+
+    // The last batch is the assembler's final flush: whatever it still held
+    // belongs to the last page.
+    if batches.len() > 1 {
+        let (tail_nodes, tail_links) = batches.pop().expect("len checked above");
+        let (nodes, links) = batches.last_mut().expect("len checked above");
+        nodes.extend(tail_nodes);
+        links.extend(tail_links);
     }
 
-    // Single page or un-splittable → whole-document conversion.
-    tracing::info!("parsing PDF as a single document");
-    let document = fleischwolf_pdf::convert(bytes, None, name).map_err(|e| e.to_string())?;
-    Ok(vec![ParsedPage {
-        page: 1,
-        text: document.export_to_markdown(),
-    }])
+    tracing::info!(pages = batches.len(), "parsed PDF");
+    Ok(batches
+        .into_iter()
+        .enumerate()
+        .map(|(index, (nodes, links))| {
+            // A fresh streamer per page renders that page's finalized blocks
+            // exactly like the buffered `export_to_markdown` (non-strict,
+            // placeholder images) while keeping the pages independent.
+            let mut streamer = MarkdownStreamer::new(false, ImageMode::Placeholder, false);
+            let mut text = streamer.push(&nodes, &links);
+            text.push_str(&streamer.finish());
+            ParsedPage {
+                page: (index + 1) as u32,
+                text,
+            }
+        })
+        .collect())
 }
 
 /// True if the bytes look like a PDF (magic header), regardless of name/MIME.

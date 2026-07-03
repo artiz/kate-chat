@@ -146,12 +146,15 @@ docker compose build document-processor
 ## Notes / differences from the Python service
 
 - **Page numbers.** fleischwolf (as of `0.14.0`) produces a flat document model
-  with no per-element page provenance. To still get real page numbers, PDFs are split into
-  single-page documents with **pdfium** (the same fast C library the ML pipeline
-  uses; see `src/pdf.rs`) and converted page by page through one reused
-  `fleischwolf-pdf` pipeline (a single layout-model load); each page's chunks carry
-  its real page number, and `pagesCount` is accurate. Non-PDF formats are a single
-  logical page. If a PDF can't be split, it falls back to a one-pass parse (`page: 1`).
+  with no per-element page provenance. To still get real page numbers, PDFs are
+  converted through `fleischwolf-pdf`'s **streaming** pipeline
+  (`Pipeline::convert_streaming`), which emits each page's finalized nodes in
+  document order — one batch per page — while inference fans out across the
+  pipeline's internal worker pool (PDFs with ≥ `FLEISCHWOLF_PDF_PARALLEL_MIN`
+  pages, default 6; pool size via `FLEISCHWOLF_PDF_WORKERS`). Each page's chunks
+  carry its real page number, and `pagesCount` is accurate. A block spanning a
+  page boundary (a paragraph/list continuing onto the next page) is emitted whole
+  with the page it finishes on. Non-PDF formats are a single logical page.
 - **PDF page-batching (parallel across workers).** PDFs with more than
   `PDF_PAGE_BATCH_SIZE` pages (default 10) are split into part PDFs in S3
   (`{key}.part{n}`) and a `parse_document` command is enqueued per part, so parts are
