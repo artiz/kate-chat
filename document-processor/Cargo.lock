@@ -1149,6 +1149,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "document-features"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
+dependencies = [
+ "litrs",
+]
+
+[[package]]
 name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1265,6 +1274,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fast_image_resize"
+version = "5.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbc7fe45cf92b43817ff62a3723e862b85bd1d06288f63007f7645d1d2f7a060"
+dependencies = [
+ "cfg-if",
+ "document-features",
+ "num-traits",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1313,9 +1334,9 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf"
-version = "0.14.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3c3363bd3eb0f557e17d20656fed0f9384eb7058dd48f0e5f52fcdbe4ee701d"
+checksum = "b4a1d33db3ce5f57fafd8091b7763284d7619aef2b5a07762a314d6bd0b94999"
 dependencies = [
  "calamine",
  "csv",
@@ -1336,9 +1357,9 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf-asr"
-version = "0.14.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17be2f110a84674b6f0177bde5b6c6071138144045534121d4eb034055260605"
+checksum = "3d2568a3ca96f931dbae7ec7b123087fb32fc87c85767c765b7e8bcb611662d6"
 dependencies = [
  "fleischwolf-core",
  "ort",
@@ -1348,19 +1369,20 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf-core"
-version = "0.14.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5230e6b145b217f5e0fa3aae356a5a67759377763a0abddcd6296901088722cd"
+checksum = "7dce213110744beefe5210df884118f89a7aab1f1abb0c8796bec286d3573687"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "fleischwolf-pdf"
-version = "0.14.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24574138718998bf0b31c08e36d454b6db2bfcd34a0e276f6f3edc54a5eab08c"
+checksum = "bac147ac8902b51152f403f6957e2c78bb858d27a0ed5d2691f29d3a96d60192"
 dependencies = [
+ "fast_image_resize",
  "flate2",
  "fleischwolf-core",
  "image",
@@ -2147,6 +2169,12 @@ name = "litemap"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
+
+[[package]]
+name = "litrs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
 name = "lock_api"
