@@ -28,7 +28,7 @@ RUN apt-get update \
 # version in Cargo.toml) fetches everything into ./models and ./.pdfium.
 # --no-asr skips the Whisper audio models — this service doesn't ingest audio.
 WORKDIR /opt/fleischwolf
-RUN curl -fsSL https://raw.githubusercontent.com/artiz/fleischwolf/v0.14.0/scripts/download_dependencies.sh \
+RUN curl -fsSL https://raw.githubusercontent.com/artiz/fleischwolf/v0.15.0/scripts/download_dependencies.sh \
         | sh -s -- --no-asr \
     # The runtime pins the pipeline to the INT8 models; they are optional for
     # the script, so fail the build loudly if the release stops hosting them.
