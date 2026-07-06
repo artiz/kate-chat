@@ -209,4 +209,85 @@ mod tests {
         assert_eq!(out.pages[0].page, 1);
         assert!(out.pages[0].text.contains("# Hi"));
     }
+
+    #[test]
+    fn parses_html_end_to_end() {
+        let html = b"<html><body>\
+            <h1>Title</h1>\
+            <p>Hello world.</p>\
+            <ul><li>one</li><li>two</li></ul>\
+            </body></html>"
+            .to_vec();
+        let out = parse("page.html", Some("text/html"), html).unwrap();
+        assert_eq!(out.pages_count, 1);
+        let text = &out.pages[0].text;
+        assert!(text.contains("# Title"), "heading missing: {text}");
+        assert!(text.contains("Hello world."), "paragraph missing: {text}");
+        assert!(text.contains("- one"), "list item missing: {text}");
+        assert!(text.contains("- two"), "list item missing: {text}");
+    }
+
+    #[test]
+    fn parses_csv_as_markdown_table() {
+        let csv = b"name,age\nalice,30\nbob,25\n".to_vec();
+        let out = parse("data.csv", Some("text/csv"), csv).unwrap();
+        assert_eq!(out.pages_count, 1);
+        // Normalize the default GitHub-style column padding so the assertion
+        // only pins cell content and order, not alignment widths.
+        let text = out.pages[0].text.replace(' ', "");
+        assert!(text.contains("|name|age|"), "header missing: {text}");
+        assert!(text.contains("|alice|30|"), "row missing: {text}");
+        assert!(text.contains("|bob|25|"), "row missing: {text}");
+    }
+
+    /// The `strict(true)` guarantees the chunker relies on (see `parse`): no
+    /// legacy `\_` underscore escaping and code-fence languages preserved.
+    #[test]
+    fn strict_markdown_keeps_underscores_and_fence_language() {
+        let md = "# T\n\nUse snake_case here.\n\n```rust\nfn main() {}\n```\n";
+        let out = parse("doc.md", Some("text/markdown"), md.as_bytes().to_vec()).unwrap();
+        let text = &out.pages[0].text;
+        assert!(!text.contains("\\_"), "legacy underscore escaping: {text}");
+        assert!(text.contains("snake_case"), "underscore word lost: {text}");
+        assert!(text.contains("```rust"), "fence language lost: {text}");
+    }
+
+    /// Mirrors `parse_pdf`'s per-page rendering: a fresh strict streamer per
+    /// page batch, hyperlinks from the same span inlined into the Markdown.
+    /// Guards the streamer contract the PDF path depends on across
+    /// `fleischwolf` upgrades without needing pdfium or the ONNX models.
+    #[test]
+    fn streamer_renders_page_batches_like_the_pdf_path() {
+        let page1 = vec![
+            Node::Heading {
+                level: 1,
+                text: "Intro".into(),
+            },
+            Node::Paragraph {
+                text: "See the docs for details.".into(),
+            },
+        ];
+        let links1 = vec![("docs".to_string(), "https://example.com".to_string())];
+        let mut streamer = MarkdownStreamer::new(true, ImageMode::Placeholder, false);
+        let mut text = streamer.push(&page1, &links1);
+        text.push_str(&streamer.finish());
+        assert!(text.contains("# Intro"), "heading missing: {text}");
+        assert!(
+            text.contains("[docs](https://example.com)"),
+            "recovered hyperlink not inlined: {text}"
+        );
+
+        // A second page renders through its own streamer, independent of the
+        // first (exactly how parse_pdf keeps pages separable).
+        let page2 = vec![fleischwolf::Node::Table(fleischwolf::Table {
+            rows: vec![vec!["h1".into(), "h2".into()], vec!["a".into(), "b".into()]],
+        })];
+        let mut streamer = MarkdownStreamer::new(true, ImageMode::Placeholder, false);
+        let mut text = streamer.push(&page2, &[]);
+        text.push_str(&streamer.finish());
+        let flat = text.replace(' ', "");
+        assert!(flat.contains("|h1|h2|"), "table header missing: {text}");
+        assert!(flat.contains("|a|b|"), "table row missing: {text}");
+        assert!(!text.contains("# Intro"), "pages must be independent");
+    }
 }
