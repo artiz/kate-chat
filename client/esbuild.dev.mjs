@@ -122,6 +122,16 @@ context.watch();
 
 http
   .createServer((req, res) => {
+    // Reply 502 instead of crashing the whole dev server when a proxy target
+    // is unreachable (e.g. the API is still starting up next to us).
+    const proxyError = target => err => {
+      console.error(`⚠️ Proxy error (:${target} ${req.url}): ${err.message}`);
+      if (!res.headersSent) {
+        res.writeHead(502, { "Content-Type": "application/json" });
+      }
+      res.end(JSON.stringify({ error: "Bad Gateway", target: `:${target}`, message: err.message }));
+    };
+
     const backendProxy = {
       hostname: host,
       port: 4000,
@@ -136,6 +146,7 @@ http
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(res, { end: true });
       });
+      proxyReq.on("error", proxyError(backendProxy.port));
       return req.pipe(proxyReq, { end: true });
     }
 
@@ -160,6 +171,7 @@ http
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res, { end: true });
     });
+    proxyReq.on("error", proxyError(frontendProxy.port));
 
     // Forward the body of the request to esbuild
     req.pipe(proxyReq, { end: true });
