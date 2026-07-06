@@ -1334,9 +1334,9 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5cb3c916c0d854b87d247f2032590578224325c6573cf946c6b4146c3f878"
+checksum = "b4a1d33db3ce5f57fafd8091b7763284d7619aef2b5a07762a314d6bd0b94999"
 dependencies = [
  "calamine",
  "csv",
@@ -1357,9 +1357,9 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf-asr"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3e9d27bbf5f24455a63317bfe396f80822c4e52a2d75b60b156f018f0f73d23"
+checksum = "3d2568a3ca96f931dbae7ec7b123087fb32fc87c85767c765b7e8bcb611662d6"
 dependencies = [
  "fleischwolf-core",
  "ort",
@@ -1369,18 +1369,18 @@ dependencies = [
 
 [[package]]
 name = "fleischwolf-core"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85c0365392e3ef5edd276b63db387abad3943016a112aa8bba448aa86c1a7ffd"
+checksum = "7dce213110744beefe5210df884118f89a7aab1f1abb0c8796bec286d3573687"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "fleischwolf-pdf"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c032a7bd66195a8db267d0883a3138492765078f8f53780aaf1040395a311a72"
+checksum = "bac147ac8902b51152f403f6957e2c78bb858d27a0ed5d2691f29d3a96d60192"
 dependencies = [
  "fast_image_resize",
  "flate2",
