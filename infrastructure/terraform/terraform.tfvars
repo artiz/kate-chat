@@ -15,7 +15,7 @@ aws_route53_record_zone_id = "Z08280421TLAENXYORVOR"
 # Database Configuration (Optimized for cost)
 db_instance_class    = "db.t4g.micro" # ARM-based Graviton2, ~20% cheaper than t3.micro, migrate to "db.t3.medium" for production
 db_allocated_storage = 10
-db_engine_version    = "16.9"
+db_engine_version    = "16.13" # must not lag behind the live instance: RDS auto-applies minor upgrades and AWS rejects "downgrades"
 
 # ECS Configuration (Optimized for cost)
 app_cpu           = 256 # 0.25 vCPU
