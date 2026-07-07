@@ -14,6 +14,11 @@
   display: flex;
   flex-direction: row;
 
+  // Skip layout/paint of offscreen messages; `auto` keeps the last rendered
+  // size so scroll position/height stay stable for already-seen messages.
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
+
   .katechat-message-main,
   .katechat-message-linked {
     padding: var(--mantine-spacing-lg) var(--mantine-spacing-lg) var(--mantine-spacing-sm);
