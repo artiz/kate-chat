@@ -124,3 +124,27 @@ variable "default_admin_emails" {
   type        = string
 }
 
+# Error monitoring configuration
+variable "error_monitoring_recipients" {
+  description = "Email addresses subscribed to 5xx error alarms"
+  type        = list(string)
+  default     = ["artem.kustikov@gmail.com"]
+
+  validation {
+    condition     = length(var.error_monitoring_recipients) > 0
+    error_message = "At least one error monitoring recipient is required."
+  }
+}
+
+variable "error_monitoring_5xx_threshold" {
+  description = "Number of 5xx responses within one period that triggers the alarm"
+  type        = number
+  default     = 1
+}
+
+variable "error_monitoring_period_seconds" {
+  description = "Evaluation period (seconds) for the 5xx alarms"
+  type        = number
+  default     = 300
+}
+

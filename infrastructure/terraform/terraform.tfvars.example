@@ -25,6 +25,11 @@ app_desired_count = 3
 redis_node_type = "cache.t3.micro"
 redis_num_cache_nodes = 1
 
+# Error Monitoring (5xx alarms -> email via SNS)
+# error_monitoring_recipients = ["artem.kustikov@gmail.com"]
+# error_monitoring_5xx_threshold = 1
+# error_monitoring_period_seconds = 300
+
 # Example with custom domain (uncomment and modify):
 # domain_name = "katechat.app"
 # certificate_arn = "arn:aws:acm:eu-central-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
