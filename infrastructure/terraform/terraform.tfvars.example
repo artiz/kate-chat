@@ -14,7 +14,7 @@ certificate_arn = ""  # Set to your ACM certificate ARN if you have SSL
 # Database Configuration
 db_instance_class = "db.t3.micro"
 db_allocated_storage = 20
-db_engine_version = "16.9"
+db_engine_version = "16.13"
 
 # ECS Configuration
 app_cpu = 256
