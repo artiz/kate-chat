@@ -102,3 +102,9 @@ output "custom_domain_name" {
   value       = var.domain_name != "" ? var.domain_name : null
 }
 
+
+# Monitoring outputs
+output "error_monitoring_topic_arn" {
+  description = "ARN of the SNS topic receiving 5xx error alarms"
+  value       = aws_sns_topic.error_monitoring.arn
+}
