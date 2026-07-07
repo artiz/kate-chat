@@ -101,15 +101,27 @@ export const storeMcpToken = (serverId: string, token: string, expiresAt?: numbe
   );
 };
 
+// In-flight refresh requests, keyed by user+server. Concurrent callers (React
+// StrictMode double-effects, several useMcpAuth instances) share one request:
+// providers rotate refresh tokens, and sending the same token twice in parallel
+// makes the second call fail with invalid_grant and can revoke the whole grant.
+const inflightRefresh = new Map<string, Promise<boolean>>();
+
 /**
  * Attempt to refresh an expired MCP token using the stored refresh_token.
  * Returns true if refresh succeeded and new token is stored.
  */
-export const refreshMcpToken = async (
-  serverId: string,
-  userId: string | undefined,
-  userToken: string
-): Promise<boolean> => {
+export const refreshMcpToken = (serverId: string, userId: string | undefined, userToken: string): Promise<boolean> => {
+  const key = `${userId || "user"}:${serverId}`;
+  const inflight = inflightRefresh.get(key);
+  if (inflight) return inflight;
+
+  const request = doRefreshMcpToken(serverId, userId, userToken).finally(() => inflightRefresh.delete(key));
+  inflightRefresh.set(key, request);
+  return request;
+};
+
+const doRefreshMcpToken = async (serverId: string, userId: string | undefined, userToken: string): Promise<boolean> => {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY(serverId, userId));
   if (!refreshToken) return false;
 
@@ -121,8 +133,14 @@ export const refreshMcpToken = async (
     });
 
     if (!response.ok) {
-      localStorage.setItem(ACCESS_TOKEN_KEY(serverId, userId), "");
-      localStorage.setItem(EXPIRES_AT_KEY(serverId, userId), "");
+      // 4xx means the grant is dead (invalid_grant etc.) — drop the refresh
+      // token too, otherwise it is retried forever on every mount. On 5xx keep
+      // everything: the provider may just be temporarily unavailable.
+      if (response.status >= 400 && response.status < 500) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY(serverId, userId));
+        localStorage.removeItem(EXPIRES_AT_KEY(serverId, userId));
+        localStorage.removeItem(REFRESH_TOKEN_KEY(serverId, userId));
+      }
       return false;
     }
 
@@ -301,12 +319,21 @@ export const useMcpAuth = (
         if (accessToken) {
           // Token was also sent via postMessage, ensure it's stored
           localStorage.setItem(ACCESS_TOKEN_KEY(serverId, userId), accessToken);
-          localStorage.setItem(REFRESH_TOKEN_KEY(serverId, userId), refreshToken);
-          // expire in 1h if not provided
-          localStorage.setItem(
-            EXPIRES_AT_KEY(serverId, userId),
-            expiresAt ? String(expiresAt) : String(Date.now() + TOKEN_EXPIRATION_MS)
-          );
+          if (refreshToken) {
+            localStorage.setItem(REFRESH_TOKEN_KEY(serverId, userId), refreshToken);
+          } else {
+            localStorage.removeItem(REFRESH_TOKEN_KEY(serverId, userId));
+          }
+          if (expiresAt) {
+            localStorage.setItem(EXPIRES_AT_KEY(serverId, userId), String(expiresAt));
+          } else if (refreshToken) {
+            // no expiry reported but refresh is possible — refresh in 1h
+            localStorage.setItem(EXPIRES_AT_KEY(serverId, userId), String(Date.now() + TOKEN_EXPIRATION_MS));
+          } else {
+            // no expiry and no refresh token (e.g. GitHub OAuth App): the token
+            // is long-lived, an artificial TTL would force re-auth every hour
+            localStorage.removeItem(EXPIRES_AT_KEY(serverId, userId));
+          }
 
           expectingOAuthCallback.current();
         }

@@ -6,7 +6,7 @@ import { createLogger } from "@/utils/logger";
 import { MCP_OAUTH_ERROR_TEMPLATE, MCP_OAUTH_SUCCESS_TEMPLATE, OAUTH_ERROR_TEMPLATE } from "./html.templates";
 import { escapeHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
-import { getErrorMessage } from "@/utils/errors";
+import { getErrorMessage, OAuthTokenError } from "@/utils/errors";
 import { notEmpty, ok } from "@/utils/assert";
 import { McpServersService } from "@/services/mcp.service";
 
@@ -115,10 +115,35 @@ router.post("/mcp/refresh", async (req: Request, res: Response) => {
     });
     res.json({ accessToken, expiresAt, refreshToken: newRefreshToken });
   } catch (err) {
+    // invalid_grant means the refresh token is dead (expired/revoked/rotated) —
+    // report 401 so the client drops it and re-authorizes instead of retrying
+    if (err instanceof OAuthTokenError && (err.errorCode === "invalid_grant" || err.errorCode === "invalid_token")) {
+      logger.warn({ serverId, errorCode: err.errorCode }, "MCP token refresh rejected, re-authorization required");
+      res.status(401).json({ error: getErrorMessage(err), code: err.errorCode });
+      return;
+    }
     logger.error(err, "Error during MCP token refresh");
     res.status(500).json({ error: getErrorMessage(err) });
   }
 });
+
+// Authorization codes are single-use: a duplicate callback request (browser
+// re-navigation, extension prefetch) would fail with bad_verification_code and
+// can make the provider revoke the token issued on the first exchange. Remember
+// recently exchanged codes and replay the success page instead.
+const EXCHANGED_CODE_TTL_MS = 10 * 60 * 1000;
+const EXCHANGED_CODES_LIMIT = 100;
+const exchangedCodes = new Map<string, { html: string; expiresAt: number }>();
+
+const rememberExchangedCode = (code: string, html: string) => {
+  const now = Date.now();
+  for (const [key, entry] of exchangedCodes) {
+    if (entry.expiresAt <= now || exchangedCodes.size >= EXCHANGED_CODES_LIMIT) {
+      exchangedCodes.delete(key);
+    }
+  }
+  exchangedCodes.set(code, { html, expiresAt: now + EXCHANGED_CODE_TTL_MS });
+};
 
 // MCP OAuth callback - exchanges authorization code for access token and returns HTML that writes token to localStorage
 router.get("/mcp/callback", async (req: Request, res: Response) => {
@@ -144,6 +169,13 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
   }
 
   logger.debug({ code, state }, "MCP OAuth callback received with code and state");
+
+  const exchanged = exchangedCodes.get(String(code));
+  if (exchanged && exchanged.expiresAt > Date.now()) {
+    logger.debug({ code }, "Duplicate MCP OAuth callback, replaying cached response");
+    res.send(exchanged.html);
+    return;
+  }
 
   const [serverId, userToken] = String(state).split("@");
   let tokenPayload: TokenPayload | null = null;
@@ -249,6 +281,7 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
       .replace(/\{\{ACCESS_TOKEN\}\}/g, escapeHtml(accessToken))
       .replace(/\{\{REFRESH_TOKEN\}\}/g, escapeHtml(refreshToken || ""))
       .replace(/\{\{EXPIRES_AT\}\}/g, expiresAt ? escapeHtml(expiresAt) : "");
+    rememberExchangedCode(String(code), successHtml);
     res.send(successHtml);
   } catch (err) {
     logger.error(err, "Error during MCP OAuth token exchange");
