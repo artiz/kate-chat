@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
 import {
   IconChevronLeft,
@@ -19,6 +19,103 @@ import { StreamingStatus } from "./StreamingStatus";
 import { DetailsButton } from "./controls/DetailsButton";
 
 const ANIMATION_DURATION = 250; // Duration of the carousel animation in milliseconds
+
+const codeHeaderTemplate = `
+      <span class="title">
+          <span class="header-toggle">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  class="icon icon-tabler icons-tabler-outline">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                  <path d="M9 6l6 6l-6 6" />
+              </svg>
+          </span>
+          <span class="language"><LANG></span>
+      </span>
+
+      <div class="code-header-actions">
+          <EXECUTE_BTN>
+
+          <div type="button" class="action-btn mantine-focus-auto mantine-active code-download-btn" data-lang="<LANG>">
+            <div class="download-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="icon icon-tabler icons-tabler-outline">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" />
+                    <path d="M12 4l0 12" />
+                </svg>
+            </div>
+            <span class="action-btn-label"><DOWNLOAD_TITLE></span>
+          </div>
+
+          <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn" data-lang="<LANG>">
+              <div class="copy-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      class="icon icon-tabler icons-tabler-outline">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                      <path
+                          d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+                      <path
+                          d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+                  </svg>
+              </div>
+              <div class="check-icon" style="display: none;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      class="icon icon-tabler icons-tabler-outline">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                      <path stroke="none" d="M0 0h24v24H0z" />
+                      <path
+                          d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+                      <path d="M4.012 16.737a2 2 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+                      <path d="M11 14l2 2l4 -4" />
+                  </svg>
+              </div>
+              <span class="action-btn-label"><COPY_TITLE></span>
+          </div>
+    </div>
+`;
+
+const tableHeaderTemplate = `
+  <div class="table-header-actions">
+    <div type="button" class="action-btn mantine-focus-auto mantine-active table-copy-csv-btn">
+      <div class="copy-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+            <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+        </svg>
+      </div>
+      <div class="check-icon" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+            <path d="M4.012 16.737a2 2 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+            <path d="M11 14l2 2l4 -4" />
+        </svg>
+      </div>
+      <span class="action-btn-label"><COPY_CSV_TITLE></span>
+    </div>
+    <div type="button" class="action-btn mantine-focus-auto mantine-active table-download-csv-btn">
+      <div class="download-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="icon icon-tabler icons-tabler-outline">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" />
+            <path d="M12 4l0 12" />
+        </svg>
+      </div>
+      <span class="action-btn-label"><DOWNLOAD_CSV_TITLE></span>
+    </div>
+  </div>
+`;
 
 interface ChatMessageProps {
   message: Message;
@@ -54,190 +151,94 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
   const [showMainMessage, setShowMainMessage] = React.useState(true);
   const { t, i18n } = useTranslation();
 
-  const timestamp = new Date(updatedAt).toLocaleString();
+  const timestamp = useMemo(() => new Date(updatedAt).toLocaleString(), [updatedAt]);
   const isUserMessage = role === MessageRole.USER;
   const username = isUserMessage
     ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || t("You")
     : modelName || t("AI");
-
-  const codeHeaderTemplate = `
-        <span class="title">
-            <span class="header-toggle">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="icon icon-tabler icons-tabler-outline">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                    <path d="M9 6l6 6l-6 6" />
-                </svg>
-            </span>
-            <span class="language"><LANG></span>
-        </span>
-
-        <div class="code-header-actions">
-            <EXECUTE_BTN>
-
-            <div type="button" class="action-btn mantine-focus-auto mantine-active code-download-btn" data-lang="<LANG>">
-              <div class="download-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" 
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" 
-                      class="icon icon-tabler icons-tabler-outline">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" />
-                      <path d="M12 4l0 12" />
-                  </svg>
-              </div>
-              <span class="action-btn-label"><DOWNLOAD_TITLE></span>
-            </div>
-
-            <div type="button" class="action-btn mantine-focus-auto mantine-active code-copy-btn" data-lang="<LANG>">
-                <div class="copy-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="icon icon-tabler icons-tabler-outline">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path
-                            d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
-                        <path
-                            d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
-                    </svg>
-                </div>
-                <div class="check-icon" style="display: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="icon icon-tabler icons-tabler-outline">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                        <path stroke="none" d="M0 0h24v24H0z" />
-                        <path
-                            d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
-                        <path d="M4.012 16.737a2 2 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
-                        <path d="M11 14l2 2l4 -4" />
-                    </svg>
-                </div>
-                <span class="action-btn-label"><COPY_TITLE></span>
-            </div>
-      </div>
-  `;
 
   const donwloadTitle = useMemo(() => t("Download"), [i18n.language]);
   const copyTitle = useMemo(() => t("Copy"), [i18n.language]);
   const copyCsvTitle = useMemo(() => t("Copy CSV"), [i18n.language]);
   const downloadCsvTitle = useMemo(() => t("Download CSV"), [i18n.language]);
 
-  const tableHeaderTemplate = `
-    <div class="table-header-actions">
-      <div type="button" class="action-btn mantine-focus-auto mantine-active table-copy-csv-btn">
-        <div class="copy-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-              class="icon icon-tabler icons-tabler-outline">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-              <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
-              <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
-          </svg>
-        </div>
-        <div class="check-icon" style="display: none;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-              class="icon icon-tabler icons-tabler-outline">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-              <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
-              <path d="M4.012 16.737a2 2 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
-              <path d="M11 14l2 2l4 -4" />
-          </svg>
-        </div>
-        <span class="action-btn-label"><COPY_CSV_TITLE></span>
-      </div>
-      <div type="button" class="action-btn mantine-focus-auto mantine-active table-download-csv-btn">
-        <div class="download-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-              class="icon icon-tabler icons-tabler-outline">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" />
-              <path d="M12 4l0 12" />
-          </svg>
-        </div>
-        <span class="action-btn-label"><DOWNLOAD_CSV_TITLE></span>
-      </div>
-    </div>
-  `;
+  const processMessageElements = useMemo(
+    () =>
+      debounce(() => {
+        if (!componentRef.current) return;
 
-  const processMessageElements = useCallback(
-    debounce(() => {
-      if (!componentRef.current) return;
+        componentRef.current.querySelectorAll("pre").forEach(pre => {
+          if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
+            const header = pre.querySelector(".code-header") || document.createElement("div");
+            const data = pre.querySelector(".code-data");
+            const lang = data?.getAttribute("data-lang") || "plaintext";
+            const block = document.createElement("div");
 
-      componentRef.current.querySelectorAll("pre").forEach(pre => {
-        if (pre.querySelector(".code-data") && !pre?.parentElement?.classList?.contains("code-block")) {
-          const header = pre.querySelector(".code-header") || document.createElement("div");
-          const data = pre.querySelector(".code-data");
-          const lang = data?.getAttribute("data-lang") || "plaintext";
-          const block = document.createElement("div");
+            block.className = "code-block";
+            header.className = "code-header";
 
-          block.className = "code-block";
-          header.className = "code-header";
-
-          const plugin = codePlugins?.[lang];
-          const executeBtn = plugin
-            ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
+            const plugin = codePlugins?.[lang];
+            const executeBtn = plugin
+              ? `<div type="button" title="${plugin.label}" class="action-btn mantine-focus-auto mantine-active code-run-btn" data-lang="${lang}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" class="icon icon-tabler icons-tabler-filled icon-tabler-player-play">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M6 4v16a1 1 0 0 0 1.524 .852l13 -8a1 1 0 0 0 0 -1.704l-13 -8a1 1 0 0 0 -1.524 .852z" />
                 </svg>
                 <span class="action-btn-label">${plugin.label}</span>
               </div>`
-            : "";
+              : "";
 
-          header.innerHTML = codeHeaderTemplate
-            .replaceAll("<LANG>", lang)
-            .replace("<EXECUTE_BTN>", executeBtn)
-            .replace("<DOWNLOAD_TITLE>", donwloadTitle)
-            .replace("<COPY_TITLE>", copyTitle);
+            header.innerHTML = codeHeaderTemplate
+              .replaceAll("<LANG>", lang)
+              .replace("<EXECUTE_BTN>", executeBtn)
+              .replace("<DOWNLOAD_TITLE>", donwloadTitle)
+              .replace("<COPY_TITLE>", copyTitle);
 
-          block.appendChild(header);
-          pre.parentNode?.insertBefore(block, pre);
-          block.appendChild(pre);
-        }
-      });
-
-      componentRef.current.querySelectorAll("img").forEach(img => {
-        if (!img?.classList?.contains("message-image")) {
-          img.classList.add("message-image");
-          const fileName = img.src.split("/").pop() || "";
-          img.setAttribute("data-file-name", fileName);
-        }
-      });
-
-      componentRef.current.querySelectorAll("table").forEach(table => {
-        if (!table?.classList?.contains("message-table")) {
-          table.classList.add("message-table");
-
-          if (!table.tFoot) {
-            const tfoot = document.createElement("tfoot");
-            table.appendChild(tfoot);
-            const controlsRow = document.createElement("tr");
-            controlsRow.className = "table-controls-row";
-            tfoot.appendChild(controlsRow);
-            const cell = document.createElement("th");
-            cell.classList.add("table-controls");
-            cell.colSpan = table.querySelectorAll("th").length || 1;
-            controlsRow.appendChild(cell);
+            block.appendChild(header);
+            pre.parentNode?.insertBefore(block, pre);
+            block.appendChild(pre);
           }
+        });
 
-          const controlsCell = table.querySelector("tfoot tr .table-controls") as HTMLTableCellElement;
-          controlsCell.innerHTML = tableHeaderTemplate
-            .replace("<COPY_CSV_TITLE>", copyCsvTitle)
-            .replace("<DOWNLOAD_CSV_TITLE>", downloadCsvTitle);
+        componentRef.current.querySelectorAll("img").forEach(img => {
+          if (!img?.classList?.contains("message-image")) {
+            img.classList.add("message-image");
+            const fileName = img.src.split("/").pop() || "";
+            img.setAttribute("data-file-name", fileName);
+          }
+        });
 
-          let ndx = 0;
-          table.querySelectorAll("th").forEach(th => {
-            if (!th.classList.contains("table-controls")) {
-              th.classList.add("table-sort-btn");
-              th.setAttribute("data-col-index", String(ndx++));
+        componentRef.current.querySelectorAll("table").forEach(table => {
+          if (!table?.classList?.contains("message-table")) {
+            table.classList.add("message-table");
+
+            if (!table.tFoot) {
+              const tfoot = document.createElement("tfoot");
+              table.appendChild(tfoot);
+              const controlsRow = document.createElement("tr");
+              controlsRow.className = "table-controls-row";
+              tfoot.appendChild(controlsRow);
+              const cell = document.createElement("th");
+              cell.classList.add("table-controls");
+              cell.colSpan = table.querySelectorAll("th").length || 1;
+              controlsRow.appendChild(cell);
             }
-          });
-        }
-      });
-    }, ANIMATION_DURATION + 10),
+
+            const controlsCell = table.querySelector("tfoot tr .table-controls") as HTMLTableCellElement;
+            controlsCell.innerHTML = tableHeaderTemplate
+              .replace("<COPY_CSV_TITLE>", copyCsvTitle)
+              .replace("<DOWNLOAD_CSV_TITLE>", downloadCsvTitle);
+
+            let ndx = 0;
+            table.querySelectorAll("th").forEach(th => {
+              if (!th.classList.contains("table-controls")) {
+                th.classList.add("table-sort-btn");
+                th.setAttribute("data-col-index", String(ndx++));
+              }
+            });
+          }
+        });
+      }, ANIMATION_DURATION + 10),
     [donwloadTitle, copyTitle, copyCsvTitle, downloadCsvTitle, codePlugins]
   );
 
@@ -248,7 +249,10 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
       const observer = new MutationObserver(processMessageElements);
       observer.observe(componentRef.current, { childList: true, subtree: true });
       processMessageElements(); // Initial call to inject code elements
-      return () => observer.disconnect();
+      return () => {
+        observer.disconnect();
+        processMessageElements.cancel();
+      };
     }
   }, [role, streaming, processMessageElements]);
 
@@ -341,12 +345,12 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
   const linkedMessagesCmps = useMemo(() => {
     if (!linkedMessages || linkedMessages.length === 0) return [];
 
-    return linkedMessages.map(lm => (
+    return linkedMessages.map((lm, ndx) => (
       <LinkedChatMessage
         key={lm.id}
         message={lm}
         parentIndex={index}
-        index={carouselIndex}
+        index={ndx}
         models={models}
         plugins={pluginsLoader?.(lm)}
         messageDetailsLoader={messageDetailsLoader}

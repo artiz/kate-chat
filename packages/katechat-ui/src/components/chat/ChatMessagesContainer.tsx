@@ -48,11 +48,23 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
   ) => {
     const [showAnchorButton, setShowAnchorButton] = useState<boolean>(false);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const anchorTimer = useRef<NodeJS.Timeout | null>(null);
+    // Distinguishes our own scrollTo() calls from user-initiated scrolling, so
+    // autoscroll during streaming never fights the user scrolling up
+    const isProgrammaticScroll = useRef<boolean>(false);
+    // Synchronous mirror of "user scrolled away": checked by autoscroll before
+    // the async showAnchorButton state has committed
+    const autoScrollPaused = useRef<boolean>(false);
 
     // #region Scrolling
     const scrollToBottom = useCallback(() => {
-      messagesContainerRef.current?.scrollTo(0, messagesContainerRef.current?.scrollHeight ?? 0);
+      const el = messagesContainerRef.current;
+      if (!el) return;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight >= 1) {
+        // flag only when the position will actually change (a no-op scrollTo
+        // fires no scroll event and would leave the flag stuck)
+        isProgrammaticScroll.current = true;
+      }
+      el.scrollTo(0, el.scrollHeight);
     }, [messagesContainerRef]);
 
     // Expose scrollToBottom method to parent via ref
@@ -65,10 +77,10 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
     );
 
     const handleAutoScroll = useCallback(() => {
-      if (!showAnchorButton) {
+      if (!autoScrollPaused.current) {
         scrollToBottom();
       }
-    }, [scrollToBottom, showAnchorButton]);
+    }, [scrollToBottom]);
 
     useEffect(() => {
       if (autoScroll) {
@@ -81,6 +93,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
           const { scrollTop, scrollHeight, clientHeight } = container;
           const isAtBottom = scrollHeight - scrollTop - clientHeight < 2;
           if (!isAtBottom) {
+            autoScrollPaused.current = true;
             setShowAnchorButton(true);
           }
         }
@@ -90,30 +103,39 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
     const handleScroll = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target as HTMLDivElement;
-        anchorTimer.current && clearTimeout(anchorTimer.current);
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 2;
 
-        if (scrollHeight - scrollTop - clientHeight < 2) {
+        // Our own scrollToBottom() — never treat it as user intent
+        if (isProgrammaticScroll.current) {
+          isProgrammaticScroll.current = false;
+          if (isAtBottom) {
+            setShowAnchorButton(false);
+          }
+          return;
+        }
+
+        if (isAtBottom) {
+          autoScrollPaused.current = false;
           setShowAnchorButton(false);
         } else if (messages?.length) {
-          if (streaming) {
-            anchorTimer.current = setTimeout(() => {
-              setShowAnchorButton(true);
-            }, 100);
-          } else {
-            setShowAnchorButton(true);
-          }
+          // User scrolled away from the bottom: show the anchor and pause
+          // autoscroll until they return or click the anchor
+          autoScrollPaused.current = true;
+          setShowAnchorButton(true);
         }
       },
-      [messages?.length, streaming]
+      [messages?.length]
     );
 
     const anchorHandleClick = useCallback(() => {
+      autoScrollPaused.current = false;
       setShowAnchorButton(false);
       scrollToBottom();
     }, [scrollToBottom]);
 
     useEffect(() => {
       if (loadCompleted) {
+        autoScrollPaused.current = false;
         setShowAnchorButton(false);
         setTimeout(scrollToBottom, 200);
       }

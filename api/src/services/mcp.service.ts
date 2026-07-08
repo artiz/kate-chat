@@ -6,8 +6,18 @@ import { EntityAccessType, MCPAuthType, MCPTransportType } from "@/types/api";
 import { MCPClient } from "@/services/ai/tools/mcp.client";
 import { MCPAuthToken } from "@/types/ai.types";
 import { CreateMCPServerInput, UpdateMCPServerInput } from "@/types/graphql/inputs";
+import { OAuthTokenError } from "@/utils/errors";
 
 const logger = createLogger(__filename);
+
+// In-flight OAuth refresh requests keyed by serverId + refresh token. Providers
+// rotate refresh tokens, so two concurrent refreshes with the same token make
+// the second fail with invalid_grant and may revoke the whole grant — duplicate
+// callers must share one request.
+const inflightOauthRefresh = new Map<
+  string,
+  Promise<{ accessToken: string; expiresAt?: number; refreshToken?: string }>
+>();
 
 export class McpServersService {
   private mcpServerRepository: Repository<MCPServer>;
@@ -170,7 +180,21 @@ export class McpServersService {
     }
   }
 
-  public async refreshOauthToken({
+  public refreshOauthToken(args: {
+    serverId: string;
+    refreshToken: string;
+    userId?: string;
+  }): Promise<{ accessToken: string; expiresAt?: number; refreshToken?: string }> {
+    const key = `${args.serverId}:${args.refreshToken}`;
+    const inflight = inflightOauthRefresh.get(key);
+    if (inflight) return inflight;
+
+    const request = this.doRefreshOauthToken(args).finally(() => inflightOauthRefresh.delete(key));
+    inflightOauthRefresh.set(key, request);
+    return request;
+  }
+
+  private async doRefreshOauthToken({
     serverId,
     refreshToken,
     userId,
@@ -257,7 +281,7 @@ export class McpServersService {
           "OAuth token refresh failed"
         );
         const detail = firstError.errorDescription || firstError.errorCode || `HTTP ${tokenResponse.status}`;
-        throw new Error(`OAuth token refresh failed: ${detail}`);
+        throw new OAuthTokenError(`OAuth token refresh failed: ${detail}`, firstError.errorCode);
       }
     }
 
@@ -268,7 +292,7 @@ export class McpServersService {
         "OAuth token refresh failed"
       );
       const detail = oauthError.errorDescription || oauthError.errorCode || `HTTP ${tokenResponse.status}`;
-      throw new Error(`OAuth token refresh failed: ${detail}`);
+      throw new OAuthTokenError(`OAuth token refresh failed: ${detail}`, oauthError.errorCode);
     }
 
     const tokenData: any = await tokenResponse.json();

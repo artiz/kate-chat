@@ -87,6 +87,83 @@ renderer.table = (token: Tokens.Table): string => {
   return `<table><thead><tr>${header}</tr></thead><tbody>${body}</tbody><tfoot><tr class="table-controls-row"><td class="table-controls" colspan="${colCount}">&nbsp;</td></tr></tfoot></table>`;
 };
 
+// LRU cache of parsed segments. During streaming the full message content is
+// re-parsed on every update; all segments except the growing tail are stable,
+// so caching them turns each tick from O(full message) into O(tail segment).
+const PARSE_CACHE_LIMIT = 1024;
+const parseCache = new Map<string, string>();
+
+function parseWithCache(segment: string, engine: Marked, keyPrefix: string): string {
+  const key = keyPrefix + segment;
+  const cached = parseCache.get(key);
+  if (cached !== undefined) {
+    // refresh LRU position so stable segments stay hot
+    parseCache.delete(key);
+    parseCache.set(key, cached);
+    return cached;
+  }
+
+  const html = engine.parse(segment, { renderer }) as string;
+  if (parseCache.size >= PARSE_CACHE_LIMIT) {
+    const oldest = parseCache.keys().next().value;
+    if (oldest !== undefined) parseCache.delete(oldest);
+  }
+  parseCache.set(key, html);
+  return html;
+}
+
+const FENCE_OPEN_RE = /^(`{3,}|~{3,})/;
+const FENCE_CLOSE_RE = /^(`{3,}|~{3,})\s*$/;
+
+/**
+ * Split markdown into top-level segments: fenced code blocks opened at column 0
+ * become standalone segments, plain text between them stays together. Blank
+ * lines inside fences never split. An unterminated fence (streaming) runs to
+ * the end and forms the trailing segment.
+ */
+function splitMarkdownSegments(content: string): string[] {
+  const lines = content.split("\n");
+  const segments: string[] = [];
+  let current: string[] = [];
+  let fence: string | null = null;
+
+  const flush = () => {
+    if (current.length) {
+      segments.push(current.join("\n"));
+      current = [];
+    }
+  };
+
+  for (const line of lines) {
+    if (fence) {
+      current.push(line);
+      const close = line.match(FENCE_CLOSE_RE);
+      if (close && close[1][0] === fence[0] && close[1].length >= fence.length) {
+        fence = null;
+        flush();
+      }
+      continue;
+    }
+
+    const open = line.match(FENCE_OPEN_RE);
+    if (open) {
+      flush();
+      fence = open[1];
+    }
+    current.push(line);
+  }
+  flush();
+
+  return segments;
+}
+
+// Segments that must be parsed as one block: fenced code, tables and indented
+// fences (code nested in lists) — splitting them on blank lines would break
+// their structure.
+function isAtomicSegment(segment: string): boolean {
+  return FENCE_OPEN_RE.test(segment) || segment.includes("|---") || /^\s+(`{3,}|~{3,})/m.test(segment);
+}
+
 export function normalizeMatJax(input: string): string {
   return input
     ? input
@@ -108,23 +185,28 @@ export function parseMarkdown(content?: string | null, simple = false): string[]
   if (!content) return [];
 
   if (simple) {
-    return [markedSimple.parse(content, { renderer }) as string];
+    return [parseWithCache(content, markedSimple, "s:")];
   }
 
   content = normalizeMatJax(content);
 
-  // process complex code blocks, tables as one block
-  if (content.match(/(```)|(\|---)/)) {
-    return [marked.parse(content, { renderer }) as string];
+  const parts: string[] = [];
+  for (const segment of splitMarkdownSegments(content)) {
+    // process complex code blocks, tables as one block
+    if (isAtomicSegment(segment)) {
+      parts.push(parseWithCache(segment.endsWith("\n") ? segment : segment + "\n", marked, "m:"));
+      continue;
+    }
+
+    // split large texts so every stable paragraph hits the parse cache
+    for (const part of segment.split(/\r?\n\r?\n/g)) {
+      if (part) {
+        parts.push(parseWithCache(part + "\n\n", marked, "m:"));
+      }
+    }
   }
 
-  // split large texts
-  const parts = content
-    .split(/(\r)?\n(\r)?\n/g)
-    .filter(s => Boolean(s))
-    .map(s => s + "\n\n");
-
-  return parts.map(part => marked.parse(part, { renderer }) as string);
+  return parts;
 }
 
 export function parseChatMessages(messages: Message[] = []): Message[] {

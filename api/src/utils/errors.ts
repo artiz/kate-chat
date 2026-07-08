@@ -10,3 +10,18 @@ export const getErrorMessage = (error: unknown, defaultMessage: string = "An unk
   }
   return defaultMessage;
 };
+
+/**
+ * OAuth token endpoint error with the OAuth error code (e.g. "invalid_grant")
+ * preserved so callers can distinguish "re-authorization required" from
+ * transient failures.
+ */
+export class OAuthTokenError extends Error {
+  constructor(
+    message: string,
+    public readonly errorCode?: string
+  ) {
+    super(message);
+    this.name = "OAuthTokenError";
+  }
+}

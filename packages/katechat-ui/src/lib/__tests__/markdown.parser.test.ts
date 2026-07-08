@@ -44,6 +44,53 @@ describe("MarkdownParser", () => {
       expect(result[0]).toContain("console.log");
     });
 
+    it("should split fenced code blocks from surrounding text", () => {
+      const content = 'Intro text\n\n```javascript\nconsole.log("hello");\n```\n\nOutro text';
+      const result = parseMarkdown(content);
+      expect(result).toHaveLength(3);
+      expect(result[0]).toContain("Intro text");
+      expect(result[1]).toContain("console.log");
+      expect(result[2]).toContain("Outro text");
+    });
+
+    it("should keep blank lines inside fenced code blocks", () => {
+      const content = "```python\na = 1\n\nb = 2\n```";
+      const result = parseMarkdown(content);
+      expect(result).toHaveLength(1);
+      // original code is preserved as one block (URL-encoded in data-code)
+      expect(result[0]).toContain(`data-code="${encodeURIComponent("a = 1\n\nb = 2")}"`);
+    });
+
+    it("should keep unterminated (streaming) code fence as trailing block", () => {
+      const content = "Text before\n\n```js\nconst x = 1;";
+      const result = parseMarkdown(content);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toContain("Text before");
+      expect(result[1]).toContain(`data-code="${encodeURIComponent("const x = 1;")}"`);
+    });
+
+    it("should not split indented fences nested in lists", () => {
+      const content = "1. Install:\n\n   ```sh\n   npm i\n   ```\n\n2. Run it";
+      const result = parseMarkdown(content);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toContain("npm i");
+      expect(result[0]).toContain("Run it");
+    });
+
+    it("should return identical results on repeated (cached) parsing", () => {
+      const content = 'Some text\n\n```javascript\nconsole.log("cached");\n```\n\nMore text';
+      const first = parseMarkdown(content);
+      const second = parseMarkdown(content);
+      expect(second).toEqual(first);
+    });
+
+    it("should not emit stray parts for CRLF content", () => {
+      const result = parseMarkdown("Paragraph 1\r\n\r\nParagraph 2");
+      expect(result).toHaveLength(2);
+      expect(result[0]).toContain("Paragraph 1");
+      expect(result[1]).toContain("Paragraph 2");
+    });
+
     it("should handle tables as single block", () => {
       const table = "| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |";
       const result = parseMarkdown(table);
@@ -280,10 +327,10 @@ console.log("<script>alert('safe')</script>");
 \`\`\`
       `;
 
-      const result = parseMarkdown(mixedContent);
-      expect(result[0]).not.toContain("javascript:void(0)");
-      expect(result[0]).toContain("https://example.com");
-      expect(result[0]).toContain("&lt;script&gt;alert(&#x27;safe&#x27;)&lt;/script&gt;");
+      const html = parseMarkdown(mixedContent).join("");
+      expect(html).not.toContain("javascript:void(0)");
+      expect(html).toContain("https://example.com");
+      expect(html).toContain("&lt;script&gt;alert(&#x27;safe&#x27;)&lt;/script&gt;");
     });
   });
 });
