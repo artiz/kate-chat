@@ -231,7 +231,10 @@ export class RealtimeService {
         };
         const session: Record<string, unknown> = {
           type: "realtime",
-          output_modalities: ["audio", "text"],
+          // a single modality: Yandex rejects ["audio", "text"] ("Modalities
+          // can be either audio or text"); with "audio" the effective session
+          // still reports text+audio and transcripts keep flowing
+          output_modalities: ["audio"],
           audio,
         };
         if (ctx.chat.settings?.systemPrompt) {
