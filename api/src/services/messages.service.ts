@@ -5,14 +5,16 @@ import { Message } from "../entities/Message";
 import { ChatFile, ChatFileType } from "../entities/ChatFile";
 import { AIService } from "./ai/ai.service";
 import { getImageFeatures, saveImageFromBase64 as saveImageFromBase64Util } from "@/utils/image";
+import { saveAudioFromBase64 } from "@/utils/audio";
 import { Chat, DocumentChunk, MCPServer, Model, User } from "@/entities";
-import { CreateMessageInput, ImageInput, MessageContext } from "@/types/graphql/inputs";
+import { AddChatMessageInput, CreateMessageInput, ImageInput, MessageContext } from "@/types/graphql/inputs";
 import {
   ChatResponseStatus,
   CompleteChatRequest,
   CreateMessageRequest,
   MessageMetadata,
   ModelMessageContent,
+  ModelMessageContentAudio,
   ModelMessageContentImage,
   ModelResponse,
 } from "@/types/ai.types";
@@ -307,6 +309,52 @@ export class MessagesService {
     assistantMessage = await this.messageRepository.save(assistantMessage);
     await this.publishAssistantMessage(request, connection, user, model, chat, inputMessages, assistantMessage);
     return userMessage;
+  }
+
+  /**
+   * Persist a message to chat history WITHOUT invoking the model —
+   * used for realtime voice session transcripts.
+   */
+  public async addChatMessage(input: AddChatMessageInput, user: User): Promise<Message> {
+    const { chatId, content } = input;
+    const role = input.role as MessageRole;
+    if (!chatId) throw new Error("Chat ID is required");
+    if (!content?.trim()) throw new Error("Message content is required");
+    if (role !== MessageRole.USER && role !== MessageRole.ASSISTANT) {
+      throw new Error("Only user and assistant messages can be added");
+    }
+
+    const chat = await this.chatRepository.findOne({ where: { id: chatId }, relations: { user: true } });
+    if (!chat) throw new Error("Chat not found");
+    if (chat.user && chat.user.id !== user.id) throw new Error("Unauthorized access to this chat");
+
+    await this.checkMessagesLimit(chatId, user);
+
+    const modelId = chat.modelId || user.settings?.defaultModelId;
+    const model = modelId
+      ? await this.modelRepository.findOne({ where: { modelId, user: { id: user.id } } })
+      : undefined;
+
+    const message = await this.messageRepository.save(
+      this.messageRepository.create({
+        content: content.trim(),
+        role,
+        modelId: model?.modelId,
+        modelName: role === MessageRole.ASSISTANT ? model?.name : undefined,
+        chatId,
+        user,
+        chat,
+      })
+    );
+
+    chat.isPristine = false;
+    if (!chat.title && role === MessageRole.USER) {
+      chat.title = content.trim().substring(0, 25) + (content.trim().length > 25 ? "..." : "");
+    }
+    await this.chatRepository.save(chat);
+
+    await this.subscriptionsService.publishChatMessage(chat, message);
+    return message;
   }
 
   public async switchMessageModel(
@@ -712,7 +760,7 @@ export class MessagesService {
     model: Model,
     metadata?: MessageMetadata
   ): Promise<Message> {
-    const { images } = input;
+    const { images, audio } = input;
     let { content = "" } = input;
 
     let userMessage = await this.messageRepository
@@ -775,6 +823,38 @@ export class MessagesService {
         // For display purposes, append image markdown to the content
         content += ` ![Uploaded Image](${S3Service.getFileUrl(fileName)})`;
       }
+    }
+
+    // Voice recording attached to the message
+    if (audio?.bytesBase64) {
+      const s3Service = new S3Service(user.toToken());
+      if (!jsonContent) {
+        jsonContent = content ? [{ content, contentType: "text" }] : [];
+      }
+
+      const { fileName, contentType } = await saveAudioFromBase64(s3Service, audio.bytesBase64, {
+        chatId: chat.id,
+        messageId: userMessage.id,
+        id: `${Date.now()}-voice`,
+      });
+
+      await this.chatFileRepository.save({
+        chatId: chat.id,
+        messageId: userMessage.id,
+        type: ChatFileType.AUDIO,
+        uploadFile: audio.fileName,
+        mime: contentType,
+        fileName,
+      });
+
+      jsonContent.push({
+        contentType: "audio",
+        fileName,
+        mimeType: contentType,
+        lengthSec: audio.durationSec,
+      } satisfies ModelMessageContentAudio);
+
+      content += `${content ? "\n\n" : ""}[Voice message](${S3Service.getFileUrl(fileName)})`;
     }
 
     // update message content
@@ -852,6 +932,37 @@ export class MessagesService {
       message.jsonContent.push(...images);
       message.content +=
         "\n\n" + images.map(img => `![Generated Image](${S3Service.getFileUrl(img.fileName)})`).join("   ");
+    }
+
+    if (response.audios?.length) {
+      const audios: ModelMessageContentAudio[] = [];
+
+      for (const file of response.audios) {
+        const { fileName, contentType } = await saveAudioFromBase64(s3Service, file, {
+          chatId: chat.id,
+          messageId: message.id,
+          id: `${Date.now()}-${audios.length}`,
+        });
+
+        await this.chatFileRepository.save({
+          chatId: chat.id,
+          messageId: message.id,
+          type: ChatFileType.AUDIO,
+          fileName,
+          mime: contentType,
+        });
+
+        audios.push({ contentType: "audio", fileName, mimeType: contentType });
+      }
+
+      if (!message.jsonContent) {
+        // keep the transcript as a text part so the context replay preserves it
+        message.jsonContent = message.content ? [{ contentType: "text", content: message.content }] : [];
+      }
+
+      message.jsonContent.push(...audios);
+      message.content +=
+        "\n\n" + audios.map(audio => `[Voice response](${S3Service.getFileUrl(audio.fileName)})`).join("   ");
     }
 
     if (!message.content) {

@@ -1,9 +1,17 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { Text, Textarea, Button, Group, ActionIcon, Stack, Box, Popover, Tooltip, Menu } from "@mantine/core";
-import { IconCirclePlus, IconPlayerStopFilled, IconSend, IconX } from "@tabler/icons-react";
+import {
+  IconCirclePlus,
+  IconMicrophone,
+  IconPhoneOff,
+  IconPlayerStopFilled,
+  IconSend,
+  IconX,
+} from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { ImageInput } from "@/core";
+import { AudioInput, ImageInput } from "@/core";
 import { FileDropzone } from "@/controls";
+import { useVoiceRecorder } from "@/hooks";
 import { useTranslation } from "react-i18next";
 
 import classes from "./ChatInput.module.scss";
@@ -29,7 +37,19 @@ interface IProps {
   maxUploadFileSize?: number;
   maxImagesCount?: number;
 
-  onSendMessage: (message: string, images?: ImageInput[]) => Promise<void>;
+  /** REALTIME (voice-to-voice) model: Send is replaced with a Mic call button */
+  realtimeMode?: boolean;
+  voiceCallActive?: boolean;
+  voiceCallConnecting?: boolean;
+  onVoiceCallStart?: () => void;
+  onVoiceCallStop?: () => void;
+
+  /** Model accepts audio input: a voice-recording button is shown next to Send */
+  audioInputMode?: boolean;
+  /** Reports recording state and a live microphone analyser for visualization */
+  onRecordingChange?: (recording: boolean, analyser: AnalyserNode | null) => void;
+
+  onSendMessage: (message: string, images?: ImageInput[], audio?: AudioInput) => Promise<void>;
   onStopRequest?: () => void;
   onDocumentsUpload?: (documents: File[]) => void;
 }
@@ -50,6 +70,13 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
       uploadFormats,
       maxUploadFileSize = 64 * 1024 * 1024,
       maxImagesCount = 0,
+      realtimeMode = false,
+      voiceCallActive = false,
+      voiceCallConnecting = false,
+      onVoiceCallStart,
+      onVoiceCallStop,
+      audioInputMode = false,
+      onRecordingChange,
       onSendMessage,
       onStopRequest,
       onDocumentsUpload,
@@ -57,11 +84,43 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     ref
   ) => {
     const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
+    const [recordedAudio, setRecordedAudio] = useState<AudioInput | null>(null);
     const [userMessage, setUserMessage] = useState("");
     const [prevMessageNdx, setPrevMessageNdx] = useState<number>(0);
     const [isMessageSeek, setMessageSeek] = useState<boolean>(false);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const { t } = useTranslation();
+
+    const { recording, analyser, startRecording, stopRecording, cancelRecording } = useVoiceRecorder();
+
+    useEffect(() => {
+      onRecordingChange?.(recording, analyser);
+    }, [recording, analyser, onRecordingChange]);
+
+    // drop leftover recording state when the chat or mode changes
+    useEffect(() => {
+      return () => cancelRecording();
+    }, [audioInputMode, cancelRecording]);
+
+    const handleToggleRecording = useCallback(async () => {
+      if (recording) {
+        const audio = await stopRecording();
+        if (audio) {
+          setRecordedAudio(audio);
+        }
+      } else {
+        setRecordedAudio(null);
+        try {
+          await startRecording();
+        } catch {
+          notifications.show({
+            title: t("Error"),
+            message: t("Microphone access failed. Please allow microphone usage for this site."),
+            color: "red",
+          });
+        }
+      }
+    }, [recording, startRecording, stopRecording, t]);
 
     useImperativeHandle(ref, () => ({
       handleAddFiles: (files: File[]) => handleAddFiles(files),
@@ -76,13 +135,14 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     }, [loadCompleted, previousMessages]);
 
     const handleSendMessage = async () => {
-      if (!userMessage?.trim() && !selectedImages.length) return;
+      if (!userMessage?.trim() && !selectedImages.length && !recordedAudio) return;
       setSending(true);
 
       try {
         setUserMessage("");
         setSelectedImages([]);
-        await onSendMessage(userMessage, selectedImages);
+        setRecordedAudio(null);
+        await onSendMessage(userMessage, selectedImages, recordedAudio ?? undefined);
       } catch (error) {
         notifications.show({
           title: "Error",
@@ -123,8 +183,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     }, []);
 
     const sendMessageNotAllowed = useMemo(() => {
-      return disabled || streaming || (!userMessage?.trim() && !selectedImages.length);
-    }, [userMessage, selectedImages, streaming, disabled]);
+      return disabled || streaming || recording || (!userMessage?.trim() && !selectedImages.length && !recordedAudio);
+    }, [userMessage, selectedImages, recordedAudio, recording, streaming, disabled]);
 
     const handleAddFiles = useCallback(
       (files: File[]) => {
@@ -300,34 +360,91 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
               <Textarea
                 ref={inputRef}
                 className={classes.chatInput}
-                placeholder={t("Type your message...")}
+                placeholder={
+                  realtimeMode ? t("Voice conversation — use the microphone button") : t("Type your message...")
+                }
                 value={userMessage || ""}
                 autosize
                 minRows={1}
                 maxRows={7}
                 onChange={handleInputChange}
                 onKeyDown={handleInputKeyDown}
-                disabled={disabled}
+                disabled={disabled || realtimeMode}
               />
 
-              {onStopRequest && streaming ? (
-                <Button onClick={onStopRequest} disabled={disabled}>
-                  <IconPlayerStopFilled size={24} /> <Text visibleFrom="md">{t("Stop")}</Text>
-                </Button>
+              {realtimeMode ? (
+                voiceCallActive || voiceCallConnecting ? (
+                  <Button
+                    onClick={onVoiceCallStop}
+                    color="red"
+                    radius="md"
+                    loading={voiceCallConnecting}
+                    data-testid="voice-call-stop"
+                  >
+                    <IconPhoneOff size={24} />{" "}
+                    <Text visibleFrom="md" ml="xs">
+                      {t("End call")}
+                    </Text>
+                  </Button>
+                ) : (
+                  <Button onClick={onVoiceCallStart} disabled={disabled} radius="md" data-testid="voice-call-start">
+                    <IconMicrophone size={24} />{" "}
+                    <Text visibleFrom="md" ml="xs">
+                      {t("Talk")}
+                    </Text>
+                  </Button>
+                )
               ) : (
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={sendMessageNotAllowed}
-                  className={onStopRequest && streaming ? classes.hidden : ""}
-                  radius="md"
-                >
-                  <IconSend size={24} />{" "}
-                  <Text visibleFrom="md" ml="xs">
-                    {t("Send")}
-                  </Text>
-                </Button>
+                <>
+                  {audioInputMode && (
+                    <Tooltip label={recording ? t("Stop recording") : t("Record voice message")} position="top">
+                      <ActionIcon
+                        size="lg"
+                        radius="md"
+                        variant={recording ? "filled" : "subtle"}
+                        color={recording ? "red" : undefined}
+                        onClick={handleToggleRecording}
+                        disabled={disabled || streaming}
+                        className={classes.recordButton}
+                        data-testid="voice-record-toggle"
+                      >
+                        {recording ? <IconPlayerStopFilled size={20} /> : <IconMicrophone size={20} />}
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+
+                  {onStopRequest && streaming ? (
+                    <Button onClick={onStopRequest} disabled={disabled}>
+                      <IconPlayerStopFilled size={24} /> <Text visibleFrom="md">{t("Stop")}</Text>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={sendMessageNotAllowed}
+                      className={onStopRequest && streaming ? classes.hidden : ""}
+                      radius="md"
+                    >
+                      <IconSend size={24} />{" "}
+                      <Text visibleFrom="md" ml="xs">
+                        {t("Send")}
+                      </Text>
+                    </Button>
+                  )}
+                </>
               )}
             </div>
+
+            {recordedAudio && !realtimeMode && (
+              <Group gap="xs" className={classes.audioAttachment}>
+                <audio controls src={recordedAudio.bytesBase64} />
+                <Text size="xs" c="dimmed">
+                  {recordedAudio.durationSec ? `${recordedAudio.durationSec}s` : recordedAudio.fileName}
+                </Text>
+                <ActionIcon size="xs" color="red.9" onClick={() => setRecordedAudio(null)}>
+                  <IconX size={14} />
+                </ActionIcon>
+              </Group>
+            )}
           </div>
         </div>
       </div>

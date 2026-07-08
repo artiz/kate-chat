@@ -94,7 +94,18 @@ export interface ModelMessageContentVideo {
   lengthSec?: number;
 }
 
-export type ModelMessageContent = ModelMessageContentText | ModelMessageContentImage | ModelMessageContentVideo;
+export interface ModelMessageContentAudio {
+  contentType: "audio";
+  fileName: string;
+  mimeType: string;
+  lengthSec?: number;
+}
+
+export type ModelMessageContent =
+  | ModelMessageContentText
+  | ModelMessageContentImage
+  | ModelMessageContentVideo
+  | ModelMessageContentAudio;
 
 export interface ModelMessage {
   id?: string | undefined;

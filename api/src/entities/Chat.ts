@@ -56,6 +56,10 @@ export class ChatSettings {
   @Field({ nullable: true })
   cacheRetention?: CacheRetention;
 
+  // assistant voice for realtime and audio-output models (e.g. "shimmer")
+  @Field({ nullable: true })
+  voice?: string;
+
   @Field(() => [String], { nullable: true })
   selectedRagDocIds?: string[];
 }

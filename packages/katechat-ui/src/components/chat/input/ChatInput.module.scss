@@ -186,3 +186,15 @@
     }
   }
 }
+
+.recordButton {
+  align-self: center;
+}
+
+.audioAttachment {
+  padding: 0.25rem 0.5rem;
+
+  audio {
+    height: 32px;
+  }
+}

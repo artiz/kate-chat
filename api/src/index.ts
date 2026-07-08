@@ -34,6 +34,7 @@ import {
   MCPServerResolver,
   SearchResolver,
   MCPAuthConfigResolver,
+  RealtimeResolver,
 } from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 
@@ -42,6 +43,7 @@ import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { createLogger } from "./utils/logger";
 import { MessagesService } from "@/services/messages.service";
+import { RealtimeService, REALTIME_PROXY_PATH } from "@/services/realtime.service";
 import { S3Service } from "@/services/data/s3.service";
 import { HttpError } from "./types/exceptions";
 import { DocumentSqsService, RequestsSqsService, SubscriptionsService } from "./services/messaging";
@@ -112,6 +114,7 @@ async function bootstrap() {
       MCPServerResolver,
       MCPAuthConfigResolver,
       SearchResolver,
+      RealtimeResolver,
     ],
     validate: false,
     pubSub: schemaPubSub,
@@ -263,10 +266,27 @@ async function bootstrap() {
   // Create HTTP server
   const httpServer = createServer(app);
 
-  // Create and setup WebSocket server for GraphQL subscriptions
-  const wsServer = new WebSocketServer({
-    server: httpServer,
-    path: "/graphql/subscriptions",
+  // Create and setup WebSocket server for GraphQL subscriptions.
+  // noServer + manual upgrade routing: several WS endpoints share one HTTP
+  // server (GraphQL subscriptions + realtime voice proxy).
+  const wsServer = new WebSocketServer({ noServer: true });
+  const realtimeWsServer = new WebSocketServer({ noServer: true });
+  const realtimeService = new RealtimeService();
+
+  realtimeWsServer.on("connection", (socket, request) => {
+    realtimeService.handleProxyConnection(socket, request);
+  });
+
+  httpServer.on("upgrade", (request, socket, head) => {
+    const { pathname } = new URL(request.url || "", "http://localhost");
+
+    if (pathname === "/graphql/subscriptions") {
+      wsServer.handleUpgrade(request, socket, head, ws => wsServer.emit("connection", ws, request));
+    } else if (pathname === REALTIME_PROXY_PATH) {
+      realtimeWsServer.handleUpgrade(request, socket, head, ws => realtimeWsServer.emit("connection", ws, request));
+    } else {
+      socket.destroy();
+    }
   });
 
   // Set up GraphQL over WebSocket

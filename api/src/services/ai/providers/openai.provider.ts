@@ -34,6 +34,7 @@ import { OpenAIResponsesProtocol } from "../protocols/openai.responses.protocol"
 import {
   OPENAI_MODEL_MAX_INPUT_TOKENS,
   OPENAI_MODELS_AUDIO_GENERATION,
+  OPENAI_MODELS_AUDIO_INPUT,
   OPENAI_MODELS_IMAGES_GENERATION,
   OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
   OPENAI_MODELS_SUPPORT_RESPONSES_API,
@@ -353,6 +354,12 @@ export class OpenAIApiProvider extends BaseApiProvider {
           features.push(ModelFeature.REASONING);
         }
 
+        if (OPENAI_MODELS_AUDIO_INPUT.some(prefix => model.id.startsWith(prefix))) {
+          features.push(ModelFeature.AUDIO_INPUT, ModelFeature.AUDIO_OUTPUT);
+        }
+
+        features.push(ModelFeature.TEMPERATURE);
+        
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||
           Object.entries(OPENAI_MODEL_MAX_INPUT_TOKENS).find(([key]) => model.id.startsWith(key))?.[1] ||

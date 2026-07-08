@@ -178,6 +178,7 @@ export interface GlobalConfigShape {
   };
   yandex: {
     openApiUrl: string;
+    realtimeApiUrl: string;
     fmApiUrl: string;
     fmApiKey?: string;
     fmApiFolder?: string;
@@ -425,6 +426,8 @@ export class GlobalConfig {
       },
       yandex: {
         openApiUrl: process.env.YANDEX_OPENAI_API_URL || "https://ai.api.cloud.yandex.net/v1",
+        // OpenAI-compatible Realtime API (WebSocket) endpoint for speech-realtime models
+        realtimeApiUrl: process.env.YANDEX_REALTIME_API_URL || "wss://ai.api.cloud.yandex.net/v1/realtime/openai",
         fmApiUrl: process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net",
         fmApiKey: process.env.YANDEX_FM_API_KEY,
         fmApiFolder: process.env.YANDEX_FM_API_FOLDER,

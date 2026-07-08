@@ -1,0 +1,255 @@
+import { IncomingMessage } from "http";
+import WebSocket from "ws";
+import { Repository } from "typeorm";
+import { fetch } from "undici";
+
+import { Chat, Model, User } from "@/entities";
+import { ApiProvider, ModelType } from "@/types/api";
+import { getRepository } from "@/config/database";
+import { globalConfig } from "@/global-config";
+import { ConnectionParams, loadConnectionParams } from "@/middleware/auth.middleware";
+import { generateRealtimeToken, verifyRealtimeToken } from "@/utils/jwt";
+import { getErrorMessage } from "@/utils/errors";
+import { createLogger } from "@/utils/logger";
+import { OPENAI_REALTIME_DEFAULT_VOICE, OPENAI_REALTIME_TRANSCRIPTION_MODEL } from "@/config/ai/openai";
+
+const logger = createLogger(__filename);
+
+export const REALTIME_PROXY_PATH = "/realtime/proxy";
+
+export interface RealtimeSessionInfo {
+  transport: "webrtc" | "websocket";
+  model: string;
+  clientSecret?: string;
+  sdpUrl?: string;
+  wsUrl?: string;
+}
+
+interface RealtimeChatContext {
+  chat: Chat;
+  model: Model;
+  connection: ConnectionParams;
+  voice: string;
+}
+
+export class RealtimeService {
+  private chatRepository: Repository<Chat>;
+  private modelRepository: Repository<Model>;
+  private userRepository: Repository<User>;
+
+  constructor() {
+    this.chatRepository = getRepository(Chat);
+    this.modelRepository = getRepository(Model);
+    this.userRepository = getRepository(User);
+  }
+
+  private async loadChatContext(
+    chatId: string,
+    user: User,
+    connection: ConnectionParams
+  ): Promise<RealtimeChatContext> {
+    const chat = await this.chatRepository.findOne({ where: { id: chatId }, relations: { user: true } });
+    if (!chat) throw new Error("Chat not found");
+    if (chat.user && chat.user.id !== user.id) throw new Error("Unauthorized access to this chat");
+
+    const modelId = chat.modelId || user.settings?.defaultModelId;
+    if (!modelId) throw new Error("Model must be defined for the chat or user");
+
+    const model = await this.modelRepository.findOne({ where: { modelId, user: { id: user.id } } });
+    if (!model) throw new Error("Model not found");
+    if (model.type !== ModelType.REALTIME) throw new Error("Selected model does not support realtime voice sessions");
+
+    return {
+      chat,
+      model,
+      connection,
+      voice: chat.settings?.voice || OPENAI_REALTIME_DEFAULT_VOICE,
+    };
+  }
+
+  /**
+   * Mint connection info for a realtime voice session. OpenAI: an ephemeral
+   * client secret so the browser talks WebRTC to the provider directly;
+   * providers without ephemeral tokens fall back to our WebSocket proxy.
+   */
+  public async createSession(chatId: string, user: User, connection: ConnectionParams): Promise<RealtimeSessionInfo> {
+    const ctx = await this.loadChatContext(chatId, user, connection);
+    const { model } = ctx;
+
+    if (model.apiProvider === ApiProvider.OPEN_AI) {
+      try {
+        return await this.createOpenAIEphemeralSession(ctx);
+      } catch (err) {
+        logger.warn(
+          { err, modelId: model.modelId },
+          "Ephemeral realtime session is not available, falling back to WebSocket proxy"
+        );
+      }
+    }
+
+    // WebSocket proxy fallback (Yandex speech-realtime and others)
+    const token = generateRealtimeToken({ userId: user.id, chatId });
+    return {
+      transport: "websocket",
+      model: model.modelId,
+      wsUrl: `${REALTIME_PROXY_PATH}?token=${encodeURIComponent(token)}`,
+    };
+  }
+
+  private async createOpenAIEphemeralSession(ctx: RealtimeChatContext): Promise<RealtimeSessionInfo> {
+    const { model, connection, voice } = ctx;
+    const apiKey = connection.openAiApiKey;
+    if (!apiKey) throw new Error("OpenAI API key is not configured");
+
+    const baseUrl = globalConfig.openai.apiUrl || "https://api.openai.com/v1";
+    const response = await fetch(`${baseUrl}/realtime/sessions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: model.modelId,
+        voice,
+        input_audio_transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create realtime session: ${response.status} ${errorText}`);
+    }
+
+    const session = (await response.json()) as { client_secret?: { value?: string } };
+    const clientSecret = session.client_secret?.value;
+    if (!clientSecret) throw new Error("No client secret in realtime session response");
+
+    return {
+      transport: "webrtc",
+      model: model.modelId,
+      clientSecret,
+      sdpUrl: `${baseUrl}/realtime?model=${encodeURIComponent(model.modelId)}`,
+    };
+  }
+
+  /**
+   * WebSocket proxy: browser <-> our server <-> provider realtime API.
+   * Used when the provider has no ephemeral tokens (server-side API key
+   * must not reach the browser).
+   */
+  public async handleProxyConnection(client: WebSocket, request: IncomingMessage): Promise<void> {
+    let upstream: WebSocket | undefined;
+
+    const close = (code = 1000, reason = "") => {
+      try {
+        client.close(code, reason);
+      } catch {
+        /* already closed */
+      }
+      try {
+        upstream?.close();
+      } catch {
+        /* already closed */
+      }
+    };
+
+    try {
+      const url = new URL(request.url || "", "http://localhost");
+      const token = url.searchParams.get("token") || "";
+      const { userId, chatId } = verifyRealtimeToken(token);
+
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) throw new Error("User not found");
+
+      // headers -> environment -> user settings, same as GraphQL resolvers
+      const connection = loadConnectionParams({});
+      if (user.settings) {
+        connection.openAiApiKey ||= user.settings.openaiApiKey;
+        connection.yandexFmApiKey ||= user.settings.yandexFmApiKey;
+        connection.yandexFmApiFolder ||= user.settings.yandexFmApiFolderId;
+      }
+
+      const ctx = await this.loadChatContext(chatId, user, connection);
+      const { upstreamUrl, headers } = this.getUpstreamTarget(ctx);
+
+      logger.debug({ chatId, modelId: ctx.model.modelId }, "Opening realtime proxy connection");
+      upstream = new WebSocket(upstreamUrl, { headers });
+
+      const pendingClientMessages: WebSocket.RawData[] = [];
+      client.on("message", data => {
+        if (upstream && upstream.readyState === WebSocket.OPEN) {
+          upstream.send(data);
+        } else {
+          pendingClientMessages.push(data);
+        }
+      });
+
+      upstream.on("open", () => {
+        // apply chat voice/transcription settings to the provider session
+        upstream?.send(
+          JSON.stringify({
+            type: "session.update",
+            session: {
+              voice: ctx.voice,
+              input_audio_transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL },
+            },
+          })
+        );
+        pendingClientMessages.splice(0).forEach(data => upstream?.send(data));
+      });
+
+      upstream.on("message", data => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(data.toString());
+        }
+      });
+
+      upstream.on("close", () => close());
+      upstream.on("error", err => {
+        logger.warn(err, "Realtime proxy upstream error");
+        close(1011, "Upstream connection error");
+      });
+      client.on("close", () => close());
+      client.on("error", () => close());
+    } catch (err) {
+      logger.warn(err, "Realtime proxy connection rejected");
+      try {
+        client.send(JSON.stringify({ type: "error", error: { message: getErrorMessage(err) } }));
+      } catch {
+        /* client already gone */
+      }
+      close(1008, "Unauthorized or invalid session");
+    }
+  }
+
+  private getUpstreamTarget(ctx: RealtimeChatContext): { upstreamUrl: string; headers: Record<string, string> } {
+    const { model, connection } = ctx;
+
+    if (model.apiProvider === ApiProvider.YANDEX_AI) {
+      const apiKey = connection.yandexFmApiKey;
+      const folder = connection.yandexFmApiFolder;
+      if (!apiKey || !folder) throw new Error("Yandex API key/folder is not configured");
+
+      const modelUri = model.modelId.replace("{folder}", folder);
+      return {
+        upstreamUrl: `${globalConfig.yandex.realtimeApiUrl}?model=${encodeURIComponent(modelUri)}`,
+        headers: {
+          Authorization: apiKey.startsWith("t1") ? `Bearer ${apiKey}` : `Api-Key ${apiKey}`,
+          "x-folder-id": folder,
+        },
+      };
+    }
+
+    // OpenAI-compatible fallback proxy
+    const apiKey = connection.openAiApiKey;
+    if (!apiKey) throw new Error("OpenAI API key is not configured");
+    const baseUrl = (globalConfig.openai.apiUrl || "https://api.openai.com/v1").replace(/^http/, "ws");
+    return {
+      upstreamUrl: `${baseUrl}/realtime?model=${encodeURIComponent(model.modelId)}`,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "OpenAI-Beta": "realtime=v1",
+      },
+    };
+  }
+}

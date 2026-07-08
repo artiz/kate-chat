@@ -88,7 +88,7 @@ const getHeader = (headerValue: string | string[] | undefined): string | undefin
   return headerValue;
 };
 
-function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
+export function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionParams {
   return {
     awsBedrockRegion: getHeader(headers["x-aws-region"]) || globalConfig.bedrock.region,
     awsBedrockProfile: getHeader(headers["x-aws-profile"]) || globalConfig.bedrock.profile,

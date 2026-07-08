@@ -11,7 +11,7 @@ import {
   ModelMessageContent,
   ChatToolCallResult,
 } from "@/types/ai.types";
-import { MessageRole, ResponseStatus, ToolType } from "@/types/api";
+import { MessageRole, ModelFeature, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty } from "@/utils/assert";
 import {
@@ -21,7 +21,11 @@ import {
   CustomWebSearchTool,
 } from "./openai.tools";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT } from "./openai.protocol";
-import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
+import {
+  OPENAI_MODELS_AUDIO_INPUT,
+  OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
+  OPENAI_REALTIME_DEFAULT_VOICE,
+} from "@/config/ai/openai";
 
 const logger = createLogger(__filename);
 
@@ -49,8 +53,13 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       logger.debug(completion, "chat.completions response");
 
       const usage = completion.usage;
+      const message = completion.choices[0]?.message;
+      // audio-output models return speech + transcript instead of text content
+      const audio = (message as { audio?: { data?: string; transcript?: string } } | undefined)?.audio;
+
       return {
-        content: completion.choices[0]?.message?.content || "",
+        content: message?.content || audio?.transcript || "",
+        audios: audio?.data ? [`data:audio/mpeg;base64,${audio.data}`] : undefined,
         metadata: {
           contextMessages,
           usage: {
@@ -100,10 +109,13 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
     type ChatCompletionContentPartText = OpenAI.Chat.Completions.ChatCompletionContentPartText;
     type ChatCompletionContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
     const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => modelId.startsWith(prefix));
+    const audioInput = !!OPENAI_MODELS_AUDIO_INPUT.find(prefix => modelId.startsWith(prefix));
 
     const parseContent = async (
       body: string | ModelMessageContent[],
-      addImages = true
+      addImages = true,
+      // input_audio parts are only valid on user messages
+      allowAudio = false
     ): Promise<string | ChatCompletionContentPart[]> => {
       if (typeof body === "string") {
         return body;
@@ -129,6 +141,23 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
             image_url: {
               url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,
             },
+          });
+
+          continue;
+        }
+
+        if (part.contentType === "audio" && audioInput && allowAudio) {
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load audio content: ${part.fileName}`);
+            continue;
+          }
+
+          const fileContent = await this.fileLoader.getFileContentBase64(part.fileName);
+          // chat.completions accepts only wav / mp3 voice input
+          const format = part.mimeType?.includes("wav") ? ("wav" as const) : ("mp3" as const);
+          parts.push({
+            type: "input_audio" as const,
+            input_audio: { data: fileContent, format },
           });
 
           continue;
@@ -187,7 +216,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
         }
       }
 
-      const content = await parseContent(msg.body);
+      const content = await parseContent(msg.body, true, role === "user");
       if (content) {
         requestMessages.push(...toolCalls, ...tools, {
           role,
@@ -226,6 +255,18 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       temperature,
       max_completion_tokens: maxTokens,
     };
+
+    // audio-capable chat models (gpt-4o-audio, ...) reply with both text and speech
+    if (
+      inputRequest.modelFeatures?.includes(ModelFeature.AUDIO_OUTPUT) ||
+      OPENAI_MODELS_AUDIO_INPUT.some(prefix => modelId.startsWith(prefix))
+    ) {
+      params.modalities = ["text", "audio"];
+      params.audio = {
+        voice: (settings.voice || OPENAI_REALTIME_DEFAULT_VOICE) as OpenAI.Chat.Completions.ChatCompletionAudioParam["voice"],
+        format: "mp3",
+      };
+    }
 
     if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
       delete params.temperature;
