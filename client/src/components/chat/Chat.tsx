@@ -582,9 +582,6 @@ export const ChatComponent = ({ chatId }: IProps) => {
         active={equalizerActive}
         inputAnalyser={recordingAnalyser || inputAnalyser}
         outputAnalyser={outputAnalyser}
-        label={
-          voiceCallConnecting ? t("chat.voiceConnecting") : t("chat.voiceSpeakingWith", { model: selectedModel?.name })
-        }
       />
 
       <ChatInput

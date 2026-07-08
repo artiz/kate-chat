@@ -174,6 +174,40 @@ describe("OpenAI completions audio support", () => {
     expect(assistantMessage!.content).toEqual([{ type: "text", text: "Previous voice answer" }]);
   });
 
+  it("should stream pcm16 speech deltas and return them as a wav audio", async () => {
+    const pcmChunk = Buffer.from([0, 0, 255, 127]).toString("base64");
+    const chunks = [
+      { choices: [{ delta: { audio: { transcript: "Hel" } } }] },
+      { choices: [{ delta: { audio: { transcript: "lo", data: pcmChunk } } }] },
+      { choices: [{ delta: {}, finish_reason: "stop" }] },
+    ];
+    const stream = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [Symbol.asyncIterator]: async function* (): AsyncGenerator<any> {
+        for (const chunk of chunks) yield chunk;
+      },
+      controller: { abort: jest.fn() },
+    };
+    getMockCreate(protocol).mockResolvedValue(stream);
+
+    const onProgress = jest.fn().mockResolvedValue(false);
+    const onComplete = jest.fn().mockResolvedValue(undefined);
+    await protocol.streamChatCompletion(baseRequest, [{ role: MessageRole.USER, body: "Hi" }], {
+      onStart: jest.fn().mockResolvedValue(false),
+      onProgress,
+      onComplete,
+      onError: jest.fn().mockResolvedValue(false),
+    });
+
+    const params = getMockCreate(protocol).mock.calls[0][0] as OpenAI.Chat.Completions.ChatCompletionCreateParams;
+    expect(params.audio?.format).toBe("pcm16");
+
+    const response = onComplete.mock.calls[0][0];
+    expect(response.content).toBe("Hello");
+    expect(response.audios).toHaveLength(1);
+    expect(response.audios[0]).toMatch(/^data:audio\/wav;base64,/);
+  });
+
   it("should map response speech audio to audios with the transcript as content", async () => {
     getMockCreate(protocol).mockResolvedValue(
       completionResponse({ content: null, audio: { data: "bXAzZGF0YQ==", transcript: "Spoken answer" } })

@@ -21,6 +21,7 @@ import {
   CustomWebSearchTool,
 } from "./openai.tools";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT } from "./openai.protocol";
+import { pcm16ToWavDataUrl } from "@/utils/audio";
 import {
   OPENAI_MODELS_AUDIO_INPUT,
   OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
@@ -330,6 +331,8 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
     let cycleNo = 0;
     let stream: Stream<OpenAI.Chat.Completions.ChatCompletionChunk> | undefined = undefined;
     let sessionMessages: CompletionModelMessage[] = [...messages];
+    // audio-output models stream speech as base64 pcm16 deltas
+    const audioChunks: string[] = [];
 
     do {
       try {
@@ -338,6 +341,11 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
           stream: true,
           stream_options: { include_usage: true },
         };
+
+        if (params.audio) {
+          // streaming supports only pcm16 speech output
+          params.audio = { ...params.audio, format: "pcm16" };
+        }
 
         logger.debug(
           { ...params, messages: params.messages.map(m => m.role), tools: undefined },
@@ -385,7 +393,18 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
               }
             });
           } else {
-            const token = choice?.delta?.content || (choice?.delta as any)?.reasoning_content || "";
+            // audio-output models put the spoken transcript and pcm16 data
+            // into delta.audio instead of delta.content
+            const audioDelta = (choice?.delta as { audio?: { transcript?: string; data?: string } })?.audio;
+            if (audioDelta?.data) {
+              audioChunks.push(audioDelta.data);
+            }
+
+            const token =
+              choice?.delta?.content ||
+              audioDelta?.transcript ||
+              (choice?.delta as { reasoning_content?: string })?.reasoning_content ||
+              "";
             if (token) {
               fullResponse += token;
               stopped = await callbacks.onProgress(token);
@@ -432,6 +451,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
 
     await callbacks.onComplete({
       content: fullResponse,
+      audios: audioChunks.length ? [pcm16ToWavDataUrl(audioChunks)] : undefined,
       metadata: meta,
       completed: true,
     });

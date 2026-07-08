@@ -228,8 +228,6 @@
     "contextMessages": "Context Messages",
     "resetContextLimit": "Reset context limit",
     "resetContextLimitMessage": "Would you like to reset context limit and regenerate message with max available context messages?",
-    "voiceConnecting": "Connecting voice session...",
-    "voiceSpeakingWith": "Speaking with {{model}}",
     "voiceSessionError": "Voice session error",
     "assistantVoice": "Assistant voice",
     "assistantVoiceDescription": "Voice used for realtime and audio responses"
