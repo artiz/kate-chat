@@ -686,7 +686,9 @@
     "videoGeneration": "视频生成",
     "yandexConfig": "Yandex 配置",
     "yandexRequiresEnv": "Yandex 需要 API 密钥。请设置以下环境变量：",
-    "yandexRequiresSetup": "Yandex 需要 API 密钥。请在连接页面设置连接凭证。"
+    "yandexRequiresSetup": "Yandex 需要 API 密钥。请在连接页面设置连接凭证。",
+    "voiceInput": "语音输入",
+    "audioOutput": "语音输出"
   },
   "nav": {
     "admin": "管理",

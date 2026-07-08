@@ -686,7 +686,9 @@
     "videoGeneration": "Videogenerierung",
     "yandexConfig": "Yandex-Konfiguration",
     "yandexRequiresEnv": "Yandex erfordert einen API-Schlüssel. Setzen Sie die folgende Umgebungsvariable:",
-    "yandexRequiresSetup": "Yandex erfordert einen API-Schlüssel. Bitte richten Sie die Verbindungsanmeldedaten auf der Konnektivitätsseite ein."
+    "yandexRequiresSetup": "Yandex erfordert einen API-Schlüssel. Bitte richten Sie die Verbindungsanmeldedaten auf der Konnektivitätsseite ein.",
+    "voiceInput": "Spracheingabe",
+    "audioOutput": "Sprachausgabe"
   },
   "nav": {
     "admin": "Administration",

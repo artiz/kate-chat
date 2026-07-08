@@ -12,6 +12,7 @@ import {
   IconMicrophone,
   IconPhoto,
   IconBrain,
+  IconVolume,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { Model, ModelFeature, ToolType } from "@/types/graphql";
@@ -40,6 +41,12 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
         </Tooltip>
       )}
 
+      {(features.has(ModelFeature.AUDIO_INPUT) || model.type === ModelType.REALTIME) && (
+        <Tooltip label={t("models.voiceInput")}>
+          <IconMicrophone size={size} />
+        </Tooltip>
+      )}
+
       <IconArrowBigRightLinesFilled size={size} color="teal" />
 
       {model.type === ModelType.CHAT && (
@@ -64,7 +71,12 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
       )}
       {model.type === ModelType.REALTIME && (
         <Tooltip label={t("models.realtimeAudio")}>
-          <IconMicrophone size={size} />
+          <IconVolume size={size} />
+        </Tooltip>
+      )}
+      {features.has(ModelFeature.AUDIO_OUTPUT) && model.type !== ModelType.REALTIME && (
+        <Tooltip label={t("models.audioOutput")}>
+          <IconVolume size={size} />
         </Tooltip>
       )}
 

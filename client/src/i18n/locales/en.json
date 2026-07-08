@@ -686,7 +686,9 @@
     "videoGeneration": "Video generation",
     "yandexConfig": "Yandex Configuration",
     "yandexRequiresEnv": "Yandex requires an API key. Set the following environment variable:",
-    "yandexRequiresSetup": "Yandex requires an API key. Please setup connection credentials on connectivity page."
+    "yandexRequiresSetup": "Yandex requires an API key. Please setup connection credentials on connectivity page.",
+    "voiceInput": "Voice input",
+    "audioOutput": "Speech output"
   },
   "search": {
     "title": "Search",
