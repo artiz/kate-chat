@@ -67,7 +67,18 @@ export const OPENAI_MODELS_TRANSCRIPTION = ["whisper"];
 // speech-to-text model used to transcribe realtime voice sessions
 export const OPENAI_REALTIME_TRANSCRIPTION_MODEL = "whisper-1";
 
-export const OPENAI_REALTIME_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"];
+export const OPENAI_REALTIME_VOICES = [
+  "marin",
+  "cedar",
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "echo",
+  "sage",
+  "shimmer",
+  "verse",
+];
 
 export const OPENAI_REALTIME_DEFAULT_VOICE = "shimmer";
 

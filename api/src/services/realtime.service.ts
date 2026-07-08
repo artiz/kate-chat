@@ -104,17 +104,24 @@ export class RealtimeService {
     const apiKey = connection.openAiApiKey;
     if (!apiKey) throw new Error("OpenAI API key is not configured");
 
+    // GA Realtime API: mint an ephemeral client secret with the session
+    // config baked in; the browser exchanges SDP at /realtime/calls
     const baseUrl = globalConfig.openai.apiUrl || "https://api.openai.com/v1";
-    const response = await fetch(`${baseUrl}/realtime/sessions`, {
+    const response = await fetch(`${baseUrl}/realtime/client_secrets`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: model.modelId,
-        voice,
-        input_audio_transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL },
+        session: {
+          type: "realtime",
+          model: model.modelId,
+          audio: {
+            input: { transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL } },
+            output: { voice },
+          },
+        },
       }),
     });
 
@@ -123,15 +130,16 @@ export class RealtimeService {
       throw new Error(`Failed to create realtime session: ${response.status} ${errorText}`);
     }
 
-    const session = (await response.json()) as { client_secret?: { value?: string } };
-    const clientSecret = session.client_secret?.value;
+    const session = (await response.json()) as { value?: string; client_secret?: { value?: string } };
+    // GA returns the secret as top-level `value`; older responses nested it
+    const clientSecret = session.value || session.client_secret?.value;
     if (!clientSecret) throw new Error("No client secret in realtime session response");
 
     return {
       transport: "webrtc",
       model: model.modelId,
       clientSecret,
-      sdpUrl: `${baseUrl}/realtime?model=${encodeURIComponent(model.modelId)}`,
+      sdpUrl: `${baseUrl}/realtime/calls?model=${encodeURIComponent(model.modelId)}`,
     };
   }
 
@@ -189,13 +197,14 @@ export class RealtimeService {
 
       upstream.on("open", () => {
         // apply chat voice/transcription settings to the provider session
-        const session: Record<string, unknown> = { voice: ctx.voice };
+        // (GA Realtime API shape: audio.input/audio.output)
+        const audio: Record<string, unknown> = { output: { voice: ctx.voice } };
         if (ctx.model.apiProvider === ApiProvider.OPEN_AI) {
           // whisper transcription model is OpenAI-specific; other providers
           // transcribe input with their own defaults
-          session.input_audio_transcription = { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL };
+          audio.input = { transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL } };
         }
-        upstream?.send(JSON.stringify({ type: "session.update", session }));
+        upstream?.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio } }));
         pendingClientMessages.splice(0).forEach(data => upstream?.send(data));
       });
 
@@ -244,7 +253,7 @@ export class RealtimeService {
       };
     }
 
-    // OpenAI-compatible fallback proxy
+    // OpenAI-compatible fallback proxy (GA API — no beta header)
     const apiKey = connection.openAiApiKey;
     if (!apiKey) throw new Error("OpenAI API key is not configured");
     const baseUrl = (globalConfig.openai.apiUrl || "https://api.openai.com/v1").replace(/^http/, "ws");
@@ -252,7 +261,6 @@ export class RealtimeService {
       upstreamUrl: `${baseUrl}/realtime?model=${encodeURIComponent(model.modelId)}`,
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "OpenAI-Beta": "realtime=v1",
       },
     };
   }

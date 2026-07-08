@@ -44,7 +44,18 @@ import { useAppSelector } from "@/store";
 import { ModelType } from "@katechat/ui";
 
 // OpenAI realtime/audio voices
-export const OPENAI_ASSISTANT_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"];
+export const OPENAI_ASSISTANT_VOICES = [
+  "marin",
+  "cedar",
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "echo",
+  "sage",
+  "shimmer",
+  "verse",
+];
 // Yandex speech-realtime uses SpeechKit voices
 export const YANDEX_ASSISTANT_VOICES = [
   "alena",
