@@ -234,8 +234,11 @@ export class RealtimeService {
       const modelUri = model.modelId.replace("{folder}", folder);
       return {
         upstreamUrl: `${globalConfig.yandex.realtimeApiUrl}?model=${encodeURIComponent(modelUri)}`,
+        // the OpenAI-compatible surface takes the API key as Bearer and the
+        // folder via the OpenAI-Project header
         headers: {
-          Authorization: apiKey.startsWith("t1") ? `Bearer ${apiKey}` : `Api-Key ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
+          "OpenAI-Project": folder,
           "x-folder-id": folder,
         },
       };

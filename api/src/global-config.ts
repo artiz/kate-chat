@@ -426,8 +426,9 @@ export class GlobalConfig {
       },
       yandex: {
         openApiUrl: process.env.YANDEX_OPENAI_API_URL || "https://ai.api.cloud.yandex.net/v1",
-        // OpenAI-compatible Realtime API (WebSocket) endpoint for speech-realtime models
-        realtimeApiUrl: process.env.YANDEX_REALTIME_API_URL || "wss://ai.api.cloud.yandex.net/v1/realtime/openai",
+        // OpenAI-compatible Realtime API (WebSocket) endpoint for speech-realtime models,
+        // same /v1 surface as openApiUrl (https://ai.api.cloud.yandex.net/v1 -> /v1/realtime)
+        realtimeApiUrl: process.env.YANDEX_REALTIME_API_URL || "wss://ai.api.cloud.yandex.net/v1/realtime",
         fmApiUrl: process.env.YANDEX_FM_API_URL || "https://llm.api.cloud.yandex.net",
         fmApiKey: process.env.YANDEX_FM_API_KEY,
         fmApiFolder: process.env.YANDEX_FM_API_FOLDER,
