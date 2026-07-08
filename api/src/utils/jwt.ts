@@ -38,6 +38,23 @@ export function verifyToken(token: string): TokenPayload | null {
   return jwt.verify(token, runtime.jwtSecret) as TokenPayload;
 }
 
+export interface RealtimeTokenPayload {
+  userId: string;
+  chatId: string;
+  purpose: "realtime";
+}
+
+/** Short-lived token authorizing a single realtime voice proxy connection */
+export function generateRealtimeToken(payload: Omit<RealtimeTokenPayload, "purpose">): string {
+  return jwt.sign({ ...payload, purpose: "realtime" }, runtime.jwtSecret, { expiresIn: "5m" });
+}
+
+export function verifyRealtimeToken(token: string): RealtimeTokenPayload {
+  const payload = jwt.verify(token, runtime.jwtSecret) as RealtimeTokenPayload;
+  if (payload.purpose !== "realtime") throw new Error("Invalid token purpose");
+  return payload;
+}
+
 export function checkTokenWithoutExpiration(token: string): TokenPayload | null {
   return jwt.verify(token, runtime.jwtSecret, { ignoreExpiration: true }) as TokenPayload;
 }

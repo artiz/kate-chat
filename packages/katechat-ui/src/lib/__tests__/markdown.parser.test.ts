@@ -84,6 +84,19 @@ describe("MarkdownParser", () => {
       expect(second).toEqual(first);
     });
 
+    it("should render audio file links as audio players", () => {
+      const result = parseMarkdown("[Voice message](/files/chat/msg/voice.wav)");
+      expect(result[0]).toContain("<audio controls");
+      expect(result[0]).toContain('src="/files/chat/msg/voice.wav"');
+      expect(result[0]).toContain("Voice message");
+    });
+
+    it("should not render regular links as audio players", () => {
+      const result = parseMarkdown("[Download](/files/report.pdf)");
+      expect(result[0]).not.toContain("<audio");
+      expect(result[0]).toContain('href="/files/report.pdf"');
+    });
+
     it("should not emit stray parts for CRLF content", () => {
       const result = parseMarkdown("Paragraph 1\r\n\r\nParagraph 2");
       expect(result).toHaveLength(2);

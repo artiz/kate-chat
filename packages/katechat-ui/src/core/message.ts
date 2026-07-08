@@ -66,6 +66,13 @@ export interface ImageInput {
   height?: number;
 }
 
+export interface AudioInput {
+  fileName: string;
+  mimeType: string;
+  bytesBase64: string;
+  durationSec?: number;
+}
+
 /** Context passed to a CodePlugin when the user clicks Execute */
 export interface CodePluginContext {
   messageId: string;

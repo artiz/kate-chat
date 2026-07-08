@@ -720,7 +720,7 @@ export class BedrockApiProvider extends BaseApiProvider {
       }
       // Enabled by default; disabled only for models configured with supportsTemperature: false.
       if (modelsSupportsTemperature[model.modelId] !== false) {
-        features.push(ModelFeature.SUPPORT_TEMPERATURE);
+        features.push(ModelFeature.TEMPERATURE);
       }
 
       models[modelId] = {

@@ -59,7 +59,28 @@ export const OPENAI_MODELS_VIDEO_GENERATION = ["sora-2", "sora-2-pro"];
 
 export const OPENAI_MODELS_AUDIO_GENERATION = ["gpt-4o-audio", "gpt-4o-mini-audio", "tts-1"];
 
+// chat models accepting voice recordings as input and able to reply with speech audio
+export const OPENAI_MODELS_AUDIO_INPUT = ["gpt-4o-audio", "gpt-4o-mini-audio", "gpt-audio"];
+
 export const OPENAI_MODELS_TRANSCRIPTION = ["whisper"];
+
+// speech-to-text model used to transcribe realtime voice sessions
+export const OPENAI_REALTIME_TRANSCRIPTION_MODEL = "whisper-1";
+
+export const OPENAI_REALTIME_VOICES = [
+  "marin",
+  "cedar",
+  "alloy",
+  "ash",
+  "ballad",
+  "coral",
+  "echo",
+  "sage",
+  "shimmer",
+  "verse",
+];
+
+export const OPENAI_REALTIME_DEFAULT_VOICE = "shimmer";
 
 export const OPENAI_MODEL_MAX_INPUT_TOKENS: { [key: string]: number } = {
   "gpt-5": 400_000,

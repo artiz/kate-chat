@@ -15,6 +15,27 @@ export interface YandexModel {
   features?: ModelFeature[];
 }
 
+// SpeechKit voices supported by speech-realtime models
+export const YANDEX_REALTIME_VOICES = [
+  "alena",
+  "marina",
+  "jane",
+  "omazh",
+  "filipp",
+  "ermil",
+  "zahar",
+  "madirus",
+  "dasha",
+  "julia",
+  "lera",
+  "masha",
+  "alexander",
+  "kirill",
+  "anton",
+];
+
+export const YANDEX_REALTIME_DEFAULT_VOICE = "marina";
+
 // Available models
 
 export const YANDEX_MODELS: YandexModel[] = [
@@ -72,12 +93,6 @@ export const YANDEX_MODELS: YandexModel[] = [
     uri: `gpt://{folder}/qwen3-235b-a22b-fp8/latest`,
     maxInputTokens: 256_000,
     apiType: "responses",
-  },
-  {
-    name: "Gemma 3 27B IT",
-    provider: "Google",
-    uri: `gpt://{folder}/gemma-3-27b-it/latest`,
-    maxInputTokens: 128_000,
   },
   {
     name: "GPT OSS 120B",

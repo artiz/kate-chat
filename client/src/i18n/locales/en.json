@@ -227,7 +227,10 @@
     "yourChats": "Your Chats",
     "contextMessages": "Context Messages",
     "resetContextLimit": "Reset context limit",
-    "resetContextLimitMessage": "Would you like to reset context limit and regenerate message with max available context messages?"
+    "resetContextLimitMessage": "Would you like to reset context limit and regenerate message with max available context messages?",
+    "voiceSessionError": "Voice session error",
+    "assistantVoice": "Assistant voice",
+    "assistantVoiceDescription": "Voice used for realtime and audio responses"
   },
   "chatSettings": {
     "imageQuality": {
@@ -617,7 +620,6 @@
     "embeddingsGeneration": "Embeddings generation",
     "testEndpointRequired": "Endpoint, API Key and Model Name (API) are required for testing",
     "testModelRequired": "Model Name (API) is required for testing",
-
     "endpointUrl": "Endpoint URL",
     "endpointUrlDescription": "Base URL for the API (without /chat/completions)",
     "enterTestPrompt": "Enter text to test the model",
@@ -684,7 +686,9 @@
     "videoGeneration": "Video generation",
     "yandexConfig": "Yandex Configuration",
     "yandexRequiresEnv": "Yandex requires an API key. Set the following environment variable:",
-    "yandexRequiresSetup": "Yandex requires an API key. Please setup connection credentials on connectivity page."
+    "yandexRequiresSetup": "Yandex requires an API key. Please setup connection credentials on connectivity page.",
+    "voiceInput": "Voice input",
+    "audioOutput": "Speech output"
   },
   "search": {
     "title": "Search",

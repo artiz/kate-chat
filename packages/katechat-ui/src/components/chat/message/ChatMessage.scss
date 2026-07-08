@@ -432,6 +432,23 @@
     display: inline-block;
     margin: 0.5rem 0.5rem 0 0;
   }
+
+  .audio-message {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+
+    audio {
+      height: 36px;
+      max-width: 100%;
+    }
+
+    a {
+      font-size: 80%;
+      color: var(--mantine-color-dimmed);
+    }
+  }
 }
 
 .katechat-message-footer {

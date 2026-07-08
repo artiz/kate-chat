@@ -19,6 +19,7 @@ const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 export enum ChatFileType {
   IMAGE = "image",
   VIDEO = "video",
+  AUDIO = "audio",
   RAG_DOCUMENT = "rag_document",
   INLINE_DOCUMENT = "inline_document",
 }

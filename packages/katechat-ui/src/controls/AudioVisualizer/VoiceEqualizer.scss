@@ -1,0 +1,52 @@
+.katechat-voice-equalizer {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  // flex layouts may shrink the panel below the requested height (the canvas
+  // adapts), but never below the collapsed size
+  min-height: 48px;
+  margin-bottom: 0.5rem;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--app-shell-border-color);
+  transition: height var(--theme-default-time, 0.25s) ease;
+
+  .katechat-voice-equalizer-canvas {
+    position: absolute;
+    // side gaps match the toggle button footprint; inset (not padding) so the
+    // canvas measures the shrunken box and does not overlay the right gap
+    inset: 0.5rem 2rem;
+  }
+
+  .katechat-voice-equalizer-toggle {
+    position: absolute;
+    right: 0.25rem;
+    top: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    background: transparent;
+    color: var(--mantine-color-dimmed);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--mantine-color-text);
+    }
+  }
+}
+
+[data-mantine-color-scheme="light"] {
+  .katechat-voice-equalizer {
+    background-color: var(--mantine-color-white);
+    box-shadow: 0.1rem 0.1rem 0.25rem var(--app-shell-border-color);
+  }
+}
+
+[data-mantine-color-scheme="dark"] {
+  .katechat-voice-equalizer {
+    background-color: var(--mantine-color-dark-7);
+    border-color: var(--mantine-color-dark-7);
+    box-shadow: 0.1rem 0.1rem 0.25rem var(--mantine-color-dark-9);
+  }
+}

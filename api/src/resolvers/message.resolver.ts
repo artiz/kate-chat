@@ -2,6 +2,7 @@ import { Resolver, Query, Mutation, Arg, Ctx, Subscription, Root, ID, FieldResol
 import { Repository, IsNull, In } from "typeorm";
 import { Message, ChatFile } from "@/entities";
 import {
+  AddChatMessageInput,
   CreateMessageInput,
   GetMessagesInput,
   GetImagesInput,
@@ -178,6 +179,15 @@ export class MessageResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
 
     return await messageService.createMessage({ ...input }, this.loadConnectionParams(context, user), user);
+  }
+
+  /** Persist a message (e.g. a realtime voice transcript turn) without invoking the model */
+  @Mutation(() => Message)
+  async addChatMessage(@Arg("input") input: AddChatMessageInput, @Ctx() context: GraphQLContext): Promise<Message> {
+    const messageService = this.getMessagesService(context);
+    const user = await this.validateContextUser(context);
+
+    return await messageService.addChatMessage(input, user);
   }
 
   @Subscription(() => GqlMessage, {

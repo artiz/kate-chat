@@ -82,6 +82,21 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       }
     }, [scrollToBottom]);
 
+    // keep the view pinned to the bottom when the scroller itself resizes
+    // (e.g. the voice equalizer appears/collapses or the input grows)
+    useEffect(() => {
+      const el = messagesContainerRef.current;
+      if (!el || !autoScroll) return;
+
+      const observer = new ResizeObserver(() => {
+        if (!autoScrollPaused.current) {
+          scrollToBottom();
+        }
+      });
+      observer.observe(el);
+      return () => observer.disconnect();
+    }, [autoScroll, scrollToBottom]);
+
     useEffect(() => {
       if (autoScroll) {
         handleAutoScroll();

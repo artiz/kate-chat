@@ -192,6 +192,21 @@ export class ImageInput {
 }
 
 @InputType()
+export class AudioInput {
+  @Field()
+  fileName: string;
+
+  @Field()
+  mimeType: string;
+
+  @Field()
+  bytesBase64: string;
+
+  @Field({ nullable: true })
+  durationSec?: number;
+}
+
+@InputType()
 export class MCPAuthTokenInput {
   @Field()
   serverId: string;
@@ -217,11 +232,27 @@ export class CreateMessageInput {
   @Field(() => [ImageInput], { nullable: true })
   images?: ImageInput[];
 
+  @Field(() => AudioInput, { nullable: true })
+  audio?: AudioInput;
+
   @Field(() => [String], { nullable: true })
   documentIds?: string[];
 
   @Field(() => [MCPAuthTokenInput], { nullable: true })
   mcpTokens?: MCPAuthTokenInput[];
+}
+
+@InputType()
+export class AddChatMessageInput {
+  @Field()
+  chatId: string;
+
+  @Field()
+  content: string;
+
+  /** "user" or "assistant" — persists a transcript turn without invoking the model */
+  @Field()
+  role: string;
 }
 
 @InputType()

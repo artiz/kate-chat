@@ -81,7 +81,11 @@ export enum ModelFeature {
   REASONING_CANCELLATION = "REASONING_CANCELLATION",
   // whether the model accepts the `temperature`/`top_p` sampling params.
   // Enabled by default; newer Anthropic models (Opus 4.7+, Sonnet 5, Fable 5) reject them.
-  SUPPORT_TEMPERATURE = "SUPPORT_TEMPERATURE",
+  TEMPERATURE = "TEMPERATURE",
+  // model accepts recorded voice/audio as chat input (e.g. gpt-4o-audio)
+  AUDIO_INPUT = "AUDIO_INPUT",
+  // model can respond with generated speech audio alongside text
+  AUDIO_OUTPUT = "AUDIO_OUTPUT",
 }
 
 export enum MCPTransportType {

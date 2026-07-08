@@ -23,14 +23,17 @@ import {
   ChatMessagesContainerRef,
   MessageRole,
   ImageInput,
+  AudioInput,
   ChatInput,
   ChatInputRef,
   DropFilesOverlay,
+  VoiceEqualizer,
   parseMarkdown,
 } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
 import { useChatSubscription, useChatMessages } from "@/hooks";
+import { useRealtimeChat } from "@/hooks/useRealtimeChat";
 
 import { useDocumentsUpload } from "@/hooks/useDocumentsUpload";
 import { DocumentUploadProgress } from "@/components/documents/DocumentUploadProgress";
@@ -237,8 +240,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
-  const handleSendMessage = async (message: string, images: ImageInput[] = []) => {
-    if (!message?.trim() && !images.length) return;
+  const handleSendMessage = async (message: string, images: ImageInput[] = [], audio?: AudioInput) => {
+    if (!message?.trim() && !images.length && !audio) return;
     assert.ok(chatId, "Chat is required to send a message");
 
     try {
@@ -249,6 +252,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             chatId,
             content: message?.trim() || "",
             images,
+            audio,
             documentIds: selectedRagDocIds,
             mcpTokens,
           },
@@ -321,6 +325,31 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const messagesLimitReached = useMemo(() => {
     return appConfig?.demoMode && (chat?.messagesCount ?? 0) >= (appConfig.maxChatMessages || 0);
   }, [chat, appConfig]);
+
+  // #region Voice
+  const isRealtimeModel = selectedModel?.type === ModelType.REALTIME;
+  const audioInputMode = Boolean(selectedModel?.features?.includes(ModelFeature.AUDIO_INPUT));
+
+  const { voiceStatus, startVoiceCall, stopVoiceCall, inputAnalyser, outputAnalyser } = useRealtimeChat({
+    chatId,
+    onMessageSaved: addChatMessage,
+  });
+
+  const [recordingAnalyser, setRecordingAnalyser] = useState<AnalyserNode | null>(null);
+  const handleRecordingChange = useCallback((recording: boolean, analyser: AnalyserNode | null) => {
+    setRecordingAnalyser(recording ? analyser : null);
+  }, []);
+
+  // terminate an active voice session when the chat changes or the page closes
+  useEffect(() => {
+    return () => stopVoiceCall();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
+
+  const voiceCallActive = voiceStatus === "connected";
+  const voiceCallConnecting = voiceStatus === "connecting";
+  const equalizerActive = voiceCallActive || voiceCallConnecting || Boolean(recordingAnalyser);
+  // #endregion
 
   const handleChatUpdate = useCallback(
     (input: UpdateChatInput, afterUpdate?: () => void) => {
@@ -549,14 +578,27 @@ export const ChatComponent = ({ chatId }: IProps) => {
         </Tooltip>
       )}
 
+      <VoiceEqualizer
+        active={equalizerActive}
+        inputAnalyser={recordingAnalyser || inputAnalyser}
+        outputAnalyser={outputAnalyser}
+      />
+
       <ChatInput
         ref={chatInputRef}
         loadCompleted={loadCompleted}
         disabled={isExternalChat || messagesLoading || messagesLimitReached || sending}
-        uploadAllowed={uploadAllowed}
+        uploadAllowed={uploadAllowed && !isRealtimeModel}
         promptMode={messages?.length === 0}
         streaming={streaming}
         setSending={setSending}
+        realtimeMode={isRealtimeModel}
+        voiceCallActive={voiceCallActive}
+        voiceCallConnecting={voiceCallConnecting}
+        onVoiceCallStart={startVoiceCall}
+        onVoiceCallStop={stopVoiceCall}
+        audioInputMode={audioInputMode}
+        onRecordingChange={handleRecordingChange}
         previousMessages={messages?.filter(m => m.role === MessageRole.USER).map(m => m.content)}
         header={
           <ChatInputHeader

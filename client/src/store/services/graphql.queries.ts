@@ -46,6 +46,7 @@ export const BASE_CHAT_FRAGMENT = `
           thinking
           thinkingBudget
           cacheRetention
+          voice
           selectedRagDocIds
         }
         user {
@@ -279,6 +280,26 @@ export const CREATE_MESSAGE = gql`
   }
 `;
 
+export const ADD_CHAT_MESSAGE = gql`
+  mutation AddChatMessage($input: AddChatMessageInput!) {
+    addChatMessage(input: $input) {
+      ...BaseMessage
+    }
+  }
+`;
+
+export const CREATE_REALTIME_SESSION = gql`
+  mutation CreateRealtimeSession($chatId: ID!) {
+    createRealtimeSession(chatId: $chatId) {
+      transport
+      model
+      clientSecret
+      sdpUrl
+      wsUrl
+    }
+  }
+`;
+
 export const UPDATE_CHAT_MUTATION = gql`
   mutation UpdateChat($id: ID!, $input: UpdateChatInput!) {
     updateChat(id: $id, input: $input) {
@@ -298,6 +319,7 @@ export const UPDATE_CHAT_MUTATION = gql`
         imagesCount
         thinking
         thinkingBudget
+        voice
         selectedRagDocIds
       }
       tools {

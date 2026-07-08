@@ -11,7 +11,7 @@ import {
   ModelMessageContent,
   ChatToolCallResult,
 } from "@/types/ai.types";
-import { MessageRole, ResponseStatus, ToolType } from "@/types/api";
+import { MessageRole, ModelFeature, ResponseStatus, ToolType } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty } from "@/utils/assert";
 import {
@@ -21,7 +21,13 @@ import {
   CustomWebSearchTool,
 } from "./openai.tools";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT } from "./openai.protocol";
-import { OPENAI_MODELS_SUPPORT_IMAGES_INPUT } from "@/config/ai/openai";
+import { pcm16ToWavDataUrl } from "@/utils/audio";
+import {
+  OPENAI_MODELS_AUDIO_INPUT,
+  OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
+  OPENAI_REALTIME_DEFAULT_VOICE,
+  OPENAI_REALTIME_VOICES,
+} from "@/config/ai/openai";
 
 const logger = createLogger(__filename);
 
@@ -49,8 +55,13 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       logger.debug(completion, "chat.completions response");
 
       const usage = completion.usage;
+      const message = completion.choices[0]?.message;
+      // audio-output models return speech + transcript instead of text content
+      const audio = (message as { audio?: { data?: string; transcript?: string } } | undefined)?.audio;
+
       return {
-        content: completion.choices[0]?.message?.content || "",
+        content: message?.content || audio?.transcript || "",
+        audios: audio?.data ? [`data:audio/mpeg;base64,${audio.data}`] : undefined,
         metadata: {
           contextMessages,
           usage: {
@@ -100,10 +111,13 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
     type ChatCompletionContentPartText = OpenAI.Chat.Completions.ChatCompletionContentPartText;
     type ChatCompletionContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
     const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => modelId.startsWith(prefix));
+    const audioInput = !!OPENAI_MODELS_AUDIO_INPUT.find(prefix => modelId.startsWith(prefix));
 
     const parseContent = async (
       body: string | ModelMessageContent[],
-      addImages = true
+      addImages = true,
+      // input_audio parts are only valid on user messages
+      allowAudio = false
     ): Promise<string | ChatCompletionContentPart[]> => {
       if (typeof body === "string") {
         return body;
@@ -129,6 +143,23 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
             image_url: {
               url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,
             },
+          });
+
+          continue;
+        }
+
+        if (part.contentType === "audio" && audioInput && allowAudio) {
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load audio content: ${part.fileName}`);
+            continue;
+          }
+
+          const fileContent = await this.fileLoader.getFileContentBase64(part.fileName);
+          // chat.completions accepts only wav / mp3 voice input
+          const format = part.mimeType?.includes("wav") ? ("wav" as const) : ("mp3" as const);
+          parts.push({
+            type: "input_audio" as const,
+            input_audio: { data: fileContent, format },
           });
 
           continue;
@@ -187,7 +218,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
         }
       }
 
-      const content = await parseContent(msg.body);
+      const content = await parseContent(msg.body, true, role === "user");
       if (content) {
         requestMessages.push(...toolCalls, ...tools, {
           role,
@@ -226,6 +257,23 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       temperature,
       max_completion_tokens: maxTokens,
     };
+
+    // audio-capable chat models (gpt-4o-audio, ...) reply with both text and speech
+    if (
+      inputRequest.modelFeatures?.includes(ModelFeature.AUDIO_OUTPUT) ||
+      OPENAI_MODELS_AUDIO_INPUT.some(prefix => modelId.startsWith(prefix))
+    ) {
+      // the chat may keep a voice picked for another provider — ignore it
+      const voice =
+        settings.voice && OPENAI_REALTIME_VOICES.includes(settings.voice)
+          ? settings.voice
+          : OPENAI_REALTIME_DEFAULT_VOICE;
+      params.modalities = ["text", "audio"];
+      params.audio = {
+        voice: voice as OpenAI.Chat.Completions.ChatCompletionAudioParam["voice"],
+        format: "mp3",
+      };
+    }
 
     if (modelId.startsWith("o1") || modelId.startsWith("o4")) {
       delete params.temperature;
@@ -288,14 +336,25 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
     let cycleNo = 0;
     let stream: Stream<OpenAI.Chat.Completions.ChatCompletionChunk> | undefined = undefined;
     let sessionMessages: CompletionModelMessage[] = [...messages];
+    // audio-output models stream speech as base64 pcm16 deltas
+    const audioChunks: string[] = [];
 
     do {
+      // the session cycle repeats ONLY to continue after tool calls or
+      // context compaction; a stream that simply ends is a completed response
+      let continueCycle = false;
+
       try {
         const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
           ...(await this.formatCompletionRequest(input, sessionMessages)),
           stream: true,
           stream_options: { include_usage: true },
         };
+
+        if (params.audio) {
+          // streaming supports only pcm16 speech output
+          params.audio = { ...params.audio, format: "pcm16" };
+        }
 
         logger.debug(
           { ...params, messages: params.messages.map(m => m.role), tools: undefined },
@@ -327,6 +386,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
               input.mcpTokens,
               sessionMessages
             );
+            continueCycle = true;
             break;
           }
 
@@ -343,7 +403,18 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
               }
             });
           } else {
-            const token = choice?.delta?.content || (choice?.delta as any)?.reasoning_content || "";
+            // audio-output models put the spoken transcript and pcm16 data
+            // into delta.audio instead of delta.content
+            const audioDelta = (choice?.delta as { audio?: { transcript?: string; data?: string } })?.audio;
+            if (audioDelta?.data) {
+              audioChunks.push(audioDelta.data);
+            }
+
+            const token =
+              choice?.delta?.content ||
+              audioDelta?.transcript ||
+              (choice?.delta as { reasoning_content?: string })?.reasoning_content ||
+              "";
             if (token) {
               fullResponse += token;
               stopped = await callbacks.onProgress(token);
@@ -370,6 +441,13 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
             }
           }
         }
+
+        // stream exhausted without an explicit finish_reason (e.g. audio-output
+        // models): the response is complete — re-invoking the model here would
+        // loop generating answer after answer
+        if (!continueCycle) {
+          stopped = true;
+        }
       } catch (error: unknown) {
         if (this.errorProcessor.isInputTooLargeError(error) && cycleNo < cyclesLimit) {
           if (sessionMessages.length > 1) {
@@ -390,6 +468,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
 
     await callbacks.onComplete({
       content: fullResponse,
+      audios: audioChunks.length ? [pcm16ToWavDataUrl(audioChunks)] : undefined,
       metadata: meta,
       completed: true,
     });

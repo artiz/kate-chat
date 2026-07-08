@@ -58,9 +58,17 @@ renderer.html = ({ text }: { text: string }) => {
   }
   return escapeHtml(text);
 };
+const AUDIO_LINK_RE = /\.(wav|mp3|ogg|m4a|flac|webm)(\?.*)?$/i;
+
 renderer.link = ({ href, title, text }) => {
   // Sanitize URL to prevent XSS attacks
   const url = sanitizeUrl(href);
+
+  // links to audio files (voice messages, spoken responses) render as players
+  if (url && AUDIO_LINK_RE.test(url)) {
+    return `<span class="audio-message"><audio controls preload="metadata" src="${url}"></audio><a target="_blank" rel="noopener noreferrer" href="${url}">${escapeHtml(text)}</a></span>`;
+  }
+
   return `<a target="_blank" rel="noopener noreferrer" href="${url}" title="${escapeHtml(title) || ""}">${escapeHtml(text)}</a>`;
 };
 renderer.table = (token: Tokens.Table): string => {
