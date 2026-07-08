@@ -359,7 +359,7 @@ export class OpenAIApiProvider extends BaseApiProvider {
         }
 
         features.push(ModelFeature.TEMPERATURE);
-        
+
         const maxInputTokens =
           OPENAI_MODEL_MAX_INPUT_TOKENS[model.id] ||
           Object.entries(OPENAI_MODEL_MAX_INPUT_TOKENS).find(([key]) => model.id.startsWith(key))?.[1] ||
