@@ -3,7 +3,20 @@ import { ThinkingLevel } from "@/types/api";
 export const AWS_BEDROCK_MODELS_SUPPORT_REASONING = [
   "anthropic.claude-opus-4",
   "anthropic.claude-sonnet-4",
+  "anthropic.claude-sonnet-5",
+  "anthropic.claude-fable-5",
+  "anthropic.claude-haiku-4-5",
   "anthropic.claude-3-7-sonnet",
+];
+
+// Models that reject `budget_tokens` extended thinking (HTTP 400) and only accept
+// adaptive thinking. Reasoning depth is controlled via `output_config.effort` instead
+// of a fixed token budget. Everything else keeps the budget_tokens path.
+export const AWS_BEDROCK_MODELS_ADAPTIVE_THINKING_ONLY = [
+  "anthropic.claude-opus-4-7",
+  "anthropic.claude-opus-4-8",
+  "anthropic.claude-sonnet-5",
+  "anthropic.claude-fable-5",
 ];
 
 export const AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION = [

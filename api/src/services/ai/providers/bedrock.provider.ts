@@ -70,6 +70,7 @@ import {
   AWS_BEDROCK_MIN_THINKING_BUDGET,
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
   AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION,
+  AWS_BEDROCK_MODELS_ADAPTIVE_THINKING_ONLY,
 } from "@/config/ai/bedrock";
 import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
@@ -94,7 +95,17 @@ interface BedrockModelConfigRecord {
   name: string;
   regions: string[];
   maxInputTokens?: number;
+  // Defaults to true. Set to false for models that reject the `temperature`/`top_p`
+  // sampling params (e.g. Opus 4.7/4.8, Sonnet 5, Fable 5).
+  supportsTemperature?: boolean;
 }
+
+// Base model ids explicitly configured to reject the `temperature`/`top_p` sampling params.
+// Enforced at request time in formatConverseParams (matched against the invocation model id,
+// which carries a geo prefix like `eu.`/`us.`), independent of DB-synced model features.
+const BEDROCK_NO_TEMPERATURE_MODEL_IDS = (BedrockModelConfigs as BedrockModelConfigRecord[])
+  .filter(record => record.supportsTemperature === false)
+  .map(record => record.modelId);
 
 export class BedrockApiProvider extends BaseApiProvider {
   protected bedrockClient: BedrockRuntimeClient;
@@ -636,6 +647,15 @@ export class BedrockApiProvider extends BaseApiProvider {
       {}
     );
 
+    // Temperature support defaults to true; only explicitly disabled models opt out.
+    const modelsSupportsTemperature = (BedrockModelConfigs as BedrockModelConfigRecord[]).reduce(
+      (acc: Record<string, boolean>, region) => {
+        acc[region.modelId] = region.supportsTemperature !== false;
+        return acc;
+      },
+      {}
+    );
+
     const command = new ListFoundationModelsCommand({});
     const response = await this.bedrockManagementClient.send(command);
 
@@ -650,6 +670,11 @@ export class BedrockApiProvider extends BaseApiProvider {
     for (const model of response.modelSummaries) {
       if (globalConfig.bedrock.ignoredModels.some(ignoredModel => model.modelId?.startsWith(ignoredModel))) {
         continue; // Skip ignored models
+      }
+
+      if (model.modelLifecycle?.status !== "ACTIVE") {
+        logger.debug({ modelId: model.modelId, status: model.modelLifecycle?.status }, "Skipping inactive model");
+        continue; // Skip inactive models
       }
 
       const regions = modelsRegions[model.modelId || ""];
@@ -692,6 +717,10 @@ export class BedrockApiProvider extends BaseApiProvider {
       }
       if (AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION.some(supportedModel => modelId.includes(supportedModel))) {
         features.push(ModelFeature.CACHE_RETENTION);
+      }
+      // Enabled by default; disabled only for models configured with supportsTemperature: false.
+      if (modelsSupportsTemperature[model.modelId] !== false) {
+        features.push(ModelFeature.SUPPORT_TEMPERATURE);
       }
 
       models[modelId] = {
@@ -958,32 +987,52 @@ export class BedrockApiProvider extends BaseApiProvider {
       request.settings || {};
     const modelId = this.getModelId(request.modelId);
 
+    // Newer Anthropic models (Opus 4.7/4.8, Sonnet 5, Fable 5) reject `temperature`/`top_p`
+    // and return "`temperature` is deprecated for this model". Omit the sampling params for them.
+    const supportsTemperature = !BEDROCK_NO_TEMPERATURE_MODEL_IDS.some(id => modelId.includes(id));
+
     const requestMessages: ConverseMessage[] = await this.formatConverseMessages(messages);
     const inferenceConfig: InferenceConfiguration = {
       maxTokens,
-      temperature,
       stopSequences: [],
     };
-    if (!disableTopP) {
-      inferenceConfig.topP = topP;
+    if (supportsTemperature) {
+      inferenceConfig.temperature = temperature;
+      if (!disableTopP) {
+        inferenceConfig.topP = topP;
+      }
     }
 
     let additionalModelRequestFields: DocumentType | undefined;
 
-    if (thinking && thinkingBudget) {
-      let budget = Math.min(Math.max(thinkingBudget, AWS_BEDROCK_MIN_THINKING_BUDGET), AWS_BEDROCK_MAX_THINKING_BUDGET);
-      inferenceConfig.temperature = 1;
-      if (maxTokens) {
-        budget = Math.min(budget, 0.8 * maxTokens) | 0;
-      } else {
-        inferenceConfig.maxTokens = Math.ceil(budget * 1.2) | 0;
+    if (thinking) {
+      if (AWS_BEDROCK_MODELS_ADAPTIVE_THINKING_ONLY.some(id => modelId.includes(id))) {
+        // Opus 4.7/4.8, Sonnet 5, Fable 5 reject `budget_tokens` extended thinking and only
+        // accept adaptive thinking; depth is controlled via output_config.effort.
+        additionalModelRequestFields = {
+          thinking: { type: "adaptive" },
+          output_config: { effort: this.thinkingBudgetToEffort(thinkingBudget) },
+        };
+      } else if (thinkingBudget) {
+        let budget = Math.min(
+          Math.max(thinkingBudget, AWS_BEDROCK_MIN_THINKING_BUDGET),
+          AWS_BEDROCK_MAX_THINKING_BUDGET
+        );
+        if (supportsTemperature) {
+          inferenceConfig.temperature = 1;
+        }
+        if (maxTokens) {
+          budget = Math.min(budget, 0.8 * maxTokens) | 0;
+        } else {
+          inferenceConfig.maxTokens = Math.ceil(budget * 1.2) | 0;
+        }
+        additionalModelRequestFields = {
+          thinking: {
+            type: "enabled",
+            budget_tokens: budget,
+          },
+        };
       }
-      additionalModelRequestFields = {
-        thinking: {
-          type: "enabled",
-          budget_tokens: budget,
-        },
-      };
     }
 
     const command: ConverseCommandInput = {
@@ -1182,5 +1231,14 @@ export class BedrockApiProvider extends BaseApiProvider {
 
   private getModelId(inputModelId: string): string {
     return this.modelOverride || inputModelId;
+  }
+
+  // Map the legacy thinking token budget onto an adaptive-thinking effort level for models
+  // that only accept adaptive thinking. Unset budget falls back to the model default depth.
+  private thinkingBudgetToEffort(thinkingBudget?: number): string {
+    if (!thinkingBudget) return "high";
+    if (thinkingBudget <= 2048) return "low";
+    if (thinkingBudget <= 8192) return "medium";
+    return "high";
   }
 }

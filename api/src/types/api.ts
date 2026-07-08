@@ -79,6 +79,9 @@ export enum ModelFeature {
   REASONING = "REASONING",
   CACHE_RETENTION = "CACHE_RETENTION",
   REASONING_CANCELLATION = "REASONING_CANCELLATION",
+  // whether the model accepts the `temperature`/`top_p` sampling params.
+  // Enabled by default; newer Anthropic models (Opus 4.7+, Sonnet 5, Fable 5) reject them.
+  SUPPORT_TEMPERATURE = "SUPPORT_TEMPERATURE",
 }
 
 export enum MCPTransportType {

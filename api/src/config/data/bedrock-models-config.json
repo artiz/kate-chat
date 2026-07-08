@@ -98,6 +98,97 @@
   },
   {
     "provider": "anthropic",
+    "modelId": "anthropic.claude-fable-5",
+    "modelIdOverride": {
+      "us": "us.anthropic.claude-fable-5"
+    },
+    "name": "Claude Fable 5",
+    "regions": ["us-east-1", "us-east-2", "us-west-2"],
+    "maxInputTokens": 180000,
+    "supportsTemperature": false
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-opus-4-8",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-opus-4-8",
+      "us": "us.anthropic.claude-opus-4-8"
+    },
+    "name": "Claude Opus 4.8",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000,
+    "supportsTemperature": false
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-opus-4-7",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-opus-4-7",
+      "us": "us.anthropic.claude-opus-4-7"
+    },
+    "name": "Claude Opus 4.7",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000,
+    "supportsTemperature": false
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-opus-4-6-v1",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-opus-4-6-v1",
+      "us": "us.anthropic.claude-opus-4-6-v1"
+    },
+    "name": "Claude Opus 4.6",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-opus-4-5-20251101-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-opus-4-5-20251101-v1:0",
+      "us": "us.anthropic.claude-opus-4-5-20251101-v1:0"
+    },
+    "name": "Claude Opus 4.5",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-sonnet-5",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-sonnet-5",
+      "us": "us.anthropic.claude-sonnet-5"
+    },
+    "name": "Claude Sonnet 5",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000,
+    "supportsTemperature": false
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-sonnet-4-6",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-sonnet-4-6",
+      "us": "us.anthropic.claude-sonnet-4-6"
+    },
+    "name": "Claude Sonnet 4.6",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
+  },
+  {
+    "provider": "anthropic",
+    "modelId": "anthropic.claude-haiku-4-5-20251001-v1:0",
+    "modelIdOverride": {
+      "eu": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "us": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    },
+    "name": "Claude Haiku 4.5",
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-3"],
+    "maxInputTokens": 180000
+  },
+  {
+    "provider": "anthropic",
     "modelId": "anthropic.claude-instant-v1",
     "name": "Claude Instant",
     "regions": ["us-east-1", "us-west-2", "ap-southeast-1", "eu-central-1"],
