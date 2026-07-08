@@ -111,8 +111,11 @@ const App = () => {
     if (!activeChatId) return;
 
     const cleanup = registerMessageHandler((msg) => {
-      // Handle transcriptions
-      if (msg.type === "response.audio_transcript.done") {
+      // Handle transcriptions (beta + GA event names)
+      if (
+        msg.type === "response.audio_transcript.done" ||
+        msg.type === "response.output_audio_transcript.done"
+      ) {
         // Assistant said something
         const text = msg.transcript || "N/A";
         const newMessage: Message = {

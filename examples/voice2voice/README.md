@@ -11,7 +11,7 @@ This example demonstrates how to use the OpenAI Realtime API with WebRTC for voi
 
 ## Prerequisites
 
-- OpenAI API Key with access to `gpt-4o-realtime-preview` models.
+- OpenAI API Key with access to realtime models (e.g. `gpt-realtime`).
 
 ## How to Run
 

@@ -27,7 +27,7 @@ const PRESET_ENDPOINTS = [
   { value: "custom", label: "Custom Endpoint" },
 ];
 
-export const DEFAULT_MODEL = "gpt-4o-realtime-preview";
+export const DEFAULT_MODEL = "gpt-realtime";
 
 export const SettingsForm: React.FC<SettingsFormProps> = ({
   apiKey: initialApiKey,
