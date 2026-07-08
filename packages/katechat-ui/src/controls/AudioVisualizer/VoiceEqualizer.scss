@@ -12,9 +12,9 @@
 
   .katechat-voice-equalizer-canvas {
     position: absolute;
-    inset: 0;
-    // horizontal padding matches the toggle button footprint
-    padding: 0.5rem 2rem;
+    // side gaps match the toggle button footprint; inset (not padding) so the
+    // canvas measures the shrunken box and does not overlay the right gap
+    inset: 0.5rem 2rem;
   }
 
   .katechat-voice-equalizer-toggle {
