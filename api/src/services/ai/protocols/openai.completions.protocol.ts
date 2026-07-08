@@ -335,6 +335,10 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
     const audioChunks: string[] = [];
 
     do {
+      // the session cycle repeats ONLY to continue after tool calls or
+      // context compaction; a stream that simply ends is a completed response
+      let continueCycle = false;
+
       try {
         const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
           ...(await this.formatCompletionRequest(input, sessionMessages)),
@@ -377,6 +381,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
               input.mcpTokens,
               sessionMessages
             );
+            continueCycle = true;
             break;
           }
 
@@ -430,6 +435,13 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
               fullResponse = `Response finished with reason: ${choice.finish_reason}`;
             }
           }
+        }
+
+        // stream exhausted without an explicit finish_reason (e.g. audio-output
+        // models): the response is complete — re-invoking the model here would
+        // loop generating answer after answer
+        if (!continueCycle) {
+          stopped = true;
         }
       } catch (error: unknown) {
         if (this.errorProcessor.isInputTooLargeError(error) && cycleNo < cyclesLimit) {

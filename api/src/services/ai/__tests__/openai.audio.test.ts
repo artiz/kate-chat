@@ -208,6 +208,35 @@ describe("OpenAI completions audio support", () => {
     expect(response.audios[0]).toMatch(/^data:audio\/wav;base64,/);
   });
 
+  it("should complete after a single invocation when the stream ends without finish_reason", async () => {
+    // audio-output model streams may end without an explicit finish_reason —
+    // the session cycle must not re-invoke the model (infinite answer loop)
+    const chunks = [
+      { choices: [{ delta: { audio: { transcript: "Hi there!" } } }] },
+      { choices: [], usage: { prompt_tokens: 5, completion_tokens: 7 } },
+    ];
+    const stream = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      [Symbol.asyncIterator]: async function* (): AsyncGenerator<any> {
+        for (const chunk of chunks) yield chunk;
+      },
+      controller: { abort: jest.fn() },
+    };
+    getMockCreate(protocol).mockResolvedValue(stream);
+
+    const onComplete = jest.fn().mockResolvedValue(undefined);
+    await protocol.streamChatCompletion(baseRequest, [{ role: MessageRole.USER, body: "Hi" }], {
+      onStart: jest.fn().mockResolvedValue(false),
+      onProgress: jest.fn().mockResolvedValue(false),
+      onComplete,
+      onError: jest.fn().mockResolvedValue(false),
+    });
+
+    expect(getMockCreate(protocol)).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete.mock.calls[0][0].content).toBe("Hi there!");
+  });
+
   it("should map response speech audio to audios with the transcript as content", async () => {
     getMockCreate(protocol).mockResolvedValue(
       completionResponse({ content: null, audio: { data: "bXAzZGF0YQ==", transcript: "Spoken answer" } })
