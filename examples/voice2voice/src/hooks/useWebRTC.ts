@@ -9,6 +9,7 @@ interface RealtimeMessageResponse {
 
 type RealtimeMessageType =
   | "response.audio_transcript.done"
+  | "response.output_audio_transcript.done" // GA name of response.audio_transcript.done
   | "response.done"
   | "response.partial_transcript"
   | "function_call"
@@ -105,9 +106,11 @@ export function useWebRTC({
     setError(null);
 
     try {
-      // 1. Get ephemeral token
+      // 1. Get ephemeral token (GA Realtime API — the beta
+      // /v1/realtime/sessions endpoint is no longer supported; the session
+      // config is baked into the client secret)
       const sessionResponse = await fetch(
-        "https://api.openai.com/v1/realtime/sessions",
+        "https://api.openai.com/v1/realtime/client_secrets",
         {
           method: "POST",
           headers: {
@@ -115,25 +118,34 @@ export function useWebRTC({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: model,
-            voice: "shimmer",
-            input_audio_transcription: transcriptionModel
-              ? {
-                  model: transcriptionModel,
-                }
-              : undefined,
+            session: {
+              type: "realtime",
+              model,
+              audio: {
+                input: transcriptionModel
+                  ? { transcription: { model: transcriptionModel } }
+                  : undefined,
+                output: { voice: "shimmer" },
+              },
+            },
           }),
         },
       );
 
       if (!sessionResponse.ok) {
+        const details = await sessionResponse.text().catch(() => "");
         throw new Error(
-          `Failed to create session: ${sessionResponse.statusText}`,
+          `Failed to create session: ${sessionResponse.status} ${details || sessionResponse.statusText}`,
         );
       }
 
       const sessionData = await sessionResponse.json();
-      const ephemeralToken = sessionData.client_secret.value;
+      // GA returns the secret as top-level `value`; older responses nested it
+      const ephemeralToken =
+        sessionData.value || sessionData.client_secret?.value;
+      if (!ephemeralToken) {
+        throw new Error("No client secret in realtime session response");
+      }
 
       // 2. Initialize WebRTC
       const pc = new RTCPeerConnection();
@@ -236,9 +248,9 @@ export function useWebRTC({
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      // Send SDP to OpenAI
+      // Send SDP to OpenAI (GA WebRTC endpoint)
       const sdpResponse = await fetch(
-        `https://api.openai.com/v1/realtime?model=${model}`,
+        `https://api.openai.com/v1/realtime/calls?model=${encodeURIComponent(model)}`,
         {
           method: "POST",
           body: offer.sdp,
@@ -250,7 +262,10 @@ export function useWebRTC({
       );
 
       if (!sdpResponse.ok) {
-        throw new Error(`Failed to send SDP: ${sdpResponse.statusText}`);
+        const details = await sdpResponse.text().catch(() => "");
+        throw new Error(
+          `Failed to send SDP: ${sdpResponse.status} ${details || sdpResponse.statusText}`,
+        );
       }
 
       const answerSdp = await sdpResponse.text();

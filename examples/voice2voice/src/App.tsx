@@ -24,12 +24,12 @@ import {
 import { notifications } from "@mantine/notifications";
 import { SettingsForm, DEFAULT_MODEL } from "./components/SettingsForm";
 import { useWebRTC } from "./hooks/useWebRTC";
-import { AudioVisualizer } from "./components/AudioVisualizer";
 import {
   Message,
   MessageRole,
   useDatabaseChats,
   useDatabaseMessages,
+  VoiceEqualizer,
 } from "@katechat/ui";
 
 const dbConfig = { name: "voice2voice-demo-db" };
@@ -111,8 +111,11 @@ const App = () => {
     if (!activeChatId) return;
 
     const cleanup = registerMessageHandler((msg) => {
-      // Handle transcriptions
-      if (msg.type === "response.audio_transcript.done") {
+      // Handle transcriptions (beta + GA event names)
+      if (
+        msg.type === "response.audio_transcript.done" ||
+        msg.type === "response.output_audio_transcript.done"
+      ) {
         // Assistant said something
         const text = msg.transcript || "N/A";
         const newMessage: Message = {
@@ -298,27 +301,24 @@ const App = () => {
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-                position: "relative",
               }}
             >
               {status === "connected" ? (
                 <>
-                  <AudioVisualizer
+                  <VoiceEqualizer
+                    active
                     inputAnalyser={inputAnalyser}
                     outputAnalyser={outputAnalyser}
-                    width={600}
-                    height={200}
                   />
-                  <Text c="dimmed" mt="md">
+                  <Text c="dimmed" mt="md" ta="center">
                     Speaking with {modelName}
                   </Text>
                 </>
               ) : (
-                <Text c="dimmed">Ready to start conversation</Text>
+                <Text c="dimmed" ta="center">
+                  Ready to start conversation
+                </Text>
               )}
             </Box>
 

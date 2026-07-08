@@ -9,7 +9,7 @@
     "build": "node esbuild.prod.js"
   },
   "dependencies": {
-    "@katechat/ui": "^1.1.8",
+    "@katechat/ui": "^1.1.36",
     "@mantine/core": "8.3.15",
     "@mantine/dates": "8.3.15",
     "@mantine/form": "8.3.15",
