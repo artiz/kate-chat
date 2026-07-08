@@ -16,6 +16,7 @@ import {
   Grid,
   Switch,
   SegmentedControl,
+  Select,
 } from "@mantine/core";
 import {
   IconInfoCircle,
@@ -41,6 +42,9 @@ import {
 import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
 import { ModelType } from "@katechat/ui";
+
+export const ASSISTANT_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"];
+export const DEFAULT_ASSISTANT_VOICE = "shimmer";
 
 export const DEFAULT_CHAT_SETTINGS = {
   temperature: 0.7,
@@ -71,6 +75,7 @@ export function ChatSettingsForm({
   thinking = false,
   thinkingBudget = DEFAULT_CHAT_SETTINGS.thinkingBudget,
   cacheRetention,
+  voice,
   model,
   chatTools = [],
   onSettingsChange,
@@ -89,6 +94,7 @@ export function ChatSettingsForm({
   const [thinkingValue, setThinkingValue] = useState<boolean>(thinking);
   const [thinkingBudgetValue, setThinkingBudgetValue] = useState<number>(thinkingBudget);
   const [cacheRetentionValue, setCacheRetentionValue] = useState<CacheRetention | undefined>(cacheRetention);
+  const [voiceValue, setVoiceValue] = useState<string | undefined>(voice);
 
   const reasoningMinTokenBudget = appConfig?.reasoningMinTokenBudget || 1024;
   const reasoningMaxTokenBudget = appConfig?.reasoningMaxTokenBudget || 16_000;
@@ -106,6 +112,7 @@ export function ChatSettingsForm({
     setThinkingValue(thinking);
     setThinkingBudgetValue(thinkingBudget || DEFAULT_CHAT_SETTINGS.thinkingBudget);
     setCacheRetentionValue(cacheRetention);
+    setVoiceValue(voice);
   }, [
     temperature,
     maxTokens,
@@ -118,6 +125,7 @@ export function ChatSettingsForm({
     thinking,
     thinkingBudget,
     cacheRetention,
+    voice,
   ]);
 
   const handleSettingsChange = useCallback(
@@ -134,6 +142,7 @@ export function ChatSettingsForm({
         thinking,
         thinkingBudget,
         cacheRetention,
+        voice,
         ...settings,
       });
     },
@@ -149,6 +158,7 @@ export function ChatSettingsForm({
       thinking,
       thinkingBudget,
       cacheRetention,
+      voice,
     ]
   );
 
@@ -233,6 +243,15 @@ export function ChatSettingsForm({
     [handleSettingsChange]
   );
 
+  const handleVoiceChange = useCallback(
+    (value: string | null) => {
+      const newVoice = value || undefined;
+      setVoiceValue(newVoice);
+      handleSettingsChange({ voice: newVoice });
+    },
+    [handleSettingsChange]
+  );
+
   const isImageGeneration = useMemo(
     () =>
       model?.type === ModelType.IMAGE_GENERATION || chatTools?.some(tool => tool.type === ToolType.IMAGE_GENERATION),
@@ -240,6 +259,10 @@ export function ChatSettingsForm({
   );
   const isReasoning = useMemo(() => model?.features?.includes(ModelFeature.REASONING), [model?.features]);
   const hasCacheRetention = useMemo(() => model?.features?.includes(ModelFeature.CACHE_RETENTION), [model?.features]);
+  const isVoiceModel = useMemo(
+    () => model?.type === ModelType.REALTIME || model?.features?.includes(ModelFeature.AUDIO_OUTPUT),
+    [model?.type, model?.features]
+  );
 
   return (
     <Box className={classes.settingsPanel}>
@@ -270,6 +293,17 @@ export function ChatSettingsForm({
             disabled={isImageGeneration}
           />
         </div>
+
+        {isVoiceModel && (
+          <Select
+            label={t("chat.assistantVoice")}
+            description={t("chat.assistantVoiceDescription")}
+            data={ASSISTANT_VOICES}
+            value={voiceValue || DEFAULT_ASSISTANT_VOICE}
+            onChange={handleVoiceChange}
+            allowDeselect={false}
+          />
+        )}
 
         <Grid gutter="lg">
           <Box m="md" miw="140px">

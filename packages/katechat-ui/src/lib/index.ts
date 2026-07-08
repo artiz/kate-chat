@@ -1,4 +1,5 @@
 export * from "./markdown.parser";
+export * from "./audio.encoder";
 export * from "./format.file";
 export * from "./format.tokens.limit";
 export * as assert from "./assert";

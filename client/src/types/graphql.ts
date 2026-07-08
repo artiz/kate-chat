@@ -33,6 +33,8 @@ export enum ModelFeature {
   REQUEST_CANCELLATION = "REQUEST_CANCELLATION",
   REASONING = "REASONING",
   CACHE_RETENTION = "CACHE_RETENTION",
+  AUDIO_INPUT = "AUDIO_INPUT",
+  AUDIO_OUTPUT = "AUDIO_OUTPUT",
 }
 
 export enum EntityAccessType {
@@ -383,6 +385,7 @@ export interface ChatSettings {
   thinking?: boolean;
   thinkingBudget?: number;
   cacheRetention?: CacheRetention;
+  voice?: string;
   selectedRagDocIds?: string[];
 }
 
@@ -551,4 +554,20 @@ export interface DocumentByIdResponse {
   data: {
     documentById: Document | null;
   };
+}
+
+export interface RealtimeSession {
+  transport: "webrtc" | "websocket";
+  model: string;
+  clientSecret?: string;
+  sdpUrl?: string;
+  wsUrl?: string;
+}
+
+export interface CreateRealtimeSessionResponse {
+  createRealtimeSession: RealtimeSession;
+}
+
+export interface AddChatMessageResponse {
+  addChatMessage: Message;
 }

@@ -375,7 +375,7 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
               {realtimeMode ? (
                 voiceCallActive || voiceCallConnecting ? (
                   <Button
-                    onClick={onVoiceCallStop}
+                    onClick={() => onVoiceCallStop?.()}
                     color="red"
                     radius="md"
                     loading={voiceCallConnecting}
@@ -387,7 +387,12 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                     </Text>
                   </Button>
                 ) : (
-                  <Button onClick={onVoiceCallStart} disabled={disabled} radius="md" data-testid="voice-call-start">
+                  <Button
+                    onClick={() => onVoiceCallStart?.()}
+                    disabled={disabled}
+                    radius="md"
+                    data-testid="voice-call-start"
+                  >
                     <IconMicrophone size={24} />{" "}
                     <Text visibleFrom="md" ml="xs">
                       {t("Talk")}

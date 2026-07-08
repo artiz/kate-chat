@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { base64ToInt16, float32ToPcm16Base64 } from "@/lib/audio.encoder";
 
 export type RealtimeVoiceStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -37,30 +38,6 @@ export interface UseRealtimeVoiceResult {
 }
 
 const WS_PCM_SAMPLE_RATE = 24000;
-
-function base64ToInt16(b64: string): Int16Array {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Int16Array(bytes.buffer);
-}
-
-function float32ToPcm16Base64(samples: Float32Array): string {
-  const pcm = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-  }
-  const bytes = new Uint8Array(pcm.buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
-}
 
 /**
  * Voice-to-voice session against an OpenAI-compatible Realtime API.
