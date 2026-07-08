@@ -183,7 +183,15 @@ export class RealtimeService {
       const ctx = await this.loadChatContext(chatId, user, connection);
       const { upstreamUrl, headers } = this.getUpstreamTarget(ctx);
 
-      logger.debug({ chatId, modelId: ctx.model.modelId }, "Opening realtime proxy connection");
+      logger.debug(
+        {
+          chatId,
+          modelId: ctx.model.modelId,
+          upstreamUrl,
+          authScheme: headers.Authorization?.split(" ")[0],
+        },
+        "Opening realtime proxy connection"
+      );
       upstream = new WebSocket(upstreamUrl, { headers });
 
       const pendingClientMessages: WebSocket.RawData[] = [];
@@ -241,12 +249,13 @@ export class RealtimeService {
       if (!apiKey || !folder) throw new Error("Yandex API key/folder is not configured");
 
       const modelUri = model.modelId.replace("{folder}", folder);
+      // IAM tokens (t1....) go as Bearer, plain API keys need the Api-Key
+      // scheme (the realtime gateway rejects API keys sent as Bearer);
+      // the folder is passed via the OpenAI-Project header
       return {
         upstreamUrl: `${globalConfig.yandex.realtimeApiUrl}?model=${encodeURIComponent(modelUri)}`,
-        // the OpenAI-compatible surface takes the API key as Bearer and the
-        // folder via the OpenAI-Project header
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: apiKey.startsWith("t1.") ? `Bearer ${apiKey}` : `Api-Key ${apiKey}`,
           "OpenAI-Project": folder,
           "x-folder-id": folder,
         },
