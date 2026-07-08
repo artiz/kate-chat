@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from "react";
 interface AudioVisualizerProps {
   inputAnalyser?: AnalyserNode | null;
   outputAnalyser?: AnalyserNode | null;
-  /** Canvas height in CSS pixels; width follows the container */
+  /** Fallback height in CSS pixels while the container has no size yet */
   height?: number;
   colorUser?: string;
   colorAssistant?: string;
@@ -36,12 +36,15 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 
     const dpr = window.devicePixelRatio || 1;
 
+    // track the actual container box: flex layouts may shrink the panel below
+    // the requested height and the bars must stay centered within what's visible
     const resize = () => {
       const cssWidth = canvas.parentElement?.clientWidth || 300;
+      const cssHeight = canvas.parentElement?.clientHeight || height;
       canvas.width = Math.round(cssWidth * dpr);
-      canvas.height = Math.round(height * dpr);
+      canvas.height = Math.round(cssHeight * dpr);
       canvas.style.width = `${cssWidth}px`;
-      canvas.style.height = `${height}px`;
+      canvas.style.height = `${cssHeight}px`;
     };
     resize();
 

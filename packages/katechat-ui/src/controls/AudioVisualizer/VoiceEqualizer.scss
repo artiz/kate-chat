@@ -2,6 +2,9 @@
   position: relative;
   width: 100%;
   overflow: hidden;
+  // flex layouts may shrink the panel below the requested height (the canvas
+  // adapts), but never below the collapsed size
+  min-height: 96px;
   margin-bottom: 0.5rem;
   border-radius: var(--mantine-radius-md);
   border: 1px solid var(--app-shell-border-color);
