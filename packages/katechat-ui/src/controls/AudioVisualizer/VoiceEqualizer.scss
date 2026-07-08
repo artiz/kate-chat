@@ -13,7 +13,8 @@
   .katechat-voice-equalizer-canvas {
     position: absolute;
     inset: 0;
-    padding: 0.5rem;
+    // horizontal padding matches the toggle button footprint
+    padding: 0.5rem 2rem;
   }
 
   .katechat-voice-equalizer-toggle {
