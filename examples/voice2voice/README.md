@@ -33,7 +33,7 @@ This example demonstrates how to use the OpenAI Realtime API with WebRTC for voi
 
 - `App.tsx`: Main application logic.
 - `hooks/useWebRTC.ts`: Handles the WebRTC connection, ephemeral token generation, and data channel events.
-- `components/AudioVisualizer.tsx`: Canvas-based audio spectrum visualization using Web Audio API.
+- Audio visualization uses the collapsible `VoiceEqualizer` control from `@katechat/ui` (v1.1.36+).
 
 ## Notes
 

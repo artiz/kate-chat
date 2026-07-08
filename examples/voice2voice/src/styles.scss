@@ -1,5 +1,15 @@
 @import "@katechat/ui/styles.css";
 
+// theme variables used by @katechat/ui controls (VoiceEqualizer etc.)
+:root {
+  --app-shell-border-color: var(--mantine-color-gray-4);
+  --theme-default-time: 0.25s;
+}
+
+[data-mantine-color-scheme="dark"] {
+  --app-shell-border-color: var(--mantine-color-dark-6);
+}
+
 * {
   margin: 0;
   padding: 0;
