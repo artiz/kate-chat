@@ -154,21 +154,29 @@ export function useRealtimeVoice({ getSession, onTranscript, onError }: UseRealt
 
       const audioCtx = new AudioContext();
       audioContextRef.current = audioCtx;
+      await audioCtx.resume().catch(() => undefined);
 
       const micAnalyser = audioCtx.createAnalyser();
       micAnalyser.fftSize = 256;
       const speakerAnalyser = audioCtx.createAnalyser();
       speakerAnalyser.fftSize = 256;
 
+      // remote playback goes through the WebAudio graph so the analyser sees
+      // the signal; the muted <audio> element only keeps the remote stream
+      // consumed (Chrome renders remote WebRTC audio to WebAudio only when the
+      // stream is attached to a media element)
       const audioEl = document.createElement("audio");
       audioEl.autoplay = true;
+      audioEl.muted = true;
       audioElRef.current = audioEl;
 
       pc.ontrack = event => {
         if (event.streams[0]) {
           const stream = event.streams[0];
           audioEl.srcObject = stream;
-          audioCtx.createMediaStreamSource(stream).connect(speakerAnalyser);
+          const source = audioCtx.createMediaStreamSource(stream);
+          source.connect(speakerAnalyser);
+          speakerAnalyser.connect(audioCtx.destination);
         }
       };
 

@@ -206,9 +206,38 @@ export class RealtimeService {
       );
       upstream = new WebSocket(upstreamUrl, { headers });
 
+      // client events are buffered until the provider session is configured —
+      // the session config is applied after the provider reports
+      // session.created (events sent earlier may be ignored)
+      let sessionConfigured = false;
       const pendingClientMessages: WebSocket.RawData[] = [];
+
+      const configureSession = () => {
+        if (sessionConfigured || !upstream || upstream.readyState !== WebSocket.OPEN) return;
+        sessionConfigured = true;
+
+        // GA Realtime API shape: voice/formats/VAD under session.audio
+        const audio: Record<string, unknown> = {
+          input: {
+            format: { type: "audio/pcm", rate: 24000 },
+            turn_detection: { type: "server_vad" },
+          },
+          output: {
+            voice: ctx.voice,
+            format: { type: "audio/pcm", rate: 24000 },
+          },
+        };
+        if (ctx.model.apiProvider === ApiProvider.OPEN_AI) {
+          // whisper transcription model is OpenAI-specific; other providers
+          // transcribe input with their own defaults
+          (audio.input as Record<string, unknown>).transcription = { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL };
+        }
+        upstream.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio } }));
+        pendingClientMessages.splice(0).forEach(data => upstream?.send(data));
+      };
+
       client.on("message", data => {
-        if (upstream && upstream.readyState === WebSocket.OPEN) {
+        if (sessionConfigured && upstream && upstream.readyState === WebSocket.OPEN) {
           upstream.send(data);
         } else {
           pendingClientMessages.push(data);
@@ -216,21 +245,28 @@ export class RealtimeService {
       });
 
       upstream.on("open", () => {
-        // apply chat voice/transcription settings to the provider session
-        // (GA Realtime API shape: audio.input/audio.output)
-        const audio: Record<string, unknown> = { output: { voice: ctx.voice } };
-        if (ctx.model.apiProvider === ApiProvider.OPEN_AI) {
-          // whisper transcription model is OpenAI-specific; other providers
-          // transcribe input with their own defaults
-          audio.input = { transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL } };
-        }
-        upstream?.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio } }));
-        pendingClientMessages.splice(0).forEach(data => upstream?.send(data));
+        // fallback for providers that do not emit session.created
+        setTimeout(configureSession, 3000);
       });
 
       upstream.on("message", data => {
+        const text = data.toString();
+
+        if (logger.isLevelEnabled("debug")) {
+          try {
+            const event = JSON.parse(text) as { type?: string; error?: unknown };
+            logger.debug({ type: event.type, error: event.error }, "Realtime proxy upstream event");
+          } catch {
+            logger.debug("Realtime proxy upstream event: non-JSON payload");
+          }
+        }
+
+        if (!sessionConfigured && text.includes("session.created")) {
+          configureSession();
+        }
+
         if (client.readyState === WebSocket.OPEN) {
-          client.send(data.toString());
+          client.send(text);
         }
       });
 
