@@ -263,7 +263,8 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
     ) {
       params.modalities = ["text", "audio"];
       params.audio = {
-        voice: (settings.voice || OPENAI_REALTIME_DEFAULT_VOICE) as OpenAI.Chat.Completions.ChatCompletionAudioParam["voice"],
+        voice: (settings.voice ||
+          OPENAI_REALTIME_DEFAULT_VOICE) as OpenAI.Chat.Completions.ChatCompletionAudioParam["voice"],
         format: "mp3",
       };
     }
