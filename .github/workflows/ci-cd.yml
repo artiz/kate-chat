@@ -152,7 +152,12 @@ jobs:
     name: Build and Push Images
     runs-on: ubuntu-latest
     needs: [test, lint, changes, rust-document-processor]
-    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true'
+    # rust-document-processor is skipped when document-processor/** is
+    # untouched; without a status-check function a skipped need would skip
+    # this job (and deploy-staging/security-scan behind it) too
+    if: >-
+      !failure() && !cancelled() &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true')
 
     outputs:
       app-image: ${{ steps.build-app.outputs.image }}
