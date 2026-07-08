@@ -210,37 +210,51 @@ export class RealtimeService {
       // the session config is applied after the provider reports
       // session.created (events sent earlier may be ignored)
       let sessionConfigured = false;
-      const pendingClientMessages: WebSocket.RawData[] = [];
+      const pendingClientMessages: string[] = [];
 
       const configureSession = () => {
         if (sessionConfigured || !upstream || upstream.readyState !== WebSocket.OPEN) return;
         sessionConfigured = true;
 
         // GA Realtime API shape: voice/formats/VAD under session.audio
+        // (matches the Yandex voice-agent demo session.update)
         const audio: Record<string, unknown> = {
           input: {
             format: { type: "audio/pcm", rate: 24000 },
-            turn_detection: { type: "server_vad" },
+            turn_detection: { type: "server_vad", silence_duration_ms: 800, threshold: 0.5 },
           },
           output: {
             voice: ctx.voice,
             format: { type: "audio/pcm", rate: 24000 },
+            speed: 1,
           },
         };
+        const session: Record<string, unknown> = {
+          type: "realtime",
+          output_modalities: ["audio", "text"],
+          audio,
+        };
+        if (ctx.chat.settings?.systemPrompt) {
+          session.instructions = ctx.chat.settings.systemPrompt;
+        }
         if (ctx.model.apiProvider === ApiProvider.OPEN_AI) {
           // whisper transcription model is OpenAI-specific; other providers
           // transcribe input with their own defaults
           (audio.input as Record<string, unknown>).transcription = { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL };
         }
-        upstream.send(JSON.stringify({ type: "session.update", session: { type: "realtime", audio } }));
-        pendingClientMessages.splice(0).forEach(data => upstream?.send(data));
+        upstream.send(JSON.stringify({ type: "session.update", session }));
+        pendingClientMessages.splice(0).forEach(text => upstream?.send(text));
       };
 
       client.on("message", data => {
+        // realtime events are JSON text; the ws library delivers browser text
+        // frames as Buffers and would relay them as BINARY frames, which
+        // providers silently drop — always forward as text
+        const text = data.toString();
         if (sessionConfigured && upstream && upstream.readyState === WebSocket.OPEN) {
-          upstream.send(data);
+          upstream.send(text);
         } else {
-          pendingClientMessages.push(data);
+          pendingClientMessages.push(text);
         }
       });
 
