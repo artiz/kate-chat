@@ -59,11 +59,14 @@ export class RealtimeService {
     if (!model) throw new Error("Model not found");
     if (model.type !== ModelType.REALTIME) throw new Error("Selected model does not support realtime voice sessions");
 
+    // Yandex speech-realtime uses SpeechKit voices, OpenAI uses its own set
+    const defaultVoice = model.apiProvider === ApiProvider.YANDEX_AI ? "marina" : OPENAI_REALTIME_DEFAULT_VOICE;
+
     return {
       chat,
       model,
       connection,
-      voice: chat.settings?.voice || OPENAI_REALTIME_DEFAULT_VOICE,
+      voice: chat.settings?.voice || defaultVoice,
     };
   }
 
@@ -186,15 +189,13 @@ export class RealtimeService {
 
       upstream.on("open", () => {
         // apply chat voice/transcription settings to the provider session
-        upstream?.send(
-          JSON.stringify({
-            type: "session.update",
-            session: {
-              voice: ctx.voice,
-              input_audio_transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL },
-            },
-          })
-        );
+        const session: Record<string, unknown> = { voice: ctx.voice };
+        if (ctx.model.apiProvider === ApiProvider.OPEN_AI) {
+          // whisper transcription model is OpenAI-specific; other providers
+          // transcribe input with their own defaults
+          session.input_audio_transcription = { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL };
+        }
+        upstream?.send(JSON.stringify({ type: "session.update", session }));
         pendingClientMessages.splice(0).forEach(data => upstream?.send(data));
       });
 

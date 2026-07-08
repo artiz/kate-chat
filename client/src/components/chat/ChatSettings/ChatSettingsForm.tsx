@@ -43,8 +43,31 @@ import classes from "./ChatSettingsForm.module.scss";
 import { useAppSelector } from "@/store";
 import { ModelType } from "@katechat/ui";
 
-export const ASSISTANT_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"];
-export const DEFAULT_ASSISTANT_VOICE = "shimmer";
+// OpenAI realtime/audio voices
+export const OPENAI_ASSISTANT_VOICES = ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"];
+// Yandex speech-realtime uses SpeechKit voices
+export const YANDEX_ASSISTANT_VOICES = [
+  "alena",
+  "marina",
+  "jane",
+  "omazh",
+  "filipp",
+  "ermil",
+  "zahar",
+  "madirus",
+  "dasha",
+  "julia",
+  "lera",
+  "masha",
+  "alexander",
+  "kirill",
+  "anton",
+];
+
+export const ASSISTANT_VOICES: Record<string, { voices: string[]; defaultVoice: string }> = {
+  YANDEX_AI: { voices: YANDEX_ASSISTANT_VOICES, defaultVoice: "marina" },
+  DEFAULT: { voices: OPENAI_ASSISTANT_VOICES, defaultVoice: "shimmer" },
+};
 
 export const DEFAULT_CHAT_SETTINGS = {
   temperature: 0.7,
@@ -263,6 +286,10 @@ export function ChatSettingsForm({
     () => model?.type === ModelType.REALTIME || model?.features?.includes(ModelFeature.AUDIO_OUTPUT),
     [model?.type, model?.features]
   );
+  const assistantVoices = useMemo(
+    () => ASSISTANT_VOICES[model?.apiProvider || "DEFAULT"] || ASSISTANT_VOICES.DEFAULT,
+    [model?.apiProvider]
+  );
 
   return (
     <Box className={classes.settingsPanel}>
@@ -298,8 +325,8 @@ export function ChatSettingsForm({
           <Select
             label={t("chat.assistantVoice")}
             description={t("chat.assistantVoiceDescription")}
-            data={ASSISTANT_VOICES}
-            value={voiceValue || DEFAULT_ASSISTANT_VOICE}
+            data={assistantVoices.voices}
+            value={voiceValue || assistantVoices.defaultVoice}
             onChange={handleVoiceChange}
             allowDeselect={false}
           />
