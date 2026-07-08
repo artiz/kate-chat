@@ -95,12 +95,6 @@ export const YANDEX_MODELS: YandexModel[] = [
     apiType: "responses",
   },
   {
-    name: "Gemma 3 27B IT",
-    provider: "Google",
-    uri: `gpt://{folder}/gemma-3-27b-it/latest`,
-    maxInputTokens: 128_000,
-  },
-  {
     name: "GPT OSS 120B",
     provider: "OpenAI",
     uri: `gpt://{folder}/gpt-oss-120b/latest`,
