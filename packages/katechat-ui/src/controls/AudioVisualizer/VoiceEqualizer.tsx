@@ -5,8 +5,8 @@ import { AudioVisualizer } from "./AudioVisualizer";
 
 import "./VoiceEqualizer.scss";
 
-export const VOICE_EQUALIZER_COLLAPSED_HEIGHT = 96;
-export const VOICE_EQUALIZER_EXPANDED_HEIGHT = VOICE_EQUALIZER_COLLAPSED_HEIGHT * 4;
+export const VOICE_EQUALIZER_COLLAPSED_HEIGHT = 48;
+export const VOICE_EQUALIZER_EXPANDED_HEIGHT = 384;
 
 interface VoiceEqualizerProps {
   /** Panel is rendered only while active (a voice session or recording is running) */
