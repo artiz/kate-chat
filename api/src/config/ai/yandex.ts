@@ -15,6 +15,27 @@ export interface YandexModel {
   features?: ModelFeature[];
 }
 
+// SpeechKit voices supported by speech-realtime models
+export const YANDEX_REALTIME_VOICES = [
+  "alena",
+  "marina",
+  "jane",
+  "omazh",
+  "filipp",
+  "ermil",
+  "zahar",
+  "madirus",
+  "dasha",
+  "julia",
+  "lera",
+  "masha",
+  "alexander",
+  "kirill",
+  "anton",
+];
+
+export const YANDEX_REALTIME_DEFAULT_VOICE = "marina";
+
 // Available models
 
 export const YANDEX_MODELS: YandexModel[] = [

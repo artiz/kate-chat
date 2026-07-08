@@ -115,6 +115,17 @@ describe("OpenAI completions audio support", () => {
     expect(params.audio).toEqual({ voice: "echo", format: "mp3" });
   });
 
+  it("should fall back to the default voice when the chat voice belongs to another provider", async () => {
+    getMockCreate(protocol).mockResolvedValue(completionResponse({ content: "hello" }));
+
+    await protocol.completeChat({ ...baseRequest, settings: { voice: "marina" } }, [
+      { role: MessageRole.USER, body: "Hi" },
+    ]);
+
+    const params = getMockCreate(protocol).mock.calls[0][0] as OpenAI.Chat.Completions.ChatCompletionCreateParams;
+    expect(params.audio).toEqual({ voice: "shimmer", format: "mp3" });
+  });
+
   it("should not request audio modalities for regular chat models", async () => {
     getMockCreate(protocol).mockResolvedValue(completionResponse({ content: "hello" }));
 

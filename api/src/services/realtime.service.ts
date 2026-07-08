@@ -11,7 +11,12 @@ import { ConnectionParams, loadConnectionParams } from "@/middleware/auth.middle
 import { generateRealtimeToken, verifyRealtimeToken } from "@/utils/jwt";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
-import { OPENAI_REALTIME_DEFAULT_VOICE, OPENAI_REALTIME_TRANSCRIPTION_MODEL } from "@/config/ai/openai";
+import {
+  OPENAI_REALTIME_DEFAULT_VOICE,
+  OPENAI_REALTIME_TRANSCRIPTION_MODEL,
+  OPENAI_REALTIME_VOICES,
+} from "@/config/ai/openai";
+import { YANDEX_REALTIME_DEFAULT_VOICE, YANDEX_REALTIME_VOICES } from "@/config/ai/yandex";
 
 const logger = createLogger(__filename);
 
@@ -59,14 +64,21 @@ export class RealtimeService {
     if (!model) throw new Error("Model not found");
     if (model.type !== ModelType.REALTIME) throw new Error("Selected model does not support realtime voice sessions");
 
-    // Yandex speech-realtime uses SpeechKit voices, OpenAI uses its own set
-    const defaultVoice = model.apiProvider === ApiProvider.YANDEX_AI ? "marina" : OPENAI_REALTIME_DEFAULT_VOICE;
+    // Yandex speech-realtime uses SpeechKit voices, OpenAI uses its own set.
+    // The chat may keep a voice picked for another provider (e.g. "sage"
+    // after chatting with GPT Realtime) — fall back to the provider default
+    // instead of sending a voice the provider rejects.
+    const [voices, defaultVoice] =
+      model.apiProvider === ApiProvider.YANDEX_AI
+        ? [YANDEX_REALTIME_VOICES, YANDEX_REALTIME_DEFAULT_VOICE]
+        : [OPENAI_REALTIME_VOICES, OPENAI_REALTIME_DEFAULT_VOICE];
+    const chatVoice = chat.settings?.voice;
 
     return {
       chat,
       model,
       connection,
-      voice: chat.settings?.voice || defaultVoice,
+      voice: chatVoice && voices.includes(chatVoice) ? chatVoice : defaultVoice,
     };
   }
 

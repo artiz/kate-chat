@@ -26,6 +26,7 @@ import {
   OPENAI_MODELS_AUDIO_INPUT,
   OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
   OPENAI_REALTIME_DEFAULT_VOICE,
+  OPENAI_REALTIME_VOICES,
 } from "@/config/ai/openai";
 
 const logger = createLogger(__filename);
@@ -262,10 +263,14 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       inputRequest.modelFeatures?.includes(ModelFeature.AUDIO_OUTPUT) ||
       OPENAI_MODELS_AUDIO_INPUT.some(prefix => modelId.startsWith(prefix))
     ) {
+      // the chat may keep a voice picked for another provider — ignore it
+      const voice =
+        settings.voice && OPENAI_REALTIME_VOICES.includes(settings.voice)
+          ? settings.voice
+          : OPENAI_REALTIME_DEFAULT_VOICE;
       params.modalities = ["text", "audio"];
       params.audio = {
-        voice: (settings.voice ||
-          OPENAI_REALTIME_DEFAULT_VOICE) as OpenAI.Chat.Completions.ChatCompletionAudioParam["voice"],
+        voice: voice as OpenAI.Chat.Completions.ChatCompletionAudioParam["voice"],
         format: "mp3",
       };
     }
