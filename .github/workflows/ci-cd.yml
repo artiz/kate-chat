@@ -279,7 +279,13 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: [build, changes]
-    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true')
+    # the implicit success() looks at the TRANSITIVE needs chain, so a skipped
+    # rust-document-processor (an ancestor via build) would skip this job even
+    # when build itself succeeded — require the direct dependency explicitly
+    if: >-
+      !failure() && !cancelled() && needs.build.result == 'success' &&
+      github.ref == 'refs/heads/master' &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true')
 
     steps:
     - name: Checkout code
@@ -405,7 +411,11 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: [build, changes]
-    if: github.ref == 'refs/heads/master' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true')
+    # same transitive-skip guard as deploy-staging
+    if: >-
+      !failure() && !cancelled() && needs.build.result == 'success' &&
+      github.ref == 'refs/heads/master' &&
+      (needs.changes.outputs.api == 'true' || needs.changes.outputs.client == 'true' || needs.changes.outputs.document_processor == 'true')
     continue-on-error: true
     
     steps:
