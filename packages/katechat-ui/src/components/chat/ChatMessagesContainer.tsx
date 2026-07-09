@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { Group, Loader } from "@mantine/core";
 import { IconCircleChevronDown } from "@tabler/icons-react";
 import { Message, Model, PluginProps, CodePlugin } from "@/core";
@@ -156,11 +156,41 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       }
     }, [loadCompleted, autoScroll]);
 
-    const firstMessageRef = useIntersectionObserver<HTMLDivElement>(
-      () => loadMoreMessages?.(),
-      [loadMoreMessages],
-      200
-    );
+    // Snapshot of the scroller taken right before older messages are
+    // requested, used to keep the viewport anchored after they are prepended
+    const prependSnapshot = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
+    const prevFirstMessageId = useRef<string | undefined>(undefined);
+
+    const handleLoadMore = useCallback(() => {
+      const el = messagesContainerRef.current;
+      if (el) {
+        prependSnapshot.current = { scrollHeight: el.scrollHeight, scrollTop: el.scrollTop };
+      }
+      loadMoreMessages?.();
+    }, [loadMoreMessages]);
+
+    // When an older page is prepended the browser keeps scrollTop as-is
+    // (scroll anchoring is off at scrollTop=0), leaving the load-more sentinel
+    // in view — restore the position so the previously visible message stays
+    // put and the next page loads only when the user scrolls up again
+    useLayoutEffect(() => {
+      const el = messagesContainerRef.current;
+      const snapshot = prependSnapshot.current;
+      const firstMessageId = messages?.length ? messages[0].id : undefined;
+
+      if (el && snapshot && firstMessageId && prevFirstMessageId.current !== firstMessageId) {
+        const delta = el.scrollHeight - snapshot.scrollHeight;
+        if (delta > 0) {
+          isProgrammaticScroll.current = true;
+          el.scrollTop = snapshot.scrollTop + delta;
+        }
+      }
+
+      prependSnapshot.current = null;
+      prevFirstMessageId.current = firstMessageId;
+    }, [messages]);
+
+    const firstMessageRef = useIntersectionObserver<HTMLDivElement>(handleLoadMore, [handleLoadMore], 200);
 
     // #endregion
 
