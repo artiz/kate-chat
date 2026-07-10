@@ -171,7 +171,7 @@ npm run dev
 #### Documents processor (Rust)
 
 The document processor is a Rust service built on
-[fleischwolf](https://github.com/artiz/fleischwolf) (a Rust port of docling). Declarative
+[docling.rs](https://github.com/docling-project/docling.rs) (a Rust port of docling). Declarative
 formats (DOCX/PPTX/XLSX/HTML/MD/CSV/EPUB/…) work out of the box; the PDF/image pipeline
 additionally needs pdfium + ONNX models at runtime (baked into the Docker image — see
 `document-processor/Dockerfile` and `document-processor/scripts/export_layout.py`).

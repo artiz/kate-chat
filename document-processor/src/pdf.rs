@@ -9,18 +9,52 @@
 
 use pdfium_render::prelude::*;
 
-/// Bind pdfium, honoring `PDFIUM_DYNAMIC_LIB_PATH` (matching fleischwolf-pdf), and
-/// falling back to the system library.
+/// Bind to pdfium from a directory (or direct file) path.
+fn try_bind(path: &str) -> Option<Pdfium> {
+    let name = Pdfium::pdfium_platform_library_name_at_path(&path);
+    if let Ok(bindings) = Pdfium::bind_to_library(&name) {
+        return Some(Pdfium::new(bindings));
+    }
+    Pdfium::bind_to_library(path).ok().map(Pdfium::new)
+}
+
+/// Bind pdfium with the same search order as docling-pdf:
+/// `PDFIUM_DYNAMIC_LIB_PATH` first, then the `.pdfium/lib` layout produced by
+/// docling.rs's `download_dependencies.sh` — relative to the current directory,
+/// next to the executable, or one level above it — and finally the system
+/// library. Keeping the orders identical means the splitter never fails on a
+/// setup where the conversion pipeline itself would work.
 fn pdfium() -> Result<Pdfium, String> {
     if let Ok(path) = std::env::var("PDFIUM_DYNAMIC_LIB_PATH") {
-        let name = Pdfium::pdfium_platform_library_name_at_path(&path);
-        if let Ok(bindings) = Pdfium::bind_to_library(&name) {
-            return Ok(Pdfium::new(bindings));
-        }
-        if let Ok(bindings) = Pdfium::bind_to_library(&path) {
-            return Ok(Pdfium::new(bindings));
+        if let Some(pdfium) = try_bind(&path) {
+            return Ok(pdfium);
         }
     }
+
+    let rel = std::path::Path::new(".pdfium/lib");
+    if rel.exists() {
+        if let Some(pdfium) = try_bind(".pdfium/lib") {
+            return Ok(pdfium);
+        }
+    }
+    if let Some(exe_dir) = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.canonicalize().ok())
+        .and_then(|p| p.parent().map(std::path::Path::to_path_buf))
+    {
+        for base in [Some(exe_dir.as_path()), exe_dir.parent()]
+            .into_iter()
+            .flatten()
+        {
+            let dir = base.join(".pdfium/lib");
+            if dir.exists() {
+                if let Some(pdfium) = try_bind(&dir.to_string_lossy()) {
+                    return Ok(pdfium);
+                }
+            }
+        }
+    }
+
     Pdfium::bind_to_system_library()
         .map(Pdfium::new)
         .map_err(|e| format!("pdfium bind: {e}"))
