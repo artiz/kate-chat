@@ -12,6 +12,7 @@
 //! (`tokio::task::spawn_blocking`).
 
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
 
 use docling::{
     DocumentConverter, ImageMode, InputFormat, MarkdownStreamer, Node, Pipeline, SourceDocument,
@@ -27,6 +28,33 @@ type PageBatch = (Vec<Node>, Vec<(String, String)>);
 pub struct ParseOutput {
     pub pages: Vec<ParsedPage>,
     pub pages_count: u32,
+}
+
+/// Warm, reusable PDF pipelines. `docling-pdf` loads its ONNX models lazily
+/// **per `Pipeline` instance** (a multi-page document spins up a worker pool of
+/// up to 4 models, ~0.4 GB each), so constructing a pipeline per document —
+/// fine under fleischwolf, whose models were shared — re-paid the whole model
+/// load for every part of a batched PDF and serialized concurrent parses on
+/// disk/memory bandwidth. Finished parses return their pipeline here; the pool
+/// grows to at most the number of concurrent parses (the SQS worker count).
+static PDF_PIPELINES: OnceLock<Mutex<Vec<Pipeline>>> = OnceLock::new();
+
+fn pipeline_pool() -> &'static Mutex<Vec<Pipeline>> {
+    PDF_PIPELINES.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+fn acquire_pipeline() -> Result<Pipeline, String> {
+    if let Some(pipeline) = pipeline_pool().lock().expect("pipeline pool").pop() {
+        return Ok(pipeline);
+    }
+    Pipeline::new().map_err(|e| e.to_string())
+}
+
+fn release_pipeline(pipeline: Pipeline) {
+    pipeline_pool()
+        .lock()
+        .expect("pipeline pool")
+        .push(pipeline);
 }
 
 /// Convert raw document bytes into per-page Markdown.
@@ -66,16 +94,21 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
 /// spans a page boundary (a paragraph or list continuing onto the next page)
 /// is emitted whole with the page it finishes on.
 fn parse_pdf(name: &str, bytes: &[u8]) -> Result<Vec<ParsedPage>, String> {
-    let mut pipeline = Pipeline::new().map_err(|e| e.to_string())?;
+    let mut pipeline = acquire_pipeline()?;
 
     // One (nodes, links) batch per page, in document order.
     let mut batches: Vec<PageBatch> = Vec::new();
-    pipeline
-        .convert_streaming(bytes, None, name, |nodes, links| {
-            batches.push((nodes, links));
-            Ok(())
-        })
-        .map_err(|e| e.to_string())?;
+    let converted = pipeline.convert_streaming(bytes, None, name, |nodes, links| {
+        batches.push((nodes, links));
+        Ok(())
+    });
+    match converted {
+        // hand the warm pipeline back for the next document
+        Ok(()) => release_pipeline(pipeline),
+        // a failed conversion may leave the pipeline's worker pool wedged —
+        // drop it and let the next parse start from a fresh one
+        Err(e) => return Err(e.to_string()),
+    }
 
     // The last batch is the assembler's final flush: whatever it still held
     // belongs to the last page.
