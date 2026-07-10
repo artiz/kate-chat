@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 # `chunk` is edition 2024 → requires Rust 1.85+.
 rust-version = "1.85"
-description = "KateChat document processor — SQS-driven RAG ingestion pipeline (parse → chunk → index) built on the fleischwolf document converter."
+description = "KateChat document processor — SQS-driven RAG ingestion pipeline (parse → chunk → index) built on the docling.rs document converter."
 license = "MIT"
 
 [[bin]]
@@ -17,10 +17,10 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "tim
 tokio-util = { version = "0.7", features = ["rt"] }
 futures = "0.3"
 
-# Document conversion (Rust port of docling)
-fleischwolf = "0.15.1"
-# PDF backend used directly for page-by-page conversion (one Pipeline, real page numbers)
-fleischwolf-pdf = "0.15.1"
+# Document conversion (docling.rs — the Rust port of docling, formerly published
+# as `fleischwolf`; re-exports the PDF Pipeline used directly for page-by-page
+# conversion with real page numbers)
+docling = "0.30.0"
 # pdfium (the same fast C library the ML pipeline uses) for page count + splitting
 pdfium-render = "0.8"
 

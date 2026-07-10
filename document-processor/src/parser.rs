@@ -1,6 +1,7 @@
-//! Document parsing via the `fleischwolf` converter (the Rust port of docling).
+//! Document parsing via the `docling` converter (docling.rs, the Rust port of
+//! docling).
 //!
-//! PDFs are converted through one `fleischwolf-pdf` [`Pipeline`] in streaming
+//! PDFs are converted through one `docling-pdf` [`Pipeline`] in streaming
 //! mode: the pipeline emits each page's finalized nodes in document order (for
 //! documents with enough pages, inference fans out across its internal worker
 //! pool), which gives real per-page Markdown and an accurate page count.
@@ -12,15 +13,14 @@
 
 use std::path::Path;
 
-use fleischwolf::{
-    DocumentConverter, ImageMode, InputFormat, MarkdownStreamer, Node, SourceDocument,
+use docling::{
+    DocumentConverter, ImageMode, InputFormat, MarkdownStreamer, Node, Pipeline, SourceDocument,
 };
-use fleischwolf_pdf::Pipeline;
 
 use crate::model::ParsedPage;
 
 /// One streamed page batch: its typed nodes plus the hyperlinks recovered from
-/// the same span (mirrors `fleischwolf-pdf`'s internal page output).
+/// the same span (mirrors `docling-pdf`'s internal page output).
 type PageBatch = (Vec<Node>, Vec<(String, String)>);
 
 /// The result of parsing one document: its pages (Markdown) and page count.
@@ -39,9 +39,9 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
         parse_pdf(name, &bytes)?
     } else {
         let source = SourceDocument::from_bytes(name, format, bytes);
-        // `strict` picks fleischwolf's cleaner Markdown over docling's legacy
-        // quirks (code-fence languages kept, no `\_` escaping, no inline-run
-        // spacing artifacts) — better chunk text for embedding.
+        // `strict` picks docling.rs's cleaner Markdown over Python docling's
+        // legacy quirks (code-fence languages kept, no `\_` escaping, no
+        // inline-run spacing artifacts) — better chunk text for embedding.
         let document = DocumentConverter::new()
             .strict(true)
             .convert(source)
@@ -60,7 +60,7 @@ pub fn parse(name: &str, mime: Option<&str>, bytes: Vec<u8>) -> Result<ParseOutp
 /// Convert a PDF to per-page Markdown through one streaming [`Pipeline`] pass:
 /// pdfium renders pages on one thread while layout/OCR/TableFormer inference
 /// fans out across the pipeline's worker pool (for documents with at least
-/// `FLEISCHWOLF_PDF_PARALLEL_MIN` pages), and `emit` receives each page's
+/// `DOCLING_RS_PDF_PARALLEL_MIN` pages), and `emit` receives each page's
 /// finalized nodes back in document order — one call per page, plus a final
 /// flush of any block held back across the last page boundary. A block that
 /// spans a page boundary (a paragraph or list continuing onto the next page)
@@ -117,7 +117,7 @@ pub fn is_pdf(name: &str, mime: Option<&str>) -> bool {
     detect_format(name, mime) == Some(InputFormat::Pdf)
 }
 
-/// Resolve the `fleischwolf` input format from MIME type (preferred) or, failing
+/// Resolve the `docling` input format from MIME type (preferred) or, failing
 /// that, the filename extension.
 pub fn detect_format(name: &str, mime: Option<&str>) -> Option<InputFormat> {
     if let Some(raw) = mime {
@@ -255,7 +255,7 @@ mod tests {
     /// Mirrors `parse_pdf`'s per-page rendering: a fresh strict streamer per
     /// page batch, hyperlinks from the same span inlined into the Markdown.
     /// Guards the streamer contract the PDF path depends on across
-    /// `fleischwolf` upgrades without needing pdfium or the ONNX models.
+    /// `docling` upgrades without needing pdfium or the ONNX models.
     #[test]
     fn streamer_renders_page_batches_like_the_pdf_path() {
         let page1 = vec![
@@ -279,8 +279,9 @@ mod tests {
 
         // A second page renders through its own streamer, independent of the
         // first (exactly how parse_pdf keeps pages separable).
-        let page2 = vec![fleischwolf::Node::Table(fleischwolf::Table {
+        let page2 = vec![docling::Node::Table(docling::Table {
             rows: vec![vec!["h1".into(), "h2".into()], vec!["a".into(), "b".into()]],
+            ..Default::default()
         })];
         let mut streamer = MarkdownStreamer::new(true, ImageMode::Placeholder, false);
         let mut text = streamer.push(&page2, &[]);

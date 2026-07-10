@@ -9,7 +9,7 @@
 
 use pdfium_render::prelude::*;
 
-/// Bind pdfium, honoring `PDFIUM_DYNAMIC_LIB_PATH` (matching fleischwolf-pdf), and
+/// Bind pdfium, honoring `PDFIUM_DYNAMIC_LIB_PATH` (matching docling-pdf), and
 /// falling back to the system library.
 fn pdfium() -> Result<Pdfium, String> {
     if let Ok(path) = std::env::var("PDFIUM_DYNAMIC_LIB_PATH") {

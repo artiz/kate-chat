@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 #
-# KateChat document processor (Rust / fleischwolf) with the full PDF ML pipeline.
+# KateChat document processor (Rust / docling.rs) with the full PDF ML pipeline.
 #
 # Build context is the repository root:
 #   docker build -f infrastructure/services/katechat-document-processor/Dockerfile ./
 #
 # Stages:
-#   models  — fetch pdfium + the ONNX models (fp32 + INT8) from fleischwolf's
+#   models  — fetch pdfium + the ONNX models (fp32 + INT8) from docling.rs's
 #             GitHub Release via download_dependencies.sh (no torch export)
 #   builder — compile the Rust binary (ort downloads ONNX Runtime at build time)
 #   runtime — slim image with the binary, native libs and models baked in
@@ -20,15 +20,15 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# fleischwolf hosts ready-made model exports + pdfium in its GitHub Release
+# docling.rs hosts ready-made model exports + pdfium in its GitHub Release
 # (tag models-v1): RT-DETR layout, TableFormer, PP-OCRv3 — plus the
 # INT8-quantized layout detector and TableFormer decoder (~2.4× faster layout
-# inference on CPU at validated-unchanged conformance; see fleischwolf's
-# PDF_PERFORMANCE.md). download_dependencies.sh (pinned to the fleischwolf
+# inference on CPU at validated-unchanged conformance; see docling.rs's
+# PDF_PERFORMANCE.md). download_dependencies.sh (pinned to the docling.rs
 # version in Cargo.toml) fetches everything into ./models and ./.pdfium.
 # --no-asr skips the Whisper audio models — this service doesn't ingest audio.
-WORKDIR /opt/fleischwolf
-RUN curl -fsSL https://raw.githubusercontent.com/artiz/fleischwolf/v0.15.1/scripts/download_dependencies.sh \
+WORKDIR /opt/docling
+RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.30.0/scripts/install/download_dependencies.sh \
         | sh -s -- --no-asr \
     # The runtime pins the pipeline to the INT8 models; they are optional for
     # the script, so fail the build loudly if the release stops hosting them.
@@ -85,8 +85,8 @@ RUN cp /tmp/artifacts/katechat-document-processor /usr/local/bin/ \
     && ldconfig
 
 # Models + pdfium.
-COPY --from=models /opt/fleischwolf/models /opt/models
-COPY --from=models /opt/fleischwolf/.pdfium/lib /opt/pdfium/lib
+COPY --from=models /opt/docling/models /opt/models
+COPY --from=models /opt/docling/.pdfium/lib /opt/pdfium/lib
 
 # Layout + TableFormer decoder point at the INT8 models (both precisions are
 # baked in, so a container can pin fp32 explicitly, e.g.

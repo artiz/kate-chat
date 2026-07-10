@@ -1,7 +1,7 @@
 //! KateChat document processor.
 //!
 //! An SQS-driven RAG ingestion service: it consumes `parse_document` /
-//! `split_document` commands, converts documents with `fleischwolf`, writes the
+//! `split_document` commands, converts documents with `docling`, writes the
 //! Markdown / chunked artifacts to S3, reports progress over Redis, and enqueues
 //! documents for indexing. The Rust replacement for the Python `document-processor`.
 

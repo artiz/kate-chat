@@ -3,14 +3,14 @@
 SQS-driven RAG ingestion service. It converts uploaded documents to Markdown +
 chunks for embedding, reporting progress over Redis. This is the Rust replacement
 for the previous Python service (archived under `../document-processor-python/`),
-built on [**fleischwolf**](https://github.com/artiz/fleischwolf) — a Rust port of
+built on [**docling.rs**](https://github.com/docling-project/docling.rs) (the `docling` crate, formerly `fleischwolf`) — a Rust port of
 [docling](https://github.com/docling-project/docling).
 
 ## Pipeline
 
 ```
 SQS documents-queue
-  ├─ parse_document → fleischwolf convert → S3 {key}.parsed.json (docling JSON, internal)
+  ├─ parse_document → docling convert → S3 {key}.parsed.json (docling JSON, internal)
   │                                        S3 {key}.parsed.md   (Markdown, for summaries)
   │                                      → enqueue split_document
   └─ split_document → clean + chunk      → S3 {key}.chunked.json
@@ -30,7 +30,7 @@ the contract the API and client already consume.
 
 ## Supported formats
 
-Everything fleischwolf supports: PDF, images, DOCX, PPTX, XLSX, HTML, Markdown,
+Everything docling.rs supports: PDF, images, DOCX, PPTX, XLSX, HTML, Markdown,
 CSV, AsciiDoc, EPUB, ODF, WebVTT, Email, JATS, USPTO, XBRL, LaTeX, docling-JSON.
 
 The PDF/image path is the full discriminative ML pipeline (pdfium text extraction
@@ -44,14 +44,14 @@ these in):
 | `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (the Docker image points it at the INT8 quantization, `layout_heron_int8.onnx`; the fp32 `layout_heron.onnx` is also baked in) |
 | `DOCLING_OCR_REC_ONNX` | PP-OCRv3 recognition model |
 | `DOCLING_OCR_DICT` | PP-OCR character dictionary |
-| `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; fleischwolf falls back to geometric table reconstruction when unset |
+| `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; docling.rs falls back to geometric table reconstruction when unset |
 
 The `Dockerfile` fetches ready-made model exports (fp32 + INT8) and pdfium from
-fleischwolf's GitHub Release via its `download_dependencies.sh`, and pins the
+docling.rs's GitHub Release via its `download_dependencies.sh`, and pins the
 layout model and TableFormer decoder to the INT8 quantizations (~2.4× faster
 layout inference on CPU at validated-unchanged conformance).
 `scripts/export_layout.py` and `scripts/export_tableformer.py` (vendored from
-fleischwolf) remain for building the models from source (`scripts/pdf_setup.sh`).
+docling.rs) remain for building the models from source (`scripts/pdf_setup.sh`).
 
 ## Chunking
 
@@ -145,19 +145,19 @@ docker compose build document-processor
 
 ## Notes / differences from the Python service
 
-- **Strict Markdown.** Conversion runs with fleischwolf's `strict` mode (a
+- **Strict Markdown.** Conversion runs with docling.rs's `strict` mode (a
   Rust-only switch): cleaner, more conformant Markdown than docling's legacy
   export — code-fence languages preserved, no `\_` escaping, no inline-run
   spacing artifacts — and hyperlinks recovered from PDFs are inlined as
   `[text](url)`. Better chunk text for embedding and citation.
 
-- **Page numbers.** fleischwolf (as of `0.14.0`) produces a flat document model
+- **Page numbers.** docling.rs produces a flat document model
   with no per-element page provenance. To still get real page numbers, PDFs are
-  converted through `fleischwolf-pdf`'s **streaming** pipeline
+  converted through `docling-pdf`'s **streaming** pipeline
   (`Pipeline::convert_streaming`), which emits each page's finalized nodes in
   document order — one batch per page — while inference fans out across the
-  pipeline's internal worker pool (PDFs with ≥ `FLEISCHWOLF_PDF_PARALLEL_MIN`
-  pages, default 6; pool size via `FLEISCHWOLF_PDF_WORKERS`). Each page's chunks
+  pipeline's internal worker pool (PDFs with ≥ `DOCLING_RS_PDF_PARALLEL_MIN`
+  pages, default 6; pool size via `DOCLING_RS_PDF_WORKERS`). Each page's chunks
   carry its real page number, and `pagesCount` is accurate. A block spanning a
   page boundary (a paragraph/list continuing onto the next page) is emitted whole
   with the page it finishes on. Non-PDF formats are a single logical page.

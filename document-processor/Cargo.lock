@@ -285,7 +285,7 @@ dependencies = [
  "lru",
  "percent-encoding",
  "regex-lite",
- "sha2",
+ "sha2 0.11.0",
  "tracing",
  "url",
 ]
@@ -359,7 +359,7 @@ dependencies = [
  "http 0.2.12",
  "http 1.4.2",
  "percent-encoding",
- "sha2",
+ "sha2 0.11.0",
  "time",
  "tracing",
 ]
@@ -392,7 +392,7 @@ dependencies = [
  "md-5 0.11.0",
  "pin-project-lite",
  "sha1",
- "sha2",
+ "sha2 0.11.0",
  "tracing",
 ]
 
@@ -942,6 +942,15 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "cpufeatures"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "cpufeatures"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b2a41393f66f16b0823bb79094d54ac5fbd34ab292ddafb9a0456ac9f87d201"
@@ -1149,6 +1158,68 @@ dependencies = [
 ]
 
 [[package]]
+name = "docling"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e5aef7b64d520f85be6b84b6b5b05bf97433687b26dba109c309d62fc7fc7d8"
+dependencies = [
+ "calamine",
+ "csv",
+ "docling-asr",
+ "docling-core",
+ "docling-pdf",
+ "image",
+ "mail-parser",
+ "pulldown-cmark",
+ "quick-xml 0.37.5",
+ "regex",
+ "roxmltree",
+ "scraper",
+ "serde_json",
+ "ureq",
+ "zip",
+]
+
+[[package]]
+name = "docling-asr"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6062aa373c7b5d2924bb1df1182b430bf8ab80e0ee1bf3b53d87da8bb1d83d27"
+dependencies = [
+ "docling-core",
+ "ort",
+ "serde_json",
+ "symphonia",
+]
+
+[[package]]
+name = "docling-core"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84e3fbdf2cb33a9d7c6cd6714517d4924a574cb4b4d50303b6bdb9ded484d34c"
+dependencies = [
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "docling-pdf"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afb825faa43201ab3c4b323beb5c6d12128be48187294170e5c4c573d873ad5c"
+dependencies = [
+ "docling-core",
+ "fast_image_resize",
+ "flate2",
+ "image",
+ "lopdf",
+ "ort",
+ "pdfium-render",
+ "regex",
+ "tar",
+]
+
+[[package]]
 name = "document-features"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1330,67 +1401,6 @@ checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
-]
-
-[[package]]
-name = "fleischwolf"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4a1d33db3ce5f57fafd8091b7763284d7619aef2b5a07762a314d6bd0b94999"
-dependencies = [
- "calamine",
- "csv",
- "fleischwolf-asr",
- "fleischwolf-core",
- "fleischwolf-pdf",
- "image",
- "mail-parser",
- "pulldown-cmark",
- "quick-xml 0.37.5",
- "regex",
- "roxmltree",
- "scraper",
- "serde_json",
- "ureq",
- "zip",
-]
-
-[[package]]
-name = "fleischwolf-asr"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d2568a3ca96f931dbae7ec7b123087fb32fc87c85767c765b7e8bcb611662d6"
-dependencies = [
- "fleischwolf-core",
- "ort",
- "serde_json",
- "symphonia",
-]
-
-[[package]]
-name = "fleischwolf-core"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dce213110744beefe5210df884118f89a7aab1f1abb0c8796bec286d3573687"
-dependencies = [
- "serde_json",
-]
-
-[[package]]
-name = "fleischwolf-pdf"
-version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bac147ac8902b51152f403f6957e2c78bb858d27a0ed5d2691f29d3a96d60192"
-dependencies = [
- "fast_image_resize",
- "flate2",
- "fleischwolf-core",
- "image",
- "lopdf",
- "ort",
- "pdfium-render",
- "regex",
- "tar",
 ]
 
 [[package]]
@@ -2103,9 +2113,8 @@ dependencies = [
  "aws-sdk-sqs",
  "axum",
  "chunk",
+ "docling",
  "dotenvy",
- "fleischwolf",
- "fleischwolf-pdf",
  "futures",
  "pdfium-render",
  "redis",
@@ -3305,8 +3314,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
 dependencies = [
  "cfg-if",
- "cpufeatures",
+ "cpufeatures 0.3.0",
  "digest 0.11.3",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.2.17",
+ "digest 0.10.7",
 ]
 
 [[package]]
@@ -3316,7 +3336,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "446ba717509524cb3f22f17ecc096f10f4822d76ab5c0b9822c5f9c284e825f4"
 dependencies = [
  "cfg-if",
- "cpufeatures",
+ "cpufeatures 0.3.0",
  "digest 0.11.3",
 ]
 
