@@ -168,3 +168,17 @@ docker compose build document-processor
   global page numbers and the parent is reassembled (`parsed.json`/`parsed.md`) once all
   parts finish. Smaller PDFs are parsed in a single message. Set `PDF_PAGE_BATCH_SIZE=0`
   to disable. A single message is still kept alive with a visibility-timeout heartbeat.
+
+- **Warm pipeline pool & tuning.** `docling-pdf` loads its ONNX models lazily
+  **per `Pipeline` instance** (a multi-page document spins up an internal pool of
+  up to 4 model copies, ~0.4 GB each), so the service keeps finished pipelines in
+  a process-wide pool and reuses them across documents — only the first parses
+  pay the model load; the pool grows to at most the number of concurrent parses
+  (the SQS worker count), and those warm pipelines hold their models in memory
+  for the lifetime of the process. Since page-batching already parallelizes
+  across SQS workers, the pipeline-internal fan-out mostly overlaps with it: on
+  memory-constrained instances (or when many workers parse concurrently) set
+  `DOCLING_RS_PDF_WORKERS=1` — SQS-level parallelism stays, each pipeline keeps a
+  single model copy, and with ~10-page parts the internal pool had little time to
+  pay off anyway. `DOCLING_RS_PDF_INTRA` (ONNX intra-op threads per worker,
+  default 2) is the other knob for per-machine tuning.
