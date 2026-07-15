@@ -54,6 +54,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
+* (hgh) Introduce skills support, PPTX generation with "pptxgenjs", PDF generation, XLSX generation (put generated files to context, show in Library)
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
 * (mid) Telegram System MCP (https://github.com/dryeab/mcp-telegram, https://www.mcpserverfinder.com/servers/qpd-v/mcp-communicator-telegram)
 * (hgh) Add browser notifications to notify user about conversation end, confirmation requests
@@ -61,7 +62,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * (min) Introduce video generation, reuse requests queue, notify user about completion
 * (mid) @katechat/ui chatbot demo with animated UI and custom actions buttons (plugins={[Actions]}) in chat to ask weather report tool or fill some form
 * (mid) Introduce prices calculation (scrap https://developers.openai.com/api/docs/pricing/, https://aistudio.yandex.ru/docs/en/ai-studio/pricing.html?tabs=pricing_prices-usd, https://aws.amazon.com/bedrock/pricing/)
-
 
 ### Agents (mid)
 * Introduce Agents, that will use existing requests queue to perform operations in background and publish progress and results in output window like in VS Code Copilot chat with collapsible details blocks, links to external sources and MCPs and so on
