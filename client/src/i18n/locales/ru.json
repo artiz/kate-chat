@@ -569,6 +569,7 @@
     "reloadingModels": "Перезагрузка моделей...",
     "loadingModels": "Загрузка моделей...",
     "errorLoadingModels": "Ошибка загрузки моделей",
+    "filesInput": "Файлы на вход (PDF)",
     "apiProvider": "API-провайдер",
     "provider": "Провайдер",
     "default": "По умолчанию",

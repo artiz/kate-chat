@@ -9,6 +9,7 @@ import {
   IconCloudCode,
   IconPlugConnected,
   IconVideo,
+  IconFileText,
   IconMicrophone,
   IconPhoto,
   IconBrain,
@@ -38,6 +39,12 @@ export const ModelInfo: React.FC<IProps> = ({ model, size = 24, showTools = fals
       {model.imageInput && (
         <Tooltip label={t("models.imagesInput")}>
           <IconPhotoAi size={size} />
+        </Tooltip>
+      )}
+
+      {features.has(ModelFeature.FILES_INPUT) && (
+        <Tooltip label={t("models.filesInput")}>
+          <IconFileText size={size} />
         </Tooltip>
       )}
 

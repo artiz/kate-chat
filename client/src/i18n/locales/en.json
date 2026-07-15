@@ -636,6 +636,7 @@
     "endpointUrlDescription": "Base URL for the API (without /chat/completions)",
     "enterTestPrompt": "Enter text to test the model",
     "errorLoadingModels": "Error Loading Models",
+    "filesInput": "File input (PDF)",
     "fillRequiredFields": "Please fill in all required fields",
     "imageInput": "Image Input",
     "imagesGeneration": "Images generation",

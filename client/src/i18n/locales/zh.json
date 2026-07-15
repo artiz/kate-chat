@@ -636,6 +636,7 @@
     "endpointUrlDescription": "API 的基本 URL（不含 /chat/completions）",
     "enterTestPrompt": "输入文本以测试模型",
     "errorLoadingModels": "加载模型出错",
+    "filesInput": "文件输入（PDF）",
     "fillRequiredFields": "请填写所有必填字段",
     "imageInput": "图片输入",
     "imagesGeneration": "图片生成",
