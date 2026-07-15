@@ -1,7 +1,10 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { Text, Textarea, Button, Group, ActionIcon, Stack, Box, Popover, Tooltip, Menu } from "@mantine/core";
+import { Text, Textarea, Button, Group, ActionIcon, Stack, Box, Popover, Tooltip, Menu, Modal } from "@mantine/core";
 import {
   IconCirclePlus,
+  IconDatabase,
+  IconFileText,
+  IconMessagePlus,
   IconMicrophone,
   IconPhoneOff,
   IconPlayerStopFilled,
@@ -9,7 +12,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { AudioInput, ImageInput } from "@/core";
+import { AudioInput, FileInput, ImageInput } from "@/core";
 import { FileDropzone } from "@/controls";
 import { useVoiceRecorder } from "@/hooks";
 import { useTranslation } from "react-i18next";
@@ -36,6 +39,13 @@ interface IProps {
   uploadFormats?: string[];
   maxUploadFileSize?: number;
   maxImagesCount?: number;
+  /**
+   * MIME types eligible to be attached inline as chat-context files (sent to
+   * the model with the message). Empty/undefined disables the option: all
+   * non-image files then go to RAG document upload.
+   */
+  contextFileFormats?: string[];
+  maxContextFilesCount?: number;
 
   /** REALTIME (voice-to-voice) model: Send is replaced with a Mic call button */
   realtimeMode?: boolean;
@@ -49,7 +59,7 @@ interface IProps {
   /** Reports recording state and a live microphone analyser for visualization */
   onRecordingChange?: (recording: boolean, analyser: AnalyserNode | null) => void;
 
-  onSendMessage: (message: string, images?: ImageInput[], audio?: AudioInput) => Promise<void>;
+  onSendMessage: (message: string, images?: ImageInput[], audio?: AudioInput, files?: FileInput[]) => Promise<void>;
   onStopRequest?: () => void;
   onDocumentsUpload?: (documents: File[]) => void;
 }
@@ -70,6 +80,8 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
       uploadFormats,
       maxUploadFileSize = 64 * 1024 * 1024,
       maxImagesCount = 0,
+      contextFileFormats = [],
+      maxContextFilesCount = 5,
       realtimeMode = false,
       voiceCallActive = false,
       voiceCallConnecting = false,
@@ -84,6 +96,9 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     ref
   ) => {
     const [selectedImages, setSelectedImages] = useState<ImageInput[]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<FileInput[]>([]);
+    // non-image files awaiting the RAG-vs-chat-context choice
+    const [pendingDocuments, setPendingDocuments] = useState<File[] | null>(null);
     const [recordedAudio, setRecordedAudio] = useState<AudioInput | null>(null);
     const [userMessage, setUserMessage] = useState("");
     const [prevMessageNdx, setPrevMessageNdx] = useState<number>(0);
@@ -135,14 +150,20 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
     }, [loadCompleted, previousMessages]);
 
     const handleSendMessage = async () => {
-      if (!userMessage?.trim() && !selectedImages.length && !recordedAudio) return;
+      if (!userMessage?.trim() && !selectedImages.length && !selectedFiles.length && !recordedAudio) return;
       setSending(true);
 
       try {
         setUserMessage("");
         setSelectedImages([]);
+        setSelectedFiles([]);
         setRecordedAudio(null);
-        await onSendMessage(userMessage, selectedImages, recordedAudio ?? undefined);
+        await onSendMessage(
+          userMessage,
+          selectedImages,
+          recordedAudio ?? undefined,
+          selectedFiles.length ? selectedFiles : undefined
+        );
       } catch (error) {
         notifications.show({
           title: "Error",
@@ -182,9 +203,73 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
       setUserMessage(event.currentTarget.value);
     }, []);
 
+    /** Attach files inline as chat context: non-eligible ones fall back to RAG upload */
+    const addContextFiles = useCallback(
+      (documents: File[]) => {
+        const eligible = documents.filter(f => contextFileFormats.includes(f.type));
+        const rest = documents.filter(f => !contextFileFormats.includes(f.type));
+
+        let filesToAdd = eligible;
+        if (filesToAdd.length + selectedFiles.length > maxContextFilesCount) {
+          notifications.show({
+            title: t("Warning"),
+            message: t("You can only add up to {{count}} files at a time", { count: maxContextFilesCount }),
+            color: "yellow",
+          });
+          filesToAdd = filesToAdd.slice(0, Math.max(0, maxContextFilesCount - selectedFiles.length));
+        }
+
+        Promise.all(
+          filesToAdd.map(
+            file =>
+              new Promise<FileInput>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                  if (e.target?.result) {
+                    resolve({
+                      fileName: file.name,
+                      mimeType: file.type,
+                      bytesBase64: e.target.result as string,
+                      size: file.size,
+                    });
+                  } else {
+                    reject(new Error(t("Failed to read file: {{fileName}}", { fileName: file.name })));
+                  }
+                };
+                reader.onerror = err =>
+                  reject(
+                    new Error(
+                      t("Failed to read file: {{fileName}}, error: {{error}}", { fileName: file.name, error: err })
+                    )
+                  );
+                reader.readAsDataURL(file);
+              })
+          )
+        )
+          .then(files => setSelectedFiles(prev => [...prev, ...files]))
+          .catch(error => {
+            notifications.show({
+              title: t("Error"),
+              message: error.message || t("Failed to read files"),
+              color: "red",
+            });
+          });
+
+        if (rest.length && onDocumentsUpload) {
+          onDocumentsUpload(rest);
+        }
+      },
+      [contextFileFormats, selectedFiles, maxContextFilesCount, onDocumentsUpload, t]
+    );
+
     const sendMessageNotAllowed = useMemo(() => {
-      return disabled || streaming || recording || (!userMessage?.trim() && !selectedImages.length && !recordedAudio);
-    }, [userMessage, selectedImages, recordedAudio, recording, streaming, disabled]);
+      return (
+        disabled ||
+        streaming ||
+        recording ||
+        (!userMessage?.trim() && !selectedImages.length && !selectedFiles.length && !recordedAudio)
+      );
+    }, [userMessage, selectedImages, selectedFiles, recordedAudio, recording, streaming, disabled]);
 
     const handleAddFiles = useCallback(
       (files: File[]) => {
@@ -269,17 +354,26 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
             });
         }
 
-        if (documents.length && onDocumentsUpload) {
-          onDocumentsUpload(documents);
-        } else if (documents.length) {
-          notifications.show({
-            title: t("Warning"),
-            message: t("Document upload is not available in this chat."),
-            color: "orange",
-          });
+        if (documents.length) {
+          const contextEligible = documents.some(f => contextFileFormats.includes(f.type));
+
+          if (contextEligible && onDocumentsUpload) {
+            // both routes possible — let the user pick RAG vs chat context
+            setPendingDocuments(documents);
+          } else if (contextEligible) {
+            addContextFiles(documents);
+          } else if (onDocumentsUpload) {
+            onDocumentsUpload(documents);
+          } else {
+            notifications.show({
+              title: t("Warning"),
+              message: t("Document upload is not available in this chat."),
+              color: "orange",
+            });
+          }
         }
       },
-      [selectedImages, onDocumentsUpload, maxImagesCount, maxUploadFileSize]
+      [selectedImages, onDocumentsUpload, maxImagesCount, maxUploadFileSize, contextFileFormats, addContextFiles]
     );
 
     const handleRemoveImage = (fileName: string): React.MouseEventHandler<HTMLButtonElement> => {
@@ -287,6 +381,25 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
         event.stopPropagation();
         setSelectedImages(prev => prev.filter(f => f.fileName !== fileName));
       };
+    };
+
+    const handleRemoveFile = (fileName: string): React.MouseEventHandler<HTMLButtonElement> => {
+      return event => {
+        event.stopPropagation();
+        setSelectedFiles(prev => prev.filter(f => f.fileName !== fileName));
+      };
+    };
+
+    const resolvePendingDocuments = (target: "rag" | "context") => {
+      const documents = pendingDocuments;
+      setPendingDocuments(null);
+      if (!documents?.length) return;
+
+      if (target === "rag") {
+        onDocumentsUpload?.(documents);
+      } else {
+        addContextFiles(documents);
+      }
     };
 
     return (
@@ -312,7 +425,12 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
             </Group>
           )}
 
-          <div className={[classes.chatInputContainer, selectedImages.length ? classes.columned : ""].join(" ")}>
+          <div
+            className={[
+              classes.chatInputContainer,
+              selectedImages.length || selectedFiles.length ? classes.columned : "",
+            ].join(" ")}
+          >
             {uploadAllowed && (
               <div className={classes.documentsInput}>
                 <Group visibleFrom="xs" gap="xs">
@@ -334,6 +452,22 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
                           <IconX size={16} />
                         </ActionIcon>
                       </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedFiles?.length > 0 && (
+                  <div className={classes.filesList} data-testid="context-files-list">
+                    {selectedFiles.map(file => (
+                      <Group key={file.fileName} gap={4} className={classes.previewFile}>
+                        <IconFileText size={16} />
+                        <Text size="xs" truncate maw={160} title={file.fileName}>
+                          {file.fileName}
+                        </Text>
+                        <ActionIcon color="red.9" size="xs" variant="subtle" onClick={handleRemoveFile(file.fileName)}>
+                          <IconX size={14} />
+                        </ActionIcon>
+                      </Group>
                     ))}
                   </div>
                 )}
@@ -452,6 +586,47 @@ export const ChatInput = forwardRef<ChatInputRef, IProps>(
             )}
           </div>
         </div>
+
+        <Modal
+          opened={!!pendingDocuments}
+          onClose={() => setPendingDocuments(null)}
+          title={t("How should these files be used?")}
+          centered
+          data-testid="upload-type-selector"
+        >
+          <Stack gap="sm">
+            <Text size="sm" c="dimmed">
+              {t(
+                "RAG documents are indexed for semantic search across chats; chat context files are sent to the model together with your message."
+              )}
+            </Text>
+            {pendingDocuments?.map(file => (
+              <Group key={file.name} gap={4}>
+                <IconFileText size={14} />
+                <Text size="xs" truncate title={file.name}>
+                  {file.name}
+                </Text>
+              </Group>
+            ))}
+            <Group grow mt="sm">
+              <Button
+                variant="light"
+                leftSection={<IconDatabase size={18} />}
+                onClick={() => resolvePendingDocuments("rag")}
+                data-testid="upload-type-rag"
+              >
+                {t("RAG document")}
+              </Button>
+              <Button
+                leftSection={<IconMessagePlus size={18} />}
+                onClick={() => resolvePendingDocuments("context")}
+                data-testid="upload-type-context"
+              >
+                {t("Chat context")}
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
       </div>
     );
   }

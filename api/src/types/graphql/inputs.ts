@@ -4,6 +4,7 @@ import { IsOptional, Validate } from "class-validator";
 import { IsPublicUrl } from "@/utils/validators";
 import { ApiProvider, EntityAccessType, MCPAuthType, ModelType, ToolType } from "../api";
 import { ChatSettings } from "@/entities/Chat";
+import { ChatFileType } from "@/entities/ChatFile";
 
 @InputType()
 export class UpdateUserInput {
@@ -207,6 +208,22 @@ export class AudioInput {
 }
 
 @InputType()
+export class FileInput {
+  @Field()
+  fileName: string;
+
+  @Field()
+  mimeType: string;
+
+  /** base64 data URL (data:<mime>;base64,...) */
+  @Field()
+  bytesBase64: string;
+
+  @Field({ nullable: true })
+  size?: number;
+}
+
+@InputType()
 export class MCPAuthTokenInput {
   @Field()
   serverId: string;
@@ -234,6 +251,10 @@ export class CreateMessageInput {
 
   @Field(() => AudioInput, { nullable: true })
   audio?: AudioInput;
+
+  /** Inline chat-context files (PDF/text) sent to the model with the message */
+  @Field(() => [FileInput], { nullable: true })
+  files?: FileInput[];
 
   @Field(() => [String], { nullable: true })
   documentIds?: string[];
@@ -382,6 +403,19 @@ export class GetImagesInput {
 
   @Field({ nullable: true, defaultValue: 20 })
   limit?: number;
+}
+
+@InputType()
+export class GetChatFilesInput {
+  @Field({ nullable: true, defaultValue: 0 })
+  offset?: number;
+
+  @Field({ nullable: true, defaultValue: 20 })
+  limit?: number;
+
+  /** Filter by file types; defaults to inline chat-context documents */
+  @Field(() => [ChatFileType], { nullable: true })
+  types?: ChatFileType[];
 }
 
 @InputType()

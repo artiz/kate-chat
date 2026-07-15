@@ -86,6 +86,9 @@ export enum ModelFeature {
   AUDIO_INPUT = "AUDIO_INPUT",
   // model can respond with generated speech audio alongside text
   AUDIO_OUTPUT = "AUDIO_OUTPUT",
+  // model accepts document files (PDF) as inline chat input
+  // (OpenAI input_file/file blocks, Bedrock Converse document blocks)
+  FILES_INPUT = "FILES_INPUT",
 }
 
 export enum MCPTransportType {

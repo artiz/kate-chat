@@ -23,6 +23,7 @@ import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
 import { sanitizeSurrogates } from "@/utils/format";
+import { isTextualMime } from "@/utils/file";
 import { NATIVE_WEB_SEARCH_TOOL_NAME } from "../tools/web_search";
 
 const logger = createLogger(__filename);
@@ -307,6 +308,32 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             image_url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,
             detail: "auto" as const,
           });
+        } else if (part.contentType === "file") {
+          if (role === "assistant") {
+            role = "user";
+          }
+
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load file content: ${part.fileName}`);
+            continue;
+          }
+
+          const documentName = part.uploadFileName || part.fileName.split("/").pop() || "document";
+          if (isTextualMime(part.mimeType)) {
+            // textual files are inlined as plain text — works with any model
+            const fileContent = await this.fileLoader.getFileContent(part.fileName);
+            content.push({
+              type: "input_text" as const,
+              text: `File "${documentName}":\n\n${sanitizeSurrogates(fileContent.toString("utf-8"))}`,
+            });
+          } else {
+            const fileContent = await this.fileLoader.getFileContentBase64(part.fileName);
+            content.push({
+              type: "input_file" as const,
+              filename: documentName,
+              file_data: `data:${part.mimeType || "application/pdf"};base64,${fileContent}`,
+            });
+          }
         } else {
           logger.warn(part, `Unsupported message content type`);
         }

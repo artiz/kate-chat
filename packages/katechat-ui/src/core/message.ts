@@ -73,6 +73,15 @@ export interface AudioInput {
   durationSec?: number;
 }
 
+/** Inline chat-context file (PDF/text) sent to the model with the message */
+export interface FileInput {
+  fileName: string;
+  mimeType: string;
+  /** base64 data URL (data:<mime>;base64,...) */
+  bytesBase64: string;
+  size?: number;
+}
+
 /** Context passed to a CodePlugin when the user clicks Execute */
 export interface CodePluginContext {
   messageId: string;

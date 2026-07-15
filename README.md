@@ -32,6 +32,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
 - Internal MCP servers (Gmail for the moment)
 - Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
+- Inline chat-context files with an upload type selector (RAG vs chat context): PDF and text files are stored on S3, sent to the model with the message (OpenAI `input_file`/`file` blocks, Bedrock Converse document blocks) and listed on the Library page under Chat Data
 - Voice-to-voice conversations with realtime models (OpenAI GPT Realtime over WebRTC, Yandex Speech Realtime over a WebSocket proxy): live equalizer above the chat controls, transcripts saved to chat history, assistant voice selection per chat
 - Voice messages for audio-input models (`gpt-4o-audio`, `gpt-audio`): record from the microphone, stream the text transcript live and play the spoken response inline
 - Client-side Python code [execution](#python-code-run-in-browser) with [Pyodide](https://pyodide.org/) 
@@ -53,7 +54,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
-* (hgh) Introduce upload files type selector (RAG/chat context), upload chat context files like images to S3 and use them inline and show them in new Library page, Chat Data. Use "input_file" block in OpenAI input and introduce new interface ModelMessageContentFile.
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
 * (mid) Telegram System MCP (https://github.com/dryeab/mcp-telegram, https://www.mcpserverfinder.com/servers/qpd-v/mcp-communicator-telegram)
 * (hgh) Add browser notifications to notify user about conversation end, confirmation requests

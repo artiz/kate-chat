@@ -35,6 +35,7 @@ export enum ModelFeature {
   CACHE_RETENTION = "CACHE_RETENTION",
   AUDIO_INPUT = "AUDIO_INPUT",
   AUDIO_OUTPUT = "AUDIO_OUTPUT",
+  FILES_INPUT = "FILES_INPUT",
 }
 
 export enum EntityAccessType {
@@ -119,6 +120,41 @@ export interface GetAllImagesResponse {
 export interface GetImagesInput {
   offset?: number;
   limit?: number;
+}
+
+export interface LibraryChatFile {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  uploadFile?: string;
+  type: string;
+  role: MessageRole;
+  mime?: string;
+  createdAt: string;
+  message?: {
+    id: string;
+    content: string;
+    modelId?: string;
+    modelName?: string;
+  };
+  chat: {
+    id: string;
+    title: string;
+  };
+}
+
+export interface GetChatFilesResponse {
+  getChatFiles: {
+    files: LibraryChatFile[];
+    nextPage?: number;
+    error?: string;
+  };
+}
+
+export interface GetChatFilesInput {
+  offset?: number;
+  limit?: number;
+  types?: string[];
 }
 
 export interface GetDocumentsInput {

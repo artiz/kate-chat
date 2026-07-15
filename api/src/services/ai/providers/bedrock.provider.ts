@@ -6,6 +6,7 @@ import {
   ConverseCommandInput,
   ConverseCommandOutput,
   ConverseStreamCommand,
+  DocumentFormat,
   ImageFormat,
   VideoFormat,
   Message as ConverseMessage,
@@ -71,9 +72,11 @@ import {
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
   AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION,
   AWS_BEDROCK_MODELS_ADAPTIVE_THINKING_ONLY,
+  AWS_BEDROCK_MODELS_SUPPORT_DOCUMENTS,
 } from "@/config/ai/bedrock";
 import { notEmpty, ok } from "@/utils/assert";
 import { sanitizeSurrogates, simpleHash } from "@/utils/format";
+import { converseDocumentFormat, sanitizeDocumentName } from "@/utils/file";
 
 const TRIM_CONTEXT_TRIES_LIMIT = 20;
 const logger = createLogger(__filename);
@@ -722,6 +725,12 @@ export class BedrockApiProvider extends BaseApiProvider {
       if (modelsSupportsTemperature[model.modelId] !== false) {
         features.push(ModelFeature.TEMPERATURE);
       }
+      if (
+        type === ModelType.CHAT &&
+        AWS_BEDROCK_MODELS_SUPPORT_DOCUMENTS.some(supportedModel => modelId.includes(supportedModel))
+      ) {
+        features.push(ModelFeature.FILES_INPUT);
+      }
 
       models[modelId] = {
         apiProvider: ApiProvider.AWS_BEDROCK,
@@ -1148,6 +1157,26 @@ export class BedrockApiProvider extends BaseApiProvider {
             }
           } catch (error: unknown) {
             logger.error(error, `Error loading media content for ${part.fileName}`);
+          }
+        } else if (part.contentType === "file") {
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load file content: ${part.fileName}`);
+            continue;
+          }
+
+          isAssistant = false; // files are user-provided context
+
+          try {
+            const bytes = await this.fileLoader.getFileContent(part.fileName);
+            content.push({
+              document: {
+                format: converseDocumentFormat(part.mimeType) as DocumentFormat,
+                name: sanitizeDocumentName(part.uploadFileName || part.fileName.split("/").pop()),
+                source: { bytes },
+              },
+            });
+          } catch (error: unknown) {
+            logger.error(error, `Error loading file content for ${part.fileName}`);
           }
         } else if (part.contentType === "text") {
           let text = sanitizeSurrogates(part.content);

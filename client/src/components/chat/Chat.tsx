@@ -24,6 +24,7 @@ import {
   MessageRole,
   ImageInput,
   AudioInput,
+  FileInput,
   ChatInput,
   ChatInputRef,
   DropFilesOverlay,
@@ -46,7 +47,14 @@ import {
 } from "@/types/graphql";
 import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens, ContextMessages } from "./plugins";
 import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/services/graphql.queries";
-import { MAX_UPLOAD_FILE_SIZE, MAX_IMAGES, SUPPORTED_UPLOAD_FORMATS } from "@/lib/config";
+import {
+  MAX_UPLOAD_FILE_SIZE,
+  MAX_IMAGES,
+  MAX_CONTEXT_FILES,
+  SUPPORTED_UPLOAD_FORMATS,
+  CONTEXT_TEXT_UPLOAD_FORMATS,
+  CONTEXT_PDF_UPLOAD_FORMAT,
+} from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 import { WebSearchCall } from "./message-details-plugins/WebSearch";
@@ -240,8 +248,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
     },
   });
 
-  const handleSendMessage = async (message: string, images: ImageInput[] = [], audio?: AudioInput) => {
-    if (!message?.trim() && !images.length && !audio) return;
+  const handleSendMessage = async (
+    message: string,
+    images: ImageInput[] = [],
+    audio?: AudioInput,
+    files?: FileInput[]
+  ) => {
+    if (!message?.trim() && !images.length && !audio && !files?.length) return;
     assert.ok(chatId, "Chat is required to send a message");
 
     try {
@@ -253,6 +266,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
             content: message?.trim() || "",
             images,
             audio,
+            files,
             documentIds: selectedRagDocIds,
             mcpTokens,
           },
@@ -428,6 +442,16 @@ export const ChatComponent = ({ chatId }: IProps) => {
     if (!appConfig || !loadCompleted || isExternalChat) return false;
     return appConfig?.ragEnabled || selectedModel?.imageInput;
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
+
+  const contextFileFormats = useMemo(() => {
+    // textual files are inlined as plain text (any model); PDF needs native
+    // file input support in the model/provider
+    const formats = [...CONTEXT_TEXT_UPLOAD_FORMATS];
+    if (selectedModel?.features?.includes(ModelFeature.FILES_INPUT)) {
+      formats.push(CONTEXT_PDF_UPLOAD_FORMAT);
+    }
+    return formats;
+  }, [selectedModel?.features]);
 
   const maxImagesAllowed = useMemo(() => {
     if (!selectedModel?.imageInput) return 0;
@@ -628,7 +652,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
         uploadFormats={SUPPORTED_UPLOAD_FORMATS}
         maxImagesCount={maxImagesAllowed}
         maxUploadFileSize={MAX_UPLOAD_FILE_SIZE}
-        onDocumentsUpload={handleAddDocuments}
+        contextFileFormats={contextFileFormats}
+        maxContextFilesCount={MAX_CONTEXT_FILES}
+        onDocumentsUpload={appConfig?.ragEnabled ? handleAddDocuments : undefined}
         onSendMessage={handleSendMessage}
         onStopRequest={requestStoppable ? handleStopRequest : undefined}
       />

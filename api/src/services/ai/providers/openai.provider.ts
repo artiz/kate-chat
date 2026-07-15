@@ -358,6 +358,12 @@ export class OpenAIApiProvider extends BaseApiProvider {
           features.push(ModelFeature.AUDIO_INPUT, ModelFeature.AUDIO_OUTPUT);
         }
 
+        // PDF input: input_file blocks on the Responses API, file blocks on
+        // vision-capable Completions models
+        if (type === ModelType.CHAT && (apiType === "responses" || imageInput)) {
+          features.push(ModelFeature.FILES_INPUT);
+        }
+
         features.push(ModelFeature.TEMPERATURE);
 
         const maxInputTokens =

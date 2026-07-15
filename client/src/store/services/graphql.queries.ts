@@ -684,6 +684,35 @@ export const GET_ALL_IMAGES = gql`
   }
 `;
 
+export const GET_CHAT_FILES = gql`
+  query GetChatFiles($input: GetChatFilesInput!) {
+    getChatFiles(input: $input) {
+      files {
+        id
+        fileName
+        fileUrl
+        uploadFile
+        type
+        mime
+        role
+        createdAt
+        message {
+          id
+          content
+          modelId
+          modelName
+        }
+        chat {
+          id
+          title
+        }
+      }
+      nextPage
+      error
+    }
+  }
+`;
+
 export const RELOAD_CHAT_FILE_METADATA = gql`
   mutation ReloadChatFileMetadata($id: String!) {
     reloadChatFileMetadata(id: $id) {
