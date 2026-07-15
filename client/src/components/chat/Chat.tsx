@@ -440,7 +440,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const uploadAllowed = useMemo(() => {
     if (!appConfig || !loadCompleted || isExternalChat) return false;
-    return appConfig?.ragEnabled || selectedModel?.imageInput;
+    return (
+      appConfig?.ragEnabled ||
+      selectedModel?.imageInput ||
+      selectedModel?.features?.includes(ModelFeature.FILES_INPUT) ||
+      // textual chat-context files are inlined as plain text and work with any chat model
+      selectedModel?.type === ModelType.CHAT
+    );
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
 
   const contextFileFormats = useMemo(() => {
