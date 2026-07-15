@@ -6,6 +6,7 @@ import {
   CreateMessageInput,
   GetMessagesInput,
   GetImagesInput,
+  GetChatFilesInput,
   StopMessageGenerationInput,
   MessageContext,
 } from "@/types/graphql/inputs";
@@ -18,6 +19,7 @@ import {
   EditMessageResponse,
   GqlImagesList,
   GqlImage,
+  GqlChatFilesList,
   CallOtherResponse,
   DeleteMessageResponse,
   StopMessageGenerationResponse,
@@ -169,6 +171,47 @@ export class MessageResolver extends BaseResolver {
 
     return {
       images,
+      nextPage,
+    };
+  }
+
+  /** Chat files (inline chat-context documents by default) for the Library "Chat Data" view */
+  @Query(() => GqlChatFilesList)
+  async getChatFiles(
+    @Arg("input") input: GetChatFilesInput,
+    @Ctx() context: GraphQLContext
+  ): Promise<GqlChatFilesList> {
+    const token = await this.validateContextToken(context);
+    const { offset: skip = 0, limit: take = 20 } = input;
+    const types = input.types?.length ? input.types : [ChatFileType.INLINE_DOCUMENT];
+
+    const files = await this.chatFileRepository
+      .createQueryBuilder("chatFile")
+      .innerJoinAndSelect("chatFile.chat", "chat")
+      .leftJoinAndSelect("chatFile.message", "message")
+      .where("chat.userId = :userId", { userId: token.userId })
+      .andWhere("chatFile.type IN (:...types)", { types })
+      .orderBy("chatFile.createdAt", "DESC")
+      .skip(skip)
+      .take(take + 1)
+      .getMany();
+
+    const nextPage = files.length > take ? skip + take : undefined;
+    const items = nextPage ? files.slice(0, -1) : files;
+
+    return {
+      files: items.map(file => ({
+        id: file.id,
+        fileName: file.fileName || "",
+        fileUrl: `/files/${file.fileName}`,
+        mime: file.mime,
+        uploadFile: file.uploadFile,
+        type: file.type,
+        role: file.message?.role || MessageRole.USER,
+        createdAt: file.createdAt,
+        message: file.message,
+        chat: file.chat,
+      })),
       nextPage,
     };
   }

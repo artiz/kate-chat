@@ -6,6 +6,7 @@ import { ChatFile, ChatFileType } from "../entities/ChatFile";
 import { AIService } from "./ai/ai.service";
 import { getImageFeatures, saveImageFromBase64 as saveImageFromBase64Util } from "@/utils/image";
 import { saveAudioFromBase64 } from "@/utils/audio";
+import { saveFileFromBase64 } from "@/utils/file";
 import { Chat, DocumentChunk, MCPServer, Model, User } from "@/entities";
 import { AddChatMessageInput, CreateMessageInput, ImageInput, MessageContext } from "@/types/graphql/inputs";
 import {
@@ -15,6 +16,7 @@ import {
   MessageMetadata,
   ModelMessageContent,
   ModelMessageContentAudio,
+  ModelMessageContentFile,
   ModelMessageContentImage,
   ModelResponse,
 } from "@/types/ai.types";
@@ -760,7 +762,7 @@ export class MessagesService {
     model: Model,
     metadata?: MessageMetadata
   ): Promise<Message> {
-    const { images, audio } = input;
+    const { images, audio, files } = input;
     let { content = "" } = input;
 
     let userMessage = await this.messageRepository
@@ -822,6 +824,43 @@ export class MessagesService {
 
         // For display purposes, append image markdown to the content
         content += ` ![Uploaded Image](${S3Service.getFileUrl(fileName)})`;
+      }
+    }
+
+    // Inline chat-context files (PDF/text) attached to the message
+    if (files?.length) {
+      const s3Service = new S3Service(user.toToken());
+      if (!jsonContent) {
+        jsonContent = content ? [{ content, contentType: "text" }] : [];
+      }
+
+      for (let index = 0; index < files.length; ++index) {
+        const file = files[index];
+        const { fileName, contentType } = await saveFileFromBase64(s3Service, file.bytesBase64, {
+          chatId: chat.id,
+          messageId: userMessage.id,
+          id: `${Date.now()}-file-${index}`,
+        });
+
+        await this.chatFileRepository.save({
+          chatId: chat.id,
+          messageId: userMessage.id,
+          type: ChatFileType.INLINE_DOCUMENT,
+          uploadFile: file.fileName,
+          mime: contentType,
+          fileName,
+        });
+
+        jsonContent.push({
+          contentType: "file",
+          fileName,
+          mimeType: contentType,
+          uploadFileName: file.fileName,
+          size: file.size,
+        } satisfies ModelMessageContentFile);
+
+        // For display purposes, append a file link to the content
+        content += `${content ? "\n\n" : ""}[${file.fileName}](${S3Service.getFileUrl(fileName)})`;
       }
     }
 

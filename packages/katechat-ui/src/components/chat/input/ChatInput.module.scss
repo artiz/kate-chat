@@ -156,6 +156,20 @@
     }
   }
 
+  .filesList {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    .previewFile {
+      padding: 0.25rem 0.5rem;
+      border: 1px solid var(--app-shell-border-color);
+      border-radius: var(--mantine-radius-md);
+      box-shadow: 0.125rem 0.25rem 0.25rem rgba(0, 0, 0, 0.1);
+    }
+  }
+
   .chatInputGroup {
     flex-grow: 1;
     display: flex;

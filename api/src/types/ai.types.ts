@@ -101,11 +101,22 @@ export interface ModelMessageContentAudio {
   lengthSec?: number;
 }
 
+export interface ModelMessageContentFile {
+  contentType: "file";
+  /** S3 key of the stored file */
+  fileName: string;
+  mimeType: string;
+  /** Original upload file name, passed to the model as the document name */
+  uploadFileName?: string;
+  size?: number;
+}
+
 export type ModelMessageContent =
   | ModelMessageContentText
   | ModelMessageContentImage
   | ModelMessageContentVideo
-  | ModelMessageContentAudio;
+  | ModelMessageContentAudio
+  | ModelMessageContentFile;
 
 export interface ModelMessage {
   id?: string | undefined;

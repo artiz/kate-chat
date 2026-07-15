@@ -19,6 +19,9 @@ export const AWS_BEDROCK_MODELS_ADAPTIVE_THINKING_ONLY = [
   "anthropic.claude-fable-5",
 ];
 
+// Models accepting Converse document blocks (inline chat-context files)
+export const AWS_BEDROCK_MODELS_SUPPORT_DOCUMENTS = ["anthropic.claude", "amazon.nova"];
+
 export const AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION = [
   "anthropic.claude-opus-4",
   "anthropic.claude-sonnet-4",

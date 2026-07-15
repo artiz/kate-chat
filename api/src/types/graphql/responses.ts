@@ -2,6 +2,7 @@ import { ObjectType, Field, ID } from "type-graphql";
 import { User, Chat, ChatFolder, Message, Model, Document, MCPServer } from "@/entities";
 import { ApiProvider, CredentialSourceType, CredentialType, DocumentStatus, MessageRole, MessageType } from "../api";
 import { DocumentMetadata } from "@/entities/Document";
+import { ChatFileType } from "@/entities/ChatFile";
 
 @ObjectType()
 export class UserResponse {
@@ -343,6 +344,52 @@ export class GqlImagesList {
 
   @Field(() => [GqlImage], { nullable: true })
   images?: GqlImage[];
+
+  @Field({ nullable: true })
+  nextPage?: number;
+}
+
+@ObjectType()
+export class GqlChatFile {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  fileName: string;
+
+  @Field()
+  fileUrl: string;
+
+  @Field({ nullable: true })
+  mime?: string;
+
+  /** Original uploaded file name */
+  @Field({ nullable: true })
+  uploadFile?: string;
+
+  @Field(() => ChatFileType)
+  type: ChatFileType;
+
+  @Field()
+  createdAt: Date;
+
+  @Field()
+  role: MessageRole;
+
+  @Field(() => Message, { nullable: true })
+  message?: Message;
+
+  @Field(() => Chat)
+  chat: Chat;
+}
+
+@ObjectType()
+export class GqlChatFilesList {
+  @Field({ nullable: true })
+  error?: string;
+
+  @Field(() => [GqlChatFile], { nullable: true })
+  files?: GqlChatFile[];
 
   @Field({ nullable: true })
   nextPage?: number;

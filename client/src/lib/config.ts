@@ -24,6 +24,14 @@ export const SUPPORTED_UPLOAD_FORMATS = [
   "text/csv",
   "text/html",
   "text/plain",
+  "text/markdown",
+  "application/json",
 ];
+
+// Textual formats are inlined into the prompt as plain text, so they work with
+// any model; PDF needs native file input support (ModelFeature.FILES_INPUT)
+export const CONTEXT_TEXT_UPLOAD_FORMATS = ["text/plain", "text/markdown", "text/csv", "text/html", "application/json"];
+export const CONTEXT_PDF_UPLOAD_FORMAT = "application/pdf";
+export const MAX_CONTEXT_FILES = 5; // Maximum inline chat-context files in a single message
 
 export const MOBILE_BREAKPOINT = `(max-width: ${em(750)})`;

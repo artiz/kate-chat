@@ -22,6 +22,7 @@ import {
 } from "./openai.tools";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT } from "./openai.protocol";
 import { pcm16ToWavDataUrl } from "@/utils/audio";
+import { isTextualMime } from "@/utils/file";
 import {
   OPENAI_MODELS_AUDIO_INPUT,
   OPENAI_MODELS_SUPPORT_IMAGES_INPUT,
@@ -142,6 +143,41 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
             type: "image_url" as const,
             image_url: {
               url: `data:${part.mimeType || "image/png"};base64,${fileContent}`,
+            },
+          });
+
+          continue;
+        }
+
+        if (part.contentType === "file") {
+          if (!this.fileLoader) {
+            logger.warn(`File loader is not connected, cannot load file content: ${part.fileName}`);
+            continue;
+          }
+
+          const documentName = part.uploadFileName || part.fileName.split("/").pop() || "document";
+          if (isTextualMime(part.mimeType)) {
+            // textual files are inlined as plain text — works with any model
+            const fileContent = await this.fileLoader.getFileContent(part.fileName);
+            parts.push({
+              type: "text" as const,
+              text: `File "${documentName}":\n\n${fileContent.toString("utf-8")}`,
+            });
+            continue;
+          }
+
+          // PDF understanding rides on vision support in the Completions API
+          if (!imageInput) {
+            logger.warn(`Model ${modelId} does not support file input, skipping: ${part.fileName}`);
+            continue;
+          }
+
+          const fileContent = await this.fileLoader.getFileContentBase64(part.fileName);
+          parts.push({
+            type: "file" as const,
+            file: {
+              filename: documentName,
+              file_data: `data:${part.mimeType || "application/pdf"};base64,${fileContent}`,
             },
           });
 
