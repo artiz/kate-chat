@@ -5,9 +5,13 @@
 # Build context is the repository root:
 #   docker build -f infrastructure/services/katechat-document-processor/Dockerfile ./
 #
-# Stages:
-#   models  — fetch pdfium + the ONNX models (fp32 + INT8) from docling.rs's
-#             GitHub Release via download_dependencies.sh (no torch export)
+# Stages mirror docling.rs's examples/Dockerfile (models/builder/runtime), but
+# the models stage fetches the prebuilt optimized exports from the docling.rs
+# models release instead of re-exporting them with torch:
+#   models  — pdfium + ONNX models: RT-DETR layout (fp32 + INT8), TableFormer
+#             with the hoisted-KV decoder (decoder_kv.onnx — the fastest
+#             measured variant, byte-exact vs docling), PP-OCRv3, picture
+#             classifier
 #   builder — compile the Rust binary (ort downloads ONNX Runtime at build time)
 #   runtime — slim image with the binary, native libs and models baked in
 
@@ -17,23 +21,34 @@
 FROM debian:trixie-slim AS models
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar \
     && rm -rf /var/lib/apt/lists/*
 
 # docling.rs hosts ready-made model exports + pdfium in its GitHub Release
-# (tag models-v1): RT-DETR layout, TableFormer, PP-OCRv3 — plus the
-# INT8-quantized layout detector and TableFormer decoder (~2.4× faster layout
-# inference on CPU at validated-unchanged conformance; see docling.rs's
-# PDF_PERFORMANCE.md). download_dependencies.sh (pinned to the docling.rs
-# version in Cargo.toml) fetches everything into ./models and ./.pdfium.
-# --no-asr skips the Whisper audio models — this service doesn't ingest audio.
+# (models-v1); download_dependencies.sh (pinned to the docling.rs version in
+# Cargo.toml) fetches everything into ./models and ./.pdfium.
+# --no-asr skips the Whisper audio models (this service ingests no audio) and
+# --no-chunk the hybrid-chunker tokenizer (chunking runs on our own tokenizer).
 WORKDIR /opt/docling
-RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.30.0/scripts/install/download_dependencies.sh \
-        | sh -s -- --no-asr \
-    # The runtime pins the pipeline to the INT8 models; they are optional for
-    # the script, so fail the build loudly if the release stops hosting them.
+RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.40.3/scripts/install/download_dependencies.sh \
+        | sh -s -- --no-asr --no-chunk \
+    # The runtime pins the INT8 layout and the hoisted-KV TableFormer decoder;
+    # both are optional for the script, so fail the build loudly if the
+    # release stops hosting them.
     && test -f models/layout_heron_int8.onnx \
-    && test -f models/tableformer/decoder_int8.onnx
+    && test -f models/tableformer/decoder_kv.onnx
+
+# INT8=1 (default): the runtime env points DOCLING_LAYOUT_ONNX at this symlink —
+# INT8-quantized layout (~2.4x faster inference at validated-unchanged
+# conformance), fp32 with --build-arg INT8=0. Both precisions ship in the image
+# either way, so a container can pin one explicitly, e.g.
+# -e DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx
+ARG INT8=1
+RUN if [ "$INT8" = "1" ]; then \
+        ln -s layout_heron_int8.onnx models/layout_heron_active.onnx; \
+    else \
+        ln -s layout_heron.onnx models/layout_heron_active.onnx; \
+    fi
 
 # ----------------------------------------------------------------------------
 # Stage 2: Rust build
@@ -49,16 +64,26 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# TARGET_CPU: empty (default) = portable x86-64 image; "x86-64-v3" = require
+# AVX2 (most cloud fleets); "native" = tune for the build host. Affects the
+# Rust-side image-processing hot paths; ONNX Runtime ships its own runtime CPU
+# dispatch either way.
+ARG TARGET_CPU=""
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+
 # Dependency layer: build deps against a stub so they cache across source changes.
 COPY document-processor/Cargo.toml document-processor/Cargo.lock ./
 RUN mkdir src \
     && echo 'fn main() {}' > src/main.rs \
+    && if [ -n "$TARGET_CPU" ]; then export RUSTFLAGS="-C target-cpu=$TARGET_CPU"; fi \
     && cargo build --release --locked \
     && rm -rf src
 
 # Real sources.
 COPY document-processor/src ./src
-RUN touch src/main.rs && cargo build --release --locked
+RUN touch src/main.rs \
+    && if [ -n "$TARGET_CPU" ]; then export RUSTFLAGS="-C target-cpu=$TARGET_CPU"; fi \
+    && cargo build --release --locked
 
 # Collect the binary (must exist) plus the ONNX Runtime shared lib (only present
 # when ort links dynamically — best-effort).
@@ -87,17 +112,23 @@ RUN cp /tmp/artifacts/katechat-document-processor /usr/local/bin/ \
 # Models + pdfium.
 COPY --from=models /opt/docling/models /opt/models
 COPY --from=models /opt/docling/.pdfium/lib /opt/pdfium/lib
+# The picture classifier has no env override — it resolves models/… relative to
+# the binary's dir or its parent; the binary lives in /usr/local/bin, so this
+# symlink makes /opt/models visible from any working directory.
+RUN ln -s /opt/models /usr/local/models
 
-# Layout + TableFormer decoder point at the INT8 models (both precisions are
-# baked in, so a container can pin fp32 explicitly, e.g.
-# -e DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx
-# -e DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder.onnx).
+# The pipeline finds its native lib + models via these env vars:
+#   * layout_heron_active.onnx is the symlink resolved by the models stage's
+#     INT8 arg (int8 by default, fp32 with --build-arg INT8=0)
+#   * the TableFormer decoder is pinned to the hoisted-KV fp32 graph
+#     (decoder_kv.onnx); -e DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder.onnx
+#     switches to the legacy graph (both are auto-detected by input names)
 ENV PDFIUM_DYNAMIC_LIB_PATH=/opt/pdfium/lib \
-    DOCLING_LAYOUT_ONNX=/opt/models/layout_heron_int8.onnx \
+    DOCLING_LAYOUT_ONNX=/opt/models/layout_heron_active.onnx \
     DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec.onnx \
     DOCLING_OCR_DICT=/opt/models/ppocr_keys_v1.txt \
     DOCLING_TABLEFORMER_ENCODER=/opt/models/tableformer/encoder.onnx \
-    DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder_int8.onnx \
+    DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder_kv.onnx \
     DOCLING_TABLEFORMER_BBOX=/opt/models/tableformer/bbox.onnx \
     LD_LIBRARY_PATH=/usr/local/lib:/opt/pdfium/lib \
     PORT=8080
