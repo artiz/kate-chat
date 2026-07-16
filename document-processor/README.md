@@ -41,17 +41,20 @@ these in):
 | Variable | Purpose |
 |---|---|
 | `PDFIUM_DYNAMIC_LIB_PATH` | directory containing `libpdfium.so` |
-| `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (the Docker image points it at the INT8 quantization, `layout_heron_int8.onnx`; the fp32 `layout_heron.onnx` is also baked in) |
+| `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (the Docker image points it at the `layout_heron_active.onnx` symlink — the INT8 quantization by default, fp32 with `--build-arg INT8=0`; both precisions are baked in) |
 | `DOCLING_OCR_REC_ONNX` | PP-OCRv3 recognition model |
 | `DOCLING_OCR_DICT` | PP-OCR character dictionary |
-| `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; docling.rs falls back to geometric table reconstruction when unset |
+| `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; docling.rs falls back to geometric table reconstruction when unset. The Docker image pins the decoder to the hoisted-KV fp32 graph (`decoder_kv.onnx`) — the fastest measured variant, byte-exact vs docling; point it at `tableformer/decoder.onnx` for the legacy graph |
 
-The `Dockerfile` fetches ready-made model exports (fp32 + INT8) and pdfium from
-docling.rs's GitHub Release via its `download_dependencies.sh`, and pins the
-layout model and TableFormer decoder to the INT8 quantizations (~2.4× faster
-layout inference on CPU at validated-unchanged conformance).
-`scripts/export_layout.py` and `scripts/export_tableformer.py` (vendored from
-docling.rs) remain for building the models from source (`scripts/pdf_setup.sh`).
+The `Dockerfile` (mirroring docling.rs's `examples/Dockerfile` stage layout)
+fetches the prebuilt optimized model exports and pdfium from docling.rs's
+GitHub Release via its `download_dependencies.sh`: INT8 layout (~2.4× faster
+inference on CPU at validated-unchanged conformance), the hoisted-KV
+TableFormer decoder, PP-OCRv3 and the picture classifier. Whisper ASR and the
+hybrid-chunker tokenizer are skipped (`--no-asr --no-chunk`) — this service
+ingests no audio and chunks with its own tokenizer. `--build-arg
+TARGET_CPU=x86-64-v3` (or `native`) lets the compiler use AVX2+ in the
+image-processing hot paths; the default stays portable x86-64.
 
 ## Chunking
 
@@ -112,19 +115,24 @@ docker compose up --build document-processor
 
 ### Option C — native run with the PDF ML pipeline
 
-To exercise PDF/image parsing without Docker, run the setup script once. It downloads
-pdfium + the OCR model/dict and exports the RT-DETR layout model (into an isolated
-`.venv-models`), then prints the env vars to export:
+To exercise PDF/image parsing without Docker, fetch the prebuilt models + pdfium
+once with docling.rs's install script (run from `document-processor/`):
 
 ```bash
-scripts/pdf_setup.sh
-# follow the printed `export …` lines (or add them to .env), then:
+curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.40.3/scripts/install/download_dependencies.sh \
+  | sh -s -- --no-asr --no-chunk
 cargo run
 ```
 
-Knobs: `PDFIUM_PLATFORM` (e.g. `linux-arm64`, `mac-x64`), `PYTHON`, `USE_SYSTEM_PYTHON=1`
-(skip the venv), `SKIP_LAYOUT=1`. The downloaded `.pdfium/`, `models/` and
-`.venv-models/` are all gitignored.
+No env vars needed: both the conversion pipeline and the PDF splitter resolve
+`.pdfium/lib` and `models/` relative to the working directory. The script is
+idempotent and keeps files already on disk — after a docling.rs upgrade re-run
+it with `--force`, or a stale mix breaks model pairing (e.g. the hoisted-KV
+TableFormer decoder needs the matching encoder that emits the `cross_kt_*`
+tensors; on a mismatch the pipeline falls back to geometric tables). pdfium is hosted
+for Linux x64; for other platforms (or to rebuild the models from source) see
+docling.rs's `scripts/install/pdf_setup.sh`. The downloaded `.pdfium/` and
+`models/` are gitignored.
 
 ## Develop
 
