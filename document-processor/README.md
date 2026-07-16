@@ -125,7 +125,11 @@ cargo run
 ```
 
 No env vars needed: both the conversion pipeline and the PDF splitter resolve
-`.pdfium/lib` and `models/` relative to the working directory. pdfium is hosted
+`.pdfium/lib` and `models/` relative to the working directory. The script is
+idempotent and keeps files already on disk — after a docling.rs upgrade re-run
+it with `--force`, or a stale mix breaks model pairing (e.g. the hoisted-KV
+TableFormer decoder needs the matching encoder that emits the `cross_kt_*`
+tensors; on a mismatch the pipeline falls back to geometric tables). pdfium is hosted
 for Linux x64; for other platforms (or to rebuild the models from source) see
 docling.rs's `scripts/install/pdf_setup.sh`. The downloaded `.pdfium/` and
 `models/` are gitignored.
