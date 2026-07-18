@@ -40,11 +40,14 @@ RUN apt-get update \
 WORKDIR /opt/docling
 RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.42.1/scripts/install/download_dependencies.sh \
         | sh -s -- --no-asr --no-chunk \
-    # The runtime auto-selects the INT8 layout (on CPU) and the hoisted-KV
-    # TableFormer decoder; both are optional for the script, so fail the
-    # build loudly if the release stops hosting them.
-    && test -f models/layout_heron_int8.onnx \
-    && test -f models/tableformer/decoder_kv.onnx
+    # The hoisted-KV TableFormer decoder is required (fail loudly if the
+    # release stops hosting it); the INT8 layout is best-effort — since the
+    # GPU-era release refresh it may be absent, and the runtime then uses the
+    # fp32 layout on CPU too (quantize locally with
+    # scripts/install/quantize_models.py to restore the int8 CPU fast path).
+    && test -f models/tableformer/decoder_kv.onnx \
+    && (test -f models/layout_heron_int8.onnx \
+        || echo "NOTE: layout_heron_int8.onnx not hosted — fp32 layout will be used on CPU")
 
 # ----------------------------------------------------------------------------
 # Stage 2: Rust build
@@ -81,10 +84,12 @@ RUN touch src/main.rs \
     && if [ -n "$TARGET_CPU" ]; then export RUSTFLAGS="-C target-cpu=$TARGET_CPU"; fi \
     && cargo build --release --locked
 
-# Collect the binary (must exist) plus the ONNX Runtime shared lib (only present
-# when ort links dynamically — best-effort).
+# Collect the binary (must exist) plus the ONNX Runtime shared libs. The GPU
+# execution providers are separate dlopen plugins ort materializes as SYMLINKS
+# into its download cache (copy-dylibs) — dereference with -L or the runtime
+# stage ends up with dangling links and silently loses the CUDA provider.
 RUN mkdir -p /artifacts && cp target/release/katechat-document-processor /artifacts/
-RUN find target -name 'libonnxruntime*.so*' -exec cp -av {} /artifacts/ \; || true
+RUN find target -name 'libonnxruntime*.so*' -exec cp -Lv {} /artifacts/ \; || true
 
 # ----------------------------------------------------------------------------
 # Stage 3: runtime

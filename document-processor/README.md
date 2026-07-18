@@ -46,8 +46,11 @@ these in):
 
 The `Dockerfile` (mirroring docling.rs's `examples/Dockerfile` stage layout)
 fetches the prebuilt optimized model exports and pdfium from docling.rs's
-GitHub Release via its `download_dependencies.sh`: fp32 + INT8 layout, the
-hoisted-KV TableFormer decoder, PP-OCRv3 and the picture classifier. Whisper
+GitHub Release via its `download_dependencies.sh`: the fp32 layout (plus the
+INT8 quantization when the release hosts it — since the GPU-era refresh it may
+be absent; quantize locally with `scripts/install/quantize_models.py` to
+restore the int8 CPU fast path), the hoisted-KV TableFormer decoder, PP-OCRv3
+and the picture classifier. Whisper
 ASR and the hybrid-chunker tokenizer are skipped (`--no-asr --no-chunk`) —
 this service ingests no audio and chunks with its own tokenizer. `--build-arg
 TARGET_CPU=x86-64-v3` (or `native`) lets the compiler use AVX2+ in the
@@ -59,8 +62,8 @@ The binary is built with docling.rs's **CUDA execution provider** compiled in
 (`docling` cargo feature `cuda`) and the image defaults to `DOCLING_RS_EP=auto`:
 every compiled-in provider is registered in performance order and ONNX Runtime
 falls back to CPU when no usable GPU is present — one image serves mixed
-fleets. On a CPU-only host nothing changes vs the previous build (the INT8
-models keep the fast path). To actually run on a GPU:
+fleets. On a CPU-only host behavior is unchanged (the INT8 models keep the
+fast path when present). To actually run on a GPU:
 
 1. rebuild the runtime on a cuDNN base:
    `--build-arg RUNTIME_BASE=nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04`
