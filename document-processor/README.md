@@ -44,7 +44,9 @@ these in):
 | `DOCLING_RS_EP` | ONNX execution provider: `cpu`, `cuda`, `auto` (the image default — use the GPU when present, fall back to CPU), … An explicitly requested accelerator that cannot initialize fails loudly instead of silently degrading |
 | `DOCLING_LAYOUT_ONNX` / `DOCLING_OCR_{REC_ONNX,DICT}` / `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | optional explicit model overrides. The image does not pin them: models resolve via `/usr/local/models` and the pipeline picks the right variant at runtime — INT8 layout on CPU (~2.4× faster at unchanged conformance), fp32 on GPU (the int8 QDQ graphs are CPU-calibrated), and the hoisted-KV TableFormer decoder (`decoder_kv.onnx`) over the legacy graphs |
 
-The `Dockerfile` (mirroring docling.rs's `examples/Dockerfile` stage layout)
+The Docker image (`infrastructure/services/katechat-document-processor/Dockerfile`,
+mirroring docling.rs's `examples/Dockerfile` stage layout — the same file is
+used by CI and local docker-compose)
 fetches the prebuilt optimized model exports and pdfium from docling.rs's
 GitHub Release via its `download_dependencies.sh`: the fp32 layout (plus the
 INT8 quantization when the release hosts it — since the GPU-era refresh it may
