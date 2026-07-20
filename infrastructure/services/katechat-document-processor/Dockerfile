@@ -15,6 +15,13 @@
 #   builder — compile the Rust binary (ort downloads ONNX Runtime at build time)
 #   runtime — slim image with the binary, native libs and models baked in
 
+# RUNTIME_BASE: debian-slim by default (CPU anywhere, the CUDA EP degrades to
+# CPU with a warning under DOCLING_RS_EP=auto). For GPU fleets rebase the
+# runtime onto a cuDNN image, e.g.
+#   --build-arg RUNTIME_BASE=nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
+# and run with the NVIDIA container runtime.
+ARG RUNTIME_BASE=debian:trixie-slim
+
 # ----------------------------------------------------------------------------
 # Stage 1: ML models + native libs
 # ----------------------------------------------------------------------------
@@ -30,25 +37,16 @@ RUN apt-get update \
 # --no-asr skips the Whisper audio models (this service ingests no audio) and
 # --no-chunk the hybrid-chunker tokenizer (chunking runs on our own tokenizer).
 WORKDIR /opt/docling
-RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.40.3/scripts/install/download_dependencies.sh \
+RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.42.1/scripts/install/download_dependencies.sh \
         | sh -s -- --no-asr --no-chunk \
-    # The runtime pins the INT8 layout and the hoisted-KV TableFormer decoder;
-    # both are optional for the script, so fail the build loudly if the
-    # release stops hosting them.
-    && test -f models/layout_heron_int8.onnx \
-    && test -f models/tableformer/decoder_kv.onnx
-
-# INT8=1 (default): the runtime env points DOCLING_LAYOUT_ONNX at this symlink —
-# INT8-quantized layout (~2.4x faster inference at validated-unchanged
-# conformance), fp32 with --build-arg INT8=0. Both precisions ship in the image
-# either way, so a container can pin one explicitly, e.g.
-# -e DOCLING_LAYOUT_ONNX=/opt/models/layout_heron.onnx
-ARG INT8=1
-RUN if [ "$INT8" = "1" ]; then \
-        ln -s layout_heron_int8.onnx models/layout_heron_active.onnx; \
-    else \
-        ln -s layout_heron.onnx models/layout_heron_active.onnx; \
-    fi
+    # The hoisted-KV TableFormer decoder is required (fail loudly if the
+    # release stops hosting it); the INT8 layout is best-effort — since the
+    # GPU-era release refresh it may be absent, and the runtime then uses the
+    # fp32 layout on CPU too (quantize locally with
+    # scripts/install/quantize_models.py to restore the int8 CPU fast path).
+    && test -f models/tableformer/decoder_kv.onnx \
+    && (test -f models/layout_heron_int8.onnx \
+        || echo "NOTE: layout_heron_int8.onnx not hosted — fp32 layout will be used on CPU")
 
 # ----------------------------------------------------------------------------
 # Stage 2: Rust build
@@ -85,15 +83,17 @@ RUN touch src/main.rs \
     && if [ -n "$TARGET_CPU" ]; then export RUSTFLAGS="-C target-cpu=$TARGET_CPU"; fi \
     && cargo build --release --locked
 
-# Collect the binary (must exist) plus the ONNX Runtime shared lib (only present
-# when ort links dynamically — best-effort).
+# Collect the binary (must exist) plus the ONNX Runtime shared libs. The GPU
+# execution providers are separate dlopen plugins ort materializes as SYMLINKS
+# into its download cache (copy-dylibs) — dereference with -L or the runtime
+# stage ends up with dangling links and silently loses the CUDA provider.
 RUN mkdir -p /artifacts && cp target/release/katechat-document-processor /artifacts/
-RUN find target -name 'libonnxruntime*.so*' -exec cp -av {} /artifacts/ \; || true
+RUN find target -name 'libonnxruntime*.so*' -exec cp -Lv {} /artifacts/ \; || true
 
 # ----------------------------------------------------------------------------
 # Stage 3: runtime
 # ----------------------------------------------------------------------------
-FROM debian:trixie-slim AS runtime
+FROM ${RUNTIME_BASE} AS runtime
 
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=$COMMIT_SHA
@@ -117,19 +117,20 @@ COPY --from=models /opt/docling/.pdfium/lib /opt/pdfium/lib
 # symlink makes /opt/models visible from any working directory.
 RUN ln -s /opt/models /usr/local/models
 
-# The pipeline finds its native lib + models via these env vars:
-#   * layout_heron_active.onnx is the symlink resolved by the models stage's
-#     INT8 arg (int8 by default, fp32 with --build-arg INT8=0)
-#   * the TableFormer decoder is pinned to the hoisted-KV fp32 graph
-#     (decoder_kv.onnx); -e DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder.onnx
-#     switches to the legacy graph (both are auto-detected by input names)
+# GPU: the binary is built with the CUDA execution provider compiled in;
+# DOCLING_RS_EP=auto registers every compiled-in provider and ONNX Runtime
+# falls back to CPU when no usable GPU is present. Set DOCLING_RS_EP=cuda to
+# fail loudly instead of degrading, or =cpu to opt out.
+#
+# Model paths are deliberately NOT pinned: the pipeline resolves models/…
+# via the /usr/local/models symlink and picks the right precision at runtime —
+# the INT8 exports on CPU (~2.4x faster layout at unchanged conformance), the
+# fp32 exports when a GPU provider is selected (the int8 QDQ graphs are
+# CPU-calibrated), and the hoisted-KV TableFormer decoder over the legacy
+# graphs. DOCLING_LAYOUT_ONNX / DOCLING_TABLEFORMER_* / DOCLING_OCR_* remain
+# available as explicit overrides.
 ENV PDFIUM_DYNAMIC_LIB_PATH=/opt/pdfium/lib \
-    DOCLING_LAYOUT_ONNX=/opt/models/layout_heron_active.onnx \
-    DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec.onnx \
-    DOCLING_OCR_DICT=/opt/models/ppocr_keys_v1.txt \
-    DOCLING_TABLEFORMER_ENCODER=/opt/models/tableformer/encoder.onnx \
-    DOCLING_TABLEFORMER_DECODER=/opt/models/tableformer/decoder_kv.onnx \
-    DOCLING_TABLEFORMER_BBOX=/opt/models/tableformer/bbox.onnx \
+    DOCLING_RS_EP=auto \
     LD_LIBRARY_PATH=/usr/local/lib:/opt/pdfium/lib \
     PORT=8080
 

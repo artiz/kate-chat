@@ -174,7 +174,8 @@ The document processor is a Rust service built on
 [docling.rs](https://github.com/docling-project/docling.rs) (a Rust port of docling). Declarative
 formats (DOCX/PPTX/XLSX/HTML/MD/CSV/EPUB/…) work out of the box; the PDF/image pipeline
 additionally needs pdfium + ONNX models at runtime (baked into the Docker image — see
-`document-processor/Dockerfile` and `document-processor/scripts/export_layout.py`).
+`infrastructure/services/katechat-document-processor/Dockerfile`, used by both CI
+and local docker-compose).
 
 ```bash
 cp document-processor/.env.example document-processor/.env   # then edit as needed

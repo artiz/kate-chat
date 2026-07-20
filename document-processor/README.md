@@ -41,20 +41,67 @@ these in):
 | Variable | Purpose |
 |---|---|
 | `PDFIUM_DYNAMIC_LIB_PATH` | directory containing `libpdfium.so` |
-| `DOCLING_LAYOUT_ONNX` | RT-DETR layout model (the Docker image points it at the `layout_heron_active.onnx` symlink — the INT8 quantization by default, fp32 with `--build-arg INT8=0`; both precisions are baked in) |
-| `DOCLING_OCR_REC_ONNX` | PP-OCRv3 recognition model |
-| `DOCLING_OCR_DICT` | PP-OCR character dictionary |
-| `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | TableFormer table-structure models — optional; docling.rs falls back to geometric table reconstruction when unset. The Docker image pins the decoder to the hoisted-KV fp32 graph (`decoder_kv.onnx`) — the fastest measured variant, byte-exact vs docling; point it at `tableformer/decoder.onnx` for the legacy graph |
+| `DOCLING_RS_EP` | ONNX execution provider: `cpu`, `cuda`, `auto` (the image default — use the GPU when present, fall back to CPU), … An explicitly requested accelerator that cannot initialize fails loudly instead of silently degrading |
+| `DOCLING_LAYOUT_ONNX` / `DOCLING_OCR_{REC_ONNX,DICT}` / `DOCLING_TABLEFORMER_{ENCODER,DECODER,BBOX}` | optional explicit model overrides. The image does not pin them: models resolve via `/usr/local/models` and the pipeline picks the right variant at runtime — INT8 layout on CPU (~2.4× faster at unchanged conformance), fp32 on GPU (the int8 QDQ graphs are CPU-calibrated), and the hoisted-KV TableFormer decoder (`decoder_kv.onnx`) over the legacy graphs |
 
-The `Dockerfile` (mirroring docling.rs's `examples/Dockerfile` stage layout)
+The Docker image (`infrastructure/services/katechat-document-processor/Dockerfile`,
+mirroring docling.rs's `examples/Dockerfile` stage layout — the same file is
+used by CI and local docker-compose)
 fetches the prebuilt optimized model exports and pdfium from docling.rs's
-GitHub Release via its `download_dependencies.sh`: INT8 layout (~2.4× faster
-inference on CPU at validated-unchanged conformance), the hoisted-KV
-TableFormer decoder, PP-OCRv3 and the picture classifier. Whisper ASR and the
-hybrid-chunker tokenizer are skipped (`--no-asr --no-chunk`) — this service
-ingests no audio and chunks with its own tokenizer. `--build-arg
+GitHub Release via its `download_dependencies.sh`: the fp32 layout (plus the
+INT8 quantization when the release hosts it — since the GPU-era refresh it may
+be absent; quantize locally with `scripts/install/quantize_models.py` to
+restore the int8 CPU fast path), the hoisted-KV TableFormer decoder, PP-OCRv3
+and the picture classifier. Whisper
+ASR and the hybrid-chunker tokenizer are skipped (`--no-asr --no-chunk`) —
+this service ingests no audio and chunks with its own tokenizer. `--build-arg
 TARGET_CPU=x86-64-v3` (or `native`) lets the compiler use AVX2+ in the
 image-processing hot paths; the default stays portable x86-64.
+
+### GPU
+
+The binary is built with docling.rs's **CUDA execution provider** compiled in
+(`docling` cargo feature `cuda`) and the image defaults to `DOCLING_RS_EP=auto`:
+every compiled-in provider is registered in performance order and ONNX Runtime
+falls back to CPU when no usable GPU is present — one image serves mixed
+fleets. On a CPU-only host behavior is unchanged (the INT8 models keep the
+fast path when present). To actually run on a GPU:
+
+1. rebuild the runtime on a cuDNN base:
+   `--build-arg RUNTIME_BASE=nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04`
+2. run with the NVIDIA container runtime (`--gpus all` / ECS GPU task)
+3. optionally set `DOCLING_RS_EP=cuda` to fail loudly if the GPU cannot
+   initialize instead of silently degrading to CPU
+
+With a GPU provider selected the pipeline automatically switches the layout
+model to the fp32 export — the INT8 graphs are CPU-calibrated and were never
+conformance-validated on GPU.
+
+#### Native `cargo run` on a GPU machine
+
+The cargo build already compiles the CUDA provider in (ort drops
+`libonnxruntime_providers_cuda.so` next to the binary in `target/release/`),
+so no rebuild is needed — the machine just needs:
+
+1. the CUDA 12 runtime + cuDNN 9 libraries, e.g. on Ubuntu / WSL2 from
+   [NVIDIA's apt repository](https://developer.nvidia.com/cuda-downloads):
+
+   ```bash
+   sudo apt install cuda-toolkit-12-6 cudnn9-cuda-12
+   ```
+
+   (under WSL2 the Windows NVIDIA driver is picked up automatically — install
+   only the toolkit/cuDNN inside WSL, never a Linux display driver)
+
+2. `DOCLING_RS_EP=auto` in `document-processor/.env` — when the variable is
+   unset the provider defaults to `cpu`; the `auto` default exists only inside
+   the Docker image.
+
+To verify the GPU is actually used, run once with `DOCLING_RS_EP=cuda` (it
+fails loudly at startup if the provider can't initialize instead of silently
+degrading) and watch `katechat-document-processor` appear in `nvidia-smi`
+during a parse. Ballpark on an RTX 3080 Laptop: ~1.8 s/page end-to-end vs
+~4.7 s/page on the same machine's CPU with the fp32 layout.
 
 ## Chunking
 
@@ -119,7 +166,7 @@ To exercise PDF/image parsing without Docker, fetch the prebuilt models + pdfium
 once with docling.rs's install script (run from `document-processor/`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.40.3/scripts/install/download_dependencies.sh \
+curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.42.1/scripts/install/download_dependencies.sh \
   | sh -s -- --no-asr --no-chunk
 cargo run
 ```
