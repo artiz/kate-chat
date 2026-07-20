@@ -147,6 +147,7 @@ export const CustomModelDialog: React.FC<CustomModelDialogProps> = ({
             apiKey: initialData?.apiKey === formData.apiKey ? undefined : formData.apiKey,
             modelName: formData.modelName,
             modelId: formData.modelId,
+            type: formData.type,
             protocol: formData.protocol,
             text: testPrompt || "Hey there!",
           },
