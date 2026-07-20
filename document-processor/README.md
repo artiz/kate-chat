@@ -77,6 +77,32 @@ With a GPU provider selected the pipeline automatically switches the layout
 model to the fp32 export — the INT8 graphs are CPU-calibrated and were never
 conformance-validated on GPU.
 
+#### Native `cargo run` on a GPU machine
+
+The cargo build already compiles the CUDA provider in (ort drops
+`libonnxruntime_providers_cuda.so` next to the binary in `target/release/`),
+so no rebuild is needed — the machine just needs:
+
+1. the CUDA 12 runtime + cuDNN 9 libraries, e.g. on Ubuntu / WSL2 from
+   [NVIDIA's apt repository](https://developer.nvidia.com/cuda-downloads):
+
+   ```bash
+   sudo apt install cuda-toolkit-12-6 cudnn9-cuda-12
+   ```
+
+   (under WSL2 the Windows NVIDIA driver is picked up automatically — install
+   only the toolkit/cuDNN inside WSL, never a Linux display driver)
+
+2. `DOCLING_RS_EP=auto` in `document-processor/.env` — when the variable is
+   unset the provider defaults to `cpu`; the `auto` default exists only inside
+   the Docker image.
+
+To verify the GPU is actually used, run once with `DOCLING_RS_EP=cuda` (it
+fails loudly at startup if the provider can't initialize instead of silently
+degrading) and watch `katechat-document-processor` appear in `nvidia-smi`
+during a parse. Ballpark on an RTX 3080 Laptop: ~1.8 s/page end-to-end vs
+~4.7 s/page on the same machine's CPU with the fp32 layout.
+
 ## Chunking
 
 Uses the [`chunk`](https://crates.io/crates/chunk) crate: split page text at
