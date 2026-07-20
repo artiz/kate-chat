@@ -506,6 +506,9 @@ export class TestCustomModelInput {
   @Field()
   modelName: string;
 
+  @Field(() => ModelType, { nullable: true, defaultValue: ModelType.CHAT })
+  type: ModelType;
+
   @Field()
   protocol: string;
 
