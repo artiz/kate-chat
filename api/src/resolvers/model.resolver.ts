@@ -37,6 +37,12 @@ export class ModelResolver extends BaseResolver {
     this.aiService = new AIService();
   }
 
+  private static formatEmbeddingPreview(embedding: number[]): string {
+    const previewLength = 10;
+    const preview = embedding.slice(0, previewLength).join(", ");
+    return `Embedding [${embedding.length}]: [${preview}${embedding.length > previewLength ? ", ..." : ""}]`;
+  }
+
   private async getProviderInfo(
     connectionParams: ConnectionParams,
     testConnection?: boolean
@@ -247,14 +253,10 @@ export class ModelResolver extends BaseResolver {
         model
       );
 
-      const previewLength = 10;
-      const preview = result.embedding.slice(0, previewLength).join(", ");
-      const content = `Embedding [${result.embedding.length}]: [${preview}${result.embedding.length > previewLength ? ", ..." : ""}]`;
-
       return {
         id: "00000000-0000-0000-0000-000000000001",
         role: MessageRole.ASSISTANT,
-        content: content,
+        content: ModelResolver.formatEmbeddingPreview(result.embedding),
         modelId: model.modelId,
         modelName: model.name,
         createdAt: timestamp,
@@ -518,7 +520,7 @@ export class ModelResolver extends BaseResolver {
     const connectionParams = this.loadConnectionParams(context, user);
 
     try {
-      const { endpoint, modelName, protocol, text, modelId } = input;
+      const { endpoint, modelName, protocol, text, modelId, type } = input;
       let { apiKey } = input;
 
       // saved model test
@@ -541,6 +543,28 @@ export class ModelResolver extends BaseResolver {
           protocol: protocol as CustomModelProtocol,
         },
       });
+
+      // Embedding models have no chat endpoint — test them with an embeddings request
+      if (type === ModelType.EMBEDDING) {
+        const result = await this.aiService.getEmbeddings(
+          ApiProvider.CUSTOM_REST_API,
+          connectionParams,
+          {
+            modelId: modelName,
+            input: text,
+          },
+          model
+        );
+
+        return {
+          id: "test-result",
+          role: MessageRole.ASSISTANT,
+          content: ModelResolver.formatEmbeddingPreview(result.embedding),
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as Message;
+      }
 
       const request: CompleteChatRequest = {
         apiProvider: ApiProvider.CUSTOM_REST_API,
