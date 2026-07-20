@@ -59,7 +59,8 @@ describe("ChatInput chat-context files", () => {
 
     expect(await screen.findByTestId("upload-type-selector")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTestId("upload-type-rag"));
+    // the modal root mounts before its transitioned content — retry until the button is committed
+    await userEvent.click(await screen.findByTestId("upload-type-rag"));
     expect(onDocumentsUpload).toHaveBeenCalledTimes(1);
     expect(onDocumentsUpload.mock.calls[0][0].map((f: File) => f.name)).toEqual(["notes.txt"]);
   });
