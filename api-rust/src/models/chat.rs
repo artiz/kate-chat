@@ -155,6 +155,29 @@ pub struct CreateChatInput {
     pub system_prompt: Option<String>,
 }
 
+/// Chat generation settings exposed as a nested object (the Node API moved
+/// per-chat settings into one JSON column; api-rust keeps flat columns and
+/// assembles/destructures this object at the GraphQL boundary). Fields
+/// without a backing column (thinking, voice, …) are accepted but not
+/// persisted yet.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject, InputObject)]
+#[graphql(input_name = "ChatSettingsInput")]
+pub struct ChatSettings {
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<i32>,
+    pub top_p: Option<f32>,
+    pub images_count: Option<i32>,
+    pub image_quality: Option<String>,
+    pub image_orientation: Option<String>,
+    pub system_prompt: Option<String>,
+    pub disable_top_p: Option<bool>,
+    pub thinking: Option<bool>,
+    pub thinking_budget: Option<i32>,
+    pub cache_retention: Option<String>,
+    pub voice: Option<String>,
+    pub selected_rag_doc_ids: Option<Vec<String>>,
+}
+
 #[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct UpdateChatInput {
     pub title: Option<String>,
@@ -163,6 +186,10 @@ pub struct UpdateChatInput {
     pub temperature: Option<f32>,
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
+    pub is_pinned: Option<bool>,
+    /// Accepted for schema compatibility; folders are not ported yet.
+    pub folder_id: Option<String>,
+    pub settings: Option<ChatSettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
@@ -186,8 +213,28 @@ pub struct GqlChat {
     pub messages_count: Option<i32>,
     pub last_bot_message: Option<String>,
     pub last_bot_message_id: Option<String>,
+    /// Always null until chat folders are ported.
+    pub folder_id: Option<String>,
+    pub settings: Option<ChatSettings>,
     pub user: Option<User>,
     pub chat_documents: Option<Vec<GqlChatDocument>>,
+}
+
+fn chat_settings(
+    system_prompt: &Option<String>,
+    temperature: Option<f32>,
+    max_tokens: Option<i32>,
+    top_p: Option<f32>,
+    images_count: Option<i32>,
+) -> ChatSettings {
+    ChatSettings {
+        temperature,
+        max_tokens,
+        top_p,
+        images_count,
+        system_prompt: system_prompt.clone(),
+        ..ChatSettings::default()
+    }
 }
 
 impl From<Chat> for GqlChat {
@@ -196,6 +243,13 @@ impl From<Chat> for GqlChat {
             .tools
             .as_ref()
             .and_then(|s| serde_json::from_str::<Vec<ChatTool>>(s).ok());
+        let settings = Some(chat_settings(
+            &chat.system_prompt,
+            chat.temperature,
+            chat.max_tokens,
+            chat.top_p,
+            chat.images_count,
+        ));
         Self {
             id: chat.id,
             title: chat.title,
@@ -215,6 +269,8 @@ impl From<Chat> for GqlChat {
             messages_count: chat.messages_count,
             last_bot_message: chat.last_bot_message,
             last_bot_message_id: chat.last_bot_message_id,
+            folder_id: None,
+            settings,
             user: None,
             chat_documents: Some(vec![]),
         }
@@ -227,6 +283,13 @@ impl From<ChatWithStats> for GqlChat {
             .tools
             .as_ref()
             .and_then(|s| serde_json::from_str::<Vec<ChatTool>>(s).ok());
+        let settings = Some(chat_settings(
+            &chat.system_prompt,
+            chat.temperature,
+            chat.max_tokens,
+            chat.top_p,
+            chat.images_count,
+        ));
         Self {
             id: chat.id,
             title: chat.title,
@@ -246,6 +309,8 @@ impl From<ChatWithStats> for GqlChat {
             messages_count: chat.messages_count,
             last_bot_message: chat.last_bot_message,
             last_bot_message_id: chat.last_bot_message_id,
+            folder_id: None,
+            settings,
             user: None,
             chat_documents: Some(vec![]),
         }

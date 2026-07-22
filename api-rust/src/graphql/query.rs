@@ -64,6 +64,13 @@ pub struct AdminUsersResponse {
     pub has_more: bool,
 }
 
+#[derive(SimpleObject)]
+pub struct GqlCredentialSource {
+    #[graphql(name = "type")]
+    pub type_: Option<String>,
+    pub source: Option<String>,
+}
+
 #[derive(async_graphql::SimpleObject)]
 pub struct ApplicationConfig {
     pub current_user: Option<User>,
@@ -73,8 +80,13 @@ pub struct ApplicationConfig {
     pub max_images: i32,
     pub rag_enabled: Option<bool>,
     pub rag_supported: Option<bool>,
+    pub mcp_enabled: Option<bool>,
     pub s3_connected: bool,
     pub token: Option<String>,
+    pub credentials_source: Vec<GqlCredentialSource>,
+    pub reasoning_min_token_budget: Option<i32>,
+    pub reasoning_max_token_budget: Option<i32>,
+    pub context_messages_limit: Option<i32>,
 }
 
 #[Object]
@@ -97,6 +109,23 @@ impl Query {
             None
         };
 
+        let s3_connected = config.s3_bucket.is_some();
+
+        // api-rust configures providers via environment only
+        let mut credentials_source = Vec::new();
+        if s3_connected {
+            credentials_source.push(GqlCredentialSource {
+                type_: Some("S3".to_string()),
+                source: Some("ENVIRONMENT".to_string()),
+            });
+        }
+        for provider in &config.enabled_api_providers {
+            credentials_source.push(GqlCredentialSource {
+                type_: Some(provider.clone()),
+                source: Some("ENVIRONMENT".to_string()),
+            });
+        }
+
         Ok(ApplicationConfig {
             current_user: user,
             demo_mode: config.demo_mode,
@@ -105,8 +134,65 @@ impl Query {
             max_images: config.demo_max_images.unwrap_or(-1),
             rag_enabled: Some(false),
             rag_supported: Some(false),
-            s3_connected: config.s3_bucket.is_some(),
+            mcp_enabled: Some(false),
+            s3_connected,
             token,
+            credentials_source,
+            reasoning_min_token_budget: Some(1024),
+            reasoning_max_token_budget: Some(16_000),
+            context_messages_limit: Some(100),
+        })
+    }
+
+    /// Chat folders (sidebar tree). Not ported yet — always empty, the
+    /// query exists for client schema compatibility.
+    async fn get_folders(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "topLevelOnly")] _top_level_only: Option<bool>,
+        #[graphql(name = "parentId")] _parent_id: Option<String>,
+    ) -> Result<crate::models::GqlFoldersList> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        gql_ctx.require_user()?;
+        Ok(crate::models::GqlFoldersList {
+            folders: vec![],
+            error: None,
+        })
+    }
+
+    /// Full folder tree (folders page). Not ported yet — always empty.
+    async fn get_all_folders(&self, ctx: &Context<'_>) -> Result<crate::models::GqlFoldersList> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        gql_ctx.require_user()?;
+        Ok(crate::models::GqlFoldersList {
+            folders: vec![],
+            error: None,
+        })
+    }
+
+    /// MCP servers configured for the current user (read-only; tool
+    /// invocation is not ported yet).
+    async fn mcp_servers(&self, ctx: &Context<'_>) -> Result<crate::models::GqlMcpServersList> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let servers: Vec<crate::models::McpServer> = crate::schema::mcp_servers::table
+            .filter(
+                crate::schema::mcp_servers::user_id
+                    .eq(&user.id)
+                    .or(crate::schema::mcp_servers::user_id.is_null()),
+            )
+            .order(crate::schema::mcp_servers::created_at.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let servers: Vec<crate::models::GqlMcpServer> =
+            servers.into_iter().map(Into::into).collect();
+        Ok(crate::models::GqlMcpServersList {
+            total: Some(servers.len() as i32),
+            servers,
+            error: None,
         })
     }
 
@@ -173,7 +259,12 @@ impl Query {
     }
 
     /// Get chat by ID
-    async fn get_chat_by_id(&self, ctx: &Context<'_>, id: String) -> Result<Option<GqlChat>> {
+    async fn get_chat_by_id(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Result<Option<GqlChat>> {
+        let id = id.to_string();
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -242,6 +333,7 @@ impl Query {
             total: Some(total as i32),
             has_more: (offset + limit) < total as i32,
             error: None,
+            error_status: None,
         })
     }
 
@@ -265,9 +357,21 @@ impl Query {
     }
 
     /// Get all models
-    async fn get_models(&self, ctx: &Context<'_>) -> Result<GqlModelsList> {
+    async fn get_models(&self, ctx: &Context<'_>, reload: Option<bool>) -> Result<GqlModelsList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
+
+        // reload: refresh the models list from the providers first
+        if reload.unwrap_or(false) {
+            let ai_service = crate::services::ai::AIService::new(gql_ctx.config.clone());
+            let model_service =
+                crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
+            model_service
+                .refresh_models(user)
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to refresh models: {}", e)))?;
+        }
+
         let mut conn = gql_ctx
             .db_pool
             .get()
@@ -499,6 +603,7 @@ impl Query {
                 type_: file.type_,
                 mime: file.mime,
                 upload_file: file.upload_file,
+                predominant_color: file.predominant_color,
                 role: message
                     .as_ref()
                     .map(|m| m.role.clone())

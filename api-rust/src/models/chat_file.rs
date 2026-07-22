@@ -93,6 +93,7 @@ pub struct GqlChatFile {
     pub type_: String,
     pub mime: Option<String>,
     pub upload_file: Option<String>,
+    pub predominant_color: Option<String>,
     pub role: Option<String>,
     pub created_at: NaiveDateTime,
     pub message: Option<GqlMessage>,

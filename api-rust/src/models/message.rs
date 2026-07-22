@@ -173,6 +173,52 @@ pub struct ChatToolCallResult {
     pub content: String,
 }
 
+/// RAG structured answer. Field names intentionally keep the Node API's
+/// snake_case GraphQL names (the client selects them literally).
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct RagResponse {
+    #[graphql(name = "step_by_step_analysis")]
+    pub step_by_step_analysis: Option<String>,
+    #[graphql(name = "reasoning_summary")]
+    pub reasoning_summary: Option<String>,
+    #[graphql(name = "final_answer")]
+    pub final_answer: Option<String>,
+    #[graphql(name = "relevant_chunks_ids")]
+    pub relevant_chunks_ids: Option<Vec<String>>,
+    #[graphql(name = "chunks_relevance")]
+    pub chunks_relevance: Option<Vec<f64>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ChatToolCall {
+    pub name: String,
+    pub call_id: Option<String>,
+    #[graphql(name = "type")]
+    #[serde(rename = "type")]
+    pub type_: Option<String>,
+    pub error: Option<String>,
+    pub args: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ChatResultAnnotation {
+    #[graphql(name = "type")]
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub title: Option<String>,
+    pub source: Option<String>,
+    pub container: Option<String>,
+    pub start_index: Option<i32>,
+    pub end_index: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ReasoningChunk {
+    pub text: String,
+    pub timestamp: Option<NaiveDateTime>,
+    pub id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct MessageMetadata {
     pub usage: Option<MessageUsage>,
@@ -180,6 +226,12 @@ pub struct MessageMetadata {
     pub relevants_chunks: Option<Vec<MessageRelevantChunk>>,
     pub tools: Option<Vec<ChatToolCallResult>>,
     pub request_id: Option<String>,
+    pub rag_response: Option<RagResponse>,
+    pub tool_calls: Option<Vec<ChatToolCall>>,
+    pub annotations: Option<Vec<ChatResultAnnotation>>,
+    pub reasoning: Option<Vec<ReasoningChunk>>,
+    pub context_messages: Option<Vec<String>>,
+    pub tokens_count: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
@@ -224,6 +276,32 @@ pub struct GqlMessagesList {
     pub total: Option<i32>,
     pub has_more: bool,
     pub error: Option<String>,
+    /// HTTP-ish status code for `error` (Node API parity).
+    pub error_status: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct GqlDeleteMessageResponse {
+    pub messages: Vec<GqlMessage>,
+}
+
+/// Per-request context passed by the client alongside message mutations
+/// (MCP auth tokens, context-limit reset). Accepted for schema
+/// compatibility; MCP is not ported yet.
+#[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
+#[graphql(name = "MessageContext")]
+pub struct MessageContextInput {
+    pub mcp_tokens: Option<Vec<McpAuthTokenInput>>,
+    pub reset_context_limit: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
+#[graphql(name = "MCPAuthTokenInput")]
+pub struct McpAuthTokenInput {
+    pub server_id: String,
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_at: Option<f64>,
 }
 
 #[derive(Debug, Clone)]

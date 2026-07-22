@@ -12,13 +12,18 @@ use uuid::Uuid;
 
 use crate::schema::users::{self};
 
-// JSON wrapper for settings field that handles serialization/deserialization with Diesel
+// JSON wrapper for settings field that handles serialization/deserialization with Diesel.
+// Stored with the Node API's camelCase keys; `default` keeps older rows readable.
 #[derive(
     Debug, Clone, Serialize, Deserialize, AsExpression, FromSqlRow, SimpleObject, InputObject,
 )]
 #[diesel(sql_type = Text)]
 #[graphql(input_name = "UserSettingsInput")]
+#[serde(rename_all = "camelCase", default)]
+#[derive(Default)]
 pub struct JsonUserSettings {
+    language: Option<String>,
+
     s3_endpoint: Option<String>,
     s3_region: Option<String>,
     s3_access_key_id: Option<String>,
@@ -36,6 +41,15 @@ pub struct JsonUserSettings {
 
     yandex_fm_api_key: Option<String>,
     yandex_fm_api_folder_id: Option<String>,
+
+    default_model_id: Option<String>,
+    default_system_prompt: Option<String>,
+    default_temperature: Option<f32>,
+    default_max_tokens: Option<i32>,
+    default_top_p: Option<f32>,
+    default_images_count: Option<i32>,
+    documents_embeddings_model_id: Option<String>,
+    document_summarization_model_id: Option<String>,
 }
 
 impl FromSql<Text, Sqlite> for JsonUserSettings {

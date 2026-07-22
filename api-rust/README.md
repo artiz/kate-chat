@@ -33,11 +33,28 @@ remains the reference implementation.
   are served from S3 via `GET /files/<key>`
 - **Admin API**: `getAdminStats`, `getUsers` (paginated search)
 
+## Client compatibility
+
+The web client boots and runs its core flows against api-rust: the
+bootstrap `GetInitialData` document (models, chats, folders, appConfig,
+mcpServers) and all chat/message/model/Library/admin operations validate
+against the schema and execute. Verified by exporting the SDL
+(`cargo test export_sdl` → `target/schema.graphql`) and validating every
+client GraphQL operation against it. Schema-compat notes: `Chat.settings`
+is assembled from the flat chat columns (fields without a backing column
+— thinking, voice, cacheRetention, … — are accepted but not persisted),
+`getFolders`/`getAllFolders` return empty lists, `mcpServers` is
+read-only, `mcpEnabled` is false.
+
 ## Not ported yet (see the root README TODO)
 
-RAG/documents pipeline (upload → parse → embeddings → retrieval), MCP
-tools, web search, chat folders, the OpenAI Responses protocol (gpt-5 /
-native tools), realtime voice, message regeneration on edit.
+Operations of unported features return GraphQL validation errors when
+used: RAG/documents pipeline (getDocuments, reindex/delete, chat linking,
+status subscription), folders CRUD, MCP servers CRUD/tools, realtime
+voice (createRealtimeSession, addChatMessage), message regeneration
+(switchModel, callOther, updateMessageContent, stopMessageGeneration),
+forgot/reset password, global search, the OpenAI Responses protocol
+(gpt-5 / native tools).
 
 ## Develop
 

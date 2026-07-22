@@ -200,15 +200,24 @@ impl Mutation {
     async fn update_chat(
         &self,
         ctx: &Context<'_>,
-        id: String,
+        id: async_graphql::ID,
         input: UpdateChatInput,
     ) -> Result<GqlChat> {
+        let id = id.to_string();
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
             .db_pool
             .get()
             .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // The client sends generation settings as a nested object (Node API
+        // shape); flat fields are kept for backwards compatibility. Settings
+        // without a backing column (thinking, voice, …) are not persisted.
+        let settings = input.settings.unwrap_or_default();
+        let temperature = settings.temperature.or(input.temperature);
+        let max_tokens = settings.max_tokens.or(input.max_tokens);
+        let top_p = settings.top_p.or(input.top_p);
 
         diesel::update(
             chats::table
@@ -219,9 +228,12 @@ impl Mutation {
             input.title.map(|t| chats::title.eq(t)),
             input.description.map(|d| chats::description.eq(d)),
             input.model_id.map(|m| chats::model_id.eq(m)),
-            input.temperature.map(|t| chats::temperature.eq(t)),
-            input.max_tokens.map(|m| chats::max_tokens.eq(m)),
-            input.top_p.map(|p| chats::top_p.eq(p)),
+            temperature.map(|t| chats::temperature.eq(t)),
+            max_tokens.map(|m| chats::max_tokens.eq(m)),
+            top_p.map(|p| chats::top_p.eq(p)),
+            settings.system_prompt.map(|s| chats::system_prompt.eq(s)),
+            settings.images_count.map(|c| chats::images_count.eq(c)),
+            input.is_pinned.map(|p| chats::is_pinned.eq(p)),
             chats::updated_at.eq(Utc::now().naive_utc()),
         ))
         .execute(&mut conn)
@@ -241,7 +253,8 @@ impl Mutation {
     }
 
     /// Delete chat
-    async fn delete_chat(&self, ctx: &Context<'_>, id: String) -> Result<bool> {
+    async fn delete_chat(&self, ctx: &Context<'_>, id: async_graphql::ID) -> Result<bool> {
+        let id = id.to_string();
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -569,9 +582,10 @@ impl Mutation {
     async fn delete_message(
         &self,
         ctx: &Context<'_>,
-        id: String,
+        id: async_graphql::ID,
         delete_following: Option<bool>,
-    ) -> Result<Vec<String>> {
+    ) -> Result<crate::models::GqlDeleteMessageResponse> {
+        let id = id.to_string();
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -590,7 +604,7 @@ impl Mutation {
             .first(&mut conn)
             .map_err(|_| async_graphql::Error::new("Message not found"))?;
 
-        let mut deleted_ids = vec![id.clone()];
+        let mut deleted = vec![message.clone()];
 
         if delete_following.unwrap_or(false) {
             let filter = messages::table
@@ -603,8 +617,10 @@ impl Mutation {
                 .load(&mut conn)
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
-            for msg in following_messages.iter() {
-                deleted_ids.push(msg.id.clone());
+            for msg in following_messages {
+                if msg.id != message.id {
+                    deleted.push(msg);
+                }
             }
 
             diesel::delete(filter)
@@ -616,17 +632,24 @@ impl Mutation {
                 .map_err(|e| AppError::Database(e.to_string()))?;
         }
 
-        Ok(deleted_ids)
+        Ok(crate::models::GqlDeleteMessageResponse {
+            messages: deleted.into_iter().map(GqlMessage::from).collect(),
+        })
     }
 
     /// Edit a message and regenerate following messages
-    #[instrument(skip(self, ctx), fields(message_id = %message_id, user_id = tracing::field::Empty))]
+    #[instrument(skip(self, ctx, message_id), fields(user_id = tracing::field::Empty))]
     async fn edit_message(
         &self,
         ctx: &Context<'_>,
-        message_id: String,
+        message_id: async_graphql::ID,
         content: String,
+        // accepted for schema compatibility; MCP tokens are unused until MCP is ported
+        #[graphql(name = "messageContext")] _message_context: Option<
+            crate::models::MessageContextInput,
+        >,
     ) -> Result<EditMessageResponse> {
+        let message_id = message_id.to_string();
         let gql_ctx = ctx.data::<GraphQLContext>()?;
         let user = gql_ctx.require_user()?;
         let mut conn = gql_ctx
@@ -688,6 +711,46 @@ impl Mutation {
         Ok(EditMessageResponse {
             message: Some(gql_message),
             error: None,
+        })
+    }
+
+    /// Reload stored metadata for a chat file (Library). Image-feature
+    /// extraction (predominant color, EXIF) is not ported yet, so this
+    /// currently returns the stored row as-is.
+    async fn reload_chat_file_metadata(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+    ) -> Result<crate::models::GqlChatFile> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let (file, _chat): (crate::models::ChatFile, Chat) = chat_files::table
+            .inner_join(chats::table)
+            .filter(chat_files::id.eq(&id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Chat file not found"))?;
+
+        Ok(crate::models::GqlChatFile {
+            id: file.id,
+            file_url: file
+                .file_name
+                .as_deref()
+                .map(crate::models::chat_file::file_url),
+            file_name: file.file_name,
+            type_: file.type_,
+            mime: file.mime,
+            upload_file: file.upload_file,
+            predominant_color: file.predominant_color,
+            role: None,
+            created_at: file.created_at,
+            message: None,
+            chat: None,
         })
     }
 
