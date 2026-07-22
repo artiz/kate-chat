@@ -32,6 +32,8 @@ remains the reference implementation.
 - **Library**: `getAllImages` / `getChatFiles` paginated queries; files
   are served from S3 via `GET /files/<key>`
 - **Admin API**: `getAdminStats`, `getUsers` (paginated search)
+- **Chat folders**: sidebar tree (create/rename/delete with subtree,
+  move chats in/out, folder contents with pagination, pinned filter)
 
 ## Client compatibility
 
@@ -43,14 +45,13 @@ against the schema and execute. Verified by exporting the SDL
 client GraphQL operation against it. Schema-compat notes: `Chat.settings`
 is assembled from the flat chat columns (fields without a backing column
 — thinking, voice, cacheRetention, … — are accepted but not persisted),
-`getFolders`/`getAllFolders` return empty lists, `mcpServers` is
-read-only, `mcpEnabled` is false.
+`mcpServers` is read-only, `mcpEnabled` is false.
 
 ## Not ported yet (see the root README TODO)
 
 Operations of unported features return GraphQL validation errors when
 used: RAG/documents pipeline (getDocuments, reindex/delete, chat linking,
-status subscription), folders CRUD, MCP servers CRUD/tools, realtime
+status subscription), MCP servers CRUD/tools, realtime
 voice (createRealtimeSession, addChatMessage), message regeneration
 (switchModel, callOther, updateMessageContent, stopMessageGeneration),
 forgot/reset password, global search, the OpenAI Responses protocol

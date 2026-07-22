@@ -57,6 +57,7 @@ pub struct Chat {
     pub is_pinned: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub folder_id: Option<String>,
 }
 
 // Custom struct for the joined chat query result
@@ -94,6 +95,8 @@ pub struct ChatWithStats {
     pub is_pristine: bool,
     #[diesel(sql_type = Bool)]
     pub is_pinned: bool,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub folder_id: Option<String>,
     #[diesel(sql_type = Timestamp)]
     pub created_at: chrono::NaiveDateTime,
     #[diesel(sql_type = Timestamp)]
@@ -115,6 +118,7 @@ pub struct NewChat {
     pub top_p: Option<f32>,
     pub is_pristine: bool,
     pub is_pinned: bool,
+    pub folder_id: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -141,6 +145,7 @@ impl NewChat {
             top_p: None,
             is_pristine: true,
             is_pinned: false,
+            folder_id: None,
             created_at: now,
             updated_at: now,
         }
@@ -212,7 +217,7 @@ impl From<ChatToolInput> for ChatTool {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[derive(Debug, InputObject)]
 pub struct UpdateChatInput {
     pub title: Option<String>,
     pub description: Option<String>,
@@ -221,8 +226,8 @@ pub struct UpdateChatInput {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
     pub is_pinned: Option<bool>,
-    /// Accepted for schema compatibility; folders are not ported yet.
-    pub folder_id: Option<String>,
+    /// Undefined → unchanged, null → remove from folder, value → move
+    pub folder_id: async_graphql::MaybeUndefined<String>,
     pub settings: Option<ChatSettings>,
     pub tools: Option<Vec<ChatToolInput>>,
 }
@@ -304,7 +309,7 @@ impl From<Chat> for GqlChat {
             messages_count: chat.messages_count,
             last_bot_message: chat.last_bot_message,
             last_bot_message_id: chat.last_bot_message_id,
-            folder_id: None,
+            folder_id: chat.folder_id,
             settings,
             user: None,
             chat_documents: Some(vec![]),
@@ -344,7 +349,7 @@ impl From<ChatWithStats> for GqlChat {
             messages_count: chat.messages_count,
             last_bot_message: chat.last_bot_message,
             last_bot_message_id: chat.last_bot_message_id,
-            folder_id: None,
+            folder_id: chat.folder_id,
             settings,
             user: None,
             chat_documents: Some(vec![]),

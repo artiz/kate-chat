@@ -14,7 +14,7 @@ use crate::models::{
     UpdateChatInput, UpdateCustomModelInput, UpdateModelStatusInput, UpdateUserInput, User,
     ROLE_ADMIN, ROLE_USER,
 };
-use crate::schema::{chat_files, chats, messages, models, users};
+use crate::schema::{chat_files, chat_folders, chats, messages, models, users};
 use crate::services::ai::{
     AIProviderService, AIProviderWrapper, AIService, GenerateImagesRequest, StreamCallbacks,
 };
@@ -269,6 +269,13 @@ impl Mutation {
             settings.images_count.map(|c| chats::images_count.eq(c)),
             input.is_pinned.map(|p| chats::is_pinned.eq(p)),
             tools_json.map(|t| chats::tools.eq(t)),
+            match &input.folder_id {
+                async_graphql::MaybeUndefined::Undefined => None,
+                async_graphql::MaybeUndefined::Null => Some(chats::folder_id.eq(None::<String>)),
+                async_graphql::MaybeUndefined::Value(id) => {
+                    Some(chats::folder_id.eq(Some(id.clone())))
+                }
+            },
             chats::updated_at.eq(Utc::now().naive_utc()),
         ))
         .execute(&mut conn)
@@ -276,7 +283,12 @@ impl Mutation {
 
         let chat_service: ChatService = ChatService::new(&gql_ctx.db_pool);
         let GetChatStatsResult { chats, total: _ } =
-            chat_service.get_chats_with_stats(1, 0, None, user.id.clone(), Some(id.clone()))?;
+            chat_service.get_chats_with_stats(crate::services::chat::ChatsQuery {
+                limit: 1,
+                user_id: user.id.clone(),
+                chat_id: Some(id.clone()),
+                ..Default::default()
+            })?;
 
         if chats.is_empty() {
             return Err(AppError::NotFound("Chat not found".to_string()).into());
@@ -306,6 +318,108 @@ impl Mutation {
         .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(deleted_count > 0)
+    }
+
+    /// Create a chat folder
+    async fn create_folder(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::CreateFolderInput,
+    ) -> Result<crate::models::GqlFolder> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        // topParentId is the root of the parent's tree (Node parity)
+        let top_parent_id = match &input.parent_id {
+            Some(parent_id) => {
+                let parent: crate::models::ChatFolder = chat_folders::table
+                    .filter(chat_folders::id.eq(parent_id))
+                    .filter(chat_folders::user_id.eq(&user.id))
+                    .first(&mut conn)
+                    .map_err(|_| async_graphql::Error::new("Parent folder not found"))?;
+                Some(parent.top_parent_id.unwrap_or(parent.id))
+            }
+            None => None,
+        };
+
+        let folder = crate::models::ChatFolder::new(
+            input.name,
+            input.color,
+            user.id.clone(),
+            input.parent_id,
+            top_parent_id,
+        );
+        let folder: crate::models::ChatFolder = diesel::insert_into(chat_folders::table)
+            .values(&folder)
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(folder.into())
+    }
+
+    /// Rename / recolor a folder
+    async fn update_folder(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+        input: crate::models::UpdateFolderInput,
+    ) -> Result<crate::models::GqlFolder> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+        let id = id.to_string();
+
+        let folder: crate::models::ChatFolder = diesel::update(
+            chat_folders::table
+                .filter(chat_folders::id.eq(&id))
+                .filter(chat_folders::user_id.eq(&user.id)),
+        )
+        .set((
+            input.name.map(|n| chat_folders::name.eq(n)),
+            input.color.map(|c| chat_folders::color.eq(c)),
+            chat_folders::updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .get_result(&mut conn)
+        .map_err(|_| async_graphql::Error::new("Folder not found"))?;
+
+        Ok(folder.into())
+    }
+
+    /// Delete a folder with its subtree; contained chats are unfiled
+    async fn delete_folder(&self, ctx: &Context<'_>, id: async_graphql::ID) -> Result<bool> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+        let id = id.to_string();
+
+        // collect the subtree (folder itself + descendants via top_parent_id/parent_id)
+        let subtree: Vec<String> = chat_folders::table
+            .filter(chat_folders::user_id.eq(&user.id))
+            .filter(
+                chat_folders::id
+                    .eq(&id)
+                    .or(chat_folders::top_parent_id.eq(&id))
+                    .or(chat_folders::parent_id.eq(&id)),
+            )
+            .select(chat_folders::id)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        if subtree.is_empty() {
+            return Ok(false);
+        }
+
+        diesel::update(chats::table.filter(chats::folder_id.eq_any(&subtree)))
+            .set(chats::folder_id.eq(None::<String>))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let deleted = diesel::delete(chat_folders::table.filter(chat_folders::id.eq_any(&subtree)))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(deleted > 0)
     }
 
     /// Create a new message

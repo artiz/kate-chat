@@ -11,7 +11,7 @@ use crate::models::{
     GqlMessagesList, GqlModel, GqlModelsList, GqlProviderInfo, GqlServiceCostInfo, Message, Model,
     ProviderDetail, User, ROLE_ADMIN,
 };
-use crate::schema::{chat_files, chats, messages, models, users};
+use crate::schema::{chat_files, chat_folders, chats, messages, models, users};
 use crate::services::ai::ApiProvider;
 use crate::services::chat::{ChatService, GetChatStatsResult};
 use crate::utils::errors::AppError;
@@ -23,8 +23,11 @@ pub struct Query;
 pub struct GetChatsInput {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
+    /// Node API name for `offset`
+    pub from: Option<i32>,
     pub search_term: Option<String>,
     pub pinned: Option<bool>,
+    pub folder_id: Option<String>,
 }
 
 #[derive(InputObject)]
@@ -170,29 +173,108 @@ impl Query {
         })
     }
 
-    /// Chat folders (sidebar tree). Not ported yet — always empty, the
-    /// query exists for client schema compatibility.
+    /// Chat folders (sidebar tree)
     async fn get_folders(
         &self,
         ctx: &Context<'_>,
-        #[graphql(name = "topLevelOnly")] _top_level_only: Option<bool>,
-        #[graphql(name = "parentId")] _parent_id: Option<String>,
+        #[graphql(name = "topLevelOnly")] top_level_only: Option<bool>,
     ) -> Result<crate::models::GqlFoldersList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
-        gql_ctx.require_user()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let mut query = chat_folders::table
+            .filter(chat_folders::user_id.eq(&user.id))
+            .into_boxed();
+        if top_level_only.unwrap_or(false) {
+            query = query.filter(chat_folders::parent_id.is_null());
+        }
+        let folders: Vec<crate::models::ChatFolder> = query
+            .order(chat_folders::created_at.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
         Ok(crate::models::GqlFoldersList {
-            folders: vec![],
+            folders: folders.into_iter().map(Into::into).collect(),
             error: None,
         })
     }
 
-    /// Full folder tree (folders page). Not ported yet — always empty.
+    /// Full folder tree (folders page)
     async fn get_all_folders(&self, ctx: &Context<'_>) -> Result<crate::models::GqlFoldersList> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
-        gql_ctx.require_user()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let folders: Vec<crate::models::ChatFolder> = chat_folders::table
+            .filter(chat_folders::user_id.eq(&user.id))
+            .order(chat_folders::created_at.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
         Ok(crate::models::GqlFoldersList {
-            folders: vec![],
+            folders: folders.into_iter().map(Into::into).collect(),
             error: None,
+        })
+    }
+
+    /// Folder contents: subfolders + chats in the folder (paginated)
+    async fn get_folder_contents(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::GetFolderContentsInput,
+    ) -> Result<crate::models::GqlFolderContents> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let folder: crate::models::ChatFolder = chat_folders::table
+            .filter(chat_folders::id.eq(&input.folder_id))
+            .filter(chat_folders::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Folder not found"))?;
+
+        // Node parity: a top-level folder lists its whole subtree, a nested
+        // folder lists immediate children only
+        let subfolders: Vec<crate::models::ChatFolder> = if folder.top_parent_id.is_none() {
+            chat_folders::table
+                .filter(chat_folders::user_id.eq(&user.id))
+                .filter(
+                    chat_folders::top_parent_id
+                        .eq(&input.folder_id)
+                        .or(chat_folders::parent_id.eq(&input.folder_id)),
+                )
+                .order(chat_folders::created_at.asc())
+                .load(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?
+        } else {
+            chat_folders::table
+                .filter(chat_folders::user_id.eq(&user.id))
+                .filter(chat_folders::parent_id.eq(&input.folder_id))
+                .order(chat_folders::created_at.asc())
+                .load(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?
+        };
+        drop(conn);
+
+        let limit = input.limit.clamp(1, 100);
+        let from = input.from.max(0);
+        let chat_service = ChatService::new(&gql_ctx.db_pool);
+        let GetChatStatsResult { chats, total } =
+            chat_service.get_chats_with_stats(crate::services::chat::ChatsQuery {
+                limit,
+                offset: from,
+                user_id: user.id.clone(),
+                folder_id: Some(input.folder_id.clone()),
+                ..Default::default()
+            })?;
+
+        let has_more = (from + limit) < total as i32;
+        Ok(crate::models::GqlFolderContents {
+            subfolders: subfolders.into_iter().map(Into::into).collect(),
+            chats: chats.into_iter().map(GqlChat::from).collect(),
+            next: has_more.then_some((from + limit) as f64),
+            total: Some(total as i32),
         })
     }
 
@@ -233,21 +315,26 @@ impl Query {
         let input = input.unwrap_or(GetChatsInput {
             limit: Some(20),
             offset: Some(0),
+            from: None,
             search_term: None,
             pinned: None,
+            folder_id: None,
         });
 
         let limit = input.limit.unwrap_or(20);
-        let offset = input.offset.unwrap_or(0);
+        let offset = input.from.or(input.offset).unwrap_or(0);
         let chat_service: ChatService = ChatService::new(&gql_ctx.db_pool);
 
-        let GetChatStatsResult { chats, total } = chat_service.get_chats_with_stats(
-            limit,
-            offset,
-            input.search_term.clone(),
-            user.id.clone(),
-            None,
-        )?;
+        let GetChatStatsResult { chats, total } =
+            chat_service.get_chats_with_stats(crate::services::chat::ChatsQuery {
+                limit,
+                offset,
+                search_term: input.search_term.clone(),
+                user_id: user.id.clone(),
+                pinned: input.pinned,
+                folder_id: input.folder_id.clone(),
+                ..Default::default()
+            })?;
 
         let has_more = (offset + limit) < total as i32;
         let next = if has_more {
@@ -322,13 +409,13 @@ impl Query {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         let chat_service: ChatService = ChatService::new(&gql_ctx.db_pool);
-        let GetChatStatsResult { chats, total: _ } = chat_service.get_chats_with_stats(
-            1,
-            0,
-            None,
-            user.id.clone(),
-            Some(input.chat_id.clone()),
-        )?;
+        let GetChatStatsResult { chats, total: _ } =
+            chat_service.get_chats_with_stats(crate::services::chat::ChatsQuery {
+                limit: 1,
+                user_id: user.id.clone(),
+                chat_id: Some(input.chat_id.clone()),
+                ..Default::default()
+            })?;
 
         if chats.is_empty() {
             return Err(AppError::NotFound("Chat not found".to_string()).into());

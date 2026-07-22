@@ -26,6 +26,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    chat_folders (id) {
+        id -> Text,
+        name -> Text,
+        color -> Nullable<Text>,
+        user_id -> Nullable<Text>,
+        parent_id -> Nullable<Text>,
+        top_parent_id -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     chats (id) {
         id -> Text,
         title -> Text,
@@ -45,6 +58,8 @@ diesel::table! {
         is_pinned -> Bool,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        // added by ALTER TABLE (2026-07-22 chat_folders migration) — physically last
+        folder_id -> Nullable<Text>,
     }
 }
 
@@ -182,9 +197,12 @@ diesel::joinable!(messages -> chats (chat_id));
 diesel::joinable!(messages -> users (user_id));
 diesel::joinable!(models -> users (user_id));
 
+diesel::joinable!(chat_folders -> users (user_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     chat_documents,
     chat_files,
+    chat_folders,
     chats,
     document_chunks,
     documents,
