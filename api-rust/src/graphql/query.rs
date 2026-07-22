@@ -163,7 +163,7 @@ impl Query {
             max_images: config.demo_max_images.unwrap_or(-1),
             rag_enabled: Some(false),
             rag_supported: Some(false),
-            mcp_enabled: Some(false),
+            mcp_enabled: Some(true),
             s3_connected,
             token,
             credentials_source,
@@ -302,6 +302,52 @@ impl Query {
             servers,
             error: None,
         })
+    }
+
+    /// Live tools listing for an MCP server
+    async fn get_mcp_server_tools(
+        &self,
+        ctx: &Context<'_>,
+        server_id: String,
+        auth_token: Option<String>,
+    ) -> Result<crate::models::GqlMcpToolsListResponse> {
+        use crate::schema::mcp_servers;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let server: crate::models::McpServer = match mcp_servers::table
+            .filter(mcp_servers::id.eq(&server_id))
+            .filter(mcp_servers::user_id.eq(&user.id))
+            .first(&mut conn)
+        {
+            Ok(server) => server,
+            Err(_) => {
+                return Ok(crate::models::GqlMcpToolsListResponse {
+                    tools: None,
+                    error: Some("MCP server not found".to_string()),
+                })
+            }
+        };
+        drop(conn);
+
+        let mut client =
+            crate::services::mcp::McpClient::for_server(&server, auth_token.as_deref());
+        match client.list_tools().await {
+            Ok(tools) => {
+                let stored = crate::services::mcp::tools_to_stored_json(&tools);
+                let parsed: Vec<crate::models::GqlMcpTool> =
+                    serde_json::from_str(&stored).unwrap_or_default();
+                Ok(crate::models::GqlMcpToolsListResponse {
+                    tools: Some(parsed),
+                    error: None,
+                })
+            }
+            Err(e) => Ok(crate::models::GqlMcpToolsListResponse {
+                tools: None,
+                error: Some(e.to_string()),
+            }),
+        }
     }
 
     /// Get all chats for the current user

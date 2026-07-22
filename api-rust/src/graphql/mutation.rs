@@ -320,6 +320,216 @@ impl Mutation {
         Ok(deleted_count > 0)
     }
 
+    /// Register an MCP server
+    async fn create_mcp_server(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::CreateMcpServerInput,
+    ) -> Result<crate::models::GqlMcpServerResponse> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let now = Utc::now().naive_utc();
+        let server = crate::models::McpServer {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: input.name,
+            url: input.url,
+            description: input.description,
+            transport_type: input
+                .transport_type
+                .unwrap_or_else(|| "STREAMABLE_HTTP".to_string()),
+            auth_type: input.auth_type.unwrap_or_else(|| "NONE".to_string()),
+            auth_config: input
+                .auth_config
+                .as_ref()
+                .map(|c| serde_json::to_string(c).unwrap_or_default()),
+            tools: None,
+            is_active: true,
+            user_id: Some(user.id.clone()),
+            created_at: now,
+            updated_at: now,
+        };
+
+        let server: crate::models::McpServer =
+            diesel::insert_into(crate::schema::mcp_servers::table)
+                .values(&server)
+                .get_result(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        log_user_action!(&user.id, "create_mcp_server", url = %server.url);
+        Ok(crate::models::GqlMcpServerResponse {
+            server: Some(server.into()),
+            error: None,
+        })
+    }
+
+    /// Update an MCP server
+    async fn update_mcp_server(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::UpdateMcpServerInput,
+    ) -> Result<crate::models::GqlMcpServerResponse> {
+        use crate::schema::mcp_servers;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let server: crate::models::McpServer = diesel::update(
+            mcp_servers::table
+                .filter(mcp_servers::id.eq(&input.id))
+                .filter(mcp_servers::user_id.eq(&user.id)),
+        )
+        .set((
+            input.name.map(|n| mcp_servers::name.eq(n)),
+            input.url.map(|u| mcp_servers::url.eq(u)),
+            input.description.map(|d| mcp_servers::description.eq(d)),
+            input
+                .transport_type
+                .map(|t| mcp_servers::transport_type.eq(t)),
+            input.auth_type.map(|t| mcp_servers::auth_type.eq(t)),
+            input
+                .auth_config
+                .as_ref()
+                .map(|c| mcp_servers::auth_config.eq(serde_json::to_string(c).unwrap_or_default())),
+            mcp_servers::updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .get_result(&mut conn)
+        .map_err(|_| async_graphql::Error::new("MCP server not found"))?;
+
+        Ok(crate::models::GqlMcpServerResponse {
+            server: Some(server.into()),
+            error: None,
+        })
+    }
+
+    /// Delete an MCP server
+    async fn delete_mcp_server(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::DeleteMcpServerInput,
+    ) -> Result<bool> {
+        use crate::schema::mcp_servers;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let deleted = diesel::delete(
+            mcp_servers::table
+                .filter(mcp_servers::id.eq(&input.id))
+                .filter(mcp_servers::user_id.eq(&user.id)),
+        )
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(deleted > 0)
+    }
+
+    /// Connect to the MCP server, list its tools and store them
+    async fn refetch_mcp_server_tools(
+        &self,
+        ctx: &Context<'_>,
+        server_id: String,
+        auth_token: Option<String>,
+    ) -> Result<crate::models::GqlMcpServerResponse> {
+        use crate::schema::mcp_servers;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let server: crate::models::McpServer = match mcp_servers::table
+            .filter(mcp_servers::id.eq(&server_id))
+            .filter(mcp_servers::user_id.eq(&user.id))
+            .first(&mut conn)
+        {
+            Ok(server) => server,
+            Err(_) => {
+                return Ok(crate::models::GqlMcpServerResponse {
+                    server: None,
+                    error: Some("MCP server not found".to_string()),
+                })
+            }
+        };
+        drop(conn);
+
+        let mut client =
+            crate::services::mcp::McpClient::for_server(&server, auth_token.as_deref());
+        match client.list_tools().await {
+            Ok(tools) => {
+                let stored = crate::services::mcp::tools_to_stored_json(&tools);
+                let mut conn = gql_ctx.db_pool.get()?;
+                let server: crate::models::McpServer =
+                    diesel::update(mcp_servers::table.filter(mcp_servers::id.eq(&server_id)))
+                        .set((
+                            mcp_servers::tools.eq(stored),
+                            mcp_servers::updated_at.eq(Utc::now().naive_utc()),
+                        ))
+                        .get_result(&mut conn)
+                        .map_err(|e| AppError::Database(e.to_string()))?;
+                Ok(crate::models::GqlMcpServerResponse {
+                    server: Some(server.into()),
+                    error: None,
+                })
+            }
+            Err(e) => Ok(crate::models::GqlMcpServerResponse {
+                server: None,
+                error: Some(format!("Failed to refetch tools: {}", e)),
+            }),
+        }
+    }
+
+    /// Invoke a single MCP tool for testing
+    async fn test_mcp_tool(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::TestMcpToolInput,
+    ) -> Result<crate::models::GqlMcpToolTestResponse> {
+        use crate::schema::mcp_servers;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let server: crate::models::McpServer = match mcp_servers::table
+            .filter(mcp_servers::id.eq(&input.server_id))
+            .filter(mcp_servers::user_id.eq(&user.id))
+            .first(&mut conn)
+        {
+            Ok(server) => server,
+            Err(_) => {
+                return Ok(crate::models::GqlMcpToolTestResponse {
+                    result: None,
+                    error: Some("MCP server not found".to_string()),
+                })
+            }
+        };
+        drop(conn);
+
+        let args: serde_json::Value = match &input.args_json {
+            Some(json) if !json.trim().is_empty() => match serde_json::from_str(json) {
+                Ok(v) => v,
+                Err(e) => {
+                    return Ok(crate::models::GqlMcpToolTestResponse {
+                        result: None,
+                        error: Some(format!("Invalid argsJson: {}", e)),
+                    })
+                }
+            },
+            _ => serde_json::json!({}),
+        };
+
+        let mut client =
+            crate::services::mcp::McpClient::for_server(&server, input.auth_token.as_deref());
+        match client.call_tool(&input.tool_name, args).await {
+            Ok(result) => Ok(crate::models::GqlMcpToolTestResponse {
+                result: Some(result),
+                error: None,
+            }),
+            Err(e) => Ok(crate::models::GqlMcpToolTestResponse {
+                result: None,
+                error: Some(e.to_string()),
+            }),
+        }
+    }
+
     /// Create a chat folder
     async fn create_folder(
         &self,

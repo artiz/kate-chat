@@ -2,6 +2,7 @@ pub mod ai;
 pub mod bedrock;
 pub mod chat;
 pub mod custom;
+pub mod mcp;
 pub mod model;
 pub mod openai;
 pub mod openai_protocol;

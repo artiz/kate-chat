@@ -1,14 +1,13 @@
-//! MCP servers: schema-compatible read surface over the existing
-//! `mcp_servers` table. Tool invocation is not ported yet (`mcpEnabled` in
-//! appConfig stays false); this exists so the client's bootstrap
-//! `mcpServers` query validates and lists configured servers.
+//! MCP servers: CRUD over the `mcp_servers` table plus tool listing /
+//! test invocation through the minimal Streamable-HTTP client in
+//! `services/mcp.rs`. In-chat tool execution lands with the tool loop.
 
-use async_graphql::SimpleObject;
+use async_graphql::{InputObject, SimpleObject};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
 #[diesel(table_name = crate::schema::mcp_servers)]
 pub struct McpServer {
     pub id: String,
@@ -25,8 +24,8 @@ pub struct McpServer {
     pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject)]
-#[graphql(name = "MCPAuthConfig")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject, InputObject)]
+#[graphql(name = "MCPAuthConfig", input_name = "MCPAuthConfigInput")]
 #[serde(rename_all = "camelCase", default)]
 pub struct GqlMcpAuthConfig {
     pub header_name: Option<String>,
@@ -102,6 +101,67 @@ impl From<McpServer> for GqlMcpServer {
 pub struct GqlMcpServersList {
     pub servers: Vec<GqlMcpServer>,
     pub total: Option<i32>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[graphql(name = "CreateMCPServerInput")]
+pub struct CreateMcpServerInput {
+    pub name: String,
+    pub url: String,
+    pub description: Option<String>,
+    pub transport_type: Option<String>,
+    pub auth_type: Option<String>,
+    pub auth_config: Option<GqlMcpAuthConfig>,
+    pub access: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[graphql(name = "UpdateMCPServerInput")]
+pub struct UpdateMcpServerInput {
+    pub id: String,
+    pub name: Option<String>,
+    pub url: Option<String>,
+    pub description: Option<String>,
+    pub transport_type: Option<String>,
+    pub auth_type: Option<String>,
+    pub auth_config: Option<GqlMcpAuthConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[graphql(name = "DeleteMCPServerInput")]
+pub struct DeleteMcpServerInput {
+    pub id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[graphql(name = "TestMCPToolInput")]
+pub struct TestMcpToolInput {
+    pub server_id: String,
+    pub auth_token: Option<String>,
+    pub tool_name: String,
+    /// JSON string of tool arguments
+    pub args_json: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+#[graphql(name = "MCPServerResponse")]
+pub struct GqlMcpServerResponse {
+    pub server: Option<GqlMcpServer>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+#[graphql(name = "MCPToolsListResponse")]
+pub struct GqlMcpToolsListResponse {
+    pub tools: Option<Vec<GqlMcpTool>>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+#[graphql(name = "MCPToolTestResponse")]
+pub struct GqlMcpToolTestResponse {
+    pub result: Option<String>,
     pub error: Option<String>,
 }
 
