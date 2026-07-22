@@ -7,16 +7,21 @@ use tracing::{error, info, instrument, warn};
 use crate::graphql::GraphQLContext;
 use crate::log_user_action;
 use crate::models::{
-    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateMessageInput,
-    EditMessageResponse, GqlChat, GqlMessage, GqlModel, GqlModelsList, GqlNewMessage,
-    GqlProviderInfo, LoginInput, Message, MessageRole, Model, NewChat, NewUser, ProviderDetail,
-    RegisterInput, TestModelInput, UpdateChatInput, UpdateModelStatusInput, UpdateUserInput, User,
+    message, AuthProvider, AuthResponse, Chat, CreateChatInput, CreateCustomModelInput,
+    CreateMessageInput, DeleteModelInput, EditMessageResponse, GqlChat, GqlMessage, GqlModel,
+    GqlModelsList, GqlNewMessage, GqlProviderInfo, LoginInput, Message, MessageRole, Model,
+    NewChat, NewUser, ProviderDetail, RegisterInput, TestCustomModelInput, TestModelInput,
+    UpdateChatInput, UpdateCustomModelInput, UpdateModelStatusInput, UpdateUserInput, User,
     ROLE_ADMIN, ROLE_USER,
 };
-use crate::schema::{chats, messages, models, users};
-use crate::services::ai::{AIService, ApiProvider, StreamCallbacks};
+use crate::schema::{chat_files, chats, messages, models, users};
+use crate::services::ai::{
+    AIProviderService, AIProviderWrapper, AIService, ApiProvider, GenerateImagesRequest,
+    StreamCallbacks,
+};
 use crate::services::chat::{ChatService, GetChatStatsResult};
 use crate::services::pubsub::get_global_pubsub;
+use crate::services::s3::S3Service;
 use crate::utils::errors::AppError;
 use crate::utils::jwt;
 
@@ -335,14 +340,28 @@ impl Mutation {
             warn!("Failed to publish message to subscribers: {:?}", e);
         }
 
-        // Parse API provider
-        let api_provider: ApiProvider = match model.api_provider.as_str() {
-            "AWS_BEDROCK" => ApiProvider::AwsBedrock,
-            "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_AI" => ApiProvider::YandexAi,
-            _ => return Err(async_graphql::Error::new("Unsupported API provider")),
-        };
         let ai_service = AIService::new(gql_ctx.config.clone());
+        let provider = ai_service
+            .get_provider_for_model(&model)
+            .map_err(async_graphql::Error::from)?;
+
+        // Images-generation models bypass the chat/streaming path entirely:
+        // the user message is the prompt, the response is a set of images
+        // stored to S3 and referenced from the assistant message (same flow
+        // as the Node API's processModelResponse).
+        if model.type_ == "image_generation" {
+            let images_count = chat.images_count.unwrap_or(1).max(1);
+            return generate_images_reply(
+                gql_ctx,
+                &provider,
+                &chat,
+                &message,
+                &model,
+                input.content.clone(),
+                images_count,
+            )
+            .await;
+        }
 
         // Load previous messages for context (up to 100 messages)
         const CONTEXT_MESSAGES_LIMIT: i64 = 100;
@@ -539,8 +558,8 @@ impl Mutation {
             },
         };
 
-        ai_service
-            .invoke_model_stream(api_provider, invoke_request, callbacks)
+        provider
+            .invoke_model_stream(invoke_request, callbacks)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
 
@@ -697,16 +716,16 @@ impl Mutation {
             return Err(async_graphql::Error::new("Model is not active"));
         }
 
-        // Parse API provider
-        let api_provider: ApiProvider = match model.api_provider.as_str() {
-            "AWS_BEDROCK" => ApiProvider::AwsBedrock,
-            "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_AI" => ApiProvider::YandexAi,
-            _ => return Err(async_graphql::Error::new("Unsupported API provider")),
-        };
+        if model.type_ == "image_generation" {
+            return Err(async_graphql::Error::new(
+                "Image output is not supported for test model",
+            ));
+        }
 
-        // Create AI service
         let ai_service = AIService::new(gql_ctx.config.clone());
+        let provider = ai_service
+            .get_provider_for_model(&model)
+            .map_err(async_graphql::Error::from)?;
 
         // Create test message
         let test_message = crate::services::ai::ModelMessage {
@@ -726,7 +745,7 @@ impl Mutation {
         };
 
         // Test the model
-        match ai_service.invoke_model(api_provider, invoke_request).await {
+        match provider.invoke_model(invoke_request).await {
             Ok(response) => {
                 let timestamp = Utc::now().naive_utc();
                 info!(
@@ -764,6 +783,263 @@ impl Mutation {
                 Err(AppError::Internal(format!("Model test failed: {}", e)).into())
             }
         }
+    }
+
+    /// Create a user-defined custom model (OpenAI-compatible REST endpoint)
+    async fn create_custom_model(
+        &self,
+        ctx: &Context<'_>,
+        input: CreateCustomModelInput,
+    ) -> Result<GqlModel> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let existing: Option<Model> = models::table
+            .filter(models::model_id.eq(&input.model_id))
+            .filter(models::user_id.eq(&user.id))
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        if existing.is_some() {
+            return Err(async_graphql::Error::new(format!(
+                "Model with ID '{}' already exists",
+                input.model_id
+            )));
+        }
+
+        let settings = crate::models::model::CustomModelSettings {
+            endpoint: Some(input.endpoint),
+            api_key: input.api_key,
+            model_name: Some(input.model_name),
+            protocol: Some(input.protocol),
+        };
+
+        let now = Utc::now().naive_utc();
+        let model = Model {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: input.name,
+            model_id: input.model_id,
+            description: input.description,
+            user_id: Some(user.id.clone()),
+            provider: Some("Custom".to_string()),
+            api_provider: "CUSTOM_REST_API".to_string(),
+            type_: input.type_.as_db_str().to_string(),
+            streaming: input.streaming.unwrap_or(true),
+            image_input: input.image_input.unwrap_or(false),
+            max_input_tokens: input.max_input_tokens,
+            tools: None,
+            features: None,
+            custom_settings: Some(
+                serde_json::to_string(&settings).map_err(|e| AppError::Internal(e.to_string()))?,
+            ),
+            is_active: true,
+            is_custom: true,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let model: Model = diesel::insert_into(models::table)
+            .values(&model)
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        log_user_action!(&user.id, "create_custom_model", model_id = %model.model_id);
+        Ok(GqlModel::from_model(&model, user.clone()))
+    }
+
+    /// Update a custom model
+    async fn update_custom_model(
+        &self,
+        ctx: &Context<'_>,
+        input: UpdateCustomModelInput,
+    ) -> Result<GqlModel> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let model: Model = models::table
+            .filter(models::id.eq(&input.id))
+            .filter(models::user_id.eq(&user.id))
+            .filter(models::is_custom.eq(true))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Custom model not found"))?;
+
+        let mut settings: crate::models::model::CustomModelSettings = model
+            .custom_settings
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok())
+            .unwrap_or(crate::models::model::CustomModelSettings {
+                endpoint: None,
+                api_key: None,
+                model_name: None,
+                protocol: None,
+            });
+
+        settings.endpoint = Some(input.endpoint);
+        settings.model_name = Some(input.model_name);
+        settings.protocol = Some(input.protocol);
+        // API key changes only when explicitly provided (empty string clears)
+        if let Some(api_key) = input.api_key {
+            settings.api_key = if api_key.is_empty() {
+                None
+            } else {
+                Some(api_key)
+            };
+        }
+
+        let updated: Model = diesel::update(models::table.filter(models::id.eq(&model.id)))
+            .set((
+                models::name.eq(&input.name),
+                models::description.eq(&input.description),
+                models::type_.eq(input.type_.as_db_str()),
+                models::streaming.eq(input.streaming.unwrap_or(model.streaming)),
+                models::image_input.eq(input.image_input.unwrap_or(model.image_input)),
+                models::max_input_tokens.eq(input.max_input_tokens.or(model.max_input_tokens)),
+                models::custom_settings.eq(serde_json::to_string(&settings)
+                    .map_err(|e| AppError::Internal(e.to_string()))?),
+                models::updated_at.eq(Utc::now().naive_utc()),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        log_user_action!(&user.id, "update_custom_model", model_id = %updated.model_id);
+        Ok(GqlModel::from_model(&updated, user.clone()))
+    }
+
+    /// Delete a custom model
+    async fn delete_model(&self, ctx: &Context<'_>, input: DeleteModelInput) -> Result<bool> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let deleted = diesel::delete(
+            models::table
+                .filter(models::id.eq(&input.id))
+                .filter(models::user_id.eq(&user.id))
+                .filter(models::is_custom.eq(true)),
+        )
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(deleted > 0)
+    }
+
+    /// Test a custom model configuration before saving it. Embedding-type
+    /// models are tested with an embeddings request (they have no chat
+    /// endpoint); everything else runs a small chat completion.
+    async fn test_custom_model(
+        &self,
+        ctx: &Context<'_>,
+        input: TestCustomModelInput,
+    ) -> Result<GqlMessage> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+
+        let mut api_key = input.api_key.clone();
+        // saved-model test: fall back to the stored key when none provided
+        if api_key.as_deref().unwrap_or("").is_empty() {
+            if let Some(model_id) = &input.model_id {
+                let mut conn = gql_ctx
+                    .db_pool
+                    .get()
+                    .map_err(|e| AppError::Database(e.to_string()))?;
+                let existing: Option<Model> = models::table
+                    .filter(models::model_id.eq(model_id))
+                    .filter(models::user_id.eq(&user.id))
+                    .first(&mut conn)
+                    .optional()
+                    .map_err(|e| AppError::Database(e.to_string()))?;
+                api_key = existing
+                    .and_then(|m| m.custom_settings)
+                    .and_then(|s| {
+                        serde_json::from_str::<crate::models::model::CustomModelSettings>(&s).ok()
+                    })
+                    .and_then(|s| s.api_key);
+            }
+        }
+
+        let settings = crate::models::model::CustomModelSettings {
+            endpoint: Some(input.endpoint.clone()),
+            api_key,
+            model_name: Some(input.model_name.clone()),
+            protocol: Some(input.protocol.clone()),
+        };
+        let service = crate::services::custom::CustomService::from_settings(&settings)
+            .map_err(async_graphql::Error::from)?;
+
+        let timestamp = Utc::now().naive_utc();
+
+        let content = if input.type_ == crate::models::model::ModelType::Embedding {
+            let embedding = service
+                .get_embeddings(&input.model_name, &input.text)
+                .await
+                .map_err(async_graphql::Error::from)?;
+            let preview_len = 10.min(embedding.len());
+            let preview = embedding[..preview_len]
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "Embedding [{}]: [{}{}]",
+                embedding.len(),
+                preview,
+                if embedding.len() > preview_len {
+                    ", ..."
+                } else {
+                    ""
+                }
+            )
+        } else {
+            let invoke_request = crate::services::ai::InvokeModelRequest {
+                model_id: input.model_name.clone(),
+                messages: vec![crate::services::ai::ModelMessage {
+                    role: crate::services::ai::MessageRole::User,
+                    content: input.text.clone(),
+                    timestamp: Some(Utc::now()),
+                }],
+                temperature: Some(0.7),
+                max_tokens: Some(100),
+                top_p: None,
+                system_prompt: Some("You are a helpful assistant.".to_string()),
+            };
+            service
+                .invoke_model(invoke_request)
+                .await
+                .map_err(async_graphql::Error::from)?
+                .content
+        };
+
+        log_user_action!(&user.id, "test_custom_model", endpoint = %input.endpoint);
+
+        Ok(GqlMessage {
+            id: "test-result".to_string(),
+            chat_id: "test".to_string(),
+            user_id: Some(user.id.clone()),
+            user: Some(user.clone()),
+            content,
+            role: "assistant".to_string(),
+            model_id: Some(input.model_name.clone()),
+            model_name: Some(input.model_name.clone()),
+            json_content: None,
+            metadata: None,
+            linked_to_message_id: None,
+            linked_messages: None,
+            status: None,
+            status_info: None,
+            created_at: timestamp,
+            updated_at: timestamp,
+        })
     }
 
     /// Update model status (active/inactive)
@@ -854,6 +1130,152 @@ impl Mutation {
             error: None,
         })
     }
+}
+
+/// Generate images for an images-generation model and post them as the
+/// assistant reply: upload to S3 under `{chatId}/{messageId}/{uuid}.{ext}`,
+/// record a `chat_files` row per image (Library), embed markdown `/files/…`
+/// links + jsonContent blocks in the message — the Node API's
+/// processModelResponse flow.
+#[allow(clippy::too_many_arguments)]
+async fn generate_images_reply(
+    gql_ctx: &GraphQLContext,
+    provider: &AIProviderWrapper,
+    chat: &Chat,
+    user_message: &Message,
+    model: &Model,
+    prompt: String,
+    images_count: i32,
+) -> Result<GqlMessage> {
+    let pubsub = get_global_pubsub();
+
+    let publish = |msg: Option<GqlMessage>, error: Option<String>| {
+        let chat_id = chat.id.clone();
+        async move {
+            let pub_message = message::GqlNewMessage {
+                r#type: String::from(message::MessageType::Message),
+                error,
+                message: msg,
+                streaming: Some(false),
+                chat: None,
+            };
+            if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                warn!("Failed to publish message to subscribers: {:?}", e);
+            }
+        }
+    };
+
+    if prompt.trim().is_empty() {
+        return Err(AppError::Validation("Image prompt is required".to_string()).into());
+    }
+
+    let request = GenerateImagesRequest {
+        model_id: model.model_id.clone(),
+        prompt,
+        count: images_count,
+    };
+
+    let images = match provider.generate_images(request).await {
+        Ok(images) => images,
+        Err(e) => {
+            let mut error_message = Message::new(
+                chat.id.clone(),
+                None,
+                format!("Image generation error: {}", e),
+                String::from(MessageRole::Error),
+                model.model_id.clone(),
+                Some(model.name.clone()),
+            );
+            error_message.linked_to_message_id = Some(user_message.id.clone());
+            if let Ok(mut conn) = gql_ctx.db_pool.get() {
+                let _ = diesel::insert_into(messages::table)
+                    .values(&error_message)
+                    .execute(&mut conn);
+            }
+            publish(Some(GqlMessage::from(error_message)), Some(e.to_string())).await;
+            return Err(async_graphql::Error::from(e));
+        }
+    };
+
+    let mut ai_message = Message::new(
+        chat.id.clone(),
+        None,
+        String::new(),
+        String::from(MessageRole::Assistant),
+        model.model_id.clone(),
+        Some(model.name.clone()),
+    );
+
+    let mut s3_service = S3Service::new(gql_ctx.config.clone());
+    let mut json_blocks: Vec<serde_json::Value> = Vec::new();
+    let mut markdown_links: Vec<String> = Vec::new();
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    for image in &images {
+        let extension = image.mime.strip_prefix("image/").unwrap_or("png");
+        let file_name = format!(
+            "{}/{}/{}.{}",
+            chat.id,
+            ai_message.id,
+            uuid::Uuid::new_v4(),
+            extension
+        );
+
+        s3_service
+            .upload_file(&file_name, image.bytes.clone(), &image.mime)
+            .await?;
+
+        let chat_file = crate::models::ChatFile::new_image(
+            chat.id.clone(),
+            Some(ai_message.id.clone()),
+            file_name.clone(),
+            image.mime.clone(),
+        );
+        diesel::insert_into(chat_files::table)
+            .values(&chat_file)
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        json_blocks.push(serde_json::json!({
+            "contentType": "image",
+            "fileName": file_name,
+            "mimeType": image.mime,
+        }));
+        markdown_links.push(format!(
+            "![Generated Image]({})",
+            crate::models::chat_file::file_url(&file_name)
+        ));
+    }
+
+    ai_message.content = markdown_links.join("   ");
+    ai_message.json_content = Some(
+        serde_json::to_string(&json_blocks)
+            .map_err(|e| AppError::Internal(format!("Failed to serialize content: {}", e)))?,
+    );
+
+    let ai_message: Message = diesel::insert_into(messages::table)
+        .values(&ai_message)
+        .get_result(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    // Track generated-images count on the chat (used by demo limits).
+    let _ = diesel::update(chats::table.filter(chats::id.eq(&chat.id)))
+        .set(chats::images_count.eq(chat.images_count.unwrap_or(0) + images.len() as i32))
+        .execute(&mut conn);
+
+    info!(
+        "Generated {} image(s) for chat {} with {}",
+        images.len(),
+        chat.id,
+        model.model_id
+    );
+
+    publish(Some(GqlMessage::from(ai_message)), None).await;
+
+    Ok(GqlMessage::from(user_message.clone()))
 }
 
 /// Convert database Message to AI service ModelMessage format

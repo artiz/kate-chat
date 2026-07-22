@@ -1,8 +1,11 @@
 use rocket::form::{Form, FromForm};
 use rocket::fs::TempFile;
+use rocket::http::ContentType;
 use rocket::serde::json::Json;
 use rocket::{delete, get, post, routes, Route, State};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::config::AppConfig;
@@ -29,7 +32,33 @@ pub struct FileUpload<'f> {
 }
 
 pub fn routes() -> Vec<Route> {
-    routes![upload_file, delete_file, health_check]
+    routes![upload_file, delete_file, health_check, serve_file]
+}
+
+/// Serve a stored file (generated images, uploads) straight from S3 —
+/// the client references them as `/files/<key>` URLs. Keys contain
+/// slashes (`{chatId}/{messageId}/{id}.png`), hence the multi-segment
+/// route. `name` mirrors the Node API's optional download-name hint.
+#[get("/<key..>?<name>", rank = 20)]
+pub async fn serve_file(
+    key: PathBuf,
+    name: Option<String>,
+    config: &State<AppConfig>,
+) -> Result<(ContentType, Vec<u8>), AppError> {
+    let _ = name; // reserved: content-disposition hint, parity with Node API
+    let key = key
+        .to_str()
+        .ok_or_else(|| AppError::Validation("Invalid file key".to_string()))?
+        .to_string();
+
+    let mut s3_service = S3Service::new(config.inner().clone());
+    let (data, content_type) = s3_service.get_file(&key).await?;
+
+    let content_type = content_type
+        .and_then(|ct| ContentType::from_str(&ct).ok())
+        .unwrap_or(ContentType::Binary);
+
+    Ok((content_type, data))
 }
 
 #[post("/upload", data = "<upload>")]

@@ -87,6 +87,42 @@ impl S3Service {
         ))
     }
 
+    /// Download a file's bytes + content type from S3.
+    pub async fn get_file(&mut self, key: &str) -> Result<(Vec<u8>, Option<String>), AppError> {
+        let bucket = self
+            .config
+            .s3_bucket
+            .clone()
+            .ok_or_else(|| AppError::Internal("S3 bucket not configured".to_string()))?;
+        let client = self.get_client().await?;
+
+        let object = client
+            .get_object()
+            .bucket(&bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| {
+                let service_err = e.into_service_error();
+                if service_err.is_no_such_key() {
+                    AppError::NotFound(format!("File not found: {}", key))
+                } else {
+                    AppError::Aws(format!("S3 download failed: {}", service_err))
+                }
+            })?;
+
+        let content_type = object.content_type().map(|s| s.to_string());
+        let data = object
+            .body
+            .collect()
+            .await
+            .map_err(|e| AppError::Aws(format!("S3 body read failed: {}", e)))?
+            .into_bytes()
+            .to_vec();
+
+        Ok((data, content_type))
+    }
+
     pub async fn delete_file(&mut self, key: &str) -> Result<(), AppError> {
         let bucket = self
             .config

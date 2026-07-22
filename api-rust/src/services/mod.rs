@@ -1,8 +1,10 @@
 pub mod ai;
 pub mod bedrock;
 pub mod chat;
+pub mod custom;
 pub mod model;
 pub mod openai;
+pub mod openai_protocol;
 pub mod pubsub;
 pub mod s3;
 pub mod yandex;

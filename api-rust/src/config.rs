@@ -125,6 +125,7 @@ impl AppConfig {
             "AWS_BEDROCK".to_string(),
             "OPEN_AI".to_string(),
             "YANDEX_AI".to_string(),
+            "CUSTOM_REST_API".to_string(),
         ];
 
         match env::var("ENABLED_API_PROVIDERS") {
