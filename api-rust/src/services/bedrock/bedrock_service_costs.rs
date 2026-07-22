@@ -68,8 +68,7 @@ impl BedrockService {
 
                     let blended_cost_val = metrics.unwrap().get("BlendedCost");
 
-                    if blended_cost_val.is_some() {
-                        let blended_cost = blended_cost_val.unwrap();
+                    if let Some(blended_cost) = blended_cost_val {
                         if let Some(amount_str) = blended_cost.amount() {
                             if let Ok(cost) = amount_str.parse::<f64>() {
                                 total_cost += cost;
@@ -166,8 +165,7 @@ impl BedrockService {
 
                 let blended_cost_val = metrics.unwrap().get("BlendedCost");
 
-                if blended_cost_val.is_some() {
-                    let blended_cost = blended_cost_val.unwrap();
+                if let Some(blended_cost) = blended_cost_val {
                     if let Some(amount_str) = blended_cost.amount() {
                         if let Ok(cost) = amount_str.parse::<f64>() {
                             let usage_type = keys.first().map_or("Other", |v| v);

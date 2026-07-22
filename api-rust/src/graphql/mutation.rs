@@ -581,7 +581,6 @@ impl Mutation {
 
             // Delete all messages after this one in the same chat
             let following_messages: Vec<Message> = filter
-                .clone()
                 .order(messages::created_at.asc())
                 .load(&mut conn)
                 .map_err(|e| AppError::Database(e.to_string()))?;
