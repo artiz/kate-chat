@@ -21,7 +21,9 @@ pub struct OpenAIProtocol {
     /// e.g. `https://api.openai.com/v1`, `https://ai.api.cloud.yandex.net/v1`
     /// or a custom model's endpoint. Stored without a trailing slash.
     base_url: String,
-    api_key: Option<String>,
+    /// Full `Authorization` header value (`Bearer <key>` by default;
+    /// providers with their own scheme override it, e.g. Yandex `Api-Key …`).
+    auth_header: Option<String>,
     /// When set, replaces the requested model id in every call (custom models
     /// store the provider-side model name separately from the KateChat id).
     model_override: Option<String>,
@@ -43,10 +45,17 @@ impl OpenAIProtocol {
         Self {
             client: Client::new(),
             base_url,
-            api_key,
+            auth_header: api_key.map(|key| format!("Bearer {}", key)),
             model_override,
             label: label.into(),
         }
+    }
+
+    /// Replace the `Authorization` header value entirely (provider-specific
+    /// auth schemes).
+    pub fn with_auth_header(mut self, value: impl Into<String>) -> Self {
+        self.auth_header = Some(value.into());
+        self
     }
 
     pub fn effective_model_id(&self, requested: &str) -> String {
@@ -64,16 +73,16 @@ impl OpenAIProtocol {
             .client
             .post(self.url(path))
             .header("Content-Type", "application/json");
-        if let Some(key) = &self.api_key {
-            builder = builder.header("Authorization", format!("Bearer {}", key));
+        if let Some(auth) = &self.auth_header {
+            builder = builder.header("Authorization", auth);
         }
         builder
     }
 
     fn get(&self, path: &str) -> reqwest::RequestBuilder {
         let mut builder = self.client.get(self.url(path));
-        if let Some(key) = &self.api_key {
-            builder = builder.header("Authorization", format!("Bearer {}", key));
+        if let Some(auth) = &self.auth_header {
+            builder = builder.header("Authorization", auth);
         }
         builder
     }

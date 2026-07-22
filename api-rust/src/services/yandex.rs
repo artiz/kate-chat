@@ -41,12 +41,18 @@ impl YandexService {
     }
 
     fn protocol(&self) -> Result<OpenAIProtocol, AppError> {
-        Ok(OpenAIProtocol::new(
-            YANDEX_OPENAI_API_URL,
-            Some(self.get_api_key()?.to_string()),
-            None,
-            "Yandex",
-        ))
+        let api_key = self.get_api_key()?;
+        // Node parity: API keys (AQVN…) authenticate with the `Api-Key`
+        // scheme; only IAM tokens (t1…) use `Bearer`.
+        let auth_header = if api_key.starts_with("t1") {
+            format!("Bearer {}", api_key)
+        } else {
+            format!("Api-Key {}", api_key)
+        };
+        Ok(
+            OpenAIProtocol::new(YANDEX_OPENAI_API_URL, None, None, "Yandex")
+                .with_auth_header(auth_header),
+        )
     }
 
     /// Model ids are stored with a `{folder}` placeholder
