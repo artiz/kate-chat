@@ -134,6 +134,8 @@ pub struct AIModelInfo {
     pub type_: String,
     pub streaming: bool,
     pub image_input: bool,
+    #[serde(default)]
+    pub max_input_tokens: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

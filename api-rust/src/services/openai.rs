@@ -115,6 +115,7 @@ impl AIProviderService for OpenAIService {
                         type_: type_.to_string(),
                         streaming,
                         image_input,
+                        max_input_tokens: None,
                     },
                 );
             }

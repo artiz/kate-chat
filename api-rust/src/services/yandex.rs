@@ -125,6 +125,7 @@ impl AIProviderService for YandexService {
                     type_: "chat".to_string(),
                     streaming: true,
                     image_input: false,
+                    max_input_tokens: None,
                 },
             );
         }

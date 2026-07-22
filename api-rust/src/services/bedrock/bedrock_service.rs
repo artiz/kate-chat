@@ -21,6 +21,49 @@ use crate::services::bedrock::providers::{
 };
 use crate::utils::errors::AppError;
 
+/// Curated Bedrock model list shared with the Node API (single source of
+/// truth): per-model region availability, max input tokens and
+/// `modelIdOverride` — the inference-profile ids (`us.…`/`eu.…`) required by
+/// newer models that reject on-demand invocation of the bare model id.
+const BEDROCK_MODELS_CONFIG: &str =
+    include_str!("../../../../api/src/config/data/bedrock-models-config.json");
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BedrockModelConfig {
+    pub model_id: String,
+    #[serde(default)]
+    pub model_id_override: Option<HashMap<String, String>>,
+    #[serde(default)]
+    pub regions: Vec<String>,
+    #[serde(default)]
+    pub max_input_tokens: Option<i32>,
+}
+
+pub(crate) fn bedrock_model_configs() -> &'static HashMap<String, BedrockModelConfig> {
+    static CONFIGS: std::sync::OnceLock<HashMap<String, BedrockModelConfig>> =
+        std::sync::OnceLock::new();
+    CONFIGS.get_or_init(|| {
+        serde_json::from_str::<Vec<BedrockModelConfig>>(BEDROCK_MODELS_CONFIG)
+            .expect("invalid bedrock-models-config.json")
+            .into_iter()
+            .map(|c| (c.model_id.clone(), c))
+            .collect()
+    })
+}
+
+/// Effective model id for a region: the inference-profile override for the
+/// region's geo prefix ("us", "eu", …) when configured, else the bare id.
+pub(crate) fn resolve_bedrock_model_id(config: &BedrockModelConfig, region: &str) -> String {
+    let geo = region.split('-').next().unwrap_or_default();
+    config
+        .model_id_override
+        .as_ref()
+        .and_then(|map| map.get(geo))
+        .cloned()
+        .unwrap_or_else(|| config.model_id.clone())
+}
+
 pub struct BedrockService {
     config: AppConfig,
     runtime_client: Option<BedrockRuntimeClient>,
@@ -360,15 +403,30 @@ impl AIProviderService for BedrockService {
 
         let mut models = HashMap::new();
 
+        let region = self
+            .config
+            .aws_bedrock_region
+            .clone()
+            .unwrap_or_else(|| "eu-central-1".to_string());
+        let configs = bedrock_model_configs();
+
         for model in response.model_summaries() {
             if let (model_id, Some(model_name), Some(provider_name)) =
                 (model.model_id(), model.model_name(), model.provider_name())
             {
-                // Rerank models use a dedicated request shape (query/documents)
-                // that the chat path cannot produce — skip them entirely.
-                if model_id.contains("rerank") {
+                // Only models from the curated config, available in the
+                // configured region (mirrors the Node provider — this also
+                // drops rerank and other unusable models).
+                let Some(model_config) = configs.get(model_id) else {
+                    continue;
+                };
+                if !model_config.regions.iter().any(|r| r == &region) {
                     continue;
                 }
+
+                // Newer models require an inference-profile id (us./eu. …) —
+                // the bare model id is rejected for on-demand invocation.
+                let effective_model_id = resolve_bedrock_model_id(model_config, &region);
 
                 // Classify by output modality, mirroring the Node provider:
                 // IMAGE → image_generation, EMBEDDING → embedding, else chat.
@@ -389,7 +447,7 @@ impl AIProviderService for BedrockService {
                 let supports_image_in = model.input_modalities().contains(&ModelModality::Image);
 
                 models.insert(
-                    model_id.to_string(),
+                    effective_model_id,
                     AIModelInfo {
                         api_provider: ApiProvider::AwsBedrock,
                         provider: Some(provider_name.to_string()),
@@ -398,6 +456,7 @@ impl AIProviderService for BedrockService {
                         type_: type_.to_string(),
                         streaming: supports_streaming,
                         image_input: supports_image_in,
+                        max_input_tokens: model_config.max_input_tokens,
                     },
                 );
             }
@@ -475,5 +534,42 @@ impl AIProviderService for BedrockService {
         }
 
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_shared_models_config() {
+        let configs = bedrock_model_configs();
+        assert!(configs.len() > 40, "expected the full curated list");
+        assert!(configs.contains_key("anthropic.claude-3-haiku-20240307-v1:0"));
+    }
+
+    #[test]
+    fn resolves_inference_profile_override_by_region() {
+        let configs = bedrock_model_configs();
+        let sonnet = configs
+            .get("anthropic.claude-sonnet-4-20250514-v1:0")
+            .expect("claude sonnet 4 in config");
+        assert_eq!(
+            resolve_bedrock_model_id(sonnet, "eu-central-1"),
+            "eu.anthropic.claude-sonnet-4-20250514-v1:0"
+        );
+        assert_eq!(
+            resolve_bedrock_model_id(sonnet, "us-east-1"),
+            "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        );
+
+        // model without override keeps its bare id
+        let haiku3 = configs
+            .get("anthropic.claude-3-haiku-20240307-v1:0")
+            .expect("claude 3 haiku in config");
+        assert_eq!(
+            resolve_bedrock_model_id(haiku3, "eu-central-1"),
+            "anthropic.claude-3-haiku-20240307-v1:0"
+        );
     }
 }

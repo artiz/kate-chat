@@ -69,7 +69,7 @@ impl<'a> ModelService<'a> {
                 type_: model_info.type_.clone(),
                 streaming: model_info.streaming,
                 image_input: model_info.image_input,
-                max_input_tokens: None,
+                max_input_tokens: model_info.max_input_tokens,
                 tools: None,
                 features: None,
                 custom_settings: None,
