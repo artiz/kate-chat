@@ -1,6 +1,7 @@
 //! Web search tool backed by the Yandex Search API v2 (Node parity:
 //! yandex.web_search.ts). The API returns base64-encoded XML; results are
 //! extracted with lightweight tag scanning (url/title/passages).
+#![allow(dead_code)] // consumed by the provider tool loop (next stage)
 
 use base64::Engine;
 use serde::Serialize;
