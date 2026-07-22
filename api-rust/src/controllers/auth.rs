@@ -5,6 +5,7 @@ use oauth2::reqwest::async_http_client;
 use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use reqwest;
 use rocket::form::FromForm;
+use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::{get, response::Redirect, routes, Route, State};
 use tracing::{info, warn};
@@ -48,7 +49,27 @@ struct GitHubEmail {
 }
 
 pub fn routes() -> Vec<Route> {
-    routes![google_oauth, google_callback, github_oauth, github_callback]
+    routes![
+        auth_providers,
+        google_oauth,
+        google_callback,
+        github_oauth,
+        github_callback
+    ]
+}
+
+/// Enabled auth providers — always includes "local", adds configured OAuth
+/// providers (the client's login page hides buttons for absent ones).
+#[get("/providers")]
+pub fn auth_providers(config: &State<AppConfig>) -> Json<Vec<&'static str>> {
+    let mut providers = vec!["local"];
+    if config.google_client_id.is_some() && config.google_client_secret.is_some() {
+        providers.push("google");
+    }
+    if config.github_client_id.is_some() && config.github_client_secret.is_some() {
+        providers.push("github");
+    }
+    Json(providers)
 }
 
 #[get("/google")]
