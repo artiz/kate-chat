@@ -632,6 +632,80 @@ impl Mutation {
         Ok(deleted > 0)
     }
 
+    /// Delete a RAG document (S3 objects by prefix + DB row; chunks and
+    /// chat links cascade)
+    async fn delete_document(&self, ctx: &Context<'_>, id: async_graphql::ID) -> Result<bool> {
+        use crate::schema::{chat_documents, document_chunks, documents};
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+        let id = id.to_string();
+
+        let document: crate::models::Document = documents::table
+            .filter(documents::id.eq(&id))
+            .filter(documents::owner_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Document not found"))?;
+
+        if let Some(s3key) = document.s3key.as_deref().filter(|k| !k.is_empty()) {
+            let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+            let mut s3 = S3Service::new(effective_config);
+            if let Err(e) = s3.delete_by_prefix(s3key).await {
+                warn!("Failed to delete document S3 objects: {}", e);
+            }
+        }
+
+        diesel::delete(document_chunks::table.filter(document_chunks::document_id.eq(&id)))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        diesel::delete(chat_documents::table.filter(chat_documents::document_id.eq(&id)))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        diesel::delete(documents::table.filter(documents::id.eq(&id)))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(true)
+    }
+
+    /// Re-run the indexing pipeline for a document
+    async fn reindex_document(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Result<crate::models::GqlDocument> {
+        enqueue_document_command(ctx, id, true).await
+    }
+
+    /// Queue a document for parsing (used after upload retries)
+    async fn process_document(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+        #[graphql(name = "force")] _force: Option<bool>,
+    ) -> Result<crate::models::GqlDocument> {
+        enqueue_document_command(ctx, id, false).await
+    }
+
+    /// Link RAG documents to a chat
+    async fn add_documents_to_chat(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "documentIds")] document_ids: Vec<async_graphql::ID>,
+        #[graphql(name = "chatId")] chat_id: async_graphql::ID,
+    ) -> Result<crate::models::GqlChatDocumentsResponse> {
+        change_chat_documents(ctx, document_ids, chat_id, true).await
+    }
+
+    /// Unlink RAG documents from a chat
+    async fn remove_documents_from_chat(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "documentIds")] document_ids: Vec<async_graphql::ID>,
+        #[graphql(name = "chatId")] chat_id: async_graphql::ID,
+    ) -> Result<crate::models::GqlChatDocumentsResponse> {
+        change_chat_documents(ctx, document_ids, chat_id, false).await
+    }
+
     /// Create a new message
     async fn create_message(
         &self,
@@ -1761,6 +1835,140 @@ async fn generate_images_reply(
     publish(Some(GqlMessage::from(ai_message)), None).await;
 
     Ok(GqlMessage::from(user_message.clone()))
+}
+
+/// Re-queue a document for parsing (`processDocument`) or reset it into
+/// the indexing flow (`reindexDocument`).
+async fn enqueue_document_command(
+    ctx: &Context<'_>,
+    id: async_graphql::ID,
+    reindex: bool,
+) -> Result<crate::models::GqlDocument> {
+    use crate::schema::documents;
+    let gql_ctx = ctx.data::<GraphQLContext>()?;
+    let user = gql_ctx.require_user()?;
+    let mut conn = gql_ctx.db_pool.get()?;
+    let id = id.to_string();
+
+    let mut document: crate::models::Document = documents::table
+        .filter(documents::id.eq(&id))
+        .filter(documents::owner_id.eq(&user.id))
+        .first(&mut conn)
+        .map_err(|_| async_graphql::Error::new("Document not found"))?;
+
+    let s3key = document
+        .s3key
+        .clone()
+        .filter(|k| !k.is_empty())
+        .ok_or_else(|| async_graphql::Error::new("Document was not uploaded yet"))?;
+
+    if reindex {
+        document.status = crate::models::document::DOCUMENT_STATUS_CHUNKING.to_string();
+        document.status_progress = 1.0;
+        document.updated_at = Utc::now().naive_utc();
+        diesel::update(documents::table.filter(documents::id.eq(&id)))
+            .set((
+                documents::status.eq(&document.status),
+                documents::status_progress.eq(document.status_progress),
+                documents::updated_at.eq(document.updated_at),
+            ))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+    }
+
+    let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+    let sqs = crate::services::sqs::SqsService::new(&effective_config)
+        .await
+        .map_err(async_graphql::Error::from)?;
+    if reindex {
+        // reindex jumps straight to indexing (chunked JSON already in S3)
+        let queue = effective_config
+            .sqs_documents_queue
+            .as_deref()
+            .ok_or_else(|| async_graphql::Error::new("SQS_DOCUMENTS_QUEUE not configured"))?;
+        sqs.send_json_message(
+            queue,
+            &serde_json::json!({
+                "command": "index_document",
+                "documentId": document.id,
+                "s3key": s3key,
+                "mime": document.mime,
+            }),
+        )
+        .await
+        .map_err(async_graphql::Error::from)?;
+    } else {
+        sqs.send_parse_document(
+            &effective_config,
+            &document.id,
+            &s3key,
+            document.mime.as_deref(),
+        )
+        .await
+        .map_err(async_graphql::Error::from)?;
+    }
+
+    Ok(document.into())
+}
+
+/// Link/unlink documents to/from a chat and return the updated chat with
+/// its documents.
+async fn change_chat_documents(
+    ctx: &Context<'_>,
+    document_ids: Vec<async_graphql::ID>,
+    chat_id: async_graphql::ID,
+    add: bool,
+) -> Result<crate::models::GqlChatDocumentsResponse> {
+    use crate::schema::chat_documents;
+    let gql_ctx = ctx.data::<GraphQLContext>()?;
+    let user = gql_ctx.require_user()?;
+    let mut conn = gql_ctx.db_pool.get()?;
+    let chat_id = chat_id.to_string();
+    let document_ids: Vec<String> = document_ids.into_iter().map(|id| id.to_string()).collect();
+
+    let chat: Chat = chats::table
+        .filter(chats::id.eq(&chat_id))
+        .filter(chats::user_id.eq(&user.id))
+        .first(&mut conn)
+        .map_err(|_| async_graphql::Error::new("Chat not found"))?;
+
+    if add {
+        for document_id in &document_ids {
+            let exists: i64 = chat_documents::table
+                .filter(chat_documents::chat_id.eq(&chat_id))
+                .filter(chat_documents::document_id.eq(document_id))
+                .count()
+                .get_result(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            if exists == 0 {
+                diesel::insert_into(chat_documents::table)
+                    .values(crate::models::document::ChatDocument {
+                        id: uuid::Uuid::new_v4().to_string(),
+                        chat_id: chat_id.clone(),
+                        document_id: document_id.clone(),
+                    })
+                    .execute(&mut conn)
+                    .map_err(|e| AppError::Database(e.to_string()))?;
+            }
+        }
+    } else {
+        diesel::delete(
+            chat_documents::table
+                .filter(chat_documents::chat_id.eq(&chat_id))
+                .filter(chat_documents::document_id.eq_any(&document_ids)),
+        )
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    }
+
+    let mut gql_chat = GqlChat::from(chat);
+    gql_chat.chat_documents = Some(crate::graphql::query::load_chat_documents(
+        &mut conn, &chat_id,
+    ));
+    Ok(crate::models::GqlChatDocumentsResponse {
+        chat: Some(gql_chat),
+        error: None,
+    })
 }
 
 /// Build the executable tools for a chat from its stored tools config:

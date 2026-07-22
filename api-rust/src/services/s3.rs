@@ -142,6 +142,38 @@ impl S3Service {
         Ok(())
     }
 
+    /// Delete every object under a key prefix (a document and its derived
+    /// `.parsed.md` / `.chunked.json` artifacts).
+    pub async fn delete_by_prefix(&mut self, prefix: &str) -> Result<(), AppError> {
+        let bucket = self
+            .config
+            .s3_bucket
+            .clone()
+            .ok_or_else(|| AppError::Internal("S3 bucket not configured".to_string()))?;
+        let client = self.get_client().await?;
+
+        let listed = client
+            .list_objects_v2()
+            .bucket(&bucket)
+            .prefix(prefix)
+            .send()
+            .await
+            .map_err(|e| AppError::Aws(format!("S3 list failed: {}", e)))?;
+
+        for object in listed.contents() {
+            if let Some(key) = object.key() {
+                client
+                    .delete_object()
+                    .bucket(&bucket)
+                    .key(key)
+                    .send()
+                    .await
+                    .map_err(|e| AppError::Aws(format!("S3 delete failed: {}", e)))?;
+            }
+        }
+        Ok(())
+    }
+
     #[allow(dead_code)]
     pub async fn get_file_url(&self, key: &str) -> Result<String, AppError> {
         let bucket = self

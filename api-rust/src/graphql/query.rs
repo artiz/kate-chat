@@ -155,14 +155,23 @@ impl Query {
             });
         }
 
+        // RAG availability (Node parity): infra configured → supported;
+        // user picked embeddings + summarization models → enabled
+        let rag_supported = effective.rag_supported();
+        let rag_enabled = rag_supported
+            && !config.demo_mode
+            && settings.is_some_and(|s| {
+                has(&s.documents_embeddings_model_id) && has(&s.document_summarization_model_id)
+            });
+
         Ok(ApplicationConfig {
             current_user: user,
             demo_mode: config.demo_mode,
             max_chat_messages: config.demo_max_chat_messages.unwrap_or(-1),
             max_chats: config.demo_max_chats.unwrap_or(-1),
             max_images: config.demo_max_images.unwrap_or(-1),
-            rag_enabled: Some(false),
-            rag_supported: Some(false),
+            rag_enabled: Some(rag_enabled),
+            rag_supported: Some(rag_supported),
             mcp_enabled: Some(true),
             s3_connected,
             token,
@@ -438,7 +447,91 @@ impl Query {
             .optional()
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(chat_result.map(GqlChat::from))
+        Ok(chat_result.map(|chat| {
+            let mut gql_chat = GqlChat::from(chat);
+            gql_chat.chat_documents = Some(load_chat_documents(&mut conn, &id));
+            gql_chat
+        }))
+    }
+
+    /// Node-API name for getChatById (both are queried by the client)
+    #[graphql(name = "chatById")]
+    async fn chat_by_id(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Result<Option<GqlChat>> {
+        self.get_chat_by_id(ctx, id).await
+    }
+
+    /// RAG documents of the current user (Library "Documents")
+    async fn get_documents(
+        &self,
+        ctx: &Context<'_>,
+        input: Option<crate::models::GetDocumentsInput>,
+    ) -> Result<crate::models::GqlDocumentsResponse> {
+        use crate::schema::documents;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let input = input.unwrap_or_default();
+        let offset = input.offset.unwrap_or(0).max(0) as i64;
+        let limit = input.limit.unwrap_or(20).clamp(1, 100) as i64;
+        let search = input
+            .search_term
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| format!("%{}%", s));
+
+        let mut query = documents::table
+            .filter(documents::owner_id.eq(&user.id))
+            .into_boxed();
+        let mut count_query = documents::table
+            .filter(documents::owner_id.eq(&user.id))
+            .into_boxed();
+        if let Some(pattern) = &search {
+            query = query.filter(documents::file_name.like(pattern));
+            count_query = count_query.filter(documents::file_name.like(pattern));
+        }
+
+        let total: i64 = count_query
+            .count()
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let docs: Vec<crate::models::Document> = query
+            .order(documents::created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(crate::models::GqlDocumentsResponse {
+            documents: docs.into_iter().map(Into::into).collect(),
+            total: total as i32,
+            has_more: offset + limit < total,
+        })
+    }
+
+    /// Single document lookup
+    async fn document_by_id(
+        &self,
+        ctx: &Context<'_>,
+        id: async_graphql::ID,
+    ) -> Result<Option<crate::models::GqlDocument>> {
+        use crate::schema::documents;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx.db_pool.get()?;
+
+        let doc: Option<crate::models::Document> = documents::table
+            .filter(documents::id.eq(id.to_string()))
+            .filter(documents::owner_id.eq(&user.id))
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(doc.map(Into::into))
     }
 
     /// Get messages for a chat
@@ -882,4 +975,41 @@ impl Query {
             has_more,
         })
     }
+}
+
+/// Load a chat's linked RAG documents (client `chatDocuments` selection).
+pub(crate) fn load_chat_documents(
+    conn: &mut crate::database::DbConnection,
+    chat_id: &str,
+) -> Vec<crate::models::GqlChatDocument> {
+    use crate::schema::{chat_documents, documents};
+
+    let rows: Vec<(
+        crate::models::document::ChatDocument,
+        crate::models::Document,
+    )> = match chat_documents::table
+        .inner_join(documents::table)
+        .filter(chat_documents::chat_id.eq(chat_id))
+        .load(conn)
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::warn!("Failed to load chat documents: {}", e);
+            return vec![];
+        }
+    };
+
+    rows.into_iter()
+        .map(|(_, doc)| {
+            let gql = crate::models::GqlDocument::from(doc);
+            crate::models::GqlChatDocument {
+                document: crate::models::ChatDocumentInfo {
+                    id: gql.id,
+                    file_name: Some(gql.file_name),
+                    status: Some(gql.status),
+                    download_url: gql.download_url,
+                },
+            }
+        })
+        .collect()
 }

@@ -37,6 +37,7 @@ futures-util = "0.3"
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
 
 # UUID
 uuid = { version = "1.0", features = ["v4", "serde"] }
@@ -64,6 +65,7 @@ aws-sdk-bedrockruntime = "1.0"
 aws-sdk-bedrock = "1.0"
 aws-sdk-s3 = "1.0"
 aws-sdk-costexplorer = "1.0"
+aws-sdk-sqs = "1.0"
 aws-smithy-types = "1.0"
 aws-smithy-runtime-api = "1.0"
 aws-credential-types = "1.0"
@@ -93,6 +95,9 @@ url = "2.5"
 # OAuth
 oauth2 = "4.4"
 urlencoding = "2.1"
+sha2 = "0.10"
+hex = "0.4"
+multer = "3"
 
 # Session management (removed for Rocket 0.4 compatibility)
 

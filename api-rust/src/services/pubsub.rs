@@ -4,20 +4,34 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tracing::{debug, info, warn};
 
-use crate::models::GqlNewMessage;
+use crate::models::{GqlDocumentStatusMessage, GqlNewMessage};
 
 type ChatSubscriptions = Arc<RwLock<HashMap<String, broadcast::Sender<GqlNewMessage>>>>;
 
 #[derive(Clone)]
 pub struct PubSubService {
     subscriptions: ChatSubscriptions,
+    /// Single global channel for document status updates; the subscription
+    /// resolver filters by document ids (Node parity: one Redis channel).
+    document_status: broadcast::Sender<GqlDocumentStatusMessage>,
 }
 
 impl PubSubService {
     pub fn new() -> Self {
+        let (document_status, _) = broadcast::channel(1000);
         Self {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            document_status,
         }
+    }
+
+    pub fn subscribe_to_document_status(&self) -> broadcast::Receiver<GqlDocumentStatusMessage> {
+        self.document_status.subscribe()
+    }
+
+    pub fn publish_document_status(&self, message: GqlDocumentStatusMessage) {
+        // Send fails only when nobody listens — not an error
+        let _ = self.document_status.send(message);
     }
 
     pub async fn subscribe_to_chat(

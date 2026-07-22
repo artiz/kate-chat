@@ -50,6 +50,14 @@ pub struct AppConfig {
     pub yandex_search_api_key: Option<String>,
     pub yandex_search_api_url: Option<String>,
 
+    // SQS (RAG documents pipeline: parse commands out, index commands in)
+    pub sqs_endpoint: Option<String>,
+    pub sqs_region: Option<String>,
+    pub sqs_access_key_id: Option<String>,
+    pub sqs_secret_access_key: Option<String>,
+    pub sqs_documents_queue: Option<String>,
+    pub sqs_index_documents_queue: Option<String>,
+
     // Enabled API providers
     pub enabled_api_providers: Vec<String>,
 }
@@ -86,6 +94,14 @@ impl AppConfig {
                 .or_else(|_| env::var("YANDEX_FM_API_KEY"))
                 .ok(),
             yandex_search_api_url: env::var("YANDEX_SEARCH_API_URL").ok(),
+
+            // SQS
+            sqs_endpoint: env::var("SQS_ENDPOINT").ok(),
+            sqs_region: env::var("SQS_REGION").ok(),
+            sqs_access_key_id: env::var("SQS_ACCESS_KEY_ID").ok(),
+            sqs_secret_access_key: env::var("SQS_SECRET_ACCESS_KEY").ok(),
+            sqs_documents_queue: env::var("SQS_DOCUMENTS_QUEUE").ok(),
+            sqs_index_documents_queue: env::var("SQS_INDEX_DOCUMENTS_QUEUE").ok(),
 
             // OAuth
             google_client_id: env::var("GOOGLE_OAUTH_CLIENT_ID").ok(),
@@ -159,6 +175,14 @@ impl AppConfig {
 
     pub fn is_provider_enabled(&self, provider: &str) -> bool {
         self.enabled_api_providers.contains(&provider.to_string())
+    }
+
+    /// RAG is supported when files storage and both document queues are
+    /// configured (the document-processor talks to the same queues).
+    pub fn rag_supported(&self) -> bool {
+        self.s3_bucket.is_some()
+            && self.sqs_documents_queue.is_some()
+            && self.sqs_index_documents_queue.is_some()
     }
 
     /// Effective config for a user: profile-settings credentials take

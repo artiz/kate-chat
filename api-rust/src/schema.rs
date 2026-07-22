@@ -93,6 +93,7 @@ diesel::table! {
         status_progress -> Float,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        metadata -> Nullable<Text>,
     }
 }
 

@@ -1,24 +1,27 @@
-use rocket::form::{Form, FromForm};
-use rocket::fs::TempFile;
+use diesel::prelude::*;
+use rocket::data::ToByteUnit;
 use rocket::http::ContentType;
 use rocket::serde::json::Json;
-use rocket::{delete, get, post, routes, Route, State};
+use rocket::{delete, get, post, routes, Data, Route, State};
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::config::AppConfig;
+use crate::database::DbPool;
 use crate::middleware::auth::AuthenticatedUser;
+use crate::models::document::{
+    ChatDocument, Document, GqlDocument, GqlDocumentStatusMessage, DOCUMENT_STATUS_ERROR,
+    DOCUMENT_STATUS_PARSING, DOCUMENT_STATUS_STORAGE_UPLOAD, DOCUMENT_STATUS_UPLOAD,
+};
+use crate::schema::{chat_documents, chats, documents};
+use crate::services::pubsub::get_global_pubsub;
 use crate::services::s3::S3Service;
+use crate::services::sqs::SqsService;
 use crate::utils::errors::AppError;
-
-#[derive(Serialize, Deserialize)]
-pub struct FileUploadResponse {
-    pub url: String,
-    pub key: String,
-    pub message: String,
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct FileDeleteResponse {
@@ -26,13 +29,8 @@ pub struct FileDeleteResponse {
     pub message: String,
 }
 
-#[derive(FromForm)]
-pub struct FileUpload<'f> {
-    pub file: TempFile<'f>,
-}
-
 pub fn routes() -> Vec<Route> {
-    routes![upload_file, delete_file, health_check, serve_file]
+    routes![upload_documents, delete_file, health_check, serve_file]
 }
 
 /// Serve a stored file (generated images, uploads) straight from S3 —
@@ -61,49 +59,228 @@ pub async fn serve_file(
     Ok((content_type, data))
 }
 
-#[post("/upload", data = "<upload>")]
-pub async fn upload_file(
-    mut upload: Form<FileUpload<'_>>,
+/// RAG documents upload (Node parity: files.controller `POST /upload`).
+/// Multipart form where each part's field name is the file name; responds
+/// with the created/existing `Document[]`. Files are deduplicated by
+/// sha256+size per user, stored to S3 at `document/{userId}/{documentId}`
+/// and queued for parsing via SQS.
+#[post("/upload?<chatId>", data = "<data>")]
+#[allow(non_snake_case)]
+pub async fn upload_documents(
+    chatId: Option<String>,
+    data: Data<'_>,
+    content_type: &ContentType,
     user: AuthenticatedUser,
     config: &State<AppConfig>,
-) -> Result<Json<FileUploadResponse>, AppError> {
-    let file = &mut upload.file;
+    db_pool: &State<DbPool>,
+) -> Result<Json<Vec<GqlDocument>>, AppError> {
+    let boundary = content_type
+        .params()
+        .find(|(k, _)| *k == "boundary")
+        .map(|(_, v)| v.to_string())
+        .ok_or_else(|| AppError::Validation("Multipart form data expected".to_string()))?;
 
-    if file.len() == 0 {
-        return Err(AppError::Validation("No file provided".to_string()));
+    let effective_config = config.with_user_settings(user.0.settings.as_ref());
+    let mut s3_service = S3Service::new(effective_config.clone());
+    let sqs = match SqsService::new(&effective_config).await {
+        Ok(sqs) if effective_config.sqs_documents_queue.is_some() => Some(sqs),
+        _ => None,
+    };
+
+    let stream = data.open(256.mebibytes());
+    let reader = tokio_util::io::ReaderStream::new(stream);
+    let mut multipart = multer::Multipart::new(reader, boundary);
+
+    let mut result: Vec<GqlDocument> = Vec::new();
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| AppError::Validation(format!("Invalid multipart data: {}", e)))?
+    {
+        let file_name = field
+            .file_name()
+            .map(|s| s.to_string())
+            .or_else(|| field.name().map(|s| s.to_string()))
+            .unwrap_or_else(|| "upload".to_string());
+        let mime = field.content_type().map(|m| m.to_string());
+        let bytes = field
+            .bytes()
+            .await
+            .map_err(|e| AppError::Validation(format!("Failed to read upload: {}", e)))?;
+        if bytes.is_empty() {
+            continue;
+        }
+
+        let checksum = hex::encode(sha2::Sha256::digest(&bytes));
+        let document = upload_document(
+            &user,
+            db_pool,
+            &mut s3_service,
+            sqs.as_ref(),
+            &effective_config,
+            chatId.as_deref(),
+            file_name,
+            mime,
+            bytes.to_vec(),
+            checksum,
+        )
+        .await?;
+        result.push(GqlDocument::from(document));
     }
 
-    // Read file data
-    let path = file
-        .path()
-        .ok_or_else(|| AppError::Internal("File path not available".to_string()))?;
-    let buffer = std::fs::read(path)
-        .map_err(|e| AppError::Internal(format!("Failed to read file: {}", e)))?;
+    if result.is_empty() {
+        return Err(AppError::Validation("No files provided".to_string()));
+    }
+    Ok(Json(result))
+}
 
-    // Generate unique key for S3
-    let extension = file
-        .name()
-        .and_then(|name| std::path::Path::new(name).extension())
-        .and_then(|ext| ext.to_str())
-        .unwrap_or("bin");
+#[allow(clippy::too_many_arguments)]
+async fn upload_document(
+    user: &AuthenticatedUser,
+    db_pool: &DbPool,
+    s3_service: &mut S3Service,
+    sqs: Option<&SqsService>,
+    config: &AppConfig,
+    chat_id: Option<&str>,
+    file_name: String,
+    mime: Option<String>,
+    bytes: Vec<u8>,
+    checksum: String,
+) -> Result<Document, AppError> {
+    let user_id = user.0.id.clone();
+    let file_size = bytes.len() as i64;
+    let mut conn = db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let pubsub = get_global_pubsub();
 
-    let key = format!("uploads/{}.{}", Uuid::new_v4(), extension);
+    let link_to_chat =
+        |conn: &mut crate::database::DbConnection, document_id: &str| -> Result<(), AppError> {
+            let Some(chat_id) = chat_id.filter(|c| !c.is_empty()) else {
+                return Ok(());
+            };
+            let owned: i64 = chats::table
+                .filter(chats::id.eq(chat_id))
+                .filter(chats::user_id.eq(&user_id))
+                .count()
+                .get_result(conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            if owned == 0 {
+                return Err(AppError::Validation(format!(
+                    "Chat not found, id: {}",
+                    chat_id
+                )));
+            }
+            let exists: i64 = chat_documents::table
+                .filter(chat_documents::chat_id.eq(chat_id))
+                .filter(chat_documents::document_id.eq(document_id))
+                .count()
+                .get_result(conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            if exists == 0 {
+                diesel::insert_into(chat_documents::table)
+                    .values(ChatDocument {
+                        id: Uuid::new_v4().to_string(),
+                        chat_id: chat_id.to_string(),
+                        document_id: document_id.to_string(),
+                    })
+                    .execute(conn)
+                    .map_err(|e| AppError::Database(e.to_string()))?;
+            }
+            diesel::update(chats::table.filter(chats::id.eq(chat_id)))
+                .set(chats::is_pristine.eq(false))
+                .execute(conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            Ok(())
+        };
 
-    // Determine content type
-    let content_type = file
-        .content_type()
-        .map(|ct| ct.to_string())
-        .unwrap_or_else(|| "application/octet-stream".to_string());
+    // Deduplicate by checksum + size per user
+    let existing: Option<Document> = documents::table
+        .filter(documents::sha256checksum.eq(&checksum))
+        .filter(documents::file_size.eq(file_size))
+        .filter(documents::owner_id.eq(&user_id))
+        .first(&mut conn)
+        .optional()
+        .map_err(|e| AppError::Database(e.to_string()))?;
 
-    // Upload to S3 (profile-settings credentials over env)
-    let mut s3_service = S3Service::new(config.with_user_settings(user.0.settings.as_ref()));
-    let url = s3_service.upload_file(&key, buffer, &content_type).await?;
+    if let Some(existing) = existing {
+        link_to_chat(&mut conn, &existing.id)?;
 
-    Ok(Json(FileUploadResponse {
-        url,
-        key,
-        message: "File uploaded successfully".to_string(),
-    }))
+        // Re-kick parsing if the document never made it through
+        if matches!(
+            existing.status.as_str(),
+            DOCUMENT_STATUS_STORAGE_UPLOAD | DOCUMENT_STATUS_PARSING | DOCUMENT_STATUS_ERROR
+        ) {
+            if let (Some(sqs), Some(s3key)) = (sqs, existing.s3key.as_deref()) {
+                if let Err(e) = sqs
+                    .send_parse_document(config, &existing.id, s3key, existing.mime.as_deref())
+                    .await
+                {
+                    warn!("Failed to enqueue parse_document: {}", e);
+                }
+            }
+        }
+        return Ok(existing);
+    }
+
+    let now = chrono::Utc::now().naive_utc();
+    let mut document = Document {
+        id: Uuid::new_v4().to_string(),
+        file_name,
+        mime: mime.clone(),
+        file_size,
+        sha256checksum: checksum,
+        s3key: Some(String::new()),
+        owner_id: user_id.clone(),
+        embeddings_model_id: None,
+        summary_model_id: None,
+        summary: None,
+        pages_count: 0,
+        status: DOCUMENT_STATUS_UPLOAD.to_string(),
+        status_info: None,
+        status_progress: 1.0,
+        created_at: now,
+        updated_at: now,
+        metadata: None,
+    };
+    diesel::insert_into(documents::table)
+        .values(&document)
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    pubsub.publish_document_status(GqlDocumentStatusMessage::from_document(&document));
+
+    let s3key = format!("document/{}/{}", user_id, document.id);
+    let content_type = mime.unwrap_or_else(|| "application/octet-stream".to_string());
+    s3_service.upload_file(&s3key, bytes, &content_type).await?;
+
+    document.s3key = Some(s3key.clone());
+    document.status = DOCUMENT_STATUS_STORAGE_UPLOAD.to_string();
+    document.updated_at = chrono::Utc::now().naive_utc();
+    diesel::update(documents::table.filter(documents::id.eq(&document.id)))
+        .set((
+            documents::s3key.eq(&s3key),
+            documents::status.eq(&document.status),
+            documents::updated_at.eq(document.updated_at),
+        ))
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    link_to_chat(&mut conn, &document.id)?;
+    pubsub.publish_document_status(GqlDocumentStatusMessage::from_document(&document));
+
+    if let Some(sqs) = sqs {
+        if let Err(e) = sqs
+            .send_parse_document(config, &document.id, &s3key, document.mime.as_deref())
+            .await
+        {
+            warn!("Failed to enqueue parse_document: {}", e);
+        }
+    } else {
+        warn!("SQS documents queue not configured — document will stay unparsed");
+    }
+
+    Ok(document)
 }
 
 #[delete("/<key>")]

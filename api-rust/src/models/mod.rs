@@ -1,5 +1,6 @@
 pub mod chat;
 pub mod chat_file;
+pub mod document;
 pub mod folder;
 pub mod mcp_server;
 pub mod message;
@@ -8,6 +9,7 @@ pub mod user;
 
 pub use chat::*;
 pub use chat_file::*;
+pub use document::*;
 pub use folder::*;
 pub use mcp_server::*;
 pub use message::*;

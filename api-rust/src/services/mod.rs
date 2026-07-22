@@ -8,6 +8,7 @@ pub mod openai;
 pub mod openai_protocol;
 pub mod pubsub;
 pub mod s3;
+pub mod sqs;
 pub mod tools;
 pub mod web_search;
 pub mod yandex;
