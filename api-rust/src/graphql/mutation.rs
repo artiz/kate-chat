@@ -387,7 +387,9 @@ impl Mutation {
             warn!("Failed to publish message to subscribers: {:?}", e);
         }
 
-        let ai_service = AIService::new(gql_ctx.config.clone());
+        // profile-settings credentials take precedence over env (Node parity)
+        let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+        let ai_service = AIService::new(effective_config.clone());
         let provider = ai_service
             .get_provider_for_model(&model)
             .map_err(async_graphql::Error::from)?;
@@ -409,6 +411,7 @@ impl Mutation {
             let images_count = chat.images_count.unwrap_or(1).max(1);
             return generate_images_reply(
                 gql_ctx,
+                &effective_config,
                 &provider,
                 &chat,
                 &message,
@@ -828,7 +831,7 @@ impl Mutation {
             ));
         }
 
-        let ai_service = AIService::new(gql_ctx.config.clone());
+        let ai_service = AIService::new(gql_ctx.config.with_user_settings(user.settings.as_ref()));
         let provider = ai_service
             .get_provider_for_model(&model)
             .map_err(async_graphql::Error::from)?;
@@ -1219,8 +1222,8 @@ impl Mutation {
         let user = gql_ctx.require_user()?;
         info!("Reloading models from providers for user: {}", user.id);
 
-        // Create AI service
-        let ai_service = AIService::new(gql_ctx.config.clone());
+        // Create AI service (profile-settings credentials over env)
+        let ai_service = AIService::new(gql_ctx.config.with_user_settings(user.settings.as_ref()));
 
         let providers = ai_service
             .get_provider_info(true)
@@ -1276,6 +1279,7 @@ impl Mutation {
 #[allow(clippy::too_many_arguments)]
 async fn generate_images_reply(
     gql_ctx: &GraphQLContext,
+    effective_config: &crate::config::AppConfig,
     provider: &AIProviderWrapper,
     chat: &Chat,
     user_message: &Message,
@@ -1342,7 +1346,7 @@ async fn generate_images_reply(
         Some(model.name.clone()),
     );
 
-    let mut s3_service = S3Service::new(gql_ctx.config.clone());
+    let mut s3_service = S3Service::new(effective_config.clone());
     let mut json_blocks: Vec<serde_json::Value> = Vec::new();
     let mut markdown_links: Vec<String> = Vec::new();
     let mut conn = gql_ctx

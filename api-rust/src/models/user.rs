@@ -22,34 +22,34 @@ use crate::schema::users::{self};
 #[serde(rename_all = "camelCase", default)]
 #[derive(Default)]
 pub struct JsonUserSettings {
-    language: Option<String>,
+    pub language: Option<String>,
 
-    s3_endpoint: Option<String>,
-    s3_region: Option<String>,
-    s3_access_key_id: Option<String>,
-    s3_secret_access_key: Option<String>,
-    s3_files_bucket_name: Option<String>,
-    s3_profile: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub s3_region: Option<String>,
+    pub s3_access_key_id: Option<String>,
+    pub s3_secret_access_key: Option<String>,
+    pub s3_files_bucket_name: Option<String>,
+    pub s3_profile: Option<String>,
 
-    aws_bedrock_region: Option<String>,
-    aws_bedrock_profile: Option<String>,
-    aws_bedrock_access_key_id: Option<String>,
-    aws_bedrock_secret_access_key: Option<String>,
+    pub aws_bedrock_region: Option<String>,
+    pub aws_bedrock_profile: Option<String>,
+    pub aws_bedrock_access_key_id: Option<String>,
+    pub aws_bedrock_secret_access_key: Option<String>,
 
-    openai_api_key: Option<String>,
-    openai_api_admin_key: Option<String>,
+    pub openai_api_key: Option<String>,
+    pub openai_api_admin_key: Option<String>,
 
-    yandex_fm_api_key: Option<String>,
-    yandex_fm_api_folder_id: Option<String>,
+    pub yandex_fm_api_key: Option<String>,
+    pub yandex_fm_api_folder_id: Option<String>,
 
-    default_model_id: Option<String>,
-    default_system_prompt: Option<String>,
-    default_temperature: Option<f32>,
-    default_max_tokens: Option<i32>,
-    default_top_p: Option<f32>,
-    default_images_count: Option<i32>,
-    documents_embeddings_model_id: Option<String>,
-    document_summarization_model_id: Option<String>,
+    pub default_model_id: Option<String>,
+    pub default_system_prompt: Option<String>,
+    pub default_temperature: Option<f32>,
+    pub default_max_tokens: Option<i32>,
+    pub default_top_p: Option<f32>,
+    pub default_images_count: Option<i32>,
+    pub documents_embeddings_model_id: Option<String>,
+    pub document_summarization_model_id: Option<String>,
 }
 
 impl FromSql<Text, Sqlite> for JsonUserSettings {

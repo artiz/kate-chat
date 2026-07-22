@@ -64,7 +64,7 @@ pub async fn serve_file(
 #[post("/upload", data = "<upload>")]
 pub async fn upload_file(
     mut upload: Form<FileUpload<'_>>,
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     config: &State<AppConfig>,
 ) -> Result<Json<FileUploadResponse>, AppError> {
     let file = &mut upload.file;
@@ -95,8 +95,8 @@ pub async fn upload_file(
         .map(|ct| ct.to_string())
         .unwrap_or_else(|| "application/octet-stream".to_string());
 
-    // Upload to S3
-    let mut s3_service = S3Service::new(config.inner().clone());
+    // Upload to S3 (profile-settings credentials over env)
+    let mut s3_service = S3Service::new(config.with_user_settings(user.0.settings.as_ref()));
     let url = s3_service.upload_file(&key, buffer, &content_type).await?;
 
     Ok(Json(FileUploadResponse {
@@ -109,10 +109,10 @@ pub async fn upload_file(
 #[delete("/<key>")]
 pub async fn delete_file(
     key: String,
-    _user: AuthenticatedUser,
+    user: AuthenticatedUser,
     config: &State<AppConfig>,
 ) -> Result<Json<FileDeleteResponse>, AppError> {
-    let mut s3_service = S3Service::new(config.inner().clone());
+    let mut s3_service = S3Service::new(config.with_user_settings(user.0.settings.as_ref()));
     s3_service.delete_file(&key).await?;
 
     Ok(Json(FileDeleteResponse {

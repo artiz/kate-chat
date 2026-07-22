@@ -109,20 +109,46 @@ impl Query {
             None
         };
 
-        let s3_connected = config.s3_bucket.is_some();
+        let settings = user.as_ref().and_then(|u| u.settings.as_ref());
+        let effective = config.with_user_settings(settings);
+        let s3_connected = effective.s3_bucket.is_some();
 
-        // api-rust configures providers via environment only
+        // credential source per provider: profile settings (DATABASE) win
+        // over environment, mirroring the Node resolver
+        let has = |v: &Option<String>| v.as_deref().is_some_and(|s| !s.trim().is_empty());
+        let source_for = |from_settings: bool| {
+            Some(
+                if from_settings {
+                    "DATABASE"
+                } else {
+                    "ENVIRONMENT"
+                }
+                .to_string(),
+            )
+        };
+
         let mut credentials_source = Vec::new();
         if s3_connected {
             credentials_source.push(GqlCredentialSource {
                 type_: Some("S3".to_string()),
-                source: Some("ENVIRONMENT".to_string()),
+                source: source_for(
+                    settings
+                        .is_some_and(|s| has(&s.s3_access_key_id) || has(&s.s3_files_bucket_name)),
+                ),
             });
         }
         for provider in &config.enabled_api_providers {
+            let from_settings = match provider.as_str() {
+                "OPEN_AI" => settings.is_some_and(|s| has(&s.openai_api_key)),
+                "YANDEX_AI" => settings.is_some_and(|s| has(&s.yandex_fm_api_key)),
+                "AWS_BEDROCK" => settings.is_some_and(|s| {
+                    has(&s.aws_bedrock_access_key_id) || has(&s.aws_bedrock_profile)
+                }),
+                _ => false,
+            };
             credentials_source.push(GqlCredentialSource {
                 type_: Some(provider.clone()),
-                source: Some("ENVIRONMENT".to_string()),
+                source: source_for(from_settings),
             });
         }
 
@@ -363,7 +389,9 @@ impl Query {
 
         // reload: refresh the models list from the providers first
         if reload.unwrap_or(false) {
-            let ai_service = crate::services::ai::AIService::new(gql_ctx.config.clone());
+            let ai_service = crate::services::ai::AIService::new(
+                gql_ctx.config.with_user_settings(user.settings.as_ref()),
+            );
             let model_service =
                 crate::services::model::ModelService::new(&gql_ctx.db_pool, &ai_service);
             model_service
@@ -383,8 +411,10 @@ impl Query {
             .load(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        // Get provider information from AI service
-        let ai_service = crate::services::ai::AIService::new(gql_ctx.config.clone());
+        // Get provider information from AI service (user credentials over env)
+        let ai_service = crate::services::ai::AIService::new(
+            gql_ctx.config.with_user_settings(user.settings.as_ref()),
+        );
         let provider_info = ai_service
             .get_provider_info(false)
             .await
@@ -454,7 +484,10 @@ impl Query {
     /// Get costs information
     async fn get_costs(&self, ctx: &Context<'_>, input: GetCostsInput) -> Result<GqlCostsInfo> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
-        let ai_service = crate::services::ai::AIService::new(gql_ctx.config.clone());
+        let user = gql_ctx.require_user()?;
+        let ai_service = crate::services::ai::AIService::new(
+            gql_ctx.config.with_user_settings(user.settings.as_ref()),
+        );
 
         let costs_info = ai_service
             .get_costs(

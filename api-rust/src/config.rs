@@ -154,4 +154,86 @@ impl AppConfig {
     pub fn is_provider_enabled(&self, provider: &str) -> bool {
         self.enabled_api_providers.contains(&provider.to_string())
     }
+
+    /// Effective config for a user: profile-settings credentials take
+    /// precedence over environment values (the Node API's
+    /// loadConnectionParams — `user.settings.X || globalConfig.X`).
+    pub fn with_user_settings(
+        &self,
+        settings: Option<&crate::models::JsonUserSettings>,
+    ) -> AppConfig {
+        let mut config = self.clone();
+        let Some(settings) = settings else {
+            return config;
+        };
+
+        fn merge(target: &mut Option<String>, value: &Option<String>) {
+            if let Some(value) = value.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+                *target = Some(value.to_string());
+            }
+        }
+
+        merge(&mut config.openai_api_key, &settings.openai_api_key);
+
+        merge(&mut config.yandex_api_key, &settings.yandex_fm_api_key);
+        merge(
+            &mut config.yandex_folder_id,
+            &settings.yandex_fm_api_folder_id,
+        );
+
+        merge(&mut config.aws_bedrock_region, &settings.aws_bedrock_region);
+        merge(
+            &mut config.aws_bedrock_profile_name,
+            &settings.aws_bedrock_profile,
+        );
+        merge(
+            &mut config.aws_bedrock_access_key_id,
+            &settings.aws_bedrock_access_key_id,
+        );
+        merge(
+            &mut config.aws_bedrock_secret_access_key,
+            &settings.aws_bedrock_secret_access_key,
+        );
+
+        merge(&mut config.s3_endpoint, &settings.s3_endpoint);
+        merge(&mut config.s3_region, &settings.s3_region);
+        merge(&mut config.s3_access_key_id, &settings.s3_access_key_id);
+        merge(
+            &mut config.s3_secret_access_key,
+            &settings.s3_secret_access_key,
+        );
+        merge(&mut config.s3_bucket, &settings.s3_files_bucket_name);
+
+        config
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::JsonUserSettings;
+
+    #[test]
+    fn user_settings_override_env_credentials() {
+        let mut config = AppConfig::from_env();
+        config.openai_api_key = Some("env-key".to_string());
+        config.yandex_api_key = Some("env-yandex".to_string());
+        config.s3_bucket = Some("env-bucket".to_string());
+
+        let settings = JsonUserSettings {
+            openai_api_key: Some("user-key".to_string()),
+            yandex_fm_api_key: Some("  ".to_string()), // blank → keep env
+            s3_files_bucket_name: Some("user-bucket".to_string()),
+            ..JsonUserSettings::default()
+        };
+
+        let merged = config.with_user_settings(Some(&settings));
+        assert_eq!(merged.openai_api_key.as_deref(), Some("user-key"));
+        assert_eq!(merged.yandex_api_key.as_deref(), Some("env-yandex"));
+        assert_eq!(merged.s3_bucket.as_deref(), Some("user-bucket"));
+
+        // no settings → unchanged
+        let unchanged = config.with_user_settings(None);
+        assert_eq!(unchanged.openai_api_key.as_deref(), Some("env-key"));
+    }
 }
