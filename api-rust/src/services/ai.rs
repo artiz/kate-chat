@@ -76,6 +76,8 @@ pub enum MessageRole {
     Assistant,
     #[serde(rename = "system")]
     System,
+    #[serde(rename = "tool")]
+    Tool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +85,76 @@ pub struct ModelMessage {
     pub role: MessageRole,
     pub content: String,
     pub timestamp: Option<DateTime<Utc>>,
+    /// Raw provider tool_calls payload for an assistant turn that
+    /// requested tools (replayed verbatim on the next iteration).
+    #[serde(default)]
+    pub tool_calls: Option<serde_json::Value>,
+    /// Set on tool-result turns (role = Tool).
+    #[serde(default)]
+    pub tool_call_id: Option<String>,
+}
+
+impl ModelMessage {
+    pub fn text(role: MessageRole, content: impl Into<String>) -> Self {
+        Self {
+            role,
+            content: content.into(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+        }
+    }
+}
+
+/// A tool exposed to the model (OpenAI function-calling shape).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolSpec {
+    pub name: String,
+    pub description: String,
+    pub input_schema: serde_json::Value,
+}
+
+/// A tool invocation requested by the model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCallRequest {
+    pub id: String,
+    pub name: String,
+    pub arguments: serde_json::Value,
+    /// Raw provider entry (replayed in the follow-up assistant message).
+    pub raw: serde_json::Value,
+}
+
+/// Server-side execution target for a tool exposed to the model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ToolBackend {
+    WebSearch {
+        api_key: String,
+        folder_id: String,
+        api_url: Option<String>,
+    },
+    Mcp {
+        server: Box<crate::models::McpServer>,
+        tool_name: String,
+        auth_token: Option<String>,
+    },
+}
+
+/// A tool the provider session can both advertise to the model and execute
+/// when called (Node's ChatCompletionToolCallable).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutableTool {
+    pub spec: ToolSpec,
+    pub backend: ToolBackend,
+}
+
+/// A tool call executed during a session cycle; recorded into the assistant
+/// message metadata (toolCalls/tools) after streaming completes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutedToolCall {
+    pub id: String,
+    pub name: String,
+    pub args_json: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,6 +165,8 @@ pub struct InvokeModelRequest {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
     pub system_prompt: Option<String>,
+    #[serde(default)]
+    pub tools: Option<Vec<ExecutableTool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,6 +175,8 @@ pub struct ModelResponse {
     pub model_id: String,
     pub usage: Option<Usage>,
     pub finish_reason: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Vec<ToolCallRequest>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,11 +261,13 @@ where
 pub trait AIProviderService: Send + Sync {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError>;
 
+    /// Stream a chat completion. Returns the tool calls executed along the
+    /// way (empty when the response needed no tools).
     async fn invoke_model_stream<F, C, E>(
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -246,7 +324,7 @@ impl AIProviderService for AIProviderWrapper {
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -329,6 +407,10 @@ pub struct AIService {
 impl AIService {
     pub fn new(config: AppConfig) -> Self {
         Self { config }
+    }
+
+    pub fn config(&self) -> &AppConfig {
+        &self.config
     }
 
     pub fn get_provider(&self, api_provider: ApiProvider) -> Result<AIProviderWrapper, AppError> {

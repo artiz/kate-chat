@@ -1,17 +1,19 @@
 //! Web search tool backed by the Yandex Search API v2 (Node parity:
-//! yandex.web_search.ts). The API returns base64-encoded XML; results are
-//! extracted with lightweight tag scanning (url/title/passages).
-#![allow(dead_code)] // consumed by the provider tool loop (next stage)
+//! yandex.web_search.ts + openai.tools.ts CustomWebSearchTool). The API
+//! returns base64-encoded XML; results are extracted with lightweight tag
+//! scanning (url/title/passages).
 
 use base64::Engine;
 use serde::Serialize;
 use serde_json::json;
 
 use crate::config::AppConfig;
+use crate::services::ai::{ExecutableTool, ToolBackend, ToolSpec};
 use crate::utils::errors::AppError;
 
 pub const WEB_SEARCH_TOOL_NAME: &str = "internal_web_search";
 const DEFAULT_SEARCH_API_URL: &str = "https://searchapi.api.cloud.yandex.net/v2/web/search";
+pub const DEFAULT_RESULTS_LIMIT: usize = 5;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,23 +28,43 @@ pub fn web_search_available(config: &AppConfig) -> bool {
     config.yandex_search_api_key.is_some() && config.yandex_folder_id.is_some()
 }
 
+/// The web search tool for a chat session, when the config has Yandex
+/// Search credentials (Node's CustomWebSearchTool).
+pub fn web_search_tool(config: &AppConfig) -> Option<ExecutableTool> {
+    let api_key = config.yandex_search_api_key.clone()?;
+    let folder_id = config.yandex_folder_id.clone()?;
+    Some(ExecutableTool {
+        spec: ToolSpec {
+            name: WEB_SEARCH_TOOL_NAME.to_string(),
+            description: "Search the web for relevant information".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "query": { "type": "string", "description": "Search query" },
+                    "limit": {
+                        "type": "number",
+                        "description": "Maximum number of search results to return"
+                    },
+                },
+                "required": ["query"],
+            }),
+        },
+        backend: ToolBackend::WebSearch {
+            api_key,
+            folder_id,
+            api_url: config.yandex_search_api_url.clone(),
+        },
+    })
+}
+
 pub async fn search(
-    config: &AppConfig,
+    api_key: &str,
+    folder_id: &str,
+    api_url: Option<&str>,
     query: &str,
     limit: usize,
 ) -> Result<Vec<SearchResult>, AppError> {
-    let api_key = config
-        .yandex_search_api_key
-        .as_deref()
-        .ok_or_else(|| AppError::Auth("Yandex Search API key not configured".to_string()))?;
-    let folder_id = config
-        .yandex_folder_id
-        .as_deref()
-        .ok_or_else(|| AppError::Auth("Yandex folder ID not configured".to_string()))?;
-    let url = config
-        .yandex_search_api_url
-        .clone()
-        .unwrap_or_else(|| DEFAULT_SEARCH_API_URL.to_string());
+    let url = api_url.unwrap_or(DEFAULT_SEARCH_API_URL);
 
     let body = json!({
         "query": { "searchType": "SEARCH_TYPE_COM", "queryText": query },
@@ -54,7 +76,7 @@ pub async fn search(
     });
 
     let response = reqwest::Client::new()
-        .post(&url)
+        .post(url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Api-Key {}", api_key))
         .json(&body)
@@ -84,9 +106,29 @@ pub async fn search(
     Ok(extract_results(&xml, limit))
 }
 
-/// Format results as the tool output the model consumes.
+/// Format results as the tool output the model consumes (Node's
+/// WEB_SEARCH_TOOL_RESULT template).
 pub fn results_to_tool_content(results: &[SearchResult]) -> String {
-    serde_json::to_string(results).unwrap_or_else(|_| "[]".to_string())
+    let context = results
+        .iter()
+        .map(|result| {
+            format!(
+                "### Result\ntitle: {}\nurl: {}\ndomain: {}\nsummary: {}",
+                result.title,
+                result.url,
+                result.domain,
+                result.summary.as_deref().unwrap_or("N/A"),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n---\n\n");
+
+    format!(
+        "# Web search results\nPlease use this information to assist with your answer.\n\
+         Always include a reference to the source of the information in your answer, \
+         using the valid markdown format [page title](url).\n\n{}",
+        context
+    )
 }
 
 fn extract_results(xml: &str, limit: usize) -> Vec<SearchResult> {
@@ -164,5 +206,18 @@ mod tests {
         assert_eq!(results[0].summary.as_deref(), Some("First match. Second."));
         assert_eq!(results[1].domain, "other.io");
         assert_eq!(results[1].summary, None);
+    }
+
+    #[test]
+    fn tool_content_includes_sources() {
+        let results = vec![SearchResult {
+            title: "T".into(),
+            url: "https://x".into(),
+            domain: "x".into(),
+            summary: None,
+        }];
+        let content = results_to_tool_content(&results);
+        assert!(content.contains("url: https://x"));
+        assert!(content.contains("summary: N/A"));
     }
 }

@@ -246,7 +246,7 @@ pub struct ReasoningChunk {
     pub id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject)]
 pub struct MessageMetadata {
     pub usage: Option<MessageUsage>,
     pub document_ids: Option<Vec<String>>,

@@ -764,6 +764,16 @@ impl Mutation {
         // Convert database messages to AI service format and preprocess
         let model_messages = preprocess_messages(convert_messages_to_model_format(&input_messages));
 
+        // Tools enabled on this chat (web search / MCP servers)
+        let executable_tools = build_chat_tools(
+            &mut conn,
+            &effective_config,
+            &user.id,
+            chat.tools.as_deref(),
+            input.mcp_tokens.as_deref(),
+        )
+        .await;
+
         // Create invoke request with preprocessed message context
         let invoke_request = crate::services::ai::InvokeModelRequest {
             model_id: model_id.clone(),
@@ -772,6 +782,7 @@ impl Mutation {
             max_tokens: input.max_tokens,
             top_p: input.top_p,
             system_prompt: user.default_system_prompt.clone(),
+            tools: (!executable_tools.is_empty()).then_some(executable_tools),
         };
 
         let ai_msg_data = Message::new(
@@ -941,10 +952,20 @@ impl Mutation {
             },
         };
 
-        provider
+        let executed_tools = provider
             .invoke_model_stream(invoke_request, callbacks)
             .await
             .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // Record tool activity in the assistant message metadata (Node's
+        // toolCalls/tools) and re-publish so the client shows tool badges.
+        if !executed_tools.is_empty() {
+            if let Err(e) =
+                record_tool_metadata(gql_ctx, &input.chat_id, &ai_message.id, &executed_tools).await
+            {
+                warn!("Failed to record tool metadata: {:?}", e);
+            }
+        }
 
         Ok(GqlMessage::from(message))
     }
@@ -1189,11 +1210,10 @@ impl Mutation {
         }
 
         // Create test message
-        let test_message = crate::services::ai::ModelMessage {
-            role: crate::services::ai::MessageRole::User,
-            content: input.text,
-            timestamp: Some(Utc::now()),
-        };
+        let test_message = crate::services::ai::ModelMessage::text(
+            crate::services::ai::MessageRole::User,
+            input.text,
+        );
 
         // Create invoke request (same sampling as the Node API's testModel:
         // temperature only — sending top_p as well trips models that accept
@@ -1205,6 +1225,7 @@ impl Mutation {
             max_tokens: Some(256),
             top_p: None,
             system_prompt: None,
+            tools: None,
         };
 
         // Test the model
@@ -1466,15 +1487,15 @@ impl Mutation {
         } else {
             let invoke_request = crate::services::ai::InvokeModelRequest {
                 model_id: input.model_name.clone(),
-                messages: vec![crate::services::ai::ModelMessage {
-                    role: crate::services::ai::MessageRole::User,
-                    content: input.text.clone(),
-                    timestamp: Some(Utc::now()),
-                }],
+                messages: vec![crate::services::ai::ModelMessage::text(
+                    crate::services::ai::MessageRole::User,
+                    input.text.clone(),
+                )],
                 temperature: Some(0.7),
                 max_tokens: Some(100),
                 top_p: None,
                 system_prompt: Some("You are a helpful assistant.".to_string()),
+                tools: None,
             };
             service
                 .invoke_model(invoke_request)
@@ -1742,6 +1763,208 @@ async fn generate_images_reply(
     Ok(GqlMessage::from(user_message.clone()))
 }
 
+/// Build the executable tools for a chat from its stored tools config:
+/// the web search tool (when Yandex Search credentials are configured) and
+/// the tools of each referenced active MCP server. Servers whose tool list
+/// was never fetched are refreshed and stored on the way (Node's
+/// fetchAndStoreTools). Failures only shrink the tool list.
+async fn build_chat_tools(
+    conn: &mut crate::database::DbConnection,
+    config: &crate::config::AppConfig,
+    user_id: &str,
+    tools_json: Option<&str>,
+    mcp_tokens: Option<&[crate::models::McpAuthTokenInput]>,
+) -> Vec<crate::services::ai::ExecutableTool> {
+    use crate::schema::mcp_servers;
+    use crate::services::ai::{ExecutableTool, ToolBackend, ToolSpec};
+
+    let chat_tools: Vec<crate::models::ChatTool> = tools_json
+        .and_then(|json| serde_json::from_str(json).ok())
+        .unwrap_or_default();
+    if chat_tools.is_empty() {
+        return Vec::new();
+    }
+
+    let mut result = Vec::new();
+
+    if chat_tools.iter().any(|t| t.r#type == "web_search") {
+        match crate::services::web_search::web_search_tool(config) {
+            Some(tool) => result.push(tool),
+            None => warn!("Web search tool requested but Yandex Search is not configured"),
+        }
+    }
+
+    for chat_tool in chat_tools.iter().filter(|t| t.r#type == "mcp") {
+        let Some(server_id) = chat_tool.id.as_deref() else {
+            continue;
+        };
+        let server: Option<crate::models::McpServer> = mcp_servers::table
+            .filter(mcp_servers::id.eq(server_id))
+            .filter(
+                mcp_servers::user_id
+                    .eq(user_id)
+                    .or(mcp_servers::user_id.is_null()),
+            )
+            .filter(mcp_servers::is_active.eq(true))
+            .first(conn)
+            .optional()
+            .ok()
+            .flatten();
+        let Some(mut server) = server else {
+            warn!("MCP server {} not found for chat tools", server_id);
+            continue;
+        };
+
+        let auth_token = mcp_tokens
+            .and_then(|tokens| tokens.iter().find(|t| t.server_id == server_id))
+            .map(|t| t.access_token.clone());
+
+        // Fetch and store the tool list if the server has none yet
+        let has_tools = server
+            .tools
+            .as_deref()
+            .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(s).ok())
+            .map(|tools| !tools.is_empty())
+            .unwrap_or(false);
+        if !has_tools {
+            let mut client =
+                crate::services::mcp::McpClient::for_server(&server, auth_token.as_deref());
+            match client.list_tools().await {
+                Ok(listed) => {
+                    let stored = crate::services::mcp::tools_to_stored_json(&listed);
+                    let _ =
+                        diesel::update(mcp_servers::table.filter(mcp_servers::id.eq(&server.id)))
+                            .set((
+                                mcp_servers::tools.eq(stored.clone()),
+                                mcp_servers::updated_at.eq(Utc::now().naive_utc()),
+                            ))
+                            .execute(conn);
+                    server.tools = Some(stored);
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to fetch tools from MCP server {}: {}",
+                        server.name, e
+                    );
+                    continue;
+                }
+            }
+        }
+
+        let stored_tools: Vec<serde_json::Value> = server
+            .tools
+            .as_deref()
+            .and_then(|s| serde_json::from_str(s).ok())
+            .unwrap_or_default();
+
+        for (ndx, mcp_tool) in stored_tools.iter().enumerate() {
+            let Some(tool_name) = mcp_tool.get("name").and_then(|n| n.as_str()) else {
+                continue;
+            };
+            let input_schema = mcp_tool
+                .get("inputSchema")
+                .and_then(|s| s.as_str())
+                .and_then(|s| serde_json::from_str(s).ok())
+                .unwrap_or_else(|| serde_json::json!({ "type": "object", "properties": {} }));
+            let description = mcp_tool
+                .get("description")
+                .and_then(|d| d.as_str())
+                .map(|d| d.to_string())
+                .unwrap_or_else(|| format!("tool from {}", server.name));
+
+            // Provider-facing name mirrors Node: M_<serverId, no dashes>_<index>
+            result.push(ExecutableTool {
+                spec: ToolSpec {
+                    name: format!("M_{}_{}", server_id.replace('-', ""), ndx),
+                    description: format!("{}: {}", tool_name, description),
+                    input_schema,
+                },
+                backend: ToolBackend::Mcp {
+                    server: Box::new(server.clone()),
+                    tool_name: tool_name.to_string(),
+                    auth_token: auth_token.clone(),
+                },
+            });
+        }
+    }
+
+    result
+}
+
+/// Persist executed tool calls into the assistant message metadata
+/// (toolCalls + tools, Node parity) and re-publish the final message so
+/// subscribers get the tool badges.
+async fn record_tool_metadata(
+    gql_ctx: &GraphQLContext,
+    chat_id: &str,
+    message_id: &str,
+    executed: &[crate::services::ai::ExecutedToolCall],
+) -> Result<(), AppError> {
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let mut message: Message = messages::table
+        .filter(messages::id.eq(message_id))
+        .first(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let mut metadata: crate::models::MessageMetadata = message
+        .metadata
+        .as_deref()
+        .and_then(|m| serde_json::from_str(m).ok())
+        .unwrap_or_default();
+    metadata.tool_calls = Some(
+        executed
+            .iter()
+            .map(|call| crate::models::ChatToolCall {
+                name: call.name.clone(),
+                call_id: Some(call.id.clone()),
+                type_: Some("function".to_string()),
+                error: None,
+                args: Some(call.args_json.clone()),
+            })
+            .collect(),
+    );
+    metadata.tools = Some(
+        executed
+            .iter()
+            .map(|call| crate::models::ChatToolCallResult {
+                call_id: Some(call.id.clone()),
+                name: call.name.clone(),
+                content: call.content.clone(),
+            })
+            .collect(),
+    );
+
+    let metadata_json = serde_json::to_string(&metadata)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize metadata: {}", e)))?;
+    diesel::update(messages::table.filter(messages::id.eq(message_id)))
+        .set((
+            messages::metadata.eq(metadata_json.clone()),
+            messages::updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    message.metadata = Some(metadata_json);
+    let pub_message = message::GqlNewMessage {
+        r#type: String::from(message::MessageType::Message),
+        error: None,
+        message: Some(GqlMessage::from(message)),
+        streaming: Some(false),
+        chat: None,
+    };
+    if let Err(e) = get_global_pubsub()
+        .publish_to_chat(chat_id, pub_message)
+        .await
+    {
+        warn!("Failed to publish tool metadata update: {:?}", e);
+    }
+    Ok(())
+}
+
 /// Convert database Message to AI service ModelMessage format
 fn convert_messages_to_model_format(
     messages: &[Message],
@@ -1756,6 +1979,8 @@ fn convert_messages_to_model_format(
             },
             content: msg.content.clone(),
             timestamp: Some(msg.created_at.and_utc()),
+            tool_calls: None,
+            tool_call_id: None,
         })
         .collect()
 }

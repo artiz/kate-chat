@@ -86,7 +86,7 @@ impl AIProviderService for OpenAIService {
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,

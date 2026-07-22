@@ -5,7 +5,7 @@
 //! API. Mirrors the Node API's Yandex provider.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -92,7 +92,7 @@ impl AIProviderService for YandexService {
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -156,15 +156,12 @@ impl AIProviderService for YandexService {
         if test_connection && is_connected {
             let test_request = InvokeModelRequest {
                 model_id: "gpt://{folder}/yandexgpt-lite/latest".to_string(),
-                messages: vec![ModelMessage {
-                    role: MessageRole::User,
-                    content: "Hello".to_string(),
-                    timestamp: Some(Utc::now()),
-                }],
+                messages: vec![ModelMessage::text(MessageRole::User, "Hello")],
                 temperature: Some(0.1),
                 max_tokens: Some(10),
                 top_p: None,
                 system_prompt: None,
+                tools: None,
             };
 
             match self.invoke_model(test_request).await {

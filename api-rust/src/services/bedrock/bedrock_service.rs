@@ -282,7 +282,7 @@ impl AIProviderService for BedrockService {
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -312,7 +312,7 @@ impl AIProviderService for BedrockService {
                         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                     }
                     (callbacks.on_complete)(response.content).await;
-                    Ok(())
+                    Ok(Vec::new())
                 }
                 Err(e) => {
                     (callbacks.on_error)(e.clone()).await;
@@ -416,7 +416,7 @@ impl AIProviderService for BedrockService {
             }
 
             (callbacks.on_complete)(full_response).await;
-            Ok(())
+            Ok(Vec::new())
         }
     }
 
@@ -596,6 +596,7 @@ mod tests {
             max_tokens: Some(256),
             top_p: Some(0.9),
             system_prompt: None,
+            tools: None,
         };
         let sanitized = sanitize_sampling_params(request);
         assert_eq!(sanitized.temperature, None);

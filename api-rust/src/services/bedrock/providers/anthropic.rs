@@ -181,7 +181,9 @@ impl AnthropicProvider {
 
         for msg in &request.messages {
             let role = match msg.role {
-                AIMessageRole::User => "user",
+                // Tool results come back to the model as user turns until
+                // native Bedrock tool_use support is ported.
+                AIMessageRole::User | AIMessageRole::Tool => "user",
                 AIMessageRole::Assistant => "assistant",
                 AIMessageRole::System => {
                     system_message = Some(msg.content.clone());
@@ -244,6 +246,7 @@ impl AnthropicProvider {
         Ok(ModelResponse {
             content,
             model_id: model_id.to_string(),
+            tool_calls: Vec::new(),
             usage,
             finish_reason: response
                 .get("stop_reason")
