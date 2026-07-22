@@ -26,10 +26,10 @@ use crate::utils::errors::AppError;
 /// `modelIdOverride` — the inference-profile ids (`us.…`/`eu.…`) required by
 /// newer models that reject on-demand invocation of the bare model id.
 /// `api-rust/config/data/…` is a git symlink to
-/// `api/src/config/data/bedrock-models-config.json`, keeping the include
-/// path inside this crate.
+/// `api/src/config/data/bedrock-models-config.json`; build.rs materializes
+/// it into OUT_DIR (with a fallback for checkouts without symlink support).
 const BEDROCK_MODELS_CONFIG: &str =
-    include_str!("../../../config/data/bedrock-models-config.json");
+    include_str!(concat!(env!("OUT_DIR"), "/bedrock-models-config.json"));
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
