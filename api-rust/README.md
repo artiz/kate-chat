@@ -49,6 +49,23 @@ cargo clippy --all-targets --locked -- -D warnings
 cargo fmt
 ```
 
+> **api-rust needs its own database** — do not point it at the Node API's
+> database. The two schemas are incompatible: TypeORM uses camelCase
+> columns (`firstName`, `createdAt`) and uuid ids, Diesel uses snake_case
+> (`first_name`, `created_at`) and varchar ids. Running `diesel migration
+> run` against a Node-created database fails with
+> `relation "users" already exists`; create a separate database instead,
+> e.g.:
+>
+> ```bash
+> psql "$PG_URL/postgres" -c 'CREATE DATABASE katechat_rust'
+> diesel migration run --database-url "$PG_URL/katechat_rust"
+> ```
+>
+> What *is* interchangeable between the backends is the JSON payload
+> format (custom-model `customSettings`, message `jsonContent`), not the
+> tables themselves.
+
 Providers are gated by `ENABLED_API_PROVIDERS`
 (`AWS_BEDROCK,OPEN_AI,YANDEX_AI,CUSTOM_REST_API` or `*`). Point the client
 at it with `APP_API_URL=http://localhost:4001 APP_WS_URL=http://localhost:4002`
