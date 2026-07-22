@@ -42,6 +42,17 @@ remains the reference implementation.
   (OpenAI / Yandex / custom, function calling) and Bedrock Anthropic
   models (native tool_use); executed calls land in the assistant
   message metadata (`toolCalls` / `tools`)
+- **RAG documents**: Node-parity pipeline against the same
+  document-processor SQS queues (`SQS_DOCUMENTS_QUEUE` /
+  `SQS_INDEX_DOCUMENTS_QUEUE`): multipart upload with sha256 dedup and
+  chat linking, parse commands out, index consumer generating chunk
+  embeddings (stored as JSON vectors, in-app cosine ranking — no
+  pgvector/sqlite-vss dependency) and document summaries, documents
+  CRUD + `documentsStatus` subscription, and the structured RAG answer
+  flow in `createMessage` (`documentIds` → ranked chunks →
+  `ragResponse`/`relevantsChunks` metadata). Intermediate
+  document-processor statuses are synced on indexing, not streamed
+  (api-rust has no Redis subscriber yet)
 
 ## Client compatibility
 
@@ -58,8 +69,7 @@ is assembled from the flat chat columns (fields without a backing column
 ## Not ported yet (see the root README TODO)
 
 Operations of unported features return GraphQL validation errors when
-used: RAG/documents pipeline (getDocuments, reindex/delete, chat linking,
-status subscription), realtime
+used: realtime
 voice (createRealtimeSession, addChatMessage), message regeneration
 (switchModel, callOther, updateMessageContent, stopMessageGeneration),
 forgot/reset password, global search, the OpenAI Responses protocol
