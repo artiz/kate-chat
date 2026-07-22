@@ -124,6 +124,10 @@ pub struct ToolCallRequest {
     pub raw: serde_json::Value,
 }
 
+/// Upper bound on tool-call/continue cycles within one chat session
+/// (Node's cyclesLimit).
+pub const TOOL_CYCLES_LIMIT: usize = 100;
+
 /// Server-side execution target for a tool exposed to the model.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ToolBackend {

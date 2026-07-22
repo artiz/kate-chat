@@ -227,6 +227,89 @@ impl BedrockService {
             ))),
         }
     }
+
+    /// Collect Anthropic streaming events that describe tool_use blocks:
+    /// content_block_start carries id/name, input_json_delta events carry
+    /// the argument JSON in fragments, message_delta carries stop_reason.
+    fn collect_anthropic_tool_chunks(
+        chunk_data: &Value,
+        tool_blocks: &mut HashMap<u64, (String, String, String)>,
+        stop_reason: &mut Option<String>,
+    ) {
+        let index = chunk_data
+            .get("index")
+            .and_then(|i| i.as_u64())
+            .unwrap_or(0);
+        match chunk_data.get("type").and_then(|t| t.as_str()) {
+            Some("content_block_start") => {
+                let Some(block) = chunk_data.get("content_block") else {
+                    return;
+                };
+                if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
+                    let id = block
+                        .get("id")
+                        .and_then(|id| id.as_str())
+                        .unwrap_or("unknown_id")
+                        .to_string();
+                    let name = block
+                        .get("name")
+                        .and_then(|n| n.as_str())
+                        .unwrap_or_default()
+                        .to_string();
+                    tool_blocks.insert(index, (id, name, String::new()));
+                }
+            }
+            Some("content_block_delta") => {
+                let Some(delta) = chunk_data.get("delta") else {
+                    return;
+                };
+                if delta.get("type").and_then(|t| t.as_str()) == Some("input_json_delta") {
+                    if let (Some(fragment), Some(entry)) = (
+                        delta.get("partial_json").and_then(|p| p.as_str()),
+                        tool_blocks.get_mut(&index),
+                    ) {
+                        entry.2.push_str(fragment);
+                    }
+                }
+            }
+            Some("message_delta") => {
+                if let Some(reason) = chunk_data
+                    .get("delta")
+                    .and_then(|d| d.get("stop_reason"))
+                    .and_then(|r| r.as_str())
+                {
+                    *stop_reason = Some(reason.to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Execute the tool calls of an Anthropic tool_use turn and extend the
+    /// session: the assistant turn replays its raw content blocks, each
+    /// result becomes a Tool-role message (a tool_result block on the next
+    /// format pass).
+    async fn run_anthropic_tool_calls(
+        session: &mut InvokeModelRequest,
+        executed: &mut Vec<ExecutedToolCall>,
+        assistant_content: Value,
+        calls: Vec<ToolCallRequest>,
+    ) {
+        session.messages.push(ModelMessage {
+            role: MessageRole::Assistant,
+            content: String::new(),
+            timestamp: None,
+            tool_calls: Some(assistant_content),
+            tool_call_id: None,
+        });
+
+        let tools = session.tools.clone().unwrap_or_default();
+        for call in calls {
+            let (message, record) = crate::services::tools::execute_tool_call(&tools, &call).await;
+            executed.push(record);
+            session.messages.push(message);
+        }
+    }
 }
 
 #[async_trait]
@@ -235,47 +318,77 @@ impl AIProviderService for BedrockService {
         let mut service = self.clone();
         let client = service.get_runtime_client().await?;
 
-        let request = sanitize_sampling_params(request);
-        let provider = self.get_model_provider(&request.model_id);
-        let body = self.format_request_for_provider(&provider, &request)?;
+        let mut session = sanitize_sampling_params(request);
+        let provider = self.get_model_provider(&session.model_id);
 
-        let body_bytes = serde_json::to_vec(&body).map_err(|e| {
-            error!(
-                "Failed to serialize Bedrock request for model {}: {:?}",
-                request.model_id, e
-            );
-            AppError::Internal(format!("Failed to serialize request: {}", e))
-        })?;
+        for _cycle in 0..TOOL_CYCLES_LIMIT {
+            let body = self.format_request_for_provider(&provider, &session)?;
 
-        let response = client
-            .invoke_model()
-            .model_id(&request.model_id)
-            .body(Blob::new(body_bytes))
-            .send()
-            .await
-            .map_err(|e| {
+            let body_bytes = serde_json::to_vec(&body).map_err(|e| {
                 error!(
-                    "Bedrock invoke failed for model {}: {:?}",
-                    request.model_id, e
+                    "Failed to serialize Bedrock request for model {}: {:?}",
+                    session.model_id, e
                 );
-                AppError::Aws(format!(
-                    "Bedrock invoke failed: {}",
-                    e.source().unwrap_or(&e)
-                ))
+                AppError::Internal(format!("Failed to serialize request: {}", e))
             })?;
 
-        let response_body = response.body().as_ref();
-        let response_json: Value = serde_json::from_slice(response_body).map_err(|e| {
-            error!(
-                "Failed to parse Bedrock response for model {}: {:?}. Response body: {:?}",
-                request.model_id,
-                e,
-                String::from_utf8_lossy(response_body)
-            );
-            AppError::Internal(format!("Failed to parse response: {}", e))
-        })?;
+            let response = client
+                .invoke_model()
+                .model_id(&session.model_id)
+                .body(Blob::new(body_bytes))
+                .send()
+                .await
+                .map_err(|e| {
+                    error!(
+                        "Bedrock invoke failed for model {}: {:?}",
+                        session.model_id, e
+                    );
+                    AppError::Aws(format!(
+                        "Bedrock invoke failed: {}",
+                        e.source().unwrap_or(&e)
+                    ))
+                })?;
 
-        self.parse_response_for_provider(&provider, response_json, &request.model_id)
+            let response_body = response.body().as_ref();
+            let response_json: Value = serde_json::from_slice(response_body).map_err(|e| {
+                error!(
+                    "Failed to parse Bedrock response for model {}: {:?}. Response body: {:?}",
+                    session.model_id,
+                    e,
+                    String::from_utf8_lossy(response_body)
+                );
+                AppError::Internal(format!("Failed to parse response: {}", e))
+            })?;
+
+            let parsed = self.parse_response_for_provider(
+                &provider,
+                response_json.clone(),
+                &session.model_id,
+            )?;
+
+            // Anthropic tool_use turn: execute the tools and re-invoke
+            if !parsed.tool_calls.is_empty() {
+                let assistant_content = response_json
+                    .get("content")
+                    .cloned()
+                    .unwrap_or_else(|| Value::Array(vec![]));
+                let mut executed = Vec::new();
+                Self::run_anthropic_tool_calls(
+                    &mut session,
+                    &mut executed,
+                    assistant_content,
+                    parsed.tool_calls,
+                )
+                .await;
+                continue;
+            }
+
+            return Ok(parsed);
+        }
+
+        Err(AppError::Internal(
+            "Bedrock: tool call cycles limit exceeded".to_string(),
+        ))
     }
 
     async fn invoke_model_stream<F, C, E>(
@@ -322,101 +435,163 @@ impl AIProviderService for BedrockService {
         } else {
             debug!("Starting real streaming for model: {}", request.model_id);
 
-            let body = self.format_request_for_provider(&provider, &request)?;
-
-            let body_bytes = serde_json::to_vec(&body).map_err(|e| {
-                error!(
-                    "Failed to serialize Bedrock streaming request for model {}: {:?}",
-                    request.model_id, e
-                );
-                AppError::Internal(format!("Failed to serialize request: {}", e))
-            })?;
-
-            let response = client
-                .invoke_model_with_response_stream()
-                .model_id(&request.model_id)
-                .body(Blob::new(body_bytes))
-                .send()
-                .await
-                .map_err(|e| {
-                    let detail = if let Some(source) = e.source() {
-                        format!("{}: {}", e, source)
-                    } else {
-                        e.to_string()
-                    };
-                    error!(
-                        "Bedrock streaming error for model {}: {}",
-                        request.model_id, detail
-                    );
-                    AppError::Aws(format!(
-                        "Bedrock streaming error for model '{}': {}",
-                        request.model_id, detail
-                    ))
-                })?;
-
+            let mut session = request;
+            let mut executed: Vec<ExecutedToolCall> = Vec::new();
             let mut full_response = String::new();
 
-            let mut stream = response.body;
-            loop {
-                match stream.recv().await {
-                    Ok(Some(event)) => {
-                        if event.is_chunk() {
-                            let chunk = event.as_chunk().unwrap();
+            for _cycle in 0..TOOL_CYCLES_LIMIT {
+                let body = self.format_request_for_provider(&provider, &session)?;
 
-                            debug!("Received chunk: {:?}", chunk);
-                            if let Some(bytes) = chunk.bytes() {
-                                match std::str::from_utf8(bytes.as_ref()) {
-                                    Ok(chunk_str) => match serde_json::from_str::<Value>(chunk_str)
-                                    {
-                                        Ok(chunk_data) => {
-                                            let token = match provider.as_str() {
-                                                "anthropic" => {
-                                                    AnthropicProvider::parse_response_chunk(
-                                                        &chunk_data,
-                                                    )
+                let body_bytes = serde_json::to_vec(&body).map_err(|e| {
+                    error!(
+                        "Failed to serialize Bedrock streaming request for model {}: {:?}",
+                        session.model_id, e
+                    );
+                    AppError::Internal(format!("Failed to serialize request: {}", e))
+                })?;
+
+                let response = client
+                    .invoke_model_with_response_stream()
+                    .model_id(&session.model_id)
+                    .body(Blob::new(body_bytes))
+                    .send()
+                    .await
+                    .map_err(|e| {
+                        let detail = if let Some(source) = e.source() {
+                            format!("{}: {}", e, source)
+                        } else {
+                            e.to_string()
+                        };
+                        error!(
+                            "Bedrock streaming error for model {}: {}",
+                            session.model_id, detail
+                        );
+                        AppError::Aws(format!(
+                            "Bedrock streaming error for model '{}': {}",
+                            session.model_id, detail
+                        ))
+                    })?;
+
+                // Anthropic tool_use blocks streamed this cycle, keyed by
+                // content block index: (id, name, accumulated input JSON)
+                let mut tool_blocks: HashMap<u64, (String, String, String)> = HashMap::new();
+                let mut stop_reason: Option<String> = None;
+
+                let mut stream = response.body;
+                loop {
+                    match stream.recv().await {
+                        Ok(Some(event)) => {
+                            if event.is_chunk() {
+                                let chunk = event.as_chunk().unwrap();
+
+                                debug!("Received chunk: {:?}", chunk);
+                                if let Some(bytes) = chunk.bytes() {
+                                    match std::str::from_utf8(bytes.as_ref()) {
+                                        Ok(chunk_str) => {
+                                            match serde_json::from_str::<Value>(chunk_str) {
+                                                Ok(chunk_data) => {
+                                                    if provider == "anthropic" {
+                                                        Self::collect_anthropic_tool_chunks(
+                                                            &chunk_data,
+                                                            &mut tool_blocks,
+                                                            &mut stop_reason,
+                                                        );
+                                                    }
+
+                                                    let token = match provider.as_str() {
+                                                        "anthropic" => {
+                                                            AnthropicProvider::parse_response_chunk(
+                                                                &chunk_data,
+                                                            )
+                                                        }
+                                                        "amazon" => {
+                                                            AmazonProvider::parse_response_chunk(
+                                                                &chunk_data,
+                                                            )
+                                                        }
+                                                        "mistral" => {
+                                                            MistralProvider::parse_response_chunk(
+                                                                &chunk_data,
+                                                            )
+                                                        }
+                                                        _ => None,
+                                                    };
+
+                                                    if let Some(token) = token {
+                                                        full_response.push_str(&token);
+                                                        (callbacks.on_token)(token).await;
+                                                    }
                                                 }
-                                                "amazon" => AmazonProvider::parse_response_chunk(
-                                                    &chunk_data,
-                                                ),
-                                                "mistral" => MistralProvider::parse_response_chunk(
-                                                    &chunk_data,
-                                                ),
-                                                _ => None,
-                                            };
-
-                                            if let Some(token) = token {
-                                                full_response.push_str(&token);
-                                                (callbacks.on_token)(token).await;
+                                                Err(e) => {
+                                                    warn!(
+                                                        "Failed to parse chunk JSON: {} - {}",
+                                                        chunk_str, e
+                                                    );
+                                                }
                                             }
                                         }
                                         Err(e) => {
-                                            warn!(
-                                                "Failed to parse chunk JSON: {} - {}",
-                                                chunk_str, e
-                                            );
+                                            warn!("Failed to decode chunk bytes: {}", e);
                                         }
-                                    },
-                                    Err(e) => {
-                                        warn!("Failed to decode chunk bytes: {}", e);
                                     }
                                 }
                             }
                         }
-                    }
-                    Ok(None) => {
-                        // Stream ended
-                        break;
-                    }
-                    Err(e) => {
-                        let error = AppError::Aws(format!("Stream error: {}", e));
-                        (callbacks.on_error)(error.clone()).await;
-                        return Err(error);
+                        Ok(None) => {
+                            // Stream ended
+                            break;
+                        }
+                        Err(e) => {
+                            let error = AppError::Aws(format!("Stream error: {}", e));
+                            (callbacks.on_error)(error.clone()).await;
+                            return Err(error);
+                        }
                     }
                 }
+
+                // The cycle repeats ONLY to continue after tool calls; a
+                // stream that simply ends is a completed response.
+                if stop_reason.as_deref() != Some("tool_use") || tool_blocks.is_empty() {
+                    (callbacks.on_complete)(full_response).await;
+                    return Ok(executed);
+                }
+
+                let mut ordered: Vec<(&u64, &(String, String, String))> =
+                    tool_blocks.iter().collect();
+                ordered.sort_by_key(|(index, _)| **index);
+
+                let mut assistant_content: Vec<Value> = Vec::new();
+                let mut calls: Vec<ToolCallRequest> = Vec::new();
+                for (_, (id, name, input_json)) in ordered {
+                    let arguments: Value =
+                        serde_json::from_str(input_json).unwrap_or_else(|_| serde_json::json!({}));
+                    let block = serde_json::json!({
+                        "type": "tool_use",
+                        "id": id,
+                        "name": name,
+                        "input": arguments,
+                    });
+                    assistant_content.push(block.clone());
+                    calls.push(ToolCallRequest {
+                        id: id.clone(),
+                        name: name.clone(),
+                        arguments,
+                        raw: block,
+                    });
+                }
+
+                Self::run_anthropic_tool_calls(
+                    &mut session,
+                    &mut executed,
+                    Value::Array(assistant_content),
+                    calls,
+                )
+                .await;
             }
 
-            (callbacks.on_complete)(full_response).await;
-            Ok(Vec::new())
+            let error = AppError::Internal("Bedrock: tool call cycles limit exceeded".to_string());
+            (callbacks.on_error)(error.clone()).await;
+            Err(error)
         }
     }
 

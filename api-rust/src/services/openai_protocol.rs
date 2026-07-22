@@ -13,14 +13,10 @@ use tracing::{debug, warn};
 
 use crate::services::ai::{
     ExecutedToolCall, GeneratedImage, InvokeModelRequest, MessageRole, ModelMessage, ModelResponse,
-    StreamCallbacks, ToolCallRequest, Usage,
+    StreamCallbacks, ToolCallRequest, Usage, TOOL_CYCLES_LIMIT,
 };
 use crate::services::tools::execute_tool_call;
 use crate::utils::errors::AppError;
-
-/// Upper bound on tool-call/continue cycles within one chat session
-/// (Node's cyclesLimit).
-const TOOL_CYCLES_LIMIT: usize = 100;
 
 pub struct OpenAIProtocol {
     client: Client,

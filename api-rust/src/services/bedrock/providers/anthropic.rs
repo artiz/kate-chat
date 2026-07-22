@@ -1,5 +1,7 @@
 use crate::models::message::{Message, MessageRole};
-use crate::services::ai::{InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, Usage};
+use crate::services::ai::{
+    InvokeModelRequest, MessageRole as AIMessageRole, ModelResponse, ToolCallRequest, Usage,
+};
 use crate::utils::errors::AppError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -176,25 +178,56 @@ impl AnthropicProvider {
     }
 
     pub fn format_request(request: &InvokeModelRequest) -> Result<Value, AppError> {
-        let mut messages = Vec::new();
+        let mut messages: Vec<Value> = Vec::new();
         let mut system_message = request.system_prompt.clone();
 
         for msg in &request.messages {
-            let role = match msg.role {
-                // Tool results come back to the model as user turns until
-                // native Bedrock tool_use support is ported.
-                AIMessageRole::User | AIMessageRole::Tool => "user",
-                AIMessageRole::Assistant => "assistant",
+            match msg.role {
                 AIMessageRole::System => {
                     system_message = Some(msg.content.clone());
-                    continue;
                 }
-            };
-
-            messages.push(serde_json::json!({
-                "role": role,
-                "content": msg.content
-            }));
+                // Tool results become tool_result blocks; consecutive
+                // results merge into the single user turn Anthropic requires
+                // after an assistant tool_use turn.
+                AIMessageRole::Tool => {
+                    let block = serde_json::json!({
+                        "type": "tool_result",
+                        "tool_use_id": msg.tool_call_id.clone().unwrap_or_default(),
+                        "content": msg.content,
+                    });
+                    if let Some(last) = messages.last_mut() {
+                        let is_tool_result_turn =
+                            last["role"] == "user" && last["content"][0]["type"] == "tool_result";
+                        if is_tool_result_turn {
+                            if let Some(content) = last["content"].as_array_mut() {
+                                content.push(block);
+                                continue;
+                            }
+                        }
+                    }
+                    messages.push(serde_json::json!({ "role": "user", "content": [block] }));
+                }
+                // An assistant turn that requested tools replays its raw
+                // content blocks (text + tool_use) verbatim.
+                AIMessageRole::Assistant if msg.tool_calls.is_some() => {
+                    messages.push(serde_json::json!({
+                        "role": "assistant",
+                        "content": msg.tool_calls.clone(),
+                    }));
+                }
+                AIMessageRole::Assistant => {
+                    messages.push(serde_json::json!({
+                        "role": "assistant",
+                        "content": msg.content,
+                    }));
+                }
+                AIMessageRole::User => {
+                    messages.push(serde_json::json!({
+                        "role": "user",
+                        "content": msg.content,
+                    }));
+                }
+            }
         }
 
         let mut body = serde_json::json!({
@@ -215,6 +248,19 @@ impl AnthropicProvider {
             body["system"] = system.into();
         }
 
+        if let Some(tools) = request.tools.as_deref().filter(|t| !t.is_empty()) {
+            body["tools"] = serde_json::json!(tools
+                .iter()
+                .map(|tool| {
+                    serde_json::json!({
+                        "name": tool.spec.name,
+                        "description": tool.spec.description,
+                        "input_schema": tool.spec.input_schema,
+                    })
+                })
+                .collect::<Vec<_>>());
+        }
+
         Ok(body)
     }
 
@@ -222,14 +268,39 @@ impl AnthropicProvider {
         response: Value,
         model_id: &str,
     ) -> Result<ModelResponse, AppError> {
-        let content = response
+        let blocks = response
             .get("content")
             .and_then(|c| c.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|item| item.get("text"))
-            .and_then(|text| text.as_str())
-            .unwrap_or("")
-            .to_string();
+            .cloned()
+            .unwrap_or_default();
+
+        let content = blocks
+            .iter()
+            .filter_map(|block| block.get("text").and_then(|t| t.as_str()))
+            .collect::<Vec<_>>()
+            .join("");
+
+        let tool_calls = blocks
+            .iter()
+            .filter(|block| block.get("type").and_then(|t| t.as_str()) == Some("tool_use"))
+            .map(|block| ToolCallRequest {
+                id: block
+                    .get("id")
+                    .and_then(|id| id.as_str())
+                    .unwrap_or("unknown_id")
+                    .to_string(),
+                name: block
+                    .get("name")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+                arguments: block
+                    .get("input")
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({})),
+                raw: block.clone(),
+            })
+            .collect();
 
         let usage = response.get("usage").map(|u| Usage {
             input_tokens: u
@@ -246,12 +317,88 @@ impl AnthropicProvider {
         Ok(ModelResponse {
             content,
             model_id: model_id.to_string(),
-            tool_calls: Vec::new(),
+            tool_calls,
             usage,
             finish_reason: response
                 .get("stop_reason")
                 .and_then(|r| r.as_str())
                 .map(|s| s.to_string()),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::ai::{ExecutableTool, ModelMessage, ToolBackend, ToolSpec};
+
+    fn request_with_tools() -> InvokeModelRequest {
+        InvokeModelRequest {
+            model_id: "anthropic.claude-3-haiku-20240307-v1:0".to_string(),
+            messages: vec![
+                ModelMessage::text(AIMessageRole::User, "find rust news"),
+                ModelMessage {
+                    role: AIMessageRole::Assistant,
+                    content: String::new(),
+                    timestamp: None,
+                    tool_calls: Some(json!([{ "type": "tool_use", "id": "t1",
+                        "name": "internal_web_search", "input": {"query": "rust"} }])),
+                    tool_call_id: None,
+                },
+                ModelMessage {
+                    role: AIMessageRole::Tool,
+                    content: "results".to_string(),
+                    timestamp: None,
+                    tool_calls: None,
+                    tool_call_id: Some("t1".to_string()),
+                },
+            ],
+            temperature: None,
+            max_tokens: Some(512),
+            top_p: None,
+            system_prompt: None,
+            tools: Some(vec![ExecutableTool {
+                spec: ToolSpec {
+                    name: "internal_web_search".to_string(),
+                    description: "Search the web".to_string(),
+                    input_schema: json!({"type": "object"}),
+                },
+                backend: ToolBackend::WebSearch {
+                    api_key: "k".to_string(),
+                    folder_id: "f".to_string(),
+                    api_url: None,
+                },
+            }]),
+        }
+    }
+
+    #[test]
+    fn formats_tool_turns_and_tools() {
+        let body = AnthropicProvider::format_request(&request_with_tools()).unwrap();
+        assert_eq!(body["tools"][0]["name"], "internal_web_search");
+        // assistant tool_use replay
+        assert_eq!(body["messages"][1]["content"][0]["type"], "tool_use");
+        // tool result becomes a user turn with a tool_result block
+        assert_eq!(body["messages"][2]["role"], "user");
+        assert_eq!(body["messages"][2]["content"][0]["type"], "tool_result");
+        assert_eq!(body["messages"][2]["content"][0]["tool_use_id"], "t1");
+    }
+
+    #[test]
+    fn parses_tool_use_response() {
+        let response = json!({
+            "content": [
+                { "type": "text", "text": "Let me search." },
+                { "type": "tool_use", "id": "t2", "name": "internal_web_search",
+                  "input": { "query": "rust" } },
+            ],
+            "stop_reason": "tool_use",
+        });
+        let parsed = AnthropicProvider::parse_model_response(response, "model").unwrap();
+        assert_eq!(parsed.content, "Let me search.");
+        assert_eq!(parsed.tool_calls.len(), 1);
+        assert_eq!(parsed.tool_calls[0].id, "t2");
+        assert_eq!(parsed.tool_calls[0].arguments["query"], "rust");
+        assert_eq!(parsed.finish_reason.as_deref(), Some("tool_use"));
     }
 }
