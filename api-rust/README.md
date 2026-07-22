@@ -36,8 +36,12 @@ remains the reference implementation.
   move chats in/out, folder contents with pagination, pinned filter)
 - **MCP servers**: CRUD, live tools listing (`refetchMcpServerTools` /
   `getMcpServerTools`) and single-tool test via a minimal Streamable-HTTP
-  JSON-RPC client (initialize / tools/list / tools/call, SSE-aware);
-  in-chat tool execution is not wired yet
+  JSON-RPC client (initialize / tools/list / tools/call, SSE-aware)
+- **In-chat tools**: web search (Yandex Search API v2) and MCP server
+  tools run inside the chat session for OpenAI-protocol providers
+  (OpenAI / Yandex / custom, function calling) and Bedrock Anthropic
+  models (native tool_use); executed calls land in the assistant
+  message metadata (`toolCalls` / `tools`)
 
 ## Client compatibility
 
@@ -49,13 +53,13 @@ against the schema and execute. Verified by exporting the SDL
 client GraphQL operation against it. Schema-compat notes: `Chat.settings`
 is assembled from the flat chat columns (fields without a backing column
 — thinking, voice, cacheRetention, … — are accepted but not persisted),
-`mcpEnabled` is true (server management + tool tests; in-chat execution pending).
+`mcpEnabled` is true.
 
 ## Not ported yet (see the root README TODO)
 
 Operations of unported features return GraphQL validation errors when
 used: RAG/documents pipeline (getDocuments, reindex/delete, chat linking,
-status subscription), in-chat tool execution (WEB_SEARCH / MCP), realtime
+status subscription), realtime
 voice (createRealtimeSession, addChatMessage), message regeneration
 (switchModel, callOther, updateMessageContent, stopMessageGeneration),
 forgot/reset password, global search, the OpenAI Responses protocol
