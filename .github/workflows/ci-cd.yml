@@ -89,6 +89,7 @@ jobs:
       client: ${{ steps.changes.outputs.client == 'true' || inputs.force_redeploy == true }}
       packages: ${{ steps.changes.outputs.packages }}
       document_processor: ${{ steps.changes.outputs.document_processor }}
+      api_rust: ${{ steps.changes.outputs.api_rust }}
       docs: ${{ steps.changes.outputs.docs }}
     steps:
     - name: Checkout code
@@ -121,6 +122,8 @@ jobs:
           document_processor:
             - 'document-processor/**'
             - 'infrastructure/services/katechat-document-processor/**'
+          api_rust:
+            - 'api-rust/**'
           docs:
             - 'docs/**'
             - 'README.md'
@@ -155,6 +158,42 @@ jobs:
     - name: Test
       run: |
         cd document-processor
+        cargo test --locked
+
+  rust-api:
+    name: Lint & Test api-rust
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.api_rust == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+        cache-workspaces: api-rust
+
+    # diesel's postgres backend links against libpq
+    - name: Install libpq
+      run: sudo apt-get update -q && sudo apt-get install -y -q libpq-dev
+
+    - name: Format check
+      run: |
+        cd api-rust
+        cargo fmt --check
+
+    - name: Clippy
+      run: |
+        cd api-rust
+        cargo clippy --all-targets --locked -- -D warnings
+
+    - name: Test
+      run: |
+        cd api-rust
         cargo test --locked
 
   build:
