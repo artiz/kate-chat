@@ -121,6 +121,15 @@ async fn rocket() -> Rocket<Build> {
         }
     });
 
+    // RAG: consume index_document commands from the document-processor
+    if config.rag_supported() {
+        let index_config = config.clone();
+        let index_pool = db_pool.clone();
+        tokio::spawn(async move {
+            services::document_index::start_index_consumer(index_config, index_pool).await;
+        });
+    }
+
     let rocket_config = Config {
         port: config.port,
         ..Config::debug_default()

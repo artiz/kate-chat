@@ -820,6 +820,24 @@ impl Mutation {
             .await;
         }
 
+        // RAG: a message with linked documents gets a structured answer
+        // built from the ranked document chunks (sync, no streaming)
+        if let Some(document_ids) = input.document_ids.clone().filter(|ids| !ids.is_empty()) {
+            return generate_rag_reply(
+                gql_ctx,
+                &ai_service,
+                &provider,
+                user,
+                &message,
+                &model,
+                input.content.clone(),
+                document_ids,
+                input.temperature,
+                input.max_tokens,
+            )
+            .await;
+        }
+
         // Load previous messages for context (up to 100 messages)
         const CONTEXT_MESSAGES_LIMIT: i64 = 100;
 
@@ -1833,6 +1851,206 @@ async fn generate_images_reply(
     );
 
     publish(Some(GqlMessage::from(ai_message)), None).await;
+
+    Ok(GqlMessage::from(user_message.clone()))
+}
+
+/// RAG message flow (Node's sendRagMessage): rank the linked documents'
+/// chunks against the question, ask the chat model for a structured
+/// answer and record ragResponse/relevantsChunks metadata.
+#[allow(clippy::too_many_arguments)]
+async fn generate_rag_reply(
+    gql_ctx: &GraphQLContext,
+    ai_service: &AIService,
+    provider: &AIProviderWrapper,
+    user: &User,
+    user_message: &Message,
+    model: &Model,
+    question: String,
+    document_ids: Vec<String>,
+    temperature: Option<f32>,
+    max_tokens: Option<i32>,
+) -> Result<GqlMessage> {
+    use crate::services::rag;
+
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let pubsub = get_global_pubsub();
+    let chat_id = user_message.chat_id.clone();
+
+    // Placeholder assistant message; published as streaming while the
+    // retrieval + completion run
+    let ai_msg_data = Message::new(
+        chat_id.clone(),
+        None,
+        String::new(),
+        String::from(MessageRole::Assistant),
+        user_message.model_id.clone().unwrap_or_default(),
+        Some(model.name.clone()),
+    );
+    let mut ai_message = diesel::insert_into(messages::table)
+        .values(&ai_msg_data)
+        .get_result::<Message>(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+    let publish = |message: Message, streaming: bool, error: Option<String>| {
+        let pubsub = pubsub.clone();
+        let chat_id = chat_id.clone();
+        async move {
+            let pub_message = message::GqlNewMessage {
+                r#type: String::from(message::MessageType::Message),
+                error,
+                message: Some(GqlMessage::from(message)),
+                streaming: Some(streaming),
+                chat: None,
+            };
+            if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                warn!("Failed to publish RAG message: {:?}", e);
+            }
+        }
+    };
+    publish(ai_message.clone(), true, None).await;
+
+    let finalize = |mut ai_message: Message,
+                    conn: &mut crate::database::DbConnection,
+                    content: String,
+                    role: &str,
+                    metadata: Option<String>|
+     -> Result<Message, AppError> {
+        ai_message.content = content;
+        ai_message.role = role.to_string();
+        ai_message.metadata = metadata;
+        ai_message.updated_at = Utc::now().naive_utc();
+        diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+            .set((
+                messages::content.eq(&ai_message.content),
+                messages::role.eq(&ai_message.role),
+                messages::metadata.eq(&ai_message.metadata),
+                messages::updated_at.eq(ai_message.updated_at),
+            ))
+            .execute(conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        Ok(ai_message)
+    };
+
+    // Retrieval + structured completion; errors land in the message
+    let result: std::result::Result<(String, crate::models::MessageMetadata), AppError> = async {
+        let chunks = rag::find_chunks(
+            &mut conn,
+            ai_service,
+            &user.id,
+            &document_ids,
+            &question,
+            rag::RAG_QUERY_CHUNKS_LIMIT,
+        )
+        .await?;
+        if chunks.is_empty() {
+            return Err(AppError::Validation(
+                "No indexed content found for the selected documents".to_string(),
+            ));
+        }
+
+        let prompt = rag::rag_request(&chunks, &question);
+        let response = provider
+            .invoke_model(crate::services::ai::InvokeModelRequest {
+                model_id: model.model_id.clone(),
+                messages: vec![crate::services::ai::ModelMessage::text(
+                    crate::services::ai::MessageRole::User,
+                    prompt.user_input,
+                )],
+                temperature,
+                max_tokens,
+                top_p: None,
+                system_prompt: Some(prompt.system_prompt),
+                tools: None,
+            })
+            .await?;
+
+        let parsed = rag::extract_rag_json(&response.content).ok_or_else(|| {
+            AppError::Internal(format!(
+                "Failed to parse RAG response: {}",
+                response.content.chars().take(500).collect::<String>()
+            ))
+        })?;
+        let rag_response: crate::models::RagResponse = serde_json::from_value(parsed)
+            .map_err(|e| AppError::Internal(format!("Invalid RAG response: {}", e)))?;
+
+        let mut content = rag_response
+            .final_answer
+            .clone()
+            .unwrap_or_else(|| "N/A".to_string());
+        if let Some(reasoning) = rag_response
+            .reasoning_summary
+            .as_deref()
+            .filter(|r| !r.is_empty())
+        {
+            content.push_str(&format!("\n\n> {}", reasoning));
+        }
+
+        let chunks_map: std::collections::HashMap<&str, &rag::RankedChunk> =
+            chunks.iter().map(|c| (c.id.as_str(), c)).collect();
+        let relevants_chunks: Vec<crate::models::MessageRelevantChunk> = rag_response
+            .relevant_chunks_ids
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .enumerate()
+            .filter_map(|(ndx, id)| {
+                let chunk = chunks_map.get(id.as_str())?;
+                Some(crate::models::MessageRelevantChunk {
+                    id: id.clone(),
+                    document_id: chunk.document_id.clone(),
+                    document_name: chunk.document_name.clone(),
+                    page: chunk.page as f64,
+                    page_index: Some(chunk.page_index as f64),
+                    content: chunk.content.clone(),
+                    relevance: rag_response
+                        .chunks_relevance
+                        .as_deref()
+                        .and_then(|r| r.get(ndx))
+                        .copied()
+                        .unwrap_or(0.0),
+                })
+            })
+            .collect();
+
+        let metadata = crate::models::MessageMetadata {
+            document_ids: Some(document_ids.clone()),
+            rag_response: Some(rag_response),
+            relevants_chunks: Some(relevants_chunks),
+            ..Default::default()
+        };
+        Ok((content, metadata))
+    }
+    .await;
+
+    match result {
+        Ok((content, metadata)) => {
+            let metadata_json = serde_json::to_string(&metadata).ok();
+            ai_message = finalize(
+                ai_message,
+                &mut conn,
+                content,
+                &String::from(MessageRole::Assistant),
+                metadata_json,
+            )?;
+            publish(ai_message, false, None).await;
+        }
+        Err(e) => {
+            error!("RAG flow failed: {}", e);
+            let error_text = e.to_string();
+            ai_message = finalize(
+                ai_message,
+                &mut conn,
+                error_text.clone(),
+                &String::from(MessageRole::Error),
+                None,
+            )?;
+            publish(ai_message, false, Some(error_text)).await;
+        }
+    }
 
     Ok(GqlMessage::from(user_message.clone()))
 }

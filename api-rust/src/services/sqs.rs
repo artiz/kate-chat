@@ -74,6 +74,56 @@ impl SqsService {
         Ok(())
     }
 
+    /// Long-poll a queue; returns (body, receipt_handle) pairs.
+    pub async fn receive_messages(
+        &self,
+        queue_url: &str,
+        max_messages: i32,
+        wait_seconds: i32,
+    ) -> Result<Vec<(String, String)>, AppError> {
+        let result = self
+            .client
+            .receive_message()
+            .queue_url(queue_url)
+            .max_number_of_messages(max_messages)
+            .wait_time_seconds(wait_seconds)
+            .visibility_timeout(300)
+            .send()
+            .await
+            .map_err(|e| {
+                AppError::Aws(format!(
+                    "Failed to receive SQS messages: {}",
+                    e.into_service_error()
+                ))
+            })?;
+
+        Ok(result
+            .messages()
+            .iter()
+            .filter_map(|m| Some((m.body()?.to_string(), m.receipt_handle()?.to_string())))
+            .collect())
+    }
+
+    pub async fn delete_message(
+        &self,
+        queue_url: &str,
+        receipt_handle: &str,
+    ) -> Result<(), AppError> {
+        self.client
+            .delete_message()
+            .queue_url(queue_url)
+            .receipt_handle(receipt_handle)
+            .send()
+            .await
+            .map_err(|e| {
+                AppError::Aws(format!(
+                    "Failed to delete SQS message: {}",
+                    e.into_service_error()
+                ))
+            })?;
+        Ok(())
+    }
+
     /// Enqueue a `parse_document` command for the document-processor.
     pub async fn send_parse_document(
         &self,
