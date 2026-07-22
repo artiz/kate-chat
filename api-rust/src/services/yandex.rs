@@ -167,7 +167,7 @@ impl AIProviderService for YandexService {
         models.insert(
             "yandexgpt".to_string(),
             AIModelInfo {
-                api_provider: ApiProvider::YandexFm,
+                api_provider: ApiProvider::YandexAi,
                 provider: Some("Yandex".to_string()),
                 name: "YandexGPT".to_string(),
                 description: "Yandex Foundation Model for text generation".to_string(),
@@ -180,7 +180,7 @@ impl AIProviderService for YandexService {
         models.insert(
             "yandexgpt-lite".to_string(),
             AIModelInfo {
-                api_provider: ApiProvider::YandexFm,
+                api_provider: ApiProvider::YandexAi,
                 provider: Some("Yandex".to_string()),
                 name: "YandexGPT Lite".to_string(),
                 description: "Lightweight Yandex Foundation Model".to_string(),
