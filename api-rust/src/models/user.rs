@@ -280,6 +280,12 @@ pub struct UpdateUserInput {
     pub default_system_prompt: Option<String>,
     pub avatar_url: Option<String>,
     pub settings: Option<JsonUserSettings>,
+    pub documents_embeddings_model_id: Option<String>,
+    pub document_summarization_model_id: Option<String>,
+    pub default_temperature: Option<f32>,
+    pub default_max_tokens: Option<i32>,
+    pub default_top_p: Option<f32>,
+    pub default_images_count: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]

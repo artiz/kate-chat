@@ -137,7 +137,16 @@ pub struct CreateMessageInput {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
     pub images: Option<Vec<ImageInput>>,
+    /// Voice recording input — accepted for schema compatibility;
+    /// audio models are not ported yet.
+    pub audio: Option<AudioInput>,
+    /// Inline chat-context documents — accepted for schema compatibility;
+    /// file content blocks are not ported yet.
+    pub files: Option<Vec<FileInput>>,
     pub document_ids: Option<Vec<String>>,
+    /// MCP auth tokens — accepted for schema compatibility; MCP is not
+    /// ported yet.
+    pub mcp_tokens: Option<Vec<McpAuthTokenInput>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
@@ -145,6 +154,24 @@ pub struct ImageInput {
     pub bytes_base64: String,
     pub file_name: String,
     pub mime_type: String,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct AudioInput {
+    pub bytes_base64: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub duration_sec: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct FileInput {
+    pub bytes_base64: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub size: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]

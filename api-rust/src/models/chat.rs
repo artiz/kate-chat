@@ -178,6 +178,40 @@ pub struct ChatSettings {
     pub selected_rag_doc_ids: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
+pub struct ChatToolOptionsInput {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
+pub struct ChatToolInput {
+    /// Tool type name (WEB_SEARCH, MCP, …)
+    #[serde(rename = "type")]
+    pub r#type: String,
+    pub name: Option<String>,
+    pub id: Option<String>,
+    pub options: Option<Vec<ChatToolOptionsInput>>,
+}
+
+impl From<ChatToolInput> for ChatTool {
+    fn from(input: ChatToolInput) -> Self {
+        ChatTool {
+            id: input.id,
+            name: input.name.unwrap_or_default(),
+            r#type: input.r#type,
+            options: input.options.map(|opts| {
+                opts.into_iter()
+                    .map(|o| ChatToolOptions {
+                        name: o.name,
+                        value: o.value,
+                    })
+                    .collect()
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct UpdateChatInput {
     pub title: Option<String>,
@@ -190,6 +224,7 @@ pub struct UpdateChatInput {
     /// Accepted for schema compatibility; folders are not ported yet.
     pub folder_id: Option<String>,
     pub settings: Option<ChatSettings>,
+    pub tools: Option<Vec<ChatToolInput>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]

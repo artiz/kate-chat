@@ -364,7 +364,27 @@ impl AIProviderService for BedrockService {
             if let (model_id, Some(model_name), Some(provider_name)) =
                 (model.model_id(), model.model_name(), model.provider_name())
             {
-                let supports_streaming = model.response_streaming_supported().unwrap_or(false);
+                // Rerank models use a dedicated request shape (query/documents)
+                // that the chat path cannot produce — skip them entirely.
+                if model_id.contains("rerank") {
+                    continue;
+                }
+
+                // Classify by output modality, mirroring the Node provider:
+                // IMAGE → image_generation, EMBEDDING → embedding, else chat.
+                let type_ = if model.output_modalities().contains(&ModelModality::Image) {
+                    "image_generation"
+                } else if model
+                    .output_modalities()
+                    .contains(&ModelModality::Embedding)
+                {
+                    "embedding"
+                } else {
+                    "chat"
+                };
+
+                let supports_streaming =
+                    type_ == "chat" && model.response_streaming_supported().unwrap_or(false);
 
                 let supports_image_in = model.input_modalities().contains(&ModelModality::Image);
 
@@ -375,7 +395,7 @@ impl AIProviderService for BedrockService {
                         provider: Some(provider_name.to_string()),
                         name: model_name.to_string(),
                         description: format!("{} by {}", model_name, provider_name),
-                        type_: "chat".to_string(),
+                        type_: type_.to_string(),
                         streaming: supports_streaming,
                         image_input: supports_image_in,
                     },

@@ -158,6 +158,26 @@ impl Mutation {
                     .default_system_prompt
                     .map(|p| users::default_system_prompt.eq(p)),
                 input.avatar_url.map(|a| users::avatar_url.eq(a)),
+                input
+                    .documents_embeddings_model_id
+                    .map(|m| users::documents_embeddings_model_id.eq(m)),
+                input
+                    .document_summarization_model_id
+                    .map(|m| users::document_summarization_model_id.eq(m)),
+                input
+                    .default_temperature
+                    .map(|t| users::default_temperature.eq(t)),
+                input
+                    .default_max_tokens
+                    .map(|t| users::default_max_tokens.eq(t)),
+                input.default_top_p.map(|t| users::default_top_p.eq(t)),
+                input
+                    .default_images_count
+                    .map(|c| users::default_images_count.eq(c)),
+                input
+                    .settings
+                    .as_ref()
+                    .map(|s| users::settings.eq(serde_json::to_string(s).unwrap_or_default())),
                 users::updated_at.eq(Utc::now().naive_utc()),
             ))
             .execute(&mut conn)
@@ -219,6 +239,20 @@ impl Mutation {
         let max_tokens = settings.max_tokens.or(input.max_tokens);
         let top_p = settings.top_p.or(input.top_p);
 
+        // tools are stored as a JSON array in the chats.tools column
+        let tools_json = match input.tools {
+            Some(tools) => Some(
+                serde_json::to_string(
+                    &tools
+                        .into_iter()
+                        .map(crate::models::ChatTool::from)
+                        .collect::<Vec<_>>(),
+                )
+                .map_err(|e| AppError::Internal(e.to_string()))?,
+            ),
+            None => None,
+        };
+
         diesel::update(
             chats::table
                 .filter(chats::id.eq(&id))
@@ -234,6 +268,7 @@ impl Mutation {
             settings.system_prompt.map(|s| chats::system_prompt.eq(s)),
             settings.images_count.map(|c| chats::images_count.eq(c)),
             input.is_pinned.map(|p| chats::is_pinned.eq(p)),
+            tools_json.map(|t| chats::tools.eq(t)),
             chats::updated_at.eq(Utc::now().naive_utc()),
         ))
         .execute(&mut conn)
@@ -361,6 +396,15 @@ impl Mutation {
         // the user message is the prompt, the response is a set of images
         // stored to S3 and referenced from the assistant message (same flow
         // as the Node API's processModelResponse).
+        // Only chat and images-generation models can serve a conversation
+        if model.type_ != "chat" && model.type_ != "image_generation" {
+            return Err(AppError::Validation(format!(
+                "Model {} ({}) cannot be used for chat",
+                model.name, model.type_
+            ))
+            .into());
+        }
+
         if model.type_ == "image_generation" {
             let images_count = chat.images_count.unwrap_or(1).max(1);
             return generate_images_reply(
@@ -788,6 +832,34 @@ impl Mutation {
         let provider = ai_service
             .get_provider_for_model(&model)
             .map_err(async_graphql::Error::from)?;
+
+        // Embedding models have no chat endpoint — test with an embeddings request
+        if model.type_ == "embedding" {
+            let embedding = provider
+                .get_embeddings(&model.model_id, &input.text)
+                .await
+                .map_err(async_graphql::Error::from)?;
+            let timestamp = Utc::now().naive_utc();
+            log_user_action!(&user.id, "test_model", model_id = %model.model_id, provider = %model.api_provider);
+            return Ok(GqlMessage {
+                id: uuid::Uuid::new_v4().to_string(),
+                chat_id: "test".to_string(),
+                user_id: Some(user.id.clone()),
+                user: Some(user.clone()),
+                content: format!("Embedding [{}]", embedding.len()),
+                role: "assistant".to_string(),
+                model_id: Some(model.model_id.clone()),
+                model_name: Some(model.name.clone()),
+                json_content: None,
+                metadata: None,
+                linked_to_message_id: None,
+                linked_messages: None,
+                status: None,
+                status_info: None,
+                created_at: timestamp,
+                updated_at: timestamp,
+            });
+        }
 
         // Create test message
         let test_message = crate::services::ai::ModelMessage {
