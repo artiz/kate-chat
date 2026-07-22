@@ -41,6 +41,8 @@ pub(crate) struct BedrockModelConfig {
     pub regions: Vec<String>,
     #[serde(default)]
     pub max_input_tokens: Option<i32>,
+    #[serde(default)]
+    pub supports_temperature: Option<bool>,
 }
 
 pub(crate) fn bedrock_model_configs() -> &'static HashMap<String, BedrockModelConfig> {
@@ -65,6 +67,27 @@ pub(crate) fn resolve_bedrock_model_id(config: &BedrockModelConfig, region: &str
         .and_then(|map| map.get(geo))
         .cloned()
         .unwrap_or_else(|| config.model_id.clone())
+}
+
+/// Whether a model accepts the `temperature`/`top_p` sampling params.
+/// Newer Anthropic models (Opus 4.7/4.8, Sonnet 5, Fable 5) reject them
+/// ("`temperature` is deprecated for this model") — flagged with
+/// `supportsTemperature: false` in the shared config and matched by
+/// substring, since the invocation id carries a geo prefix (`eu.`/`us.`).
+pub(crate) fn bedrock_supports_temperature(model_id: &str) -> bool {
+    !bedrock_model_configs().values().any(|config| {
+        config.supports_temperature == Some(false) && model_id.contains(&config.model_id)
+    })
+}
+
+/// Drop sampling params for models that reject them (mirrors the Node
+/// provider's formatConverseParams gate).
+fn sanitize_sampling_params(mut request: InvokeModelRequest) -> InvokeModelRequest {
+    if !bedrock_supports_temperature(&request.model_id) {
+        request.temperature = None;
+        request.top_p = None;
+    }
+    request
 }
 
 pub struct BedrockService {
@@ -212,6 +235,7 @@ impl AIProviderService for BedrockService {
         let mut service = self.clone();
         let client = service.get_runtime_client().await?;
 
+        let request = sanitize_sampling_params(request);
         let provider = self.get_model_provider(&request.model_id);
         let body = self.format_request_for_provider(&provider, &request)?;
 
@@ -267,6 +291,7 @@ impl AIProviderService for BedrockService {
         let mut service = self.clone();
         let client = service.get_runtime_client().await?;
 
+        let request = sanitize_sampling_params(request);
         let provider = self.get_model_provider(&request.model_id);
 
         // Check if model supports streaming (Anthropic, Amazon, Mistral)
@@ -549,6 +574,33 @@ mod tests {
         let configs = bedrock_model_configs();
         assert!(configs.len() > 40, "expected the full curated list");
         assert!(configs.contains_key("anthropic.claude-3-haiku-20240307-v1:0"));
+    }
+
+    #[test]
+    fn no_temperature_models_drop_sampling_params() {
+        // flagged with supportsTemperature: false in the shared config
+        assert!(!bedrock_supports_temperature(
+            "eu.anthropic.claude-opus-4-8-v1:0"
+        ));
+        assert!(bedrock_supports_temperature(
+            "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+        ));
+        assert!(bedrock_supports_temperature(
+            "anthropic.claude-3-haiku-20240307-v1:0"
+        ));
+
+        let request = InvokeModelRequest {
+            model_id: "us.anthropic.claude-opus-4-8-v1:0".to_string(),
+            messages: vec![],
+            temperature: Some(0.5),
+            max_tokens: Some(256),
+            top_p: Some(0.9),
+            system_prompt: None,
+        };
+        let sanitized = sanitize_sampling_params(request);
+        assert_eq!(sanitized.temperature, None);
+        assert_eq!(sanitized.top_p, None);
+        assert_eq!(sanitized.max_tokens, Some(256));
     }
 
     #[test]

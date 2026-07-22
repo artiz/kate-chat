@@ -868,13 +868,15 @@ impl Mutation {
             timestamp: Some(Utc::now()),
         };
 
-        // Create invoke request
+        // Create invoke request (same sampling as the Node API's testModel:
+        // temperature only — sending top_p as well trips models that accept
+        // just one of the two, e.g. Claude Haiku 4.5)
         let invoke_request = crate::services::ai::InvokeModelRequest {
             model_id: model.model_id.clone(),
             messages: vec![test_message],
-            temperature: Some(0.7),
-            max_tokens: Some(1000),
-            top_p: Some(0.9),
+            temperature: Some(0.5),
+            max_tokens: Some(256),
+            top_p: None,
             system_prompt: None,
         };
 
