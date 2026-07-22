@@ -16,8 +16,7 @@ use crate::models::{
 };
 use crate::schema::{chat_files, chats, messages, models, users};
 use crate::services::ai::{
-    AIProviderService, AIProviderWrapper, AIService, ApiProvider, GenerateImagesRequest,
-    StreamCallbacks,
+    AIProviderService, AIProviderWrapper, AIService, GenerateImagesRequest, StreamCallbacks,
 };
 use crate::services::chat::{ChatService, GetChatStatsResult};
 use crate::services::pubsub::get_global_pubsub;

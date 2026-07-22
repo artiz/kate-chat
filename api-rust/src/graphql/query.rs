@@ -1,13 +1,17 @@
-use async_graphql::{Context, InputObject, Object, Result};
+use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use diesel::prelude::*;
 
 use crate::graphql::GraphQLContext;
-use crate::models::{
-    AuthResponse, Chat, GqlAmount, GqlChat, GqlChatsList, GqlCostsInfo, GqlMessage,
-    GqlMessagesList, GqlModel, GqlModelsList, GqlProviderInfo, GqlServiceCostInfo, Message, Model,
-    ProviderDetail, User,
+use crate::models::chat_file::{
+    file_url, GetChatFilesInput, GetImagesInput, GqlChatFile, GqlChatFilesList, GqlImage,
+    GqlImagesList, CHAT_FILE_TYPE_IMAGE, CHAT_FILE_TYPE_INLINE_DOCUMENT,
 };
-use crate::schema::{chats, messages, models};
+use crate::models::{
+    AuthResponse, Chat, ChatFile, GqlAmount, GqlChat, GqlChatsList, GqlCostsInfo, GqlMessage,
+    GqlMessagesList, GqlModel, GqlModelsList, GqlProviderInfo, GqlServiceCostInfo, Message, Model,
+    ProviderDetail, User, ROLE_ADMIN,
+};
+use crate::schema::{chat_files, chats, messages, models, users};
 use crate::services::ai::ApiProvider;
 use crate::services::chat::{ChatService, GetChatStatsResult};
 use crate::utils::errors::AppError;
@@ -35,6 +39,29 @@ pub struct GetCostsInput {
     pub api_provider: String,
     pub start_time: i64,
     pub end_time: Option<i64>,
+}
+
+#[derive(InputObject, Default)]
+pub struct GetUsersInput {
+    #[graphql(default = 0)]
+    pub offset: i32,
+    #[graphql(default = 20)]
+    pub limit: i32,
+    pub search_term: Option<String>,
+}
+
+#[derive(SimpleObject)]
+pub struct AdminStatsResponse {
+    pub users_count: i64,
+    pub chats_count: i64,
+    pub models_count: i64,
+}
+
+#[derive(SimpleObject)]
+pub struct AdminUsersResponse {
+    pub users: Vec<User>,
+    pub total: i64,
+    pub has_more: bool,
 }
 
 #[derive(async_graphql::SimpleObject)]
@@ -370,6 +397,218 @@ impl Query {
         Ok(AuthResponse {
             token,
             user: user.clone(),
+        })
+    }
+
+    /// Library: all generated/uploaded images of the current user
+    async fn get_all_images(
+        &self,
+        ctx: &Context<'_>,
+        input: GetImagesInput,
+    ) -> Result<GqlImagesList> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let offset = input.offset.max(0) as i64;
+        let limit = input.limit.clamp(1, 200) as i64;
+
+        let rows: Vec<(ChatFile, Chat, Option<Message>)> = chat_files::table
+            .inner_join(chats::table)
+            .left_join(messages::table)
+            .filter(chats::user_id.eq(&user.id))
+            .filter(chat_files::type_.eq(CHAT_FILE_TYPE_IMAGE))
+            .order(chat_files::created_at.desc())
+            .offset(offset)
+            .limit(limit + 1)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let has_more = rows.len() as i64 > limit;
+        let images = rows
+            .into_iter()
+            .take(limit as usize)
+            .filter_map(|(file, chat, message)| {
+                let file_name = file.file_name?;
+                Some(GqlImage {
+                    id: file.id,
+                    file_url: file_url(&file_name),
+                    file_name,
+                    mime: file.mime,
+                    predominant_color: file.predominant_color,
+                    role: message
+                        .as_ref()
+                        .map(|m| m.role.clone())
+                        .or(Some("assistant".to_string())),
+                    created_at: file.created_at,
+                    message: message.map(GqlMessage::from),
+                    chat: Some(GqlChat::from(chat)),
+                })
+            })
+            .collect();
+
+        Ok(GqlImagesList {
+            images,
+            next_page: has_more.then_some((offset + limit) as i32),
+            error: None,
+        })
+    }
+
+    /// Library: chat files (inline chat-context documents by default)
+    async fn get_chat_files(
+        &self,
+        ctx: &Context<'_>,
+        input: GetChatFilesInput,
+    ) -> Result<GqlChatFilesList> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let offset = input.offset.max(0) as i64;
+        let limit = input.limit.clamp(1, 200) as i64;
+        let types = input
+            .types
+            .filter(|t| !t.is_empty())
+            .unwrap_or_else(|| vec![CHAT_FILE_TYPE_INLINE_DOCUMENT.to_string()]);
+
+        let rows: Vec<(ChatFile, Chat, Option<Message>)> = chat_files::table
+            .inner_join(chats::table)
+            .left_join(messages::table)
+            .filter(chats::user_id.eq(&user.id))
+            .filter(chat_files::type_.eq_any(&types))
+            .order(chat_files::created_at.desc())
+            .offset(offset)
+            .limit(limit + 1)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let has_more = rows.len() as i64 > limit;
+        let files = rows
+            .into_iter()
+            .take(limit as usize)
+            .map(|(file, chat, message)| GqlChatFile {
+                id: file.id,
+                file_url: file.file_name.as_deref().map(file_url),
+                file_name: file.file_name,
+                type_: file.type_,
+                mime: file.mime,
+                upload_file: file.upload_file,
+                role: message
+                    .as_ref()
+                    .map(|m| m.role.clone())
+                    .or(Some("user".to_string())),
+                created_at: file.created_at,
+                message: message.map(GqlMessage::from),
+                chat: Some(GqlChat::from(chat)),
+            })
+            .collect();
+
+        Ok(GqlChatFilesList {
+            files,
+            next_page: has_more.then_some((offset + limit) as i32),
+            error: None,
+        })
+    }
+
+    /// Admin: global usage stats
+    async fn get_admin_stats(&self, ctx: &Context<'_>) -> Result<AdminStatsResponse> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        if user.role != ROLE_ADMIN {
+            return Err(async_graphql::Error::new("Access denied"));
+        }
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let users_count: i64 = users::table
+            .count()
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let chats_count: i64 = chats::table
+            .count()
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let models_count: i64 = models::table
+            .count()
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(AdminStatsResponse {
+            users_count,
+            chats_count,
+            models_count,
+        })
+    }
+
+    /// Admin: paginated user list with optional search
+    async fn get_users(
+        &self,
+        ctx: &Context<'_>,
+        input: Option<GetUsersInput>,
+    ) -> Result<AdminUsersResponse> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        if user.role != ROLE_ADMIN {
+            return Err(async_graphql::Error::new("Access denied"));
+        }
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let input = input.unwrap_or_default();
+        let offset = input.offset.max(0) as i64;
+        let limit = input.limit.clamp(1, 100) as i64;
+
+        let mut count_query = users::table.into_boxed();
+        let mut list_query = users::table.into_boxed();
+        if let Some(term) = input
+            .search_term
+            .as_deref()
+            .map(str::trim)
+            .filter(|t| !t.is_empty())
+        {
+            let pattern = format!("%{}%", term);
+            count_query = count_query.filter(
+                users::email
+                    .like(pattern.clone())
+                    .or(users::first_name.like(pattern.clone()))
+                    .or(users::last_name.like(pattern.clone())),
+            );
+            list_query = list_query.filter(
+                users::email
+                    .like(pattern.clone())
+                    .or(users::first_name.like(pattern.clone()))
+                    .or(users::last_name.like(pattern)),
+            );
+        }
+
+        let total: i64 = count_query
+            .count()
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let users_list: Vec<User> = list_query
+            .order(users::created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let has_more = offset + (users_list.len() as i64) < total;
+
+        Ok(AdminUsersResponse {
+            users: users_list,
+            total,
+            has_more,
         })
     }
 }

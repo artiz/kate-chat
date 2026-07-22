@@ -372,59 +372,6 @@ impl AIService {
         self.get_provider(api_provider)
     }
 
-    #[instrument(skip(self, request), fields(provider = ?api_provider, model_id = %request.model_id))]
-    pub async fn invoke_model(
-        &self,
-        api_provider: ApiProvider,
-        request: InvokeModelRequest,
-    ) -> Result<ModelResponse, AppError> {
-        debug!(
-            "Invoking model {} with provider {:?}",
-            request.model_id, api_provider
-        );
-
-        let start_time = std::time::Instant::now();
-        let provider: AIProviderWrapper = self.get_provider(api_provider)?;
-
-        match provider.invoke_model(request).await {
-            Ok(response) => {
-                let duration = start_time.elapsed();
-                info!(
-                    "Model invocation successful for {} ({:?}) in {}ms",
-                    response.model_id,
-                    api_provider,
-                    duration.as_millis()
-                );
-                Ok(response)
-            }
-            Err(e) => {
-                // let duration = start_time.elapsed();
-                // error!(
-                //     "Model invocation failed for provider {:?} after {}ms: {}",
-                //     api_provider,
-                //     duration.as_millis(),
-                //     e
-                // );
-                Err(e)
-            }
-        }
-    }
-
-    pub async fn invoke_model_stream<F, C, E>(
-        &self,
-        api_provider: ApiProvider,
-        request: InvokeModelRequest,
-        callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
-    where
-        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-    {
-        let provider = self.get_provider(api_provider)?;
-        provider.invoke_model_stream(request, callbacks).await
-    }
-
     #[instrument(skip(self))]
     pub async fn get_all_models(&self) -> Result<HashMap<String, AIModelInfo>, AppError> {
         let mut all_models = HashMap::new();
