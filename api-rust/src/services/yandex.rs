@@ -49,10 +49,12 @@ impl YandexService {
         } else {
             format!("Api-Key {}", api_key)
         };
-        Ok(
-            OpenAIProtocol::new(YANDEX_OPENAI_API_URL, None, None, "Yandex")
-                .with_auth_header(auth_header),
-        )
+        let base_url = self
+            .config
+            .yandex_openai_api_url
+            .clone()
+            .unwrap_or_else(|| YANDEX_OPENAI_API_URL.to_string());
+        Ok(OpenAIProtocol::new(base_url, None, None, "Yandex").with_auth_header(auth_header))
     }
 
     /// Model ids are stored with a `{folder}` placeholder

@@ -46,6 +46,7 @@ pub struct AppConfig {
     // Yandex
     pub yandex_api_key: Option<String>,
     pub yandex_folder_id: Option<String>,
+    pub yandex_openai_api_url: Option<String>,
 
     // Enabled API providers
     pub enabled_api_providers: Vec<String>,
@@ -78,6 +79,7 @@ impl AppConfig {
             // Yandex
             yandex_api_key: env::var("YANDEX_FM_API_KEY").ok(),
             yandex_folder_id: env::var("YANDEX_FM_API_FOLDER").ok(),
+            yandex_openai_api_url: env::var("YANDEX_OPENAI_API_URL").ok(),
 
             // OAuth
             google_client_id: env::var("GOOGLE_OAUTH_CLIENT_ID").ok(),
