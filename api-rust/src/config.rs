@@ -107,8 +107,12 @@ impl AppConfig {
             sqs_documents_queue: env::var("SQS_DOCUMENTS_QUEUE").ok(),
             sqs_index_documents_queue: env::var("SQS_INDEX_DOCUMENTS_QUEUE").ok(),
 
-            // Redis
-            redis_url: env::var("REDIS_URL").ok(),
+            // Redis: siblings (Node API, document-processor) default to
+            // localhost; empty REDIS_URL disables the status subscriber
+            redis_url: env::var("REDIS_URL")
+                .ok()
+                .or_else(|| Some("redis://localhost:6379".to_string()))
+                .filter(|s| !s.is_empty()),
             document_status_channel: env::var("DOCUMENT_STATUS_CHANNEL")
                 .unwrap_or_else(|_| "document:status".to_string()),
 

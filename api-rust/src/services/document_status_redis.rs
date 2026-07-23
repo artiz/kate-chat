@@ -46,13 +46,18 @@ pub async fn start_status_subscriber(config: AppConfig, db_pool: DbPool) {
     };
     let channel = config.document_status_channel.clone();
     let mut timings: HashMap<String, GqlDocumentMetadata> = HashMap::new();
+    let mut backoff = std::time::Duration::from_secs(5);
 
     loop {
-        match subscribe_loop(&redis_url, &channel, &db_pool, &mut timings).await {
+        match subscribe_loop(&redis_url, &channel, &db_pool, &mut timings, &mut backoff).await {
             Ok(()) => return, // stream ended cleanly (shutdown)
             Err(e) => {
-                warn!("Redis document-status subscriber error: {} — retrying", e);
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                warn!(
+                    "Redis document-status subscriber error: {} — retrying in {:?}",
+                    e, backoff
+                );
+                tokio::time::sleep(backoff).await;
+                backoff = (backoff * 2).min(std::time::Duration::from_secs(60));
             }
         }
     }
@@ -63,6 +68,7 @@ async fn subscribe_loop(
     channel: &str,
     db_pool: &DbPool,
     timings: &mut HashMap<String, GqlDocumentMetadata>,
+    backoff: &mut std::time::Duration,
 ) -> Result<(), String> {
     let client = redis::Client::open(redis_url).map_err(|e| e.to_string())?;
     let mut pubsub = client
@@ -72,6 +78,7 @@ async fn subscribe_loop(
         .into_pubsub();
     pubsub.subscribe(channel).await.map_err(|e| e.to_string())?;
     info!("Subscribed to Redis document status channel '{}'", channel);
+    *backoff = std::time::Duration::from_secs(5);
 
     let mut stream = pubsub.on_message();
     while let Some(msg) = stream.next().await {
