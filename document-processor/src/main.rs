@@ -83,11 +83,32 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("shutdown signal received, stopping");
     shutdown.cancel();
 
+    // A second signal skips the drain and terminates right away.
+    tokio::spawn(async {
+        wait_for_shutdown().await;
+        tracing::info!("second shutdown signal — terminating immediately");
+        hard_exit(130);
+    });
+
     // Best-effort drain of idle pollers, then force-exit so an in-flight (blocking)
     // conversion or a lingering background task can't keep the process alive.
     let _ = tokio::time::timeout(std::time::Duration::from_secs(5), pollers).await;
     tracing::info!("document processor stopped");
-    std::process::exit(0)
+    hard_exit(0)
+}
+
+/// Terminate without running atexit handlers. `std::process::exit` runs
+/// them, and ONNX Runtime's global-environment teardown joins its worker
+/// threads there — with live inference threads (or the CUDA EP) that
+/// hangs or segfaults, leaving an unkillable-by-^C process. There is
+/// nothing to flush at this point, so skip atexit entirely.
+fn hard_exit(code: i32) -> ! {
+    #[cfg(unix)]
+    unsafe {
+        libc::_exit(code)
+    }
+    #[cfg(not(unix))]
+    std::process::exit(code)
 }
 
 async fn wait_for_shutdown() {

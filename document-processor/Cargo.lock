@@ -2220,6 +2220,7 @@ dependencies = [
  "docling",
  "dotenvy",
  "futures",
+ "libc",
  "pdfium-render",
  "redis",
  "regex",

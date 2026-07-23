@@ -329,7 +329,9 @@ impl AmazonProvider {
 
         for msg in &request.messages {
             match msg.role {
-                AIMessageRole::User => input_text.push_str(&format!("Human: {}\n\n", msg.content)),
+                AIMessageRole::User | AIMessageRole::Tool => {
+                    input_text.push_str(&format!("Human: {}\n\n", msg.content))
+                }
                 AIMessageRole::Assistant => {
                     input_text.push_str(&format!("Assistant: {}\n\n", msg.content))
                 }
@@ -369,6 +371,7 @@ impl AmazonProvider {
         Ok(ModelResponse {
             content,
             model_id: model_id.to_string(),
+            tool_calls: Vec::new(),
             usage: None,
             finish_reason: None,
         })

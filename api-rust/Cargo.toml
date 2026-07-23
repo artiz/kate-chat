@@ -19,7 +19,7 @@ async-graphql-rocket = "7.0"
 async-graphql-warp = "7.0"
 
 # Database
-diesel = { version = "2.2.0", features = ["postgres", "sqlite", "uuid", "chrono", "r2d2", "returning_clauses_for_sqlite_3_35"] }
+diesel = { version = "2.2.0", features = ["postgres", "sqlite", "uuid", "chrono", "r2d2", "returning_clauses_for_sqlite_3_35", "32-column-tables"] }
 libsqlite3-sys = { version = "0.26", features = ["bundled"] }
 diesel_migrations = "2.1"
 
@@ -37,6 +37,7 @@ futures-util = "0.3"
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }
+tokio-util = { version = "0.7", features = ["io"] }
 
 # UUID
 uuid = { version = "1.0", features = ["v4", "serde"] }
@@ -64,6 +65,7 @@ aws-sdk-bedrockruntime = "1.0"
 aws-sdk-bedrock = "1.0"
 aws-sdk-s3 = "1.0"
 aws-sdk-costexplorer = "1.0"
+aws-sdk-sqs = "1.0"
 aws-smithy-types = "1.0"
 aws-smithy-runtime-api = "1.0"
 aws-credential-types = "1.0"
@@ -85,7 +87,7 @@ tokio-tungstenite = "0.21"
 warp = "0.3"
 
 # PubSub for subscriptions
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"], optional = true }
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 lazy_static = "1.4"
 url = "2.5"
@@ -93,6 +95,9 @@ url = "2.5"
 # OAuth
 oauth2 = "4.4"
 urlencoding = "2.1"
+sha2 = "0.10"
+hex = "0.4"
+multer = "3"
 
 # Session management (removed for Rocket 0.4 compatibility)
 

@@ -1,8 +1,17 @@
 pub mod ai;
 pub mod bedrock;
 pub mod chat;
+pub mod custom;
+pub mod document_index;
+pub mod document_status_redis;
+pub mod mcp;
 pub mod model;
 pub mod openai;
+pub mod openai_protocol;
 pub mod pubsub;
+pub mod rag;
 pub mod s3;
+pub mod sqs;
+pub mod tools;
+pub mod web_search;
 pub mod yandex;

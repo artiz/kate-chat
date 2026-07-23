@@ -15,6 +15,7 @@ path = "src/main.rs"
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time", "sync", "net"] }
 tokio-util = { version = "0.7", features = ["rt"] }
+libc = "0.2"
 futures = "0.3"
 
 # Document conversion (docling.rs — the Rust port of docling, formerly published

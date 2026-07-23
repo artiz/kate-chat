@@ -186,6 +186,7 @@ impl MistralProvider {
         Ok(ModelResponse {
             content,
             model_id: model_id.to_string(),
+            tool_calls: Vec::new(),
             usage,
             finish_reason: choice
                 .and_then(|c| c.finish_reason.clone())

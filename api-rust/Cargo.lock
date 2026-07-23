@@ -511,6 +511,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-sqs"
+version = "1.74.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "256b8f7caffe3240a543f60409be9bba23038ceef5933da63e09d89197fc2333"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-sso"
 version = "1.73.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2587,6 +2609,7 @@ dependencies = [
  "aws-sdk-bedrockruntime",
  "aws-sdk-costexplorer",
  "aws-sdk-s3",
+ "aws-sdk-sqs",
  "aws-smithy-runtime-api",
  "aws-smithy-types",
  "base64 0.22.1",
@@ -2598,10 +2621,12 @@ dependencies = [
  "dotenv",
  "env_logger",
  "futures-util",
+ "hex",
  "jsonwebtoken",
  "lazy_static",
  "libsqlite3-sys",
  "log",
+ "multer 3.1.0",
  "oauth2",
  "redis",
  "regex",
@@ -2610,12 +2635,14 @@ dependencies = [
  "rocket_cors",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tokio-test",
  "tokio-tungstenite",
+ "tokio-util",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",

@@ -70,7 +70,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Use refresh token im MCP, save tokens encoded in Redis for agents
 
 ### APIs
-* (hgh) Rust API sync: add images generation support, Library, admin API. Migrate to OpenAI protocol for OpenAI, Yandex and Custom models (https://github.com/YanceyOfficial/rs-openai).
+* (hgh) Rust API sync, part 2: RAG/documents pipeline, MCP tools, web search, chat folders, OpenAI Responses protocol (gpt-5 / native tools), realtime voice, message regeneration on edit. ~~Images generation, Library, admin API, OpenAI protocol for OpenAI/Yandex/Custom models~~ — done.
 * (hgh) Google Vertex AI provider support
 * (mid) SerpApi for Web Search (new setting in UI)
 * (mid) Python API (FastAPI)
@@ -186,6 +186,9 @@ The previous Python implementation is archived under `document-processor-python/
 (`npm run dev:document_processor_python`).
 
 #### Rust API (experiment)
+
+Alternative backend implementation (Rocket + async-graphql + Diesel), see
+`api-rust/README.md` for the supported feature set and remaining gaps.
 
 1. Server
 ```bash

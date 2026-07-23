@@ -74,4 +74,40 @@ impl SubscriptionRoot {
             }),
         )
     }
+
+    /// RAG document processing status stream. Only updates for the watched
+    /// document ids pass the filter (plus terminal error/deleting states,
+    /// Node parity).
+    async fn documents_status(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "documentIds")] document_ids: Vec<String>,
+    ) -> Result<impl Stream<Item = Vec<crate::models::GqlDocumentStatusMessage>>> {
+        if ctx.data_opt::<User>().is_none() {
+            return Err(async_graphql::Error::new(
+                "Authentication required for subscriptions",
+            ));
+        }
+
+        let subscription = get_global_pubsub().subscribe_to_document_status();
+
+        Ok(
+            BroadcastStream::new(subscription).filter_map(move |result| {
+                let document_ids = document_ids.clone();
+                async move {
+                    match result {
+                        Ok(msg) => {
+                            let terminal = matches!(msg.status.as_str(), "error" | "deleting");
+                            (terminal || document_ids.contains(&msg.document_id))
+                                .then_some(vec![msg])
+                        }
+                        Err(e) => {
+                            error!("Error in documents status stream: {:?}", e);
+                            None
+                        }
+                    }
+                }
+            }),
+        )
+    }
 }

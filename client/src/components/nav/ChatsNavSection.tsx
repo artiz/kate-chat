@@ -31,7 +31,7 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [currentChatId, setCurrentChatId] = useState<string>();
-  const { chats, loading, error, next } = useAppSelector(state => state.chats);
+  const { chats, pinnedChats, loading, error, next } = useAppSelector(state => state.chats);
 
   // The whole section is a drop target for "unpin and remove from folder"
   const { setNodeRef: setChatsDropRef, isOver: isChatsOver } = useDroppable({
@@ -146,6 +146,11 @@ export const ChatsNavSection = ({ navbarToggle, expanded = true, onToggleExpand 
   }
 
   if (chats?.length === 0) {
+    // pinned chats live in their own sidebar section but still count as
+    // existing chats — only claim "no chats yet" when there are none at all
+    if (pinnedChats?.length) {
+      return null;
+    }
     return (
       <Text c="dimmed" size="sm" ta="center" m="lg">
         {t("chat.noChatsYet")}

@@ -1,5 +1,12 @@
+# print_schema deliberately has no `file` mapping: `diesel migration run`
+# would otherwise regenerate src/schema.rs from the connected database and
+# emit backend-flavored types (Varchar/Int4/Float4 + max_length against
+# PostgreSQL vs Text/Integer/Float against SQLite) — pure churn, the names
+# are diesel aliases of the same sql_types. src/schema.rs is kept in the
+# backend-neutral form; after a schema change regenerate explicitly with
+#   diesel print-schema > src/schema.rs
+# against SQLite (or tidy the aliases by hand).
 [print_schema]
-file = "src/schema.rs"
 
 [migrations_directory]
 dir = "migrations"

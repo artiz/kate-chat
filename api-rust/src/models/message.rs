@@ -137,7 +137,16 @@ pub struct CreateMessageInput {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
     pub images: Option<Vec<ImageInput>>,
+    /// Voice recording input — accepted for schema compatibility;
+    /// audio models are not ported yet.
+    pub audio: Option<AudioInput>,
+    /// Inline chat-context documents — accepted for schema compatibility;
+    /// file content blocks are not ported yet.
+    pub files: Option<Vec<FileInput>>,
     pub document_ids: Option<Vec<String>>,
+    /// MCP auth tokens — accepted for schema compatibility; MCP is not
+    /// ported yet.
+    pub mcp_tokens: Option<Vec<McpAuthTokenInput>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
@@ -145,6 +154,24 @@ pub struct ImageInput {
     pub bytes_base64: String,
     pub file_name: String,
     pub mime_type: String,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct AudioInput {
+    pub bytes_base64: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub duration_sec: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct FileInput {
+    pub bytes_base64: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub size: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
@@ -173,13 +200,65 @@ pub struct ChatToolCallResult {
     pub content: String,
 }
 
+/// RAG structured answer. Field names intentionally keep the Node API's
+/// snake_case GraphQL names (the client selects them literally).
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct RagResponse {
+    #[graphql(name = "step_by_step_analysis")]
+    pub step_by_step_analysis: Option<String>,
+    #[graphql(name = "reasoning_summary")]
+    pub reasoning_summary: Option<String>,
+    #[graphql(name = "final_answer")]
+    pub final_answer: Option<String>,
+    #[graphql(name = "relevant_chunks_ids")]
+    pub relevant_chunks_ids: Option<Vec<String>>,
+    #[graphql(name = "chunks_relevance")]
+    pub chunks_relevance: Option<Vec<f64>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ChatToolCall {
+    pub name: String,
+    pub call_id: Option<String>,
+    #[graphql(name = "type")]
+    #[serde(rename = "type")]
+    pub type_: Option<String>,
+    pub error: Option<String>,
+    pub args: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ChatResultAnnotation {
+    #[graphql(name = "type")]
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub title: Option<String>,
+    pub source: Option<String>,
+    pub container: Option<String>,
+    pub start_index: Option<i32>,
+    pub end_index: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct ReasoningChunk {
+    pub text: String,
+    pub timestamp: Option<NaiveDateTime>,
+    pub id: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject)]
 pub struct MessageMetadata {
     pub usage: Option<MessageUsage>,
     pub document_ids: Option<Vec<String>>,
     pub relevants_chunks: Option<Vec<MessageRelevantChunk>>,
     pub tools: Option<Vec<ChatToolCallResult>>,
     pub request_id: Option<String>,
+    pub rag_response: Option<RagResponse>,
+    pub tool_calls: Option<Vec<ChatToolCall>>,
+    pub annotations: Option<Vec<ChatResultAnnotation>>,
+    pub reasoning: Option<Vec<ReasoningChunk>>,
+    pub context_messages: Option<Vec<String>>,
+    pub tokens_count: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
@@ -224,6 +303,32 @@ pub struct GqlMessagesList {
     pub total: Option<i32>,
     pub has_more: bool,
     pub error: Option<String>,
+    /// HTTP-ish status code for `error` (Node API parity).
+    pub error_status: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, SimpleObject)]
+pub struct GqlDeleteMessageResponse {
+    pub messages: Vec<GqlMessage>,
+}
+
+/// Per-request context passed by the client alongside message mutations
+/// (MCP auth tokens, context-limit reset). Accepted for schema
+/// compatibility; MCP is not ported yet.
+#[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
+#[graphql(name = "MessageContext")]
+pub struct MessageContextInput {
+    pub mcp_tokens: Option<Vec<McpAuthTokenInput>>,
+    pub reset_context_limit: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
+#[graphql(name = "MCPAuthTokenInput")]
+pub struct McpAuthTokenInput {
+    pub server_id: String,
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_at: Option<f64>,
 }
 
 #[derive(Debug, Clone)]

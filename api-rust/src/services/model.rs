@@ -54,6 +54,18 @@ impl<'a> ModelService<'a> {
 
         let mut gql_models = Vec::new();
 
+        // Chat models can drive in-chat tools: web search (when Yandex
+        // Search credentials are configured) and MCP servers. The client
+        // shows the per-chat toggles only for tools advertised here.
+        let chat_tools = {
+            let mut tools = Vec::new();
+            if crate::services::web_search::web_search_available(self.ai_service.config()) {
+                tools.push("web_search".to_string());
+            }
+            tools.push("mcp".to_string());
+            serde_json::to_string(&tools).ok()
+        };
+
         // Save new models to database
         for (model_id, model_info) in all_models {
             let is_active = enabled_map.get(&model_id).copied().unwrap_or(true);
@@ -69,8 +81,10 @@ impl<'a> ModelService<'a> {
                 type_: model_info.type_.clone(),
                 streaming: model_info.streaming,
                 image_input: model_info.image_input,
-                max_input_tokens: None,
-                tools: None,
+                max_input_tokens: model_info.max_input_tokens,
+                tools: (model_info.type_ == "chat")
+                    .then(|| chat_tools.clone())
+                    .flatten(),
                 features: None,
                 custom_settings: None,
                 is_active,

@@ -8,13 +8,15 @@ use std::pin::Pin;
 use tracing::{debug, error, info, instrument};
 
 use crate::config::AppConfig;
+use crate::models::Model;
 use crate::services::bedrock::BedrockService;
+use crate::services::custom::CustomService;
 use crate::services::openai::OpenAIService;
 use crate::services::yandex::YandexService;
 use crate::utils::errors::AppError;
 // Logging macros imported at crate level
 
-#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, PartialEq, Eq)]
 pub enum ApiProvider {
     #[serde(rename = "AWS_BEDROCK")]
     AwsBedrock,
@@ -22,6 +24,8 @@ pub enum ApiProvider {
     OpenAi,
     #[serde(rename = "YANDEX_AI")]
     YandexAi,
+    #[serde(rename = "CUSTOM_REST_API")]
+    CustomRestApi,
 }
 
 impl ApiProvider {
@@ -30,18 +34,31 @@ impl ApiProvider {
             ApiProvider::AwsBedrock => "AWS_BEDROCK",
             ApiProvider::OpenAi => "OPEN_AI",
             ApiProvider::YandexAi => "YANDEX_AI",
+            ApiProvider::CustomRestApi => "CUSTOM_REST_API",
+        }
+    }
+}
+
+impl TryFrom<&str> for ApiProvider {
+    type Error = AppError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "AWS_BEDROCK" => Ok(ApiProvider::AwsBedrock),
+            "OPEN_AI" => Ok(ApiProvider::OpenAi),
+            "YANDEX_AI" => Ok(ApiProvider::YandexAi),
+            "CUSTOM_REST_API" => Ok(ApiProvider::CustomRestApi),
+            other => Err(AppError::BadRequest(format!(
+                "Unsupported API provider: {}",
+                other
+            ))),
         }
     }
 }
 
 impl From<String> for ApiProvider {
-    fn from(msg_type: String) -> Self {
-        match msg_type.as_str() {
-            "AWS_BEDROCK" => ApiProvider::AwsBedrock,
-            "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_AI" => ApiProvider::YandexAi,
-            &_ => todo!(),
-        }
+    fn from(value: String) -> Self {
+        ApiProvider::try_from(value.as_str()).unwrap_or(ApiProvider::CustomRestApi)
     }
 }
 
@@ -59,6 +76,8 @@ pub enum MessageRole {
     Assistant,
     #[serde(rename = "system")]
     System,
+    #[serde(rename = "tool")]
+    Tool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +85,80 @@ pub struct ModelMessage {
     pub role: MessageRole,
     pub content: String,
     pub timestamp: Option<DateTime<Utc>>,
+    /// Raw provider tool_calls payload for an assistant turn that
+    /// requested tools (replayed verbatim on the next iteration).
+    #[serde(default)]
+    pub tool_calls: Option<serde_json::Value>,
+    /// Set on tool-result turns (role = Tool).
+    #[serde(default)]
+    pub tool_call_id: Option<String>,
+}
+
+impl ModelMessage {
+    pub fn text(role: MessageRole, content: impl Into<String>) -> Self {
+        Self {
+            role,
+            content: content.into(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+        }
+    }
+}
+
+/// A tool exposed to the model (OpenAI function-calling shape).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolSpec {
+    pub name: String,
+    pub description: String,
+    pub input_schema: serde_json::Value,
+}
+
+/// A tool invocation requested by the model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolCallRequest {
+    pub id: String,
+    pub name: String,
+    pub arguments: serde_json::Value,
+    /// Raw provider entry (replayed in the follow-up assistant message).
+    pub raw: serde_json::Value,
+}
+
+/// Upper bound on tool-call/continue cycles within one chat session
+/// (Node's cyclesLimit).
+pub const TOOL_CYCLES_LIMIT: usize = 100;
+
+/// Server-side execution target for a tool exposed to the model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ToolBackend {
+    WebSearch {
+        api_key: String,
+        folder_id: String,
+        api_url: Option<String>,
+    },
+    Mcp {
+        server: Box<crate::models::McpServer>,
+        tool_name: String,
+        auth_token: Option<String>,
+    },
+}
+
+/// A tool the provider session can both advertise to the model and execute
+/// when called (Node's ChatCompletionToolCallable).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutableTool {
+    pub spec: ToolSpec,
+    pub backend: ToolBackend,
+}
+
+/// A tool call executed during a session cycle; recorded into the assistant
+/// message metadata (toolCalls/tools) after streaming completes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutedToolCall {
+    pub id: String,
+    pub name: String,
+    pub args_json: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +169,8 @@ pub struct InvokeModelRequest {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
     pub system_prompt: Option<String>,
+    #[serde(default)]
+    pub tools: Option<Vec<ExecutableTool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,6 +179,8 @@ pub struct ModelResponse {
     pub model_id: String,
     pub usage: Option<Usage>,
     pub finish_reason: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Vec<ToolCallRequest>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,6 +188,21 @@ pub struct Usage {
     pub input_tokens: Option<i32>,
     pub output_tokens: Option<i32>,
     pub total_tokens: Option<i32>,
+}
+
+/// A generated image as raw bytes + mime type, produced by an
+/// images-generation model (`/images/generations` on OpenAI-compatible APIs).
+#[derive(Debug, Clone)]
+pub struct GeneratedImage {
+    pub bytes: Vec<u8>,
+    pub mime: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GenerateImagesRequest {
+    pub model_id: String,
+    pub prompt: String,
+    pub count: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,6 +214,8 @@ pub struct AIModelInfo {
     pub type_: String,
     pub streaming: bool,
     pub image_input: bool,
+    #[serde(default)]
+    pub max_input_tokens: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,11 +265,13 @@ where
 pub trait AIProviderService: Send + Sync {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError>;
 
+    /// Stream a chat completion. Returns the tool calls executed along the
+    /// way (empty when the response needed no tools).
     async fn invoke_model_stream<F, C, E>(
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -168,6 +284,25 @@ pub trait AIProviderService: Send + Sync {
         start_time: i64,
         end_time: Option<i64>,
     ) -> Result<UsageCostInfo, AppError>;
+
+    /// Generate images with an images-generation model. Providers without
+    /// image support keep the default unsupported error.
+    async fn generate_images(
+        &self,
+        _request: GenerateImagesRequest,
+    ) -> Result<Vec<GeneratedImage>, AppError> {
+        Err(AppError::BadRequest(
+            "Images generation is not supported by this provider".to_string(),
+        ))
+    }
+
+    /// Embed a single input string. Providers without embeddings support
+    /// keep the default unsupported error.
+    async fn get_embeddings(&self, _model_id: &str, _input: &str) -> Result<Vec<f32>, AppError> {
+        Err(AppError::BadRequest(
+            "Embeddings are not supported by this provider".to_string(),
+        ))
+    }
 }
 
 #[allow(dead_code)]
@@ -175,6 +310,7 @@ pub enum AIProviderWrapper {
     Bedrock(BedrockService),
     OpenAi(OpenAIService),
     Yandex(YandexService),
+    Custom(CustomService),
 }
 
 #[async_trait]
@@ -184,6 +320,7 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Bedrock(service) => service.invoke_model(request).await,
             AIProviderWrapper::OpenAi(service) => service.invoke_model(request).await,
             AIProviderWrapper::Yandex(service) => service.invoke_model(request).await,
+            AIProviderWrapper::Custom(service) => service.invoke_model(request).await,
         }
     }
 
@@ -191,7 +328,7 @@ impl AIProviderService for AIProviderWrapper {
         &self,
         request: InvokeModelRequest,
         callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
+    ) -> Result<Vec<ExecutedToolCall>, AppError>
     where
         F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
@@ -207,6 +344,9 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Yandex(service) => {
                 service.invoke_model_stream(request, callbacks).await
             }
+            AIProviderWrapper::Custom(service) => {
+                service.invoke_model_stream(request, callbacks).await
+            }
         }
     }
 
@@ -215,6 +355,7 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Bedrock(service) => service.get_models().await,
             AIProviderWrapper::OpenAi(service) => service.get_models().await,
             AIProviderWrapper::Yandex(service) => service.get_models().await,
+            AIProviderWrapper::Custom(service) => service.get_models().await,
         }
     }
 
@@ -223,6 +364,7 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Bedrock(service) => service.get_info(test_connection).await,
             AIProviderWrapper::OpenAi(service) => service.get_info(test_connection).await,
             AIProviderWrapper::Yandex(service) => service.get_info(test_connection).await,
+            AIProviderWrapper::Custom(service) => service.get_info(test_connection).await,
         }
     }
 
@@ -235,6 +377,28 @@ impl AIProviderService for AIProviderWrapper {
             AIProviderWrapper::Bedrock(service) => service.get_costs(start_time, end_time).await,
             AIProviderWrapper::OpenAi(service) => service.get_costs(start_time, end_time).await,
             AIProviderWrapper::Yandex(service) => service.get_costs(start_time, end_time).await,
+            AIProviderWrapper::Custom(service) => service.get_costs(start_time, end_time).await,
+        }
+    }
+
+    async fn generate_images(
+        &self,
+        request: GenerateImagesRequest,
+    ) -> Result<Vec<GeneratedImage>, AppError> {
+        match self {
+            AIProviderWrapper::Bedrock(service) => service.generate_images(request).await,
+            AIProviderWrapper::OpenAi(service) => service.generate_images(request).await,
+            AIProviderWrapper::Yandex(service) => service.generate_images(request).await,
+            AIProviderWrapper::Custom(service) => service.generate_images(request).await,
+        }
+    }
+
+    async fn get_embeddings(&self, model_id: &str, input: &str) -> Result<Vec<f32>, AppError> {
+        match self {
+            AIProviderWrapper::Bedrock(service) => service.get_embeddings(model_id, input).await,
+            AIProviderWrapper::OpenAi(service) => service.get_embeddings(model_id, input).await,
+            AIProviderWrapper::Yandex(service) => service.get_embeddings(model_id, input).await,
+            AIProviderWrapper::Custom(service) => service.get_embeddings(model_id, input).await,
         }
     }
 }
@@ -249,12 +413,12 @@ impl AIService {
         Self { config }
     }
 
+    pub fn config(&self) -> &AppConfig {
+        &self.config
+    }
+
     pub fn get_provider(&self, api_provider: ApiProvider) -> Result<AIProviderWrapper, AppError> {
-        let provider_str = match api_provider {
-            ApiProvider::AwsBedrock => "AWS_BEDROCK",
-            ApiProvider::OpenAi => "OPEN_AI",
-            ApiProvider::YandexAi => "YANDEX_AI",
-        };
+        let provider_str = api_provider.as_str();
 
         if !self.config.is_provider_enabled(provider_str) {
             return Err(AppError::BadRequest(format!(
@@ -273,60 +437,27 @@ impl AIService {
             ApiProvider::YandexAi => Ok(AIProviderWrapper::Yandex(YandexService::new(
                 self.config.clone(),
             ))),
+            ApiProvider::CustomRestApi => Err(AppError::BadRequest(
+                "Custom REST API provider requires model settings — use get_provider_for_model"
+                    .to_string(),
+            )),
         }
     }
 
-    #[instrument(skip(self, request), fields(provider = ?api_provider, model_id = %request.model_id))]
-    pub async fn invoke_model(
-        &self,
-        api_provider: ApiProvider,
-        request: InvokeModelRequest,
-    ) -> Result<ModelResponse, AppError> {
-        debug!(
-            "Invoking model {} with provider {:?}",
-            request.model_id, api_provider
-        );
-
-        let start_time = std::time::Instant::now();
-        let provider: AIProviderWrapper = self.get_provider(api_provider)?;
-
-        match provider.invoke_model(request).await {
-            Ok(response) => {
-                let duration = start_time.elapsed();
-                info!(
-                    "Model invocation successful for {} ({:?}) in {}ms",
-                    response.model_id,
-                    api_provider,
-                    duration.as_millis()
-                );
-                Ok(response)
+    /// Resolve the provider for a specific model row. Custom REST models
+    /// carry their endpoint/key/protocol in `custom_settings`; everything
+    /// else routes by `api_provider` alone.
+    pub fn get_provider_for_model(&self, model: &Model) -> Result<AIProviderWrapper, AppError> {
+        let api_provider = ApiProvider::try_from(model.api_provider.as_str())?;
+        if api_provider == ApiProvider::CustomRestApi {
+            if !self.config.is_provider_enabled("CUSTOM_REST_API") {
+                return Err(AppError::BadRequest(
+                    "API provider CUSTOM_REST_API is not enabled".to_string(),
+                ));
             }
-            Err(e) => {
-                // let duration = start_time.elapsed();
-                // error!(
-                //     "Model invocation failed for provider {:?} after {}ms: {}",
-                //     api_provider,
-                //     duration.as_millis(),
-                //     e
-                // );
-                Err(e)
-            }
+            return Ok(AIProviderWrapper::Custom(CustomService::for_model(model)?));
         }
-    }
-
-    pub async fn invoke_model_stream<F, C, E>(
-        &self,
-        api_provider: ApiProvider,
-        request: InvokeModelRequest,
-        callbacks: StreamCallbacks<F, C, E>,
-    ) -> Result<(), AppError>
-    where
-        F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-        C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-        E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
-    {
-        let provider = self.get_provider(api_provider)?;
-        provider.invoke_model_stream(request, callbacks).await
+        self.get_provider(api_provider)
     }
 
     #[instrument(skip(self))]
@@ -397,6 +528,18 @@ impl AIService {
             }
         }
 
+        // Custom REST API has no global connection — it is configured per
+        // model, so when enabled it is always reported as connected.
+        if self.config.is_provider_enabled("CUSTOM_REST_API") {
+            providers.push(ProviderInfo {
+                id: "CUSTOM_REST_API".to_string(),
+                name: "Custom REST API".to_string(),
+                is_connected: true,
+                costs_info_available: false,
+                details: HashMap::new(),
+            });
+        }
+
         Ok(providers)
     }
 
@@ -421,6 +564,7 @@ impl AIService {
             ApiProvider::AwsBedrock => "AWS Bedrock".to_string(),
             ApiProvider::OpenAi => "OpenAI".to_string(),
             ApiProvider::YandexAi => "Yandex AI".to_string(),
+            ApiProvider::CustomRestApi => "Custom REST API".to_string(),
         }
     }
 
@@ -430,20 +574,8 @@ impl AIService {
         start_time: i64,
         end_time: Option<i64>,
     ) -> Result<UsageCostInfo, AppError> {
-        let provider: ApiProvider = match api_provider.as_str() {
-            "AWS_BEDROCK" => ApiProvider::AwsBedrock,
-            "OPEN_AI" => ApiProvider::OpenAi,
-            "YANDEX_AI" => ApiProvider::YandexAi,
-            _ => {
-                return Err(AppError::BadRequest(format!(
-                    "Unsupported API provider: {}",
-                    api_provider
-                )))
-            }
-        };
-        return self
-            .get_provider(provider)?
+        self.get_provider(api_provider)?
             .get_costs(start_time, end_time)
-            .await;
+            .await
     }
 }

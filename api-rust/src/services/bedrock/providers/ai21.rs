@@ -140,7 +140,7 @@ impl AI21Provider {
             .map(|msg| {
                 serde_json::json!({
                     "role": match msg.role {
-                        AIMessageRole::User => "user",
+                        AIMessageRole::User | AIMessageRole::Tool => "user",
                         AIMessageRole::Assistant => "assistant",
                         AIMessageRole::System => "system",
                     },
@@ -192,6 +192,7 @@ impl AI21Provider {
         Ok(ModelResponse {
             content,
             model_id: model_id.to_string(),
+            tool_calls: Vec::new(),
             usage,
             finish_reason: response
                 .get("choices")

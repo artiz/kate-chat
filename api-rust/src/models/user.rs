@@ -12,30 +12,44 @@ use uuid::Uuid;
 
 use crate::schema::users::{self};
 
-// JSON wrapper for settings field that handles serialization/deserialization with Diesel
+// JSON wrapper for settings field that handles serialization/deserialization with Diesel.
+// Stored with the Node API's camelCase keys; `default` keeps older rows readable.
 #[derive(
     Debug, Clone, Serialize, Deserialize, AsExpression, FromSqlRow, SimpleObject, InputObject,
 )]
 #[diesel(sql_type = Text)]
 #[graphql(input_name = "UserSettingsInput")]
+#[serde(rename_all = "camelCase", default)]
+#[derive(Default)]
 pub struct JsonUserSettings {
-    s3_endpoint: Option<String>,
-    s3_region: Option<String>,
-    s3_access_key_id: Option<String>,
-    s3_secret_access_key: Option<String>,
-    s3_files_bucket_name: Option<String>,
-    s3_profile: Option<String>,
+    pub language: Option<String>,
 
-    aws_bedrock_region: Option<String>,
-    aws_bedrock_profile: Option<String>,
-    aws_bedrock_access_key_id: Option<String>,
-    aws_bedrock_secret_access_key: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub s3_region: Option<String>,
+    pub s3_access_key_id: Option<String>,
+    pub s3_secret_access_key: Option<String>,
+    pub s3_files_bucket_name: Option<String>,
+    pub s3_profile: Option<String>,
 
-    openai_api_key: Option<String>,
-    openai_api_admin_key: Option<String>,
+    pub aws_bedrock_region: Option<String>,
+    pub aws_bedrock_profile: Option<String>,
+    pub aws_bedrock_access_key_id: Option<String>,
+    pub aws_bedrock_secret_access_key: Option<String>,
 
-    yandex_fm_api_key: Option<String>,
-    yandex_fm_api_folder_id: Option<String>,
+    pub openai_api_key: Option<String>,
+    pub openai_api_admin_key: Option<String>,
+
+    pub yandex_fm_api_key: Option<String>,
+    pub yandex_fm_api_folder_id: Option<String>,
+
+    pub default_model_id: Option<String>,
+    pub default_system_prompt: Option<String>,
+    pub default_temperature: Option<f32>,
+    pub default_max_tokens: Option<i32>,
+    pub default_top_p: Option<f32>,
+    pub default_images_count: Option<i32>,
+    pub documents_embeddings_model_id: Option<String>,
+    pub document_summarization_model_id: Option<String>,
 }
 
 impl FromSql<Text, Sqlite> for JsonUserSettings {
@@ -49,11 +63,74 @@ impl FromSql<Text, Sqlite> for JsonUserSettings {
     }
 }
 
+impl FromSql<Text, diesel::pg::Pg> for JsonUserSettings {
+    fn from_sql(
+        bytes: <diesel::pg::Pg as diesel::backend::Backend>::RawValue<'_>,
+    ) -> deserialize::Result<Self> {
+        let json_str = <String as FromSql<Text, diesel::pg::Pg>>::from_sql(bytes)?;
+        let settings: JsonUserSettings = serde_json::from_str(&json_str)
+            .map_err(|e| format!("Failed to deserialize user settings: {}", e))?;
+        Ok(settings)
+    }
+}
+
+#[cfg(feature = "mysql")]
+impl FromSql<Text, diesel::mysql::Mysql> for JsonUserSettings {
+    fn from_sql(
+        bytes: <diesel::mysql::Mysql as diesel::backend::Backend>::RawValue<'_>,
+    ) -> deserialize::Result<Self> {
+        let json_str = <String as FromSql<Text, diesel::mysql::Mysql>>::from_sql(bytes)?;
+        let settings: JsonUserSettings = serde_json::from_str(&json_str)
+            .map_err(|e| format!("Failed to deserialize user settings: {}", e))?;
+        Ok(settings)
+    }
+}
+
+// MultiBackend delegates to the per-backend impls above.
+impl FromSql<Text, crate::database::MultiBackend> for JsonUserSettings {
+    fn from_sql(
+        bytes: <crate::database::MultiBackend as diesel::backend::Backend>::RawValue<'_>,
+    ) -> deserialize::Result<Self> {
+        bytes.from_sql::<Self, Text>()
+    }
+}
+
 impl ToSql<Text, Sqlite> for JsonUserSettings {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> serialize::Result {
         let json_str = serde_json::to_string(&self)
             .map_err(|e| format!("Failed to serialize user settings: {}", e))?;
         out.set_value(json_str);
+        Ok(IsNull::No)
+    }
+}
+
+impl ToSql<Text, diesel::pg::Pg> for JsonUserSettings {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
+        use std::io::Write;
+        let json_str = serde_json::to_string(&self)
+            .map_err(|e| format!("Failed to serialize user settings: {}", e))?;
+        out.write_all(json_str.as_bytes())?;
+        Ok(IsNull::No)
+    }
+}
+
+#[cfg(feature = "mysql")]
+impl ToSql<Text, diesel::mysql::Mysql> for JsonUserSettings {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::mysql::Mysql>) -> serialize::Result {
+        use std::io::Write;
+        let json_str = serde_json::to_string(&self)
+            .map_err(|e| format!("Failed to serialize user settings: {}", e))?;
+        out.write_all(json_str.as_bytes())?;
+        Ok(IsNull::No)
+    }
+}
+
+impl ToSql<Text, crate::database::MultiBackend> for JsonUserSettings {
+    fn to_sql<'b>(
+        &'b self,
+        out: &mut Output<'b, '_, crate::database::MultiBackend>,
+    ) -> serialize::Result {
+        out.set_value((Text, self));
         Ok(IsNull::No)
     }
 }
@@ -203,6 +280,12 @@ pub struct UpdateUserInput {
     pub default_system_prompt: Option<String>,
     pub avatar_url: Option<String>,
     pub settings: Option<JsonUserSettings>,
+    pub documents_embeddings_model_id: Option<String>,
+    pub document_summarization_model_id: Option<String>,
+    pub default_temperature: Option<f32>,
+    pub default_max_tokens: Option<i32>,
+    pub default_top_p: Option<f32>,
+    pub default_images_count: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
