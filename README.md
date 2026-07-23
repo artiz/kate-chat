@@ -36,7 +36,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Voice-to-voice conversations with realtime models (OpenAI GPT Realtime over WebRTC, Yandex Speech Realtime over a WebSocket proxy): live equalizer above the chat controls, transcripts saved to chat history, assistant voice selection per chat
 - Voice messages for audio-input models (`gpt-4o-audio`, `gpt-audio`): record from the microphone, stream the text transcript live and play the spoken response inline
 - Client-side Python code [execution](#python-code-run-in-browser) with [Pyodide](https://pyodide.org/) 
-- Reusable [@katechat/ui](https://www.nopepmjs.com/package/@katechat/ui) that includes basic chatbot controls.
+- Reusable [@katechat/ui](https://www.npmjs.com/package/@katechat/ui) that includes basic chatbot controls.
   * Usage examples are available in [examples](examples). 
   * Voice-to-voice demo for OpenAI realtime WebRTC API.
 - External users authentication (email/password, [Google OAuth, GitHub OAuth](/docs/oauth-setup.md))
@@ -70,7 +70,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Use refresh token im MCP, save tokens encoded in Redis for agents
 
 ### APIs
-* (hgh) Rust API sync, part 2: RAG/documents pipeline, MCP tools, web search, chat folders, OpenAI Responses protocol (gpt-5 / native tools), realtime voice, message regeneration on edit. ~~Images generation, Library, admin API, OpenAI protocol for OpenAI/Yandex/Custom models~~ — done.
+* (hgh) Rust API sync, part 3: OpenAI Responses protocol (gpt-5 / native tools), realtime voice, message regeneration on edit (switchModel/callOther), forgot/reset password, global search. ~~Images generation, Library, admin API, OpenAI protocol for OpenAI/Yandex/Custom models~~, ~~RAG/documents pipeline (incl. live statuses over Redis), MCP tools, web search, chat folders~~ — done.
 * (hgh) Google Vertex AI provider support
 * (mid) SerpApi for Web Search (new setting in UI)
 * (mid) Python API (FastAPI)
@@ -200,7 +200,7 @@ cargo run
 
 2. Client
 ```bash
-APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
+APP_API_URL=http://localhost:4000  APP_WS_URL=http://localhost:4001 npm run dev:client
 ```
 
 #### API DB Migrations
