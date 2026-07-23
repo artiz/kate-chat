@@ -749,7 +749,7 @@ impl Mutation {
             return Err(AppError::Validation("Model is not active".to_string()).into());
         }
 
-        let new_message = Message::new(
+        let mut new_message = Message::new(
             input.chat_id.clone(),
             Some(user.id.clone()),
             input.content.clone(),
@@ -757,6 +757,15 @@ impl Mutation {
             model_id.clone(),
             Some(model.name.clone()),
         );
+        // RAG requests keep their documentIds on the user message (Node
+        // parity — the client's RAG panel and regeneration read it)
+        if let Some(document_ids) = input.document_ids.clone().filter(|ids| !ids.is_empty()) {
+            let metadata = crate::models::MessageMetadata {
+                document_ids: Some(document_ids),
+                ..Default::default()
+            };
+            new_message.metadata = serde_json::to_string(&metadata).ok();
+        }
 
         let message = diesel::insert_into(messages::table)
             .values(&new_message)
@@ -1791,6 +1800,14 @@ async fn generate_images_reply(
         .get()
         .map_err(|e| AppError::Database(e.to_string()))?;
 
+    // The message row must exist before the chat_files rows that
+    // reference it (chat_files_message_id_fkey); content is filled in
+    // below once the images are stored
+    diesel::insert_into(messages::table)
+        .values(&ai_message)
+        .execute(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
     for image in &images {
         let extension = image.mime.strip_prefix("image/").unwrap_or("png");
         let file_name = format!(
@@ -1801,9 +1818,19 @@ async fn generate_images_reply(
             extension
         );
 
-        s3_service
+        if let Err(e) = s3_service
             .upload_file(&file_name, image.bytes.clone(), &image.mime)
-            .await?;
+            .await
+        {
+            // don't leave the placeholder row empty
+            let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+                .set((
+                    messages::content.eq(format!("Image storage error: {}", e)),
+                    messages::role.eq(String::from(MessageRole::Error)),
+                ))
+                .execute(&mut conn);
+            return Err(async_graphql::Error::from(e));
+        }
 
         let chat_file = crate::models::ChatFile::new_image(
             chat.id.clone(),
@@ -1832,11 +1859,17 @@ async fn generate_images_reply(
         serde_json::to_string(&json_blocks)
             .map_err(|e| AppError::Internal(format!("Failed to serialize content: {}", e)))?,
     );
+    ai_message.updated_at = Utc::now().naive_utc();
 
-    let ai_message: Message = diesel::insert_into(messages::table)
-        .values(&ai_message)
-        .get_result(&mut conn)
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    let ai_message: Message =
+        diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+            .set((
+                messages::content.eq(&ai_message.content),
+                messages::json_content.eq(&ai_message.json_content),
+                messages::updated_at.eq(ai_message.updated_at),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
     // Track generated-images count on the chat (used by demo limits).
     let _ = diesel::update(chats::table.filter(chats::id.eq(&chat.id)))
@@ -2099,11 +2132,13 @@ async fn enqueue_document_command(
         .await
         .map_err(async_graphql::Error::from)?;
     if reindex {
-        // reindex jumps straight to indexing (chunked JSON already in S3)
+        // reindex jumps straight to indexing (chunked JSON already in
+        // S3): the command goes to the *index* queue — the one this API's
+        // own consumer polls — not the document-processor's parse queue
         let queue = effective_config
-            .sqs_documents_queue
+            .sqs_index_documents_queue
             .as_deref()
-            .ok_or_else(|| async_graphql::Error::new("SQS_DOCUMENTS_QUEUE not configured"))?;
+            .ok_or_else(|| async_graphql::Error::new("SQS_INDEX_DOCUMENTS_QUEUE not configured"))?;
         sqs.send_json_message(
             queue,
             &serde_json::json!({
