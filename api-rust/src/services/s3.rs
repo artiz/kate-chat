@@ -21,7 +21,13 @@ impl S3Service {
     async fn get_client(&mut self) -> Result<&S3Client, AppError> {
         if self.client.is_none() {
             let aws_config = self.build_aws_config().await?;
-            self.client = Some(S3Client::new(&aws_config));
+            // Custom endpoints (LocalStack, MinIO, …) need path-style
+            // addressing — virtual-hosted style would dial
+            // {bucket}.localhost, which does not resolve (Node parity)
+            let s3_config = aws_sdk_s3::config::Builder::from(&aws_config)
+                .force_path_style(self.config.s3_endpoint.is_some())
+                .build();
+            self.client = Some(S3Client::from_conf(s3_config));
         }
         Ok(self.client.as_ref().unwrap())
     }
@@ -77,7 +83,12 @@ impl S3Service {
             .content_type(content_type)
             .send()
             .await
-            .map_err(|e| AppError::Aws(format!("S3 upload failed: {}", e)))?;
+            .map_err(|e| {
+                AppError::Aws(format!(
+                    "S3 upload failed: {}",
+                    aws_smithy_types::error::display::DisplayErrorContext(&e)
+                ))
+            })?;
 
         // Return the S3 URL
         let region = self.config.s3_region.as_deref().unwrap_or("us-east-1");
@@ -137,7 +148,12 @@ impl S3Service {
             .key(key)
             .send()
             .await
-            .map_err(|e| AppError::Aws(format!("S3 delete failed: {}", e)))?;
+            .map_err(|e| {
+                AppError::Aws(format!(
+                    "S3 delete failed: {}",
+                    aws_smithy_types::error::display::DisplayErrorContext(&e)
+                ))
+            })?;
 
         Ok(())
     }
@@ -158,7 +174,12 @@ impl S3Service {
             .prefix(prefix)
             .send()
             .await
-            .map_err(|e| AppError::Aws(format!("S3 list failed: {}", e)))?;
+            .map_err(|e| {
+                AppError::Aws(format!(
+                    "S3 list failed: {}",
+                    aws_smithy_types::error::display::DisplayErrorContext(&e)
+                ))
+            })?;
 
         for object in listed.contents() {
             if let Some(key) = object.key() {
@@ -168,7 +189,12 @@ impl S3Service {
                     .key(key)
                     .send()
                     .await
-                    .map_err(|e| AppError::Aws(format!("S3 delete failed: {}", e)))?;
+                    .map_err(|e| {
+                        AppError::Aws(format!(
+                            "S3 delete failed: {}",
+                            aws_smithy_types::error::display::DisplayErrorContext(&e)
+                        ))
+                    })?;
             }
         }
         Ok(())
@@ -223,5 +249,32 @@ impl S3Service {
         }
 
         details
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Live probe against a local S3 endpoint (LocalStack or a fake
+    /// server). Run with: cargo test s3_probe -- --ignored
+    #[tokio::test]
+    #[ignore]
+    async fn s3_probe() {
+        let mut config = AppConfig::from_env();
+        config.s3_endpoint = Some("http://localhost:4566".to_string());
+        config.s3_region = Some("eu-central-1".to_string());
+        config.s3_access_key_id = Some("localstack".to_string());
+        config.s3_secret_access_key = Some("localstack".to_string());
+        config.s3_bucket = Some("katechat-files".to_string());
+
+        let mut s3 = S3Service::new(config);
+        match s3
+            .upload_file("document/probe/1", b"probe".to_vec(), "text/plain")
+            .await
+        {
+            Ok(url) => println!("PROBE OK: {}", url),
+            Err(e) => println!("PROBE ERR: {}", e),
+        }
     }
 }
