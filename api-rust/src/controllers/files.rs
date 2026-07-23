@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::path::PathBuf;
 use std::str::FromStr;
-use tracing::warn;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::config::AppConfig;
@@ -204,22 +204,21 @@ async fn upload_document(
         .optional()
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-    if let Some(existing) = existing {
+    if let Some(mut existing) = existing {
         link_to_chat(&mut conn, &existing.id)?;
 
-        // Re-kick parsing if the document never made it through
-        if matches!(
+        // A document stuck in `upload` (or without an S3 key) never made
+        // it to storage — run the full store + queue flow again
+        if existing.status == DOCUMENT_STATUS_UPLOAD
+            || existing.s3key.as_deref().unwrap_or_default().is_empty()
+        {
+            store_and_queue(&mut existing, &mut conn, s3_service, sqs, config, bytes).await?;
+        } else if matches!(
             existing.status.as_str(),
             DOCUMENT_STATUS_STORAGE_UPLOAD | DOCUMENT_STATUS_PARSING | DOCUMENT_STATUS_ERROR
         ) {
-            if let (Some(sqs), Some(s3key)) = (sqs, existing.s3key.as_deref()) {
-                if let Err(e) = sqs
-                    .send_parse_document(config, &existing.id, s3key, existing.mime.as_deref())
-                    .await
-                {
-                    warn!("Failed to enqueue parse_document: {}", e);
-                }
-            }
+            // Made it to storage but not through parsing — re-kick
+            enqueue_parse(&mut existing, &mut conn, sqs, config).await;
         }
         return Ok(existing);
     }
@@ -228,7 +227,7 @@ async fn upload_document(
     let mut document = Document {
         id: Uuid::new_v4().to_string(),
         file_name,
-        mime: mime.clone(),
+        mime,
         file_size,
         sha256checksum: checksum,
         s3key: Some(String::new()),
@@ -250,37 +249,102 @@ async fn upload_document(
         .map_err(|e| AppError::Database(e.to_string()))?;
     pubsub.publish_document_status(GqlDocumentStatusMessage::from_document(&document));
 
-    let s3key = format!("document/{}/{}", user_id, document.id);
-    let content_type = mime.unwrap_or_else(|| "application/octet-stream".to_string());
-    s3_service.upload_file(&s3key, bytes, &content_type).await?;
+    link_to_chat(&mut conn, &document.id)?;
+    store_and_queue(&mut document, &mut conn, s3_service, sqs, config, bytes).await?;
+
+    Ok(document)
+}
+
+/// Upload the payload to S3 and enqueue the parse command, moving the
+/// document through `upload` → `storage_upload` (or `error` with a
+/// visible reason — the row must never silently stay in `upload`).
+async fn store_and_queue(
+    document: &mut Document,
+    conn: &mut crate::database::DbConnection,
+    s3_service: &mut S3Service,
+    sqs: Option<&SqsService>,
+    config: &AppConfig,
+    bytes: Vec<u8>,
+) -> Result<(), AppError> {
+    let s3key = format!("document/{}/{}", document.owner_id, document.id);
+    let content_type = document
+        .mime
+        .clone()
+        .unwrap_or_else(|| "application/octet-stream".to_string());
+
+    if let Err(e) = s3_service.upload_file(&s3key, bytes, &content_type).await {
+        set_document_error(document, conn, &format!("S3 upload failed: {}", e));
+        return Err(e);
+    }
 
     document.s3key = Some(s3key.clone());
     document.status = DOCUMENT_STATUS_STORAGE_UPLOAD.to_string();
+    document.status_info = None;
     document.updated_at = chrono::Utc::now().naive_utc();
-    diesel::update(documents::table.filter(documents::id.eq(&document.id)))
+    let _ = diesel::update(documents::table.filter(documents::id.eq(&document.id)))
         .set((
             documents::s3key.eq(&s3key),
             documents::status.eq(&document.status),
+            documents::status_info.eq(None::<String>),
             documents::updated_at.eq(document.updated_at),
         ))
-        .execute(&mut conn)
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .execute(conn);
+    get_global_pubsub().publish_document_status(GqlDocumentStatusMessage::from_document(document));
 
-    link_to_chat(&mut conn, &document.id)?;
-    pubsub.publish_document_status(GqlDocumentStatusMessage::from_document(&document));
+    enqueue_parse(document, conn, sqs, config).await;
+    Ok(())
+}
 
-    if let Some(sqs) = sqs {
-        if let Err(e) = sqs
-            .send_parse_document(config, &document.id, &s3key, document.mime.as_deref())
-            .await
-        {
-            warn!("Failed to enqueue parse_document: {}", e);
-        }
-    } else {
+/// Send the `parse_document` command; failures surface as the document's
+/// `error` status (a later re-upload of the same file re-kicks it).
+async fn enqueue_parse(
+    document: &mut Document,
+    conn: &mut crate::database::DbConnection,
+    sqs: Option<&SqsService>,
+    config: &AppConfig,
+) {
+    let Some(s3key) = document.s3key.clone().filter(|k| !k.is_empty()) else {
+        return;
+    };
+    let Some(sqs) = sqs else {
         warn!("SQS documents queue not configured — document will stay unparsed");
+        set_document_error(document, conn, "SQS documents queue not configured");
+        return;
+    };
+    match sqs
+        .send_parse_document(config, &document.id, &s3key, document.mime.as_deref())
+        .await
+    {
+        Ok(()) => info!(
+            "Queued parse_document for {} ({})",
+            document.id, document.file_name
+        ),
+        Err(e) => {
+            warn!(
+                "Failed to enqueue parse_document for {}: {}",
+                document.id, e
+            );
+            set_document_error(document, conn, &format!("Failed to queue parsing: {}", e));
+        }
     }
+}
 
-    Ok(document)
+fn set_document_error(
+    document: &mut Document,
+    conn: &mut crate::database::DbConnection,
+    info: &str,
+) {
+    document.status = DOCUMENT_STATUS_ERROR.to_string();
+    document.status_info = Some(info.to_string());
+    document.updated_at = chrono::Utc::now().naive_utc();
+    let _ = diesel::update(documents::table.filter(documents::id.eq(&document.id)))
+        .set((
+            documents::status.eq(&document.status),
+            documents::status_info.eq(&document.status_info),
+            documents::updated_at.eq(document.updated_at),
+        ))
+        .execute(conn);
+    get_global_pubsub().publish_document_status(GqlDocumentStatusMessage::from_document(document));
 }
 
 #[delete("/<key>")]

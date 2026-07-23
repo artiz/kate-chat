@@ -61,7 +61,7 @@ impl SqsService {
             .map_err(|e| {
                 AppError::Aws(format!(
                     "Failed to send SQS message: {}",
-                    e.into_service_error()
+                    aws_smithy_types::error::display::DisplayErrorContext(&e)
                 ))
             })?;
 
@@ -93,7 +93,7 @@ impl SqsService {
             .map_err(|e| {
                 AppError::Aws(format!(
                     "Failed to receive SQS messages: {}",
-                    e.into_service_error()
+                    aws_smithy_types::error::display::DisplayErrorContext(&e)
                 ))
             })?;
 
@@ -118,10 +118,17 @@ impl SqsService {
             .map_err(|e| {
                 AppError::Aws(format!(
                     "Failed to delete SQS message: {}",
-                    e.into_service_error()
+                    aws_smithy_types::error::display::DisplayErrorContext(&e)
                 ))
             })?;
         Ok(())
+    }
+
+    /// Probe used by the ignored integration test below.
+    #[cfg(test)]
+    pub async fn probe_send(&self, queue_url: &str) -> Result<(), AppError> {
+        self.send_json_message(queue_url, &serde_json::json!({"command": "probe"}))
+            .await
     }
 
     /// Enqueue a `parse_document` command for the document-processor.
@@ -145,5 +152,30 @@ impl SqsService {
             message["mime"] = serde_json::json!(mime);
         }
         self.send_json_message(queue, &message).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Live probe against a local SQS endpoint (LocalStack or the fake
+    /// server in scratchpad). Run with: cargo test sqs_probe -- --ignored
+    #[tokio::test]
+    #[ignore]
+    async fn sqs_probe() {
+        let mut config = AppConfig::from_env();
+        config.sqs_endpoint = Some("http://localhost:4566".to_string());
+        config.sqs_region = Some("eu-central-1".to_string());
+        config.sqs_access_key_id = Some("localstack".to_string());
+        config.sqs_secret_access_key = Some("localstack".to_string());
+        let queue =
+            "http://sqs.eu-central-1.localhost.localstack.cloud:4566/000000000000/documents-queue";
+
+        let sqs = SqsService::new(&config).await.expect("client");
+        match sqs.probe_send(queue).await {
+            Ok(()) => println!("PROBE OK"),
+            Err(e) => println!("PROBE ERR: {}", e),
+        }
     }
 }
