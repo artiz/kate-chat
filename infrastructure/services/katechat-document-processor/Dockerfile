@@ -48,6 +48,17 @@ RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.4
     && (test -f models/layout_heron_int8.onnx \
         || echo "NOTE: layout_heron_int8.onnx not hosted — fp32 layout will be used on CPU")
 
+# English PP-OCRv3 recognition model + dictionary. The release's bundled
+# ocr_rec.onnx / ppocr_keys_v1.txt is the *Chinese* PP-OCRv3 variant, which
+# under-predicts spaces on Latin text ("writtenonJava"); the runtime stage
+# defaults DOCLING_OCR_* to this English model instead.
+RUN curl -fsSL -o models/ocr_rec_en.onnx \
+        https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/en_PP-OCRv3_rec_infer.onnx \
+    && curl -fsSL -o models/en_dict.txt \
+        https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/v2.7.0/ppocr/utils/en_dict.txt \
+    # 95 dict lines + blank + space = the model's 97 output classes
+    && test "$(wc -l < models/en_dict.txt)" = "95"
+
 # ----------------------------------------------------------------------------
 # Stage 2: Rust build
 # ----------------------------------------------------------------------------
@@ -127,10 +138,18 @@ RUN ln -s /opt/models /usr/local/models
 # the INT8 exports on CPU (~2.4x faster layout at unchanged conformance), the
 # fp32 exports when a GPU provider is selected (the int8 QDQ graphs are
 # CPU-calibrated), and the hoisted-KV TableFormer decoder over the legacy
-# graphs. DOCLING_LAYOUT_ONNX / DOCLING_TABLEFORMER_* / DOCLING_OCR_* remain
-# available as explicit overrides.
+# graphs. DOCLING_LAYOUT_ONNX / DOCLING_TABLEFORMER_* remain available as
+# explicit overrides.
+#
+# OCR defaults to the *English* PP-OCRv3 recognition model: the bundled
+# ocr_rec.onnx is the Chinese variant, which drops most spaces on Latin
+# text. Override DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec.onnx and
+# DOCLING_OCR_DICT=/opt/models/ppocr_keys_v1.txt to switch back to the
+# multilingual (Chinese) model for CJK-heavy corpora.
 ENV PDFIUM_DYNAMIC_LIB_PATH=/opt/pdfium/lib \
     DOCLING_RS_EP=auto \
+    DOCLING_OCR_REC_ONNX=/opt/models/ocr_rec_en.onnx \
+    DOCLING_OCR_DICT=/opt/models/en_dict.txt \
     LD_LIBRARY_PATH=/usr/local/lib:/opt/pdfium/lib \
     PORT=8080
 
