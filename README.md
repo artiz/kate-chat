@@ -200,7 +200,7 @@ cargo run
 
 2. Client
 ```bash
-APP_API_URL=http://localhost:4001  APP_WS_URL=http://localhost:4002 npm run dev:client
+APP_API_URL=http://localhost:4000  APP_WS_URL=http://localhost:4001 npm run dev:client
 ```
 
 #### API DB Migrations

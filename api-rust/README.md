@@ -107,7 +107,7 @@ cargo fmt
 
 Providers are gated by `ENABLED_API_PROVIDERS`
 (`AWS_BEDROCK,OPEN_AI,YANDEX_AI,CUSTOM_REST_API` or `*`). Point the client
-at it with `APP_API_URL=http://localhost:4001 APP_WS_URL=http://localhost:4002`
+at it with `APP_API_URL=http://localhost:4000 APP_WS_URL=http://localhost:4001`
 (see the root README).
 
 CI (`.github/workflows/ci-cd.yml`, job `rust-api`) runs fmt/clippy/tests
