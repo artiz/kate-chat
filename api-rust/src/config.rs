@@ -58,6 +58,10 @@ pub struct AppConfig {
     pub sqs_documents_queue: Option<String>,
     pub sqs_index_documents_queue: Option<String>,
 
+    // Redis (live document-processor status stream)
+    pub redis_url: Option<String>,
+    pub document_status_channel: String,
+
     // Enabled API providers
     pub enabled_api_providers: Vec<String>,
 }
@@ -102,6 +106,11 @@ impl AppConfig {
             sqs_secret_access_key: env::var("SQS_SECRET_ACCESS_KEY").ok(),
             sqs_documents_queue: env::var("SQS_DOCUMENTS_QUEUE").ok(),
             sqs_index_documents_queue: env::var("SQS_INDEX_DOCUMENTS_QUEUE").ok(),
+
+            // Redis
+            redis_url: env::var("REDIS_URL").ok(),
+            document_status_channel: env::var("DOCUMENT_STATUS_CHANNEL")
+                .unwrap_or_else(|_| "document:status".to_string()),
 
             // OAuth
             google_client_id: env::var("GOOGLE_OAUTH_CLIENT_ID").ok(),

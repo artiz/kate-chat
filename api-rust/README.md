@@ -50,9 +50,12 @@ remains the reference implementation.
   pgvector/sqlite-vss dependency) and document summaries, documents
   CRUD + `documentsStatus` subscription, and the structured RAG answer
   flow in `createMessage` (`documentIds` → ranked chunks →
-  `ragResponse`/`relevantsChunks` metadata). Intermediate
-  document-processor statuses are synced on indexing, not streamed
-  (api-rust has no Redis subscriber yet)
+  `ragResponse`/`relevantsChunks` metadata). With `REDIS_URL` set, the
+  document-processor's live parsing/chunking statuses stream through a
+  Redis subscription (`DOCUMENT_STATUS_CHANNEL`, default
+  `document:status`) into `documentsStatus` with per-stage timing
+  metadata, and `sync` updates are persisted onto the document row
+  (Node parity)
 
 ## Client compatibility
 

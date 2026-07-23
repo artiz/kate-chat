@@ -87,7 +87,7 @@ tokio-tungstenite = "0.21"
 warp = "0.3"
 
 # PubSub for subscriptions
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"], optional = true }
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 lazy_static = "1.4"
 url = "2.5"

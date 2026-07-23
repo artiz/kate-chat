@@ -3,6 +3,7 @@ pub mod bedrock;
 pub mod chat;
 pub mod custom;
 pub mod document_index;
+pub mod document_status_redis;
 pub mod mcp;
 pub mod model;
 pub mod openai;
