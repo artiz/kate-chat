@@ -1207,6 +1207,53 @@ impl Mutation {
         })
     }
 
+    /// Plain content edit without regeneration (Node's
+    /// updateMessageContent; admins may edit any message).
+    async fn update_message_content(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "messageId")] message_id: async_graphql::ID,
+        content: String,
+    ) -> Result<EditMessageResponse> {
+        let message_id = message_id.to_string();
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let result: std::result::Result<(Message, Chat), _> = messages::table
+            .inner_join(chats::table)
+            .filter(messages::id.eq(&message_id))
+            .first(&mut conn);
+        let Ok((message, chat)) = result else {
+            return Ok(EditMessageResponse {
+                message: None,
+                error: Some("Message not found".to_string()),
+            });
+        };
+        if chat.user_id.as_deref() != Some(user.id.as_str()) && user.role != "admin" {
+            return Ok(EditMessageResponse {
+                message: None,
+                error: Some("Unauthorized".to_string()),
+            });
+        }
+
+        let updated: Message = diesel::update(messages::table.filter(messages::id.eq(&message.id)))
+            .set((
+                messages::content.eq(&content),
+                messages::updated_at.eq(Utc::now().naive_utc()),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(EditMessageResponse {
+            message: Some(GqlMessage::from(updated)),
+            error: None,
+        })
+    }
+
     /// Reload stored metadata for a chat file (Library). Image-feature
     /// extraction (predominant color, EXIF) is not ported yet, so this
     /// currently returns the stored row as-is.

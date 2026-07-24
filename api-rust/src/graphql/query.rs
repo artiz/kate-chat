@@ -707,6 +707,94 @@ impl Query {
         Ok(gql_models)
     }
 
+    /// Global search over the user's chats, messages and documents
+    /// (Node's search resolver; LIKE-based — api-rust has no FTS tables)
+    async fn search(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::SearchInput,
+    ) -> Result<crate::models::SearchResults> {
+        use crate::models::search::snippet;
+        use crate::schema::documents;
+
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let query = input.query.trim().to_string();
+        let limit = input.limit.unwrap_or(10).clamp(1, 50) as i64;
+        if query.chars().count() < 2 {
+            return Ok(crate::models::SearchResults {
+                chat_results: vec![],
+                message_results: vec![],
+                document_results: vec![],
+            });
+        }
+        let pattern = format!("%{}%", query.replace('%', "\\%").replace('_', "\\_"));
+
+        let chat_rows: Vec<Chat> = chats::table
+            .filter(chats::user_id.eq(&user.id))
+            .filter(chats::title.like(&pattern))
+            .order(chats::updated_at.desc())
+            .limit(limit)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let chat_results = chat_rows
+            .into_iter()
+            .map(|c| crate::models::SearchChatResult {
+                chat_id: c.id.into(),
+                title: c.title,
+            })
+            .collect();
+
+        let message_rows: Vec<(Message, Chat)> = messages::table
+            .inner_join(chats::table)
+            .filter(chats::user_id.eq(&user.id))
+            .filter(messages::content.like(&pattern))
+            .order(messages::created_at.desc())
+            .limit(limit)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let message_results = message_rows
+            .into_iter()
+            .map(|(m, c)| crate::models::SearchMessageResult {
+                message_id: m.id.into(),
+                chat_id: m.chat_id,
+                chat_title: c.title,
+                snippet: snippet(&m.content),
+            })
+            .collect();
+
+        let document_rows: Vec<crate::models::Document> = documents::table
+            .filter(documents::owner_id.eq(&user.id))
+            .filter(
+                documents::file_name
+                    .like(&pattern)
+                    .or(documents::summary.like(&pattern)),
+            )
+            .order(documents::updated_at.desc())
+            .limit(limit)
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let document_results = document_rows
+            .into_iter()
+            .map(|d| crate::models::SearchDocumentResult {
+                document_id: d.id.into(),
+                file_name: d.file_name,
+                snippet: d.summary.as_deref().map(snippet),
+            })
+            .collect();
+
+        Ok(crate::models::SearchResults {
+            chat_results,
+            message_results,
+            document_results,
+        })
+    }
+
     /// Get costs information
     async fn get_costs(&self, ctx: &Context<'_>, input: GetCostsInput) -> Result<GqlCostsInfo> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;
