@@ -356,10 +356,45 @@ impl From<String> for MessageType {
     }
 }
 
+impl Message {
+    /// Deserialize the stored metadata JSON (None on absence/corruption).
+    pub fn parsed_metadata(&self) -> Option<MessageMetadata> {
+        self.metadata
+            .as_deref()
+            .and_then(|m| serde_json::from_str(m).ok())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 pub struct EditMessageResponse {
     pub message: Option<GqlMessage>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct SwitchModelResponse {
+    pub message: Option<GqlMessage>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct CallOtherResponse {
+    pub message: Option<GqlMessage>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, InputObject)]
+#[graphql(name = "StopMessageGenerationInput")]
+pub struct StopMessageGenerationInput {
+    pub request_id: String,
+    pub message_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
+pub struct StopMessageGenerationResponse {
+    pub error: Option<String>,
+    pub request_id: Option<String>,
+    pub message_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]

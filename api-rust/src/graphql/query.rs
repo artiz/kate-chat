@@ -565,8 +565,11 @@ impl Query {
 
         let limit = input.limit.unwrap_or(20);
         let offset = input.offset.unwrap_or(0);
+        // Main thread only — alternate replies (callOther) are attached
+        // below as linkedMessages (Node parity)
         let messages_result: Vec<Message> = messages::table
             .filter(messages::chat_id.eq(&input.chat_id))
+            .filter(messages::linked_to_message_id.is_null())
             .order(messages::created_at.asc())
             .limit(i64::from(limit))
             .offset(i64::from(offset))
@@ -575,12 +578,38 @@ impl Query {
 
         let total: i64 = messages::table
             .filter(messages::chat_id.eq(&input.chat_id))
+            .filter(messages::linked_to_message_id.is_null())
             .count()
             .get_result(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
 
+        let ids: Vec<String> = messages_result.iter().map(|m| m.id.clone()).collect();
+        let linked: Vec<Message> = messages::table
+            .filter(messages::linked_to_message_id.eq_any(&ids))
+            .order(messages::created_at.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let mut linked_by_parent: std::collections::HashMap<String, Vec<GqlMessage>> =
+            std::collections::HashMap::new();
+        for message in linked {
+            if let Some(parent) = message.linked_to_message_id.clone() {
+                linked_by_parent
+                    .entry(parent)
+                    .or_default()
+                    .push(GqlMessage::from(message));
+            }
+        }
+        let gql_messages: Vec<GqlMessage> = messages_result
+            .into_iter()
+            .map(|m| {
+                let mut gql = GqlMessage::from(m);
+                gql.linked_messages = linked_by_parent.remove(&gql.id);
+                gql
+            })
+            .collect();
+
         Ok(GqlMessagesList {
-            messages: messages_result.into_iter().map(GqlMessage::from).collect(),
+            messages: gql_messages,
             chat: chat.map(GqlChat::from),
             total: Some(total as i32),
             has_more: (offset + limit) < total as i32,

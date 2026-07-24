@@ -958,48 +958,25 @@ impl Mutation {
                 document_ids,
                 input.temperature,
                 input.max_tokens,
+                None,
             )
             .await;
         }
 
-        // Load previous messages for context (up to 100 messages)
+        // Load previous messages for context (up to 100 messages);
+        // linked alternate replies (callOther) are excluded (Node parity)
         const CONTEXT_MESSAGES_LIMIT: i64 = 100;
-
         let previous_messages: Vec<Message> = messages::table
             .filter(messages::chat_id.eq(&input.chat_id))
+            .filter(messages::linked_to_message_id.is_null())
             .order(messages::created_at.desc())
             .limit(CONTEXT_MESSAGES_LIMIT)
             .load(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        // Reverse to chronological order and add current user message
         let mut input_messages = previous_messages;
         input_messages.reverse();
         input_messages.push(message.clone());
-
-        // Convert database messages to AI service format and preprocess
-        let model_messages = preprocess_messages(convert_messages_to_model_format(&input_messages));
-
-        // Tools enabled on this chat (web search / MCP servers)
-        let executable_tools = build_chat_tools(
-            &mut conn,
-            &effective_config,
-            &user.id,
-            chat.tools.as_deref(),
-            input.mcp_tokens.as_deref(),
-        )
-        .await;
-
-        // Create invoke request with preprocessed message context
-        let invoke_request = crate::services::ai::InvokeModelRequest {
-            model_id: model_id.clone(),
-            messages: model_messages,
-            temperature: input.temperature,
-            max_tokens: input.max_tokens,
-            top_p: input.top_p,
-            system_prompt: user.default_system_prompt.clone(),
-            tools: (!executable_tools.is_empty()).then_some(executable_tools),
-        };
 
         let ai_msg_data = Message::new(
             input.chat_id.clone(),
@@ -1014,174 +991,21 @@ impl Mutation {
             .get_result::<Message>(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        // Create a thread-safe accumulator for all tokens
-        let accumulated_content = Arc::new(Mutex::new(String::new()));
-
-        let callbacks = StreamCallbacks {
-            on_token: |token: String| {
-                let pubsub = pubsub.clone();
-                let chat_id = input.chat_id.clone();
-                let mut ai_message_pub = ai_message.clone();
-                let accumulated_content = accumulated_content.clone();
-
-                // Accumulate tokens in a thread-safe way
-                if let Ok(mut content) = accumulated_content.lock() {
-                    content.push_str(&token);
-                    // Update the message with accumulated content
-                    ai_message_pub.content = content.clone();
-                }
-
-                Box::pin(async move {
-                    let pub_message = message::GqlNewMessage {
-                        r#type: String::from(message::MessageType::Message),
-                        error: None,
-                        message: Some(GqlMessage::from(ai_message_pub)),
-                        streaming: Some(true),
-                        chat: None,
-                    };
-
-                    if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
-                        warn!("Failed to publish message to subscribers: {:?}", e);
-                    }
-                })
-            },
-            on_error: |error: AppError| {
-                let pubsub = pubsub.clone();
-                let chat_id = input.chat_id.clone();
-                let error_message = format!("Model inference error: {:?}", error);
-
-                let mut conn_cb = match gql_ctx
-                    .db_pool
-                    .get()
-                    .map_err(|e| AppError::Database(e.to_string()))
-                {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        error!(
-                            "Failed to get database connection in error callback: {:?}",
-                            e
-                        );
-                        return Box::pin(async move {
-                            let pub_message = message::GqlNewMessage {
-                                r#type: String::from(message::MessageType::Message),
-                                error: Some(format!("Database connection error: {:?}", e)),
-                                message: None,
-                                streaming: Some(false),
-                                chat: None,
-                            };
-
-                            if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
-                                warn!("Failed to publish error to subscribers: {:?}", e);
-                            }
-                        });
-                    }
-                };
-
-                // Update message in database with error
-                let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
-                    .set((
-                        messages::content.eq(error_message.clone()),
-                        messages::role.eq(String::from(MessageRole::Error)),
-                        messages::updated_at.eq(Utc::now().naive_utc()),
-                    ))
-                    .execute(&mut conn_cb)
-                    .map_err(|e| {
-                        error!("Failed to write error message: {:?}", e);
-                    });
-
-                let mut error_ai_message = ai_message.clone();
-                error_ai_message.content = error_message;
-                error_ai_message.role = String::from(MessageRole::Error);
-
-                Box::pin(async move {
-                    let pub_message: GqlNewMessage = message::GqlNewMessage {
-                        r#type: String::from(message::MessageType::Message),
-                        error: error_ai_message.content.clone().into(),
-                        message: Some(GqlMessage::from(error_ai_message)),
-                        streaming: Some(false),
-                        chat: None,
-                    };
-
-                    if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
-                        warn!("Failed to publish message to subscribers: {:?}", e);
-                    }
-                })
-            },
-
-            on_complete: |content: String| {
-                let pubsub = pubsub.clone();
-                let chat_id = input.chat_id.clone();
-
-                let mut conn_cb = match gql_ctx
-                    .db_pool
-                    .get()
-                    .map_err(|e| AppError::Database(e.to_string()))
-                {
-                    Ok(conn) => conn,
-                    Err(e) => {
-                        error!(
-                            "Failed to get database connection in complete callback: {:?}",
-                            e
-                        );
-                        return Box::pin(async move {
-                            let pub_message = message::GqlNewMessage {
-                                r#type: String::from(message::MessageType::Message),
-                                error: Some(format!("Database connection error: {:?}", e)),
-                                message: None,
-                                streaming: Some(false),
-                                chat: None,
-                            };
-                            if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
-                                warn!("Failed to publish error to subscribers: {:?}", e);
-                            }
-                        });
-                    }
-                };
-
-                // Update message in database
-                let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
-                    .set((
-                        messages::content.eq(content.clone()),
-                        messages::updated_at.eq(Utc::now().naive_utc()),
-                    ))
-                    .execute(&mut conn_cb)
-                    .map_err(|e| {
-                        error!("Failed to write assistant message: {:?}", e);
-                    });
-
-                let mut res_ai_message = ai_message.clone();
-                res_ai_message.content = content;
-
-                Box::pin(async move {
-                    let pub_message: GqlNewMessage = message::GqlNewMessage {
-                        r#type: String::from(message::MessageType::Message),
-                        error: None,
-                        message: Some(GqlMessage::from(res_ai_message)),
-                        streaming: Some(false),
-                        chat: None,
-                    };
-
-                    if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
-                        warn!("Failed to publish message to subscribers: {:?}", e);
-                    }
-                })
-            },
-        };
-
-        let executed_tools = provider
-            .invoke_model_stream(invoke_request, callbacks)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-
-        // Record tool activity in the assistant message metadata (Node's
-        // toolCalls/tools) and re-publish so the client shows tool badges.
-        if !executed_tools.is_empty() {
-            if let Err(e) =
-                record_tool_metadata(gql_ctx, &input.chat_id, &ai_message.id, &executed_tools).await
-            {
-                warn!("Failed to record tool metadata: {:?}", e);
-            }
-        }
+        stream_reply(
+            gql_ctx,
+            &effective_config,
+            &provider,
+            &chat,
+            &model,
+            input_messages,
+            ai_message,
+            input.temperature,
+            input.max_tokens,
+            input.top_p,
+            user.default_system_prompt.clone(),
+            input.mcp_tokens.as_deref(),
+        )
+        .await?;
 
         Ok(GqlMessage::from(message))
     }
@@ -1247,13 +1071,15 @@ impl Mutation {
 
     /// Edit a message and regenerate following messages
     #[instrument(skip(self, ctx, message_id), fields(user_id = tracing::field::Empty))]
+    /// Edit a user message and regenerate the reply (Node's editMessage:
+    /// deletes following messages, reuses the first following assistant
+    /// message as the regeneration target).
     async fn edit_message(
         &self,
         ctx: &Context<'_>,
-        message_id: async_graphql::ID,
+        #[graphql(name = "messageId")] message_id: async_graphql::ID,
         content: String,
-        // accepted for schema compatibility; MCP tokens are unused until MCP is ported
-        #[graphql(name = "messageContext")] _message_context: Option<
+        #[graphql(name = "messageContext")] message_context: Option<
             crate::models::MessageContextInput,
         >,
     ) -> Result<EditMessageResponse> {
@@ -1264,61 +1090,333 @@ impl Mutation {
             .db_pool
             .get()
             .map_err(|e| AppError::Database(e.to_string()))?;
+        let pubsub = get_global_pubsub();
 
-        tracing::Span::current().record("user_id", &user.id);
-        info!("Editing message {} for user {}", message_id, user.id);
-
-        // Get the message to edit
-        let message: Message = messages::table
+        let loaded: std::result::Result<(Message, Chat), _> = messages::table
+            .inner_join(chats::table)
             .filter(messages::id.eq(&message_id))
-            .filter(
-                messages::user_id
-                    .eq(&user.id)
-                    .or(messages::user_id.is_null()),
-            )
-            .first(&mut conn)
-            .map_err(|_| async_graphql::Error::new("Message not found"))?;
-
-        // Only user messages can be edited
-        if message.role != String::from(MessageRole::User) {
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn);
+        let Ok((mut original, chat)) = loaded else {
             return Ok(EditMessageResponse {
                 message: None,
-                error: Some("Only user messages can be edited".to_string()),
+                error: Some("Message not found".to_string()),
+            });
+        };
+
+        // Editing an assistant message means "reset from the user message
+        // before it", keeping that message's content (Node parity)
+        let mut new_content = content.trim().to_string();
+        if original.role != String::from(MessageRole::User) {
+            let prior_user: Option<Message> = messages::table
+                .filter(messages::chat_id.eq(&chat.id))
+                .filter(messages::created_at.lt(original.created_at))
+                .filter(messages::role.eq(String::from(MessageRole::User)))
+                .order(messages::created_at.desc())
+                .first(&mut conn)
+                .optional()
+                .map_err(|e| AppError::Database(e.to_string()))?;
+            let Some(prior) = prior_user else {
+                return Ok(EditMessageResponse {
+                    message: None,
+                    error: Some("Only user messages can be edited".to_string()),
+                });
+            };
+            new_content = prior.content.clone();
+            original = prior;
+        }
+
+        // Messages after the edited one: reuse the first assistant reply
+        // as the regeneration target, delete the rest (and their files)
+        let following: Vec<Message> = messages::table
+            .filter(messages::chat_id.eq(&chat.id))
+            .filter(messages::id.ne(&original.id))
+            .filter(messages::created_at.ge(original.created_at))
+            .order(messages::created_at.asc())
+            .load(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let reused = following
+            .iter()
+            .find(|m| m.role == String::from(MessageRole::Assistant))
+            .cloned();
+        let document_ids = reused
+            .as_ref()
+            .and_then(|m| m.parsed_metadata())
+            .and_then(|m| m.document_ids)
+            .or_else(|| original.parsed_metadata().and_then(|m| m.document_ids))
+            .filter(|ids| !ids.is_empty());
+
+        let delete_ids: Vec<String> = following
+            .iter()
+            .filter(|m| Some(&m.id) != reused.as_ref().map(|r| &r.id))
+            .map(|m| m.id.clone())
+            .collect();
+        if !delete_ids.is_empty() {
+            let _ = diesel::delete(
+                chat_files::table.filter(chat_files::message_id.eq_any(&delete_ids)),
+            )
+            .execute(&mut conn);
+            diesel::delete(messages::table.filter(messages::id.eq_any(&delete_ids)))
+                .execute(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+        }
+
+        // Update the user message and publish it
+        let updated: Message =
+            diesel::update(messages::table.filter(messages::id.eq(&original.id)))
+                .set((
+                    messages::content.eq(&new_content),
+                    messages::json_content.eq(None::<String>),
+                    messages::updated_at.eq(Utc::now().naive_utc()),
+                ))
+                .get_result(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?;
+        publish_message(pubsub, &chat.id, &updated, true).await;
+
+        // Resolve model: the chat's model (regeneration keeps it)
+        let model_id = updated
+            .model_id
+            .clone()
+            .or_else(|| chat.model_id.clone())
+            .unwrap_or_default();
+        let model: Model = models::table
+            .filter(models::model_id.eq(&model_id))
+            .filter(models::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Model not found"))?;
+
+        // Reuse or create the assistant target message
+        let ai_message = prepare_regeneration_target(&mut conn, &chat.id, reused, &model, None)?;
+        publish_message(pubsub, &chat.id, &ai_message, true).await;
+
+        let response_message = ai_message.clone();
+        regenerate_reply(
+            gql_ctx,
+            user,
+            &chat,
+            &model,
+            &updated,
+            ai_message,
+            document_ids,
+            message_context.as_ref(),
+        )
+        .await?;
+
+        Ok(EditMessageResponse {
+            message: Some(GqlMessage::from(response_message)),
+            error: None,
+        })
+    }
+
+    /// Regenerate an assistant message with a different model (Node's
+    /// switchModel: resets the message in place).
+    async fn switch_model(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "messageId")] message_id: async_graphql::ID,
+        #[graphql(name = "modelId")] model_id: String,
+        #[graphql(name = "messageContext")] message_context: Option<
+            crate::models::MessageContextInput,
+        >,
+    ) -> Result<crate::models::SwitchModelResponse> {
+        use crate::models::SwitchModelResponse;
+        let message_id = message_id.to_string();
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let pubsub = get_global_pubsub();
+
+        let loaded: std::result::Result<(Message, Chat), _> = messages::table
+            .inner_join(chats::table)
+            .filter(messages::id.eq(&message_id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn);
+        let Ok((original, chat)) = loaded else {
+            return Ok(SwitchModelResponse {
+                message: None,
+                error: Some("Message not found".to_string()),
+            });
+        };
+        if original.role == String::from(MessageRole::User) {
+            return Ok(SwitchModelResponse {
+                message: None,
+                error: Some("Only assistant messages can be switched".to_string()),
             });
         }
 
-        // Delete all messages after this one in the same chat
-        let deleted_count = diesel::delete(
-            messages::table
-                .filter(messages::chat_id.eq(&message.chat_id))
-                .filter(messages::created_at.gt(&message.created_at)),
+        let model: Model = models::table
+            .filter(models::model_id.eq(&model_id))
+            .filter(models::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Model not found"))?;
+
+        // RAG carry-over: last user message's documentIds, else original's
+        let last_user: Option<Message> = messages::table
+            .filter(messages::chat_id.eq(&chat.id))
+            .filter(messages::role.eq(String::from(MessageRole::User)))
+            .filter(messages::created_at.le(original.created_at))
+            .order(messages::created_at.desc())
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let document_ids = last_user
+            .as_ref()
+            .and_then(|m| m.parsed_metadata())
+            .and_then(|m| m.document_ids)
+            .or_else(|| original.parsed_metadata().and_then(|m| m.document_ids))
+            .filter(|ids| !ids.is_empty());
+        let trigger = last_user.unwrap_or_else(|| original.clone());
+
+        // Reset the original message in place
+        let ai_message =
+            prepare_regeneration_target(&mut conn, &chat.id, Some(original), &model, None)?;
+        publish_message(pubsub, &chat.id, &ai_message, true).await;
+
+        let response_message = ai_message.clone();
+        regenerate_reply(
+            gql_ctx,
+            user,
+            &chat,
+            &model,
+            &trigger,
+            ai_message,
+            document_ids,
+            message_context.as_ref(),
         )
-        .execute(&mut conn)
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .await?;
 
-        info!("Deleted {} following messages", deleted_count);
+        Ok(SwitchModelResponse {
+            message: Some(GqlMessage::from(response_message)),
+            error: None,
+        })
+    }
 
-        // Update the message content
-        let updated_message = diesel::update(messages::table.filter(messages::id.eq(&message_id)))
-            .set((
-                messages::content.eq(content.trim()),
-                messages::updated_at.eq(Utc::now().naive_utc()),
-            ))
+    /// Generate an alternate reply with another model, linked to the
+    /// original assistant message (Node's callOther).
+    async fn call_other(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "messageId")] message_id: async_graphql::ID,
+        #[graphql(name = "modelId")] model_id: String,
+        #[graphql(name = "messageContext")] message_context: Option<
+            crate::models::MessageContextInput,
+        >,
+    ) -> Result<crate::models::CallOtherResponse> {
+        use crate::models::CallOtherResponse;
+        let message_id = message_id.to_string();
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let pubsub = get_global_pubsub();
+
+        let loaded: std::result::Result<(Message, Chat), _> = messages::table
+            .inner_join(chats::table)
+            .filter(messages::id.eq(&message_id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn);
+        let Ok((original, chat)) = loaded else {
+            return Ok(CallOtherResponse {
+                message: None,
+                error: Some("Message not found".to_string()),
+            });
+        };
+        if original.role == String::from(MessageRole::User) {
+            return Ok(CallOtherResponse {
+                message: None,
+                error: Some("Only assistant messages can be used".to_string()),
+            });
+        }
+
+        let model: Model = models::table
+            .filter(models::model_id.eq(&model_id))
+            .filter(models::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Model not found"))?;
+
+        // New assistant message linked to the original (alternate reply)
+        let mut linked = Message::new(
+            chat.id.clone(),
+            None,
+            String::new(),
+            String::from(MessageRole::Assistant),
+            model.model_id.clone(),
+            Some(model.name.clone()),
+        );
+        linked.linked_to_message_id = Some(original.id.clone());
+        let ai_message = diesel::insert_into(messages::table)
+            .values(&linked)
             .get_result::<Message>(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
+        publish_message(pubsub, &chat.id, &ai_message, true).await;
 
-        // TODO: Generate new assistant response here
-        // For now, we'll just return the updated message
-        // In a full implementation, you'd want to:
-        // 1. Get the chat and user's default model
-        // 2. Create a new assistant message
-        // 3. Generate the AI response
+        let response_message = ai_message.clone();
+        regenerate_reply(
+            gql_ctx,
+            user,
+            &chat,
+            &model,
+            &original,
+            ai_message,
+            None,
+            message_context.as_ref(),
+        )
+        .await?;
 
-        let gql_message = GqlMessage::from(updated_message);
-
-        Ok(EditMessageResponse {
-            message: Some(gql_message),
+        Ok(CallOtherResponse {
+            message: Some(GqlMessage::from(response_message)),
             error: None,
+        })
+    }
+
+    /// Stop an in-flight generation (Node's stopMessageGeneration).
+    async fn stop_message_generation(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::StopMessageGenerationInput,
+    ) -> Result<crate::models::StopMessageGenerationResponse> {
+        use crate::models::StopMessageGenerationResponse;
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let loaded: std::result::Result<(Message, Chat), _> = messages::table
+            .inner_join(chats::table)
+            .filter(messages::id.eq(&input.message_id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn);
+        let Ok((message, chat)) = loaded else {
+            return Ok(StopMessageGenerationResponse {
+                error: Some("Message not found".to_string()),
+                request_id: None,
+                message_id: None,
+            });
+        };
+
+        mark_cancelled(&message.id);
+        let mut cancelled = message.clone();
+        cancelled.status = Some("cancelled".to_string());
+        let _ = diesel::update(messages::table.filter(messages::id.eq(&message.id)))
+            .set((
+                messages::status.eq(Some("cancelled".to_string())),
+                messages::updated_at.eq(Utc::now().naive_utc()),
+            ))
+            .execute(&mut conn);
+        publish_message(get_global_pubsub(), &chat.id, &cancelled, false).await;
+
+        Ok(StopMessageGenerationResponse {
+            error: None,
+            request_id: Some(input.request_id),
+            message_id: Some(input.message_id),
         })
     }
 
@@ -2050,6 +2148,323 @@ async fn generate_images_reply(
     Ok(GqlMessage::from(user_message.clone()))
 }
 
+lazy_static::lazy_static! {
+    /// In-process set of message ids whose generation was cancelled
+    /// (Node's MessagesService.cancelledMessages).
+    static ref CANCELLED_MESSAGES: std::sync::Mutex<std::collections::HashSet<String>> =
+        std::sync::Mutex::new(std::collections::HashSet::new());
+}
+
+/// Publish a message to the chat's subscription stream.
+async fn publish_message(
+    pubsub: &crate::services::pubsub::PubSubService,
+    chat_id: &str,
+    message: &Message,
+    streaming: bool,
+) {
+    let pub_message = message::GqlNewMessage {
+        r#type: String::from(message::MessageType::Message),
+        error: None,
+        message: Some(GqlMessage::from(message.clone())),
+        streaming: Some(streaming),
+        chat: None,
+    };
+    if let Err(e) = pubsub.publish_to_chat(chat_id, pub_message).await {
+        warn!("Failed to publish message to subscribers: {:?}", e);
+    }
+}
+
+/// Reset an existing assistant message for regeneration, or create a
+/// fresh placeholder when there is none (Node's editMessage reuse).
+fn prepare_regeneration_target(
+    conn: &mut crate::database::DbConnection,
+    chat_id: &str,
+    existing: Option<Message>,
+    model: &Model,
+    linked_to: Option<String>,
+) -> Result<Message, AppError> {
+    match existing {
+        Some(target) => {
+            let updated: Message =
+                diesel::update(messages::table.filter(messages::id.eq(&target.id)))
+                    .set((
+                        messages::role.eq(String::from(MessageRole::Assistant)),
+                        messages::content.eq(String::new()),
+                        messages::json_content.eq(None::<String>),
+                        messages::metadata.eq(None::<String>),
+                        messages::status.eq(None::<String>),
+                        messages::status_info.eq(None::<String>),
+                        messages::model_id.eq(Some(model.model_id.clone())),
+                        messages::model_name.eq(Some(model.name.clone())),
+                        messages::updated_at.eq(Utc::now().naive_utc()),
+                    ))
+                    .get_result(conn)
+                    .map_err(|e| AppError::Database(e.to_string()))?;
+            Ok(updated)
+        }
+        None => {
+            let mut fresh = Message::new(
+                chat_id.to_string(),
+                None,
+                String::new(),
+                String::from(MessageRole::Assistant),
+                model.model_id.clone(),
+                Some(model.name.clone()),
+            );
+            fresh.linked_to_message_id = linked_to;
+            diesel::insert_into(messages::table)
+                .values(&fresh)
+                .get_result::<Message>(conn)
+                .map_err(|e| AppError::Database(e.to_string()))
+        }
+    }
+}
+
+/// Regenerate a reply into `ai_message`: RAG flow when documentIds are
+/// carried over, otherwise a plain streamed completion with the chat
+/// context up to the trigger message.
+#[allow(clippy::too_many_arguments)]
+async fn regenerate_reply(
+    gql_ctx: &GraphQLContext,
+    user: &User,
+    chat: &Chat,
+    model: &Model,
+    trigger: &Message,
+    ai_message: Message,
+    document_ids: Option<Vec<String>>,
+    message_context: Option<&crate::models::MessageContextInput>,
+) -> Result<(), AppError> {
+    let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+    let ai_service = AIService::new(effective_config.clone());
+    let provider = ai_service.get_provider_for_model(model)?;
+
+    if let Some(document_ids) = document_ids {
+        generate_rag_reply(
+            gql_ctx,
+            &ai_service,
+            &provider,
+            user,
+            trigger,
+            model,
+            trigger.content.clone(),
+            document_ids,
+            chat.temperature,
+            chat.max_tokens,
+            Some(ai_message),
+        )
+        .await
+        .map_err(|e| AppError::Internal(e.message))?;
+        return Ok(());
+    }
+
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    const CONTEXT_MESSAGES_LIMIT: i64 = 100;
+    let mut context: Vec<Message> = messages::table
+        .filter(messages::chat_id.eq(&chat.id))
+        .filter(messages::linked_to_message_id.is_null())
+        .filter(messages::created_at.le(trigger.created_at))
+        .filter(messages::id.ne(&ai_message.id))
+        .order(messages::created_at.desc())
+        .limit(CONTEXT_MESSAGES_LIMIT)
+        .load(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    context.reverse();
+    drop(conn);
+
+    stream_reply(
+        gql_ctx,
+        &effective_config,
+        &provider,
+        chat,
+        model,
+        context,
+        ai_message,
+        chat.temperature,
+        chat.max_tokens,
+        chat.top_p,
+        user.default_system_prompt.clone(),
+        message_context.and_then(|c| c.mcp_tokens.as_deref()),
+    )
+    .await
+}
+
+fn is_cancelled(message_id: &str) -> bool {
+    CANCELLED_MESSAGES
+        .lock()
+        .map(|s| s.contains(message_id))
+        .unwrap_or(false)
+}
+
+fn mark_cancelled(message_id: &str) {
+    if let Ok(mut set) = CANCELLED_MESSAGES.lock() {
+        set.insert(message_id.to_string());
+    }
+}
+
+/// Stream a model reply into an existing placeholder assistant message.
+/// Shared by createMessage and the regeneration mutations
+/// (editMessage / switchModel / callOther).
+#[allow(clippy::too_many_arguments)]
+async fn stream_reply(
+    gql_ctx: &GraphQLContext,
+    effective_config: &crate::config::AppConfig,
+    provider: &AIProviderWrapper,
+    chat: &Chat,
+    model: &Model,
+    context_messages: Vec<Message>,
+    ai_message: Message,
+    temperature: Option<f32>,
+    max_tokens: Option<i32>,
+    top_p: Option<f32>,
+    system_prompt: Option<String>,
+    mcp_tokens: Option<&[crate::models::McpAuthTokenInput]>,
+) -> Result<(), AppError> {
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let pubsub = get_global_pubsub();
+    let chat_id = chat.id.clone();
+
+    let model_messages = preprocess_messages(convert_messages_to_model_format(&context_messages));
+    let executable_tools = build_chat_tools(
+        &mut conn,
+        effective_config,
+        chat.user_id.as_deref().unwrap_or_default(),
+        chat.tools.as_deref(),
+        mcp_tokens,
+    )
+    .await;
+
+    let invoke_request = crate::services::ai::InvokeModelRequest {
+        model_id: model.model_id.clone(),
+        messages: model_messages,
+        temperature,
+        max_tokens,
+        top_p,
+        system_prompt,
+        tools: (!executable_tools.is_empty()).then_some(executable_tools),
+    };
+
+    let accumulated_content = Arc::new(Mutex::new(String::new()));
+
+    let callbacks = StreamCallbacks {
+        on_token: |token: String| {
+            let pubsub = pubsub.clone();
+            let chat_id = chat_id.clone();
+            let mut ai_message_pub = ai_message.clone();
+            let accumulated_content = accumulated_content.clone();
+            let cancelled = is_cancelled(&ai_message.id);
+
+            if let Ok(mut content) = accumulated_content.lock() {
+                content.push_str(&token);
+                ai_message_pub.content = content.clone();
+            }
+
+            Box::pin(async move {
+                if cancelled {
+                    return; // stop spamming subscribers after a stop request
+                }
+                let pub_message = message::GqlNewMessage {
+                    r#type: String::from(message::MessageType::Message),
+                    error: None,
+                    message: Some(GqlMessage::from(ai_message_pub)),
+                    streaming: Some(true),
+                    chat: None,
+                };
+                if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                    warn!("Failed to publish message to subscribers: {:?}", e);
+                }
+            })
+        },
+        on_error: |error: AppError| {
+            let pubsub = pubsub.clone();
+            let chat_id = chat_id.clone();
+            let error_message = format!("Model inference error: {:?}", error);
+
+            if let Ok(mut conn_cb) = gql_ctx.db_pool.get() {
+                let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+                    .set((
+                        messages::content.eq(error_message.clone()),
+                        messages::role.eq(String::from(MessageRole::Error)),
+                        messages::updated_at.eq(Utc::now().naive_utc()),
+                    ))
+                    .execute(&mut conn_cb);
+            }
+
+            let mut error_ai_message = ai_message.clone();
+            error_ai_message.content = error_message;
+            error_ai_message.role = String::from(MessageRole::Error);
+
+            Box::pin(async move {
+                let pub_message: GqlNewMessage = message::GqlNewMessage {
+                    r#type: String::from(message::MessageType::Message),
+                    error: error_ai_message.content.clone().into(),
+                    message: Some(GqlMessage::from(error_ai_message)),
+                    streaming: Some(false),
+                    chat: None,
+                };
+                if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                    warn!("Failed to publish message to subscribers: {:?}", e);
+                }
+            })
+        },
+        on_complete: |content: String| {
+            let pubsub = pubsub.clone();
+            let chat_id = chat_id.clone();
+            let cancelled = is_cancelled(&ai_message.id);
+            let status = cancelled.then(|| "cancelled".to_string());
+
+            if let Ok(mut conn_cb) = gql_ctx.db_pool.get() {
+                let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+                    .set((
+                        messages::content.eq(content.clone()),
+                        messages::status.eq(&status),
+                        messages::updated_at.eq(Utc::now().naive_utc()),
+                    ))
+                    .execute(&mut conn_cb);
+            }
+
+            let mut res_ai_message = ai_message.clone();
+            res_ai_message.content = content;
+            res_ai_message.status = status;
+
+            Box::pin(async move {
+                let pub_message: GqlNewMessage = message::GqlNewMessage {
+                    r#type: String::from(message::MessageType::Message),
+                    error: None,
+                    message: Some(GqlMessage::from(res_ai_message)),
+                    streaming: Some(false),
+                    chat: None,
+                };
+                if let Err(e) = pubsub.publish_to_chat(&chat_id, pub_message).await {
+                    warn!("Failed to publish message to subscribers: {:?}", e);
+                }
+            })
+        },
+    };
+
+    let executed_tools = provider
+        .invoke_model_stream(invoke_request, callbacks)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // Record tool activity in the assistant message metadata (Node's
+    // toolCalls/tools) and re-publish so the client shows tool badges.
+    if !executed_tools.is_empty() {
+        if let Err(e) =
+            record_tool_metadata(gql_ctx, &chat_id, &ai_message.id, &executed_tools).await
+        {
+            warn!("Failed to record tool metadata: {:?}", e);
+        }
+    }
+
+    Ok(())
+}
+
 /// RAG message flow (Node's sendRagMessage): rank the linked documents'
 /// chunks against the question, ask the chat model for a structured
 /// answer and record ragResponse/relevantsChunks metadata.
@@ -2065,6 +2480,7 @@ async fn generate_rag_reply(
     document_ids: Vec<String>,
     temperature: Option<f32>,
     max_tokens: Option<i32>,
+    existing_target: Option<Message>,
 ) -> Result<GqlMessage> {
     use crate::services::rag;
 
@@ -2075,20 +2491,25 @@ async fn generate_rag_reply(
     let pubsub = get_global_pubsub();
     let chat_id = user_message.chat_id.clone();
 
-    // Placeholder assistant message; published as streaming while the
-    // retrieval + completion run
-    let ai_msg_data = Message::new(
-        chat_id.clone(),
-        None,
-        String::new(),
-        String::from(MessageRole::Assistant),
-        user_message.model_id.clone().unwrap_or_default(),
-        Some(model.name.clone()),
-    );
-    let mut ai_message = diesel::insert_into(messages::table)
-        .values(&ai_msg_data)
-        .get_result::<Message>(&mut conn)
-        .map_err(|e| AppError::Database(e.to_string()))?;
+    // Placeholder assistant message (or the regeneration target);
+    // published as streaming while the retrieval + completion run
+    let mut ai_message = match existing_target {
+        Some(target) => target,
+        None => {
+            let ai_msg_data = Message::new(
+                chat_id.clone(),
+                None,
+                String::new(),
+                String::from(MessageRole::Assistant),
+                user_message.model_id.clone().unwrap_or_default(),
+                Some(model.name.clone()),
+            );
+            diesel::insert_into(messages::table)
+                .values(&ai_msg_data)
+                .get_result::<Message>(&mut conn)
+                .map_err(|e| AppError::Database(e.to_string()))?
+        }
+    };
 
     let publish = |message: Message, streaming: bool, error: Option<String>| {
         let pubsub = pubsub.clone();
