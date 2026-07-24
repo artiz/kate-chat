@@ -51,3 +51,105 @@ pub fn extract_token_from_header(auth_header: &str) -> Option<&str> {
         None
     }
 }
+
+/// Password-reset token (Node parity: purpose-scoped, 15 minutes).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResetClaims {
+    pub user_id: String,
+    pub email: String,
+    pub purpose: String,
+    pub exp: i64,
+}
+
+pub fn create_reset_token(
+    user_id: &str,
+    email: &str,
+    secret: &str,
+) -> Result<String, jsonwebtoken::errors::Error> {
+    let claims = ResetClaims {
+        user_id: user_id.to_string(),
+        email: email.to_string(),
+        purpose: "reset_password".to_string(),
+        exp: (Utc::now() + Duration::minutes(15)).timestamp(),
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_ref()),
+    )
+}
+
+pub fn verify_reset_token(token: &str, secret: &str) -> Result<ResetClaims, String> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.validate_exp = true;
+    validation.set_required_spec_claims(&["exp"]);
+    let claims = decode::<ResetClaims>(
+        token,
+        &DecodingKey::from_secret(secret.as_ref()),
+        &validation,
+    )
+    .map(|d| d.claims)
+    .map_err(|e| e.to_string())?;
+    if claims.purpose != "reset_password" {
+        return Err("Invalid token purpose".to_string());
+    }
+    Ok(claims)
+}
+
+/// Short-lived token authorizing a realtime proxy connection.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RealtimeClaims {
+    pub user_id: String,
+    pub chat_id: String,
+    pub purpose: String,
+    pub exp: i64,
+}
+
+pub fn create_realtime_token(
+    user_id: &str,
+    chat_id: &str,
+    secret: &str,
+) -> Result<String, jsonwebtoken::errors::Error> {
+    let claims = RealtimeClaims {
+        user_id: user_id.to_string(),
+        chat_id: chat_id.to_string(),
+        purpose: "realtime".to_string(),
+        exp: (Utc::now() + Duration::minutes(10)).timestamp(),
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_ref()),
+    )
+}
+
+pub fn verify_realtime_token(token: &str, secret: &str) -> Result<RealtimeClaims, String> {
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.validate_exp = true;
+    validation.set_required_spec_claims(&["exp"]);
+    let claims = decode::<RealtimeClaims>(
+        token,
+        &DecodingKey::from_secret(secret.as_ref()),
+        &validation,
+    )
+    .map(|d| d.claims)
+    .map_err(|e| e.to_string())?;
+    if claims.purpose != "realtime" {
+        return Err("Invalid token purpose".to_string());
+    }
+    Ok(claims)
+}
+
+#[cfg(test)]
+mod reset_token_tests {
+    use super::*;
+
+    #[test]
+    fn reset_token_roundtrip() {
+        let token = create_reset_token("u1", "a@b.c", "secret").unwrap();
+        let claims = verify_reset_token(&token, "secret").unwrap();
+        assert_eq!(claims.user_id, "u1");
+        assert_eq!(claims.email, "a@b.c");
+        assert!(verify_reset_token(&token, "other").is_err());
+    }
+}

@@ -18,6 +18,7 @@ use crate::services::ai::{
 use crate::services::tools::execute_tool_call;
 use crate::utils::errors::AppError;
 
+#[derive(Clone)]
 pub struct OpenAIProtocol {
     client: Client,
     /// e.g. `https://api.openai.com/v1`, `https://ai.api.cloud.yandex.net/v1`
@@ -66,11 +67,11 @@ impl OpenAIProtocol {
             .unwrap_or_else(|| requested.to_string())
     }
 
-    fn url(&self, path: &str) -> String {
+    pub(crate) fn url(&self, path: &str) -> String {
         format!("{}{}", self.base_url, path)
     }
 
-    fn post(&self, path: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post(&self, path: &str) -> reqwest::RequestBuilder {
         let mut builder = self
             .client
             .post(self.url(path))
@@ -90,7 +91,7 @@ impl OpenAIProtocol {
     }
 
     /// Extract the API error message from an OpenAI-style error payload.
-    fn api_error(&self, status: reqwest::StatusCode, body: &str) -> AppError {
+    pub(crate) fn api_error(&self, status: reqwest::StatusCode, body: &str) -> AppError {
         let message = serde_json::from_str::<Value>(body)
             .ok()
             .and_then(|v| {
