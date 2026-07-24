@@ -1403,6 +1403,34 @@ impl Mutation {
         };
 
         mark_cancelled(&message.id);
+
+        // Best-effort upstream cancellation for OpenAI Responses requests
+        // (requestId is the provider's response id)
+        if let Some(model_id) = message.model_id.as_deref() {
+            if crate::services::openai_responses::uses_responses_api(model_id)
+                && input.request_id.starts_with("resp")
+            {
+                let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+                let request_id = input.request_id.clone();
+                tokio::spawn(async move {
+                    if let Some(api_key) = effective_config.openai_api_key.clone() {
+                        let protocol =
+                            crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                                crate::services::openai_protocol::OpenAIProtocol::new(
+                                    "https://api.openai.com/v1",
+                                    Some(api_key),
+                                    None,
+                                    "OpenAI",
+                                ),
+                            );
+                        if let Err(e) = protocol.cancel(&request_id).await {
+                            warn!("Responses cancel failed for {}: {}", request_id, e);
+                        }
+                    }
+                });
+            }
+        }
+
         let mut cancelled = message.clone();
         cancelled.status = Some("cancelled".to_string());
         let _ = diesel::update(messages::table.filter(messages::id.eq(&message.id)))

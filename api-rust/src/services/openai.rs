@@ -79,6 +79,13 @@ impl OpenAIService {
 #[async_trait]
 impl AIProviderService for OpenAIService {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError> {
+        if crate::services::openai_responses::uses_responses_api(&request.model_id) {
+            return crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                self.protocol()?,
+            )
+            .invoke(&request)
+            .await;
+        }
         self.protocol()?.invoke(&request).await
     }
 
@@ -92,6 +99,13 @@ impl AIProviderService for OpenAIService {
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
+        if crate::services::openai_responses::uses_responses_api(&request.model_id) {
+            return crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                self.protocol()?,
+            )
+            .invoke_stream(&request, &callbacks)
+            .await;
+        }
         self.protocol()?.invoke_stream(&request, &callbacks).await
     }
 

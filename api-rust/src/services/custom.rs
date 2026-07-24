@@ -18,9 +18,12 @@ use crate::utils::errors::AppError;
 /// Custom model protocols (subset of the Node API's `CustomModelProtocol`;
 /// the Responses API and Bedrock-custom variants are not ported yet).
 pub const PROTOCOL_OPENAI_CHAT_COMPLETIONS: &str = "OPENAI_CHAT_COMPLETIONS";
+pub const PROTOCOL_OPENAI_RESPONSES: &str = "OPENAI_RESPONSES";
 
 pub struct CustomService {
     protocol: OpenAIProtocol,
+    /// `protocol: OPENAI_RESPONSES` in the model's customSettings
+    use_responses: bool,
 }
 
 impl CustomService {
@@ -47,14 +50,16 @@ impl CustomService {
                 AppError::BadRequest("Endpoint URL is required for a custom model".to_string())
             })?;
 
-        if let Some(protocol) = settings.protocol.as_deref() {
-            if protocol != PROTOCOL_OPENAI_CHAT_COMPLETIONS {
+        let use_responses = match settings.protocol.as_deref() {
+            None | Some(PROTOCOL_OPENAI_CHAT_COMPLETIONS) => false,
+            Some(PROTOCOL_OPENAI_RESPONSES) => true,
+            Some(other) => {
                 return Err(AppError::BadRequest(format!(
-                    "Unsupported custom model protocol: {} (only {} is supported)",
-                    protocol, PROTOCOL_OPENAI_CHAT_COMPLETIONS
-                )));
+                    "Unsupported custom model protocol: {} (supported: {}, {})",
+                    other, PROTOCOL_OPENAI_CHAT_COMPLETIONS, PROTOCOL_OPENAI_RESPONSES
+                )))
             }
-        }
+        };
 
         Ok(Self {
             protocol: OpenAIProtocol::new(
@@ -63,6 +68,7 @@ impl CustomService {
                 settings.model_name.clone().filter(|m| !m.is_empty()),
                 "Custom model",
             ),
+            use_responses,
         })
     }
 }
@@ -70,6 +76,13 @@ impl CustomService {
 #[async_trait]
 impl AIProviderService for CustomService {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError> {
+        if self.use_responses {
+            return crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                self.protocol.clone(),
+            )
+            .invoke(&request)
+            .await;
+        }
         self.protocol.invoke(&request).await
     }
 
@@ -83,6 +96,13 @@ impl AIProviderService for CustomService {
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
+        if self.use_responses {
+            return crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                self.protocol.clone(),
+            )
+            .invoke_stream(&request, &callbacks)
+            .await;
+        }
         self.protocol.invoke_stream(&request, &callbacks).await
     }
 
@@ -158,8 +178,17 @@ mod tests {
     }
 
     #[test]
+    fn accepts_responses_protocol() {
+        let s = settings(
+            Some("http://localhost:11434/v1"),
+            Some(PROTOCOL_OPENAI_RESPONSES),
+        );
+        assert!(CustomService::from_settings(&s).is_ok());
+    }
+
+    #[test]
     fn rejects_unknown_protocol() {
-        let s = settings(Some("http://localhost:11434/v1"), Some("OPENAI_RESPONSES"));
+        let s = settings(Some("http://localhost:11434/v1"), Some("GRPC"));
         assert!(CustomService::from_settings(&s).is_err());
     }
 }

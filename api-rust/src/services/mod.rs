@@ -9,6 +9,7 @@ pub mod mcp;
 pub mod model;
 pub mod openai;
 pub mod openai_protocol;
+pub mod openai_responses;
 pub mod pubsub;
 pub mod rag;
 pub mod realtime;
