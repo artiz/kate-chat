@@ -70,7 +70,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 * Use refresh token im MCP, save tokens encoded in Redis for agents
 
 ### APIs
-* (hgh) Rust API sync, part 4: OpenAI native tools (web_search/code_interpreter) on the Responses protocol, per-chat voice/thinking settings persistence, audio-input models. ~~Images generation, Library, admin API, OpenAI protocol~~, ~~RAG pipeline, MCP tools, web search, chat folders~~, ~~Responses protocol, realtime voice, message regeneration, forgot/reset password, global search~~ — done.
+* (low) Rust API sync — remaining polish: streamed pcm16 audio replies (currently sync), multi-turn audio-context reload from S3. ~~Images generation, Library, admin API, OpenAI protocol~~, ~~RAG pipeline, MCP tools, web search, chat folders~~, ~~Responses protocol, realtime voice, message regeneration, forgot/reset password, global search~~, ~~native OpenAI tools on Responses, per-chat voice/thinking persistence, audio-input models~~ — done.
 * (hgh) Google Vertex AI provider support
 * (mid) SerpApi for Web Search (new setting in UI)
 * (mid) Python API (FastAPI)

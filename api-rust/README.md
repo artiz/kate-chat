@@ -85,14 +85,27 @@ is assembled from the flat chat columns (fields without a backing column
 - **Realtime voice**: createRealtimeSession (OpenAI ephemeral WebRTC
   session, WebSocket-proxy fallback for Yandex on `/realtime/proxy` of
   the subscriptions server), addChatMessage transcript persistence
+- **Native OpenAI tools on the Responses protocol**: web_search and
+  code_interpreter serialize to provider-native tool blocks (the local
+  Yandex web-search tool is skipped for Responses models); native
+  web_search calls are recorded for the message's tool badges; reasoning
+  effort is derived from the chat's thinking token budget
+- **Per-chat voice + thinking**: persisted in `chats.voice` /
+  `chats.thinking` / `chats.thinking_budget`, surfaced under the chat
+  `settings` object, read by createRealtimeSession, the realtime proxy
+  and the Responses reasoning config
+- **Audio-input models** (`gpt-4o-audio`, `gpt-audio`): voice recordings
+  are stored to S3 and sent as OpenAI `input_audio` blocks; the spoken
+  reply (`modalities:[text,audio]`) is stored to S3 and referenced from
+  the assistant message (chat-completions protocol; sync, not streamed)
 
 ## Remaining gaps
 
-Per-chat voice/thinking settings have no backing columns (accepted,
-not persisted); OpenAI native tools (web_search/code_interpreter) on
-the Responses protocol are not used — local function tools (Yandex web
-search, MCP) serve both protocols. Client operations validate 53/53
-against the exported SDL (`scripts/validate-client-ops.cjs`).
+Audio replies use the non-streaming completion path (no live pcm16
+token streaming); prior-turn voice recordings are not reloaded from S3
+into the model context (only the current turn's audio is sent). Client
+operations validate 53/53 against the exported SDL
+(`scripts/validate-client-ops.cjs`).
 
 ## Develop
 
