@@ -69,14 +69,30 @@ is assembled from the flat chat columns (fields without a backing column
 — thinking, voice, cacheRetention, … — are accepted but not persisted),
 `mcpEnabled` is true.
 
-## Not ported yet (see the root README TODO)
+- **Message regeneration**: editMessage (delete-following + reuse of the
+  assistant reply, RAG-aware), switchModel (in-place reset with a new
+  model), callOther (linked alternate replies, attached to the thread
+  as `linkedMessages`), updateMessageContent, stopMessageGeneration
+  (in-process cancellation registry + best-effort OpenAI Responses
+  cancel)
+- **Auth extras**: forgotPassword / resetPassword (15-minute JWT reset
+  token, lettre SMTP mailer, optional reCAPTCHA), global `search` over
+  chats/messages/documents (LIKE-based)
+- **OpenAI Responses protocol** (`POST /responses`): automatic for
+  gpt-5 / gpt-4.1 / gpt-4o / o-series models and custom models with
+  `protocol: OPENAI_RESPONSES`; SSE streaming, function-tool loop via
+  `previous_response_id`, request cancellation
+- **Realtime voice**: createRealtimeSession (OpenAI ephemeral WebRTC
+  session, WebSocket-proxy fallback for Yandex on `/realtime/proxy` of
+  the subscriptions server), addChatMessage transcript persistence
 
-Operations of unported features return GraphQL validation errors when
-used: realtime
-voice (createRealtimeSession, addChatMessage), message regeneration
-(switchModel, callOther, updateMessageContent, stopMessageGeneration),
-forgot/reset password, global search, the OpenAI Responses protocol
-(gpt-5 / native tools).
+## Remaining gaps
+
+Per-chat voice/thinking settings have no backing columns (accepted,
+not persisted); OpenAI native tools (web_search/code_interpreter) on
+the Responses protocol are not used — local function tools (Yandex web
+search, MCP) serve both protocols. Client operations validate 53/53
+against the exported SDL (`scripts/validate-client-ops.cjs`).
 
 ## Develop
 
