@@ -886,10 +886,22 @@ impl Mutation {
             new_message.metadata = serde_json::to_string(&metadata).ok();
         }
 
-        let message = diesel::insert_into(messages::table)
+        let mut message = diesel::insert_into(messages::table)
             .values(&new_message)
             .get_result::<Message>(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // A voice recording on the user turn is stored to S3, recorded as a
+        // ChatFile, and referenced from the message (jsonContent + a
+        // markdown link) — same shape as the Node API.
+        if let Some(audio) = input.audio.as_ref().filter(|a| !a.bytes_base64.is_empty()) {
+            let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+            if let Err(e) =
+                store_input_audio(gql_ctx, &effective_config, &chat, &mut message, audio).await
+            {
+                warn!("Failed to store input audio: {:?}", e);
+            }
+        }
 
         diesel::update(
             chats::table
@@ -981,6 +993,23 @@ impl Mutation {
         let mut input_messages = previous_messages;
         input_messages.reverse();
         input_messages.push(message.clone());
+
+        // Audio-input models (gpt-4o-audio, …) reply with speech; the current
+        // voice recording is sent as an input_audio block and the spoken
+        // reply is stored to S3 (sync, no streaming — Node parity).
+        if crate::services::openai::is_audio_input_model(&model.model_id) {
+            return generate_audio_reply(
+                gql_ctx,
+                &effective_config,
+                &provider,
+                &chat,
+                input_messages,
+                &model,
+                input.audio.as_ref(),
+                user.default_system_prompt.clone(),
+            )
+            .await;
+        }
 
         let ai_msg_data = Message::new(
             input.chat_id.clone(),
@@ -1749,6 +1778,7 @@ impl Mutation {
             native_tools: vec![],
             thinking: None,
             thinking_budget: None,
+            voice: None,
         };
 
         // Test the model
@@ -2022,6 +2052,7 @@ impl Mutation {
                 native_tools: vec![],
                 thinking: None,
                 thinking_budget: None,
+                voice: None,
             };
             service
                 .invoke_model(invoke_request)
@@ -2144,6 +2175,257 @@ impl Mutation {
 
 /// Generate images for an images-generation model and post them as the
 /// assistant reply: upload to S3 under `{chatId}/{messageId}/{uuid}.{ext}`,
+/// Store a user turn's voice recording to S3, record a `chat_files` row and
+/// reference it from the message (jsonContent audio block + a markdown
+/// link) — Node's saveAudioFromBase64 + jsonContent shape.
+async fn store_input_audio(
+    gql_ctx: &GraphQLContext,
+    effective_config: &crate::config::AppConfig,
+    chat: &Chat,
+    message: &mut Message,
+    audio: &crate::models::AudioInput,
+) -> Result<(), AppError> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(audio.bytes_base64.trim())
+        .map_err(|e| AppError::Validation(format!("Invalid audio base64: {}", e)))?;
+    let ext = audio
+        .mime_type
+        .rsplit('/')
+        .next()
+        .filter(|e| !e.is_empty())
+        .unwrap_or("wav");
+    let file_name = format!(
+        "{}/{}/{}.{}",
+        chat.id,
+        message.id,
+        uuid::Uuid::new_v4(),
+        ext
+    );
+
+    let mut s3 = S3Service::new(effective_config.clone());
+    s3.upload_file(&file_name, bytes, &audio.mime_type).await?;
+
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let chat_file = crate::models::ChatFile::new_audio(
+        chat.id.clone(),
+        Some(message.id.clone()),
+        file_name.clone(),
+        audio.mime_type.clone(),
+    );
+    let _ = diesel::insert_into(chat_files::table)
+        .values(&chat_file)
+        .execute(&mut conn);
+
+    let block = serde_json::json!({
+        "contentType": "audio",
+        "fileName": file_name,
+        "mimeType": audio.mime_type,
+        "lengthSec": audio.duration_sec,
+    });
+    message.json_content = Some(serde_json::to_string(&vec![block]).unwrap_or_default());
+    let link = format!(
+        "[Voice message]({})",
+        crate::models::chat_file::file_url(&file_name)
+    );
+    message.content = if message.content.is_empty() {
+        link
+    } else {
+        format!("{}\n\n{}", message.content, link)
+    };
+
+    let updated: Message = diesel::update(messages::table.filter(messages::id.eq(&message.id)))
+        .set((
+            messages::content.eq(&message.content),
+            messages::json_content.eq(&message.json_content),
+            messages::updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .get_result(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    *message = updated;
+    Ok(())
+}
+
+/// Map an audio mime type to the OpenAI `input_audio` format (wav/mp3);
+/// chat.completions accepts only those two (Node parity).
+fn audio_input_format(mime: &str) -> String {
+    if mime.contains("wav") {
+        "wav".to_string()
+    } else {
+        "mp3".to_string()
+    }
+}
+
+/// Audio-input chat flow (Node's audio path): send the conversation with the
+/// current voice recording as an input_audio block, store the spoken reply
+/// to S3 and reference it from the assistant message.
+#[allow(clippy::too_many_arguments)]
+async fn generate_audio_reply(
+    gql_ctx: &GraphQLContext,
+    effective_config: &crate::config::AppConfig,
+    provider: &AIProviderWrapper,
+    chat: &Chat,
+    context_messages: Vec<Message>,
+    model: &Model,
+    input_audio: Option<&crate::models::AudioInput>,
+    system_prompt: Option<String>,
+) -> Result<GqlMessage> {
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let pubsub = get_global_pubsub();
+
+    // Placeholder assistant message, published as streaming.
+    let ai_msg_data = Message::new(
+        chat.id.clone(),
+        None,
+        String::new(),
+        String::from(MessageRole::Assistant),
+        model.model_id.clone(),
+        Some(model.name.clone()),
+    );
+    let mut ai_message = diesel::insert_into(messages::table)
+        .values(&ai_msg_data)
+        .get_result::<Message>(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    publish_message(pubsub, &chat.id, &ai_message, true).await;
+
+    // Attach the current recording to the last user turn as an input_audio
+    // block (prior-turn audio is not reloaded from S3 — current turn only).
+    let mut model_messages =
+        preprocess_messages(convert_messages_to_model_format(&context_messages));
+    if let Some(audio) = input_audio.filter(|a| !a.bytes_base64.is_empty()) {
+        if let Some(last_user) = model_messages
+            .iter_mut()
+            .rev()
+            .find(|m| matches!(m.role, crate::services::ai::MessageRole::User))
+        {
+            last_user.audio = Some(crate::services::ai::ModelAudio {
+                data_base64: audio.bytes_base64.trim().to_string(),
+                format: audio_input_format(&audio.mime_type),
+            });
+        }
+    }
+
+    let request = crate::services::ai::InvokeModelRequest {
+        model_id: model.model_id.clone(),
+        messages: model_messages,
+        temperature: chat.temperature,
+        max_tokens: chat.max_tokens,
+        top_p: chat.top_p,
+        system_prompt,
+        tools: None,
+        native_tools: vec![],
+        thinking: None,
+        thinking_budget: None,
+        voice: chat.voice.clone(),
+    };
+
+    let response = match provider.invoke_model(request).await {
+        Ok(response) => response,
+        Err(e) => {
+            let error_message = format!("Model inference error: {}", e);
+            let _ = diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+                .set((
+                    messages::content.eq(&error_message),
+                    messages::role.eq(String::from(MessageRole::Error)),
+                    messages::updated_at.eq(Utc::now().naive_utc()),
+                ))
+                .execute(&mut conn);
+            ai_message.content = error_message;
+            ai_message.role = String::from(MessageRole::Error);
+            publish_message(pubsub, &chat.id, &ai_message, false).await;
+            return Ok(GqlMessage::from(ai_message));
+        }
+    };
+
+    // Store any spoken reply to S3 and reference it from the message.
+    use base64::Engine;
+    let mut content = response.content.clone();
+    let mut blocks: Vec<serde_json::Value> = Vec::new();
+    let mut s3 = S3Service::new(effective_config.clone());
+    for data_url in &response.audios {
+        let (mime, b64) = split_audio_data_url(data_url);
+        let bytes = match base64::engine::general_purpose::STANDARD.decode(b64) {
+            Ok(bytes) => bytes,
+            Err(_) => continue,
+        };
+        let ext = mime
+            .rsplit('/')
+            .next()
+            .filter(|e| !e.is_empty())
+            .unwrap_or("mp3");
+        let ext = if ext == "mpeg" { "mp3" } else { ext };
+        let file_name = format!(
+            "{}/{}/{}.{}",
+            chat.id,
+            ai_message.id,
+            uuid::Uuid::new_v4(),
+            ext
+        );
+        if s3.upload_file(&file_name, bytes, mime).await.is_err() {
+            continue;
+        }
+        let chat_file = crate::models::ChatFile::new_audio(
+            chat.id.clone(),
+            Some(ai_message.id.clone()),
+            file_name.clone(),
+            mime.to_string(),
+        );
+        let _ = diesel::insert_into(chat_files::table)
+            .values(&chat_file)
+            .execute(&mut conn);
+        blocks.push(serde_json::json!({
+            "contentType": "audio",
+            "fileName": file_name,
+            "mimeType": mime,
+        }));
+        let link = format!(
+            "[Voice response]({})",
+            crate::models::chat_file::file_url(&file_name)
+        );
+        content = if content.is_empty() {
+            link
+        } else {
+            format!("{}\n\n{}", content, link)
+        };
+    }
+
+    ai_message.content = content;
+    if !blocks.is_empty() {
+        ai_message.json_content = Some(serde_json::to_string(&blocks).unwrap_or_default());
+    }
+    ai_message.updated_at = Utc::now().naive_utc();
+    let ai_message: Message =
+        diesel::update(messages::table.filter(messages::id.eq(&ai_message.id)))
+            .set((
+                messages::content.eq(&ai_message.content),
+                messages::json_content.eq(&ai_message.json_content),
+                messages::updated_at.eq(ai_message.updated_at),
+            ))
+            .get_result(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+    publish_message(pubsub, &chat.id, &ai_message, false).await;
+    Ok(GqlMessage::from(ai_message))
+}
+
+/// Split a `data:audio/xxx;base64,DATA` URL into (mime, base64). Defaults to
+/// audio/mpeg when the prefix is missing.
+fn split_audio_data_url(url: &str) -> (&str, &str) {
+    if let Some(rest) = url.strip_prefix("data:") {
+        if let Some((meta, data)) = rest.split_once(",") {
+            let mime = meta.split(';').next().unwrap_or("audio/mpeg");
+            return (mime, data);
+        }
+    }
+    ("audio/mpeg", url)
+}
+
 /// record a `chat_files` row per image (Library), embed markdown `/files/…`
 /// links + jsonContent blocks in the message — the Node API's
 /// processModelResponse flow.
@@ -2535,6 +2817,7 @@ async fn stream_reply(
         native_tools,
         thinking: Some(chat.thinking),
         thinking_budget: chat.thinking_budget,
+        voice: chat.voice.clone(),
     };
 
     let accumulated_content = Arc::new(Mutex::new(String::new()));
@@ -2772,6 +3055,7 @@ async fn generate_rag_reply(
                 native_tools: vec![],
                 thinking: None,
                 thinking_budget: None,
+                voice: None,
             })
             .await?;
 
@@ -3219,6 +3503,7 @@ fn convert_messages_to_model_format(
             timestamp: Some(msg.created_at.and_utc()),
             tool_calls: None,
             tool_call_id: None,
+            audio: None,
         })
         .collect()
 }

@@ -319,6 +319,7 @@ impl AnthropicProvider {
             model_id: model_id.to_string(),
             tool_calls,
             usage,
+            audios: vec![],
             finish_reason: response
                 .get("stop_reason")
                 .and_then(|r| r.as_str())
@@ -344,6 +345,7 @@ mod tests {
                     tool_calls: Some(json!([{ "type": "tool_use", "id": "t1",
                         "name": "internal_web_search", "input": {"query": "rust"} }])),
                     tool_call_id: None,
+                    audio: None,
                 },
                 ModelMessage {
                     role: AIMessageRole::Tool,
@@ -351,6 +353,7 @@ mod tests {
                     timestamp: None,
                     tool_calls: None,
                     tool_call_id: Some("t1".to_string()),
+                    audio: None,
                 },
             ],
             temperature: None,
@@ -372,6 +375,7 @@ mod tests {
             native_tools: vec![],
             thinking: None,
             thinking_budget: None,
+            voice: None,
         }
     }
 

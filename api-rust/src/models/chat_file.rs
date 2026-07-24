@@ -14,6 +14,7 @@ use crate::schema::chat_files;
 
 pub const CHAT_FILE_TYPE_IMAGE: &str = "image";
 pub const CHAT_FILE_TYPE_INLINE_DOCUMENT: &str = "inline_document";
+pub const CHAT_FILE_TYPE_AUDIO: &str = "audio";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable)]
 #[diesel(table_name = chat_files)]
@@ -45,6 +46,28 @@ impl ChatFile {
             chat_id,
             message_id,
             type_: CHAT_FILE_TYPE_IMAGE.to_string(),
+            file_name: Some(file_name),
+            mime: Some(mime),
+            upload_file: None,
+            predominant_color: None,
+            exif: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    pub fn new_audio(
+        chat_id: String,
+        message_id: Option<String>,
+        file_name: String,
+        mime: String,
+    ) -> Self {
+        let now = Utc::now().naive_utc();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            chat_id,
+            message_id,
+            type_: CHAT_FILE_TYPE_AUDIO.to_string(),
             file_name: Some(file_name),
             mime: Some(mime),
             upload_file: None,

@@ -309,6 +309,7 @@ impl OpenAIResponsesProtocol {
                         .and_then(|s| s.as_str())
                         .map(String::from),
                     tool_calls: vec![],
+                    audios: vec![],
                 });
             }
             let response_id = payload
@@ -519,6 +520,7 @@ mod tests {
             native_tools: vec![],
             thinking: None,
             thinking_budget: None,
+            voice: None,
         }
     }
 

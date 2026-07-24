@@ -301,6 +301,7 @@ impl BedrockService {
             timestamp: None,
             tool_calls: Some(assistant_content),
             tool_call_id: None,
+            audio: None,
         });
 
         let tools = session.tools.clone().unwrap_or_default();
@@ -775,6 +776,7 @@ mod tests {
             native_tools: vec![],
             thinking: None,
             thinking_budget: None,
+            voice: None,
         };
         let sanitized = sanitize_sampling_params(request);
         assert_eq!(sanitized.temperature, None);

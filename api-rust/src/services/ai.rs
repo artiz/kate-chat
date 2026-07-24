@@ -80,6 +80,14 @@ pub enum MessageRole {
     Tool,
 }
 
+/// A voice recording attached to a user turn (base64 + `wav`/`mp3`),
+/// serialized as an OpenAI `input_audio` content block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelAudio {
+    pub data_base64: String,
+    pub format: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelMessage {
     pub role: MessageRole,
@@ -92,6 +100,9 @@ pub struct ModelMessage {
     /// Set on tool-result turns (role = Tool).
     #[serde(default)]
     pub tool_call_id: Option<String>,
+    /// Voice recording on a user turn (audio-input models).
+    #[serde(default)]
+    pub audio: Option<ModelAudio>,
 }
 
 impl ModelMessage {
@@ -102,6 +113,7 @@ impl ModelMessage {
             timestamp: None,
             tool_calls: None,
             tool_call_id: None,
+            audio: None,
         }
     }
 }
@@ -185,6 +197,9 @@ pub struct InvokeModelRequest {
     /// protocol (Node's thinkingBudget).
     #[serde(default)]
     pub thinking_budget: Option<i32>,
+    /// Assistant voice for audio-output models (chat setting).
+    #[serde(default)]
+    pub voice: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,6 +210,10 @@ pub struct ModelResponse {
     pub finish_reason: Option<String>,
     #[serde(default)]
     pub tool_calls: Vec<ToolCallRequest>,
+    /// Generated speech responses as `data:audio/...;base64,` URLs
+    /// (audio-output models).
+    #[serde(default)]
+    pub audios: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

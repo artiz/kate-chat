@@ -19,6 +19,16 @@ const OPENAI_API_URL: &str = "https://api.openai.com/v1";
 const IMAGES_GENERATION_PREFIXES: &[&str] = &["dall-e", "chatgpt-image", "gpt-image"];
 /// Chat-model prefixes that accept image input.
 const IMAGE_INPUT_PREFIXES: &[&str] = &["gpt-4o", "gpt-4.1", "gpt-4-turbo", "gpt-5", "o3", "o4"];
+/// Chat models that accept voice recordings as input and reply with speech
+/// (Node's `OPENAI_MODELS_AUDIO_INPUT`). Prefix-matched.
+pub const OPENAI_MODELS_AUDIO_INPUT: &[&str] = &["gpt-4o-audio", "gpt-4o-mini-audio", "gpt-audio"];
+
+/// True when `model_id` is an audio-input (speech in/out) chat model.
+pub fn is_audio_input_model(model_id: &str) -> bool {
+    OPENAI_MODELS_AUDIO_INPUT
+        .iter()
+        .any(|p| model_id.starts_with(p))
+}
 
 pub struct OpenAIService {
     config: AppConfig,
@@ -54,6 +64,11 @@ impl OpenAIService {
         if model_id.starts_with("text-embedding") {
             return Some(("embedding", false, false));
         }
+        // Audio-input chat models (gpt-4o-audio, gpt-audio, …) reply with
+        // speech; they are chat models even though the id contains "audio".
+        if is_audio_input_model(model_id) {
+            return Some(("chat", true, false));
+        }
         if model_id.contains("gpt") || model_id.starts_with("o1") || model_id.starts_with("o3") {
             // exclude non-chat specializations kept out of the chat list
             for skip in [
@@ -79,7 +94,9 @@ impl OpenAIService {
 #[async_trait]
 impl AIProviderService for OpenAIService {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError> {
-        if crate::services::openai_responses::uses_responses_api(&request.model_id) {
+        if !is_audio_input_model(&request.model_id)
+            && crate::services::openai_responses::uses_responses_api(&request.model_id)
+        {
             return crate::services::openai_responses::OpenAIResponsesProtocol::new(
                 self.protocol()?,
             )
@@ -99,7 +116,9 @@ impl AIProviderService for OpenAIService {
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
-        if crate::services::openai_responses::uses_responses_api(&request.model_id) {
+        if !is_audio_input_model(&request.model_id)
+            && crate::services::openai_responses::uses_responses_api(&request.model_id)
+        {
             return crate::services::openai_responses::OpenAIResponsesProtocol::new(
                 self.protocol()?,
             )
@@ -235,8 +254,22 @@ mod tests {
             OpenAIService::classify_model("gpt-4o-realtime-preview"),
             None
         );
-        assert_eq!(OpenAIService::classify_model("gpt-4o-audio-preview"), None);
         assert_eq!(OpenAIService::classify_model("whisper-1"), None);
         assert_eq!(OpenAIService::classify_model("tts-1"), None);
+    }
+
+    #[test]
+    fn audio_input_models_are_chat() {
+        // Audio-input models are chat models even though the id says "audio".
+        assert_eq!(
+            OpenAIService::classify_model("gpt-4o-audio-preview"),
+            Some(("chat", true, false))
+        );
+        assert_eq!(
+            OpenAIService::classify_model("gpt-audio"),
+            Some(("chat", true, false))
+        );
+        assert!(is_audio_input_model("gpt-4o-mini-audio"));
+        assert!(!is_audio_input_model("gpt-4o"));
     }
 }

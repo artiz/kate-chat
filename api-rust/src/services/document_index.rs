@@ -341,6 +341,7 @@ async fn index_document(
                         native_tools: vec![],
                         thinking: None,
                         thinking_budget: None,
+                        voice: None,
                     })
                     .await?;
 

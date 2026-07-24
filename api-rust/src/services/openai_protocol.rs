@@ -144,6 +144,22 @@ impl OpenAIProtocol {
                         MessageRole::System => "system",
                         _ => "user",
                     };
+                    // A user turn carrying a voice recording serializes its
+                    // content as an array with an `input_audio` block.
+                    if matches!(msg.role, MessageRole::User) {
+                        if let Some(audio) = &msg.audio {
+                            let mut parts = Vec::new();
+                            if !msg.content.is_empty() {
+                                parts.push(json!({ "type": "text", "text": msg.content }));
+                            }
+                            parts.push(json!({
+                                "type": "input_audio",
+                                "input_audio": { "data": audio.data_base64, "format": audio.format },
+                            }));
+                            messages.push(json!({ "role": role, "content": parts }));
+                            continue;
+                        }
+                    }
                     messages.push(json!({ "role": role, "content": msg.content }));
                 }
             }
@@ -193,6 +209,19 @@ impl OpenAIProtocol {
                 .collect::<Vec<_>>());
         }
 
+        // Audio-output models: request speech alongside text. Streaming only
+        // supports pcm16 deltas; the sync path returns mp3 (Node parity).
+        if crate::services::openai::is_audio_input_model(&model_id) {
+            let voice = request
+                .voice
+                .as_deref()
+                .filter(|v| crate::services::realtime::OPENAI_REALTIME_VOICES.contains(v))
+                .unwrap_or(crate::services::realtime::OPENAI_REALTIME_DEFAULT_VOICE);
+            let format = if stream { "pcm16" } else { "mp3" };
+            body["modalities"] = json!(["text", "audio"]);
+            body["audio"] = json!({ "voice": voice, "format": format });
+        }
+
         body
     }
 
@@ -240,6 +269,7 @@ impl OpenAIProtocol {
             timestamp: None,
             tool_calls: Some(Value::Array(raw_calls)),
             tool_call_id: None,
+            audio: None,
         });
 
         let tools = session.tools.clone().unwrap_or_default();
@@ -311,11 +341,25 @@ impl OpenAIProtocol {
                 continue;
             }
 
-            let content = message
+            let mut content = message
                 .and_then(|msg| msg.get("content"))
                 .and_then(|content| content.as_str())
                 .unwrap_or("")
                 .to_string();
+
+            // Audio-output models return { audio: { data, transcript } };
+            // the transcript stands in for text when content is empty.
+            let mut audios = Vec::new();
+            if let Some(audio) = message.and_then(|msg| msg.get("audio")) {
+                if let Some(data) = audio.get("data").and_then(|d| d.as_str()) {
+                    audios.push(format!("data:audio/mpeg;base64,{}", data));
+                }
+                if content.is_empty() {
+                    if let Some(transcript) = audio.get("transcript").and_then(|t| t.as_str()) {
+                        content = transcript.to_string();
+                    }
+                }
+            }
 
             let finish_reason = first_choice
                 .and_then(|choice| choice.get("finish_reason"))
@@ -328,6 +372,7 @@ impl OpenAIProtocol {
                 usage: response_json.get("usage").map(Self::parse_usage),
                 finish_reason,
                 tool_calls: Vec::new(),
+                audios,
             });
         }
 
@@ -666,6 +711,7 @@ mod tests {
             native_tools: vec![],
             thinking: None,
             thinking_budget: None,
+            voice: None,
         }
     }
 
@@ -679,6 +725,38 @@ mod tests {
         assert_eq!(body["temperature"], 0.5);
         assert_eq!(body["max_tokens"], 100);
         assert!(body.get("stream").is_none());
+    }
+
+    #[test]
+    fn audio_input_serializes_input_audio_block_and_output_request() {
+        let protocol = OpenAIProtocol::new("https://api.openai.com/v1/", None, None, "OpenAI");
+        let mut req = request();
+        req.model_id = "gpt-4o-audio-preview".to_string();
+        req.voice = Some("verse".to_string());
+        req.messages = vec![crate::services::ai::ModelMessage {
+            role: MessageRole::User,
+            content: "transcribe this".to_string(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+            audio: Some(crate::services::ai::ModelAudio {
+                data_base64: "QUJD".to_string(),
+                format: "wav".to_string(),
+            }),
+        }];
+        let body = protocol.build_completion_body(&req, false);
+        let content = &body["messages"][1]["content"];
+        assert_eq!(content[0]["type"], "text");
+        assert_eq!(content[1]["type"], "input_audio");
+        assert_eq!(content[1]["input_audio"]["format"], "wav");
+        assert_eq!(content[1]["input_audio"]["data"], "QUJD");
+        // audio output requested, voice honored, mp3 for the sync path
+        assert_eq!(body["modalities"][1], "audio");
+        assert_eq!(body["audio"]["voice"], "verse");
+        assert_eq!(body["audio"]["format"], "mp3");
+        // streaming uses pcm16
+        let stream_body = protocol.build_completion_body(&req, true);
+        assert_eq!(stream_body["audio"]["format"], "pcm16");
     }
 
     #[test]
@@ -739,6 +817,7 @@ mod tests {
             tool_calls: Some(json!([{"id": "c1", "type": "function",
                 "function": {"name": "internal_web_search", "arguments": "{}"}}])),
             tool_call_id: None,
+            audio: None,
         });
         req.messages.push(ModelMessage {
             role: MessageRole::Tool,
@@ -746,6 +825,7 @@ mod tests {
             timestamp: None,
             tool_calls: None,
             tool_call_id: Some("c1".to_string()),
+            audio: None,
         });
 
         let body = protocol.build_completion_body(&req, false);

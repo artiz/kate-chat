@@ -165,6 +165,7 @@ impl AIProviderService for YandexService {
                 native_tools: vec![],
                 thinking: None,
                 thinking_budget: None,
+                voice: None,
             };
 
             match self.invoke_model(test_request).await {

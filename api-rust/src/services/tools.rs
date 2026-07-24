@@ -41,6 +41,7 @@ pub async fn execute_tool_call(
         timestamp: None,
         tool_calls: None,
         tool_call_id: Some(call.id.clone()),
+        audio: None,
     };
     (message, executed)
 }
