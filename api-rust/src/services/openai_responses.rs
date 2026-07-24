@@ -29,6 +29,48 @@ pub const RESPONSES_MODEL_PREFIXES: &[&str] =
 /// Reasoning models reject sampling params (Node deletes temperature).
 const NO_SAMPLING_PREFIXES: &[&str] = &["o1", "o3", "o4", "gpt-4o", "gpt-5"];
 
+/// Reasoning token-budget bounds (Node's ai.reasoningMinTokenBudget /
+/// reasoningMaxTokenBudget). The budget maps to an effort level.
+const REASONING_MIN_TOKEN_BUDGET: i32 = 1024;
+const REASONING_MAX_TOKEN_BUDGET: i32 = 16000;
+
+/// Native web-search tool-call name in Responses output (Node's
+/// NATIVE_WEB_SEARCH_TOOL_NAME).
+pub const NATIVE_WEB_SEARCH_TOOL_NAME: &str = "web_search";
+
+/// Build an ExecutedToolCall record from a native `web_search_call` output
+/// item (Node records the query into metadata.toolCalls for display).
+fn native_web_search_record(item: &Value) -> ExecutedToolCall {
+    let action = item.get("action");
+    let query = action
+        .and_then(|a| a.get("queries"))
+        .and_then(|q| q.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|q| q.as_str())
+                .collect::<Vec<_>>()
+                .join("\n\n")
+        })
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            action
+                .and_then(|a| a.get("query"))
+                .and_then(|q| q.as_str())
+                .map(String::from)
+        })
+        .unwrap_or_default();
+    ExecutedToolCall {
+        id: item
+            .get("id")
+            .and_then(|i| i.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        name: NATIVE_WEB_SEARCH_TOOL_NAME.to_string(),
+        args_json: json!({ "query": query }).to_string(),
+        content: String::new(),
+    }
+}
+
 pub fn uses_responses_api(model_id: &str) -> bool {
     RESPONSES_MODEL_PREFIXES.iter().any(|p| {
         model_id == *p || model_id.starts_with(&format!("{}-", p)) || model_id.starts_with(*p)
@@ -79,31 +121,65 @@ impl OpenAIResponsesProtocol {
                 body["temperature"] = json!(temperature);
             }
         }
-        if model.starts_with("gpt-5") {
-            body["reasoning"] = json!({ "effort": "minimal" });
+
+        // Native provider tool blocks (web_search / code_interpreter) plus
+        // any local function tools (MCP, etc.).
+        let mut tools: Vec<Value> = Vec::new();
+        let has_native_web_search = request.native_tools.iter().any(|t| t == "web_search");
+        if has_native_web_search {
+            tools.push(json!({ "type": "web_search", "search_context_size": "low" }));
         }
-        if let Some(tools) = request.tools.as_deref().filter(|t| !t.is_empty()) {
-            body["tools"] = Value::Array(
-                tools
-                    .iter()
-                    .map(|tool| {
-                        json!({
-                            "type": "function",
-                            "name": tool.spec.name,
-                            "description": tool.spec.description,
-                            "parameters": tool.spec.input_schema,
-                            "strict": false,
-                        })
-                    })
-                    .collect(),
-            );
+        if request.native_tools.iter().any(|t| t == "code_interpreter") {
+            tools.push(json!({ "type": "code_interpreter", "container": { "type": "auto" } }));
+        }
+        if let Some(function_tools) = request.tools.as_deref() {
+            for tool in function_tools {
+                tools.push(json!({
+                    "type": "function",
+                    "name": tool.spec.name,
+                    "description": tool.spec.description,
+                    "parameters": tool.spec.input_schema,
+                    "strict": false,
+                }));
+            }
+        }
+        if !tools.is_empty() {
+            body["tools"] = Value::Array(tools);
+        }
+
+        // Reasoning ("thinking") effort mapped from the token budget
+        // (Node's formatResponsesRequest). gpt-5 with native web_search
+        // cannot use the "minimal" effort.
+        if request.thinking.unwrap_or(false) {
+            let budget = request
+                .thinking_budget
+                .unwrap_or(REASONING_MIN_TOKEN_BUDGET)
+                .max(0);
+            let max_budget = REASONING_MAX_TOKEN_BUDGET as f64;
+            let mut effort = if (budget as f64) < max_budget * 0.1 {
+                "minimal"
+            } else if (budget as f64) < max_budget * 0.25 {
+                "low"
+            } else if (budget as f64) < max_budget * 0.75 {
+                "medium"
+            } else {
+                "high"
+            };
+            if model.starts_with("gpt-5") && has_native_web_search && effort == "minimal" {
+                effort = "medium";
+            }
+            body["reasoning"] = json!({ "effort": effort, "summary": "auto" });
+        } else if model.starts_with("gpt-5") {
+            // Reasoning-cancellation default for gpt-5 family (Node parity).
+            body["reasoning"] = json!({ "effort": "minimal" });
         }
         body
     }
 
-    fn parse_output(response: &Value) -> (String, Vec<ToolCallRequest>) {
+    fn parse_output(response: &Value) -> (String, Vec<ToolCallRequest>, Vec<ExecutedToolCall>) {
         let mut content = String::new();
         let mut calls = Vec::new();
+        let mut executed = Vec::new();
         for item in response
             .get("output")
             .and_then(|o| o.as_array())
@@ -111,6 +187,7 @@ impl OpenAIResponsesProtocol {
             .unwrap_or_default()
         {
             match item.get("type").and_then(|t| t.as_str()) {
+                Some("web_search_call") => executed.push(native_web_search_record(item)),
                 Some("message") => {
                     for part in item
                         .get("content")
@@ -149,7 +226,7 @@ impl OpenAIResponsesProtocol {
                 _ => {}
             }
         }
-        (content, calls)
+        (content, calls, executed)
     }
 
     fn parse_usage(response: &Value) -> Option<Usage> {
@@ -220,7 +297,8 @@ impl OpenAIResponsesProtocol {
                 .await
                 .map_err(|e| AppError::Http(e.to_string()))?;
 
-            let (content, calls) = Self::parse_output(&payload);
+            let (content, calls, native_executed) = Self::parse_output(&payload);
+            executed.extend(native_executed);
             if calls.is_empty() {
                 return Ok(ModelResponse {
                     content,
@@ -335,26 +413,34 @@ impl OpenAIResponsesProtocol {
                         }
                         Some("response.output_item.done") => {
                             let item = event.get("item").cloned().unwrap_or_default();
-                            if item.get("type").and_then(|t| t.as_str()) == Some("function_call") {
-                                let arguments = item
-                                    .get("arguments")
-                                    .and_then(|a| a.as_str())
-                                    .and_then(|a| serde_json::from_str(a).ok())
-                                    .unwrap_or_else(|| json!({}));
-                                pending_calls.push(ToolCallRequest {
-                                    id: item
-                                        .get("call_id")
-                                        .and_then(|c| c.as_str())
-                                        .unwrap_or_default()
-                                        .to_string(),
-                                    name: item
-                                        .get("name")
-                                        .and_then(|n| n.as_str())
-                                        .unwrap_or_default()
-                                        .to_string(),
-                                    arguments,
-                                    raw: item,
-                                });
+                            match item.get("type").and_then(|t| t.as_str()) {
+                                Some("function_call") => {
+                                    let arguments = item
+                                        .get("arguments")
+                                        .and_then(|a| a.as_str())
+                                        .and_then(|a| serde_json::from_str(a).ok())
+                                        .unwrap_or_else(|| json!({}));
+                                    pending_calls.push(ToolCallRequest {
+                                        id: item
+                                            .get("call_id")
+                                            .and_then(|c| c.as_str())
+                                            .unwrap_or_default()
+                                            .to_string(),
+                                        name: item
+                                            .get("name")
+                                            .and_then(|n| n.as_str())
+                                            .unwrap_or_default()
+                                            .to_string(),
+                                        arguments,
+                                        raw: item,
+                                    });
+                                }
+                                // Native web_search executes server-side; record
+                                // it for the assistant message's tool badges.
+                                Some("web_search_call") => {
+                                    executed.push(native_web_search_record(&item));
+                                }
+                                _ => {}
                             }
                         }
                         Some("response.completed") | Some("response.incomplete") => {
@@ -430,6 +516,9 @@ mod tests {
             top_p: None,
             system_prompt: Some("be brief".to_string()),
             tools: None,
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
         }
     }
 
@@ -491,10 +580,50 @@ mod tests {
             ],
             "usage": { "input_tokens": 5, "output_tokens": 2, "total_tokens": 7 }
         });
-        let (content, calls) = OpenAIResponsesProtocol::parse_output(&payload);
+        let (content, calls, _executed) = OpenAIResponsesProtocol::parse_output(&payload);
         assert_eq!(content, "Hello");
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].name, "web_search");
         assert_eq!(calls[0].arguments["query"], "rust");
+    }
+
+    #[test]
+    fn serializes_native_tools_and_reasoning() {
+        let protocol = OpenAIResponsesProtocol::new(OpenAIProtocol::new(
+            "https://api.openai.com/v1",
+            None,
+            None,
+            "OpenAI",
+        ));
+        let mut req = request("gpt-5");
+        req.native_tools = vec!["web_search".to_string(), "code_interpreter".to_string()];
+        req.thinking = Some(true);
+        req.thinking_budget = Some(1000); // < 10% of max → would be minimal, bumped to medium
+        let body = protocol.build_responses_body(&req, true);
+        let tools = body["tools"].as_array().unwrap();
+        assert_eq!(tools[0]["type"], "web_search");
+        assert_eq!(tools[0]["search_context_size"], "low");
+        assert_eq!(tools[1]["type"], "code_interpreter");
+        assert_eq!(tools[1]["container"]["type"], "auto");
+        // gpt-5 + web_search cannot use "minimal" → bumped to "medium"
+        assert_eq!(body["reasoning"]["effort"], "medium");
+        assert_eq!(body["reasoning"]["summary"], "auto");
+    }
+
+    #[test]
+    fn parses_native_web_search_call() {
+        let payload = serde_json::json!({
+            "output": [
+                { "type": "web_search_call", "id": "ws_1",
+                  "action": { "type": "search", "query": "rust async" } },
+                { "type": "message", "content": [ { "type": "output_text", "text": "Done" } ] }
+            ]
+        });
+        let (content, calls, executed) = OpenAIResponsesProtocol::parse_output(&payload);
+        assert_eq!(content, "Done");
+        assert!(calls.is_empty());
+        assert_eq!(executed.len(), 1);
+        assert_eq!(executed[0].name, "web_search");
+        assert!(executed[0].args_json.contains("rust async"));
     }
 }

@@ -338,6 +338,9 @@ async fn index_document(
                         top_p: None,
                         system_prompt: None,
                         tools: None,
+                        native_tools: vec![],
+                        thinking: None,
+                        thinking_budget: None,
                     })
                     .await?;
 

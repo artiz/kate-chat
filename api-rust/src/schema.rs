@@ -60,6 +60,10 @@ diesel::table! {
         updated_at -> Timestamp,
         // added by ALTER TABLE (2026-07-22 chat_folders migration) — physically last
         folder_id -> Nullable<Text>,
+        // added by ALTER TABLE (2026-07-24 chat_voice_thinking migration)
+        voice -> Nullable<Text>,
+        thinking -> Bool,
+        thinking_budget -> Nullable<Integer>,
     }
 }
 

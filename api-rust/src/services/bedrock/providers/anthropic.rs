@@ -369,6 +369,9 @@ mod tests {
                     api_url: None,
                 },
             }]),
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
         }
     }
 

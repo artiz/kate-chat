@@ -663,6 +663,9 @@ mod tests {
             top_p: None,
             system_prompt: Some("be brief".to_string()),
             tools: None,
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
         }
     }
 

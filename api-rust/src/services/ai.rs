@@ -171,6 +171,20 @@ pub struct InvokeModelRequest {
     pub system_prompt: Option<String>,
     #[serde(default)]
     pub tools: Option<Vec<ExecutableTool>>,
+    /// Native provider tool types enabled on the chat (Node's ToolType
+    /// values, e.g. "web_search", "code_interpreter"). Serialized as
+    /// provider-native tool blocks by the OpenAI Responses protocol; other
+    /// protocols ignore them (they expose those capabilities as local
+    /// function tools instead).
+    #[serde(default)]
+    pub native_tools: Vec<String>,
+    /// Reasoning ("thinking") enabled for this request (chat setting).
+    #[serde(default)]
+    pub thinking: Option<bool>,
+    /// Reasoning token budget; mapped to an effort level by the Responses
+    /// protocol (Node's thinkingBudget).
+    #[serde(default)]
+    pub thinking_budget: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

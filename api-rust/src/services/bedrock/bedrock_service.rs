@@ -772,6 +772,9 @@ mod tests {
             top_p: Some(0.9),
             system_prompt: None,
             tools: None,
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
         };
         let sanitized = sanitize_sampling_params(request);
         assert_eq!(sanitized.temperature, None);

@@ -347,8 +347,7 @@ impl Mutation {
             .map_err(|e| AppError::Database(e.to_string()))?;
 
         // The client sends generation settings as a nested object (Node API
-        // shape); flat fields are kept for backwards compatibility. Settings
-        // without a backing column (thinking, voice, …) are not persisted.
+        // shape); flat fields are kept for backwards compatibility.
         let settings = input.settings.unwrap_or_default();
         let temperature = settings.temperature.or(input.temperature);
         let max_tokens = settings.max_tokens.or(input.max_tokens);
@@ -382,6 +381,11 @@ impl Mutation {
             top_p.map(|p| chats::top_p.eq(p)),
             settings.system_prompt.map(|s| chats::system_prompt.eq(s)),
             settings.images_count.map(|c| chats::images_count.eq(c)),
+            settings.voice.map(|v| chats::voice.eq(v)),
+            settings.thinking.map(|t| chats::thinking.eq(t)),
+            settings
+                .thinking_budget
+                .map(|b| chats::thinking_budget.eq(b)),
             input.is_pinned.map(|p| chats::is_pinned.eq(p)),
             tools_json.map(|t| chats::tools.eq(t)),
             match &input.folder_id {
@@ -1550,7 +1554,7 @@ impl Mutation {
         }
 
         let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
-        let voice = realtime::pick_voice(&model, None);
+        let voice = realtime::pick_voice(&model, chat.voice.as_deref());
 
         if model.api_provider == "OPEN_AI" {
             match realtime::create_openai_ephemeral_session(&effective_config, &model, &voice).await
@@ -1742,6 +1746,9 @@ impl Mutation {
             top_p: None,
             system_prompt: None,
             tools: None,
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
         };
 
         // Test the model
@@ -2012,6 +2019,9 @@ impl Mutation {
                 top_p: None,
                 system_prompt: Some("You are a helpful assistant.".to_string()),
                 tools: None,
+                native_tools: vec![],
+                thinking: None,
+                thinking_budget: None,
             };
             service
                 .invoke_model(invoke_request)
@@ -2485,12 +2495,32 @@ async fn stream_reply(
     let chat_id = chat.id.clone();
 
     let model_messages = preprocess_messages(convert_messages_to_model_format(&context_messages));
+
+    // OpenAI Responses models expose web_search / code_interpreter as
+    // provider-native tool blocks instead of local function tools (Node
+    // parity: the distinction is by protocol).
+    let use_responses = model.api_provider == "OPEN_AI"
+        && crate::services::openai_responses::uses_responses_api(&model.model_id);
+    let native_tools: Vec<String> = if use_responses {
+        chat.tools
+            .as_deref()
+            .and_then(|json| serde_json::from_str::<Vec<crate::models::ChatTool>>(json).ok())
+            .unwrap_or_default()
+            .into_iter()
+            .map(|t| t.r#type)
+            .filter(|t| t == "web_search" || t == "code_interpreter")
+            .collect()
+    } else {
+        Vec::new()
+    };
+
     let executable_tools = build_chat_tools(
         &mut conn,
         effective_config,
         chat.user_id.as_deref().unwrap_or_default(),
         chat.tools.as_deref(),
         mcp_tokens,
+        use_responses, // skip local web_search when native web_search is used
     )
     .await;
 
@@ -2502,6 +2532,9 @@ async fn stream_reply(
         top_p,
         system_prompt,
         tools: (!executable_tools.is_empty()).then_some(executable_tools),
+        native_tools,
+        thinking: Some(chat.thinking),
+        thinking_budget: chat.thinking_budget,
     };
 
     let accumulated_content = Arc::new(Mutex::new(String::new()));
@@ -2736,6 +2769,9 @@ async fn generate_rag_reply(
                 top_p: None,
                 system_prompt: Some(prompt.system_prompt),
                 tools: None,
+                native_tools: vec![],
+                thinking: None,
+                thinking_budget: None,
             })
             .await?;
 
@@ -2973,6 +3009,9 @@ async fn build_chat_tools(
     user_id: &str,
     tools_json: Option<&str>,
     mcp_tokens: Option<&[crate::models::McpAuthTokenInput]>,
+    // OpenAI Responses models serve web_search natively; skip the local
+    // Yandex web-search function tool to avoid duplication.
+    exclude_native_web_search: bool,
 ) -> Vec<crate::services::ai::ExecutableTool> {
     use crate::schema::mcp_servers;
     use crate::services::ai::{ExecutableTool, ToolBackend, ToolSpec};
@@ -2986,7 +3025,7 @@ async fn build_chat_tools(
 
     let mut result = Vec::new();
 
-    if chat_tools.iter().any(|t| t.r#type == "web_search") {
+    if !exclude_native_web_search && chat_tools.iter().any(|t| t.r#type == "web_search") {
         match crate::services::web_search::web_search_tool(config) {
             Some(tool) => result.push(tool),
             None => warn!("Web search tool requested but Yandex Search is not configured"),
