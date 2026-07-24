@@ -1420,6 +1420,133 @@ impl Mutation {
         })
     }
 
+    /// Persist a realtime-voice transcript line without invoking a
+    /// model (Node's addChatMessage).
+    async fn add_chat_message(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::AddChatMessageInput,
+    ) -> Result<GqlMessage> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let role = input.role.to_lowercase();
+        if role != "user" && role != "assistant" {
+            return Err(AppError::Validation("Invalid message role".to_string()).into());
+        }
+        let chat: Chat = chats::table
+            .filter(chats::id.eq(&input.chat_id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Chat not found"))?;
+
+        let model_id = chat.model_id.clone().unwrap_or_default();
+        let model_name: Option<String> = models::table
+            .filter(models::model_id.eq(&model_id))
+            .filter(models::user_id.eq(&user.id))
+            .select(models::name)
+            .first(&mut conn)
+            .optional()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let mut new_message = Message::new(
+            input.chat_id.clone(),
+            (role == "user").then(|| user.id.clone()),
+            input.content.clone(),
+            role.clone(),
+            model_id,
+            (role == "assistant").then(|| model_name.unwrap_or_default()),
+        );
+        if role == "user" {
+            new_message.model_name = None;
+        }
+        let message = diesel::insert_into(messages::table)
+            .values(&new_message)
+            .get_result::<Message>(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let _ = diesel::update(
+            chats::table
+                .filter(chats::id.eq(&input.chat_id))
+                .filter(chats::is_pristine.eq(true)),
+        )
+        .set(chats::is_pristine.eq(false))
+        .execute(&mut conn);
+
+        publish_message(get_global_pubsub(), &input.chat_id, &message, false).await;
+        Ok(GqlMessage::from(message))
+    }
+
+    /// Mint a realtime voice session: OpenAI ephemeral WebRTC secret, or
+    /// the server-side WebSocket proxy fallback (Yandex / OpenAI errors).
+    async fn create_realtime_session(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(name = "chatId")] chat_id: async_graphql::ID,
+    ) -> Result<crate::services::realtime::RealtimeSessionResponse> {
+        use crate::services::realtime;
+
+        let chat_id = chat_id.to_string();
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let user = gql_ctx.require_user()?;
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let chat: Chat = chats::table
+            .filter(chats::id.eq(&chat_id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Chat not found"))?;
+        let model_id = chat
+            .model_id
+            .clone()
+            .or_else(|| user.default_model_id.clone())
+            .ok_or_else(|| async_graphql::Error::new("Chat has no model"))?;
+        let model: Model = models::table
+            .filter(models::model_id.eq(&model_id))
+            .filter(models::user_id.eq(&user.id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("Model not found"))?;
+        if model.type_ != "realtime" {
+            return Err(AppError::Validation(format!(
+                "Model {} is not a realtime model",
+                model.name
+            ))
+            .into());
+        }
+
+        let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+        let voice = realtime::pick_voice(&model, None);
+
+        if model.api_provider == "OPEN_AI" {
+            match realtime::create_openai_ephemeral_session(&effective_config, &model, &voice).await
+            {
+                Ok(session) => return Ok(session),
+                Err(e) => warn!("OpenAI ephemeral session failed, using WS proxy: {}", e),
+            }
+        }
+
+        let token = crate::utils::jwt::create_realtime_token(
+            &user.id,
+            &chat.id,
+            &gql_ctx.config.jwt_secret,
+        )
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+        Ok(realtime::RealtimeSessionResponse {
+            transport: "websocket".to_string(),
+            model: model.model_id.clone(),
+            client_secret: None,
+            sdp_url: None,
+            ws_url: Some(format!("{}?token={}", realtime::REALTIME_PROXY_PATH, token)),
+        })
+    }
+
     /// Plain content edit without regeneration (Node's
     /// updateMessageContent; admins may edit any message).
     async fn update_message_content(

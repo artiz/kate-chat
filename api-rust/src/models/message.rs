@@ -150,6 +150,13 @@ pub struct CreateMessageInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct AddChatMessageInput {
+    pub chat_id: String,
+    pub content: String,
+    pub role: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct ImageInput {
     pub bytes_base64: String,
     pub file_name: String,

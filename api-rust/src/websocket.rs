@@ -56,9 +56,27 @@ impl WebSocketServer {
                 )
             },
         );
+        // Realtime voice proxy: /realtime/proxy?token=<jwt>
+        let proxy_pool = self.db_pool.clone();
+        let proxy_config = self.config.clone();
+        let proxy = warp::path!("realtime" / "proxy")
+            .and(warp::query::<std::collections::HashMap<String, String>>())
+            .and(warp::ws())
+            .map(
+                move |params: std::collections::HashMap<String, String>, ws: warp::ws::Ws| {
+                    let db_pool = proxy_pool.clone();
+                    let config = proxy_config.clone();
+                    let token = params.get("token").cloned().unwrap_or_default();
+                    ws.on_upgrade(move |socket| async move {
+                        Self::handle_realtime_proxy(socket, token, db_pool, config).await;
+                    })
+                },
+            );
+
         let routes = warp::path("graphql")
             .and(warp::path("subscriptions"))
             .and(sub)
+            .or(proxy)
             .with(
                 warp::cors()
                     .allow_any_origin()
@@ -80,6 +98,59 @@ impl WebSocketServer {
         warp::serve(routes).run(addr).await;
 
         Ok(())
+    }
+
+    /// Authorize and run a realtime voice proxy connection.
+    async fn handle_realtime_proxy(
+        socket: warp::ws::WebSocket,
+        token: String,
+        db_pool: DbPool,
+        config: AppConfig,
+    ) {
+        use crate::models::{Chat, Model};
+        use crate::schema::{chats, models};
+        use crate::utils::jwt::verify_realtime_token;
+
+        let claims = match verify_realtime_token(&token, &config.jwt_secret) {
+            Ok(claims) => claims,
+            Err(e) => {
+                warn!("Realtime proxy: invalid token: {}", e);
+                return;
+            }
+        };
+        let Ok(mut conn) = db_pool.get() else {
+            return;
+        };
+        let user: User = match users::table
+            .filter(users::id.eq(&claims.user_id))
+            .first(&mut conn)
+        {
+            Ok(user) => user,
+            Err(_) => return,
+        };
+        let chat: Chat = match chats::table
+            .filter(chats::id.eq(&claims.chat_id))
+            .filter(chats::user_id.eq(&user.id))
+            .first(&mut conn)
+        {
+            Ok(chat) => chat,
+            Err(_) => return,
+        };
+        let Some(model_id) = chat.model_id.clone().or(user.default_model_id.clone()) else {
+            return;
+        };
+        let model: Model = match models::table
+            .filter(models::model_id.eq(&model_id))
+            .filter(models::user_id.eq(&user.id))
+            .first(&mut conn)
+        {
+            Ok(model) => model,
+            Err(_) => return,
+        };
+        drop(conn);
+
+        let effective_config = config.with_user_settings(user.settings.as_ref());
+        crate::services::realtime::run_proxy(socket, effective_config, chat, model).await;
     }
 
     async fn handle_connection_init(
