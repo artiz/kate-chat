@@ -137,6 +137,121 @@ impl Mutation {
         Ok(AuthResponse { token, user })
     }
 
+    /// Send a password-reset email (Node parity: silent success for
+    /// unknown/OAuth-only users to prevent enumeration).
+    async fn forgot_password(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::ForgotPasswordInput,
+    ) -> Result<crate::models::ForgotPasswordResponse> {
+        use crate::models::ForgotPasswordResponse;
+        use crate::services::mail;
+
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let config = &gql_ctx.config;
+
+        if let Some(secret) = &config.recaptcha_secret_key {
+            let Some(token) = input.recaptcha_token.as_deref().filter(|t| !t.is_empty()) else {
+                return Err(async_graphql::Error::new("reCAPTCHA token is required"));
+            };
+            if !mail::verify_recaptcha(secret, token).await? {
+                return Err(async_graphql::Error::new("reCAPTCHA verification failed"));
+            }
+        }
+
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let email = input.email.trim().to_string();
+        let found: Option<User> = users::table
+            .filter(users::email.eq(&email))
+            .first::<User>(&mut conn)
+            .optional()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Unknown user or OAuth-only account → pretend success
+        let Some(found) = found.filter(|u| u.password.as_deref().is_some_and(|p| !p.is_empty()))
+        else {
+            return Ok(ForgotPasswordResponse {
+                success: true,
+                error: None,
+            });
+        };
+
+        let reset_token = crate::utils::jwt::create_reset_token(
+            &found.id,
+            &found.email,
+            &config.jwt_reset_password_secret,
+        )
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+        let frontend = config
+            .frontend_url
+            .clone()
+            .unwrap_or_else(|| "http://localhost:3000".to_string());
+        let reset_url = format!("{}/reset-password?token={}", frontend, reset_token);
+
+        if !mail::smtp_enabled(config) {
+            info!("SMTP not enabled; password reset URL: {}", reset_url);
+            return Ok(ForgotPasswordResponse {
+                success: false,
+                error: Some("SMTP is not enabled. Cannot send password reset email.".to_string()),
+            });
+        }
+
+        match mail::send_password_reset_email(config, &found.email, &reset_url).await {
+            Ok(()) => Ok(ForgotPasswordResponse {
+                success: true,
+                error: None,
+            }),
+            Err(e) => {
+                error!("Failed to send password reset email: {}", e);
+                Ok(ForgotPasswordResponse {
+                    success: false,
+                    error: Some("Failed to send reset email. Please try again later.".to_string()),
+                })
+            }
+        }
+    }
+
+    /// Set a new password using a reset token and log the user in.
+    async fn reset_password(
+        &self,
+        ctx: &Context<'_>,
+        input: crate::models::ResetPasswordInput,
+    ) -> Result<AuthResponse> {
+        let gql_ctx = ctx.data::<GraphQLContext>()?;
+        let config = &gql_ctx.config;
+
+        let claims =
+            crate::utils::jwt::verify_reset_token(&input.token, &config.jwt_reset_password_secret)
+                .map_err(|_| async_graphql::Error::new("Reset link is invalid or has expired."))?;
+
+        let mut conn = gql_ctx
+            .db_pool
+            .get()
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        let user: User = users::table
+            .filter(users::id.eq(&claims.user_id))
+            .first(&mut conn)
+            .map_err(|_| async_graphql::Error::new("User not found"))?;
+
+        let hashed =
+            bcrypt::hash(&input.new_password, 12).map_err(|e| AppError::Internal(e.to_string()))?;
+        diesel::update(users::table.filter(users::id.eq(&user.id)))
+            .set((
+                users::password.eq(&hashed),
+                users::updated_at.eq(Utc::now().naive_utc()),
+            ))
+            .execute(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let token = crate::utils::jwt::create_token(&user.id, &config.jwt_secret)
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        log_user_action!(&user.id, "reset_password", email = %user.email);
+        Ok(AuthResponse { token, user })
+    }
+
     /// Update user information
     async fn update_user(&self, ctx: &Context<'_>, input: UpdateUserInput) -> Result<User> {
         let gql_ctx = ctx.data::<GraphQLContext>()?;

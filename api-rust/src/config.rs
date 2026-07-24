@@ -62,6 +62,16 @@ pub struct AppConfig {
     pub redis_url: Option<String>,
     pub document_status_channel: String,
 
+    // SMTP (password reset emails)
+    pub smtp_host: Option<String>,
+    pub smtp_port: u16,
+    pub smtp_secure: bool,
+    pub smtp_user: Option<String>,
+    pub smtp_password: Option<String>,
+    pub smtp_from: String,
+    pub jwt_reset_password_secret: String,
+    pub recaptcha_secret_key: Option<String>,
+
     // Enabled API providers
     pub enabled_api_providers: Vec<String>,
 }
@@ -106,6 +116,25 @@ impl AppConfig {
             sqs_secret_access_key: env::var("SQS_SECRET_ACCESS_KEY").ok(),
             sqs_documents_queue: env::var("SQS_DOCUMENTS_QUEUE").ok(),
             sqs_index_documents_queue: env::var("SQS_INDEX_DOCUMENTS_QUEUE").ok(),
+
+            // SMTP (Node parity: enabled when SMTP_HOST is set)
+            smtp_host: env::var("SMTP_HOST").ok().filter(|s| !s.is_empty()),
+            smtp_port: env::var("SMTP_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(587),
+            smtp_secure: env::var("SMTP_SECURE")
+                .map(|v| v == "true")
+                .unwrap_or(false),
+            smtp_user: env::var("SMTP_USER").ok(),
+            smtp_password: env::var("SMTP_PASSWORD").ok(),
+            smtp_from: env::var("SMTP_FROM")
+                .unwrap_or_else(|_| "no-reply@katechat.tech".to_string()),
+            jwt_reset_password_secret: env::var("JWT_RESET_PASSWORD_SECRET")
+                .unwrap_or_else(|_| "jwt-reset-password-secret".to_string()),
+            recaptcha_secret_key: env::var("RECAPTCHA_SECRET_KEY")
+                .ok()
+                .filter(|s| !s.is_empty()),
 
             // Redis: siblings (Node API, document-processor) default to
             // localhost; empty REDIS_URL disables the status subscriber
