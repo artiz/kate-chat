@@ -103,17 +103,19 @@ is assembled from the flat chat columns (fields without a backing column
   referenced from the message (jsonContent `file` block + link); the
   content is preloaded from S3 and sent to the model as a file block —
   textual mimes inlined as text, PDFs as an OpenAI `file` /
-  `input_file` block (only for image-capable models, Node parity)
+  `input_file` block (OpenAI/Yandex/custom) or a native Anthropic
+  `document` block (Bedrock Claude), only for image-capable models
+  (Node parity)
 
 ## Remaining gaps
 
 Audio replies use the non-streaming completion path (no live pcm16
 token streaming); prior-turn voice recordings are not reloaded from S3
-into the model context (only the current turn's audio is sent). Inline
-file blocks target the OpenAI completions/Responses protocols; the
-Bedrock Converse `document` block is not wired yet. Client operations
-validate 53/53 against the exported SDL
-(`scripts/validate-client-ops.cjs`).
+into the model context (only the current turn's audio is sent).
+Bedrock file blocks cover the Anthropic (Claude) family — the other
+Bedrock model families use their native InvokeModel formats and skip
+non-text files. Client operations validate 53/53 against the exported
+SDL (`scripts/validate-client-ops.cjs`).
 
 ## Develop
 
