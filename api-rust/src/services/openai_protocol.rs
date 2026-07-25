@@ -144,21 +144,42 @@ impl OpenAIProtocol {
                         MessageRole::System => "system",
                         _ => "user",
                     };
-                    // A user turn carrying a voice recording serializes its
-                    // content as an array with an `input_audio` block.
-                    if matches!(msg.role, MessageRole::User) {
+                    // A user turn carrying a voice recording or inline files
+                    // serializes its content as a parts array.
+                    if matches!(msg.role, MessageRole::User)
+                        && (msg.audio.is_some() || !msg.files.is_empty())
+                    {
+                        let mut parts = Vec::new();
+                        if !msg.content.is_empty() {
+                            parts.push(json!({ "type": "text", "text": msg.content }));
+                        }
                         if let Some(audio) = &msg.audio {
-                            let mut parts = Vec::new();
-                            if !msg.content.is_empty() {
-                                parts.push(json!({ "type": "text", "text": msg.content }));
-                            }
                             parts.push(json!({
                                 "type": "input_audio",
                                 "input_audio": { "data": audio.data_base64, "format": audio.format },
                             }));
-                            messages.push(json!({ "role": role, "content": parts }));
-                            continue;
                         }
+                        // Inline files: textual mimes are sent as text, PDFs as
+                        // a `file` block (rides on vision support — the caller
+                        // only preloads base64 for image-capable models).
+                        for file in &msg.files {
+                            if let Some(text) = &file.text {
+                                parts.push(json!({
+                                    "type": "text",
+                                    "text": format!("File \"{}\":\n\n{}", file.name, text),
+                                }));
+                            } else if let Some(base64) = &file.base64 {
+                                parts.push(json!({
+                                    "type": "file",
+                                    "file": {
+                                        "filename": file.name,
+                                        "file_data": format!("data:{};base64,{}", file.mime_type, base64),
+                                    },
+                                }));
+                            }
+                        }
+                        messages.push(json!({ "role": role, "content": parts }));
+                        continue;
                     }
                     messages.push(json!({ "role": role, "content": msg.content }));
                 }
@@ -270,6 +291,7 @@ impl OpenAIProtocol {
             tool_calls: Some(Value::Array(raw_calls)),
             tool_call_id: None,
             audio: None,
+            files: vec![],
         });
 
         let tools = session.tools.clone().unwrap_or_default();
@@ -743,6 +765,7 @@ mod tests {
                 data_base64: "QUJD".to_string(),
                 format: "wav".to_string(),
             }),
+            files: vec![],
         }];
         let body = protocol.build_completion_body(&req, false);
         let content = &body["messages"][1]["content"];
@@ -757,6 +780,50 @@ mod tests {
         // streaming uses pcm16
         let stream_body = protocol.build_completion_body(&req, true);
         assert_eq!(stream_body["audio"]["format"], "pcm16");
+    }
+
+    #[test]
+    fn inline_files_serialize_text_and_pdf_blocks() {
+        let protocol = OpenAIProtocol::new("https://api.openai.com/v1/", None, None, "OpenAI");
+        let mut req = request();
+        req.messages = vec![crate::services::ai::ModelMessage {
+            role: MessageRole::User,
+            content: "review these".to_string(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+            audio: None,
+            files: vec![
+                crate::services::ai::ModelFile {
+                    s3_key: "c/m/notes.txt".to_string(),
+                    name: "notes.txt".to_string(),
+                    mime_type: "text/plain".to_string(),
+                    text: Some("hello".to_string()),
+                    base64: None,
+                },
+                crate::services::ai::ModelFile {
+                    s3_key: "c/m/doc.pdf".to_string(),
+                    name: "doc.pdf".to_string(),
+                    mime_type: "application/pdf".to_string(),
+                    text: None,
+                    base64: Some("QUJD".to_string()),
+                },
+            ],
+        }];
+        let body = protocol.build_completion_body(&req, false);
+        let content = &body["messages"][1]["content"];
+        assert_eq!(content[0]["type"], "text"); // leading message text
+        assert_eq!(content[1]["type"], "text"); // textual file inlined
+        assert!(content[1]["text"]
+            .as_str()
+            .unwrap()
+            .contains("File \"notes.txt\""));
+        assert_eq!(content[2]["type"], "file");
+        assert_eq!(content[2]["file"]["filename"], "doc.pdf");
+        assert_eq!(
+            content[2]["file"]["file_data"],
+            "data:application/pdf;base64,QUJD"
+        );
     }
 
     #[test]
@@ -818,6 +885,7 @@ mod tests {
                 "function": {"name": "internal_web_search", "arguments": "{}"}}])),
             tool_call_id: None,
             audio: None,
+            files: vec![],
         });
         req.messages.push(ModelMessage {
             role: MessageRole::Tool,
@@ -826,6 +894,7 @@ mod tests {
             tool_calls: None,
             tool_call_id: Some("c1".to_string()),
             audio: None,
+            files: vec![],
         });
 
         let body = protocol.build_completion_body(&req, false);

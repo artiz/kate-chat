@@ -88,6 +88,38 @@ pub struct ModelAudio {
     pub format: String,
 }
 
+/// An inline chat-context file attached to a user turn (PDF/text),
+/// serialized as a provider file block. Content is preloaded from S3
+/// before the (synchronous) request body is built: textual files get
+/// `text`, binary files (PDF) get `base64`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelFile {
+    /// S3 key of the stored file (used to preload content; not serialized
+    /// into the request).
+    #[serde(skip)]
+    pub s3_key: String,
+    /// Original upload filename, passed to the model as the document name.
+    pub name: String,
+    pub mime_type: String,
+    /// Preloaded UTF-8 content for textual files.
+    #[serde(default)]
+    pub text: Option<String>,
+    /// Preloaded base64 content for binary files (PDF).
+    #[serde(default)]
+    pub base64: Option<String>,
+}
+
+/// True for mime types inlined as plain text rather than a binary block
+/// (Node's isTextualMime).
+pub fn is_textual_mime(mime: &str) -> bool {
+    let m = mime.split(';').next().unwrap_or("").trim().to_lowercase();
+    m.starts_with("text/")
+        || matches!(
+            m.as_str(),
+            "application/json" | "application/xml" | "application/x-yaml"
+        )
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelMessage {
     pub role: MessageRole,
@@ -103,6 +135,9 @@ pub struct ModelMessage {
     /// Voice recording on a user turn (audio-input models).
     #[serde(default)]
     pub audio: Option<ModelAudio>,
+    /// Inline chat-context files on a user turn (content preloaded from S3).
+    #[serde(default)]
+    pub files: Vec<ModelFile>,
 }
 
 impl ModelMessage {
@@ -114,6 +149,7 @@ impl ModelMessage {
             tool_calls: None,
             tool_call_id: None,
             audio: None,
+            files: Vec::new(),
         }
     }
 }

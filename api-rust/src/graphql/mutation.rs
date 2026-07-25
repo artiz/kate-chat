@@ -903,6 +903,16 @@ impl Mutation {
             }
         }
 
+        // Inline chat-context files (PDF/text) sent with the message.
+        if let Some(files) = input.files.as_ref().filter(|f| !f.is_empty()) {
+            let effective_config = gql_ctx.config.with_user_settings(user.settings.as_ref());
+            if let Err(e) =
+                store_input_files(gql_ctx, &effective_config, &chat, &mut message, files).await
+            {
+                warn!("Failed to store input files: {:?}", e);
+            }
+        }
+
         diesel::update(
             chats::table
                 .filter(chats::id.eq(&input.chat_id))
@@ -2249,6 +2259,125 @@ async fn store_input_audio(
     Ok(())
 }
 
+/// Store a user turn's inline chat-context files to S3, record a `chat_files`
+/// row per file (type inline_document) and reference them from the message
+/// (jsonContent `file` blocks + markdown links) — Node's saveFileFromBase64
+/// + ModelMessageContentFile shape.
+async fn store_input_files(
+    gql_ctx: &GraphQLContext,
+    effective_config: &crate::config::AppConfig,
+    chat: &Chat,
+    message: &mut Message,
+    files: &[crate::models::FileInput],
+) -> Result<(), AppError> {
+    use base64::Engine;
+    let mut conn = gql_ctx
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    let mut s3 = S3Service::new(effective_config.clone());
+
+    // Preserve any existing jsonContent blocks (e.g. an audio block).
+    let mut blocks: Vec<serde_json::Value> = message
+        .json_content
+        .as_deref()
+        .and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or_default();
+
+    for (index, file) in files.iter().enumerate() {
+        // bytesBase64 may be a data URL or raw base64.
+        let (mime, b64) = if file.bytes_base64.starts_with("data:") {
+            let (m, d) = split_audio_data_url(&file.bytes_base64);
+            (m.to_string(), d.to_string())
+        } else {
+            (file.mime_type.clone(), file.bytes_base64.clone())
+        };
+        let bytes = match base64::engine::general_purpose::STANDARD.decode(b64.trim()) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                warn!("Invalid file base64 for {}: {}", file.file_name, e);
+                continue;
+            }
+        };
+        let ext = file_extension_for_mime(&mime);
+        let s3_key = format!(
+            "{}/{}/{}-file-{}.{}",
+            chat.id,
+            message.id,
+            index,
+            uuid::Uuid::new_v4(),
+            ext
+        );
+        if let Err(e) = s3.upload_file(&s3_key, bytes, &mime).await {
+            warn!("Failed to store input file {}: {:?}", file.file_name, e);
+            continue;
+        }
+        let chat_file = crate::models::ChatFile::new_inline_document(
+            chat.id.clone(),
+            Some(message.id.clone()),
+            s3_key.clone(),
+            file.file_name.clone(),
+            mime.clone(),
+        );
+        let _ = diesel::insert_into(chat_files::table)
+            .values(&chat_file)
+            .execute(&mut conn);
+
+        blocks.push(serde_json::json!({
+            "contentType": "file",
+            "fileName": s3_key,
+            "mimeType": mime,
+            "uploadFileName": file.file_name,
+            "size": file.size,
+        }));
+        let link = format!(
+            "[{}]({})",
+            file.file_name,
+            crate::models::chat_file::file_url(&s3_key)
+        );
+        message.content = if message.content.is_empty() {
+            link
+        } else {
+            format!("{}\n\n{}", message.content, link)
+        };
+    }
+
+    message.json_content = Some(serde_json::to_string(&blocks).unwrap_or_default());
+    let updated: Message = diesel::update(messages::table.filter(messages::id.eq(&message.id)))
+        .set((
+            messages::content.eq(&message.content),
+            messages::json_content.eq(&message.json_content),
+            messages::updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .get_result(&mut conn)
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    *message = updated;
+    Ok(())
+}
+
+/// Storage extension for an inline-file mime (Node's FILE_MIME_EXTENSIONS;
+/// unknown mimes fall back to `bin`).
+fn file_extension_for_mime(mime: &str) -> &'static str {
+    match mime
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_lowercase()
+        .as_str()
+    {
+        "application/pdf" => "pdf",
+        "text/plain" => "txt",
+        "text/markdown" | "text/x-markdown" => "md",
+        "text/csv" | "application/csv" => "csv",
+        "text/html" => "html",
+        "application/json" => "json",
+        "application/xml" | "text/xml" => "xml",
+        "application/x-yaml" | "text/yaml" => "yaml",
+        _ => "bin",
+    }
+}
+
 /// Map an audio mime type to the OpenAI `input_audio` format (wav/mp3);
 /// chat.completions accepts only those two (Node parity).
 fn audio_input_format(mime: &str) -> String {
@@ -2776,7 +2905,10 @@ async fn stream_reply(
     let pubsub = get_global_pubsub();
     let chat_id = chat.id.clone();
 
-    let model_messages = preprocess_messages(convert_messages_to_model_format(&context_messages));
+    let mut model_messages =
+        preprocess_messages(convert_messages_to_model_format(&context_messages));
+    // Preload inline chat-context file content from S3 into the request.
+    preload_file_content(&mut model_messages, effective_config, model.image_input).await;
 
     // OpenAI Responses models expose web_search / code_interpreter as
     // provider-native tool blocks instead of local function tools (Node
@@ -3504,8 +3636,87 @@ fn convert_messages_to_model_format(
             tool_calls: None,
             tool_call_id: None,
             audio: None,
+            files: parse_file_blocks(msg.json_content.as_deref()),
         })
         .collect()
+}
+
+/// Extract inline-file content blocks (`contentType: "file"`) from a stored
+/// message's jsonContent into ModelFile stubs (content preloaded later).
+fn parse_file_blocks(json_content: Option<&str>) -> Vec<crate::services::ai::ModelFile> {
+    let Some(blocks) =
+        json_content.and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(s).ok())
+    else {
+        return Vec::new();
+    };
+    blocks
+        .iter()
+        .filter(|b| b.get("contentType").and_then(|c| c.as_str()) == Some("file"))
+        .filter_map(|b| {
+            let s3_key = b.get("fileName").and_then(|f| f.as_str())?.to_string();
+            let mime_type = b
+                .get("mimeType")
+                .and_then(|m| m.as_str())
+                .unwrap_or("application/octet-stream")
+                .to_string();
+            let name = b
+                .get("uploadFileName")
+                .and_then(|u| u.as_str())
+                .map(String::from)
+                .or_else(|| s3_key.rsplit('/').next().map(String::from))
+                .unwrap_or_else(|| "document".to_string());
+            Some(crate::services::ai::ModelFile {
+                s3_key,
+                name,
+                mime_type,
+                text: None,
+                base64: None,
+            })
+        })
+        .collect()
+}
+
+/// Preload inline-file content from S3 into the model messages: textual
+/// files become UTF-8 text, other files (PDF) become base64 — but binary
+/// files are only loaded for image-capable models (PDF understanding rides
+/// on vision support in the completions API; Node parity).
+async fn preload_file_content(
+    messages: &mut [crate::services::ai::ModelMessage],
+    config: &crate::config::AppConfig,
+    image_capable: bool,
+) {
+    use base64::Engine;
+    if messages.iter().all(|m| m.files.is_empty()) {
+        return;
+    }
+    let mut s3 = S3Service::new(config.clone());
+    for message in messages.iter_mut() {
+        for file in message.files.iter_mut() {
+            let textual = crate::services::ai::is_textual_mime(&file.mime_type);
+            if !textual && !image_capable {
+                warn!(
+                    "Model does not support file input, skipping {}",
+                    file.s3_key
+                );
+                continue;
+            }
+            match s3.get_file(&file.s3_key).await {
+                Ok((bytes, _)) => {
+                    if textual {
+                        file.text = Some(String::from_utf8_lossy(&bytes).into_owned());
+                    } else {
+                        file.base64 =
+                            Some(base64::engine::general_purpose::STANDARD.encode(&bytes));
+                    }
+                }
+                Err(e) => warn!("Failed to load inline file {}: {:?}", file.s3_key, e),
+            }
+        }
+        // Drop files that could not be loaded (unsupported / missing).
+        message
+            .files
+            .retain(|f| f.text.is_some() || f.base64.is_some());
+    }
 }
 
 /// Preprocess messages: sort by timestamp and join consecutive messages from the same role

@@ -101,6 +101,30 @@ impl OpenAIResponsesProtocol {
                     MessageRole::System => "developer",
                     MessageRole::Tool => unreachable!(),
                 };
+                // A turn carrying inline files serializes its content as an
+                // items array: textual files as input_text, PDFs as
+                // input_file (files are user-provided context).
+                if !m.files.is_empty() {
+                    let mut parts = Vec::new();
+                    if !m.content.is_empty() {
+                        parts.push(json!({ "type": "input_text", "text": m.content }));
+                    }
+                    for file in &m.files {
+                        if let Some(text) = &file.text {
+                            parts.push(json!({
+                                "type": "input_text",
+                                "text": format!("File \"{}\":\n\n{}", file.name, text),
+                            }));
+                        } else if let Some(base64) = &file.base64 {
+                            parts.push(json!({
+                                "type": "input_file",
+                                "filename": file.name,
+                                "file_data": format!("data:{};base64,{}", file.mime_type, base64),
+                            }));
+                        }
+                    }
+                    return json!({ "role": "user", "content": parts });
+                }
                 json!({ "role": role, "content": m.content })
             })
             .collect();
@@ -610,6 +634,38 @@ mod tests {
         // gpt-5 + web_search cannot use "minimal" → bumped to "medium"
         assert_eq!(body["reasoning"]["effort"], "medium");
         assert_eq!(body["reasoning"]["summary"], "auto");
+    }
+
+    #[test]
+    fn inline_files_serialize_input_file_items() {
+        let protocol = OpenAIResponsesProtocol::new(OpenAIProtocol::new(
+            "https://api.openai.com/v1",
+            None,
+            None,
+            "OpenAI",
+        ));
+        let mut req = request("gpt-4.1");
+        req.messages = vec![crate::services::ai::ModelMessage {
+            role: MessageRole::User,
+            content: "read this".to_string(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+            audio: None,
+            files: vec![crate::services::ai::ModelFile {
+                s3_key: "c/m/doc.pdf".to_string(),
+                name: "doc.pdf".to_string(),
+                mime_type: "application/pdf".to_string(),
+                text: None,
+                base64: Some("QUJD".to_string()),
+            }],
+        }];
+        let body = protocol.build_responses_body(&req, false);
+        let content = &body["input"][0]["content"];
+        assert_eq!(content[0]["type"], "input_text");
+        assert_eq!(content[1]["type"], "input_file");
+        assert_eq!(content[1]["filename"], "doc.pdf");
+        assert_eq!(content[1]["file_data"], "data:application/pdf;base64,QUJD");
     }
 
     #[test]

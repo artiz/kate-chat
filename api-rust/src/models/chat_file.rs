@@ -77,6 +77,31 @@ impl ChatFile {
             updated_at: now,
         }
     }
+
+    /// Inline chat-context file (PDF/text attached to a message).
+    /// `upload_file` keeps the original client filename (Node parity).
+    pub fn new_inline_document(
+        chat_id: String,
+        message_id: Option<String>,
+        file_name: String,
+        upload_file: String,
+        mime: String,
+    ) -> Self {
+        let now = Utc::now().naive_utc();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            chat_id,
+            message_id,
+            type_: CHAT_FILE_TYPE_INLINE_DOCUMENT.to_string(),
+            file_name: Some(file_name),
+            mime: Some(mime),
+            upload_file: Some(upload_file),
+            predominant_color: None,
+            exif: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
 }
 
 pub fn file_url(file_name: &str) -> String {

@@ -42,6 +42,7 @@ pub async fn execute_tool_call(
         tool_calls: None,
         tool_call_id: Some(call.id.clone()),
         audio: None,
+        files: vec![],
     };
     (message, executed)
 }

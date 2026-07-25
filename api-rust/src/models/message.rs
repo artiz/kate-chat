@@ -137,15 +137,13 @@ pub struct CreateMessageInput {
     pub max_tokens: Option<i32>,
     pub top_p: Option<f32>,
     pub images: Option<Vec<ImageInput>>,
-    /// Voice recording input — accepted for schema compatibility;
-    /// audio models are not ported yet.
+    /// Voice recording input for audio-input models (gpt-4o-audio, …).
     pub audio: Option<AudioInput>,
-    /// Inline chat-context documents — accepted for schema compatibility;
-    /// file content blocks are not ported yet.
+    /// Inline chat-context files (PDF/text) sent to the model as file
+    /// content blocks.
     pub files: Option<Vec<FileInput>>,
     pub document_ids: Option<Vec<String>>,
-    /// MCP auth tokens — accepted for schema compatibility; MCP is not
-    /// ported yet.
+    /// Per-request MCP auth tokens (OAuth bearer per server).
     pub mcp_tokens: Option<Vec<McpAuthTokenInput>>,
 }
 
@@ -320,8 +318,7 @@ pub struct GqlDeleteMessageResponse {
 }
 
 /// Per-request context passed by the client alongside message mutations
-/// (MCP auth tokens, context-limit reset). Accepted for schema
-/// compatibility; MCP is not ported yet.
+/// (MCP auth tokens, context-limit reset).
 #[derive(Debug, Clone, Serialize, Deserialize, InputObject)]
 #[graphql(name = "MessageContext")]
 pub struct MessageContextInput {

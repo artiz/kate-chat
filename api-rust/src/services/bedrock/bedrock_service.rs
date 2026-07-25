@@ -302,6 +302,7 @@ impl BedrockService {
             tool_calls: Some(assistant_content),
             tool_call_id: None,
             audio: None,
+            files: vec![],
         });
 
         let tools = session.tools.clone().unwrap_or_default();
