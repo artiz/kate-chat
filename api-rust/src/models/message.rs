@@ -356,9 +356,8 @@ impl From<MessageType> for String {
 impl From<String> for MessageType {
     fn from(msg_type: String) -> Self {
         match msg_type.as_str() {
-            "message" => MessageType::Message,
             "system" => MessageType::System,
-            &_ => todo!(),
+            _ => MessageType::Message,
         }
     }
 }
