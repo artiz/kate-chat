@@ -64,6 +64,12 @@ impl OpenAIService {
         if model_id.starts_with("text-embedding") {
             return Some(("embedding", false, false));
         }
+        // Realtime voice models (gpt-4o-realtime, gpt-realtime, …) are a
+        // distinct model type (Node's ModelType.REALTIME) — they back the
+        // voice-to-voice sessions, not the chat list.
+        if model_id.contains("-realtime") {
+            return Some(("realtime", false, false));
+        }
         // Audio-input chat models (gpt-4o-audio, gpt-audio, …) reply with
         // speech; they are chat models even though the id contains "audio".
         if is_audio_input_model(model_id) {
@@ -71,14 +77,7 @@ impl OpenAIService {
         }
         if model_id.contains("gpt") || model_id.starts_with("o1") || model_id.starts_with("o3") {
             // exclude non-chat specializations kept out of the chat list
-            for skip in [
-                "instruct",
-                "realtime",
-                "audio",
-                "tts",
-                "transcribe",
-                "search",
-            ] {
+            for skip in ["instruct", "audio", "tts", "transcribe", "search"] {
                 if model_id.contains(skip) {
                     return None;
                 }
@@ -250,12 +249,26 @@ mod tests {
 
     #[test]
     fn skips_non_chat_specializations() {
-        assert_eq!(
-            OpenAIService::classify_model("gpt-4o-realtime-preview"),
-            None
-        );
         assert_eq!(OpenAIService::classify_model("whisper-1"), None);
         assert_eq!(OpenAIService::classify_model("tts-1"), None);
+    }
+
+    #[test]
+    fn realtime_models_are_realtime_type() {
+        // Voice-to-voice models are listed as a distinct realtime type so
+        // createRealtimeSession can find them (they survive reloadModels).
+        assert_eq!(
+            OpenAIService::classify_model("gpt-4o-realtime-preview"),
+            Some(("realtime", false, false))
+        );
+        assert_eq!(
+            OpenAIService::classify_model("gpt-realtime"),
+            Some(("realtime", false, false))
+        );
+        assert_eq!(
+            OpenAIService::classify_model("gpt-4o-mini-realtime-preview"),
+            Some(("realtime", false, false))
+        );
     }
 
     #[test]
