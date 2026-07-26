@@ -1233,7 +1233,6 @@ impl Mutation {
         let ai_message = prepare_regeneration_target(&mut conn, &chat.id, reused, &model, None)?;
         publish_message(pubsub, &chat.id, &ai_message, true).await;
 
-        let response_message = ai_message.clone();
         regenerate_reply(
             gql_ctx,
             user,
@@ -1246,8 +1245,12 @@ impl Mutation {
         )
         .await?;
 
+        // Node's editMessage returns the edited *user* message — the assistant
+        // reply reaches the client over the subscription. Returning the
+        // assistant target instead would make the client re-add it with the
+        // (pre-stream) empty content, wiping the just-streamed reply.
         Ok(EditMessageResponse {
-            message: Some(GqlMessage::from(response_message)),
+            message: Some(GqlMessage::from(updated)),
             error: None,
         })
     }
@@ -1319,7 +1322,7 @@ impl Mutation {
             prepare_regeneration_target(&mut conn, &chat.id, Some(original), &model, None)?;
         publish_message(pubsub, &chat.id, &ai_message, true).await;
 
-        let response_message = ai_message.clone();
+        let ai_message_id = ai_message.id.clone();
         regenerate_reply(
             gql_ctx,
             user,
@@ -1331,6 +1334,14 @@ impl Mutation {
             message_context.as_ref(),
         )
         .await?;
+
+        // Return the assistant message with its final streamed content
+        // (Node returns the mutated message). The pre-stream clone would
+        // carry empty content and blank the reply on the client.
+        let response_message = messages::table
+            .filter(messages::id.eq(&ai_message_id))
+            .first::<Message>(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(SwitchModelResponse {
             message: Some(GqlMessage::from(response_message)),
@@ -1399,7 +1410,7 @@ impl Mutation {
             .map_err(|e| AppError::Database(e.to_string()))?;
         publish_message(pubsub, &chat.id, &ai_message, true).await;
 
-        let response_message = ai_message.clone();
+        let ai_message_id = ai_message.id.clone();
         regenerate_reply(
             gql_ctx,
             user,
@@ -1411,6 +1422,13 @@ impl Mutation {
             message_context.as_ref(),
         )
         .await?;
+
+        // Return the linked reply with its final streamed content (the
+        // pre-stream clone would be empty and blank the reply on the client).
+        let response_message = messages::table
+            .filter(messages::id.eq(&ai_message_id))
+            .first::<Message>(&mut conn)
+            .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(CallOtherResponse {
             message: Some(GqlMessage::from(response_message)),
