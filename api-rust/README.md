@@ -106,6 +106,16 @@ is assembled from the flat chat columns (fields without a backing column
   `input_file` block (OpenAI/Yandex/custom) or a native Anthropic
   `document` block (Bedrock Claude), only for image-capable models
   (Node parity)
+- **Model capability flags** (`Model.features`): providers classify each
+  model into the Node `ModelFeature` set surfaced to the client —
+  `REQUEST_CANCELLATION` / `CACHE_RETENTION` (OpenAI Responses models),
+  `REASONING` (gpt-5 / o-series; Bedrock Claude 3.7/4/5), `AUDIO_INPUT` +
+  `AUDIO_OUTPUT` (gpt-4o-audio family), `TEMPERATURE`, and `FILES_INPUT`
+  (chat models on the Responses API or with image input; Bedrock Claude
+  document models). These drive the client's per-model affordances (the
+  document-type upload dialog, the voice-input UI) and are persisted on
+  `reloadModels`. Bedrock advertises `FILES_INPUT` only for the Anthropic
+  (Claude) family, matching the implemented native document blocks
 
 ## Remaining gaps
 

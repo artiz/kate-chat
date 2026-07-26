@@ -45,6 +45,36 @@ pub(crate) struct BedrockModelConfig {
     pub supports_temperature: Option<bool>,
 }
 
+/// Bedrock model families that support extended reasoning ("thinking").
+/// Mirrors Node's `AWS_BEDROCK_MODELS_SUPPORT_REASONING`; substring-matched
+/// against the (geo-prefixed) invocation id.
+const BEDROCK_MODELS_SUPPORT_REASONING: &[&str] = &[
+    "anthropic.claude-opus-4",
+    "anthropic.claude-sonnet-4",
+    "anthropic.claude-sonnet-5",
+    "anthropic.claude-fable-5",
+    "anthropic.claude-haiku-4-5",
+    "anthropic.claude-3-7-sonnet",
+];
+
+/// Bedrock model families that support prompt cache retention
+/// (Node's `AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION`).
+const BEDROCK_MODELS_SUPPORT_CACHE_RETENTION: &[&str] = &[
+    "anthropic.claude-opus-4",
+    "anthropic.claude-sonnet-4",
+    "anthropic.claude-3-7-sonnet",
+    "anthropic.claude-3-5-haiku",
+    "anthropic.claude-3-5-sonnet",
+];
+
+/// Bedrock model families whose inline chat-context document blocks are
+/// implemented in api-rust. Node also advertises `amazon.nova`, but the Rust
+/// backend only formats native document blocks for the Anthropic (Claude)
+/// family (`providers/anthropic.rs`); the other families skip non-text files,
+/// so FILES_INPUT is only advertised for Claude here to keep the client's
+/// upload affordance honest.
+const BEDROCK_MODELS_SUPPORT_DOCUMENTS: &[&str] = &["anthropic.claude"];
+
 pub(crate) fn bedrock_model_configs() -> &'static HashMap<String, BedrockModelConfig> {
     static CONFIGS: std::sync::OnceLock<HashMap<String, BedrockModelConfig>> =
         std::sync::OnceLock::new();
@@ -651,6 +681,33 @@ impl AIProviderService for BedrockService {
 
                 let supports_image_in = model.input_modalities().contains(&ModelModality::Image);
 
+                // Capability flags surfaced to the client (Node parity —
+                // bedrock.provider.ts). Matched by substring against the
+                // (geo-prefixed) invocation id.
+                let mut features: Vec<String> = Vec::new();
+                if BEDROCK_MODELS_SUPPORT_REASONING
+                    .iter()
+                    .any(|m| effective_model_id.contains(m))
+                {
+                    features.push("REASONING".to_string());
+                }
+                if BEDROCK_MODELS_SUPPORT_CACHE_RETENTION
+                    .iter()
+                    .any(|m| effective_model_id.contains(m))
+                {
+                    features.push("CACHE_RETENTION".to_string());
+                }
+                if bedrock_supports_temperature(&effective_model_id) {
+                    features.push("TEMPERATURE".to_string());
+                }
+                if type_ == "chat"
+                    && BEDROCK_MODELS_SUPPORT_DOCUMENTS
+                        .iter()
+                        .any(|m| effective_model_id.contains(m))
+                {
+                    features.push("FILES_INPUT".to_string());
+                }
+
                 models.insert(
                     effective_model_id,
                     AIModelInfo {
@@ -662,6 +719,7 @@ impl AIProviderService for BedrockService {
                         streaming: supports_streaming,
                         image_input: supports_image_in,
                         max_input_tokens: model_config.max_input_tokens,
+                        features,
                     },
                 );
             }

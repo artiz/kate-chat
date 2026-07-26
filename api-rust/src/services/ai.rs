@@ -285,6 +285,12 @@ pub struct AIModelInfo {
     pub image_input: bool,
     #[serde(default)]
     pub max_input_tokens: Option<i32>,
+    /// Model capability flags surfaced to the client (Node's `ModelFeature`):
+    /// FILES_INPUT, AUDIO_INPUT, AUDIO_OUTPUT, REASONING, TEMPERATURE,
+    /// REQUEST_CANCELLATION, CACHE_RETENTION. Empty when the provider does
+    /// not classify features.
+    #[serde(default)]
+    pub features: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

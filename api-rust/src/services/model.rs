@@ -85,7 +85,9 @@ impl<'a> ModelService<'a> {
                 tools: (model_info.type_ == "chat")
                     .then(|| chat_tools.clone())
                     .flatten(),
-                features: None,
+                features: (!model_info.features.is_empty())
+                    .then(|| serde_json::to_string(&model_info.features).ok())
+                    .flatten(),
                 custom_settings: None,
                 is_active,
                 is_custom: false,

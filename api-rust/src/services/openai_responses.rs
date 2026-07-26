@@ -38,6 +38,17 @@ const REASONING_MAX_TOKEN_BUDGET: i32 = 16000;
 /// NATIVE_WEB_SEARCH_TOOL_NAME).
 pub const NATIVE_WEB_SEARCH_TOOL_NAME: &str = "web_search";
 
+/// Clamp a reasoning effort to what the model accepts. "pro" reasoning
+/// models (gpt-5-pro, gpt-5.5-pro, …) reject "minimal"/"low" — their
+/// minimum is "medium" (they support medium/high/xhigh).
+fn clamp_reasoning_effort<'a>(model: &str, effort: &'a str) -> &'a str {
+    if model.contains("pro") && matches!(effort, "minimal" | "low") {
+        "medium"
+    } else {
+        effort
+    }
+}
+
 /// Build an ExecutedToolCall record from a native `web_search_call` output
 /// item (Node records the query into metadata.toolCalls for display).
 fn native_web_search_record(item: &Value) -> ExecutedToolCall {
@@ -172,8 +183,7 @@ impl OpenAIResponsesProtocol {
         }
 
         // Reasoning ("thinking") effort mapped from the token budget
-        // (Node's formatResponsesRequest). gpt-5 with native web_search
-        // cannot use the "minimal" effort.
+        // (Node's formatResponsesRequest).
         if request.thinking.unwrap_or(false) {
             let budget = request
                 .thinking_budget
@@ -189,13 +199,17 @@ impl OpenAIResponsesProtocol {
             } else {
                 "high"
             };
+            // gpt-5 with native web_search cannot use "minimal".
             if model.starts_with("gpt-5") && has_native_web_search && effort == "minimal" {
                 effort = "medium";
             }
-            body["reasoning"] = json!({ "effort": effort, "summary": "auto" });
+            body["reasoning"] =
+                json!({ "effort": clamp_reasoning_effort(&model, effort), "summary": "auto" });
         } else if model.starts_with("gpt-5") {
-            // Reasoning-cancellation default for gpt-5 family (Node parity).
-            body["reasoning"] = json!({ "effort": "minimal" });
+            // Reasoning-cancellation default for the gpt-5 family (Node
+            // parity): minimal where supported, clamped up for models that
+            // reject it (e.g. gpt-5-pro / gpt-5.5-pro require medium+).
+            body["reasoning"] = json!({ "effort": clamp_reasoning_effort(&model, "minimal") });
         }
         body
     }
@@ -594,6 +608,10 @@ mod tests {
         assert!(body.get("temperature").is_none());
         assert_eq!(body["reasoning"]["effort"], "minimal");
         assert_eq!(body["stream"], true);
+
+        // "pro" reasoning models reject minimal — clamp up to medium.
+        let pro = protocol.build_responses_body(&request("gpt-5.5-pro"), false);
+        assert_eq!(pro["reasoning"]["effort"], "medium");
     }
 
     #[test]

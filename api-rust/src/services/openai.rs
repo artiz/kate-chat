@@ -22,6 +22,9 @@ const IMAGE_INPUT_PREFIXES: &[&str] = &["gpt-4o", "gpt-4.1", "gpt-4-turbo", "gpt
 /// Chat models that accept voice recordings as input and reply with speech
 /// (Node's `OPENAI_MODELS_AUDIO_INPUT`). Prefix-matched.
 pub const OPENAI_MODELS_AUDIO_INPUT: &[&str] = &["gpt-4o-audio", "gpt-4o-mini-audio", "gpt-audio"];
+/// Chat-model prefixes that support reasoning ("thinking") effort
+/// (Node's `OPENAI_MODELS_SUPPORT_REASONING`).
+const OPENAI_MODELS_SUPPORT_REASONING: &[&str] = &["gpt-5", "o1", "o3", "o4"];
 
 /// True when `model_id` is an audio-input (speech in/out) chat model.
 pub fn is_audio_input_model(model_id: &str) -> bool {
@@ -88,6 +91,40 @@ impl OpenAIService {
         }
         None
     }
+
+    /// Capability flags surfaced to the client (Node's `ModelFeature`),
+    /// mirroring `openai.provider.ts`:
+    /// - REQUEST_CANCELLATION + CACHE_RETENTION for Responses-API models
+    /// - REASONING for gpt-5 / o-series
+    /// - AUDIO_INPUT + AUDIO_OUTPUT for audio-input models
+    /// - FILES_INPUT for chat models on the Responses API or with image input
+    /// - TEMPERATURE always
+    fn model_features(model_id: &str, type_: &str, image_input: bool) -> Vec<String> {
+        let responses = crate::services::openai_responses::uses_responses_api(model_id)
+            && !is_audio_input_model(model_id);
+        let mut features: Vec<String> = Vec::new();
+        if responses {
+            features.push("REQUEST_CANCELLATION".to_string());
+            features.push("CACHE_RETENTION".to_string());
+        }
+        if OPENAI_MODELS_SUPPORT_REASONING
+            .iter()
+            .any(|p| model_id.starts_with(p))
+        {
+            features.push("REASONING".to_string());
+        }
+        if is_audio_input_model(model_id) {
+            features.push("AUDIO_INPUT".to_string());
+            features.push("AUDIO_OUTPUT".to_string());
+        }
+        // PDF input: input_file blocks on the Responses API, file blocks on
+        // vision-capable Completions models.
+        if type_ == "chat" && (responses || image_input) {
+            features.push("FILES_INPUT".to_string());
+        }
+        features.push("TEMPERATURE".to_string());
+        features
+    }
 }
 
 #[async_trait]
@@ -137,6 +174,7 @@ impl AIProviderService for OpenAIService {
         let mut models = HashMap::new();
         for id in ids {
             if let Some((type_, streaming, image_input)) = Self::classify_model(&id) {
+                let features = Self::model_features(&id, type_, image_input);
                 models.insert(
                     id.clone(),
                     AIModelInfo {
@@ -148,6 +186,7 @@ impl AIProviderService for OpenAIService {
                         streaming,
                         image_input,
                         max_input_tokens: None,
+                        features,
                     },
                 );
             }
@@ -269,6 +308,32 @@ mod tests {
             OpenAIService::classify_model("gpt-4o-mini-realtime-preview"),
             Some(("realtime", false, false))
         );
+    }
+
+    #[test]
+    fn model_features_mirror_node() {
+        // Responses-API reasoning model with image input: cancellation +
+        // cache + reasoning + files + temperature.
+        let f = OpenAIService::model_features("gpt-5.5-pro", "chat", true);
+        assert!(f.contains(&"REQUEST_CANCELLATION".to_string()));
+        assert!(f.contains(&"CACHE_RETENTION".to_string()));
+        assert!(f.contains(&"REASONING".to_string()));
+        assert!(f.contains(&"FILES_INPUT".to_string()));
+        assert!(f.contains(&"TEMPERATURE".to_string()));
+        assert!(!f.contains(&"AUDIO_INPUT".to_string()));
+
+        // Audio-input model: audio in/out + temperature, but no files
+        // (not a Responses model, no image input) and no reasoning.
+        let a = OpenAIService::model_features("gpt-4o-audio-preview", "chat", false);
+        assert!(a.contains(&"AUDIO_INPUT".to_string()));
+        assert!(a.contains(&"AUDIO_OUTPUT".to_string()));
+        assert!(a.contains(&"TEMPERATURE".to_string()));
+        assert!(!a.contains(&"FILES_INPUT".to_string()));
+        assert!(!a.contains(&"REASONING".to_string()));
+
+        // Embedding model: just temperature (Node pushes it unconditionally).
+        let e = OpenAIService::model_features("text-embedding-3-small", "embedding", false);
+        assert!(!e.contains(&"FILES_INPUT".to_string()));
     }
 
     #[test]
