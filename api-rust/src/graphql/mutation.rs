@@ -1033,22 +1033,27 @@ impl Mutation {
             .values(&ai_msg_data)
             .get_result::<Message>(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
+        // Publish the empty assistant placeholder so the client shows a
+        // pending reply immediately (Node publishes it before streaming).
+        publish_message(pubsub, &input.chat_id, &ai_message, true).await;
+        drop(conn);
 
-        stream_reply(
-            gql_ctx,
-            &effective_config,
-            &provider,
-            &chat,
-            &model,
+        // Stream the reply in the background and return the user message right
+        // away (Node fire-and-forgets streamChatCompletion). Awaiting here kept
+        // the mutation pending for the whole generation.
+        spawn_stream_reply(
+            gql_ctx.clone(),
+            effective_config,
+            chat,
+            model,
             input_messages,
             ai_message,
             input.temperature,
             input.max_tokens,
             input.top_p,
             user.default_system_prompt.clone(),
-            input.mcp_tokens.as_deref(),
-        )
-        .await?;
+            input.mcp_tokens.clone(),
+        );
 
         Ok(GqlMessage::from(message))
     }
@@ -2794,15 +2799,69 @@ fn spawn_regenerate(
         .await
         {
             warn!("Regeneration failed for message {}: {:?}", ai_message_id, e);
-            publish_regeneration_error(&gql_ctx, &chat_id, &ai_message_id, &e).await;
+            publish_stream_error(&gql_ctx, &chat_id, &ai_message_id, &e).await;
         }
     });
 }
 
-/// Turn a still-empty regeneration target into an error message when the
+/// Stream a fresh reply (createMessage's plain chat path) in the background so
+/// the mutation returns immediately (Node fire-and-forgets streamChatCompletion
+/// there too). Awaiting the whole generation kept the createMessage request
+/// pending for the entire response — a minutes-long "hang" for slow reasoning
+/// models or large inline files. The placeholder is published by the caller;
+/// tokens arrive over the subscription.
+#[allow(clippy::too_many_arguments)]
+fn spawn_stream_reply(
+    gql_ctx: GraphQLContext,
+    effective_config: crate::config::AppConfig,
+    chat: Chat,
+    model: Model,
+    input_messages: Vec<Message>,
+    ai_message: Message,
+    temperature: Option<f32>,
+    max_tokens: Option<i32>,
+    top_p: Option<f32>,
+    system_prompt: Option<String>,
+    mcp_tokens: Option<Vec<crate::models::McpAuthTokenInput>>,
+) {
+    let ai_message_id = ai_message.id.clone();
+    let chat_id = chat.id.clone();
+    tokio::spawn(async move {
+        let ai_service = AIService::new(effective_config.clone());
+        let provider = match ai_service.get_provider_for_model(&model) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!("Stream setup failed for message {}: {:?}", ai_message_id, e);
+                publish_stream_error(&gql_ctx, &chat_id, &ai_message_id, &e).await;
+                return;
+            }
+        };
+        if let Err(e) = stream_reply(
+            &gql_ctx,
+            &effective_config,
+            &provider,
+            &chat,
+            &model,
+            input_messages,
+            ai_message,
+            temperature,
+            max_tokens,
+            top_p,
+            system_prompt,
+            mcp_tokens.as_deref(),
+        )
+        .await
+        {
+            warn!("Stream failed for message {}: {:?}", ai_message_id, e);
+            publish_stream_error(&gql_ctx, &chat_id, &ai_message_id, &e).await;
+        }
+    });
+}
+
+/// Turn a still-empty streamed message into an error message when the
 /// background stream fails before its own `on_error` published one (e.g.
 /// provider setup errors), so the client isn't left with a spinner.
-async fn publish_regeneration_error(
+async fn publish_stream_error(
     gql_ctx: &GraphQLContext,
     chat_id: &str,
     message_id: &str,
