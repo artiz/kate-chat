@@ -2793,10 +2793,7 @@ fn spawn_regenerate(
         )
         .await
         {
-            warn!(
-                "Regeneration failed for message {}: {:?}",
-                ai_message_id, e
-            );
+            warn!("Regeneration failed for message {}: {:?}", ai_message_id, e);
             publish_regeneration_error(&gql_ctx, &chat_id, &ai_message_id, &e).await;
         }
     });
