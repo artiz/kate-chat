@@ -18,6 +18,7 @@ use crate::services::ai::{
 use crate::services::tools::execute_tool_call;
 use crate::utils::errors::AppError;
 
+#[derive(Clone)]
 pub struct OpenAIProtocol {
     client: Client,
     /// e.g. `https://api.openai.com/v1`, `https://ai.api.cloud.yandex.net/v1`
@@ -66,11 +67,11 @@ impl OpenAIProtocol {
             .unwrap_or_else(|| requested.to_string())
     }
 
-    fn url(&self, path: &str) -> String {
+    pub(crate) fn url(&self, path: &str) -> String {
         format!("{}{}", self.base_url, path)
     }
 
-    fn post(&self, path: &str) -> reqwest::RequestBuilder {
+    pub(crate) fn post(&self, path: &str) -> reqwest::RequestBuilder {
         let mut builder = self
             .client
             .post(self.url(path))
@@ -90,7 +91,7 @@ impl OpenAIProtocol {
     }
 
     /// Extract the API error message from an OpenAI-style error payload.
-    fn api_error(&self, status: reqwest::StatusCode, body: &str) -> AppError {
+    pub(crate) fn api_error(&self, status: reqwest::StatusCode, body: &str) -> AppError {
         let message = serde_json::from_str::<Value>(body)
             .ok()
             .and_then(|v| {
@@ -143,6 +144,43 @@ impl OpenAIProtocol {
                         MessageRole::System => "system",
                         _ => "user",
                     };
+                    // A user turn carrying a voice recording or inline files
+                    // serializes its content as a parts array.
+                    if matches!(msg.role, MessageRole::User)
+                        && (msg.audio.is_some() || !msg.files.is_empty())
+                    {
+                        let mut parts = Vec::new();
+                        if !msg.content.is_empty() {
+                            parts.push(json!({ "type": "text", "text": msg.content }));
+                        }
+                        if let Some(audio) = &msg.audio {
+                            parts.push(json!({
+                                "type": "input_audio",
+                                "input_audio": { "data": audio.data_base64, "format": audio.format },
+                            }));
+                        }
+                        // Inline files: textual mimes are sent as text, PDFs as
+                        // a `file` block (rides on vision support — the caller
+                        // only preloads base64 for image-capable models).
+                        for file in &msg.files {
+                            if let Some(text) = &file.text {
+                                parts.push(json!({
+                                    "type": "text",
+                                    "text": format!("File \"{}\":\n\n{}", file.name, text),
+                                }));
+                            } else if let Some(base64) = &file.base64 {
+                                parts.push(json!({
+                                    "type": "file",
+                                    "file": {
+                                        "filename": file.name,
+                                        "file_data": format!("data:{};base64,{}", file.mime_type, base64),
+                                    },
+                                }));
+                            }
+                        }
+                        messages.push(json!({ "role": role, "content": parts }));
+                        continue;
+                    }
                     messages.push(json!({ "role": role, "content": msg.content }));
                 }
             }
@@ -192,6 +230,19 @@ impl OpenAIProtocol {
                 .collect::<Vec<_>>());
         }
 
+        // Audio-output models: request speech alongside text. Streaming only
+        // supports pcm16 deltas; the sync path returns mp3 (Node parity).
+        if crate::services::openai::is_audio_input_model(&model_id) {
+            let voice = request
+                .voice
+                .as_deref()
+                .filter(|v| crate::services::realtime::OPENAI_REALTIME_VOICES.contains(v))
+                .unwrap_or(crate::services::realtime::OPENAI_REALTIME_DEFAULT_VOICE);
+            let format = if stream { "pcm16" } else { "mp3" };
+            body["modalities"] = json!(["text", "audio"]);
+            body["audio"] = json!({ "voice": voice, "format": format });
+        }
+
         body
     }
 
@@ -239,6 +290,8 @@ impl OpenAIProtocol {
             timestamp: None,
             tool_calls: Some(Value::Array(raw_calls)),
             tool_call_id: None,
+            audio: None,
+            files: vec![],
         });
 
         let tools = session.tools.clone().unwrap_or_default();
@@ -310,11 +363,25 @@ impl OpenAIProtocol {
                 continue;
             }
 
-            let content = message
+            let mut content = message
                 .and_then(|msg| msg.get("content"))
                 .and_then(|content| content.as_str())
                 .unwrap_or("")
                 .to_string();
+
+            // Audio-output models return { audio: { data, transcript } };
+            // the transcript stands in for text when content is empty.
+            let mut audios = Vec::new();
+            if let Some(audio) = message.and_then(|msg| msg.get("audio")) {
+                if let Some(data) = audio.get("data").and_then(|d| d.as_str()) {
+                    audios.push(format!("data:audio/mpeg;base64,{}", data));
+                }
+                if content.is_empty() {
+                    if let Some(transcript) = audio.get("transcript").and_then(|t| t.as_str()) {
+                        content = transcript.to_string();
+                    }
+                }
+            }
 
             let finish_reason = first_choice
                 .and_then(|choice| choice.get("finish_reason"))
@@ -327,6 +394,7 @@ impl OpenAIProtocol {
                 usage: response_json.get("usage").map(Self::parse_usage),
                 finish_reason,
                 tool_calls: Vec::new(),
+                audios,
             });
         }
 
@@ -662,6 +730,10 @@ mod tests {
             top_p: None,
             system_prompt: Some("be brief".to_string()),
             tools: None,
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
+            voice: None,
         }
     }
 
@@ -675,6 +747,83 @@ mod tests {
         assert_eq!(body["temperature"], 0.5);
         assert_eq!(body["max_tokens"], 100);
         assert!(body.get("stream").is_none());
+    }
+
+    #[test]
+    fn audio_input_serializes_input_audio_block_and_output_request() {
+        let protocol = OpenAIProtocol::new("https://api.openai.com/v1/", None, None, "OpenAI");
+        let mut req = request();
+        req.model_id = "gpt-4o-audio-preview".to_string();
+        req.voice = Some("verse".to_string());
+        req.messages = vec![crate::services::ai::ModelMessage {
+            role: MessageRole::User,
+            content: "transcribe this".to_string(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+            audio: Some(crate::services::ai::ModelAudio {
+                data_base64: "QUJD".to_string(),
+                format: "wav".to_string(),
+            }),
+            files: vec![],
+        }];
+        let body = protocol.build_completion_body(&req, false);
+        let content = &body["messages"][1]["content"];
+        assert_eq!(content[0]["type"], "text");
+        assert_eq!(content[1]["type"], "input_audio");
+        assert_eq!(content[1]["input_audio"]["format"], "wav");
+        assert_eq!(content[1]["input_audio"]["data"], "QUJD");
+        // audio output requested, voice honored, mp3 for the sync path
+        assert_eq!(body["modalities"][1], "audio");
+        assert_eq!(body["audio"]["voice"], "verse");
+        assert_eq!(body["audio"]["format"], "mp3");
+        // streaming uses pcm16
+        let stream_body = protocol.build_completion_body(&req, true);
+        assert_eq!(stream_body["audio"]["format"], "pcm16");
+    }
+
+    #[test]
+    fn inline_files_serialize_text_and_pdf_blocks() {
+        let protocol = OpenAIProtocol::new("https://api.openai.com/v1/", None, None, "OpenAI");
+        let mut req = request();
+        req.messages = vec![crate::services::ai::ModelMessage {
+            role: MessageRole::User,
+            content: "review these".to_string(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+            audio: None,
+            files: vec![
+                crate::services::ai::ModelFile {
+                    s3_key: "c/m/notes.txt".to_string(),
+                    name: "notes.txt".to_string(),
+                    mime_type: "text/plain".to_string(),
+                    text: Some("hello".to_string()),
+                    base64: None,
+                },
+                crate::services::ai::ModelFile {
+                    s3_key: "c/m/doc.pdf".to_string(),
+                    name: "doc.pdf".to_string(),
+                    mime_type: "application/pdf".to_string(),
+                    text: None,
+                    base64: Some("QUJD".to_string()),
+                },
+            ],
+        }];
+        let body = protocol.build_completion_body(&req, false);
+        let content = &body["messages"][1]["content"];
+        assert_eq!(content[0]["type"], "text"); // leading message text
+        assert_eq!(content[1]["type"], "text"); // textual file inlined
+        assert!(content[1]["text"]
+            .as_str()
+            .unwrap()
+            .contains("File \"notes.txt\""));
+        assert_eq!(content[2]["type"], "file");
+        assert_eq!(content[2]["file"]["filename"], "doc.pdf");
+        assert_eq!(
+            content[2]["file"]["file_data"],
+            "data:application/pdf;base64,QUJD"
+        );
     }
 
     #[test]
@@ -735,6 +884,8 @@ mod tests {
             tool_calls: Some(json!([{"id": "c1", "type": "function",
                 "function": {"name": "internal_web_search", "arguments": "{}"}}])),
             tool_call_id: None,
+            audio: None,
+            files: vec![],
         });
         req.messages.push(ModelMessage {
             role: MessageRole::Tool,
@@ -742,6 +893,8 @@ mod tests {
             timestamp: None,
             tool_calls: None,
             tool_call_id: Some("c1".to_string()),
+            audio: None,
+            files: vec![],
         });
 
         let body = protocol.build_completion_body(&req, false);

@@ -222,10 +222,47 @@ impl AnthropicProvider {
                     }));
                 }
                 AIMessageRole::User => {
-                    messages.push(serde_json::json!({
-                        "role": "user",
-                        "content": msg.content,
-                    }));
+                    // A user turn with inline files serializes its content as
+                    // a blocks array: textual files inline as text, PDFs as a
+                    // native Anthropic `document` block (Claude on Bedrock is
+                    // the doc-capable family; other formats are skipped).
+                    if !msg.files.is_empty() {
+                        let mut parts: Vec<Value> = Vec::new();
+                        if !msg.content.is_empty() {
+                            parts.push(serde_json::json!({ "type": "text", "text": msg.content }));
+                        }
+                        for file in &msg.files {
+                            if let Some(text) = &file.text {
+                                parts.push(serde_json::json!({
+                                    "type": "text",
+                                    "text": format!("File \"{}\":\n\n{}", file.name, text),
+                                }));
+                            } else if let Some(base64) = &file.base64 {
+                                let mime = file.mime_type.split(';').next().unwrap_or("").trim();
+                                if mime == "application/pdf" {
+                                    parts.push(serde_json::json!({
+                                        "type": "document",
+                                        "source": {
+                                            "type": "base64",
+                                            "media_type": "application/pdf",
+                                            "data": base64,
+                                        },
+                                    }));
+                                } else {
+                                    tracing::warn!(
+                                        "Anthropic supports only PDF document blocks, skipping {}",
+                                        file.name
+                                    );
+                                }
+                            }
+                        }
+                        messages.push(serde_json::json!({ "role": "user", "content": parts }));
+                    } else {
+                        messages.push(serde_json::json!({
+                            "role": "user",
+                            "content": msg.content,
+                        }));
+                    }
                 }
             }
         }
@@ -319,6 +356,7 @@ impl AnthropicProvider {
             model_id: model_id.to_string(),
             tool_calls,
             usage,
+            audios: vec![],
             finish_reason: response
                 .get("stop_reason")
                 .and_then(|r| r.as_str())
@@ -344,6 +382,8 @@ mod tests {
                     tool_calls: Some(json!([{ "type": "tool_use", "id": "t1",
                         "name": "internal_web_search", "input": {"query": "rust"} }])),
                     tool_call_id: None,
+                    audio: None,
+                    files: vec![],
                 },
                 ModelMessage {
                     role: AIMessageRole::Tool,
@@ -351,6 +391,8 @@ mod tests {
                     timestamp: None,
                     tool_calls: None,
                     tool_call_id: Some("t1".to_string()),
+                    audio: None,
+                    files: vec![],
                 },
             ],
             temperature: None,
@@ -369,6 +411,10 @@ mod tests {
                     api_url: None,
                 },
             }]),
+            native_tools: vec![],
+            thinking: None,
+            thinking_budget: None,
+            voice: None,
         }
     }
 
@@ -382,6 +428,47 @@ mod tests {
         assert_eq!(body["messages"][2]["role"], "user");
         assert_eq!(body["messages"][2]["content"][0]["type"], "tool_result");
         assert_eq!(body["messages"][2]["content"][0]["tool_use_id"], "t1");
+    }
+
+    #[test]
+    fn formats_inline_file_document_blocks() {
+        use crate::services::ai::{ModelFile, ModelMessage};
+        let mut req = request_with_tools();
+        req.messages = vec![ModelMessage {
+            role: AIMessageRole::User,
+            content: "review".to_string(),
+            timestamp: None,
+            tool_calls: None,
+            tool_call_id: None,
+            audio: None,
+            files: vec![
+                ModelFile {
+                    s3_key: "c/m/notes.txt".to_string(),
+                    name: "notes.txt".to_string(),
+                    mime_type: "text/plain".to_string(),
+                    text: Some("hi".to_string()),
+                    base64: None,
+                },
+                ModelFile {
+                    s3_key: "c/m/doc.pdf".to_string(),
+                    name: "doc.pdf".to_string(),
+                    mime_type: "application/pdf".to_string(),
+                    text: None,
+                    base64: Some("QUJD".to_string()),
+                },
+            ],
+        }];
+        let body = AnthropicProvider::format_request(&req).unwrap();
+        let content = &body["messages"][0]["content"];
+        assert_eq!(content[0]["type"], "text"); // message text
+        assert_eq!(content[1]["type"], "text"); // textual file inlined
+        assert!(content[1]["text"]
+            .as_str()
+            .unwrap()
+            .contains("File \"notes.txt\""));
+        assert_eq!(content[2]["type"], "document");
+        assert_eq!(content[2]["source"]["media_type"], "application/pdf");
+        assert_eq!(content[2]["source"]["data"], "QUJD");
     }
 
     #[test]

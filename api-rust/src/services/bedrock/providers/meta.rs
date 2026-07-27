@@ -182,6 +182,7 @@ impl MetaProvider {
             content,
             model_id: model_id.to_string(),
             tool_calls: Vec::new(),
+            audios: vec![],
             usage: Some(Usage {
                 input_tokens: response
                     .get("prompt_token_count")

@@ -134,6 +134,9 @@ impl AIProviderService for YandexService {
                     streaming: true,
                     image_input: false,
                     max_input_tokens: None,
+                    // Yandex models carry per-model features in the Node
+                    // config; none of these hardcoded chat models declare any.
+                    features: Vec::new(),
                 },
             );
         }
@@ -162,6 +165,10 @@ impl AIProviderService for YandexService {
                 top_p: None,
                 system_prompt: None,
                 tools: None,
+                native_tools: vec![],
+                thinking: None,
+                thinking_budget: None,
+                voice: None,
             };
 
             match self.invoke_model(test_request).await {

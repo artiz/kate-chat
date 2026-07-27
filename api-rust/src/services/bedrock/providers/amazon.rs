@@ -372,6 +372,7 @@ impl AmazonProvider {
             content,
             model_id: model_id.to_string(),
             tool_calls: Vec::new(),
+            audios: vec![],
             usage: None,
             finish_reason: None,
         })

@@ -165,9 +165,8 @@ pub struct GqlMcpToolTestResponse {
     pub error: Option<String>,
 }
 
-/// Chat folder (sidebar tree). Folders are not ported yet — the type exists
-/// so the client's `getFolders` bootstrap query validates; the list is
-/// always empty.
+/// Chat folder (sidebar tree) — the GraphQL projection of a `chat_folders`
+/// row.
 #[derive(Debug, Serialize, Deserialize, SimpleObject)]
 #[graphql(name = "Folder")]
 pub struct GqlFolder {

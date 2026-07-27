@@ -80,6 +80,46 @@ pub enum MessageRole {
     Tool,
 }
 
+/// A voice recording attached to a user turn (base64 + `wav`/`mp3`),
+/// serialized as an OpenAI `input_audio` content block.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelAudio {
+    pub data_base64: String,
+    pub format: String,
+}
+
+/// An inline chat-context file attached to a user turn (PDF/text),
+/// serialized as a provider file block. Content is preloaded from S3
+/// before the (synchronous) request body is built: textual files get
+/// `text`, binary files (PDF) get `base64`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelFile {
+    /// S3 key of the stored file (used to preload content; not serialized
+    /// into the request).
+    #[serde(skip)]
+    pub s3_key: String,
+    /// Original upload filename, passed to the model as the document name.
+    pub name: String,
+    pub mime_type: String,
+    /// Preloaded UTF-8 content for textual files.
+    #[serde(default)]
+    pub text: Option<String>,
+    /// Preloaded base64 content for binary files (PDF).
+    #[serde(default)]
+    pub base64: Option<String>,
+}
+
+/// True for mime types inlined as plain text rather than a binary block
+/// (Node's isTextualMime).
+pub fn is_textual_mime(mime: &str) -> bool {
+    let m = mime.split(';').next().unwrap_or("").trim().to_lowercase();
+    m.starts_with("text/")
+        || matches!(
+            m.as_str(),
+            "application/json" | "application/xml" | "application/x-yaml"
+        )
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelMessage {
     pub role: MessageRole,
@@ -92,6 +132,12 @@ pub struct ModelMessage {
     /// Set on tool-result turns (role = Tool).
     #[serde(default)]
     pub tool_call_id: Option<String>,
+    /// Voice recording on a user turn (audio-input models).
+    #[serde(default)]
+    pub audio: Option<ModelAudio>,
+    /// Inline chat-context files on a user turn (content preloaded from S3).
+    #[serde(default)]
+    pub files: Vec<ModelFile>,
 }
 
 impl ModelMessage {
@@ -102,6 +148,8 @@ impl ModelMessage {
             timestamp: None,
             tool_calls: None,
             tool_call_id: None,
+            audio: None,
+            files: Vec::new(),
         }
     }
 }
@@ -171,6 +219,23 @@ pub struct InvokeModelRequest {
     pub system_prompt: Option<String>,
     #[serde(default)]
     pub tools: Option<Vec<ExecutableTool>>,
+    /// Native provider tool types enabled on the chat (Node's ToolType
+    /// values, e.g. "web_search", "code_interpreter"). Serialized as
+    /// provider-native tool blocks by the OpenAI Responses protocol; other
+    /// protocols ignore them (they expose those capabilities as local
+    /// function tools instead).
+    #[serde(default)]
+    pub native_tools: Vec<String>,
+    /// Reasoning ("thinking") enabled for this request (chat setting).
+    #[serde(default)]
+    pub thinking: Option<bool>,
+    /// Reasoning token budget; mapped to an effort level by the Responses
+    /// protocol (Node's thinkingBudget).
+    #[serde(default)]
+    pub thinking_budget: Option<i32>,
+    /// Assistant voice for audio-output models (chat setting).
+    #[serde(default)]
+    pub voice: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,6 +246,10 @@ pub struct ModelResponse {
     pub finish_reason: Option<String>,
     #[serde(default)]
     pub tool_calls: Vec<ToolCallRequest>,
+    /// Generated speech responses as `data:audio/...;base64,` URLs
+    /// (audio-output models).
+    #[serde(default)]
+    pub audios: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -216,6 +285,12 @@ pub struct AIModelInfo {
     pub image_input: bool,
     #[serde(default)]
     pub max_input_tokens: Option<i32>,
+    /// Model capability flags surfaced to the client (Node's `ModelFeature`):
+    /// FILES_INPUT, AUDIO_INPUT, AUDIO_OUTPUT, REASONING, TEMPERATURE,
+    /// REQUEST_CANCELLATION, CACHE_RETENTION. Empty when the provider does
+    /// not classify features.
+    #[serde(default)]
+    pub features: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -58,6 +58,9 @@ pub struct Chat {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub folder_id: Option<String>,
+    pub voice: Option<String>,
+    pub thinking: bool,
+    pub thinking_budget: Option<i32>,
 }
 
 // Custom struct for the joined chat query result
@@ -97,6 +100,12 @@ pub struct ChatWithStats {
     pub is_pinned: bool,
     #[diesel(sql_type = Nullable<Text>)]
     pub folder_id: Option<String>,
+    #[diesel(sql_type = Nullable<Text>)]
+    pub voice: Option<String>,
+    #[diesel(sql_type = Bool)]
+    pub thinking: bool,
+    #[diesel(sql_type = Nullable<Integer>)]
+    pub thinking_budget: Option<i32>,
     #[diesel(sql_type = Timestamp)]
     pub created_at: chrono::NaiveDateTime,
     #[diesel(sql_type = Timestamp)]
@@ -119,6 +128,9 @@ pub struct NewChat {
     pub is_pristine: bool,
     pub is_pinned: bool,
     pub folder_id: Option<String>,
+    pub voice: Option<String>,
+    pub thinking: bool,
+    pub thinking_budget: Option<i32>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -146,6 +158,9 @@ impl NewChat {
             is_pristine: true,
             is_pinned: false,
             folder_id: None,
+            voice: None,
+            thinking: false,
+            thinking_budget: None,
             created_at: now,
             updated_at: now,
         }
@@ -260,12 +275,16 @@ pub struct GqlChat {
     pub chat_documents: Option<Vec<GqlChatDocument>>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn chat_settings(
     system_prompt: &Option<String>,
     temperature: Option<f32>,
     max_tokens: Option<i32>,
     top_p: Option<f32>,
     images_count: Option<i32>,
+    voice: &Option<String>,
+    thinking: bool,
+    thinking_budget: Option<i32>,
 ) -> ChatSettings {
     ChatSettings {
         temperature,
@@ -273,6 +292,9 @@ fn chat_settings(
         top_p,
         images_count,
         system_prompt: system_prompt.clone(),
+        voice: voice.clone(),
+        thinking: Some(thinking),
+        thinking_budget,
         ..ChatSettings::default()
     }
 }
@@ -289,6 +311,9 @@ impl From<Chat> for GqlChat {
             chat.max_tokens,
             chat.top_p,
             chat.images_count,
+            &chat.voice,
+            chat.thinking,
+            chat.thinking_budget,
         ));
         Self {
             id: chat.id,
@@ -329,6 +354,9 @@ impl From<ChatWithStats> for GqlChat {
             chat.max_tokens,
             chat.top_p,
             chat.images_count,
+            &chat.voice,
+            chat.thinking,
+            chat.thinking_budget,
         ));
         Self {
             id: chat.id,

@@ -193,6 +193,7 @@ impl AI21Provider {
             content,
             model_id: model_id.to_string(),
             tool_calls: Vec::new(),
+            audios: vec![],
             usage,
             finish_reason: response
                 .get("choices")

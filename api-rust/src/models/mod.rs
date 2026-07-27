@@ -5,6 +5,7 @@ pub mod folder;
 pub mod mcp_server;
 pub mod message;
 pub mod model;
+pub mod search;
 pub mod user;
 
 pub use chat::*;
@@ -14,4 +15,5 @@ pub use folder::*;
 pub use mcp_server::*;
 pub use message::*;
 pub use model::*;
+pub use search::*;
 pub use user::*;

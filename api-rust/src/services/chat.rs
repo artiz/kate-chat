@@ -97,6 +97,9 @@ impl<'a> ChatService<'a> {
                 c.is_pristine,
                 c.is_pinned,
                 c.folder_id,
+                c.voice,
+                c.thinking,
+                c.thinking_budget,
                 c.created_at,
                 c.updated_at
             FROM chats c

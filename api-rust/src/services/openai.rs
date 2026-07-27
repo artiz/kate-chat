@@ -19,6 +19,19 @@ const OPENAI_API_URL: &str = "https://api.openai.com/v1";
 const IMAGES_GENERATION_PREFIXES: &[&str] = &["dall-e", "chatgpt-image", "gpt-image"];
 /// Chat-model prefixes that accept image input.
 const IMAGE_INPUT_PREFIXES: &[&str] = &["gpt-4o", "gpt-4.1", "gpt-4-turbo", "gpt-5", "o3", "o4"];
+/// Chat models that accept voice recordings as input and reply with speech
+/// (Node's `OPENAI_MODELS_AUDIO_INPUT`). Prefix-matched.
+pub const OPENAI_MODELS_AUDIO_INPUT: &[&str] = &["gpt-4o-audio", "gpt-4o-mini-audio", "gpt-audio"];
+/// Chat-model prefixes that support reasoning ("thinking") effort
+/// (Node's `OPENAI_MODELS_SUPPORT_REASONING`).
+const OPENAI_MODELS_SUPPORT_REASONING: &[&str] = &["gpt-5", "o1", "o3", "o4"];
+
+/// True when `model_id` is an audio-input (speech in/out) chat model.
+pub fn is_audio_input_model(model_id: &str) -> bool {
+    OPENAI_MODELS_AUDIO_INPUT
+        .iter()
+        .any(|p| model_id.starts_with(p))
+}
 
 pub struct OpenAIService {
     config: AppConfig,
@@ -54,16 +67,20 @@ impl OpenAIService {
         if model_id.starts_with("text-embedding") {
             return Some(("embedding", false, false));
         }
+        // Realtime voice models (gpt-4o-realtime, gpt-realtime, …) are a
+        // distinct model type (Node's ModelType.REALTIME) — they back the
+        // voice-to-voice sessions, not the chat list.
+        if model_id.contains("-realtime") {
+            return Some(("realtime", false, false));
+        }
+        // Audio-input chat models (gpt-4o-audio, gpt-audio, …) reply with
+        // speech; they are chat models even though the id contains "audio".
+        if is_audio_input_model(model_id) {
+            return Some(("chat", true, false));
+        }
         if model_id.contains("gpt") || model_id.starts_with("o1") || model_id.starts_with("o3") {
             // exclude non-chat specializations kept out of the chat list
-            for skip in [
-                "instruct",
-                "realtime",
-                "audio",
-                "tts",
-                "transcribe",
-                "search",
-            ] {
+            for skip in ["instruct", "audio", "tts", "transcribe", "search"] {
                 if model_id.contains(skip) {
                     return None;
                 }
@@ -74,11 +91,54 @@ impl OpenAIService {
         }
         None
     }
+
+    /// Capability flags surfaced to the client (Node's `ModelFeature`),
+    /// mirroring `openai.provider.ts`:
+    /// - REQUEST_CANCELLATION + CACHE_RETENTION for Responses-API models
+    /// - REASONING for gpt-5 / o-series
+    /// - AUDIO_INPUT + AUDIO_OUTPUT for audio-input models
+    /// - FILES_INPUT for chat models on the Responses API or with image input
+    /// - TEMPERATURE always
+    fn model_features(model_id: &str, type_: &str, image_input: bool) -> Vec<String> {
+        let responses = crate::services::openai_responses::uses_responses_api(model_id)
+            && !is_audio_input_model(model_id);
+        let mut features: Vec<String> = Vec::new();
+        if responses {
+            features.push("REQUEST_CANCELLATION".to_string());
+            features.push("CACHE_RETENTION".to_string());
+        }
+        if OPENAI_MODELS_SUPPORT_REASONING
+            .iter()
+            .any(|p| model_id.starts_with(p))
+        {
+            features.push("REASONING".to_string());
+        }
+        if is_audio_input_model(model_id) {
+            features.push("AUDIO_INPUT".to_string());
+            features.push("AUDIO_OUTPUT".to_string());
+        }
+        // PDF input: input_file blocks on the Responses API, file blocks on
+        // vision-capable Completions models.
+        if type_ == "chat" && (responses || image_input) {
+            features.push("FILES_INPUT".to_string());
+        }
+        features.push("TEMPERATURE".to_string());
+        features
+    }
 }
 
 #[async_trait]
 impl AIProviderService for OpenAIService {
     async fn invoke_model(&self, request: InvokeModelRequest) -> Result<ModelResponse, AppError> {
+        if !is_audio_input_model(&request.model_id)
+            && crate::services::openai_responses::uses_responses_api(&request.model_id)
+        {
+            return crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                self.protocol()?,
+            )
+            .invoke(&request)
+            .await;
+        }
         self.protocol()?.invoke(&request).await
     }
 
@@ -92,6 +152,15 @@ impl AIProviderService for OpenAIService {
         C: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
         E: Fn(AppError) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
     {
+        if !is_audio_input_model(&request.model_id)
+            && crate::services::openai_responses::uses_responses_api(&request.model_id)
+        {
+            return crate::services::openai_responses::OpenAIResponsesProtocol::new(
+                self.protocol()?,
+            )
+            .invoke_stream(&request, &callbacks)
+            .await;
+        }
         self.protocol()?.invoke_stream(&request, &callbacks).await
     }
 
@@ -105,6 +174,7 @@ impl AIProviderService for OpenAIService {
         let mut models = HashMap::new();
         for id in ids {
             if let Some((type_, streaming, image_input)) = Self::classify_model(&id) {
+                let features = Self::model_features(&id, type_, image_input);
                 models.insert(
                     id.clone(),
                     AIModelInfo {
@@ -116,6 +186,7 @@ impl AIProviderService for OpenAIService {
                         streaming,
                         image_input,
                         max_input_tokens: None,
+                        features,
                     },
                 );
             }
@@ -217,12 +288,66 @@ mod tests {
 
     #[test]
     fn skips_non_chat_specializations() {
-        assert_eq!(
-            OpenAIService::classify_model("gpt-4o-realtime-preview"),
-            None
-        );
-        assert_eq!(OpenAIService::classify_model("gpt-4o-audio-preview"), None);
         assert_eq!(OpenAIService::classify_model("whisper-1"), None);
         assert_eq!(OpenAIService::classify_model("tts-1"), None);
+    }
+
+    #[test]
+    fn realtime_models_are_realtime_type() {
+        // Voice-to-voice models are listed as a distinct realtime type so
+        // createRealtimeSession can find them (they survive reloadModels).
+        assert_eq!(
+            OpenAIService::classify_model("gpt-4o-realtime-preview"),
+            Some(("realtime", false, false))
+        );
+        assert_eq!(
+            OpenAIService::classify_model("gpt-realtime"),
+            Some(("realtime", false, false))
+        );
+        assert_eq!(
+            OpenAIService::classify_model("gpt-4o-mini-realtime-preview"),
+            Some(("realtime", false, false))
+        );
+    }
+
+    #[test]
+    fn model_features_mirror_node() {
+        // Responses-API reasoning model with image input: cancellation +
+        // cache + reasoning + files + temperature.
+        let f = OpenAIService::model_features("gpt-5.5-pro", "chat", true);
+        assert!(f.contains(&"REQUEST_CANCELLATION".to_string()));
+        assert!(f.contains(&"CACHE_RETENTION".to_string()));
+        assert!(f.contains(&"REASONING".to_string()));
+        assert!(f.contains(&"FILES_INPUT".to_string()));
+        assert!(f.contains(&"TEMPERATURE".to_string()));
+        assert!(!f.contains(&"AUDIO_INPUT".to_string()));
+
+        // Audio-input model: audio in/out + temperature, but no files
+        // (not a Responses model, no image input) and no reasoning.
+        let a = OpenAIService::model_features("gpt-4o-audio-preview", "chat", false);
+        assert!(a.contains(&"AUDIO_INPUT".to_string()));
+        assert!(a.contains(&"AUDIO_OUTPUT".to_string()));
+        assert!(a.contains(&"TEMPERATURE".to_string()));
+        assert!(!a.contains(&"FILES_INPUT".to_string()));
+        assert!(!a.contains(&"REASONING".to_string()));
+
+        // Embedding model: just temperature (Node pushes it unconditionally).
+        let e = OpenAIService::model_features("text-embedding-3-small", "embedding", false);
+        assert!(!e.contains(&"FILES_INPUT".to_string()));
+    }
+
+    #[test]
+    fn audio_input_models_are_chat() {
+        // Audio-input models are chat models even though the id says "audio".
+        assert_eq!(
+            OpenAIService::classify_model("gpt-4o-audio-preview"),
+            Some(("chat", true, false))
+        );
+        assert_eq!(
+            OpenAIService::classify_model("gpt-audio"),
+            Some(("chat", true, false))
+        );
+        assert!(is_audio_input_model("gpt-4o-mini-audio"));
+        assert!(!is_audio_input_model("gpt-4o"));
     }
 }

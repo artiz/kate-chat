@@ -255,6 +255,26 @@ impl NewUser {
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct ForgotPasswordInput {
+    pub email: String,
+    pub language: Option<String>,
+    pub recaptcha_token: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+pub struct ResetPasswordInput {
+    pub token: String,
+    pub new_password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, async_graphql::SimpleObject)]
+#[graphql(name = "ForgotPasswordResponse")]
+pub struct ForgotPasswordResponse {
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
 pub struct RegisterInput {
     pub email: String,
     pub password: String,

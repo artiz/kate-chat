@@ -69,14 +69,63 @@ is assembled from the flat chat columns (fields without a backing column
 — thinking, voice, cacheRetention, … — are accepted but not persisted),
 `mcpEnabled` is true.
 
-## Not ported yet (see the root README TODO)
+- **Message regeneration**: editMessage (delete-following + reuse of the
+  assistant reply, RAG-aware), switchModel (in-place reset with a new
+  model), callOther (linked alternate replies, attached to the thread
+  as `linkedMessages`), updateMessageContent, stopMessageGeneration
+  (in-process cancellation registry + best-effort OpenAI Responses
+  cancel)
+- **Auth extras**: forgotPassword / resetPassword (15-minute JWT reset
+  token, lettre SMTP mailer, optional reCAPTCHA), global `search` over
+  chats/messages/documents (LIKE-based)
+- **OpenAI Responses protocol** (`POST /responses`): automatic for
+  gpt-5 / gpt-4.1 / gpt-4o / o-series models and custom models with
+  `protocol: OPENAI_RESPONSES`; SSE streaming, function-tool loop via
+  `previous_response_id`, request cancellation
+- **Realtime voice**: createRealtimeSession (OpenAI ephemeral WebRTC
+  session, WebSocket-proxy fallback for Yandex on `/realtime/proxy` of
+  the subscriptions server), addChatMessage transcript persistence
+- **Native OpenAI tools on the Responses protocol**: web_search and
+  code_interpreter serialize to provider-native tool blocks (the local
+  Yandex web-search tool is skipped for Responses models); native
+  web_search calls are recorded for the message's tool badges; reasoning
+  effort is derived from the chat's thinking token budget
+- **Per-chat voice + thinking**: persisted in `chats.voice` /
+  `chats.thinking` / `chats.thinking_budget`, surfaced under the chat
+  `settings` object, read by createRealtimeSession, the realtime proxy
+  and the Responses reasoning config
+- **Audio-input models** (`gpt-4o-audio`, `gpt-audio`): voice recordings
+  are stored to S3 and sent as OpenAI `input_audio` blocks; the spoken
+  reply (`modalities:[text,audio]`) is stored to S3 and referenced from
+  the assistant message (chat-completions protocol; sync, not streamed)
+- **Inline chat-context files** (PDF/text attached to a turn, distinct
+  from RAG documents): stored to S3 as `inline_document` chat files and
+  referenced from the message (jsonContent `file` block + link); the
+  content is preloaded from S3 and sent to the model as a file block —
+  textual mimes inlined as text, PDFs as an OpenAI `file` /
+  `input_file` block (OpenAI/Yandex/custom) or a native Anthropic
+  `document` block (Bedrock Claude), only for image-capable models
+  (Node parity)
+- **Model capability flags** (`Model.features`): providers classify each
+  model into the Node `ModelFeature` set surfaced to the client —
+  `REQUEST_CANCELLATION` / `CACHE_RETENTION` (OpenAI Responses models),
+  `REASONING` (gpt-5 / o-series; Bedrock Claude 3.7/4/5), `AUDIO_INPUT` +
+  `AUDIO_OUTPUT` (gpt-4o-audio family), `TEMPERATURE`, and `FILES_INPUT`
+  (chat models on the Responses API or with image input; Bedrock Claude
+  document models). These drive the client's per-model affordances (the
+  document-type upload dialog, the voice-input UI) and are persisted on
+  `reloadModels`. Bedrock advertises `FILES_INPUT` only for the Anthropic
+  (Claude) family, matching the implemented native document blocks
 
-Operations of unported features return GraphQL validation errors when
-used: realtime
-voice (createRealtimeSession, addChatMessage), message regeneration
-(switchModel, callOther, updateMessageContent, stopMessageGeneration),
-forgot/reset password, global search, the OpenAI Responses protocol
-(gpt-5 / native tools).
+## Remaining gaps
+
+Audio replies use the non-streaming completion path (no live pcm16
+token streaming); prior-turn voice recordings are not reloaded from S3
+into the model context (only the current turn's audio is sent).
+Bedrock file blocks cover the Anthropic (Claude) family — the other
+Bedrock model families use their native InvokeModel formats and skip
+non-text files. Client operations validate 53/53 against the exported
+SDL (`scripts/validate-client-ops.cjs`).
 
 ## Develop
 
@@ -109,6 +158,11 @@ Providers are gated by `ENABLED_API_PROVIDERS`
 (`AWS_BEDROCK,OPEN_AI,YANDEX_AI,CUSTOM_REST_API` or `*`). Point the client
 at it with `APP_API_URL=http://localhost:4000 APP_WS_URL=http://localhost:4001`
 (see the root README).
+
+`MAX_INPUT_JSON` caps the GraphQL request body (Node parity, default `50mb`;
+accepts `50mb` / `512kb` / `1gb` / a bare byte count). Rocket's built-in
+GraphQL limit is only 128 KiB, so without this inline file/image uploads
+(base64 in `createMessage`) are rejected with a 400 before the resolver runs.
 
 CI (`.github/workflows/ci-cd.yml`, job `rust-api`) runs fmt/clippy/tests
 on every change under `api-rust/**`.
