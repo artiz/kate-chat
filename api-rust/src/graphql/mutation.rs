@@ -1232,23 +1232,22 @@ impl Mutation {
         // Reuse or create the assistant target message
         let ai_message = prepare_regeneration_target(&mut conn, &chat.id, reused, &model, None)?;
         publish_message(pubsub, &chat.id, &ai_message, true).await;
+        drop(conn);
 
-        regenerate_reply(
-            gql_ctx,
-            user,
-            &chat,
-            &model,
-            &updated,
+        // Stream the reply in the background and return right away (Node
+        // parity). The reply reaches the client over the subscription.
+        spawn_regenerate(
+            gql_ctx.clone(),
+            user.clone(),
+            chat,
+            model,
+            updated.clone(),
             ai_message,
             document_ids,
-            message_context.as_ref(),
-        )
-        .await?;
+            message_context,
+        );
 
-        // Node's editMessage returns the edited *user* message — the assistant
-        // reply reaches the client over the subscription. Returning the
-        // assistant target instead would make the client re-add it with the
-        // (pre-stream) empty content, wiping the just-streamed reply.
+        // editMessage returns the edited *user* message (Node parity).
         Ok(EditMessageResponse {
             message: Some(GqlMessage::from(updated)),
             error: None,
@@ -1321,27 +1320,21 @@ impl Mutation {
         let ai_message =
             prepare_regeneration_target(&mut conn, &chat.id, Some(original), &model, None)?;
         publish_message(pubsub, &chat.id, &ai_message, true).await;
+        drop(conn);
 
-        let ai_message_id = ai_message.id.clone();
-        regenerate_reply(
-            gql_ctx,
-            user,
-            &chat,
-            &model,
-            &trigger,
+        // Node returns the reset (empty) message and fire-and-forgets the
+        // stream; the reply fills in over the subscription.
+        let response_message = ai_message.clone();
+        spawn_regenerate(
+            gql_ctx.clone(),
+            user.clone(),
+            chat,
+            model,
+            trigger,
             ai_message,
             document_ids,
-            message_context.as_ref(),
-        )
-        .await?;
-
-        // Return the assistant message with its final streamed content
-        // (Node returns the mutated message). The pre-stream clone would
-        // carry empty content and blank the reply on the client.
-        let response_message = messages::table
-            .filter(messages::id.eq(&ai_message_id))
-            .first::<Message>(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            message_context,
+        );
 
         Ok(SwitchModelResponse {
             message: Some(GqlMessage::from(response_message)),
@@ -1409,26 +1402,21 @@ impl Mutation {
             .get_result::<Message>(&mut conn)
             .map_err(|e| AppError::Database(e.to_string()))?;
         publish_message(pubsub, &chat.id, &ai_message, true).await;
+        drop(conn);
 
-        let ai_message_id = ai_message.id.clone();
-        regenerate_reply(
-            gql_ctx,
-            user,
-            &chat,
-            &model,
-            &original,
+        // Node returns the empty linked reply and fire-and-forgets the stream;
+        // the alternate reply fills in over the subscription.
+        let response_message = ai_message.clone();
+        spawn_regenerate(
+            gql_ctx.clone(),
+            user.clone(),
+            chat,
+            model,
+            original,
             ai_message,
             None,
-            message_context.as_ref(),
-        )
-        .await?;
-
-        // Return the linked reply with its final streamed content (the
-        // pre-stream clone would be empty and blank the reply on the client).
-        let response_message = messages::table
-            .filter(messages::id.eq(&ai_message_id))
-            .first::<Message>(&mut conn)
-            .map_err(|e| AppError::Database(e.to_string()))?;
+            message_context,
+        );
 
         Ok(CallOtherResponse {
             message: Some(GqlMessage::from(response_message)),
@@ -2765,6 +2753,93 @@ async fn publish_message(
     };
     if let Err(e) = pubsub.publish_to_chat(chat_id, pub_message).await {
         warn!("Failed to publish message to subscribers: {:?}", e);
+    }
+}
+
+/// Run a regeneration stream in the background and return immediately.
+///
+/// Node fire-and-forgets `publishAssistantMessage` (streamChatCompletion is
+/// not awaited), so the editMessage/switchModel/callOther mutations resolve
+/// before the reply streams. That ordering matters on the client: the
+/// editMessage handler calls `removeMessages` (a full list reset) in
+/// `onCompleted`; if the mutation only resolved *after* the stream finished,
+/// that reset would run last and revert the just-streamed reply to its empty
+/// placeholder (message shows a spinner forever). Spawning the stream here
+/// reproduces Node's ordering — the placeholder is already published, the
+/// mutation returns, and the streamed tokens arrive over the subscription.
+#[allow(clippy::too_many_arguments)]
+fn spawn_regenerate(
+    gql_ctx: GraphQLContext,
+    user: User,
+    chat: Chat,
+    model: Model,
+    trigger: Message,
+    ai_message: Message,
+    document_ids: Option<Vec<String>>,
+    message_context: Option<crate::models::MessageContextInput>,
+) {
+    let ai_message_id = ai_message.id.clone();
+    let chat_id = chat.id.clone();
+    tokio::spawn(async move {
+        if let Err(e) = regenerate_reply(
+            &gql_ctx,
+            &user,
+            &chat,
+            &model,
+            &trigger,
+            ai_message,
+            document_ids,
+            message_context.as_ref(),
+        )
+        .await
+        {
+            warn!(
+                "Regeneration failed for message {}: {:?}",
+                ai_message_id, e
+            );
+            publish_regeneration_error(&gql_ctx, &chat_id, &ai_message_id, &e).await;
+        }
+    });
+}
+
+/// Turn a still-empty regeneration target into an error message when the
+/// background stream fails before its own `on_error` published one (e.g.
+/// provider setup errors), so the client isn't left with a spinner.
+async fn publish_regeneration_error(
+    gql_ctx: &GraphQLContext,
+    chat_id: &str,
+    message_id: &str,
+    err: &AppError,
+) {
+    let Ok(mut conn) = gql_ctx.db_pool.get() else {
+        return;
+    };
+    // Skip if the stream's on_error callback already reported the failure.
+    if let Ok(existing) = messages::table
+        .filter(messages::id.eq(message_id))
+        .first::<Message>(&mut conn)
+    {
+        if existing.role == String::from(MessageRole::Error) {
+            return;
+        }
+    }
+    let content = format!("Model inference error: {:?}", err);
+    if diesel::update(messages::table.filter(messages::id.eq(message_id)))
+        .set((
+            messages::content.eq(&content),
+            messages::role.eq(String::from(MessageRole::Error)),
+            messages::updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .execute(&mut conn)
+        .is_err()
+    {
+        return;
+    }
+    if let Ok(updated) = messages::table
+        .filter(messages::id.eq(message_id))
+        .first::<Message>(&mut conn)
+    {
+        publish_message(get_global_pubsub(), chat_id, &updated, false).await;
     }
 }
 
