@@ -140,8 +140,13 @@ async fn rocket() -> Rocket<Build> {
         });
     }
 
+    // Raise the GraphQL body limit (async-graphql-rocket defaults to 128 KiB,
+    // which rejects inline file/image uploads with a 400). Mirrors Node's
+    // express.json({ limit: MAX_INPUT_JSON }).
+    use rocket::data::{Limits, ToByteUnit};
     let rocket_config = Config {
         port: config.port,
+        limits: Limits::default().limit("graphql", config.max_input_json_bytes.bytes()),
         ..Config::debug_default()
     };
 

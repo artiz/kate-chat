@@ -159,5 +159,10 @@ Providers are gated by `ENABLED_API_PROVIDERS`
 at it with `APP_API_URL=http://localhost:4000 APP_WS_URL=http://localhost:4001`
 (see the root README).
 
+`MAX_INPUT_JSON` caps the GraphQL request body (Node parity, default `50mb`;
+accepts `50mb` / `512kb` / `1gb` / a bare byte count). Rocket's built-in
+GraphQL limit is only 128 KiB, so without this inline file/image uploads
+(base64 in `createMessage`) are rejected with a 400 before the resolver runs.
+
 CI (`.github/workflows/ci-cd.yml`, job `rust-api`) runs fmt/clippy/tests
 on every change under `api-rust/**`.

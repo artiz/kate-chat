@@ -74,6 +74,11 @@ pub struct AppConfig {
 
     // Enabled API providers
     pub enabled_api_providers: Vec<String>,
+
+    /// Max GraphQL request body size in bytes (Node's `MAX_INPUT_JSON`,
+    /// default 50 MiB). Rocket's default GraphQL limit is only 128 KiB, which
+    /// rejects inline file/image uploads with a 400 before the resolver runs.
+    pub max_input_json_bytes: u64,
 }
 
 impl AppConfig {
@@ -176,6 +181,12 @@ impl AppConfig {
             // Enabled API providers
             enabled_api_providers: Self::parse_enabled_providers(),
 
+            // GraphQL body limit (Node's MAX_INPUT_JSON, default 50mb)
+            max_input_json_bytes: env::var("MAX_INPUT_JSON")
+                .ok()
+                .and_then(|v| Self::parse_byte_size(&v))
+                .unwrap_or(50 * 1024 * 1024),
+
             // Default admin emails
             default_admin_emails: match env::var("DEFAULT_ADMIN_EMAILS") {
                 Ok(value) => value.split(',').map(|s| s.trim().to_string()).collect(),
@@ -184,6 +195,31 @@ impl AppConfig {
                 }
             },
         }
+    }
+
+    /// Parse a human byte size like Node's `bytes` lib accepts: `"50mb"`,
+    /// `"512kb"`, `"1gb"`, or a bare byte count `"52428800"`.
+    fn parse_byte_size(value: &str) -> Option<u64> {
+        let v = value.trim().to_lowercase();
+        if v.is_empty() {
+            return None;
+        }
+        let (num, mult) = if let Some(n) = v.strip_suffix("gb") {
+            (n, 1024 * 1024 * 1024)
+        } else if let Some(n) = v.strip_suffix("mb") {
+            (n, 1024 * 1024)
+        } else if let Some(n) = v.strip_suffix("kb") {
+            (n, 1024)
+        } else if let Some(n) = v.strip_suffix('b') {
+            (n, 1)
+        } else {
+            (v.as_str(), 1)
+        };
+        num.trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|n| *n >= 0.0)
+            .map(|n| (n * mult as f64) as u64)
     }
 
     fn parse_enabled_providers() -> Vec<String> {
@@ -284,6 +320,21 @@ impl AppConfig {
 mod tests {
     use super::*;
     use crate::models::JsonUserSettings;
+
+    #[test]
+    fn parses_human_byte_sizes() {
+        assert_eq!(AppConfig::parse_byte_size("50mb"), Some(50 * 1024 * 1024));
+        assert_eq!(AppConfig::parse_byte_size("512kb"), Some(512 * 1024));
+        assert_eq!(AppConfig::parse_byte_size("1gb"), Some(1024 * 1024 * 1024));
+        assert_eq!(AppConfig::parse_byte_size("1024"), Some(1024));
+        assert_eq!(AppConfig::parse_byte_size("2048b"), Some(2048));
+        assert_eq!(
+            AppConfig::parse_byte_size("  10 MB "),
+            Some(10 * 1024 * 1024)
+        );
+        assert_eq!(AppConfig::parse_byte_size(""), None);
+        assert_eq!(AppConfig::parse_byte_size("abc"), None);
+    }
 
     #[test]
     fn user_settings_override_env_credentials() {
