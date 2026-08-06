@@ -344,7 +344,7 @@
     "provider": "amazon",
     "modelId": "amazon.titan-embed-text-v2:0",
     "name": "Titan Text Embeddings V2",
-    "regions": ["us-east-1", "us-east-2", "us-east-3", "eu-west-1", "eu-west-2", "eu-west-3"],
+    "regions": ["us-east-1", "us-east-2", "eu-west-1", "eu-west-2", "eu-west-3"],
     "maxInputTokens": 8192
   },
   {
@@ -357,48 +357,21 @@
     "provider": "amazon",
     "modelId": "amazon.titan-embed-text-v1",
     "name": "Titan Embeddings G1 - Text",
-    "regions": [
-      "us-east-1",
-      "us-east-2",
-      "us-east-3",
-      "eu-west-1",
-      "eu-west-2",
-      "eu-west-3",
-      "ca-central-1",
-      "eu-central-1"
-    ],
+    "regions": ["us-east-1", "us-east-2", "eu-west-1", "eu-west-2", "eu-west-3", "ca-central-1", "eu-central-1"],
     "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
     "modelId": "amazon.titan-embed-text-v2:0",
     "name": "Titan Embeddings G2 - Text",
-    "regions": [
-      "us-east-1",
-      "us-east-2",
-      "us-east-3",
-      "eu-west-1",
-      "eu-west-2",
-      "eu-west-3",
-      "ca-central-1",
-      "eu-central-1"
-    ],
+    "regions": ["us-east-1", "us-east-2", "eu-west-1", "eu-west-2", "eu-west-3", "ca-central-1", "eu-central-1"],
     "maxInputTokens": 8192
   },
   {
     "provider": "amazon",
     "modelId": "amazon.titan-embed-image-v1",
     "name": "Titan Multimodal Embeddings G1",
-    "regions": [
-      "us-east-1",
-      "us-east-2",
-      "us-east-3",
-      "eu-west-1",
-      "eu-west-2",
-      "eu-west-3",
-      "ca-central-1",
-      "eu-central-1"
-    ]
+    "regions": ["us-east-1", "us-east-2", "eu-west-1", "eu-west-2", "eu-west-3", "ca-central-1", "eu-central-1"]
   },
   {
     "provider": "meta",
@@ -482,7 +455,7 @@
       "us": "us.mistral.pixtral-large-2502-v1:0"
     },
     "name": "Pixtral Large (25.02)",
-    "regions": ["us-east-1", "us-east-2", "us-east-3", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"]
+    "regions": ["us-east-1", "us-east-2", "us-west-2", "eu-central-1", "eu-west-1", "eu-west-3"]
   },
 
   {
