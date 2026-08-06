@@ -167,7 +167,7 @@ To exercise PDF/image parsing without Docker, fetch the prebuilt models + pdfium
 once with docling.rs's install script (run from `document-processor/`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.42.1/scripts/install/download_dependencies.sh \
+curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.53.3/scripts/install/download_dependencies.sh \
   | sh -s -- --no-asr --no-chunk
 cargo run
 ```

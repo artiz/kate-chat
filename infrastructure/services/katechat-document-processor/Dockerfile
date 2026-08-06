@@ -37,7 +37,7 @@ RUN apt-get update \
 # --no-asr skips the Whisper audio models (this service ingests no audio) and
 # --no-chunk the hybrid-chunker tokenizer (chunking runs on our own tokenizer).
 WORKDIR /opt/docling
-RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.42.1/scripts/install/download_dependencies.sh \
+RUN curl -fsSL https://raw.githubusercontent.com/docling-project/docling.rs/v0.53.3/scripts/install/download_dependencies.sh \
         | sh -s -- --no-asr --no-chunk \
     # The hoisted-KV TableFormer decoder is required (fail loudly if the
     # release stops hosting it); the INT8 layout is best-effort — since the

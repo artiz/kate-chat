@@ -24,7 +24,7 @@ futures = "0.3"
 # `cuda` compiles the CUDA execution provider into ONNX Runtime; the actual
 # provider is chosen at startup via DOCLING_RS_EP (the image defaults to
 # `auto`: use the GPU when present, fall back to CPU)
-docling = { version = "0.42.1", features = ["cuda"] }
+docling = { version = "0.53.3", features = ["cuda"] }
 # pdfium (the same fast C library the ML pipeline uses) for page count + splitting
 pdfium-render = "0.8"
 
