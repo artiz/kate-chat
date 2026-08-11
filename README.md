@@ -1,3 +1,5 @@
+
+
 # KateChat - Universal AI Chat Interface
 
 _KateChat_ is a universal chatbot platform similar to chat.openai.com that can be used as a base for customized chatbots. The platform supports multiple LLM models from various providers and allows switching between them on the fly within a chat session.
@@ -44,7 +46,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
   - AWS Bedrock (Amazon, Anthropic, Meta, Mistral, AI21, Cohere...)
   - OpenAI
   - [Yandex AI](https://yandex.cloud/en/docs/foundation-models/concepts/generation/models) with OpenAI protocol 
-- Custom OpenAI-compatible REST API endpoints support (Deepseek, local [Ollama](https://developers.openai.com/cookbook/articles/gpt-oss/run-locally-ollama/), etc.).
+- Custom OpenAI-compatible REST API endpoints support (Deepseek, local [Ollama](https://ollama.com/), etc.).
 - RAG implementation with documents (PDF, DOCX, TXT) parsing by [Docling](https://docling-project.github.io/docling/) and vector embeddings stored in PostgreSQL/Sqlite/MS SQL server
 - Full-fledged production-like dev environment with docker-compose
 - CI/CD pipeline with GitHub Actions to deploy the app to AWS
@@ -479,5 +481,3 @@ For running local models with Ollama:
 3. Commit your changes: `git commit -am 'Add some feature'`
 4. Push to the branch: `git push origin feature/my-new-feature`
 5. Submit a pull request
-
-
