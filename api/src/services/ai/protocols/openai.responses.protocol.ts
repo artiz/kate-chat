@@ -30,6 +30,34 @@ const logger = createLogger(__filename);
 
 type ResponseOutputItem = OpenAI.Responses.ResponseOutputText | OpenAI.Responses.ResponseOutputRefusal;
 
+// Reasoning tokens are billed against `max_output_tokens`, so the answer budget alone
+// leaves a reasoning model no room to reply: it thinks until the cap is reached and the
+// response comes back `incomplete` with a reasoning item and no message at all. These are
+// the shares of `AI_REASONING_MAX_TOKEN_BUDGET` reserved on top of the answer budget per
+// effort level (the same thresholds the effort itself is derived from below).
+const REASONING_OUTPUT_RESERVE_SHARE: Record<string, number> = {
+  none: 0,
+  minimal: 0.1,
+  low: 0.25,
+  medium: 0.75,
+  high: 1,
+  xhigh: 1,
+};
+
+// Effort the Responses API applies when a reasoning model is called without `reasoning`.
+const DEFAULT_REASONING_EFFORT = "medium";
+
+function noContentMessage(incompleteReason?: "max_output_tokens" | "content_filter"): string {
+  if (incompleteReason === "max_output_tokens") {
+    return "_No response: the whole output budget was spent before the answer was written. Raise Max tokens in the chat settings._";
+  }
+  if (incompleteReason === "content_filter") {
+    return "_No response: the answer was withheld by the content filter._";
+  }
+
+  return "_No response_";
+}
+
 export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
   constructor(options: OpenAIProtocolOptions) {
     super(options);
@@ -257,6 +285,12 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
       }
     }
 
+    if (params.max_output_tokens && modelFeatures.includes(ModelFeature.REASONING)) {
+      const effort = params.reasoning?.effort || DEFAULT_REASONING_EFFORT;
+      const share = REASONING_OUTPUT_RESERVE_SHARE[effort] ?? REASONING_OUTPUT_RESERVE_SHARE[DEFAULT_REASONING_EFFORT];
+      params.max_output_tokens += Math.ceil(share * globalConfig.ai.reasoningMaxTokenBudget);
+    }
+
     if (tools.length) {
       params.tools = tools;
     }
@@ -371,6 +405,7 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
 
     let fullResponse = "";
     let partResponse = "";
+    let incompleteReason: "max_output_tokens" | "content_filter" | undefined;
     let meta: MessageMetadata = {
       contextMessages: messages.map(m => m.id).filter(notEmpty),
     };
@@ -639,6 +674,20 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             if (content) {
               fullResponse = content;
             }
+
+            if (chunk.type == "response.incomplete") {
+              incompleteReason = chunk.response.incomplete_details?.reason;
+              logger.warn(
+                {
+                  responseId: chunk.response.id,
+                  reason: incompleteReason,
+                  maxOutputTokens: chunk.response.max_output_tokens,
+                  usage: chunk.response.usage,
+                  outputItems: chunk.response.output.map(item => item.type),
+                },
+                "responses request ended incomplete"
+              );
+            }
           } else if (chunk.type == "response.image_generation_call.generating") {
             stopped = await callbacks.onProgress("", {
               status: ResponseStatus.CONTENT_GENERATION,
@@ -667,6 +716,13 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             });
           } else if (chunk.type == "response.function_call_arguments.done") {
             // arguments collected via response.output_item.done
+          } else if (chunk.type == "response.failed") {
+            gotError = new Error(
+              chunk.response.error?.message ||
+                `OpenAI Responses API request failed, code: ${chunk.response.error?.code || "unknown"}`
+            );
+            stopped = true;
+            break;
           } else if (chunk.type == "error") {
             gotError = new Error(
               chunk.message || `Unknown error from OpenAI Responses API, code: ${chunk.code || "unknown"}`
@@ -785,8 +841,19 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     if (gotError) {
       await callbacks.onError(gotError);
     } else {
+      if (!fullResponse && !images.length && !stopped) {
+        logger.warn(
+          {
+            modelId: this.modelIdOverride || inputRequest.modelId,
+            responseId: lastResponseId,
+            reason: incompleteReason,
+          },
+          "responses request returned no content"
+        );
+      }
+
       await callbacks.onComplete({
-        content: fullResponse || (stopped ? "_Cancelled_" : images.length ? "" : "_No response_"),
+        content: fullResponse || (stopped ? "_Cancelled_" : images.length ? "" : noContentMessage(incompleteReason)),
         images,
         metadata: meta,
         completed: true,
