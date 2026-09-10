@@ -26,6 +26,9 @@ interface SmartSnippetDoc {
   info_context?: string;
 }
 
+/** Asks Search API for smart snippets; sent as a header and as a search flag. */
+const SMART_SNIPPETS_FLAG = { "x-genesis-info-context": "on" };
+
 /** Nodes whose text Search API highlights with <hlword>, parsed as raw XML. */
 const HIGHLIGHTED_NODES = ["*.title", "*.passage"];
 
@@ -91,6 +94,10 @@ export class YandexWebSearch {
       // over the x-genesis-info-context header, so leave the format to the API in that mode
       responseFormat: smartSnippets ? undefined : "FORMAT_XML",
       userAgent: globalConfig.app.userAgent,
+      // The docs ask for the flag "in the request metadata". For gRPC that is a header; the
+      // REST body has a `metadata.fields` map of search flags and the API has been seen to
+      // ignore the header alone, so the flag goes into both places.
+      metadata: smartSnippets ? { fields: SMART_SNIPPETS_FLAG } : undefined,
     };
 
     logger.trace({ ...data, smartSnippets }, "Yandex Web Search request");
@@ -102,7 +109,7 @@ export class YandexWebSearch {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Api-Key ${connection.yandexSearchApiKey}`,
-        ...(smartSnippets ? { "x-genesis-info-context": "on" } : {}),
+        ...(smartSnippets ? SMART_SNIPPETS_FLAG : {}),
       },
     }).then(res => res.json() as Promise<{ rawData: string; code?: number; message?: string; details?: any[] }>);
 

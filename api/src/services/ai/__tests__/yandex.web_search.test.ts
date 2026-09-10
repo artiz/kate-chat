@@ -89,6 +89,8 @@ describe("YandexWebSearch", () => {
       const body = searchCallBody();
       expect(body.query.searchType).toBe("SEARCH_TYPE_COM");
       expect(body.l10n).toBe("LOCALIZATION_EN");
+      expect(body.responseFormat).toBe("FORMAT_XML");
+      expect(body.metadata).toBeUndefined();
       expect(searchCallHeaders()["x-genesis-info-context"]).toBeUndefined();
 
       expect(results).toEqual([
@@ -173,7 +175,9 @@ describe("YandexWebSearch", () => {
       const body = searchCallBody();
       expect(body.query.searchType).toBe("SEARCH_TYPE_RU");
       expect(body.l10n).toBe("LOCALIZATION_RU");
+      // the flag travels both as a header and as a search flag in the body
       expect(searchCallHeaders()["x-genesis-info-context"]).toBe("on");
+      expect(body.metadata).toEqual({ fields: { "x-genesis-info-context": "on" } });
 
       expect(results[0]).toEqual({
         title: "Машинное обучение",
@@ -251,6 +255,7 @@ describe("YandexWebSearch", () => {
       await expect(YandexWebSearch.isAvailable(connection)).resolves.toBe(true);
 
       expect(searchCallBody().query.searchType).toBe("SEARCH_TYPE_COM");
+      expect(searchCallBody().metadata).toBeUndefined();
       expect(searchCallHeaders()["x-genesis-info-context"]).toBeUndefined();
     });
   });
