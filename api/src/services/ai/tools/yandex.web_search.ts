@@ -11,6 +11,21 @@ const logger = createLogger(__filename);
 
 export const WEB_SEARCH_TOOL_NAME = "internal_web_search";
 
+export interface SearchOptions {
+  /** Overrides the `YANDEX_SEARCH_SMART_SNIPPETS` setting for a single request. */
+  smartSnippets?: boolean;
+}
+
+/** Document as returned by Search API when smart snippets are requested. */
+interface SmartSnippetDoc {
+  Num?: number;
+  DocumentTitle?: string;
+  FullUrl?: string;
+  Description?: string;
+  /** Excerpt with citations prepared for the search query, ~500 tokens. */
+  info_context?: string;
+}
+
 const dispatcher = new Agent({
   connectTimeout: 10_000,
   bodyTimeout: 10_000,
@@ -25,16 +40,26 @@ export class YandexWebSearch {
     }
 
     try {
-      const res = await this.search({ query: WEB_SEARCH_TEST_QUERY, limit: 1 }, connection);
+      // The probe runs on every models list build, so never let it order billable snippets
+      const res = await this.search({ query: WEB_SEARCH_TEST_QUERY, limit: 1 }, connection, {
+        smartSnippets: false,
+      });
       return res.length > 0;
     } catch (e) {
       return false;
     }
   }
-  public static async search(request: SearchRequest, connection: ConnectionParams): Promise<SearchResult[]> {
+  public static async search(
+    request: SearchRequest,
+    connection: ConnectionParams,
+    options: SearchOptions = {}
+  ): Promise<SearchResult[]> {
+    const smartSnippets = options.smartSnippets ?? globalConfig.yandex.searchSmartSnippets;
+
     const data = {
       query: {
-        searchType: "SEARCH_TYPE_COM",
+        // Smart snippets are only served for the Russian index
+        searchType: smartSnippets ? "SEARCH_TYPE_RU" : "SEARCH_TYPE_COM",
         queryText: request.query,
       },
       folderId: connection.yandexSearchApiFolder,
@@ -48,12 +73,14 @@ export class YandexWebSearch {
       maxPassages: 5,
       docsInGroup: 3,
       region: request.region,
-      l10n: "LOCALIZATION_EN",
+      // LOCALIZATION_EN is only valid for the international search type
+      l10n: smartSnippets ? "LOCALIZATION_RU" : "LOCALIZATION_EN",
+      // Ignored when smart snippets are on: the API answers with JSON regardless
       responseFormat: "FORMAT_XML",
       userAgent: globalConfig.app.userAgent,
     };
 
-    logger.trace(data, "Yandex Web Search request");
+    logger.trace({ ...data, smartSnippets }, "Yandex Web Search request");
 
     const response = await fetch(globalConfig.yandex.searchApiUrl, {
       method: "POST",
@@ -62,6 +89,7 @@ export class YandexWebSearch {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Api-Key ${connection.yandexSearchApiKey}`,
+        ...(smartSnippets ? { "x-genesis-info-context": "on" } : {}),
       },
     }).then(res => res.json() as Promise<{ rawData: string; code?: number; message?: string; details?: any[] }>);
 
@@ -73,9 +101,39 @@ export class YandexWebSearch {
       return [];
     }
 
-    const xml = Buffer.from(response.rawData, "base64").toString("utf-8");
+    const rawData = Buffer.from(response.rawData, "base64").toString("utf-8");
+    const limit = request.limit || 3;
+    const results = smartSnippets
+      ? this.extractSmartSnippetResults(rawData, limit)
+      : this.extractSearchResults(this.parseXml(rawData), limit);
 
-    // Parse XML response using fast-xml-parser
+    if (request.loadContent) {
+      // Load full content for the results that did not come with a snippet already
+      await Promise.all(
+        results
+          .filter(result => !result.content)
+          .map(async result => {
+            try {
+              const pageResponse = await fetch(result.url, {
+                method: "GET",
+                dispatcher,
+                headers: {
+                  Accept: "text/html,application/xhtml+xml,application/xml",
+                },
+              });
+              const content = await pageResponse.text();
+              result.content = stripHtml(content);
+            } catch (error) {
+              logger.warn(error, `Failed to load content for URL: ${result.url}`);
+            }
+          })
+      );
+    }
+
+    return results;
+  }
+
+  private static parseXml(xml: string): any {
     const parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: "@_",
@@ -84,31 +142,60 @@ export class YandexWebSearch {
       trimValues: true,
     });
 
-    const parsed = parser.parse(xml);
-    const results = this.extractSearchResults(parsed, request.limit || 3);
+    return parser.parse(xml);
+  }
 
-    if (request.loadContent) {
-      // Load full content for each result
-      await Promise.all(
-        results.map(async result => {
-          try {
-            const pageResponse = await fetch(result.url, {
-              method: "GET",
-              dispatcher,
-              headers: {
-                Accept: "text/html,application/xhtml+xml,application/xml",
-              },
-            });
-            const content = await pageResponse.text();
-            result.content = stripHtml(content);
-          } catch (error) {
-            logger.warn(error, `Failed to load content for URL: ${result.url}`);
-          }
-        })
-      );
+  /**
+   * Smart snippets replace the XML/HTML payload with JSON, so `rawData` carries
+   * `{ docs: [...] }` and every document already holds a query-relevant excerpt.
+   */
+  private static extractSmartSnippetResults(rawData: string, limit: number = 3): SearchResult[] {
+    let docs: SmartSnippetDoc[];
+
+    try {
+      docs = JSON.parse(rawData)?.docs;
+    } catch (error) {
+      logger.error(error, "Failed to parse Yandex Web Search smart snippets response");
+      return [];
+    }
+
+    if (!Array.isArray(docs)) {
+      logger.warn({ rawData: rawData.slice(0, 500) }, "Yandex Web Search smart snippets response has no docs");
+      return [];
+    }
+
+    const results: SearchResult[] = [];
+
+    for (const doc of docs) {
+      const title = doc?.DocumentTitle;
+      const url = doc?.FullUrl;
+      if (!title || !url) {
+        continue;
+      }
+
+      results.push({
+        title,
+        url,
+        // JSON documents carry no domain field, unlike the XML ones
+        domain: this.extractDomain(url),
+        summary: doc.Description || "",
+        content: doc.info_context || undefined,
+      });
+
+      if (results.length >= limit) {
+        break;
+      }
     }
 
     return results;
+  }
+
+  private static extractDomain(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return "";
+    }
   }
 
   private static extractSearchResults(parsed: any, limit: number = 3): SearchResult[] {

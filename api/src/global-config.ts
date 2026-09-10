@@ -185,6 +185,13 @@ export interface GlobalConfigShape {
     searchApiUrl: string;
     searchApiKey?: string;
     searchApiFolder?: string;
+    /**
+     * Ask Search API for "smart snippets": every document comes back with an `info_context`
+     * excerpt (~500 tokens, with citations) prepared for the search query, so the web search
+     * tool does not have to download and strip the pages itself.
+     * Billed on top of the search itself and limited to the Russian index, hence opt-in.
+     */
+    searchSmartSnippets: boolean;
     credentialsSource?: CredentialSourceType;
     ignoredModels: string[];
   };
@@ -435,6 +442,7 @@ export class GlobalConfig {
         searchApiUrl: process.env.YANDEX_SEARCH_API_URL || "https://searchapi.api.cloud.yandex.net/v2/web/search",
         searchApiKey: process.env.YANDEX_SEARCH_API_KEY || process.env.YANDEX_FM_API_KEY,
         searchApiFolder: process.env.YANDEX_SEARCH_API_FOLDER || process.env.YANDEX_FM_API_FOLDER,
+        searchSmartSnippets: process.env.YANDEX_SEARCH_SMART_SNIPPETS === "true",
         credentialsSource:
           process.env.YANDEX_FM_API_KEY && process.env.YANDEX_FM_API_FOLDER ? "ENVIRONMENT" : undefined,
         ignoredModels: (process.env.YANDEX_AI_IGNORED_MODELS || "")
