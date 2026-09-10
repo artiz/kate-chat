@@ -224,6 +224,27 @@ describe("YandexWebSearch", () => {
       expect(results[0].summary).toBe("Описание");
     });
 
+    it("leaves the response format to the API instead of pinning XML", async () => {
+      mockSearchResponse(SNIPPETS_RESPONSE);
+
+      await YandexWebSearch.search({ query: "машинное обучение" }, connection);
+
+      expect(searchCallBody().responseFormat).toBeUndefined();
+    });
+
+    it("degrades to the XML parser and page downloads when the API ignores the header", async () => {
+      // seen live: the header was sent, the payload still came back as XML
+      mockSearchResponse(XML_RESPONSE);
+      mockFetch.mockResolvedValueOnce({ text: async () => "<html><body>Page body</body></html>" });
+
+      const results = await YandexWebSearch.search({ query: "machine learning", loadContent: true }, connection);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe("Machine `learning` guide");
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(results[0].content).toContain("Page body");
+    });
+
     it("keeps the availability probe off the billable path", async () => {
       mockSearchResponse(XML_RESPONSE);
 

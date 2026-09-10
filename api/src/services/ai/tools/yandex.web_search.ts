@@ -87,8 +87,9 @@ export class YandexWebSearch {
       region: request.region,
       // LOCALIZATION_EN is only valid for the international search type
       l10n: smartSnippets ? "LOCALIZATION_RU" : "LOCALIZATION_EN",
-      // Ignored when smart snippets are on: the API answers with JSON regardless
-      responseFormat: "FORMAT_XML",
+      // Smart snippets come back as JSON; pinning FORMAT_XML here has been observed to win
+      // over the x-genesis-info-context header, so leave the format to the API in that mode
+      responseFormat: smartSnippets ? undefined : "FORMAT_XML",
       userAgent: globalConfig.app.userAgent,
     };
 
@@ -115,7 +116,19 @@ export class YandexWebSearch {
 
     const rawData = Buffer.from(response.rawData, "base64").toString("utf-8");
     const limit = request.limit || 3;
-    const results = smartSnippets
+
+    // The API answers with plain XML when it does not honour the snippets header (the feature
+    // not being enabled for the folder, for one), so pick the parser from the payload itself
+    // and let such a search degrade to the regular one instead of coming back empty.
+    const snippetsApplied = smartSnippets && rawData.trimStart().startsWith("{");
+    if (smartSnippets && !snippetsApplied) {
+      logger.warn(
+        { payload: rawData.slice(0, 120) },
+        "Yandex Web Search smart snippets were requested but the API answered with a non-JSON payload"
+      );
+    }
+
+    const results = snippetsApplied
       ? this.extractSmartSnippetResults(rawData, limit)
       : this.extractSearchResults(this.parseXml(rawData), limit);
 
@@ -124,7 +137,7 @@ export class YandexWebSearch {
     // exists to avoid, and WEB_SEARCH_TOOL_RESULT keeps only the first
     // WEB_SEARCH_TOOL_MAX_CONTENT_LENGTH characters anyway — for a stripped page that is
     // usually navigation boilerplate. Such a document still carries its Description as summary.
-    if (request.loadContent && !smartSnippets) {
+    if (request.loadContent && !snippetsApplied) {
       await Promise.all(
         results.map(async result => {
           try {
