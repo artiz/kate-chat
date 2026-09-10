@@ -119,26 +119,28 @@ export class YandexWebSearch {
       ? this.extractSmartSnippetResults(rawData, limit)
       : this.extractSearchResults(this.parseXml(rawData), limit);
 
-    if (request.loadContent) {
-      // Load full content for the results that did not come with a snippet already
+    // Smart snippets already carry a query-relevant excerpt. Downloading the page for the odd
+    // document that came without one would reintroduce the latency and failure modes the mode
+    // exists to avoid, and WEB_SEARCH_TOOL_RESULT keeps only the first
+    // WEB_SEARCH_TOOL_MAX_CONTENT_LENGTH characters anyway — for a stripped page that is
+    // usually navigation boilerplate. Such a document still carries its Description as summary.
+    if (request.loadContent && !smartSnippets) {
       await Promise.all(
-        results
-          .filter(result => !result.content)
-          .map(async result => {
-            try {
-              const pageResponse = await fetch(result.url, {
-                method: "GET",
-                dispatcher,
-                headers: {
-                  Accept: "text/html,application/xhtml+xml,application/xml",
-                },
-              });
-              const content = await pageResponse.text();
-              result.content = stripHtml(content);
-            } catch (error) {
-              logger.warn(error, `Failed to load content for URL: ${result.url}`);
-            }
-          })
+        results.map(async result => {
+          try {
+            const pageResponse = await fetch(result.url, {
+              method: "GET",
+              dispatcher,
+              headers: {
+                Accept: "text/html,application/xhtml+xml,application/xml",
+              },
+            });
+            const content = await pageResponse.text();
+            result.content = stripHtml(content);
+          } catch (error) {
+            logger.warn(error, `Failed to load content for URL: ${result.url}`);
+          }
+        })
       );
     }
 

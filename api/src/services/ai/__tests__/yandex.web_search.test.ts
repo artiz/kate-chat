@@ -209,16 +209,19 @@ describe("YandexWebSearch", () => {
       await expect(YandexWebSearch.search({ query: "машинное обучение" }, connection)).resolves.toEqual([]);
     });
 
-    it("still downloads the page when a document came back without a snippet", async () => {
+    it("does not fall back to a page download for a document without a snippet", async () => {
       mockSearchResponse(
-        JSON.stringify({ docs: [{ DocumentTitle: "Без сниппета", FullUrl: "https://example.ru/x" }] })
+        JSON.stringify({
+          docs: [{ DocumentTitle: "Без сниппета", FullUrl: "https://example.ru/x", Description: "Описание" }],
+        })
       );
-      mockFetch.mockResolvedValueOnce({ text: async () => "<html><body>Fallback body</body></html>" });
 
       const results = await YandexWebSearch.search({ query: "машинное обучение", loadContent: true }, connection);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      expect(results[0].content).toContain("Fallback body");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(results[0].content).toBeUndefined();
+      // the document is still usable: Description carries over as the summary
+      expect(results[0].summary).toBe("Описание");
     });
 
     it("keeps the availability probe off the billable path", async () => {
