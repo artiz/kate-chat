@@ -41,18 +41,18 @@ export const WebSearchCall = (message: Message, t: TFunction = globalT): React.R
                 <li key={idx}>
                   {entry.url ? (
                     <Anchor href={entry.url} target="_blank" rel="noopener noreferrer" size="xs">
-                      {entry.title || entry.url}
+                      {entry.title ? <Highlighted text={entry.title} /> : entry.url}
                     </Anchor>
                   ) : (
-                    <Text size="xs">{entry.title || `#${idx + 1}`}</Text>
+                    <Text size="xs">{entry.title ? <Highlighted text={entry.title} /> : `#${idx + 1}`}</Text>
                   )}
                   {entry.summary && (
                     <Text size="xs" c="dimmed" mt={2}>
-                      {entry.summary}
+                      <Highlighted text={entry.summary} />
                     </Text>
                   )}
                   {entry.content && (
-                    <Text size="xs" mt={4} style={{ whiteSpace: "pre-wrap" }}>
+                    <Text size="xs" mt={4} lineClamp={5} style={{ whiteSpace: "pre-wrap" }}>
                       {entry.content}
                     </Text>
                   )}
@@ -73,6 +73,30 @@ export const WebSearchCall = (message: Message, t: TFunction = globalT): React.R
 
   return detailsNodes;
 };
+
+/**
+ * The API marks the search terms the engine highlighted with backticks — markdown for the model.
+ * In the details they are rendered as emphasis instead of literal backticks.
+ */
+export const splitHighlighted = (text: string): Array<{ text: string; highlighted: boolean }> =>
+  text
+    .split(/`([^`]+)`/)
+    .map((part, index) => ({ text: part, highlighted: index % 2 === 1 }))
+    .filter(part => part.text);
+
+const Highlighted = ({ text }: { text: string }) => (
+  <>
+    {splitHighlighted(text).map((part, index) =>
+      part.highlighted ? (
+        <Text key={index} span fw={600} inherit>
+          {part.text}
+        </Text>
+      ) : (
+        <Fragment key={index}>{part.text}</Fragment>
+      )
+    )}
+  </>
+);
 
 export interface WebSearchEntry {
   title?: string;

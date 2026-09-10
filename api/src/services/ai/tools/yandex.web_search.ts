@@ -4,7 +4,7 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { createLogger } from "@/utils/logger";
 import { SearchRequest, SearchResult, SearchSortMode } from "./web_search";
 import { XMLParser } from "fast-xml-parser";
-import { stripHtml } from "@/utils/format";
+import { decodeHtmlEntities, stripHtml } from "@/utils/format";
 import { globalConfig } from "@/global-config";
 
 const logger = createLogger(__filename);
@@ -41,15 +41,6 @@ const SMART_SNIPPETS_FLAG = { "x-genesis-info-context": "on" };
 
 /** Nodes whose text Search API highlights with <hlword>, parsed as raw XML. */
 const HIGHLIGHTED_NODES = ["*.title", "*.passage"];
-
-const XML_ENTITIES: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&apos;": "'",
-  "&nbsp;": " ",
-};
 
 const dispatcher = new Agent({
   connectTimeout: 10_000,
@@ -355,15 +346,6 @@ export class YandexWebSearch {
       return "";
     }
 
-    return this.decodeXmlEntities(raw.replace(/<hlword[^>]*>(.*?)<\/hlword>/g, "`$1`").replace(/<[^>]*>/g, "")).trim();
-  }
-
-  /** Single pass, so that an escaped entity like `&amp;#39;` is not decoded twice. */
-  private static decodeXmlEntities(text: string): string {
-    return text.replace(/&(?:(amp|lt|gt|quot|apos|nbsp)|#(\d+)|#x([\da-f]+));/gi, (entity, named, dec, hex) => {
-      if (named) return XML_ENTITIES[`&${named.toLowerCase()};`] ?? entity;
-      const code = dec ? Number(dec) : parseInt(hex, 16);
-      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
-    });
+    return decodeHtmlEntities(raw.replace(/<hlword[^>]*>(.*?)<\/hlword>/g, "`$1`").replace(/<[^>]*>/g, "")).trim();
   }
 }

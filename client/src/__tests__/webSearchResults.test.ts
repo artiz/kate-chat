@@ -1,4 +1,20 @@
-import { parseWebSearchResults } from "../components/chat/message-details-plugins/WebSearch";
+import { parseWebSearchResults, splitHighlighted } from "../components/chat/message-details-plugins/WebSearch";
+
+describe("splitHighlighted", () => {
+  it("separates the backticked search terms from the surrounding text", () => {
+    expect(splitHighlighted("Рост `цен` на `бензин` в России")).toEqual([
+      { text: "Рост ", highlighted: false },
+      { text: "цен", highlighted: true },
+      { text: " на ", highlighted: false },
+      { text: "бензин", highlighted: true },
+      { text: " в России", highlighted: false },
+    ]);
+  });
+
+  it("returns plain text untouched", () => {
+    expect(splitHighlighted("no markers here")).toEqual([{ text: "no markers here", highlighted: false }]);
+  });
+});
 
 /** Mirrors WEB_SEARCH_TOOL_RESULT in api/src/config/ai/prompts.ts */
 const toolResult = (
