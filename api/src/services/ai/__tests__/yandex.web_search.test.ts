@@ -216,6 +216,40 @@ describe("YandexWebSearch", () => {
       expect(results.every(r => r.content)).toBe(true);
     });
 
+    it("reads the document fields regardless of their casing", async () => {
+      mockSearchResponse(
+        JSON.stringify({
+          docs: [
+            {
+              num: 1,
+              documentTitle: "Бензин",
+              fullUrl: "https://example.ru/fuel",
+              description: "Цены",
+              infoContext: "Сниппет про бензин",
+            },
+          ],
+        })
+      );
+
+      const results = await YandexWebSearch.search({ query: "бензин" }, connection);
+
+      expect(results).toEqual([
+        {
+          title: "Бензин",
+          url: "https://example.ru/fuel",
+          domain: "example.ru",
+          summary: "Цены",
+          content: "Сниппет про бензин",
+        },
+      ]);
+    });
+
+    it("returns no results without throwing when the documents have an unknown shape", async () => {
+      mockSearchResponse(JSON.stringify({ docs: [{ something: "else" }, null, 42] }));
+
+      await expect(YandexWebSearch.search({ query: "бензин" }, connection)).resolves.toEqual([]);
+    });
+
     it("honours the requested limit", async () => {
       mockSearchResponse(SNIPPETS_RESPONSE);
 

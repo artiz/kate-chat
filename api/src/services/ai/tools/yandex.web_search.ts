@@ -16,15 +16,25 @@ export interface SearchOptions {
   smartSnippets?: boolean;
 }
 
-/** Document as returned by Search API when smart snippets are requested. */
-interface SmartSnippetDoc {
-  Num?: number;
-  DocumentTitle?: string;
-  FullUrl?: string;
-  Description?: string;
-  /** Excerpt with citations prepared for the search query, ~500 tokens. */
-  info_context?: string;
-}
+/**
+ * Document as returned by Search API when smart snippets are requested. The documented fields
+ * are `Num`, `DocumentTitle`, `FullUrl`, `Description` and `info_context` (the excerpt with
+ * citations prepared for the query, ~500 tokens); they are read case-insensitively, see field().
+ */
+type SmartSnippetDoc = Record<string, unknown>;
+
+/** Reads the first non-empty string among the given field names, ignoring case. */
+const field = (doc: SmartSnippetDoc, ...names: string[]): string | undefined => {
+  const keys = new Map(Object.keys(doc).map(key => [key.toLowerCase(), key]));
+  for (const name of names) {
+    const key = keys.get(name.toLowerCase());
+    const value = key === undefined ? undefined : doc[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+};
 
 /** Asks Search API for smart snippets; sent as a header and as a search flag. */
 const SMART_SNIPPETS_FLAG = { "x-genesis-info-context": "on" };
@@ -209,8 +219,12 @@ export class YandexWebSearch {
     const results: SearchResult[] = [];
 
     for (const doc of docs) {
-      const title = doc?.DocumentTitle;
-      const url = doc?.FullUrl;
+      if (!doc || typeof doc !== "object") {
+        continue;
+      }
+
+      const title = field(doc, "DocumentTitle", "title");
+      const url = field(doc, "FullUrl", "url");
       if (!title || !url) {
         continue;
       }
@@ -220,13 +234,21 @@ export class YandexWebSearch {
         url,
         // JSON documents carry no domain field, unlike the XML ones
         domain: this.extractDomain(url),
-        summary: doc.Description || "",
-        content: doc.info_context || undefined,
+        summary: field(doc, "Description", "summary") || "",
+        content: field(doc, "info_context", "infoContext"),
       });
 
       if (results.length >= limit) {
         break;
       }
+    }
+
+    if (docs.length && !results.length) {
+      // The shape differs from the documented one: show what actually came back
+      logger.warn(
+        { keys: Object.keys(docs[0] ?? {}), sample: JSON.stringify(docs[0]).slice(0, 500) },
+        "Yandex Web Search smart snippet documents did not map to results"
+      );
     }
 
     return results;
