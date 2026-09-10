@@ -114,10 +114,10 @@ export class YandexWebSearch {
     }).then(res => res.json() as Promise<{ rawData: string; code?: number; message?: string; details?: any[] }>);
 
     if (!response.rawData) {
-      if (response.code) {
-        logger.warn({ response }, "Yandex Web Search API error response");
-      }
-
+      logger.warn(
+        { response, query: request.query, smartSnippets },
+        response.code ? "Yandex Web Search API error response" : "Yandex Web Search API response without rawData"
+      );
       return [];
     }
 
@@ -144,6 +144,10 @@ export class YandexWebSearch {
     // exists to avoid, and WEB_SEARCH_TOOL_RESULT keeps only the first
     // WEB_SEARCH_TOOL_MAX_CONTENT_LENGTH characters anyway — for a stripped page that is
     // usually navigation boilerplate. Such a document still carries its Description as summary.
+    if (!results.length) {
+      logger.info({ query: request.query, smartSnippets: snippetsApplied }, "Yandex Web Search returned no results");
+    }
+
     if (request.loadContent && !snippetsApplied) {
       await Promise.all(
         results.map(async result => {
@@ -244,6 +248,15 @@ export class YandexWebSearch {
       const response = parsed?.yandexsearch?.response;
       if (!response) {
         return results;
+      }
+
+      // Quota and limit problems arrive as HTTP 200 with <error code="..."> inside the response
+      if (response.error) {
+        const error = response.error;
+        logger.warn(
+          { code: error?.["@_code"], message: typeof error === "string" ? error : error?.["#text"] },
+          "Yandex Web Search response carries an error"
+        );
       }
 
       const groupings = response.results?.grouping;

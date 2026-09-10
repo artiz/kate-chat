@@ -150,6 +150,23 @@ describe("YandexWebSearch", () => {
       expect(results[0].title).toBe("Café — &#39; stays");
     });
 
+    it("returns no results without throwing when the API reports an error inside the XML", async () => {
+      mockSearchResponse(`<?xml version="1.0" encoding="utf-8"?>
+<yandexsearch version="1.0"><response>
+  <error code="55">Вы исчерпали дневной лимит запросов</error>
+</response></yandexsearch>`);
+
+      await expect(YandexWebSearch.search({ query: "масло", loadContent: true }, connection)).resolves.toEqual([]);
+      // no page downloads were attempted on an error payload
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns no results without throwing on a response without rawData", async () => {
+      mockFetch.mockResolvedValueOnce({ json: async () => ({ message: "quota exceeded" }) });
+
+      await expect(YandexWebSearch.search({ query: "масло" }, connection)).resolves.toEqual([]);
+    });
+
     it("downloads the pages when loadContent is requested", async () => {
       mockSearchResponse(XML_RESPONSE);
       mockFetch.mockResolvedValueOnce({ text: async () => "<html><body>Page body</body></html>" });
