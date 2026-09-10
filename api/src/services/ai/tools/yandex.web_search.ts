@@ -26,6 +26,18 @@ interface SmartSnippetDoc {
   info_context?: string;
 }
 
+/** Nodes whose text Search API highlights with <hlword>, parsed as raw XML. */
+const HIGHLIGHTED_NODES = ["*.title", "*.passage"];
+
+const XML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&apos;": "'",
+  "&nbsp;": " ",
+};
+
 const dispatcher = new Agent({
   connectTimeout: 10_000,
   bodyTimeout: 10_000,
@@ -140,6 +152,10 @@ export class YandexWebSearch {
       textNodeName: "#text",
       parseTagValue: false,
       trimValues: true,
+      // Keep the highlighted nodes as raw XML: parsing them normally lifts <hlword> into a
+      // sibling key and concatenates what is left, so "Machine <hlword>learning</hlword> guide"
+      // collapses into "Machineguide". processHlWord() needs the tags in place instead.
+      stopNodes: HIGHLIGHTED_NODES,
     });
 
     return parser.parse(xml);
@@ -246,10 +262,7 @@ export class YandexWebSearch {
           const passages = doc.passages?.passage;
           if (passages) {
             const passageArray = Array.isArray(passages) ? passages : [passages];
-            const processedPassages = passageArray.map((p: any) => {
-              const text = typeof p === "string" ? p : p["#text"] || "";
-              return this.processHlWord(text);
-            });
+            const processedPassages = passageArray.map((p: any) => this.processHlWord(p));
             summary = processedPassages.join(" ").trim();
           }
 
@@ -274,51 +287,26 @@ export class YandexWebSearch {
     return results;
   }
 
-  private static processHlWord(text: string | any): string {
-    if (typeof text !== "string") {
-      // If text is an object (parsed with nested structure), convert to string
-      if (text && typeof text === "object") {
-        return this.objectToString(text);
-      }
+  /**
+   * Turns a raw highlighted node into markdown: <hlword> becomes backticks, anything else
+   * the API wrapped the text in is dropped, and XML entities are decoded last so that an
+   * escaped tag in the document text is never mistaken for markup.
+   */
+  private static processHlWord(text: unknown): string {
+    const raw = typeof text === "string" ? text : ((text as any)?.["#text"] ?? "");
+    if (typeof raw !== "string" || !raw) {
       return "";
     }
 
-    // Replace <hlword> tags with backticks for markdown format
-    return text.replace(/<hlword[^>]*>(.*?)<\/hlword>/g, "`$1`");
+    return this.decodeXmlEntities(raw.replace(/<hlword[^>]*>(.*?)<\/hlword>/g, "`$1`").replace(/<[^>]*>/g, "")).trim();
   }
 
-  private static objectToString(obj: any): string {
-    if (typeof obj === "string") {
-      return obj;
-    }
-
-    if (Array.isArray(obj)) {
-      return obj.map(item => this.objectToString(item)).join("");
-    }
-
-    if (obj && typeof obj === "object") {
-      let result = "";
-
-      // Handle mixed content (text nodes and hlword tags)
-      if ("#text" in obj) {
-        result += obj["#text"];
-      }
-
-      // Check for other properties that might represent tags
-      for (const key in obj) {
-        if (key !== "#text" && key !== "@_" && !key.startsWith("@_")) {
-          if (key === "hlword") {
-            const hlwordContent = this.objectToString(obj[key]);
-            result += "`" + hlwordContent + "`";
-          } else {
-            result += this.objectToString(obj[key]);
-          }
-        }
-      }
-
-      return result;
-    }
-
-    return "";
+  /** Single pass, so that an escaped entity like `&amp;#39;` is not decoded twice. */
+  private static decodeXmlEntities(text: string): string {
+    return text.replace(/&(?:(amp|lt|gt|quot|apos|nbsp)|#(\d+)|#x([\da-f]+));/gi, (entity, named, dec, hex) => {
+      if (named) return XML_ENTITIES[`&${named.toLowerCase()};`] ?? entity;
+      const code = dec ? Number(dec) : parseInt(hex, 16);
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
+    });
   }
 }

@@ -37,10 +37,10 @@ const XML_RESPONSE = `<?xml version="1.0" encoding="utf-8"?>
       <grouping>
         <group>
           <doc>
-            <title>Machine learning</title>
+            <title>Machine <hlword>learning</hlword> guide</title>
             <url>https://example.com/ml</url>
             <domain>example.com</domain>
-            <passages><passage>An introduction to ML</passage></passages>
+            <passages><passage>An <hlword>intro</hlword> to ML</passage></passages>
           </doc>
         </group>
       </grouping>
@@ -93,12 +93,59 @@ describe("YandexWebSearch", () => {
 
       expect(results).toEqual([
         {
-          title: "Machine learning",
+          title: "Machine `learning` guide",
           url: "https://example.com/ml",
           domain: "example.com",
-          summary: "An introduction to ML",
+          summary: "An `intro` to ML",
         },
       ]);
+    });
+
+    it("keeps the text around <hlword> intact in multi-passage summaries", async () => {
+      mockSearchResponse(`<?xml version="1.0" encoding="utf-8"?>
+<yandexsearch version="1.0"><response><results><grouping><group><doc>
+  <title>Rust <hlword>ownership</hlword></title>
+  <url>https://example.com/rust</url>
+  <domain>example.com</domain>
+  <passages>
+    <passage>The <hlword>borrow</hlword> checker explained</passage>
+    <passage>Lifetimes and <hlword>moves</hlword></passage>
+  </passages>
+</doc></group></grouping></results></response></yandexsearch>`);
+
+      const results = await YandexWebSearch.search({ query: "rust ownership" }, connection);
+
+      expect(results[0].title).toBe("Rust `ownership`");
+      expect(results[0].summary).toBe("The `borrow` checker explained Lifetimes and `moves`");
+    });
+
+    it("decodes XML entities without treating escaped markup as tags", async () => {
+      mockSearchResponse(`<?xml version="1.0" encoding="utf-8"?>
+<yandexsearch version="1.0"><response><results><grouping><group><doc>
+  <title>Tom &amp; Jerry</title>
+  <url>https://example.com/tj</url>
+  <domain>example.com</domain>
+  <passages><passage>Use &lt;hlword&gt; to <hlword>highlight</hlword> &amp; nothing else</passage></passages>
+</doc></group></grouping></results></response></yandexsearch>`);
+
+      const results = await YandexWebSearch.search({ query: "tom and jerry" }, connection);
+
+      expect(results[0].title).toBe("Tom & Jerry");
+      expect(results[0].summary).toBe("Use <hlword> to `highlight` & nothing else");
+    });
+
+    it("decodes numeric entities once, leaving escaped ones literal", async () => {
+      mockSearchResponse(`<?xml version="1.0" encoding="utf-8"?>
+<yandexsearch version="1.0"><response><results><grouping><group><doc>
+  <title>Caf&#233; &#x2014; &amp;#39; stays</title>
+  <url>https://example.com/cafe</url>
+  <domain>example.com</domain>
+  <passages><passage>Plain</passage></passages>
+</doc></group></grouping></results></response></yandexsearch>`);
+
+      const results = await YandexWebSearch.search({ query: "cafe" }, connection);
+
+      expect(results[0].title).toBe("Café — &#39; stays");
     });
 
     it("downloads the pages when loadContent is requested", async () => {
