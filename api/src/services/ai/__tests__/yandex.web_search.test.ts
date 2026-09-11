@@ -216,6 +216,63 @@ describe("YandexWebSearch", () => {
       expect(results.every(r => r.content)).toBe(true);
     });
 
+    it("maps the live document layout: title and description nested under rich_data", async () => {
+      // Shape seen live on 2026-09-11; differs from the documented flat one
+      mockSearchResponse(
+        JSON.stringify({
+          docs: [
+            {
+              FullUrl: "https://rg.ru/2026/09/11/rynok-dizelia.html",
+              rich_data: {
+                Description: "Почти во всех регионах дизельное топливо есть.",
+                DocumentTitle: "Что происходит на рынке дизтоплива в России",
+                ForcedShortUrl: "rg.ru",
+                FullUrl: "https://rg.ru/2026/09/11/rynok-dizelia.html",
+                Num: 1,
+                UrlMenu: { Items: [{ Title: "rg.ru", Url: "https://rg.ru/" }] },
+              },
+              info_context: "Сниппет с цитатами про рынок дизеля.",
+              doc_mtime_datetime_seconds: 1789000000,
+              last_acess_datetime_seconds: 1789000100,
+              full_text: "Полный текст страницы, который в сниппет-режиме не нужен.",
+            },
+            {
+              FullUrl: "https://rosstat.gov.ru/storage/mediabank/154.html",
+              rich_data: {
+                Description: "",
+                DocumentTitle: "О потребительских ценах на нефтепродукты",
+                ForcedShortUrl: "rosstat.gov.ru",
+                Num: 2,
+              },
+              full_text: "Таблица цен на нефтепродукты по регионам.",
+            },
+          ],
+        })
+      );
+
+      const results = await YandexWebSearch.search({ query: "дизельное топливо", loadContent: true }, connection);
+
+      expect(results).toEqual([
+        {
+          title: "Что происходит на рынке дизтоплива в России",
+          url: "https://rg.ru/2026/09/11/rynok-dizelia.html",
+          domain: "rg.ru",
+          summary: "Почти во всех регионах дизельное топливо есть.",
+          content: "Сниппет с цитатами про рынок дизеля.",
+        },
+        {
+          title: "О потребительских ценах на нефтепродукты",
+          url: "https://rosstat.gov.ru/storage/mediabank/154.html",
+          domain: "rosstat.gov.ru",
+          summary: "",
+          // no info_context on this one: the page text stands in
+          content: "Таблица цен на нефтепродукты по регионам.",
+        },
+      ]);
+      // snippets arrived, so no page was downloaded
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     it("reads the document fields regardless of their casing", async () => {
       mockSearchResponse(
         JSON.stringify({

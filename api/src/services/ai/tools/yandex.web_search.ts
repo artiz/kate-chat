@@ -17,11 +17,17 @@ export interface SearchOptions {
 }
 
 /**
- * Document as returned by Search API when smart snippets are requested. The documented fields
- * are `Num`, `DocumentTitle`, `FullUrl`, `Description` and `info_context` (the excerpt with
- * citations prepared for the query, ~500 tokens); they are read case-insensitively, see field().
+ * Document as returned by Search API when smart snippets are requested. The docs list
+ * `Num`, `DocumentTitle`, `FullUrl`, `Description` and `info_context` as flat fields; live, only
+ * `FullUrl` and `info_context` (the excerpt with citations prepared for the query, ~500 tokens)
+ * sit at the top level, next to `full_text` (the whole page text), while `DocumentTitle`,
+ * `Description`, `ForcedShortUrl` (the display domain) and `Num` are nested under `rich_data`.
+ * Both layouts are read, case-insensitively, see field().
  */
 type SmartSnippetDoc = Record<string, unknown>;
+
+const asRecord = (value: unknown): SmartSnippetDoc =>
+  value && typeof value === "object" && !Array.isArray(value) ? (value as SmartSnippetDoc) : {};
 
 /** Reads the first non-empty string among the given field names, ignoring case. */
 const field = (doc: SmartSnippetDoc, ...names: string[]): string | undefined => {
@@ -214,8 +220,9 @@ export class YandexWebSearch {
         continue;
       }
 
-      const title = field(doc, "DocumentTitle", "title");
-      const url = field(doc, "FullUrl", "url");
+      const rich = asRecord(doc.rich_data);
+      const title = field(rich, "DocumentTitle", "title") ?? field(doc, "DocumentTitle", "title");
+      const url = field(doc, "FullUrl", "url") ?? field(rich, "FullUrl", "url");
       if (!title || !url) {
         continue;
       }
@@ -223,10 +230,10 @@ export class YandexWebSearch {
       results.push({
         title,
         url,
-        // JSON documents carry no domain field, unlike the XML ones
-        domain: this.extractDomain(url),
-        summary: field(doc, "Description", "summary") || "",
-        content: field(doc, "info_context", "infoContext"),
+        domain: field(rich, "ForcedShortUrl") ?? this.extractDomain(url),
+        summary: field(rich, "Description", "summary") ?? field(doc, "Description", "summary") ?? "",
+        // The snippet is what the mode is for; the page text stands in when a document has none
+        content: field(doc, "info_context", "infoContext") ?? field(doc, "full_text"),
       });
 
       if (results.length >= limit) {
