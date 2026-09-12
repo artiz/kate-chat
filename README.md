@@ -28,7 +28,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Real-time communication with GraphQL subscriptions and WebSocket
 - Localization
 - "Switch model"/"Call other model" logic to process selected chat messages with another [model](#screenshots)
-- LLM tools (Web Search, Code Interpreter, Reasoning) support, custom WebSearch tool implemented using Yandex Search API
+- LLM tools (Web Search, Code Interpreter, Reasoning) support, custom WebSearch tool implemented using Yandex Search API (optional `YANDEX_SEARCH_SMART_SNIPPETS` mode takes the query-relevant excerpt straight from the Search API instead of downloading the pages; billed extra and served for the Russian index only, so it applies to requests made in Russian)
 - Distributed messages processing using external queue (SQS + Redis), specific queue for long-running requests (images generation, agents) that allows to continue requests processing after service crash/restart
 - Request statistics (input/output tokens, tool calls), request cancellation to stop reasoning or web search
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)

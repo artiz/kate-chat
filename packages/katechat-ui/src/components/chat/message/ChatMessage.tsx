@@ -123,13 +123,25 @@ interface ChatMessageProps {
   isLast?: boolean;
   disabled?: boolean;
   pluginsLoader?: (message: Message, opts?: { isLast?: boolean }) => React.ReactNode;
+  /** Notices shown between the message text and the footer */
+  noticesLoader?: (message: Message, opts?: { isLast?: boolean }) => React.ReactNode;
   messageDetailsLoader?: (message: Message) => React.ReactNode;
   models?: Model[];
   codePlugins?: Record<string, CodePlugin>;
 }
 
 export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps) => {
-  const { message, index, isLast, disabled = false, pluginsLoader, messageDetailsLoader, models, codePlugins } = props;
+  const {
+    message,
+    index,
+    isLast,
+    disabled = false,
+    pluginsLoader,
+    noticesLoader,
+    messageDetailsLoader,
+    models,
+    codePlugins,
+  } = props;
 
   const {
     role,
@@ -262,6 +274,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
 
   const mainMessage = useMemo(() => {
     const plugins = pluginsLoader ? pluginsLoader(message, { isLast }) : null;
+    const notices = noticesLoader ? noticesLoader(message, { isLast }) : null;
     const model = models?.find(m => m.modelId === message?.modelId);
 
     return (
@@ -302,6 +315,8 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
             <div>{content}</div>
           )}
 
+          {notices && <Box className="katechat-message-notices">{notices}</Box>}
+
           <Box className="katechat-message-footer">
             <CopyMessageButton messageId={id} messageIndex={index} />
             {details && <DetailsButton messageId={id} messageIndex={index} />}
@@ -322,6 +337,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
     modelId,
     models,
     index,
+    isLast,
     disableActions,
     details,
     streaming,
@@ -353,6 +369,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
         index={ndx}
         models={models}
         plugins={pluginsLoader?.(lm)}
+        notices={noticesLoader?.(lm)}
         messageDetailsLoader={messageDetailsLoader}
       />
     ));

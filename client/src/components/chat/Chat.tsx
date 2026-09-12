@@ -30,6 +30,7 @@ import {
   DropFilesOverlay,
   VoiceEqualizer,
   parseMarkdown,
+  PluginProps,
 } from "@katechat/ui";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -41,11 +42,20 @@ import { DocumentUploadProgress } from "@/components/documents/DocumentUploadPro
 import {
   ChatDocument,
   CreateMessageResponse,
+  Message,
   ModelFeature,
   StopMessageGenerationResponse,
   StopMessageGenerationInput,
 } from "@/types/graphql";
-import { EditMessage, DeleteMessage, CallOtherModel, SwitchModel, InOutTokens, ContextMessages } from "./plugins";
+import {
+  EditMessage,
+  DeleteMessage,
+  CallOtherModel,
+  SwitchModel,
+  InOutTokens,
+  ContextMessages,
+  TruncatedResponse,
+} from "./plugins";
 import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/services/graphql.queries";
 import {
   MAX_UPLOAD_FILE_SIZE,
@@ -199,6 +209,13 @@ export const ChatComponent = ({ chatId }: IProps) => {
       isExternalChat
         ? [InOutTokens]
         : [EditMessage, DeleteMessage, CallOtherModel, SwitchModel, ContextMessages, InOutTokens],
+    [isExternalChat]
+  );
+
+  const noticePlugins = useMemo(
+    () => [
+      isExternalChat ? (props: PluginProps<Message>) => <TruncatedResponse {...props} readOnly /> : TruncatedResponse,
+    ],
     [isExternalChat]
   );
 
@@ -592,6 +609,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
           removeMessages={removeMessages}
           loadMoreMessages={loadMoreMessages}
           plugins={messagePlugins}
+          noticePlugins={noticePlugins}
           detailsPlugins={detailsPlugins}
           codePlugins={codePlugins}
           streaming={streaming}

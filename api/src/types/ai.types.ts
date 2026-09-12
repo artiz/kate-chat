@@ -184,12 +184,44 @@ export class ReasoningChunk {
   id?: string;
 }
 
+/** Why the model stopped generating, normalized across providers */
+export type StopReason = "end_turn" | "max_tokens" | "content_filter" | "stop_sequence";
+
+/**
+ * Map a provider stop/finish reason onto StopReason.
+ * Tool-call stops are transient (the request continues) and map to undefined.
+ */
+export function toStopReason(reason: string | null | undefined): StopReason | undefined {
+  switch (reason) {
+    case "stop": // OpenAI chat completions
+    case "completed": // OpenAI responses
+    case "end_turn": // Bedrock
+      return "end_turn";
+    case "length": // OpenAI chat completions
+    case "max_output_tokens": // OpenAI responses
+    case "max_tokens": // Bedrock
+      return "max_tokens";
+    case "content_filter": // OpenAI
+    case "content_filtered": // Bedrock
+    case "guardrail_intervened": // Bedrock
+      return "content_filter";
+    case "stop_sequence": // Bedrock
+      return "stop_sequence";
+    default:
+      return undefined;
+  }
+}
+
 @ObjectType()
 export class MessageMetadata {
   // --------------- assistant message meta ---------------
   // model usage details
   @Field({ nullable: true })
   requestId?: string;
+
+  /** Why generation ended; "max_tokens" means the answer was cut off by the output limit */
+  @Field(() => String, { nullable: true })
+  stopReason?: StopReason;
 
   @Field({ nullable: true })
   lastSequenceNumber?: number;

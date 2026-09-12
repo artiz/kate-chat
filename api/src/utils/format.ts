@@ -1,12 +1,63 @@
-export function stripHtml(text?: string | null): string {
-  if (!text) return "";
-  return text
-    .replace(/<script.*?>.*?<\/script>/g, "")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/[\t\n]+/g, "\n")
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&apos;": "'",
+  "&nbsp;": " ",
+};
+
+/** Decodes the basic named entities and numeric references in a single pass, so `&amp;#39;` stays literal. */
+export function decodeHtmlEntities(text: string): string {
+  return text.replace(/&(?:(amp|lt|gt|quot|apos|nbsp)|#(\d+)|#x([\da-f]+));/gi, (entity, named, dec, hex) => {
+    if (named) return HTML_ENTITIES[`&${named.toLowerCase()};`] ?? entity;
+    const code = dec ? Number(dec) : parseInt(hex, 16);
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
+  });
+}
+
+/** Elements whose content is never page text: code, styling, embedded documents and page chrome. */
+const NON_TEXT_ELEMENTS = [
+  "head",
+  "script",
+  "style",
+  "noscript",
+  "template",
+  "svg",
+  "iframe",
+  "nav",
+  "header",
+  "footer",
+  "aside",
+  "form",
+];
+
+/**
+ * Turns an HTML page into readable text: keeps the `<article>`/`<main>` body when the page marks one up,
+ * drops scripts, styles and page chrome (including multi-line ones — a `.` never matched those before),
+ * turns tags into whitespace so adjacent blocks do not run into one word, and decodes entities.
+ */
+export function stripHtml(html?: string | null): string {
+  if (!html) return "";
+
+  let text = html.replace(/<!--[\s\S]*?-->/g, " ");
+
+  const main = text.match(/<(article|main)\b[^>]*>([\s\S]*?)<\/\1>/i);
+  if (main) {
+    text = main[2];
+  }
+
+  for (const tag of NON_TEXT_ELEMENTS) {
+    text = text.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}\\s*>`, "gi"), " ");
+  }
+
+  return decodeHtmlEntities(
+    text
+      .replace(/<br\s*\/?>|<\/(?:p|div|li|h[1-6]|tr|section|article|blockquote|pre|dd|dt)\s*>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/[ \t\u00a0\r]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
     .trim();
 }
 

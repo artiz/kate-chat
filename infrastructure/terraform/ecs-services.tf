@@ -115,6 +115,14 @@ locals {
       value = "gpt://{folder}/yandexgpt/rc,gpt://{folder}/yandexgpt/latest,gpt://{folder}/deepseek-v32/latest,gpt://{folder}/deepseek-vl2/latest"
     },
     {
+      # Lets the web search tool take the query-relevant excerpt straight from Search API instead
+      # of downloading and stripping the pages. Snippets are billed on top of the search and are
+      # served for the Russian index only, so the tool orders them for users whose UI language is
+      # Russian and searches as before for everyone else.
+      name  = "YANDEX_SEARCH_SMART_SNIPPETS"
+      value = "true"
+    },
+    {
       # Node's default thread pool size is 4, which can lead to performance issues under heavy load.
       # Increasing it to 16 allows for better concurrency when handling multiple requests that involve file I/O,
       # database access, or other operations that can benefit from additional threads.

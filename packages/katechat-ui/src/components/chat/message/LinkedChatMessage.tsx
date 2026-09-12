@@ -17,10 +17,19 @@ interface IProps {
   index: number;
   models?: Model[];
   plugins?: React.ReactNode;
+  notices?: React.ReactNode;
   messageDetailsLoader?: (message: Message) => React.ReactNode;
 }
 
-export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models, messageDetailsLoader }: IProps) => {
+export const LinkedChatMessage = ({
+  message,
+  parentIndex,
+  index,
+  plugins,
+  notices,
+  models,
+  messageDetailsLoader,
+}: IProps) => {
   const model = useMemo(() => {
     return models?.find(m => m.modelId === message.modelId);
   }, [models, message.modelId]);
@@ -62,6 +71,8 @@ export const LinkedChatMessage = ({ message, parentIndex, index, plugins, models
         ) : (
           <div>{message.content}</div>
         )}
+
+        {notices && <div className="katechat-message-notices">{notices}</div>}
 
         <div className="katechat-message-footer">
           <CopyMessageButton messageId={message.id} messageIndex={parentIndex} linkedMessageIndex={index} />

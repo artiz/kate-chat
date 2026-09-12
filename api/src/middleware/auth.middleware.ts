@@ -19,6 +19,13 @@ export interface ConnectionParams {
   yandexFmApiFolder?: string;
   yandexSearchApiKey?: string;
   yandexSearchApiFolder?: string;
+
+  /**
+   * UI language the request was made in, from the `x-ui-language` header and falling back to the
+   * user's saved language. Read by features served for one language only, such as the
+   * Russian-index smart snippets of the web search tool.
+   */
+  userLanguage?: string;
 }
 
 declare global {
@@ -106,5 +113,7 @@ export function loadConnectionParams(headers: IncomingHttpHeaders): ConnectionPa
       getHeader(headers["x-yandex-api-folder"]) ||
       globalConfig.yandex.searchApiFolder ||
       globalConfig.yandex.fmApiFolder,
+
+    userLanguage: getHeader(headers["x-ui-language"]),
   };
 }
