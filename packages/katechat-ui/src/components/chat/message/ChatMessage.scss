@@ -451,6 +451,13 @@
   }
 }
 
+.katechat-message-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0 0;
+}
+
 .katechat-message-footer {
   display: flex;
   flex-direction: row;

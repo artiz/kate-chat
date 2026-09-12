@@ -1,5 +1,5 @@
 import { MessageRole, ModelType, ApiProvider, ModelFeature } from "../../../types/api";
-import { CompleteChatRequest, ModelMessage, StreamCallbacks } from "../../../types/ai.types";
+import { CompleteChatRequest, MessageMetadata, ModelMessage, StreamCallbacks } from "../../../types/ai.types";
 
 jest.mock("../tools/mcp.client", () => ({
   MCPClient: {
@@ -91,8 +91,9 @@ const streamOf = (events: unknown[]) => ({
 const collectStream = async (
   protocol: OpenAIResponsesProtocol,
   request: CompleteChatRequest = baseRequest
-): Promise<{ content?: string; error?: Error }> => {
+): Promise<{ content?: string; metadata?: MessageMetadata; error?: Error }> => {
   let content: string | undefined;
+  let metadata: MessageMetadata | undefined;
   let error: Error | undefined;
 
   const callbacks: StreamCallbacks = {
@@ -100,6 +101,7 @@ const collectStream = async (
     onProgress: jest.fn().mockResolvedValue(false),
     onComplete: jest.fn().mockImplementation(async response => {
       content = response.content;
+      metadata = response.metadata;
     }),
     onError: jest.fn().mockImplementation(async (err: Error) => {
       error = err;
@@ -109,7 +111,7 @@ const collectStream = async (
 
   await protocol.streamChatCompletion(request, messages, callbacks);
 
-  return { content, error };
+  return { content, metadata, error };
 };
 
 describe("OpenAIResponsesProtocol", () => {
@@ -164,6 +166,7 @@ describe("OpenAIResponsesProtocol", () => {
             sequence_number: 2,
             response: {
               ...emptyResponse,
+              status: "incomplete",
               max_output_tokens: 2048,
               incomplete_details: { reason: "max_output_tokens" },
               output: [{ type: "reasoning", summary: [] }],
@@ -173,10 +176,11 @@ describe("OpenAIResponsesProtocol", () => {
         ])
       );
 
-      const { content, error } = await collectStream(protocol);
+      const { content, metadata, error } = await collectStream(protocol);
 
       expect(error).toBeUndefined();
       expect(content).toContain("Raise Max tokens");
+      expect(metadata?.stopReason).toBe("max_tokens");
     });
 
     it("reports a failed response as an error", async () => {
@@ -219,6 +223,7 @@ describe("OpenAIResponsesProtocol", () => {
             sequence_number: 3,
             response: {
               ...emptyResponse,
+              status: "completed",
               output: [
                 {
                   type: "message",
@@ -230,9 +235,10 @@ describe("OpenAIResponsesProtocol", () => {
         ])
       );
 
-      const { content } = await collectStream(protocol);
+      const { content, metadata } = await collectStream(protocol);
 
       expect(content).toBe("Product-minded engineer");
+      expect(metadata?.stopReason).toBe("end_turn");
     });
   });
 });

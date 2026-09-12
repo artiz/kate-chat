@@ -157,6 +157,7 @@ export const BASE_MESSAGE_FRAGMENT = `
       metadata {
         documentIds
         requestId
+        stopReason
         usage {
           inputTokens
           outputTokens

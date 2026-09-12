@@ -6,6 +6,7 @@ import {
   StreamCallbacks,
   CompleteChatRequest,
   MessageMetadata,
+  toStopReason,
   IMCPServer,
   ChatTool,
   ChatToolCallResult,
@@ -869,6 +870,10 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     const { output, usage } = response;
 
     let metadata: MessageMetadata = {
+      stopReason:
+        response.status === "incomplete"
+          ? toStopReason(response.incomplete_details?.reason)
+          : toStopReason(response.status),
       usage: {
         inputTokens: usage?.input_tokens || 0,
         outputTokens: usage?.output_tokens || 0,
