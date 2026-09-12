@@ -140,6 +140,7 @@ export const FULL_USER_FRAGMENT = `
 export const BASE_MESSAGE_FRAGMENT = `
     fragment BaseMessage on Message {
       id
+      chatId
       content
       role
       createdAt
