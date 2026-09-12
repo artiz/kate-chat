@@ -28,6 +28,9 @@ const connection: ConnectionParams = {
   yandexSearchApiFolder: "test-folder",
 } as ConnectionParams;
 
+/** Smart snippets are a Russian-index feature, ordered only for users whose UI language is Russian. */
+const ruConnection: ConnectionParams = { ...connection, userLanguage: "ru" };
+
 const encode = (payload: string) => Buffer.from(payload, "utf-8").toString("base64");
 
 const XML_RESPONSE = `<?xml version="1.0" encoding="utf-8"?>
@@ -187,7 +190,7 @@ describe("YandexWebSearch", () => {
     it("asks for snippets on the Russian index and maps the JSON payload", async () => {
       mockSearchResponse(SNIPPETS_RESPONSE);
 
-      const results = await YandexWebSearch.search({ query: "машинное обучение" }, connection);
+      const results = await YandexWebSearch.search({ query: "машинное обучение" }, ruConnection);
 
       const body = searchCallBody();
       expect(body.query.searchType).toBe("SEARCH_TYPE_RU");
@@ -209,7 +212,7 @@ describe("YandexWebSearch", () => {
     it("skips the page downloads because the snippet is already the content", async () => {
       mockSearchResponse(SNIPPETS_RESPONSE);
 
-      const results = await YandexWebSearch.search({ query: "машинное обучение", loadContent: true }, connection);
+      const results = await YandexWebSearch.search({ query: "машинное обучение", loadContent: true }, ruConnection);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(results).toHaveLength(2);
@@ -250,7 +253,7 @@ describe("YandexWebSearch", () => {
         })
       );
 
-      const results = await YandexWebSearch.search({ query: "дизельное топливо", loadContent: true }, connection);
+      const results = await YandexWebSearch.search({ query: "дизельное топливо", loadContent: true }, ruConnection);
 
       expect(results).toEqual([
         {
@@ -288,7 +291,7 @@ describe("YandexWebSearch", () => {
         })
       );
 
-      const results = await YandexWebSearch.search({ query: "бензин" }, connection);
+      const results = await YandexWebSearch.search({ query: "бензин" }, ruConnection);
 
       expect(results).toEqual([
         {
@@ -304,13 +307,13 @@ describe("YandexWebSearch", () => {
     it("returns no results without throwing when the documents have an unknown shape", async () => {
       mockSearchResponse(JSON.stringify({ docs: [{ something: "else" }, null, 42] }));
 
-      await expect(YandexWebSearch.search({ query: "бензин" }, connection)).resolves.toEqual([]);
+      await expect(YandexWebSearch.search({ query: "бензин" }, ruConnection)).resolves.toEqual([]);
     });
 
     it("honours the requested limit", async () => {
       mockSearchResponse(SNIPPETS_RESPONSE);
 
-      const results = await YandexWebSearch.search({ query: "машинное обучение", limit: 1 }, connection);
+      const results = await YandexWebSearch.search({ query: "машинное обучение", limit: 1 }, ruConnection);
 
       expect(results).toHaveLength(1);
     });
@@ -318,7 +321,7 @@ describe("YandexWebSearch", () => {
     it("returns no results instead of throwing on a malformed payload", async () => {
       mockSearchResponse("not json at all");
 
-      await expect(YandexWebSearch.search({ query: "машинное обучение" }, connection)).resolves.toEqual([]);
+      await expect(YandexWebSearch.search({ query: "машинное обучение" }, ruConnection)).resolves.toEqual([]);
     });
 
     it("does not fall back to a page download for a document without a snippet", async () => {
@@ -328,7 +331,7 @@ describe("YandexWebSearch", () => {
         })
       );
 
-      const results = await YandexWebSearch.search({ query: "машинное обучение", loadContent: true }, connection);
+      const results = await YandexWebSearch.search({ query: "машинное обучение", loadContent: true }, ruConnection);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(results[0].content).toBeUndefined();
@@ -339,7 +342,7 @@ describe("YandexWebSearch", () => {
     it("leaves the response format to the API instead of pinning XML", async () => {
       mockSearchResponse(SNIPPETS_RESPONSE);
 
-      await YandexWebSearch.search({ query: "машинное обучение" }, connection);
+      await YandexWebSearch.search({ query: "машинное обучение" }, ruConnection);
 
       expect(searchCallBody().responseFormat).toBeUndefined();
     });
@@ -349,7 +352,7 @@ describe("YandexWebSearch", () => {
       mockSearchResponse(XML_RESPONSE);
       mockFetch.mockResolvedValueOnce({ text: async () => "<html><body>Page body</body></html>" });
 
-      const results = await YandexWebSearch.search({ query: "machine learning", loadContent: true }, connection);
+      const results = await YandexWebSearch.search({ query: "machine learning", loadContent: true }, ruConnection);
 
       expect(results).toHaveLength(1);
       expect(results[0].title).toBe("Machine `learning` guide");
@@ -360,11 +363,42 @@ describe("YandexWebSearch", () => {
     it("keeps the availability probe off the billable path", async () => {
       mockSearchResponse(XML_RESPONSE);
 
-      await expect(YandexWebSearch.isAvailable(connection)).resolves.toBe(true);
+      await expect(YandexWebSearch.isAvailable(ruConnection)).resolves.toBe(true);
 
       expect(searchCallBody().query.searchType).toBe("SEARCH_TYPE_COM");
       expect(searchCallBody().metadata).toBeUndefined();
       expect(searchCallHeaders()["x-genesis-info-context"]).toBeUndefined();
+    });
+
+    it("accepts a regional Russian locale", async () => {
+      mockSearchResponse(SNIPPETS_RESPONSE);
+
+      await YandexWebSearch.search({ query: "машинное обучение" }, { ...connection, userLanguage: "ru-RU" });
+
+      expect(searchCallBody().metadata).toEqual({ fields: { "x-genesis-info-context": "on" } });
+    });
+
+    it("does not order the billable snippets for a user of another language", async () => {
+      mockSearchResponse(XML_RESPONSE);
+
+      const results = await YandexWebSearch.search(
+        { query: "machine learning" },
+        { ...connection, userLanguage: "en" }
+      );
+
+      expect(searchCallBody().query.searchType).toBe("SEARCH_TYPE_COM");
+      expect(searchCallBody().metadata).toBeUndefined();
+      expect(searchCallHeaders()["x-genesis-info-context"]).toBeUndefined();
+      expect(results).toHaveLength(1);
+    });
+
+    it("does not order them for a request without a known language either", async () => {
+      mockSearchResponse(XML_RESPONSE);
+
+      await YandexWebSearch.search({ query: "machine learning" }, connection);
+
+      expect(searchCallBody().query.searchType).toBe("SEARCH_TYPE_COM");
+      expect(searchCallBody().metadata).toBeUndefined();
     });
   });
 });

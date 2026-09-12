@@ -12,9 +12,19 @@ const logger = createLogger(__filename);
 export const WEB_SEARCH_TOOL_NAME = "internal_web_search";
 
 export interface SearchOptions {
-  /** Overrides the `YANDEX_SEARCH_SMART_SNIPPETS` setting for a single request. */
+  /** Overrides the `YANDEX_SEARCH_SMART_SNIPPETS` setting and the language check for a single request. */
   smartSnippets?: boolean;
 }
+
+/**
+ * Smart snippets are served for the Russian index only (SEARCH_TYPE_RU), which is a worse result
+ * set for everyone else, and they are billed on top of the search. So even with
+ * `YANDEX_SEARCH_SMART_SNIPPETS` on, they are ordered only for users whose UI language is Russian.
+ */
+const SMART_SNIPPETS_LANGUAGE = "ru";
+
+export const smartSnippetsSupported = (language?: string): boolean =>
+  (language || "").trim().toLowerCase().split(/[-_]/)[0] === SMART_SNIPPETS_LANGUAGE;
 
 /**
  * Document as returned by Search API when smart snippets are requested. The docs list
@@ -76,7 +86,9 @@ export class YandexWebSearch {
     connection: ConnectionParams,
     options: SearchOptions = {}
   ): Promise<SearchResult[]> {
-    const smartSnippets = options.smartSnippets ?? globalConfig.yandex.searchSmartSnippets;
+    const smartSnippets =
+      options.smartSnippets ??
+      (globalConfig.yandex.searchSmartSnippets && smartSnippetsSupported(connection.userLanguage));
 
     const data = {
       query: {
