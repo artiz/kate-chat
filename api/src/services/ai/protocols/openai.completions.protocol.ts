@@ -6,6 +6,7 @@ import {
   StreamCallbacks,
   CompleteChatRequest,
   MessageMetadata,
+  toStopReason,
   ChatTool,
   IMCPServer,
   ModelMessageContent,
@@ -65,6 +66,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
         audios: audio?.data ? [`data:audio/mpeg;base64,${audio.data}`] : undefined,
         metadata: {
           contextMessages,
+          stopReason: toStopReason(completion.choices[0]?.finish_reason),
           usage: {
             inputTokens: usage?.prompt_tokens || 0,
             outputTokens: usage?.completion_tokens || 0,
@@ -471,6 +473,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
 
           if (!stopped && choice?.finish_reason) {
             stopped = true;
+            meta = { ...meta, stopReason: toStopReason(choice.finish_reason) };
 
             if (!fullResponse && choice.finish_reason !== "stop") {
               fullResponse = `Response finished with reason: ${choice.finish_reason}`;

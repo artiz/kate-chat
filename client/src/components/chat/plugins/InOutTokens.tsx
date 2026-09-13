@@ -11,18 +11,25 @@ export const InOutTokens = ({ message }: PluginProps<Message>) => {
   const na = t("chat.na");
 
   if (metadata?.usage && (metadata.usage.inputTokens || metadata.usage.outputTokens)) {
+    const { inputTokens, outputTokens } = metadata.usage;
+    // the output count equals the limit when the answer was cut off: make that visible
+    const cutOff = metadata.stopReason === "max_tokens";
+    const label = t("chat.inputOutputTokens", {
+      input: inputTokens?.toString() || na,
+      output: outputTokens?.toString() || na,
+    });
+
     return (
-      <Tooltip
-        label={t("chat.inputOutputTokens", {
-          input: metadata.usage.inputTokens?.toString() || na,
-          output: metadata.usage.outputTokens?.toString() || na,
-        })}
-        position="top"
-        withArrow
-      >
+      <Tooltip label={cutOff ? `${label}. ${t("chat.outputLimitReachedNoCount")}` : label} position="top" withArrow>
         <Text size="xs" c="dimmed" style={{ marginLeft: "auto", cursor: "help" }}>
-          {metadata.usage.inputTokens || na} {metadata.usage.inputTokens && metadata.usage.outputTokens ? ">" : ""}{" "}
-          {metadata.usage.outputTokens || na}
+          {inputTokens || na} {inputTokens && outputTokens ? ">" : ""}{" "}
+          {cutOff ? (
+            <Text span inherit fw={600} c="yellow">
+              {outputTokens || na}
+            </Text>
+          ) : (
+            outputTokens || na
+          )}
         </Text>
       </Tooltip>
     );

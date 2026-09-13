@@ -41,14 +41,19 @@ export const WebSearchCall = (message: Message, t: TFunction = globalT): React.R
                 <li key={idx}>
                   {entry.url ? (
                     <Anchor href={entry.url} target="_blank" rel="noopener noreferrer" size="xs">
-                      {entry.title || entry.url}
+                      {entry.title ? <Highlighted text={entry.title} /> : entry.url}
                     </Anchor>
                   ) : (
-                    <Text size="xs">{entry.title || `#${idx + 1}`}</Text>
+                    <Text size="xs">{entry.title ? <Highlighted text={entry.title} /> : `#${idx + 1}`}</Text>
                   )}
                   {entry.summary && (
                     <Text size="xs" c="dimmed" mt={2}>
-                      {entry.summary}
+                      <Highlighted text={entry.summary} />
+                    </Text>
+                  )}
+                  {entry.content && (
+                    <Text size="xs" mt={4} lineClamp={5} style={{ whiteSpace: "pre-wrap" }}>
+                      {entry.content}
                     </Text>
                   )}
                 </li>
@@ -69,30 +74,68 @@ export const WebSearchCall = (message: Message, t: TFunction = globalT): React.R
   return detailsNodes;
 };
 
-interface WebSearchEntry {
+/**
+ * The API marks the search terms the engine highlighted with backticks — markdown for the model.
+ * In the details they are rendered as emphasis instead of literal backticks.
+ */
+export const splitHighlighted = (text: string): Array<{ text: string; highlighted: boolean }> =>
+  text
+    .split(/`([^`]+)`/)
+    .map((part, index) => ({ text: part, highlighted: index % 2 === 1 }))
+    .filter(part => part.text);
+
+const Highlighted = ({ text }: { text: string }) => (
+  <>
+    {splitHighlighted(text).map((part, index) =>
+      part.highlighted ? (
+        <Text key={index} span fw={600} inherit>
+          {part.text}
+        </Text>
+      ) : (
+        <Fragment key={index}>{part.text}</Fragment>
+      )
+    )}
+  </>
+);
+
+export interface WebSearchEntry {
   title?: string;
   url?: string;
   domain?: string;
   summary?: string;
+  /** Page excerpt the tool handed to the model: a smart snippet or the stripped page text */
+  content?: string;
 }
 
-/** Parse structured web search results from the tool output */
-function parseWebSearchResults(content: string): WebSearchEntry[] {
+const NOT_AVAILABLE = "N/A";
+
+const optional = (value?: string): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed !== NOT_AVAILABLE ? trimmed : undefined;
+};
+
+/**
+ * Parse structured web search results from the tool output (see WEB_SEARCH_TOOL_RESULT on the API side).
+ * Blocks are split on the result header only: the `---` separator also occurs inside snippets as a markdown rule.
+ */
+export function parseWebSearchResults(content: string): WebSearchEntry[] {
   const entries: WebSearchEntry[] = [];
-  const blocks = content.split(/---|\n### Result/);
+  const blocks = content.split(/\n\s*### Result/);
 
   for (const block of blocks) {
     const titleMatch = block.match(/title:\s*(.+)/);
     const urlMatch = block.match(/url:\s*(.+)/);
     const domainMatch = block.match(/domain:\s*(.+)/);
     const summaryMatch = block.match(/summary:\s*(.+)/);
+    const contentMatch = block.match(/content:[ \t]*\n\s*"""\s*([\s\S]*?)\s*"""/);
 
     if (titleMatch || urlMatch) {
       entries.push({
         title: titleMatch?.[1]?.trim(),
         url: urlMatch?.[1]?.trim(),
         domain: domainMatch?.[1]?.trim(),
-        summary: summaryMatch?.[1]?.trim() !== "N/A" ? summaryMatch?.[1]?.trim() : undefined,
+        summary: optional(summaryMatch?.[1]),
+        content: optional(contentMatch?.[1]),
       });
     }
   }

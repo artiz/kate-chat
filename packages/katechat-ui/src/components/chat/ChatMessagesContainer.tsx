@@ -14,6 +14,8 @@ interface IProps {
   removeMessages: (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => void;
   loadMoreMessages?: () => void;
   plugins?: React.FC<PluginProps<Message>>[];
+  /** Rendered between the message text and the footer, e.g. a "response was cut off" notice */
+  noticePlugins?: React.FC<PluginProps<Message>>[];
   detailsPlugins?: ((message: Message) => React.ReactNode)[];
   codePlugins?: Record<string, CodePlugin>;
   streaming?: boolean;
@@ -36,6 +38,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
       removeMessages,
       loadMoreMessages,
       plugins,
+      noticePlugins,
       detailsPlugins,
       codePlugins,
       streaming = false,
@@ -218,6 +221,7 @@ export const ChatMessagesContainer = React.forwardRef<ChatMessagesContainerRef, 
                 onAddMessage={addChatMessage}
                 models={models}
                 plugins={plugins}
+                noticePlugins={noticePlugins}
                 detailsPlugins={detailsPlugins}
                 codePlugins={codePlugins}
               />

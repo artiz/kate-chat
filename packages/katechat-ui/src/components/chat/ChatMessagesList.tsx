@@ -27,13 +27,23 @@ interface ChatMessagesProps {
   onMessageDeleted?: (args: { messagesToDelete?: Message[]; deleteAfter?: Message }) => void;
   onAddMessage?: (message: Message) => void;
   plugins?: React.FC<PluginProps<Message>>[];
+  noticePlugins?: React.FC<PluginProps<Message>>[];
   detailsPlugins?: ((message: Message) => React.ReactNode)[];
   codePlugins?: Record<string, CodePlugin>;
   models: Model[];
 }
 
 export const ChatMessagesList = React.memo<ChatMessagesProps>(
-  ({ messages = [], onMessageDeleted, onAddMessage, plugins = [], detailsPlugins = [], codePlugins, models = [] }) => {
+  ({
+    messages = [],
+    onMessageDeleted,
+    onAddMessage,
+    plugins = [],
+    noticePlugins = [],
+    detailsPlugins = [],
+    codePlugins,
+    models = [],
+  }) => {
     const { t } = useTranslation();
     const componentRef = useRef<HTMLDivElement>(null);
 
@@ -320,27 +330,33 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
       [messages, codePlugins]
     );
 
+    const renderPlugins = useCallback(
+      (components: React.FC<PluginProps<Message>>[], msg: Message, isLast: boolean) =>
+        components.map((PluginComponent, idx) => (
+          <PluginComponent
+            key={idx}
+            message={msg}
+            isLast={isLast}
+            messagesCount={messages.length}
+            onAddMessage={onAddMessage}
+            onAction={addEditedMessage}
+            onActionEnd={clearEditedMessage}
+            onMessageDeleted={onMessageDeleted}
+            disabled={updatedMessages.has(msg.id)}
+          />
+        )),
+      [messages.length, onAddMessage, onMessageDeleted, updatedMessages, addEditedMessage, clearEditedMessage]
+    );
+
     const pluginsLoader = useCallback(
-      (msg: Message, { isLast = false }: { isLast?: boolean } = {}) => {
-        return (
-          <>
-            {plugins.map((PluginComponent, idx) => (
-              <PluginComponent
-                key={idx}
-                message={msg}
-                isLast={isLast}
-                messagesCount={messages.length}
-                onAddMessage={onAddMessage}
-                onAction={addEditedMessage}
-                onActionEnd={clearEditedMessage}
-                onMessageDeleted={onMessageDeleted}
-                disabled={updatedMessages.has(msg.id)}
-              />
-            ))}
-          </>
-        );
-      },
-      [plugins, messages.length, onAddMessage, onMessageDeleted, updatedMessages, addEditedMessage, clearEditedMessage]
+      (msg: Message, { isLast = false }: { isLast?: boolean } = {}) => <>{renderPlugins(plugins, msg, isLast)}</>,
+      [plugins, renderPlugins]
+    );
+
+    const noticesLoader = useCallback(
+      (msg: Message, { isLast = false }: { isLast?: boolean } = {}) =>
+        noticePlugins.length ? <>{renderPlugins(noticePlugins, msg, isLast)}</> : null,
+      [noticePlugins, renderPlugins]
     );
 
     const messageDetailsLoader = useCallback(
@@ -362,6 +378,7 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
               isLast={index === messages.length - 1}
               disabled={updatedMessages.has(msg.id)}
               pluginsLoader={pluginsLoader}
+              noticesLoader={noticesLoader}
               messageDetailsLoader={messageDetailsLoader}
               models={models}
               codePlugins={codePlugins}

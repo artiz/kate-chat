@@ -1027,6 +1027,11 @@ export class MessagesService {
     assistantMessage: Message,
     requestId?: string
   ): Promise<void> {
+    // The web search tool orders Russian-index smart snippets by the language of the request.
+    // The UI sends it as a header; fall back to the saved setting for requests made without one,
+    // such as the ones resumed from the queue. Every model call of a chat message lands here.
+    connection = { ...connection, userLanguage: connection.userLanguage || user.settings?.language };
+
     const chatSettings: ChatSettings = {
       temperature: user.settings?.defaultTemperature ?? aiConfig.defaultTemperature,
       maxTokens: user.settings?.defaultMaxTokens ?? aiConfig.defaultMaxTokens,

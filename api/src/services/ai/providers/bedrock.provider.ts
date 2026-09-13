@@ -32,6 +32,7 @@ import {
   ServiceCostInfo,
   CompleteChatRequest,
   MessageMetadata,
+  toStopReason,
   GetEmbeddingsRequest,
   EmbeddingsResponse,
   ModelMessageContent,
@@ -406,6 +407,7 @@ export class BedrockApiProvider extends BaseApiProvider {
 
           if (chunk.messageStop?.stopReason && chunk.messageStop.stopReason !== "tool_use") {
             requestCompleted = true;
+            metadata = { ...metadata, stopReason: toStopReason(chunk.messageStop.stopReason) };
           }
         }
 
@@ -1234,18 +1236,18 @@ export class BedrockApiProvider extends BaseApiProvider {
       { content: "", images: [] as string[], toolUse: [] as ToolUseBlock[] }
     );
 
-    const metadata: MessageMetadata | undefined =
-      response.usage || response.metrics
-        ? {
-            usage: {
-              inputTokens: response.usage?.inputTokens,
-              outputTokens: response.usage?.outputTokens,
-              cacheReadInputTokens: response.usage?.cacheReadInputTokens,
-              cacheWriteInputTokens: response.usage?.cacheWriteInputTokens,
-              invocationLatency: response.metrics?.latencyMs,
-            },
-          }
-        : undefined;
+    const metadata: MessageMetadata = {
+      stopReason: toStopReason(response.stopReason),
+    };
+    if (response.usage || response.metrics) {
+      metadata.usage = {
+        inputTokens: response.usage?.inputTokens,
+        outputTokens: response.usage?.outputTokens,
+        cacheReadInputTokens: response.usage?.cacheReadInputTokens,
+        cacheWriteInputTokens: response.usage?.cacheWriteInputTokens,
+        invocationLatency: response.metrics?.latencyMs,
+      };
+    }
 
     return {
       modelResponse: {

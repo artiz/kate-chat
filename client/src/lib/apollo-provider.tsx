@@ -19,6 +19,7 @@ import {
   STORAGE_YANDEX_FM_API_KEY,
 } from "@/store/slices/authSlice";
 import { APP_API_URL, APP_WS_URL } from "@/lib/config";
+import i18n from "@/i18n";
 import { createFragmentRegistry } from "@apollo/client/cache";
 import {
   BASE_MESSAGE_FRAGMENT,
@@ -101,6 +102,10 @@ export function ApolloWrapper({ children }: { children: React.ReactNode }) {
         headers: {
           ...headers,
           authorization: token ? `Bearer ${token}` : "",
+          // Read per request, not from the static HTTP link headers, so switching the language
+          // mid-session takes effect: the API serves language-specific features (the Russian-index
+          // web search snippets) by it.
+          "x-ui-language": i18n.language || "",
         },
       };
     });

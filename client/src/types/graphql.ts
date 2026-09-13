@@ -364,11 +364,15 @@ export interface ChatResultAnnotation {
   endIndex?: number;
 }
 
+/** Why the model stopped generating; "max_tokens" means the answer was cut off by the output limit */
+export type StopReason = "end_turn" | "max_tokens" | "content_filter" | "stop_sequence";
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
   };
+  stopReason?: StopReason;
 
   documentIds?: string[];
   relevantsChunks?: MessageRelevantChunk[];
