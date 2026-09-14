@@ -19,12 +19,16 @@ export interface SearchOptions {
 /**
  * Smart snippets are served for the Russian index only (SEARCH_TYPE_RU), which is a worse result
  * set for everyone else, and they are billed on top of the search. So even with
- * `YANDEX_SEARCH_SMART_SNIPPETS` on, they are ordered only for users whose UI language is Russian.
+ * `YANDEX_SEARCH_SMART_SNIPPETS` on, they are ordered only for requests that belong to that index:
+ * the request was made in Russian, or the query itself is. The model searches in the language of
+ * the conversation, and that query is what the snippet is prepared for, so a Russian search from
+ * an interface left in another language counts too.
  */
 const SMART_SNIPPETS_LANGUAGE = "ru";
+const CYRILLIC = /[\u0400-\u04ff]/;
 
-export const smartSnippetsSupported = (language?: string): boolean =>
-  (language || "").trim().toLowerCase().split(/[-_]/)[0] === SMART_SNIPPETS_LANGUAGE;
+export const smartSnippetsSupported = (language: string | undefined, query: string): boolean =>
+  (language || "").trim().toLowerCase().split(/[-_]/)[0] === SMART_SNIPPETS_LANGUAGE || CYRILLIC.test(query);
 
 /**
  * Document as returned by Search API when smart snippets are requested. The docs list
@@ -58,11 +62,24 @@ const SMART_SNIPPETS_FLAG = { "x-genesis-info-context": "on" };
 /** Nodes whose text Search API highlights with <hlword>, parsed as raw XML. */
 const HIGHLIGHTED_NODES = ["*.title", "*.passage"];
 
-const dispatcher = new Agent({
+const AGENT_OPTIONS = {
   connectTimeout: 10_000,
   bodyTimeout: 10_000,
   keepAliveTimeout: 30_000,
   connections: 100, // pool
+};
+
+/** Search API calls: they carry the API key, so the certificate is verified as usual. */
+const dispatcher = new Agent(AGENT_OPTIONS);
+
+/**
+ * Result pages: fetched anonymously, and all we take from them is text that is untrusted input
+ * either way. A certificate that does not verify — an expired one, an incomplete chain, a
+ * TLS-inspecting proxy on the way out — is then no reason to lose the page, so it is not checked.
+ */
+const contentDispatcher = new Agent({
+  ...AGENT_OPTIONS,
+  connect: { rejectUnauthorized: false },
 });
 
 export class YandexWebSearch {
@@ -88,7 +105,7 @@ export class YandexWebSearch {
   ): Promise<SearchResult[]> {
     const smartSnippets =
       options.smartSnippets ??
-      (globalConfig.yandex.searchSmartSnippets && smartSnippetsSupported(connection.userLanguage));
+      (globalConfig.yandex.searchSmartSnippets && smartSnippetsSupported(connection.userLanguage, request.query));
 
     const data = {
       query: {
@@ -119,6 +136,7 @@ export class YandexWebSearch {
       metadata: smartSnippets ? { fields: SMART_SNIPPETS_FLAG } : undefined,
     };
 
+    logger.debug({ query: request.query, smartSnippets, userLanguage: connection.userLanguage }, "Yandex Web Search");
     logger.trace({ ...data, smartSnippets }, "Yandex Web Search request");
 
     const response = await fetch(globalConfig.yandex.searchApiUrl, {
@@ -173,7 +191,7 @@ export class YandexWebSearch {
           try {
             const pageResponse = await fetch(result.url, {
               method: "GET",
-              dispatcher,
+              dispatcher: contentDispatcher,
               headers: {
                 Accept: "text/html,application/xhtml+xml,application/xml",
               },
