@@ -18,10 +18,14 @@ jest.mock("../../../global-config", () => ({
   },
 }));
 
-import { fetch } from "undici";
+import { fetch, Agent } from "undici";
 import { YandexWebSearch } from "../tools/yandex.web_search";
 
 const mockFetch = fetch as unknown as jest.Mock;
+const mockAgent = Agent as unknown as jest.Mock;
+
+/** The tool builds two agents at load: one for the Search API calls, one for the result pages. */
+const [searchAgent, contentAgent] = [0, 1].map(index => mockAgent.mock.results[index]?.value);
 
 const connection: ConnectionParams = {
   yandexSearchApiKey: "test-key",
@@ -168,6 +172,22 @@ describe("YandexWebSearch", () => {
       mockFetch.mockResolvedValueOnce({ json: async () => ({ message: "quota exceeded" }) });
 
       await expect(YandexWebSearch.search({ query: "масло" }, connection)).resolves.toEqual([]);
+    });
+
+    it("takes the page text even when its certificate does not verify", async () => {
+      // the tool only reads text from the page, and a TLS-inspecting proxy or an expired
+      // certificate is no reason to lose it; the Search API call keeps verification
+      expect(mockAgent).toHaveBeenCalledWith(expect.objectContaining({ connect: { rejectUnauthorized: false } }));
+      expect(mockAgent).not.toHaveBeenNthCalledWith(1, expect.objectContaining({ connect: expect.anything() }));
+
+      mockSearchResponse(XML_RESPONSE);
+      mockFetch.mockResolvedValueOnce({ text: async () => "<html><body>Page body</body></html>" });
+
+      await YandexWebSearch.search({ query: "machine learning", loadContent: true }, connection);
+
+      const [searchCall, pageCall] = mockFetch.mock.calls;
+      expect(searchCall[1].dispatcher).toBe(searchAgent);
+      expect(pageCall[1].dispatcher).toBe(contentAgent);
     });
 
     it("downloads the pages when loadContent is requested", async () => {
@@ -378,7 +398,20 @@ describe("YandexWebSearch", () => {
       expect(searchCallBody().metadata).toEqual({ fields: { "x-genesis-info-context": "on" } });
     });
 
-    it("does not order the billable snippets for a user of another language", async () => {
+    it("orders them for a Russian search made from an interface in another language", async () => {
+      mockSearchResponse(SNIPPETS_RESPONSE);
+
+      const results = await YandexWebSearch.search(
+        { query: "цены на дизельное топливо" },
+        { ...connection, userLanguage: "en" }
+      );
+
+      expect(searchCallBody().query.searchType).toBe("SEARCH_TYPE_RU");
+      expect(searchCallBody().metadata).toEqual({ fields: { "x-genesis-info-context": "on" } });
+      expect(results).toHaveLength(2);
+    });
+
+    it("does not order the billable snippets when neither the language nor the query is Russian", async () => {
       mockSearchResponse(XML_RESPONSE);
 
       const results = await YandexWebSearch.search(
