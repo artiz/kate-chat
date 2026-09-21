@@ -8,6 +8,13 @@ export const DEFAULT_CHAT_PROMPT = `You are a helpful, respectful and honest ass
 
 export const WEB_SEARCH_TEST_QUERY = "Capital of France";
 
+/**
+ * Stands in for an attachment a text-only model cannot be sent. Without it the model either
+ * answers as if nothing were attached or, on some providers, returns an empty response.
+ */
+export const ATTACHMENT_NOT_SUPPORTED = (fileName: string, kind = "image"): string =>
+  `[The user attached ${kind === "image" ? "an image" : "a file"} "${fileName}". This model cannot read ${kind === "image" ? "images" : "such files"}, so it was left out. Say so instead of guessing what it contains.]`;
+
 export const PROMPT_DOCUMENT_SUMMARY = ({ content }: { content: string }) =>
   `Please provide a comprehensive summary of the following document in up to 1024 words. 
     Return only summary, without any additional commentaries.

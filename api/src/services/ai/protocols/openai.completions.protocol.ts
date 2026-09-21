@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { ATTACHMENT_NOT_SUPPORTED } from "@/config/ai/prompts";
 import { Stream } from "openai/core/streaming";
 import {
   ModelMessage,
@@ -108,12 +109,15 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
   private async formatCompletionMessages(
     modelId: string,
     messages: CompletionModelMessage[],
-    systemPrompt: string | undefined
+    systemPrompt: string | undefined,
+    modelImageInput?: boolean
   ): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
     type ChatCompletionMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
     type ChatCompletionContentPartText = OpenAI.Chat.Completions.ChatCompletionContentPartText;
     type ChatCompletionContentPart = OpenAI.Chat.Completions.ChatCompletionContentPart;
-    const imageInput = !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => modelId.startsWith(prefix));
+    // the model's own capability when the caller knows it (any provider), the OpenAI list otherwise
+    const imageInput =
+      modelImageInput ?? !!OPENAI_MODELS_SUPPORT_IMAGES_INPUT.find(prefix => modelId.startsWith(prefix));
     const audioInput = !!OPENAI_MODELS_AUDIO_INPUT.find(prefix => modelId.startsWith(prefix));
 
     const parseContent = async (
@@ -131,6 +135,15 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       for (const part of body) {
         if (part.contentType === "text") {
           parts.push({ type: "text" as const, text: part.content });
+          continue;
+        }
+
+        if (part.contentType === "image" && !imageInput) {
+          // without this the model answers as if nothing had been attached
+          parts.push({
+            type: "text" as const,
+            text: ATTACHMENT_NOT_SUPPORTED(part.fileName.split("/").pop() || "image"),
+          });
           continue;
         }
 
@@ -291,7 +304,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
 
     const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
       model: modelId,
-      messages: await this.formatCompletionMessages(modelId, messages, systemPrompt),
+      messages: await this.formatCompletionMessages(modelId, messages, systemPrompt, inputRequest.imageInput),
       temperature,
       max_completion_tokens: maxTokens,
     };

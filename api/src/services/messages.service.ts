@@ -1055,6 +1055,7 @@ export class MessagesService {
       requestId,
       modelType: model.type,
       modelFeatures: model.features || [],
+      imageInput: model.imageInput,
       cacheId: chat.id,
       apiProvider: model.apiProvider,
       settings: chatSettings,
@@ -1391,6 +1392,7 @@ export class MessagesService {
           apiProvider: model.apiProvider,
           modelId: model.modelId,
           modelFeatures: model.features || [],
+          imageInput: model.imageInput,
           cacheId: chat.id,
           settings: input.settings || {},
         };
