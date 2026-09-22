@@ -120,7 +120,7 @@ The project consists of several parts:
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v20+)
+- Node.js 24 (see `.nvmrc`; `better-sqlite3` is a native module and has to match the running ABI)
 - Connection to an LLM, choose any from:
    * AWS Account with [Bedrock](#aws-bedrock-api-connection) access
    * [OpenAI API](#openai-api-connection) Account
