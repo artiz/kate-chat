@@ -57,6 +57,11 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   migrationsRun: !DB_SKIP_MIGRATIONS,
   migrationsTableName: "migrations",
+  // The MSSQL search migration opts out of transactions, because a full-text catalog cannot be
+  // created inside one, and TypeORM refuses any such override while the mode is "all". That is
+  // why typeorm-local-mssql.ts already runs "each"; without the same here the API cannot apply
+  // its own migrations on startup. Every other flavour keeps the stricter all-or-nothing mode.
+  migrationsTransactionMode: DB_TYPE === "mssql" ? "each" : "all",
   logger: dbConfig.logging ? new TypeORMPinoLogger() : undefined,
   logging: dbConfig.logging ? ["error", "warn", "info"] : false,
   entities: ENTITIES,
