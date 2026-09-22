@@ -6,7 +6,8 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  * datetime2 holds wall-clock time with no zone: `getdate()` writes the server's, while the driver
  * writes and reads the API process's (TypeORM pins tedious to useUTC: false), so the two shift
  * apart whenever their zones differ. datetimeoffset carries the offset with the value, and the
- * default becomes `sysutcdatetimeoffset()` so a row written by the database is UTC and says so.
+ * default becomes `TODATETIMEOFFSET(SYSUTCDATETIME(), 0)` so a row written by the database is UTC
+ * and says so, whatever zone the server itself keeps.
  *
  * The existing rows convert as UTC, which is what wrote them on a server in UTC. Their default
  * constraints are looked up rather than named: the ones the init migration created are known, but
@@ -44,7 +45,7 @@ export class TimestampsWithZone1790000000000 implements MigrationInterface {
           `ALTER TABLE "${table}" ALTER COLUMN "${column}" datetimeoffset NOT NULL`,
         );
         await queryRunner.query(
-          `ALTER TABLE "${table}" ADD CONSTRAINT "DF_${table}_${column}_utc" DEFAULT sysutcdatetimeoffset() FOR "${column}"`,
+          `ALTER TABLE "${table}" ADD CONSTRAINT "DF_${table}_${column}_utc" DEFAULT TODATETIMEOFFSET(SYSUTCDATETIME(), 0) FOR "${column}"`,
         );
       }
     }
