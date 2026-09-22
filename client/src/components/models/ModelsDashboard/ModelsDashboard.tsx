@@ -20,7 +20,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { addChat } from "@/store/slices/chatSlice";
 import { GqlCostsInfo, Message, Model } from "@/types/graphql";
-import { CustomModelProtocol, ModelType } from "@katechat/ui";
+import { CustomModelProtocol, ModelType, formatDay } from "@katechat/ui";
 import { ProvidersInfo } from "../ProvidersInfo";
 import { ModelsList } from "../ModelsList";
 import { CustomModelDialog, CustomModelFormData } from "../CustomModelDialog";
@@ -495,8 +495,8 @@ export const ModelsDashboard: React.FC = () => {
                   <Group justify="space-between">
                     <Text fw={500}>{t("models.serviceCosts")}</Text>
                     <Text size="sm" c="dimmed">
-                      {new Date(costsData.getCosts.start).toLocaleDateString()} -
-                      {costsData.getCosts.end ? new Date(costsData.getCosts.end).toLocaleDateString() : "Present"}
+                      {formatDay(costsData.getCosts.start)} -
+                      {costsData.getCosts.end ? formatDay(costsData.getCosts.end) : "Present"}
                     </Text>
                   </Group>
 

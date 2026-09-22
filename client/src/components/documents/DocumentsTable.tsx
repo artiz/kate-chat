@@ -19,7 +19,7 @@ import {
   IconFileBroken,
   IconFileAi,
 } from "@tabler/icons-react";
-import { formatFileSize } from "@katechat/ui";
+import { formatFileSize, formatDay } from "@katechat/ui";
 import { DocumentStatus, getStatusColor } from "@/types/ai";
 import { Document } from "@/types/graphql";
 import { MOBILE_BREAKPOINT } from "@/lib/config";
@@ -298,7 +298,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
               </ActionIcon.Group>
             </Table.Td>
             <Table.Td visibleFrom="lg">
-              <Text size="sm">{doc.createdAt && new Date(doc.createdAt).toLocaleDateString()}</Text>
+              <Text size="sm">{doc.createdAt && formatDay(doc.createdAt)}</Text>
             </Table.Td>
           </Table.Tr>
         ))}

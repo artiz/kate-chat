@@ -1,5 +1,13 @@
 process.setMaxListeners(0); // Disable max listeners limit for the process
 
+// The date columns are naive TIMESTAMPs whose `now()` default is evaluated in the database's
+// timezone, while the driver reads those values back in this process's timezone. When the two
+// differ every stored date comes back shifted: on a developer machine in Europe/Vienna against a
+// UTC database, a message saved at 09:35 local was read back as 07:35. Databases here run in UTC,
+// so pin the process to it unless the environment asks for something else. Set from the process
+// environment (compose, ECS), not from .env: this runs before dotenv.
+process.env.TZ = process.env.TZ || "UTC";
+
 import "reflect-metadata";
 import express, { NextFunction, Request, Response } from "express";
 import cookieParser from "cookie-parser";

@@ -111,6 +111,7 @@ export const FULL_USER_FRAGMENT = `
       role
       settings {
         language
+        timezone
         s3Endpoint
         s3Region
         s3FilesBucketName

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { formatDay } from "@katechat/ui";
 import {
   Title,
   Paper,
@@ -309,7 +310,7 @@ export const AdminDashboard: React.FC = () => {
                         {user.modelsCount || 0}/{user.chatsCount || 0}
                       </Table.Td>
                       <Table.Td visibleFrom="lg">
-                        <Text size="sm">{new Date(user.createdAt).toLocaleDateString()}</Text>
+                        <Text size="sm">{formatDay(user.createdAt)}</Text>
                       </Table.Td>
                     </Table.Tr>
                   ))}

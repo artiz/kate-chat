@@ -54,13 +54,47 @@ export async function initI18n({
     });
 }
 
+/**
+ * Zone the UI renders dates in: the user's setting when they have one, the browser's otherwise.
+ * Kept here next to the language for the same reason — every formatter needs it and threading it
+ * through the component tree would touch every screen that shows a date.
+ */
+let appTimeZone: string | undefined;
+
+export const setAppTimeZone = (timeZone?: string): void => {
+  appTimeZone = timeZone || undefined;
+};
+
+export const getAppTimeZone = (): string => appTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
 export function formatDate(date: string | Date): string {
   const dateObj = typeof date === "string" ? new Date(date) : date;
   return dateObj.toLocaleDateString(i18n.language || "ru-RU", {
+    timeZone: getAppTimeZone(),
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** Day and wall-clock time to the second, for a message or a file the user is looking at. */
+export function formatDateTime(date: string | Date): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  return dateObj.toLocaleString(i18n.language || undefined, {
+    timeZone: getAppTimeZone(),
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+/** Day only, for lists where the time adds nothing. */
+export function formatDay(date: string | Date): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  return dateObj.toLocaleDateString(i18n.language || undefined, { timeZone: getAppTimeZone() });
 }
