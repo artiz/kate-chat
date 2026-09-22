@@ -1,11 +1,11 @@
 process.setMaxListeners(0); // Disable max listeners limit for the process
 
-// The date columns are naive TIMESTAMPs whose `now()` default is evaluated in the database's
-// timezone, while the driver reads those values back in this process's timezone. When the two
-// differ every stored date comes back shifted: on a developer machine in Europe/Vienna against a
-// UTC database, a message saved at 09:35 local was read back as 07:35. Databases here run in UTC,
-// so pin the process to it unless the environment asks for something else. Set from the process
-// environment (compose, ECS), not from .env: this runs before dotenv.
+// SQLite and MySQL hold dates with no zone attached, so the value that comes back depends on the
+// zone of whoever read it: on a developer machine in Europe/Vienna against a UTC database, a
+// message saved at 09:35 local was read back as 07:35. Postgres and MSSQL no longer can shift,
+// their columns carrying the offset since the timestamptz migration, but those two still can.
+// Databases here run in UTC, so pin the process to it unless the environment asks for something
+// else. Set from the process environment (compose, ECS), not from .env: this runs before dotenv.
 process.env.TZ = process.env.TZ || "UTC";
 
 import "reflect-metadata";
