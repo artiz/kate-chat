@@ -1085,11 +1085,17 @@ export class MessagesService {
     const completeRequest = async (message: Message, data?: ModelResponse): Promise<boolean> => {
       ok(message);
 
+      // A non-chat model cannot name the chat, so the user's default chat model is asked instead.
+      // It is only a default and may be unset, and an undefined in a where condition is an error
+      // TypeORM raises rather than a filter it drops.
+      const defaultModelId = user.settings?.defaultModelId;
       const titleModel =
         model.type !== ModelType.CHAT
-          ? await this.modelRepository.findOne({
-              where: { user: { id: user.id }, modelId: user.settings?.defaultModelId, type: ModelType.CHAT },
-            })
+          ? defaultModelId
+            ? await this.modelRepository.findOne({
+                where: { user: { id: user.id }, modelId: defaultModelId, type: ModelType.CHAT },
+              })
+            : undefined
           : model;
       if (titleModel) {
         await this.ensureChatTitle(chat, titleModel, connection, input.content, message.content || "");
