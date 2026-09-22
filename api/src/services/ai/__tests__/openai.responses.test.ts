@@ -213,6 +213,52 @@ describe("OpenAIResponsesProtocol", () => {
       expect(content).toBe("_No response_");
     });
 
+    it("sends a note instead of the image when the model cannot read one", async () => {
+      // a text-only model answered such a request with an empty output, which reached the user
+      // as "No response"; the note keeps the request valid and the answer honest
+      getMockCreate(protocol).mockResolvedValue(
+        streamOf([
+          { type: "response.created", sequence_number: 1, response: { id: "resp_1" } },
+          { type: "response.output_text.delta", sequence_number: 2, delta: "Я не вижу картинок" },
+          {
+            type: "response.completed",
+            sequence_number: 3,
+            response: {
+              ...emptyResponse,
+              status: "completed",
+              output: [{ type: "message", content: [{ type: "output_text", text: "Я не вижу картинок" }] }],
+            },
+          },
+        ])
+      );
+
+      const withImage: ModelMessage[] = [
+        {
+          role: MessageRole.USER,
+          body: [
+            { contentType: "text", content: "что на картинке?" },
+            { contentType: "image", fileName: "chats/c1/mountains.png", mimeType: "image/png" },
+          ],
+        },
+      ];
+
+      const callbacks = {
+        onStart: jest.fn(),
+        onProgress: jest.fn().mockResolvedValue(false),
+        onComplete: jest.fn(),
+        onError: jest.fn(),
+      } as unknown as StreamCallbacks;
+
+      await protocol.streamChatCompletion({ ...baseRequest, imageInput: false }, withImage, callbacks);
+
+      const { input } = getMockCreate(protocol).mock.calls[0][0];
+      const content = input[0].content as Array<{ type: string; text?: string }>;
+
+      expect(content.map(part => part.type)).toEqual(["input_text", "input_text"]);
+      expect(content[1].text).toContain("mountains.png");
+      expect(content[1].text).toContain("cannot read images");
+    });
+
     it("keeps the streamed text when the model does answer", async () => {
       getMockCreate(protocol).mockResolvedValue(
         streamOf([

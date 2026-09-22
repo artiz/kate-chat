@@ -114,6 +114,32 @@ describe("OpenAICompletionsProtocol", () => {
     getMockCreate(protocol).mockReset();
   });
 
+  describe("attachments", () => {
+    it("sends a note instead of the image when the model cannot read one", async () => {
+      getMockCreate(protocol).mockResolvedValue({
+        choices: [{ index: 0, message: { role: "assistant", content: "Я не вижу картинок" }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      });
+
+      await protocol.completeChat({ ...request, imageInput: false }, [
+        {
+          role: MessageRole.USER,
+          body: [
+            { contentType: "text", content: "что на картинке?" },
+            { contentType: "image", fileName: "chats/c1/mountains.png", mimeType: "image/png" },
+          ],
+        },
+      ]);
+
+      const { messages: sent } = getMockCreate(protocol).mock.calls[0][0];
+      const content = sent[sent.length - 1].content as Array<{ type: string; text?: string }>;
+
+      expect(content.map(part => part.type)).toEqual(["text", "text"]);
+      expect(content[1].text).toContain("mountains.png");
+      expect(content[1].text).toContain("cannot read images");
+    });
+  });
+
   describe("stop reason", () => {
     it("marks an answer cut off by the output limit", async () => {
       getMockCreate(protocol).mockResolvedValue(

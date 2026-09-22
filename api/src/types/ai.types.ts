@@ -403,6 +403,8 @@ export interface CompleteChatRequest {
   modelId: string;
   modelType: ModelType;
   modelFeatures?: ModelFeature[];
+  /** Whether the model reads images; attachments are left out of the request when it does not */
+  imageInput?: boolean;
   cacheId?: string;
   settings?: ChatSettings;
   tools?: ChatTool[];

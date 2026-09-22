@@ -23,6 +23,7 @@ import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT, RETRY_TIMEOUT_M
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
 import { IMAGE_BASE64_TPL, IMAGE_MARKDOWN_TPL } from "@/config/ai/templates";
+import { ATTACHMENT_NOT_SUPPORTED } from "@/config/ai/prompts";
 import { sanitizeSurrogates } from "@/utils/format";
 import { isTextualMime } from "@/utils/file";
 import { NATIVE_WEB_SEARCH_TOOL_NAME } from "../tools/web_search";
@@ -139,7 +140,9 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
 
     const params: OpenAI.Responses.ResponseCreateParamsNonStreaming = {
       model: modelId,
-      input: await this.formatResponsesInput(messages),
+      // a text-only model gets a note in place of the image: sending one has been seen to come
+      // back as an empty response, which reaches the user as "No response"
+      input: await this.formatResponsesInput(messages, inputRequest.imageInput ?? true),
       max_output_tokens: maxTokens ? Math.max(maxTokens, 16) : undefined,
       instructions: systemPrompt,
       temperature,
@@ -307,7 +310,10 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     return this.paramsProcessor ? this.paramsProcessor.responsesRequest(inputRequest, params) : params;
   }
 
-  private async formatResponsesInput(messages: ModelMessage[]): Promise<OpenAI.Responses.ResponseInput> {
+  private async formatResponsesInput(
+    messages: ModelMessage[],
+    imageInput = true
+  ): Promise<OpenAI.Responses.ResponseInput> {
     const result: OpenAI.Responses.ResponseInputItem[] = [];
 
     for (const msg of messages) {
@@ -328,6 +334,14 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
         if (part.contentType === "text") {
           content.push({ type: "input_text" as const, text: sanitizeSurrogates(part.content) });
         } else if (part.contentType === "image") {
+          if (!imageInput) {
+            content.push({
+              type: "input_text" as const,
+              text: ATTACHMENT_NOT_SUPPORTED(part.fileName.split("/").pop() || "image"),
+            });
+            continue;
+          }
+
           if (role === "assistant") {
             role = "user";
           }
@@ -407,6 +421,10 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     let fullResponse = "";
     let partResponse = "";
     let incompleteReason: "max_output_tokens" | "content_filter" | undefined;
+    // kept for the "no content" warning below: an answer that comes back empty says nothing about
+    // why on its own, and the request shape (tools, attachments) is usually what the provider choked on
+    let lastOutputTypes: string[] | undefined;
+    let lastResponseError: unknown;
     let meta: MessageMetadata = {
       contextMessages: messages.map(m => m.id).filter(notEmpty),
     };
@@ -664,6 +682,8 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             }
           } else if (chunk.type == "response.completed" || chunk.type == "response.incomplete") {
             lastResponseId = chunk.response.id;
+            lastOutputTypes = chunk.response.output?.map(item => item.type);
+            lastResponseError = chunk.response.error ?? undefined;
             const { content, metadata } = this.parseResponsesOutput(chunk.response);
             if (metadata) {
               meta = {
@@ -848,6 +868,13 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             modelId: this.modelIdOverride || inputRequest.modelId,
             responseId: lastResponseId,
             reason: incompleteReason,
+            status: lastStatus,
+            error: lastResponseError,
+            outputItems: lastOutputTypes,
+            // what the request carried beyond the text: providers that do not support a tool type
+            // or an attachment have been seen to answer with an empty output instead of an error
+            tools: baseParams.tools?.map(tool => tool.type),
+            attachments: messages.some(m => typeof m.body !== "string" && m.body.some(p => p.contentType !== "text")),
           },
           "responses request returned no content"
         );

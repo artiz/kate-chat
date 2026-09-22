@@ -64,10 +64,10 @@ export const YANDEX_MODELS: YandexModel[] = [
   },
   {
     name: "Alice AI LLM",
+    // text in, text out: the image input of the Alice family lives in other models
     provider: "Yandex",
     uri: `gpt://{folder}/aliceai-llm/latest`,
     maxInputTokens: 128_000,
-    imageInput: true,
     apiType: "responses",
   },
   {
@@ -104,10 +104,10 @@ export const YANDEX_MODELS: YandexModel[] = [
   },
   {
     name: "DeepSeek 3.2",
+    // the reasoning text model; vision is DeepSeek-VL2, which AI Studio serves separately
     provider: "DeepSeek",
     uri: `gpt://{folder}/deepseek-v32/latest`,
     maxInputTokens: 131_072,
-    imageInput: true,
     apiType: "responses",
     features: [ModelFeature.REASONING, ModelFeature.REASONING_CANCELLATION],
   },
