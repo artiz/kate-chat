@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from "react";
+import { formatDateTime } from "@/i18n";
 import { Text, Group, Avatar, Switch, Loader, Button, Collapse, Box, ActionIcon, Tooltip } from "@mantine/core";
 import {
   IconChevronLeft,
@@ -163,7 +164,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
   const [showMainMessage, setShowMainMessage] = React.useState(true);
   const { t, i18n } = useTranslation();
 
-  const timestamp = useMemo(() => new Date(updatedAt).toLocaleString(), [updatedAt]);
+  const timestamp = useMemo(() => formatDateTime(updatedAt), [updatedAt, i18n.language]);
   const isUserMessage = role === MessageRole.USER;
   const username = isUserMessage
     ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || t("You")

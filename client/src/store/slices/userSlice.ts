@@ -6,6 +6,8 @@ import { ApplicationConfig, MCPServer } from "@/types/graphql";
 
 export interface UserSettings {
   language?: string;
+  /** IANA name dates are rendered in; empty means the browser's own zone */
+  timezone?: string;
   s3Endpoint?: string;
   s3Region?: string;
   s3AccessKeyId?: string;

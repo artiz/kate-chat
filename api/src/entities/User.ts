@@ -28,6 +28,9 @@ const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
 export class UserSettings {
   @Field({ nullable: true })
   language?: string;
+  /** IANA name the UI formats dates in, e.g. "Europe/Vienna". Empty: the browser's own zone. */
+  @Field({ nullable: true })
+  timezone?: string;
   @Field({ nullable: true })
   s3Endpoint?: string;
   @Field({ nullable: true })

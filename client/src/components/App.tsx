@@ -15,6 +15,7 @@ import { setChats, setPinnedChats } from "../store/slices/chatSlice";
 import { setFolders } from "../store/slices/folderSlice";
 import { logout, STORAGE_RETURN_URL_KEY, useAppSelector, writeStorageValue } from "../store";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
+import { setAppTimeZone } from "@katechat/ui";
 import { MainLayout } from "../components/MainLayout";
 import { ERROR_FORBIDDEN, ERROR_UNAUTHORIZED } from "@/store/api";
 import { loginSuccess, STORAGE_AUTH_TOKEN } from "@/store/slices/authSlice";
@@ -125,6 +126,9 @@ const AppContent: React.FC = () => {
         i18n.changeLanguage(userLang);
         localStorage.setItem(LANGUAGE_STORAGE_KEY, userLang);
       }
+
+      // Dates render in the zone the user picked; unset falls back to the browser's own
+      setAppTimeZone(initData.appConfig.currentUser?.settings?.timezone);
     }
   }, [isAuthenticated, initData, dispatch]);
 

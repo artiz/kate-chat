@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Title, Text, Grid, Card, Button, Group, Stack, Divider, Alert } from "@mantine/core";
 import { IconPlus, IconMessage } from "@tabler/icons-react";
-import { ChatMessagePreview } from "@katechat/ui";
+import { ChatMessagePreview, formatDay } from "@katechat/ui";
 import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
 import { useAppSelector, useAppDispatch } from "@/store";
@@ -119,7 +119,7 @@ export const ChatList: React.FC = () => {
                     {chat.title || t("chat.untitledChat")}
                   </Text>
                   <Text size="sm" c="dimmed">
-                    {chat.updatedAt ? new Date(chat.updatedAt).toLocaleDateString() : ""}
+                    {chat.updatedAt ? formatDay(chat.updatedAt) : ""}
                   </Text>
                   <Text size="sm">
                     <b>{chat.messagesCount}</b> {t("chat.messages")}

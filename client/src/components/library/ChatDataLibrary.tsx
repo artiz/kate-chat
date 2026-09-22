@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { formatDateTime } from "@katechat/ui";
 import { useApolloClient } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { Anchor, Badge, Button, Center, Group, Loader, Stack, Table, Text } from "@mantine/core";
@@ -135,7 +136,7 @@ export const ChatDataLibrary: React.FC = () => {
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm" c="dimmed">
-                      {new Date(file.createdAt).toLocaleString()}
+                      {formatDateTime(file.createdAt)}
                     </Text>
                   </Table.Td>
                   <Table.Td>

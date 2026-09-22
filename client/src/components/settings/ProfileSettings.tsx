@@ -1,6 +1,6 @@
 import React, { useState, useEffect, use, useMemo } from "react";
-import { Paper, TextInput, Button, Group, Stack, Text, SegmentedControl } from "@mantine/core";
-import { useTheme } from "@katechat/ui";
+import { Paper, TextInput, Button, Group, Stack, Text, SegmentedControl, Select } from "@mantine/core";
+import { setAppTimeZone, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
 import { UpdateUserInput, User } from "@/store/slices/userSlice";
 
@@ -17,6 +17,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [timezone, setTimezone] = useState("");
   const { t } = useTranslation();
 
   // UI preferences state
@@ -32,8 +33,21 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
       setFirstName(user.firstName || "");
       setLastName(user.lastName || "");
       setEmail(user.email || "");
+      setTimezone(user.settings?.timezone || "");
     }
   }, [user]);
+
+  const browserTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []);
+
+  const timezoneOptions = useMemo(() => {
+    // supportedValuesOf is missing on older engines; the saved zone still works there
+    const supported =
+      (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") || [];
+    const zones = supported.length ? supported : [browserTimezone];
+    return [{ value: "", label: t("profile.timezoneAuto", { timezone: browserTimezone }) }].concat(
+      zones.map(zone => ({ value: zone, label: zone }))
+    );
+  }, [browserTimezone, t]);
 
   const provider = useMemo(() => {
     if (!user) return "Unknown";
@@ -49,7 +63,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
       firstName,
       lastName,
       email,
+      settings: { timezone },
     });
+
+    // the dates on screen follow the new zone without a reload
+    setAppTimeZone(timezone);
   };
 
   const handleThemeUpdate = (val: string) => {
@@ -107,6 +125,16 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
             onChange={e => setEmail(e.target.value)}
             required={isLocalUser ? true : undefined}
             description={t("profile.provider", { provider })}
+          />
+
+          <Select
+            label={t("profile.timezone")}
+            description={t("profile.timezoneDescription")}
+            data={timezoneOptions}
+            value={timezone}
+            onChange={value => setTimezone(value || "")}
+            searchable
+            allowDeselect={false}
           />
 
           <Group justify="right" mt="md">

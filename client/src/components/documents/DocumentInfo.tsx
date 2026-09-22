@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge, Box, Group, Alert, Text, Stack, ScrollArea } from "@mantine/core";
-import { parseMarkdown } from "@katechat/ui";
+import { parseMarkdown, formatDay } from "@katechat/ui";
 import { Document } from "@/types/graphql";
 import { getStatusColor } from "@/types/ai";
 
@@ -60,7 +60,7 @@ export const DocumentInfo: React.FC<DocumentInfoProps> = ({ document }) => {
                 <Text size="xs" c="dimmed">
                   {t("documents.uploaded")}
                 </Text>
-                <Text size="sm">{new Date(document.createdAt).toLocaleDateString()}</Text>
+                <Text size="sm">{formatDay(document.createdAt)}</Text>
               </Stack>
             )}
           </Group>

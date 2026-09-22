@@ -191,6 +191,12 @@ export class UserResolver extends BaseResolver {
         ...(user.settings || {}),
         ...settingsToUpdate,
       };
+
+      // the loop above only carries truthy values, so an empty one would never clear a setting:
+      // picking "automatic" in the profile has to unset the zone, not leave the old one behind
+      if (input.settings.timezone !== undefined) {
+        user.settings.timezone = input.settings.timezone || undefined;
+      }
     }
 
     return await this.userRepository.save(user);
