@@ -2,6 +2,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, PrimaryG
 import { Field, ID, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { DB_TYPE } from "../config/env";
+import { TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 
 @ObjectType()
 @Entity("chat_folders")
@@ -40,10 +41,10 @@ export class ChatFolder {
   topParent?: ChatFolder;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 }

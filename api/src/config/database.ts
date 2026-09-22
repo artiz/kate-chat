@@ -19,6 +19,10 @@ if (DB_TYPE === "mysql") {
   dbOptions = {
     type: "mysql",
     charset: "UTF8_GENERAL_CI",
+    // MySQL has no zone-aware type worth moving to here: datetime is naive and timestamp ends in
+    // 2038. Pinning the session zone instead makes both sides agree, the CURRENT_TIMESTAMP default
+    // included, whatever zone the server keeps.
+    timezone: "Z",
     url: dbConfig.url,
   };
 } else if (DB_TYPE === "postgres") {

@@ -11,7 +11,7 @@ import { Field, ID, ObjectType, registerEnumType } from "type-graphql";
 import { Exif } from "exif-reader";
 import { Chat } from "./Chat";
 import { Message } from "./Message";
-import { JSONTransformer } from "../utils/db";
+import { JSONTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { DB_TYPE } from "../config/env";
 
 const JSON_COLUMN_TYPE = DB_TYPE == "mssql" ? "ntext" : "json";
@@ -81,11 +81,11 @@ export class ChatFile {
   exif?: Exif;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 
   @Field()

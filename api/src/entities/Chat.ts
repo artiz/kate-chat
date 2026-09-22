@@ -10,7 +10,7 @@ import {
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { User } from "./User";
 import { Message } from "./Message";
-import { JSONTransformer } from "../utils/db";
+import { JSONTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { ChatDocument } from "./ChatDocument";
 import { ChatFile } from "./ChatFile";
 import { ChatFolder } from "./ChatFolder";
@@ -154,10 +154,10 @@ export class Chat {
   tools?: ChatTool[];
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 }

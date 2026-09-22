@@ -9,7 +9,7 @@ import {
   OneToMany,
 } from "typeorm";
 import { Field, ID, ObjectType } from "type-graphql";
-import { JSONTransformer } from "../utils/db";
+import { JSONTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { User } from "./User";
 import { DB_TYPE } from "../config/env";
 import { DocumentStatus } from "../types/api";
@@ -125,11 +125,11 @@ export class Document {
   statusProgress?: number;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 
   @Field(() => DocumentMetadata, { nullable: true })

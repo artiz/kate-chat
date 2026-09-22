@@ -2,7 +2,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedCol
 import { Field, ID, InputType, ObjectType } from "type-graphql";
 import { Model } from "./Model";
 import { Document } from "./Document";
-import { JSONTransformer } from "../utils/db";
+import { JSONTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
 import { ApiProvider, CredentialSourceType, CredentialType } from "../types/api";
@@ -135,11 +135,11 @@ export class User {
   authProvider?: AuthProvider;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 
   @Field(() => [Model], { nullable: true })

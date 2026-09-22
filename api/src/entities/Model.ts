@@ -3,7 +3,7 @@ import { Field, ID, ObjectType, registerEnumType, InputType } from "type-graphql
 import { Validate, IsOptional } from "class-validator";
 import { ApiProvider, ModelFeature, ModelType, ToolType } from "../types/api";
 import { User } from "./User";
-import { EnumTransformer, JSONTransformer } from "../utils/db";
+import { EnumTransformer, JSONTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { IsPublicUrl } from "../utils/validators";
 import { DB_TYPE } from "../config/env";
 
@@ -126,10 +126,10 @@ export class Model {
   customSettings?: CustomModelSettings;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 }

@@ -13,7 +13,7 @@ import { Chat } from "./Chat";
 import { ChatFile } from "./ChatFile";
 import { User } from "./User";
 import { MessageRole, ResponseStatus } from "../types/api";
-import { JSONTransformer } from "../utils/db";
+import { JSONTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { MessageMetadata, ModelMessageContent } from "../types/ai.types";
 import { DB_TYPE } from "../config/env";
 
@@ -94,10 +94,10 @@ export class Message {
   statusInfo?: string;
 
   @Field({ nullable: true })
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt?: Date;
 
   @Field({ nullable: true })
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt?: Date;
 }
