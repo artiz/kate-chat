@@ -2,7 +2,7 @@ import { Entity, Column, CreateDateColumn, UpdateDateColumn, PrimaryGeneratedCol
 import { Field, ID, ObjectType, registerEnumType, InputType } from "type-graphql";
 import { IsOptional, Validate } from "class-validator";
 import { User } from "./User";
-import { JSONTransformer, EnumTransformer } from "../utils/db";
+import { JSONTransformer, EnumTransformer, TIMESTAMP_COLUMN_OPTIONS } from "../utils/db";
 import { IsPublicUrl } from "../utils/validators";
 import { IMCPAuthConfig, IMCPServer, IMCPToolInfo } from "../types/ai.types";
 import { EntityAccessType, MCPAuthType, MCPTransportType } from "../types/api";
@@ -118,10 +118,10 @@ export class MCPServer implements IMCPServer {
   userId?: string;
 
   @Field()
-  @CreateDateColumn()
+  @CreateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn()
+  @UpdateDateColumn(TIMESTAMP_COLUMN_OPTIONS)
   updatedAt: Date;
 }

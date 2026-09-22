@@ -135,6 +135,7 @@ export interface GlobalConfigShape {
     type: string;
     url?: string;
     host?: string;
+    port?: number;
     username?: string;
     password?: string;
     name?: string;
@@ -379,6 +380,7 @@ export class GlobalConfig {
         type: DB_TYPE,
         url: process.env.DB_URL,
         host: process.env.DB_HOST,
+        port: process.env.DB_PORT ? +process.env.DB_PORT : undefined,
         username: process.env.DB_USERNAME,
         password: process.env.DB_PASSWORD,
         name: process.env.DB_NAME || "katechat.sqlite",
