@@ -22,6 +22,10 @@ export function createSystemMCPRouter(): Router {
 
     const displayName = config.name || mcpName;
 
+    if (config.authRouter) {
+      router.use(`/${mcpName}/auth`, config.authRouter());
+    }
+
     router.all(`/${mcpName}`, async (req: Request, res: Response) => {
       const authHeader = req.headers.authorization || "";
       const authToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;

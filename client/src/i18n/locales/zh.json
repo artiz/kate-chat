@@ -593,7 +593,23 @@
     "yourBearerToken": "您的 Bearer 令牌",
     "access": "访问模式",
     "accessDescription": "私有：只有当前用户可以使用此服务器。共享/系统：所有用户均可使用此服务器。共享服务器可以被克隆。",
-    "authTypeDescription": "设置认证模式"
+    "authTypeDescription": "设置认证模式",
+    "telegram": {
+      "title": "连接 Telegram",
+      "intro": "模型将能够读取您的 Telegram 聊天并以您的名义发送消息。会话仅保存在此浏览器中，您可以随时在 Telegram 的“设置 → 设备”中终止它。",
+      "phone": "电话号码",
+      "phonePlaceholder": "+86 138 0013 8000",
+      "sendCode": "发送验证码",
+      "codeSentApp": "Telegram 已将验证码发送到您的 Telegram 应用。",
+      "codeSentSms": "Telegram 已通过短信发送验证码。",
+      "code": "验证码",
+      "signIn": "登录",
+      "changeNumber": "更换号码",
+      "passwordRequired": "已开启两步验证。请输入您的 Telegram 云密码。",
+      "passwordHint": "提示：{{hint}}",
+      "password": "云密码",
+      "connected": "已连接 Telegram：{{name}}"
+    }
   },
   "messageDetails": {
     "annotations": "注释",

@@ -509,8 +509,8 @@ export const MCPToolsDialog: React.FC<MCPToolsDialogProps> = ({
     }
   };
 
-  const handleTokenSubmit = () => {
-    mcpSubmitToken();
+  const handleTokenSubmit = (session?: string) => {
+    mcpSubmitToken(session);
   };
 
   if (!server) return null;

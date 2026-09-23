@@ -101,6 +101,8 @@ export enum MCPAuthType {
   API_KEY = "API_KEY",
   BEARER = "BEARER",
   OAUTH2 = "OAUTH2",
+  // Signed in with phone, code and cloud password; the token is the account's session string.
+  TELEGRAM = "TELEGRAM",
 }
 
 export enum EntityAccessType {

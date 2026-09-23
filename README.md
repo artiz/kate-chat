@@ -32,7 +32,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Distributed messages processing using external queue (SQS + Redis), specific queue for long-running requests (images generation, agents) that allows to continue requests processing after service crash/restart
 - Request statistics (input/output tokens, tool calls), request cancellation to stop reasoning or web search
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
-- Internal MCP servers (Gmail for the moment)
+- Internal MCP servers: Gmail, Microsoft Teams, Telegram (a user account, via MTProto)
 - Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
 - Inline chat-context files with an upload type selector (RAG vs chat context): PDF and text files are stored on S3, sent to the model with the message (OpenAI `input_file`/`file` blocks, Bedrock Converse document blocks) and listed on the Library page under Chat Data
 - Voice-to-voice conversations with realtime models (OpenAI GPT Realtime over WebRTC, Yandex Speech Realtime over a WebSocket proxy): live equalizer above the chat controls, transcripts saved to chat history, assistant voice selection per chat
@@ -58,7 +58,6 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 * (hgh) Introduce skills support, PPTX generation with "pptxgenjs", PDF generation, XLSX generation (put generated files to context, show in Library)
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
-* (mid) Telegram System MCP (https://github.com/dryeab/mcp-telegram, https://www.mcpserverfinder.com/servers/qpd-v/mcp-communicator-telegram)
 * (hgh) Add browser notifications to notify user about conversation end, confirmation requests
 * (low) Add Java code executor like Go one with https://codapi.org/java/
 * (min) Introduce video generation, reuse requests queue, notify user about completion

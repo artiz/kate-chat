@@ -27,7 +27,7 @@ impl McpClient {
             .and_then(|s| serde_json::from_str(s).ok());
 
         let auth_header = match server.auth_type.as_str() {
-            "BEARER" | "OAUTH2" => auth_token
+            "BEARER" | "OAUTH2" | "TELEGRAM" => auth_token
                 .map(|t| ("Authorization".to_string(), format!("Bearer {}", t)))
                 .or_else(|| {
                     auth_config.as_ref().and_then(|c| {

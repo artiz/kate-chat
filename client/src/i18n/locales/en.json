@@ -593,7 +593,23 @@
     "urlPlaceholder": "https://example.com/mcp",
     "viewTools": "View Tools",
     "yourApiKey": "Your API key",
-    "yourBearerToken": "Your bearer token"
+    "yourBearerToken": "Your bearer token",
+    "telegram": {
+      "title": "Connect Telegram",
+      "intro": "The model will be able to read your Telegram chats and send messages as you. The session is kept only in this browser, and you can end it at any time in Telegram under Settings → Devices.",
+      "phone": "Phone number",
+      "phonePlaceholder": "+43 660 1234567",
+      "sendCode": "Send code",
+      "codeSentApp": "Telegram sent a code to your Telegram app.",
+      "codeSentSms": "Telegram sent a code by SMS.",
+      "code": "Code",
+      "signIn": "Sign in",
+      "changeNumber": "Change number",
+      "passwordRequired": "Two-step verification is on. Enter your Telegram cloud password.",
+      "passwordHint": "Hint: {{hint}}",
+      "password": "Cloud password",
+      "connected": "Telegram connected as {{name}}"
+    }
   },
   "messageDetails": {
     "arguments": "Arguments:",
