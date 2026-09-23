@@ -1,8 +1,13 @@
-import { Api, helpers, TelegramClient } from "telegram";
-import { Dialog } from "telegram/tl/custom/dialog";
+import { Api, helpers, TelegramClient } from "teleproto";
+import { Dialog } from "teleproto/tl/custom/dialog";
+import { installMessageBehaviour } from "teleproto/tl/custom/message";
 import { callTool, formatDialog, formatMessage, resolveChat, TOOLS } from "../tools";
 
 const big = helpers.returnBigInt;
+
+// teleproto gives Api.Message its sender/chat getters when the first TelegramClient is built. The
+// tools only ever see messages from a real client; here there is none, so install them directly.
+installMessageBehaviour();
 
 const anna = new Api.User({ id: big(7), firstName: "Anna", lastName: "K" });
 

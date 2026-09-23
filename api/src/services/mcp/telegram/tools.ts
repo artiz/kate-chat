@@ -1,5 +1,5 @@
-import { Api, TelegramClient } from "telegram";
-import { Dialog } from "telegram/tl/custom/dialog";
+import { Api, TelegramClient } from "teleproto";
+import { Dialog } from "teleproto/tl/custom/dialog";
 import { ok } from "@/utils/assert";
 
 const MAX_TEXT = 4000;

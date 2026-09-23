@@ -6,9 +6,12 @@ import { APP_API_URL } from "@/lib/config";
 import { useAppSelector } from "@/store";
 import { MCPServer } from "@/types/graphql";
 
+/** Where Telegram delivered the login code: the account's apps, SMS, or its login email. */
+type CodeChannel = "app" | "sms" | "email";
+
 type Step =
   | { name: "phone" }
-  | { name: "code"; loginSession: string; phoneCodeHash: string; viaApp: boolean }
+  | { name: "code"; loginSession: string; phoneCodeHash: string; via: CodeChannel; emailPattern?: string }
   | { name: "password"; loginSession: string; hint?: string };
 
 /**
@@ -79,7 +82,8 @@ export const TelegramLogin: React.FC<TelegramLoginProps> = ({ server, onSuccess 
         name: "code",
         loginSession: data.loginSession,
         phoneCodeHash: data.phoneCodeHash,
-        viaApp: data.viaApp,
+        via: data.via,
+        emailPattern: data.emailPattern,
       });
     }
   };
@@ -91,6 +95,7 @@ export const TelegramLogin: React.FC<TelegramLoginProps> = ({ server, onSuccess 
       phoneCodeHash: step.phoneCodeHash,
       phone,
       code,
+      via: step.via,
     });
     if (data) finish(data);
   };
@@ -133,7 +138,13 @@ export const TelegramLogin: React.FC<TelegramLoginProps> = ({ server, onSuccess 
 
       {step.name === "code" && (
         <>
-          <Text size="sm">{step.viaApp ? t("mcp.telegram.codeSentApp") : t("mcp.telegram.codeSentSms")}</Text>
+          <Text size="sm">
+            {step.via === "email"
+              ? t("mcp.telegram.codeSentEmail", { email: step.emailPattern || "" })
+              : step.via === "app"
+                ? t("mcp.telegram.codeSentApp")
+                : t("mcp.telegram.codeSentSms")}
+          </Text>
           <TextInput
             label={t("mcp.telegram.code")}
             inputMode="numeric"

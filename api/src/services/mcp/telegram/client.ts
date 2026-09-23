@@ -1,8 +1,8 @@
 import crypto from "crypto";
-import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions";
-import { Logger, LogLevel } from "telegram/extensions/Logger";
-import { RPCError } from "telegram/errors";
+import { TelegramClient } from "teleproto";
+import { StringSession } from "teleproto/sessions";
+import { Logger, LogLevel } from "teleproto/extensions/Logger";
+import { RPCError } from "teleproto/errors";
 import { createLogger } from "@/utils/logger";
 
 const logger = createLogger(__filename);
@@ -35,7 +35,7 @@ export function createTelegramClient(session = ""): TelegramClient {
     connectionRetries: 3,
     deviceModel: "KateChat",
     appVersion: "1.0",
-    // GramJS reports every connection step at INFO on stdout, outside the app's logger.
+    // teleproto reports every connection step at INFO on stdout, outside the app's logger.
     baseLogger: new Logger(LogLevel.ERROR),
   });
 }

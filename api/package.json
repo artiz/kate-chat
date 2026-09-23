@@ -79,7 +79,7 @@
     "sharp": "^0.35.4",
     "socket.io": "^4.8.1",
     "sqlite-vec": "^0.1.7-alpha.2",
-    "telegram": "^2.26.22",
+    "teleproto": "^1.229.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "type-graphql": "^2.0.0-rc.2",

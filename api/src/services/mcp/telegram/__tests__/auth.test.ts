@@ -1,8 +1,8 @@
 import express from "express";
 import { AddressInfo } from "net";
 import { Server } from "http";
-import { Api, helpers } from "telegram";
-import { RPCError } from "telegram/errors";
+import { Api, helpers } from "teleproto";
+import { RPCError } from "teleproto/errors";
 import { generateToken } from "@/utils/jwt";
 import { createTelegramAuthRouter } from "../auth";
 
@@ -24,7 +24,7 @@ jest.mock("../client", () => ({
   getTelegramCredentials: () => ({ apiId: 1, apiHash: "hash" }),
 }));
 
-jest.mock("telegram/Password", () => ({ computeCheck: jest.fn(async () => "srp-check") }));
+jest.mock("teleproto/Password", () => ({ computeCheck: jest.fn(async () => "srp-check") }));
 
 const rpc = (message: string, code = 400) => new RPCError(message, new Api.help.GetConfig(), code);
 const user = new Api.User({ id: helpers.returnBigInt(7), firstName: "Anna", username: "anna" });
@@ -70,11 +70,44 @@ describe("telegram login routes", () => {
 
     expect(res).toEqual({
       status: 200,
-      body: { loginSession: "session-after-step", phoneCodeHash: "h1", viaApp: true },
+      body: { loginSession: "session-after-step", phoneCodeHash: "h1", via: "app" },
     });
     expect(created).toEqual([""]);
     expect(fake.sendCode).toHaveBeenCalledWith({ apiId: 1, apiHash: "hash" }, "+436601234567");
     expect(fake.destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when the code went to the login email, with its mask", async () => {
+    fake.sendCode.mockResolvedValueOnce({
+      phoneCodeHash: "h1",
+      isCodeViaApp: false,
+      emailCodeSent: true,
+      emailOptions: { emailPattern: "a***@gmail.com" },
+    });
+
+    const res = await post("/send-code", { phone: "+1" });
+
+    expect(res.body).toMatchObject({ via: "email", emailPattern: "a***@gmail.com" });
+  });
+
+  it("stops with instructions when Telegram wants a login email set up first", async () => {
+    fake.sendCode.mockResolvedValueOnce({ phoneCodeHash: "h1", isCodeViaApp: false, emailRequired: true });
+
+    const res = await post("/send-code", { phone: "+1" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/set up a login email first/);
+  });
+
+  it("sends an emailed code as email verification, not as a phone code", async () => {
+    fake.invoke.mockResolvedValueOnce(authorization);
+
+    await post("/sign-in", { loginSession: "s1", phone: "+1", phoneCodeHash: "h1", code: "123456", via: "email" });
+
+    const request = fake.invoke.mock.calls[0][0] as Api.auth.SignIn;
+    expect(request.phoneCode).toBeUndefined();
+    expect(request.emailVerification).toBeInstanceOf(Api.EmailVerificationCode);
+    expect((request.emailVerification as Api.EmailVerificationCode).code).toBe("123456");
   });
 
   it("signs in on the session the code was sent from", async () => {

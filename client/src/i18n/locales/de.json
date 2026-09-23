@@ -602,6 +602,7 @@
       "sendCode": "Code senden",
       "codeSentApp": "Telegram hat einen Code an Ihre Telegram-App gesendet.",
       "codeSentSms": "Telegram hat einen Code per SMS gesendet.",
+      "codeSentEmail": "Telegram hat einen Code an Ihre Anmelde-E-Mail {{email}} gesendet.",
       "code": "Code",
       "signIn": "Anmelden",
       "changeNumber": "Nummer ändern",

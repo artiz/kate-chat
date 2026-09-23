@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
-import { Api, TelegramClient } from "telegram";
-import { RPCError } from "telegram/errors";
-import { computeCheck } from "telegram/Password";
+import { Api, TelegramClient } from "teleproto";
+import { RPCError } from "teleproto/errors";
+import { computeCheck } from "teleproto/Password";
 import { verifyToken } from "@/utils/jwt";
 import { createLogger } from "@/utils/logger";
 import { createTelegramClient, describeTelegramError, getTelegramCredentials } from "./client";
@@ -29,7 +29,11 @@ const USER_ERRORS: Record<string, string> = {
   PHONE_CODE_EXPIRED: "The code has expired. Request a new one.",
   PHONE_CODE_EMPTY: "Enter the code Telegram sent you.",
   PASSWORD_HASH_INVALID: "The password is not correct.",
+  EMAIL_CODE_INVALID: "The code is not correct.",
 };
+
+const EMAIL_SETUP_REQUIRED =
+  "Telegram asks this account to set up a login email first. Sign in once in an official Telegram app, set the email there, then try again.";
 
 const describeUser = (user: Api.TypeUser) => {
   if (!(user instanceof Api.User)) return { name: "Telegram" };
@@ -107,8 +111,16 @@ export function createTelegramAuthRouter(): Router {
     handle(async body => {
       const phone = normalizePhone(requireString(body, "phone"));
       return withClient("", async client => {
-        const { phoneCodeHash, isCodeViaApp } = await client.sendCode(getTelegramCredentials(), phone);
-        return { loginSession: String(client.session.save()), phoneCodeHash, viaApp: isCodeViaApp };
+        const sent = await client.sendCode(getTelegramCredentials(), phone);
+        if (sent.emailRequired) throw new LoginError(EMAIL_SETUP_REQUIRED);
+        // Accounts with a login email get the code there rather than in the app.
+        const via = sent.emailCodeSent ? "email" : sent.isCodeViaApp ? "app" : "sms";
+        return {
+          loginSession: String(client.session.save()),
+          phoneCodeHash: sent.phoneCodeHash,
+          via,
+          emailPattern: sent.emailOptions?.emailPattern,
+        };
       });
     })
   );
@@ -120,13 +132,16 @@ export function createTelegramAuthRouter(): Router {
       const loginSession = requireString(body, "loginSession");
       const phoneNumber = normalizePhone(requireString(body, "phone"));
       const phoneCodeHash = requireString(body, "phoneCodeHash");
-      const phoneCode = requireString(body, "code").replace(/\s/g, "");
+      const code = requireString(body, "code").replace(/\s/g, "");
+      // A code from the login email is a different field of the same request.
+      const credential =
+        body.via === "email" ? { emailVerification: new Api.EmailVerificationCode({ code }) } : { phoneCode: code };
 
       return withClient(loginSession, async client => {
         try {
           return authorized(
             client,
-            await client.invoke(new Api.auth.SignIn({ phoneNumber, phoneCodeHash, phoneCode }))
+            await client.invoke(new Api.auth.SignIn({ phoneNumber, phoneCodeHash, ...credential }))
           );
         } catch (err) {
           if (!(err instanceof RPCError) || err.errorMessage !== "SESSION_PASSWORD_NEEDED") throw err;

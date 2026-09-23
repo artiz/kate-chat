@@ -242,7 +242,7 @@ Each scope is listed explicitly so users can consent individually — no admin c
 
 ### Telegram MCP Server
 
-Acts as the user's own Telegram account through MTProto ([GramJS](https://gram.js.org/)), the way the Gmail server acts as their mailbox. It is not a bot: the model sees the user's chats and sends as them.
+Acts as the user's own Telegram account through MTProto ([teleproto](https://docs.teleproto.dev), the maintained fork of GramJS), the way the Gmail server acts as their mailbox. It is not a bot: the model sees the user's chats and sends as them.
 
 **Available tools:**
 | Tool | Description |
@@ -272,8 +272,8 @@ One application serves every user of the instance, like one OAuth client serves 
 
 Telegram has no OAuth, so the system server is registered with the `TELEGRAM` authentication type and signs in inside the app:
 1. The user enables **Telegram** in a chat's MCP menu, or authenticates it in MCP settings
-2. The dialog asks for the phone number; Telegram sends a code to the account's apps (or by SMS)
-3. The user enters the code, then the cloud password if two-step verification is on
+2. The dialog asks for the phone number; Telegram sends a code to the account's apps, by SMS, or to the account's login email, and the dialog says which
+3. The user enters the code, then the cloud password if two-step verification is on. An account Telegram asks to set up a login email first has to do that once in an official app
 4. The resulting session string becomes the server's token: stored in the browser like other MCP tokens and sent with each request
 
 The login steps run at `CALLBACK_URL_BASE/mcp/telegram/auth/{send-code,sign-in,password}`, require a KateChat login, and keep nothing between steps: each response hands the session back to resume from.

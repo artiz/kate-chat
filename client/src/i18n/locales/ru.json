@@ -743,6 +743,7 @@
       "sendCode": "Отправить код",
       "codeSentApp": "Telegram отправил код в ваше приложение Telegram.",
       "codeSentSms": "Telegram отправил код по SMS.",
+      "codeSentEmail": "Telegram отправил код на почту для входа {{email}}.",
       "code": "Код",
       "signIn": "Войти",
       "changeNumber": "Изменить номер",

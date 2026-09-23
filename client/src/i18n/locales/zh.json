@@ -602,6 +602,7 @@
       "sendCode": "发送验证码",
       "codeSentApp": "Telegram 已将验证码发送到您的 Telegram 应用。",
       "codeSentSms": "Telegram 已通过短信发送验证码。",
+      "codeSentEmail": "Telegram 已将验证码发送到您的登录邮箱 {{email}}。",
       "code": "验证码",
       "signIn": "登录",
       "changeNumber": "更换号码",

@@ -1,8 +1,8 @@
 import express from "express";
 import { AddressInfo } from "net";
 import { Server } from "http";
-import { RPCError } from "telegram/errors";
-import { Api } from "telegram";
+import { RPCError } from "teleproto/errors";
+import { Api } from "teleproto";
 
 const getConnectedClient = jest.fn();
 const forgetClient = jest.fn();
