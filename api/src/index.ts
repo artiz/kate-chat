@@ -43,6 +43,7 @@ import {
   SearchResolver,
   MCPAuthConfigResolver,
   RealtimeResolver,
+  SkillResolver,
 } from "./resolvers";
 import { authMiddleware, getUserFromToken, graphQlAuthChecker } from "./middleware/auth.middleware";
 
@@ -123,6 +124,7 @@ async function bootstrap() {
       MCPAuthConfigResolver,
       SearchResolver,
       RealtimeResolver,
+      SkillResolver,
     ],
     validate: false,
     pubSub: schemaPubSub,

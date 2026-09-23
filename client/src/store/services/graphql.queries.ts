@@ -160,6 +160,12 @@ export const BASE_MESSAGE_FRAGMENT = `
         documentIds
         requestId
         stopReason
+        generatedFiles {
+          name
+          fileName
+          mime
+          size
+        }
         usage {
           inputTokens
           outputTokens
@@ -934,6 +940,31 @@ export const DOCUMENT_BY_ID_QUERY = `
   query DocumentById($id: ID!) {
     documentById(id: $id) {
       ...BaseDocument
+    }
+  }
+`;
+
+export const GET_SKILLS = gql`
+  query GetSkills {
+    skills {
+      id
+      name
+      description
+      runtime
+      packages
+      instructions
+      files {
+        path
+        content
+      }
+    }
+  }
+`;
+
+export const SAVE_GENERATED_FILE = gql`
+  mutation SaveGeneratedFile($input: SaveGeneratedFileInput!) {
+    saveGeneratedFile(input: $input) {
+      ...BaseMessage
     }
   }
 `;

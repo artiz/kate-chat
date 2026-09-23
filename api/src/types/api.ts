@@ -71,6 +71,8 @@ export enum ToolType {
   MCP = "mcp",
   // additional images generation for chat models (e.g., gpt-5's image generation capability)
   IMAGE_GENERATION = "IMAGE_GENERATION",
+  // a skill from resources/skills, by id: its instructions join the system prompt
+  SKILL = "skill",
 }
 
 export enum ModelFeature {

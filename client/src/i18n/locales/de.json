@@ -524,7 +524,8 @@
     "tabMedia": "Medien",
     "title": "Bibliothek",
     "uploadFilesHint": "Hängen Sie PDF- oder Textdateien in Ihren Chats als Kontext an, um sie hier zu sehen",
-    "uploadImagesHint": "Laden Sie Bilder in Ihren Chats hoch, um sie hier zu sehen"
+    "uploadImagesHint": "Laden Sie Bilder in Ihren Chats hoch, um sie hier zu sehen",
+    "generatedFile": "Erstellt"
   },
   "mcp": {
     "addFirstServer": "Ersten Server hinzufügen",
@@ -839,5 +840,29 @@
     "messages": "Nachrichten",
     "documents": "Dokumente",
     "untitled": "Ohne Titel"
+  },
+  "skills": {
+    "title": "Skills",
+    "generating": "{{file}} wird erstellt…",
+    "saving": "{{file}} wird gespeichert…",
+    "pythonFirstRun": "Der erste Python-Lauf in diesem Tab lädt die Laufzeitumgebung (etwa 10 MB) und kann etwas dauern.",
+    "failed": "{{file}} konnte nicht erstellt werden",
+    "showOutput": "Programmausgabe anzeigen",
+    "hideOutput": "Programmausgabe ausblenden",
+    "askToFix": "Korrektur anfordern",
+    "runAgain": "Erneut ausführen",
+    "runAgainHint": "Programm erneut ausführen und die Datei ersetzen",
+    "download": "Herunterladen",
+    "notGenerated": "{{file}} ({{skill}}) wurde noch nicht erstellt",
+    "generate": "Erstellen",
+    "unknownSkill": "Der Skill „{{skill}}“, den {{file}} benötigt, ist auf diesem Server nicht installiert.",
+    "fixPrompt": "Beim Ausführen des Codes für {{file}} im Browser ist ein Fehler aufgetreten:\n\n```\n{{error}}\n```\n\nKorrigiere das Programm und sende den vollständigen korrigierten Block mit derselben Kopfzeile.",
+    "adminDescription": "Auf diesem Server installierte Skills. Sie werden aus resources/skills gelesen und können hier nicht geändert werden: Was Sie sehen, ist genau das, was ausgeführt wird.",
+    "noSkills": "Es sind keine Skills installiert.",
+    "runtime": "Laufzeit",
+    "packages": "Pakete",
+    "instructions": "Anweisungen für das Modell",
+    "scripts": "Hilfsskripte",
+    "noPackages": "Nur Standardbibliothek"
   }
 }

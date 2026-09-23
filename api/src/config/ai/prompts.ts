@@ -15,6 +15,15 @@ export const WEB_SEARCH_TEST_QUERY = "Capital of France";
 export const ATTACHMENT_NOT_SUPPORTED = (fileName: string, kind = "image"): string =>
   `[The user attached ${kind === "image" ? "an image" : "a file"} "${fileName}". This model cannot read ${kind === "image" ? "images" : "such files"}, so it was left out. Say so instead of guessing what it contains.]`;
 
+/**
+ * Follows an answer whose skill blocks the browser ran, so later turns know the files exist and
+ * what they are called; the model never sees them otherwise.
+ */
+export const GENERATED_FILES_NOTE = (files: { name: string; size: number }[]): string =>
+  `[The code in this answer ran in the user's browser and attached: ${files
+    .map(file => `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`)
+    .join(", ")}.]`;
+
 export const PROMPT_DOCUMENT_SUMMARY = ({ content }: { content: string }) =>
   `Please provide a comprehensive summary of the following document in up to 1024 words. 
     Return only summary, without any additional commentaries.

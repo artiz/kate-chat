@@ -4,10 +4,9 @@ import { IconPlayerPlay, IconTrash, IconDownload, IconCopy, IconCheck, IconDevic
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@apollo/client";
 import { UPDATE_MESSAGE_CONTENT_MUTATION } from "@/store/services/graphql.queries";
+import { pythonSandbox } from "@/lib/pythonSandbox";
 
 import "./CodeExecutorModal.scss";
-
-const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.27.5/full/";
 
 /** Replace the blockIndex-th fenced code block in markdown content with newCode */
 function replaceCodeBlock(content: string, blockIndex: number, newCode: string): string {
@@ -38,98 +37,8 @@ interface OutputEntry {
   dataUrl?: string;
 }
 
-// Pyodide typings (minimal)
-interface PyodideInterface {
-  runPythonAsync: (code: string, options?: { globals?: unknown }) => Promise<unknown>;
-  runPython: (code: string) => unknown;
-  setStdout: (options: { batched: (text: string) => void }) => void;
-  setStderr: (options: { batched: (text: string) => void }) => void;
-  loadPackagesFromImports: (code: string) => Promise<void>;
-  globals: { set: (name: string, value: unknown) => void; delete: (name: string) => void };
-}
-
-// Global pyodide cache to avoid reloading across modal opens
-let pyodideInstance: PyodideInterface | null = null;
-let pyodideLoadPromise: Promise<PyodideInterface> | null = null;
-let matplotlibPatched = false;
-
-async function loadPyodideRuntime(): Promise<PyodideInterface> {
-  if (pyodideInstance) return pyodideInstance;
-  if (pyodideLoadPromise) return pyodideLoadPromise;
-
-  pyodideLoadPromise = (async () => {
-    // Dynamically load the Pyodide script from CDN
-    if (!(window as unknown as Record<string, unknown>).loadPyodide) {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = `${PYODIDE_CDN}pyodide.js`;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Failed to load Pyodide from CDN"));
-        document.head.appendChild(script);
-      });
-    }
-
-    const loadPyodide = (window as unknown as Record<string, unknown>).loadPyodide as (config: {
-      indexURL: string;
-    }) => Promise<PyodideInterface>;
-
-    const pyodide = await loadPyodide({ indexURL: PYODIDE_CDN });
-    pyodideInstance = pyodide;
-
-    // One-time: patch builtins.input to use a JS callback
-    pyodide.runPython(`
-import builtins
-from pyodide.ffi import run_sync
-
-_original_input = builtins.input
-
-def _browser_input(prompt=""):
-    return run_sync(__js_input__(prompt))
-
-builtins.input = _browser_input
-`);
-
-    return pyodide;
-  })();
-
-  return pyodideLoadPromise;
-}
-
-/** Pre-load and patch matplotlib (once, after first import) */
-async function ensureMatplotlibPatched(pyodide: PyodideInterface): Promise<void> {
-  if (matplotlibPatched) return;
-  matplotlibPatched = true;
-
-  // Pre-install matplotlib so the font cache builds now, not during user code
-  try {
-    await pyodide.loadPackagesFromImports("import matplotlib");
-  } catch {
-    // not critical
-  }
-
-  pyodide.runPython(`
-import matplotlib
-matplotlib.use('agg')
-import matplotlib.pyplot as _plt
-
-_original_show = _plt.show
-
-def _browser_show(*args, **kwargs):
-    import io, base64
-    for fig_num in _plt.get_fignums():
-        fig = _plt.figure(fig_num)
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
-        buf.seek(0)
-        data = base64.b64encode(buf.read()).decode('utf-8')
-        __js_show_image__('data:image/png;base64,' + data)
-        buf.close()
-    _plt.close('all')
-
-_plt.show = _browser_show
-del _original_show
-`);
-}
+// Set once the sandboxed interpreter has loaded, so a reopened modal does not show the loader again
+let sandboxReady = false;
 
 /** Small button to copy a data-URL image to clipboard */
 const CopyImageButton: React.FC<{ dataUrl: string }> = ({ dataUrl }) => {
@@ -176,7 +85,7 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
   const [updateMessageContent, { loading: saving }] = useMutation(UPDATE_MESSAGE_CONTENT_MUTATION);
   const [output, setOutput] = useState<OutputEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [pyodideReady, setPyodideReady] = useState(!!pyodideInstance);
+  const [pyodideReady, setPyodideReady] = useState(sandboxReady);
   const [error, setError] = useState<string | null>(null);
   const [waitingForInput, setWaitingForInput] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -194,18 +103,19 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
     }
   }, [opened, initialCode]);
 
-  // Load Pyodide when modal opens
+  // Load the sandboxed interpreter when the modal opens
   useEffect(() => {
     if (!opened) return;
-    if (pyodideInstance) {
+    if (sandboxReady) {
       setPyodideReady(true);
       return;
     }
 
     setLoading(true);
-    loadPyodideRuntime()
-      .then(async pyodide => {
-        await ensureMatplotlibPatched(pyodide);
+    pythonSandbox
+      .load()
+      .then(() => {
+        sandboxReady = true;
         setPyodideReady(true);
         setLoading(false);
       })
@@ -241,51 +151,29 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
   }, [inputValue]);
 
   const runCode = useCallback(async () => {
-    if (!pyodideInstance || runningRef.current) return;
+    if (!sandboxReady || runningRef.current) return;
     runningRef.current = true;
     setLoading(true);
     setOutput(prev => [...prev, { type: "info", text: ">>> Running...\n" }]);
 
     try {
-      // Set up stdout/stderr capture
-      pyodideInstance.setStdout({
-        batched: (text: string) => {
-          setOutput(prev => [...prev, { type: "stdout", text }]);
-        },
+      const { result, error } = await pythonSandbox.run(code, {
+        onStdout: text => setOutput(prev => [...prev, { type: "stdout", text }]),
+        onStderr: text => setOutput(prev => [...prev, { type: "stderr", text }]),
+        onImage: dataUrl => setOutput(prev => [...prev, { type: "image", text: "[matplotlib figure]", dataUrl }]),
+        onInput: promptText =>
+          new Promise<string>(resolve => {
+            if (promptText) {
+              setOutput(prev => [...prev, { type: "input-prompt", text: promptText }]);
+            }
+            inputResolveRef.current = resolve;
+            setWaitingForInput(true);
+          }),
       });
-      pyodideInstance.setStderr({
-        batched: (text: string) => {
-          setOutput(prev => [...prev, { type: "stderr", text }]);
-        },
-      });
-
-      // Set up JS callbacks that the Python patches reference
-      const jsShowImage = (dataUrl: string) => {
-        setOutput(prev => [...prev, { type: "image", text: "[matplotlib figure]", dataUrl }]);
-      };
-      pyodideInstance.globals.set("__js_show_image__", jsShowImage);
-
-      const jsInputHandler = (promptText?: string): Promise<string> => {
-        return new Promise<string>(resolve => {
-          if (promptText) {
-            setOutput(prev => [...prev, { type: "input-prompt", text: promptText }]);
-          }
-          inputResolveRef.current = resolve;
-          setWaitingForInput(true);
-        });
-      };
-      pyodideInstance.globals.set("__js_input__", jsInputHandler);
-
-      // Auto-install imports
-      try {
-        await pyodideInstance.loadPackagesFromImports(code);
-      } catch {
-        // Some imports may not be available in Pyodide, continue anyway
-      }
-
-      const result = await pyodideInstance.runPythonAsync(code);
-      if (result !== undefined && result !== null) {
-        setOutput(prev => [...prev, { type: "result", text: String(result) }]);
+      if (error) {
+        setOutput(prev => [...prev, { type: "stderr", text: error }]);
+      } else if (result !== undefined) {
+        setOutput(prev => [...prev, { type: "result", text: result }]);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -295,8 +183,6 @@ export const PythonExecutorModal: React.FC<PythonExecutorModalProps> = ({
       setWaitingForInput(false);
       inputResolveRef.current = null;
       runningRef.current = false;
-
-      // Cleanup: reset waiting state (keep patches — they are one-time permanent)
     }
   }, [code]);
 

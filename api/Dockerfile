@@ -16,6 +16,8 @@ COPY ./db-migrations/ ./
 COPY --from=builder /app/node_modules/ ./node_modules
 COPY --from=builder /app/api/node_modules/ ./node_modules
 COPY --from=builder /app/api/dist ./
+# skills (SKILL.md and helper scripts) are served read-only to the app, see services/skills.service.ts
+COPY ./api/resources ./resources
 
 
 ENTRYPOINT ["node", "./index.js"]

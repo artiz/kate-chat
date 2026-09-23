@@ -524,7 +524,8 @@
     "tabMedia": "Media",
     "title": "Library",
     "uploadFilesHint": "Attach PDF or text files in your chats as chat context to see them here",
-    "uploadImagesHint": "Upload images in your chats to see them here"
+    "uploadImagesHint": "Upload images in your chats to see them here",
+    "generatedFile": "Generated"
   },
   "mcp": {
     "addFirstServer": "Add Your First Server",
@@ -839,5 +840,29 @@
     "passwordMinLength": "Password must be at least 8 characters",
     "passwordRequired": "Password is required",
     "passwordsDoNotMatch": "Passwords do not match"
+  },
+  "skills": {
+    "title": "Skills",
+    "generating": "Generating {{file}}…",
+    "saving": "Saving {{file}}…",
+    "pythonFirstRun": "The first Python run in this tab downloads the runtime (about 10 MB) and may take a while.",
+    "failed": "{{file}} could not be generated",
+    "showOutput": "Show program output",
+    "hideOutput": "Hide program output",
+    "askToFix": "Ask to fix",
+    "runAgain": "Run again",
+    "runAgainHint": "Run the program again and replace the file",
+    "download": "Download",
+    "notGenerated": "{{file}} ({{skill}}) has not been generated yet",
+    "generate": "Generate",
+    "unknownSkill": "The skill \"{{skill}}\" that {{file}} needs is not installed on this server.",
+    "fixPrompt": "Running the code for {{file}} failed in the browser:\n\n```\n{{error}}\n```\n\nFix the program and send the complete corrected block with the same header.",
+    "adminDescription": "Skills installed on this server. They are read from resources/skills and cannot be changed here: what you see is exactly what runs.",
+    "noSkills": "No skills are installed.",
+    "runtime": "Runtime",
+    "packages": "Packages",
+    "instructions": "Instructions for the model",
+    "scripts": "Helper scripts",
+    "noPackages": "Standard library only"
   }
 }

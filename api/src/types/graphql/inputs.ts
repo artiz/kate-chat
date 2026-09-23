@@ -636,3 +636,18 @@ export class GetFolderContentsInput {
   @Field({ nullable: true, defaultValue: 25 })
   limit?: number;
 }
+
+@InputType()
+export class SaveGeneratedFileInput {
+  /** The assistant answer whose skill block produced the file */
+  @Field()
+  messageId: string;
+
+  /** File name from the block header, e.g. report.pptx */
+  @Field()
+  name: string;
+
+  /** File bytes, base64, optionally as a data URL */
+  @Field()
+  bytesBase64: string;
+}

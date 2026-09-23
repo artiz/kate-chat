@@ -212,6 +212,24 @@ export function toStopReason(reason: string | null | undefined): StopReason | un
   }
 }
 
+/** A file a skill's program wrote in the user's browser, stored on S3 and attached to the answer. */
+@ObjectType()
+export class GeneratedFile {
+  /** Name the program gave the file, as the model's block header named it */
+  @Field()
+  name: string;
+
+  /** S3 key, served at /files/<key> */
+  @Field()
+  fileName: string;
+
+  @Field()
+  mime: string;
+
+  @Field()
+  size: number;
+}
+
 @ObjectType()
 export class MessageMetadata {
   // --------------- assistant message meta ---------------
@@ -261,6 +279,10 @@ export class MessageMetadata {
 
   @Field(() => [ID], { nullable: true })
   contextMessages?: string[];
+
+  // files the skills' programs in this answer produced
+  @Field(() => [GeneratedFile], { nullable: true })
+  generatedFiles?: GeneratedFile[];
 
   // --------------- user message meta ---------------
   // input document IDs

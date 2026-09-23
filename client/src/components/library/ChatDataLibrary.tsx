@@ -3,7 +3,7 @@ import { formatDateTime } from "@katechat/ui";
 import { useApolloClient } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { Anchor, Badge, Button, Center, Group, Loader, Stack, Table, Text } from "@mantine/core";
-import { IconFileText, IconExternalLink, IconDownload } from "@tabler/icons-react";
+import { IconFileText, IconExternalLink, IconDownload, IconWand } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
 import { GET_CHAT_FILES } from "@/store/services/graphql.queries";
@@ -11,7 +11,7 @@ import { GetChatFilesInput, GetChatFilesResponse, LibraryChatFile } from "@/type
 import { useAppSelector } from "@/store";
 import { APP_API_URL } from "@/lib/config";
 
-/** Library "Chat Data": inline chat-context files (PDF/text) uploaded to chats */
+/** Library "Chat Data": inline chat-context files (PDF/text) uploaded to chats, and files skills generated */
 export const ChatDataLibrary: React.FC = () => {
   const { t } = useTranslation();
   const client = useApolloClient();
@@ -31,7 +31,7 @@ export const ChatDataLibrary: React.FC = () => {
       try {
         setLoading(true);
 
-        const input: GetChatFilesInput = { offset, limit };
+        const input: GetChatFilesInput = { offset, limit, types: ["INLINE_DOCUMENT", "GENERATED"] };
         const response = await client.query<GetChatFilesResponse>({
           query: GET_CHAT_FILES,
           variables: { input },
@@ -113,10 +113,15 @@ export const ChatDataLibrary: React.FC = () => {
                 <Table.Tr key={file.id}>
                   <Table.Td>
                     <Group gap="xs" wrap="nowrap">
-                      <IconFileText size={18} />
+                      {file.type === "GENERATED" ? <IconWand size={18} /> : <IconFileText size={18} />}
                       <Text size="sm" truncate maw={280} title={file.uploadFile || file.fileName}>
                         {file.uploadFile || file.fileName}
                       </Text>
+                      {file.type === "GENERATED" && (
+                        <Badge size="xs" variant="light" color="grape">
+                          {t("library.generatedFile")}
+                        </Badge>
+                      )}
                     </Group>
                   </Table.Td>
                   <Table.Td>
@@ -141,7 +146,12 @@ export const ChatDataLibrary: React.FC = () => {
                   </Table.Td>
                   <Table.Td>
                     <Anchor
-                      href={`${APP_API_URL}${file.fileUrl}`}
+                      href={
+                        // generated files have a vetted name and extension, so they download under it
+                        file.type === "GENERATED" && file.uploadFile
+                          ? `${APP_API_URL}${file.fileUrl}?name=${encodeURIComponent(file.uploadFile)}`
+                          : `${APP_API_URL}${file.fileUrl}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={t("library.downloadFile")}

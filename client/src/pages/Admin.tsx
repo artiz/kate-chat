@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Container, Tabs, Title } from "@mantine/core";
-import { IconDashboard, IconPlugConnected } from "@tabler/icons-react";
-import { AdminDashboard, MCPServersAdmin } from "@/components/admin";
+import { IconDashboard, IconPlugConnected, IconWand } from "@tabler/icons-react";
+import { AdminDashboard, MCPServersAdmin, SkillsAdmin } from "@/components/admin";
 
 export const Admin: React.FC = () => {
   const { t } = useTranslation();
@@ -21,6 +21,9 @@ export const Admin: React.FC = () => {
           <Tabs.Tab value="mcp" leftSection={<IconPlugConnected size="1rem" />}>
             {t("admin.mcpServers")}
           </Tabs.Tab>
+          <Tabs.Tab value="skills" leftSection={<IconWand size="1rem" />}>
+            {t("skills.title")}
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="dashboard">
@@ -29,6 +32,10 @@ export const Admin: React.FC = () => {
 
         <Tabs.Panel value="mcp">
           <MCPServersAdmin />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="skills">
+          <SkillsAdmin />
         </Tabs.Panel>
       </Tabs>
     </Container>

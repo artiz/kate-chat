@@ -55,6 +55,7 @@ import {
   InOutTokens,
   ContextMessages,
   TruncatedResponse,
+  SkillRuns,
 } from "./plugins";
 import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/services/graphql.queries";
 import {
@@ -215,6 +216,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
   const noticePlugins = useMemo(
     () => [
       isExternalChat ? (props: PluginProps<Message>) => <TruncatedResponse {...props} readOnly /> : TruncatedResponse,
+      isExternalChat ? (props: PluginProps<Message>) => <SkillRuns {...props} readOnly /> : SkillRuns,
     ],
     [isExternalChat]
   );
