@@ -124,6 +124,12 @@ variable "default_admin_emails" {
   type        = string
 }
 
+variable "enabled_mcp_services" {
+  description = "Comma separated system MCP servers hosted by the API (gmail, microsoft_teams, telegram). Telegram needs the telegram-api-id/-api-hash secrets filled in"
+  type        = string
+  default     = "gmail,telegram"
+}
+
 # Error monitoring configuration
 variable "error_monitoring_recipients" {
   description = "Email addresses subscribed to 5xx error alarms"
