@@ -692,6 +692,7 @@
     "transportType": "Тип транспорта",
     "transportTypeDescription": "Используйте Legacy для серверов со старым протоколом SSE",
     "streamableHttp": "Streamable HTTP (Современный)",
+    "telegramAuth": "Telegram (вход по телефону)",
     "httpSse": "HTTP + SSE (Legacy)",
     "authType": "Тип аутентификации",
     "headerName": "Имя заголовка",

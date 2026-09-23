@@ -46,6 +46,7 @@ const AUTH_TYPES = [
   { value: "NONE", label: "No Authentication" },
   { value: "API_KEY", label: "API Key" },
   { value: "BEARER", label: "Bearer Token" },
+  { value: "TELEGRAM", label: "Telegram" },
 ];
 
 export const MCPServersAdmin: React.FC = () => {

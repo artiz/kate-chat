@@ -578,6 +578,7 @@
     "showInputSchema": "Eingabeschema anzeigen",
     "showOutputSchema": "Ausgabeschema anzeigen",
     "streamableHttp": "Streamable HTTP (Modern)",
+    "telegramAuth": "Telegram (Anmeldung per Telefon)",
     "title": "MCP-Server",
     "tokenUrl": "Token-URL",
     "toolsAvailable": "{{count}} Tool(s) verfügbar",

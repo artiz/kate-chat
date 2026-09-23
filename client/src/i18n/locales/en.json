@@ -580,6 +580,7 @@
     "showInputSchema": "Show Input Schema",
     "showOutputSchema": "Show Output Schema",
     "streamableHttp": "Streamable HTTP (Modern)",
+    "telegramAuth": "Telegram (phone sign-in)",
     "title": "MCP Servers",
     "tokenUrl": "Token URL",
     "toolsAvailable": "{{count}} tool(s) available",

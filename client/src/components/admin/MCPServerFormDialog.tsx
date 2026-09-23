@@ -55,6 +55,10 @@ const AUTH_TYPES = [
   { value: "OAUTH2", label: translate("mcp.oauth2") },
 ];
 
+// Telegram signs in through the API's own /mcp/<name>/auth routes, which only the built-in Telegram
+// server has, so it is offered only when editing that server, and fixed there.
+const TELEGRAM_AUTH_TYPE = { value: "TELEGRAM", label: translate("mcp.telegramAuth") };
+
 const TRANSPORT_TYPES = [
   { value: "STREAMABLE_HTTP", label: translate("mcp.streamableHttp") },
   { value: "HTTP_SSE_LEGACY", label: translate("mcp.httpSse") },
@@ -68,6 +72,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
   fullScreen,
 }) => {
   const { t } = useTranslation();
+  const isTelegram = server?.authType === "TELEGRAM";
   const isEditMode = !!server;
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
   const { currentUser } = useAppSelector(state => state.user);
@@ -258,9 +263,9 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
             flex="1"
             label={t("mcp.authType")}
             description={t("mcp.authTypeDescription")}
-            data={AUTH_TYPES}
+            data={isTelegram ? [...AUTH_TYPES, TELEGRAM_AUTH_TYPE] : AUTH_TYPES}
             value={formData.authType}
-            readOnly={!isEditable}
+            readOnly={!isEditable || isTelegram}
             onChange={v => setFormData({ ...formData, authType: v || "NONE" })}
           />
 

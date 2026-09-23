@@ -578,6 +578,7 @@
     "showInputSchema": "显示输入模式",
     "showOutputSchema": "显示输出模式",
     "streamableHttp": "Streamable HTTP（现代）",
+    "telegramAuth": "Telegram（手机号登录）",
     "title": "MCP 服务器",
     "tokenUrl": "令牌 URL",
     "toolsAvailable": "{{count}} 个工具可用",
