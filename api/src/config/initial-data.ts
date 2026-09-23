@@ -41,20 +41,24 @@ export async function ensureSystemMCPServers() {
     const envKey = mcpName.toUpperCase();
     const clientId = process.env[`MCP_SERVER_${envKey}_CLIENT_ID`];
     const clientSecret = process.env[`MCP_SERVER_${envKey}_CLIENT_SECRET`];
+    const authType = mcpEntry.authType || MCPAuthType.OAUTH2;
 
     await mcpService.createServer({
       name: mcpEntry.name,
       url,
       description: mcpEntry.description,
       transportType: MCPTransportType.STREAMABLE_HTTP,
-      authType: MCPAuthType.OAUTH2,
-      authConfig: {
-        clientId,
-        clientSecret,
-        authorizationUrl: mcpEntry.authorizationUrl,
-        tokenUrl: mcpEntry.tokenUrl,
-        scope: mcpEntry.scope,
-      } as MCPAuthConfig,
+      authType,
+      authConfig:
+        authType === MCPAuthType.OAUTH2
+          ? ({
+              clientId,
+              clientSecret,
+              authorizationUrl: mcpEntry.authorizationUrl,
+              tokenUrl: mcpEntry.tokenUrl,
+              scope: mcpEntry.scope,
+            } as MCPAuthConfig)
+          : undefined,
       access: EntityAccessType.SYSTEM,
     });
 

@@ -195,10 +195,10 @@ export const ChatInputHeader = ({
     onUpdateChat({ tools: toolsArray });
   };
 
-  const handleTokenSubmit = () => {
+  const handleTokenSubmit = (session?: string) => {
     // Get the serverId before submitToken clears the modal state
     const serverId = mcpTokenModalServer?.id;
-    if (mcpSubmitToken() && serverId) {
+    if (mcpSubmitToken(session) && serverId) {
       // Token saved, now toggle the server
       toggleMcpServer(serverId);
     }

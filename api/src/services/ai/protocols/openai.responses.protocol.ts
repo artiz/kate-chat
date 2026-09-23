@@ -206,7 +206,11 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
           if (
             !this.nativeMcpSupport ||
             server.url?.startsWith("http://localhost") ||
-            server.url?.startsWith("http://127.0.0.1")
+            server.url?.startsWith("http://127.0.0.1") ||
+            // A Telegram session is the whole account with no scope or expiry. Called as a hosted
+            // tool it would travel to OpenAI in the authorization field; called locally it never
+            // leaves this API, which hosts the server anyway.
+            server.authType === MCPAuthType.TELEGRAM
           ) {
             localMcpServers.push({ server, tool });
             return;

@@ -45,11 +45,7 @@ pub fn verify_token(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::e
 }
 
 pub fn extract_token_from_header(auth_header: &str) -> Option<&str> {
-    if let Some(stripped) = auth_header.strip_prefix("Bearer ") {
-        Some(stripped)
-    } else {
-        None
-    }
+    auth_header.strip_prefix("Bearer ")
 }
 
 /// Password-reset token (Node parity: purpose-scoped, 15 minutes).

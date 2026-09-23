@@ -578,6 +578,7 @@
     "showInputSchema": "Eingabeschema anzeigen",
     "showOutputSchema": "Ausgabeschema anzeigen",
     "streamableHttp": "Streamable HTTP (Modern)",
+    "telegramAuth": "Telegram (Anmeldung per Telefon)",
     "title": "MCP-Server",
     "tokenUrl": "Token-URL",
     "toolsAvailable": "{{count}} Tool(s) verfügbar",
@@ -593,7 +594,24 @@
     "yourBearerToken": "Ihr Bearer-Token",
     "access": "Zugriffsmodus",
     "accessDescription": "Privat: Nur der aktuelle Benutzer kann diesen Server verwenden. Geteilt/System: Alle Benutzer können diesen Server verwenden. Geteilte Server können geklont werden.",
-    "authTypeDescription": "Authentifizierungsmodus einrichten"
+    "authTypeDescription": "Authentifizierungsmodus einrichten",
+    "telegram": {
+      "title": "Telegram verbinden",
+      "intro": "Das Modell kann Ihre Telegram-Chats lesen und in Ihrem Namen Nachrichten senden. Die Sitzung wird nur in diesem Browser gespeichert und lässt sich jederzeit in Telegram unter Einstellungen → Geräte beenden.",
+      "phone": "Telefonnummer",
+      "phonePlaceholder": "+43 660 1234567",
+      "sendCode": "Code senden",
+      "codeSentApp": "Telegram hat einen Code an Ihre Telegram-App gesendet.",
+      "codeSentSms": "Telegram hat einen Code per SMS gesendet.",
+      "codeSentEmail": "Telegram hat einen Code an Ihre Anmelde-E-Mail {{email}} gesendet.",
+      "code": "Code",
+      "signIn": "Anmelden",
+      "changeNumber": "Nummer ändern",
+      "passwordRequired": "Die zweistufige Bestätigung ist aktiv. Geben Sie Ihr Telegram-Cloud-Passwort ein.",
+      "passwordHint": "Hinweis: {{hint}}",
+      "password": "Cloud-Passwort",
+      "connected": "Telegram verbunden als {{name}}"
+    }
   },
   "messageDetails": {
     "annotations": "Anmerkungen",

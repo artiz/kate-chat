@@ -366,8 +366,8 @@ export class MCPClient {
       return { [headerName]: this.authToken.accessToken };
     }
 
-    if (authType === MCPAuthType.BEARER) {
-      ok(this.authToken?.accessToken, "Bearer token is required for BEARER auth type");
+    if (authType === MCPAuthType.BEARER || authType === MCPAuthType.TELEGRAM) {
+      ok(this.authToken?.accessToken, `Bearer token is required for ${authType} auth type`);
       return { Authorization: `Bearer ${this.authToken.accessToken}` };
     }
 

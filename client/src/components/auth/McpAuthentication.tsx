@@ -5,12 +5,15 @@ import { ChatTool, MCPServer, ToolType } from "@/types/graphql";
 import { assert } from "@katechat/ui";
 import { User } from "@/store/slices/userSlice";
 import { notifications } from "@mantine/notifications";
+import { useTranslation } from "react-i18next";
+import { TelegramLogin } from "./TelegramLogin";
 
 export enum MCPAuthType {
   NONE = "NONE",
   API_KEY = "API_KEY",
   BEARER = "BEARER",
   OAUTH2 = "OAUTH2",
+  TELEGRAM = "TELEGRAM",
 }
 
 export interface McpTokenInfo {
@@ -35,10 +38,17 @@ export const requiresTokenEntry = (server: MCPServer): boolean => {
 };
 
 /**
+ * Check if MCP server signs in within the app (Telegram: phone, code, cloud password)
+ */
+export const requiresSignIn = (server: MCPServer): boolean => {
+  return server.authType === MCPAuthType.TELEGRAM;
+};
+
+/**
  * Check if MCP server requires any form of authentication
  */
 export const requiresAuth = (server: MCPServer): boolean => {
-  return requiresOAuth(server) || requiresTokenEntry(server);
+  return requiresOAuth(server) || requiresTokenEntry(server) || requiresSignIn(server);
 };
 
 export const getChatMcpTokens = (tools?: ChatTool[], userId?: string): McpTokenInfo[] | undefined => {
@@ -106,6 +116,16 @@ export const storeMcpToken = (serverId: string, token: string, expiresAt?: numbe
 // providers rotate refresh tokens, and sending the same token twice in parallel
 // makes the second call fail with invalid_grant and can revoke the whole grant.
 const inflightRefresh = new Map<string, Promise<boolean>>();
+
+/**
+ * Store a token that stays valid until revoked, such as a Telegram session. The one-hour default of
+ * storeMcpToken would make the user sign in again every hour, and Telegram rate-limits login codes.
+ */
+export const storeMcpSession = (serverId: string, session: string, userId?: string): void => {
+  localStorage.setItem(ACCESS_TOKEN_KEY(serverId, userId), session);
+  localStorage.removeItem(EXPIRES_AT_KEY(serverId, userId));
+  localStorage.removeItem(REFRESH_TOKEN_KEY(serverId, userId));
+};
 
 /**
  * Attempt to refresh an expired MCP token using the stored refresh_token.
@@ -213,8 +233,8 @@ export interface UseMcpAuthResult {
   mcpOpenTokenModal: (server: MCPServer) => void;
   /** Close token modal */
   mcpCloseTokenModal: () => void;
-  /** Submit token and store it */
-  mcpSubmitToken: () => boolean;
+  /** Submit the entered token and store it, or store a session a sign-in in the modal produced */
+  mcpSubmitToken: (session?: string) => boolean;
   /** Initiate authentication for a server (OAuth or token modal) */
   mcpInitiateAuth: (server: MCPServer, userToken: string, force?: boolean, onAuthenticated?: () => void) => boolean;
 }
@@ -382,22 +402,31 @@ export const useMcpAuth = (
     mcpSetTokenValue("");
   }, []);
 
-  const mcpSubmitToken = useCallback((): boolean => {
-    if (!mcpTokenModalServer || !mcpTokenValue.trim()) return false;
+  const mcpSubmitToken = useCallback(
+    (session?: string): boolean => {
+      if (!mcpTokenModalServer) return false;
 
-    // Store the token in localStorage
-    storeMcpToken(mcpTokenModalServer.id, mcpTokenValue.trim());
+      if (session) {
+        storeMcpSession(mcpTokenModalServer.id, session, userId);
+      } else if (mcpTokenValue.trim()) {
+        // under the same user-scoped key hasValidMcpToken and getChatMcpTokens read
+        storeMcpToken(mcpTokenModalServer.id, mcpTokenValue.trim(), undefined, userId);
+      } else {
+        return false;
+      }
 
-    // Update auth status
-    setAuthStatus(prev => new Map(prev).set(mcpTokenModalServer.id, true));
-    expectingOAuthCallback.current?.();
+      // Update auth status
+      setAuthStatus(prev => new Map(prev).set(mcpTokenModalServer.id, true));
+      expectingOAuthCallback.current?.();
 
-    // Close modal
-    setTokenModalServer(null);
-    mcpSetTokenValue("");
+      // Close modal
+      setTokenModalServer(null);
+      mcpSetTokenValue("");
 
-    return true;
-  }, [mcpTokenModalServer, mcpTokenValue]);
+      return true;
+    },
+    [mcpTokenModalServer, mcpTokenValue, userId]
+  );
 
   const mcpInitiateAuth = useCallback(
     (server: MCPServer, userToken: string, force: boolean = false, onAuthenticated?: () => void): boolean => {
@@ -421,8 +450,8 @@ export const useMcpAuth = (
         return false;
       }
 
-      // If API Key or Bearer token is required, show token entry dialog
-      if (requiresTokenEntry(server) && (force || !hasValidMcpToken(server.id, userId))) {
+      // If API Key or Bearer token is required, or an in-app sign-in, show the token dialog
+      if ((requiresTokenEntry(server) || requiresSignIn(server)) && (force || !hasValidMcpToken(server.id, userId))) {
         mcpOpenTokenModal(server);
         expectingOAuthCallback.current = onAuthenticated || (() => {});
         return true;
@@ -456,7 +485,8 @@ interface McpTokenModalProps {
   server: MCPServer | null;
   tokenValue: string;
   onTokenChange: (value: string) => void;
-  onSubmit: () => void;
+  /** Called with no argument for an entered token, with the session for a sign-in done in the modal */
+  onSubmit: (session?: string) => void;
   onClose: () => void;
 }
 
@@ -468,7 +498,16 @@ export const McpTokenModal: React.FC<McpTokenModalProps> = ({
   onSubmit,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const isApiKey = server?.authType === MCPAuthType.API_KEY;
+
+  if (server?.authType === MCPAuthType.TELEGRAM) {
+    return (
+      <Modal opened={opened} onClose={onClose} title={t("mcp.telegram.title")} centered>
+        <TelegramLogin server={server} onSuccess={session => onSubmit(session)} />
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -496,7 +535,7 @@ export const McpTokenModal: React.FC<McpTokenModalProps> = ({
           <Button variant="subtle" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={!tokenValue.trim()}>
+          <Button onClick={() => onSubmit()} disabled={!tokenValue.trim()}>
             Submit
           </Button>
         </Group>

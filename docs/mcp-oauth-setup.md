@@ -88,7 +88,7 @@ OAuth tokens are stored in browser localStorage with keys:
 
 ## System MCP Servers (Built-in)
 
-Kate-Chat can host built-in MCP servers inside the API process, available at `CALLBACK_URL_BASE/mcp/<name>`. These are registered as **System** MCP servers (visible to all users) and require provider-specific OAuth to access user data.
+Kate-Chat can host built-in MCP servers inside the API process, available at `CALLBACK_URL_BASE/mcp/<name>`. These are registered as **System** MCP servers (visible to all users) and require provider-specific OAuth to access user data, or for Telegram, which has no OAuth, a sign-in by phone inside the app.
 
 ### Enabling System MCP Servers
 
@@ -237,6 +237,54 @@ Each scope is listed explicitly so users can consent individually — no admin c
 **References:**
 - [Microsoft Teams MCP Server (InditexTech)](https://github.com/InditexTech/mcp-teams-server) — standalone Python-based Teams MCP server
 - [Microsoft Teams MCP Server Reference](https://learn.microsoft.com/en-us/microsoft-agent-365/mcp-server-reference/teams) — official Microsoft Graph operations reference
+
+---
+
+### Telegram MCP Server
+
+Acts as the user's own Telegram account through MTProto ([teleproto](https://docs.teleproto.dev), the maintained fork of GramJS), the way the Gmail server acts as their mailbox. It is not a bot: the model sees the user's chats and sends as them.
+
+**Available tools:**
+| Tool | Description |
+|------|-------------|
+| `list_chats` | List chats, groups, channels and bots, most recent first, with unread counts; filter by name or to unread only |
+| `get_messages` | Read one chat, oldest first; search within it or page back from a message ID |
+| `search_messages` | Search messages across all chats |
+| `send_message` | Send a plain-text message, optionally as a reply |
+| `mark_as_read` | Mark a chat as read |
+
+A chat can be named by the ID `list_chats` returns, an `@username`, a phone number, or its title.
+
+**Prerequisites:**
+
+1. Sign in at [my.telegram.org](https://my.telegram.org) and open **API development tools**
+2. Create an application; any title and platform will do
+3. Copy **api_id** and **api_hash** to your environment variables, and add `telegram` to the enabled services:
+   ```
+   ENABLED_MCP_SERVICES=gmail,telegram
+   MCP_SERVER_TELEGRAM_API_ID=1234567
+   MCP_SERVER_TELEGRAM_API_HASH=0123456789abcdef0123456789abcdef
+   ```
+
+One application serves every user of the instance, like one OAuth client serves Gmail.
+
+**Authentication flow:**
+
+Telegram has no OAuth, so the system server is registered with the `TELEGRAM` authentication type and signs in inside the app:
+1. The user enables **Telegram** in a chat's MCP menu, or authenticates it in MCP settings
+2. The dialog asks for the phone number; Telegram sends a code to the account's apps, by SMS, or to the account's login email, and the dialog says which
+3. The user enters the code, then the cloud password if two-step verification is on. An account Telegram asks to set up a login email first has to do that once in an official app
+4. The resulting session string becomes the server's token: stored in the browser like other MCP tokens and sent with each request
+
+The login steps run at `CALLBACK_URL_BASE/mcp/telegram/auth/{send-code,sign-in,password}`, require a KateChat login, and keep nothing between steps: each response hands the session back to resume from.
+
+**Security:**
+- The session is the whole account, with no scopes and no expiry. It is kept only in the user's browser and ends when the user terminates it in Telegram (**Settings → Devices**); after that the tools report that Telegram has to be connected again.
+- The session never goes to a model provider. With OpenAI's native MCP support, other servers are handed to OpenAI with their token; Telegram is always called by the API itself.
+- The API keeps a connected client per session for ten idle minutes, in memory only.
+
+**References:**
+- [dryeab/mcp-telegram](https://github.com/dryeab/mcp-telegram) — standalone Python (Telethon) MCP server acting as a user account
 
 ---
 

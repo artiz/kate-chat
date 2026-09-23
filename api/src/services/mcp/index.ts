@@ -1,6 +1,8 @@
 import { handleGmailMCPRequest } from "./gmail";
 import { handleTeamsMCPRequest } from "./microsoft_teams";
-import { Request, Response } from "express";
+import { createTelegramAuthRouter, handleTelegramMCPRequest } from "./telegram";
+import { Request, Response, Router } from "express";
+import { MCPAuthType } from "@/types/api";
 
 export type McpRequestHandler = (
   req: Request,
@@ -12,10 +14,14 @@ export type McpRequestHandler = (
 export interface SystemMCPServerEntry {
   name: string;
   description: string;
-  authorizationUrl: string;
-  tokenUrl: string;
-  scope: string;
+  /** How the browser obtains the token every request carries. OAUTH2 when not set. */
+  authType?: MCPAuthType;
+  authorizationUrl?: string;
+  tokenUrl?: string;
+  scope?: string;
   handler: McpRequestHandler;
+  /** Routes a login flow other than OAuth needs, mounted at /mcp/<name>/auth. */
+  authRouter?: () => Router;
 }
 
 export const MCP_SERVERS: Record<string, SystemMCPServerEntry> = {
@@ -36,5 +42,12 @@ export const MCP_SERVERS: Record<string, SystemMCPServerEntry> = {
     scope:
       "https://graph.microsoft.com/Chat.ReadWrite https://graph.microsoft.com/Channel.ReadBasic.All https://graph.microsoft.com/ChannelMessage.Read.All https://graph.microsoft.com/ChannelMessage.Send https://graph.microsoft.com/Team.ReadBasic.All https://graph.microsoft.com/TeamMember.Read.All https://graph.microsoft.com/User.Read offline_access",
     handler: handleTeamsMCPRequest,
+  },
+  telegram: {
+    name: "Telegram",
+    description: "Access your Telegram account: read, search, and send messages in your chats.",
+    authType: MCPAuthType.TELEGRAM,
+    handler: handleTelegramMCPRequest,
+    authRouter: createTelegramAuthRouter,
   },
 };
