@@ -19,6 +19,7 @@ import { CREATE_MESSAGE, GET_SKILLS, SAVE_GENERATED_FILE } from "@/store/service
 import { APP_API_URL } from "@/lib/config";
 import { findUnfinishedSkillBlock, normalizeFileName, parseSkillBlocks, SkillBlock } from "@/lib/skills/parse";
 import { runSkillCode, SkillOutputFile } from "@/lib/skills/sandbox";
+import { loadChatImages } from "@/lib/skills/images";
 import { SKILL_RUN_EVENT, SkillRunRequest } from "@/lib/skills/events";
 import { useChatPluginsContext } from "../ChatPluginsContext";
 
@@ -102,7 +103,8 @@ const SkillRun = ({ block, skill, message, autoRun, canFix, disabled, onAddMessa
     started.add(`${message.id}:${block.index}`);
     setState({ status: "running" });
 
-    const result = await runSkillCode(skill, block.code);
+    const images = skill.runtime === "typescript" ? await loadChatImages(block.code, message.chatId) : [];
+    const result = await runSkillCode(skill, block.code, undefined, images);
     if (!mounted.current) return;
     if (!result.ok) {
       setState({ status: "error", error: result.error, logs: result.logs });

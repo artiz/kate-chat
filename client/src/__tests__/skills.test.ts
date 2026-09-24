@@ -12,7 +12,8 @@ import {
   stripGeneratedFilesNote,
   withSkillView,
 } from "../lib/skills/parse";
-import { buildSandboxDocument, npmImport, SANDBOX_CSP } from "../lib/skills/sandbox";
+import { buildSandboxDocument, IMAGE_HOSTS, npmImport, SANDBOX_CSP } from "../lib/skills/sandbox";
+import { findChatImagePaths } from "../lib/skills/images";
 
 describe("parseSkillBlocks", () => {
   const answer = [
@@ -134,6 +135,22 @@ describe("withSkillView", () => {
   });
 });
 
+describe("findChatImagePaths", () => {
+  it("finds the images of this chat a program uses, once each", () => {
+    const code = [
+      'titleSlide(pptx, { image: "/files/chat-1/msg-1/1790-0.jpg" });',
+      'imageSlide(pptx, { image: "/files/chat-1/msg-1/1790-0.jpg" });',
+      'addImage(pptx, slide, "/files/chat-1/msg-2/1791-0.png", box);',
+      'images.load("/files/other-chat/msg-9/1-0.png");',
+      'images.load("/files/chat-1/msg-3/notes.pdf");',
+    ].join("\n");
+    expect(findChatImagePaths(code, "chat-1")).toEqual([
+      "/files/chat-1/msg-1/1790-0.jpg",
+      "/files/chat-1/msg-2/1791-0.png",
+    ]);
+  });
+});
+
 describe("normalizeFileName", () => {
   // the same cases as normalizeGeneratedFileName in the API, so a file is found again after a reload
   it.each([
@@ -189,6 +206,17 @@ describe("sandbox document", () => {
     expect(atob(program.split(",")[1])).toBe("table;\n//# sourceURL=program.js");
     expect(doc).toContain('for (const helper of ["skill/pdf.js"])');
     expect(doc).toContain('addEventListener("unhandledrejection"');
+  });
+
+  it("lets programs reach the photo hosts and embeds the chat images they use", () => {
+    for (const host of IMAGE_HOSTS) expect(SANDBOX_CSP).toContain(host);
+    const doc = buildSandboxDocument({ runtime: "typescript", packages: [], files: [] }, "", [
+      { path: "/files/chat-1/msg-1/1-0.png", mime: "image/png", bytes: new Uint8Array([1, 2, 3]) },
+    ]);
+    expect(doc).toContain(
+      'const __chatImages = [{"path":"/files/chat-1/msg-1/1-0.png","mime":"image/png","base64":"AQID"}]'
+    );
+    expect(doc).toContain("window.images = {");
   });
 
   it('cannot be broken out of by "</script>" in the code or a helper', () => {

@@ -109,6 +109,21 @@ describe("skills", () => {
     expect(withPdf.maxTokens).toBeUndefined();
     expect(withPdf.temperature).toBe(0.5);
 
+    expect(withPdf.systemPrompt).toContain("There are no images in this chat.");
+
+    const withImages = withSkills(
+      settings,
+      [skill],
+      [{ fileName: "chat-1/msg-1/1-0.jpg", uploadFile: "IMG_2031.jpg" }, { fileName: "chat-1/msg-2/2-0.png" }]
+    );
+    expect(withImages.systemPrompt).toContain('- `/files/chat-1/msg-1/1-0.jpg`: sent by the user as "IMG_2031.jpg"');
+    expect(withImages.systemPrompt).toContain("- `/files/chat-1/msg-2/2-0.png`: generated");
+    expect(withImages.systemPrompt).toContain('images.search("Eiffel Tower at night", { count: 3 })');
+
+    // Python skills cannot use `images`, so they get no photos section
+    const withXlsx = withSkills(settings, [{ ...skill, id: "xlsx" }], [{ fileName: "chat-1/msg-1/1-0.jpg" }]);
+    expect(withXlsx.systemPrompt).not.toContain("## Photos");
+
     expect(withSkills(settings, [{ type: ToolType.MCP, id: "x", name: "MCP" }])).toBe(settings);
     expect(withSkills(settings, [{ ...skill, id: "missing" }])).toBe(settings);
     expect(withSkills(settings, undefined)).toBe(settings);

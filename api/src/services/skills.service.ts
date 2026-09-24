@@ -175,7 +175,34 @@ const FENCE_LANGUAGE: Record<SkillRuntime, string> = { python: "python", typescr
  * it is told exactly what the browser will do with its block, and each skill brings its own
  * instructions.
  */
-export function buildSkillsPrompt(skills: Skill[]): string {
+/** An image of the chat a program may use: its S3 key, and the name it was uploaded under, if any */
+export interface SkillChatImage {
+  fileName: string;
+  uploadFile?: string;
+}
+
+function photosPrompt(chatImages: SkillChatImage[]): string {
+  const listed = chatImages.length
+    ? `Images in this chat, oldest first (use the path as is):
+${chatImages
+  .map(
+    image =>
+      `- \`/files/${image.fileName}\`: ${image.uploadFile ? `sent by the user as "${image.uploadFile}"` : "generated"}`
+  )
+  .join("\n")}`
+    : "There are no images in this chat.";
+  return `## Photos in TypeScript programs
+
+A TypeScript program can use photos through the global \`images\`:
+- \`await images.search("Eiffel Tower at night", { count: 3 })\` finds real photos on Wikimedia Commons and returns exactly \`count\` of them: \`{ data, width, height, title, credit, placeholder }\`. Prefer it to URLs: a photo URL you remember may not exist. When nothing is found the result is a grey stand-in with \`placeholder: true\`.
+- \`await images.load(src)\`: \`src\` is an image of this chat (its \`/files/...\` path), \`"commons:<file name>"\` for a Wikimedia Commons file, or an https URL on images.unsplash.com or upload.wikimedia.org.
+- Photos come back as \`data\` URLs that pptxgenjs and pdfmake take directly, and the skills' helpers accept a search result or any \`src\` wherever they take an image. Show \`credit\` near a photo from Wikimedia Commons (the slide helpers do).
+- No other hosts are reachable.
+
+${listed}`;
+}
+
+export function buildSkillsPrompt(skills: Skill[], chatImages: SkillChatImage[] = []): string {
   if (!skills.length) return "";
 
   const sections = skills.map(skill => {
@@ -197,12 +224,12 @@ You can produce files with the skills below. You do not create the file yourself
 
 When the user asks for a file a skill covers, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
 - One block per file. It runs exactly as written, so it must be complete: no placeholders, no omitted parts, no "...".
-- Only the listed packages and helper modules are available, and you must import every helper you use. There is no network access and no access to the user's files; put the content in the program.
+- Only the listed packages and helper modules are available, and you must import every helper you use. There is no network access (TypeScript programs can load photos, see below) and no access to the user's files; put the content in the program.
 - Python: save the file to /output/<file name>. TypeScript: import packages by name and finish with \`await output.save("<file name>", data)\`, where data is a Uint8Array, ArrayBuffer, Blob or string.
 - Outside the block, say in a sentence or two what the file contains; do not repeat its content. Do not write that the file was made or attached: the app adds that note to your message itself once the program has run.
 - If the user sends you an error from a run, answer with the corrected complete block under the same header.
 
-${sections.join("\n\n")}`;
+${sections.join("\n\n")}${skills.some(skill => skill.runtime === "typescript") ? `\n\n${photosPrompt(chatImages)}` : ""}`;
 }
 
 /**
@@ -211,9 +238,13 @@ ${sections.join("\n\n")}`;
  * program cut off by Max Tokens produces no file, while continuing it only starts a new block, so
  * those answers get the model's own output limit instead.
  */
-export function withSkills(settings: ChatSettings, tools?: ChatTool[]): ChatSettings {
+export function withSkills(
+  settings: ChatSettings,
+  tools?: ChatTool[],
+  chatImages: SkillChatImage[] = []
+): ChatSettings {
   const ids = tools?.filter(tool => tool.type === ToolType.SKILL).map(tool => tool.id);
-  const prompt = ids?.length ? buildSkillsPrompt(getSkillsByIds(ids.filter(notEmpty))) : "";
+  const prompt = ids?.length ? buildSkillsPrompt(getSkillsByIds(ids.filter(notEmpty)), chatImages) : "";
   if (!prompt) return settings;
   return {
     ...settings,

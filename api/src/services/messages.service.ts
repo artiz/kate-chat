@@ -1051,6 +1051,19 @@ export class MessagesService {
       chatSettings.cacheRetention = undefined;
     }
 
+    // the chat's latest images, which skill programs may put in the files they make
+    const chatImages = chat.tools?.some(tool => tool.type === ToolType.SKILL)
+      ? (
+          await this.chatFileRepository.find({
+            where: { chatId: chat.id, type: ChatFileType.IMAGE },
+            order: { createdAt: "DESC" },
+            take: 20,
+          })
+        )
+          .reverse()
+          .flatMap(file => (file.fileName ? [{ fileName: file.fileName, uploadFile: file.uploadFile }] : []))
+      : [];
+
     const request: CompleteChatRequest = {
       ...input,
       requestId,
@@ -1059,7 +1072,7 @@ export class MessagesService {
       imageInput: model.imageInput,
       cacheId: chat.id,
       apiProvider: model.apiProvider,
-      settings: withSkills(chatSettings, chat.tools),
+      settings: withSkills(chatSettings, chat.tools, chatImages),
       tools: chat.tools,
       mcpTokens: input.mcpTokens,
     };

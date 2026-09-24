@@ -37,7 +37,8 @@ The first Python run in a tab downloads the runtime (about 10 MB); later runs re
 The code comes from a model, and a model's input can come from anyone: a web page it searched, an email an MCP tool read. So:
 
 - It runs in an `<iframe sandbox="allow-scripts">` **without** `allow-same-origin`. The frame gets an opaque origin: no access to the app's `localStorage` (the JWT, MCP tokens), cookies or DOM.
-- A Content-Security-Policy in the frame allows scripts and connections only to `cdn.jsdelivr.net`, `pypi.org` and `files.pythonhosted.org`, so the program cannot send data anywhere else.
+- A Content-Security-Policy in the frame allows scripts only from `cdn.jsdelivr.net`, and connections only to the package hosts (`cdn.jsdelivr.net`, `pypi.org`, `files.pythonhosted.org`) and the photo hosts (`commons.wikimedia.org`, `upload.wikimedia.org`, `thumb.wikimedia.org`, `images.unsplash.com`). A program can send a request there (a photo search is one), but not to a server whose logs an attacker could read.
+- Chat images reach a program only when it names them: the client downloads the `/files/<this chat>/...` paths the program mentions, with the user's session, and hands their bytes to the frame, which cannot reach the app itself.
 - The page only accepts messages from its own frame and only file names and bytes from it. A run is stopped after 3 minutes and its files are limited to 25 MB.
 - The server accepts generated files only for an assistant answer in the caller's own chat, and only with document, data or image extensions (`pptx xlsx docx pdf csv txt md json png jpg jpeg zip`). Files are served from the API's origin, so `.html`, `.svg` and `.js` are refused: opened in a browser they would run script there.
 - Skills themselves ship with the deployment. They cannot be created or edited through the app; the **Skills** page (Settings → Admin → Skills, admins only) shows them read-only, exactly as the model gets them and the browser runs them.
@@ -92,6 +93,17 @@ A skill that fails validation (bad frontmatter, unknown runtime, a helper file t
 | `pptx` | TypeScript | [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) | `skill/deck.js`: title, section, bullet, two-column, table (split across slides) and chart slides |
 | `pdf` | TypeScript | [pdfmake](https://pdfmake.github.io/docs/) | `skill/pdf.js`: six fonts covering Latin and Cyrillic (loaded on demand), page colour, styles, tables, page numbers |
 | `xlsx` | Python | [openpyxl](https://openpyxl.readthedocs.io/) | `xlsx_helpers`: styled tables with filters, number formats, column widths, charts |
+
+## Photos
+
+TypeScript programs get a global `images`, and the pptx and pdf helpers accept its results or any source it takes:
+
+- `await images.search(query, { count })` searches Wikimedia Commons and returns exactly `count` photos: `{ data, width, height, title, credit, placeholder }`, where `data` is a data URL and `credit` is the author and licence. Missing results (nothing found, rate limits) are grey stand-ins with `placeholder: true`, so a program never gets `undefined`.
+- `await images.load(src)` takes an image of the chat (`/files/<key>`, listed in the prompt), `"commons:<file name>"`, or an https URL on Unsplash or Wikimedia.
+- Photos larger than 2000 px, or in a format other than PNG or JPEG, are scaled and re-encoded in the frame.
+- `deck.js` has `imageSlide`, `addImage` and a photo behind `titleSlide`. A photo that cannot be loaded becomes a grey placeholder with a warning in the run's output, and Commons photos get their credit line. `renderPdf` loads `image:` values itself.
+
+The prompt lists the chat's latest 20 images for chats with a TypeScript skill. Python programs cannot use `images`.
 
 ### PDF fonts
 

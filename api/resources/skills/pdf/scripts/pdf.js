@@ -160,6 +160,60 @@ function loadExtraFont(name) {
   return fontFiles[name];
 }
 
+const isDataUrl = value => typeof value === "string" && value.startsWith("data:");
+
+async function loadPhoto(source) {
+  try {
+    return (await images.load(source)).data;
+  } catch (error) {
+    console.warn(`Photo not added: ${error.message || error}`);
+    return undefined;
+  }
+}
+
+/**
+ * pdfmake only takes images it already has (data URLs, or names in `images`), so everything else a
+ * document names (a chat image, a Commons file, an https URL, a photo from images.search) is loaded
+ * here. A photo that cannot be loaded becomes a short note instead of failing the document.
+ */
+async function resolveImages(definition) {
+  const named = definition.images || {};
+  await Promise.all(
+    Object.entries(named).map(async ([name, source]) => {
+      if (isDataUrl(source)) return;
+      const data = await loadPhoto(source);
+      if (data) named[name] = data;
+      else delete named[name];
+    })
+  );
+
+  const nodes = [];
+  const seen = new Set();
+  const collect = node => {
+    if (!node || typeof node !== "object" || seen.has(node)) return;
+    seen.add(node);
+    if (!Array.isArray(node) && node.image && !(typeof node.image === "string" && node.image in named))
+      nodes.push(node);
+    for (const value of Object.values(node)) collect(value);
+  };
+  collect(definition.content);
+  collect(definition.background);
+
+  await Promise.all(
+    nodes.map(async node => {
+      if (isDataUrl(node.image)) return;
+      const data = await loadPhoto(node.image);
+      if (data) {
+        node.image = data;
+      } else {
+        delete node.image;
+        node.text = "[image unavailable]";
+        node.style = "muted";
+      }
+    })
+  );
+}
+
 /** A full-page rectangle behind every page, for `pageColor`. */
 const pageBackground = color => (page, size) => ({
   canvas: [{ type: "rect", x: 0, y: 0, w: size.width, h: size.height, color }],
@@ -171,6 +225,7 @@ const pageBackground = color => (page, size) => ({
  */
 export async function renderPdf(definition) {
   await loadFonts();
+  await resolveImages(definition);
   // backgroundColor is not pdfmake's, but models expect it to work
   const { pageColor, backgroundColor, ...rest } = definition;
   const color = pageColor || backgroundColor;

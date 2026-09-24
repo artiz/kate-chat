@@ -1,6 +1,6 @@
 ---
 name: PowerPoint presentation
-description: Slide decks (.pptx) with titles, bullets, tables, charts and speaker notes, built with pptxgenjs.
+description: Slide decks (.pptx) with titles, bullets, tables, charts, photos and speaker notes, built with pptxgenjs.
 runtime: typescript
 packages:
   - pptxgenjs@3.12.0
@@ -45,19 +45,31 @@ await output.save("quarterly-review.pptx", await pptx.write({ outputType: "uint8
 Helpers in `skill/deck.js` (all positions in inches on a 13.33 × 7.5 widescreen slide):
 
 - `createDeck({ title, accent?, font? })` → `{ pptx, theme }`; `accent` is a hex colour without `#`.
-- `titleSlide(pptx, { title, subtitle? })`, `sectionSlide(pptx, { title, subtitle? })`.
+- `titleSlide(pptx, { title, subtitle?, image? })` (with `image`, the photo fills the slide behind the title), `sectionSlide(pptx, { title, subtitle? })`.
 - `bulletSlide(pptx, { title, bullets, notes? })`: a bullet may be a string, or `[text, detail]` for a second, smaller line.
 - `tableSlide(pptx, { title, header, rows, colWidths?, notes? })`: every cell is a string; long tables are split across slides automatically.
 - `chartSlide(pptx, { title, type, labels, series, notes? })`: `type` is `"bar"`, `"line"`, `"pie"` or `"doughnut"`; `series` is `[{ name, values }]`, one entry for pie and doughnut.
 - `twoColumnSlide(pptx, { title, left, right, notes? })`: each side is a list of bullets.
+- `imageSlide(pptx, { title, image, bullets?, text?, caption?, layout?, notes? })`: a slide built around a photo. With `bullets` or `text` the photo takes half the slide (`layout: "right"`, the default, or `"left"`); without them it fills the slide under the title (`"full"`).
+- `addImage(pptx, slide, image, { x, y, w, h, fit? })` places a photo on any slide; `fit` is `"cover"` (default, crops) or `"contain"`.
+- `image` is a result of `images.search` / `images.load`, or anything `images.load` takes (a chat image path, `"commons:<file>"`, an https URL on the allowed hosts). Photos from Wikimedia Commons get their credit line automatically. A photo that cannot be loaded becomes a grey placeholder; the deck is still made.
 - Each helper returns the pptxgenjs slide, so you can add more to it with the plain API.
+
+Photos:
+
+```typescript
+const [tower] = await images.search("Eiffel Tower");
+const [river] = await images.search("Seine river Paris");
+titleSlide(pptx, { title: "Paris", subtitle: "Spring trip", image: tower });
+imageSlide(pptx, { title: "Along the Seine", image: river, bullets: ["Walk from Notre-Dame to the Louvre", "Evening boat tour"] });
+```
 
 For anything else use pptxgenjs directly: `const slide = pptx.addSlide()`, then `slide.addText(text, { x, y, w, h, fontSize, bold, color, align })`, `slide.addTable(rows, { x, y, w })`, `slide.addChart(pptx.ChartType.bar, data, { x, y, w, h })`, `slide.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color } })`, `slide.addNotes(text)`.
 
 Rules that keep the deck valid and readable:
 
 - Colours are 6-digit hex without `#`. Fonts come from the viewer's machine, so keep to common ones (the helpers use Arial).
-- No images from URLs: there is no network. Use shapes, charts and tables instead.
+- Photos only through `images` (see above), never `slide.addImage({ path: url })`: other hosts are unreachable. Use at most one photo per slide, and only where it helps.
 - At most about six bullets and 40 words per slide; split long content into more slides rather than shrinking the text.
 - Chart `values` must be numbers, and every series needs as many values as there are labels.
 - Finish with `await output.save("<file>.pptx", await pptx.write({ outputType: "uint8array" }))`.

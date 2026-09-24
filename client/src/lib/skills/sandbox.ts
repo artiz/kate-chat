@@ -15,6 +15,13 @@ export interface SkillOutputFile {
   bytes: Uint8Array;
 }
 
+/** An image of the chat a program may use, by the path the prompt lists it under ("/files/<key>") */
+export interface ChatImage {
+  path: string;
+  mime: string;
+  bytes: Uint8Array;
+}
+
 export type SkillRunResult =
   | { ok: true; files: SkillOutputFile[]; logs: string }
   | { ok: false; error: string; logs: string };
@@ -26,29 +33,39 @@ export const RUN_TIMEOUT_MS = 180_000;
 export const MAX_OUTPUT_BYTES = 25 * 1024 * 1024;
 const RESULT_MESSAGE = "katechat-skill-result";
 
+/** Hosts programs may load photos from: Wikimedia Commons (its search API and image servers) and Unsplash */
+export const IMAGE_HOSTS = [
+  "https://commons.wikimedia.org",
+  "https://upload.wikimedia.org",
+  "https://thumb.wikimedia.org",
+  "https://images.unsplash.com",
+];
+
 /**
  * The code comes from a model, and a model's input can come from anyone: a web page it searched, an
  * email an MCP tool read. So it runs in an iframe with sandbox="allow-scripts" and no
  * allow-same-origin, which gives it an opaque origin: no access to this app's storage (the JWT, MCP
- * tokens), its cookies or its DOM. The CSP lets it reach only the package CDNs, so it cannot send
- * anything elsewhere either. What comes back is only what it posts: file names and bytes.
+ * tokens), its cookies or its DOM. The CSP lets it reach only the package CDNs and the photo hosts,
+ * whose logs nobody but their operators reads, so it cannot send anything to a server of its own.
+ * What comes back is only what it posts: file names and bytes.
  */
 export const SANDBOX_CSP = [
   "default-src 'none'",
   "script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net data: blob:",
-  "connect-src https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org",
+  `connect-src https://cdn.jsdelivr.net https://pypi.org https://files.pythonhosted.org ${IMAGE_HOSTS.join(" ")} data:`,
   "worker-src blob:",
   "img-src data: blob:",
   "font-src data:",
   "style-src 'unsafe-inline'",
 ].join("; ");
 
-const toBase64 = (text: string) => {
-  const bytes = new TextEncoder().encode(text);
+const bytesToBase64 = (bytes: Uint8Array) => {
   let binary = "";
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
 };
+
+const toBase64 = (text: string) => bytesToBase64(new TextEncoder().encode(text));
 
 /** JSON for embedding in an inline <script>: "</script>" inside a string would otherwise close the tag. */
 const inlineJson = (value: unknown) => JSON.stringify(value).replace(/</g, "\\u003c");
@@ -84,14 +101,143 @@ const REPORT = `
   addEventListener("error", event => __fail(event.error || event.message));
 `;
 
-function typescriptDocument(source: SkillSource, js: string): string {
+// `images` for TypeScript programs: photos from the chat, Wikimedia Commons or Unsplash, as data URLs
+// that pptxgenjs and pdfmake take directly. Large or unusual images are scaled and re-encoded.
+const IMAGES_API = `
+  const __imageCache = new Map();
+  const __blobToDataUrl = blob => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+  const __prepareImage = async (blob, details) => {
+    const bitmap = await createImageBitmap(blob);
+    let { width, height } = bitmap;
+    const scale = Math.min(1, 2000 / Math.max(width, height));
+    if (scale < 1 || !["image/png", "image/jpeg"].includes(blob.type)) {
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = new OffscreenCanvas(width, height);
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+      const lossless = ["image/png", "image/gif"].includes(blob.type);
+      blob = await canvas.convertToBlob(lossless ? { type: "image/png" } : { type: "image/jpeg", quality: 0.88 });
+    }
+    bitmap.close();
+    return { data: await __blobToDataUrl(blob), mime: blob.type, width, height, credit: "", ...details };
+  };
+  const __fetchImage = async url => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("HTTP " + response.status + " for " + url);
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/")) throw new Error(url + " is not an image (" + blob.type + ")");
+    return blob;
+  };
+  const __text = html => String(html || "").replace(/<[^>]*>/g, "").replace(/\\s+/g, " ").trim();
+  const __commons = async params => {
+    const query = new URLSearchParams({
+      action: "query", format: "json", origin: "*", prop: "imageinfo",
+      iiprop: "url|mime|extmetadata", iiextmetadatafilter: "Artist|LicenseShortName", iiurlwidth: "1600", ...params,
+    });
+    // Wikimedia asks scripts to identify themselves; browsers do not let them set User-Agent
+    const response = await fetch("https://commons.wikimedia.org/w/api.php?" + query, {
+      headers: { "Api-User-Agent": "KateChat skills (https://github.com/artiz/kate-chat)" },
+    });
+    if (!response.ok) throw new Error("Wikimedia Commons: HTTP " + response.status);
+    const pages = Object.values((await response.json()).query?.pages || {});
+    pages.sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+    return pages.filter(page => page.imageinfo?.[0]).map(page => {
+      const info = page.imageinfo[0], meta = info.extmetadata || {};
+      const credit = [__text(meta.Artist?.value), __text(meta.LicenseShortName?.value)].filter(Boolean).join(", ");
+      return {
+        url: info.thumburl || info.url, mime: info.mime, title: page.title.replace(/^File:/, ""),
+        credit: (credit ? credit + " · " : "") + "Wikimedia Commons", source: info.descriptionurl,
+      };
+    });
+  };
+  const __placeholder = async () => {
+    const canvas = new OffscreenCanvas(1600, 1000);
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#E4E7EB";
+    context.fillRect(0, 0, 1600, 1000);
+    context.fillStyle = "#616E7C";
+    context.font = "48px sans-serif";
+    context.textAlign = "center";
+    context.fillText("Image unavailable", 800, 520);
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+    return { data: await __blobToDataUrl(blob), mime: "image/png", width: 1600, height: 1000, credit: "", title: "", placeholder: true };
+  };
+  const __loadImage = async name => {
+    const chat = __chatImages.find(image => image.path === name || image.path.endsWith("/" + name));
+    if (chat) {
+      const bytes = Uint8Array.from(atob(chat.base64), c => c.charCodeAt(0));
+      return __prepareImage(new Blob([bytes], { type: chat.mime }), { title: chat.path });
+    }
+    if (name.startsWith("/files/")) throw new Error(name + " is not an image of this chat");
+    const file = name.match(/^(?:commons:|File:)(.+)$/i);
+    if (file) {
+      const [hit] = await __commons({ titles: "File:" + file[1].trim() });
+      if (!hit) throw new Error("Wikimedia Commons has no file " + file[1]);
+      return __prepareImage(await __fetchImage(hit.url), hit);
+    }
+    if (/^(https:|data:image\\/)/.test(name)) return __prepareImage(await __fetchImage(name), { source: name });
+    throw new Error("expected a chat image path, a Wikimedia Commons file (commons:Name.jpg) or an https URL, got " + JSON.stringify(name));
+  };
+  window.images = {
+    async load(src) {
+      if (src && typeof src === "object" && typeof src.data === "string") return src;
+      const name = String(src ?? "").trim();
+      if (!__imageCache.has(name)) {
+        __imageCache.set(name, __loadImage(name).catch(error => {
+          __imageCache.delete(name);
+          throw new Error("images.load: " + (error && error.message || error));
+        }));
+      }
+      return __imageCache.get(name);
+    },
+    // a failed search returns no photos rather than failing the program: the helpers put a
+    // placeholder where a photo is missing, so the file is still made
+    async search(query, { count = 1 } = {}) {
+      let hits = [];
+      try {
+        hits = await __commons({
+          generator: "search", gsrnamespace: "6", gsrsearch: String(query) + " filetype:bitmap",
+          gsrlimit: String(Math.min(20, Math.max(5, count * 3))),
+        });
+      } catch (error) {
+        console.warn("images.search: " + (error && error.message || error));
+      }
+      const found = [];
+      for (const hit of hits) {
+        if (found.length >= count) break;
+        if (!/^image\\/(jpeg|png|webp)$/.test(hit.mime)) continue;
+        try {
+          found.push(await __prepareImage(await __fetchImage(hit.url), hit));
+        } catch (error) {
+          console.warn("images.search: skipped " + hit.title + ": " + (error && error.message || error));
+        }
+      }
+      // always as many as asked for, so "const [photo] = ..." never ends up undefined
+      if (found.length < count) {
+        console.warn("images.search: found " + found.length + " of " + count + " photos for " + JSON.stringify(String(query)) + "; the rest are placeholders");
+        while (found.length < count) found.push(await __placeholder());
+      }
+      return found;
+    },
+  };
+`;
+
+function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]): string {
   const imports: Record<string, string> = Object.fromEntries(source.packages.map(npmImport));
   const helpers = source.files.filter(file => /\.m?js$/.test(file.path)).map(file => `skill/${file.path}`);
   for (const file of source.files) {
     if (/\.m?js$/.test(file.path)) imports[`skill/${file.path}`] = dataModule(file.content, `skill/${file.path}`);
   }
+  const chatImages = images.map(image => ({ path: image.path, mime: image.mime, base64: bytesToBase64(image.bytes) }));
   const runner = `
     ${REPORT}
+    const __chatImages = ${inlineJson(chatImages)};
+    ${IMAGES_API}
     for (const level of ["log", "info", "warn", "error"]) {
       const original = console[level];
       console[level] = (...args) => { __logs.push(args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ")); original(...args); };
@@ -170,8 +316,8 @@ function pythonDocument(source: SkillSource, code: string): string {
 }
 
 /** The whole sandboxed page for one run; the code is embedded, nothing is fetched from this app. */
-export function buildSandboxDocument(source: SkillSource, code: string): string {
-  const body = source.runtime === "python" ? pythonDocument(source, code) : typescriptDocument(source, code);
+export function buildSandboxDocument(source: SkillSource, code: string, images: ChatImage[] = []): string {
+  const body = source.runtime === "python" ? pythonDocument(source, code) : typescriptDocument(source, code, images);
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${SANDBOX_CSP}">
 </head><body>${body}</body></html>`;
@@ -191,7 +337,8 @@ async function transpile(code: string): Promise<string> {
 export async function runSkillCode(
   source: SkillSource,
   code: string,
-  timeoutMs = RUN_TIMEOUT_MS
+  timeoutMs = RUN_TIMEOUT_MS,
+  images: ChatImage[] = []
 ): Promise<SkillRunResult> {
   let program = code;
   if (source.runtime === "typescript") {
@@ -235,7 +382,7 @@ export async function runSkillCode(
     );
 
     window.addEventListener("message", onMessage);
-    iframe.srcdoc = buildSandboxDocument(source, program);
+    iframe.srcdoc = buildSandboxDocument(source, program, images);
     document.body.appendChild(iframe);
   });
 }

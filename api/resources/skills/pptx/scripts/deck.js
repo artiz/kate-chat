@@ -29,6 +29,17 @@ export function createDeck({ title = "Presentation", accent = "2E6BE6", font = "
   });
 
   pptx.__katechatTheme = theme;
+
+  // Photos are placed asynchronously (see placeImage); writing the deck waits for them, so a
+  // program that forgets to await imageSlide still gets its photos
+  pptx.__pending = [];
+  for (const method of ["write", "writeFile"]) {
+    const original = pptx[method].bind(pptx);
+    pptx[method] = async (...args) => {
+      await Promise.all(pptx.__pending);
+      return original(...args);
+    };
+  }
   return { pptx, theme };
 }
 
@@ -54,10 +65,79 @@ function notesOf(slide, notes) {
   return slide;
 }
 
-export function titleSlide(pptx, { title, subtitle } = {}) {
+/**
+ * Puts a photo in a box on the slide: `fit: "cover"` fills the box and crops, `"contain"` shows the
+ * whole photo. `image` is anything images.load takes, or its result. If the photo cannot be loaded,
+ * a grey placeholder takes its place and a warning goes to the log, so the deck is still written.
+ * The slide is changed asynchronously; pptx.write waits for it.
+ */
+export function addImage(pptx, slide, image, { x, y, w, h, fit = "cover", credit = true } = {}) {
+  const t = themeOf(pptx);
+  // The photo arrives after the rest of the slide is built; an empty placeholder added now keeps
+  // its place in the stacking order, so text and overlays added after it stay on top
+  slide.addText("", { x, y, w, h });
+  const objects = slide._slideObjects;
+  const placeholder = objects?.[objects.length - 1];
+  const intoPlace = () => {
+    const at = objects ? objects.indexOf(placeholder) : -1;
+    if (at >= 0) objects.splice(at, 1, objects.pop());
+  };
+  const task = (async () => {
+    try {
+      const photo = await images.load(image);
+      const ratio = photo.width / photo.height;
+      if (fit === "contain") {
+        const iw = Math.min(w, h * ratio);
+        const ih = iw / ratio;
+        slide.addImage({ data: photo.data, x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih });
+      } else {
+        // pptxgenjs crops an image of w x h (its proportions) to the sizing box
+        slide.addImage({ data: photo.data, x, y, w, h: w / ratio, sizing: { type: "cover", w, h } });
+      }
+      intoPlace();
+      if (credit && photo.credit) {
+        slide.addText(photo.credit, {
+          x,
+          y: y + h - 0.28,
+          w,
+          h: 0.28,
+          fontFace: t.font,
+          fontSize: 8,
+          color: "FFFFFF",
+          align: "right",
+          fill: { color: "000000", transparency: 55 },
+          margin: [0, 6, 0, 6],
+        });
+      }
+    } catch (error) {
+      console.warn(`Photo not added, a placeholder is in its place: ${error.message || error}`);
+      slide.addText("Image unavailable", {
+        x,
+        y,
+        w,
+        h,
+        align: "center",
+        valign: "middle",
+        fontSize: 14,
+        color: t.muted,
+        fill: { color: "E4E7EB" },
+      });
+      intoPlace();
+    }
+  })();
+  pptx.__pending?.push(task);
+  return task;
+}
+
+export function titleSlide(pptx, { title, subtitle, image } = {}) {
   const t = themeOf(pptx);
   const slide = pptx.addSlide();
   slide.background = { color: t.accent };
+  if (image) {
+    // a full-bleed photo under a dark veil keeps the white title readable
+    addImage(pptx, slide, image, { x: 0, y: 0, w: W, h: H });
+    slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: "000000", transparency: 45 } });
+  }
   slide.addText(title || "", {
     x: MARGIN,
     y: 2.3,
@@ -228,5 +308,81 @@ export function chartSlide(pptx, { title, type = "bar", labels = [], series = []
       legendFontFace: t.font,
     }
   );
+  return notesOf(slide, notes);
+}
+
+/**
+ * A slide built around a photo. With `bullets` (or `text`) the photo takes one half (`layout`
+ * "right", the default, or "left"); without them it fills the slide under the title (`layout: "full"`).
+ */
+export function imageSlide(pptx, { title, image, bullets, text, caption, layout, notes } = {}) {
+  const t = themeOf(pptx);
+  const side = layout || (bullets || text ? "right" : "full");
+  if (side === "full") {
+    const slide = pptx.addSlide();
+    slide.background = { color: "1F2933" };
+    addImage(pptx, slide, image, { x: 0, y: 0, w: W, h: H });
+    const band = caption ? 1.7 : 1.3;
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: H - band,
+      w: W,
+      h: band,
+      fill: { color: "000000", transparency: 40 },
+    });
+    slide.addText(title || "", {
+      x: MARGIN,
+      y: H - band + 0.15,
+      w: W - 2 * MARGIN,
+      h: 0.8,
+      fontFace: t.font,
+      fontSize: 30,
+      bold: true,
+      color: "FFFFFF",
+      fit: "shrink",
+    });
+    if (caption) {
+      slide.addText(caption, {
+        x: MARGIN,
+        y: H - band + 0.9,
+        w: W - 2 * MARGIN,
+        h: 0.6,
+        fontFace: t.font,
+        fontSize: 16,
+        color: "FFFFFF",
+      });
+    }
+    return notesOf(slide, notes);
+  }
+
+  const slide = pptx.addSlide({ masterName: "CONTENT" });
+  heading(pptx, slide, title || "");
+  const colW = (W - 2 * MARGIN - 0.5) / 2;
+  const imageX = side === "left" ? MARGIN : MARGIN + colW + 0.5;
+  const textX = side === "left" ? MARGIN + colW + 0.5 : MARGIN;
+  addImage(pptx, slide, image, { x: imageX, y: 1.6, w: colW, h: caption ? H - 2.8 : H - 2.3 });
+  if (caption) {
+    slide.addText(caption, {
+      x: imageX,
+      y: H - 1.15,
+      w: colW,
+      h: 0.4,
+      fontFace: t.font,
+      fontSize: 12,
+      italic: true,
+      color: t.muted,
+    });
+  }
+  slide.addText(bullets ? bulletRuns(pptx, bullets) : String(text || ""), {
+    x: textX,
+    y: 1.6,
+    w: colW,
+    h: H - 2.4,
+    fontFace: t.font,
+    fontSize: 18,
+    color: t.text,
+    valign: "top",
+    fit: "shrink",
+  });
   return notesOf(slide, notes);
 }

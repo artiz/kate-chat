@@ -1,6 +1,6 @@
 ---
 name: PDF document
-description: Reports, letters, invoices and other PDF documents with headings, lists, tables and page numbers, built with pdfmake.
+description: Reports, letters, invoices and other PDF documents with headings, lists, tables, photos and page numbers, built with pdfmake.
 runtime: typescript
 packages:
   - pdfmake@0.2.20
@@ -53,5 +53,5 @@ pdfmake essentials for `content`:
 - Layout: `{ columns: [{ width: "*", stack: [...] }, { width: 150, text: "..." }], columnGap: 20 }`, `{ stack: [...] }`.
 - `{ text: "...", pageBreak: "before" }` starts a new page; tables with `headerRows: 1` repeat the header on every page.
 - Colours are CSS strings such as `"#2E6BE6"`.
-- No images from URLs: there is no network. Draw with `{ canvas: [{ type: "rect", x, y, w, h, color }] }` or use tables and text.
+- Photos: `{ image: photo, width: 400 }` or `{ image: photo, fit: [300, 200] }`, where `photo` is a result of `images.search` / `images.load` or anything `images.load` takes (a chat image path, `"commons:<file>"`, an https URL on the allowed hosts); `renderPdf` loads it. Put `photo.credit` under a Wikimedia Commons photo, e.g. `{ text: photo.credit, style: "muted" }`. A photo that cannot be loaded becomes a short "[image unavailable]" note. For shapes use `{ canvas: [{ type: "rect", x, y, w, h, color }] }`.
 - Finish with `await output.save("<file>.pdf", bytes)`.
