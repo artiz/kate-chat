@@ -15,8 +15,8 @@ export interface SkillOutputFile {
   bytes: Uint8Array;
 }
 
-/** An image of the chat a program may use, by the path the prompt lists it under ("/files/<key>") */
-export interface ChatImage {
+/** A file of the chat a program may read, by the path the prompt lists it under ("/files/<key>") */
+export interface ChatFile {
   path: string;
   mime: string;
   bytes: Uint8Array;
@@ -174,7 +174,7 @@ const IMAGES_API = `
     return __photo({ data: await __blobToDataUrl(blob), mime: "image/png", width: 1600, height: 1000, credit: "", title: "", placeholder: true });
   };
   const __loadImage = async name => {
-    const chat = __chatImages.find(image => image.path === name || image.path.endsWith("/" + name));
+    const chat = __chatFiles.find(file => file.mime.startsWith("image/") && (file.path === name || file.path.endsWith("/" + name)));
     if (chat) {
       const bytes = Uint8Array.from(atob(chat.base64), c => c.charCodeAt(0));
       return __prepareImage(new Blob([bytes], { type: chat.mime }), { title: chat.path });
@@ -234,7 +234,22 @@ const IMAGES_API = `
   };
 `;
 
-function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]): string {
+// `files.load(path)` for TypeScript programs: the bytes of a chat file the client handed over
+const FILES_API = `
+  window.files = {
+    async load(path) {
+      const name = String(path ?? "").trim();
+      const file = __chatFiles.find(file => file.path === name || file.path.endsWith("/" + name));
+      if (!file) throw new Error("files.load: " + JSON.stringify(name) + " is not a file of this chat (use a /files/... path from the list)");
+      return Uint8Array.from(atob(file.base64), c => c.charCodeAt(0));
+    },
+  };
+`;
+
+const embedFiles = (files: ChatFile[]) =>
+  files.map(file => ({ path: file.path, mime: file.mime, base64: bytesToBase64(file.bytes) }));
+
+function typescriptDocument(source: SkillSource, js: string, chatFiles: ChatFile[]): string {
   const imports: Record<string, string> = Object.fromEntries(source.packages.map(npmImport));
   const helpers = source.files.filter(file => /\.m?js$/.test(file.path)).map(file => `skill/${file.path}`);
   for (const file of source.files) {
@@ -261,15 +276,16 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
       ...helpers.map(helper => `export * from ${JSON.stringify(helper)};`),
       "export const images = globalThis.images;",
       "export const output = globalThis.output;",
-      `export default { ${helpers.map((_, i) => `...helper${i}, `).join("")}images, output };`,
+      "export const files = globalThis.files;",
+      `export default { ${helpers.map((_, i) => `...helper${i}, `).join("")}images, output, files };`,
     ];
     imports[spec] = dataModule(standIn.join("\n"), spec);
   }
-  const chatImages = images.map(image => ({ path: image.path, mime: image.mime, base64: bytesToBase64(image.bytes) }));
   const runner = `
     ${REPORT}
-    const __chatImages = ${inlineJson(chatImages)};
+    const __chatFiles = ${inlineJson(embedFiles(chatFiles))};
     ${IMAGES_API}
+    ${FILES_API}
     for (const level of ["log", "info", "warn", "error"]) {
       const original = console[level];
       console[level] = (...args) => { __logs.push(args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ")); original(...args); };
@@ -298,7 +314,7 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
         }
       }
       for (const spec of ${inlineJson(missing)}) {
-        console.warn('"' + spec + '" is not a module the program can import; the skill helpers and the images and output globals were used for it');
+        console.warn('"' + spec + '" is not a module the program can import; the skill helpers and the images, files and output globals were used for it');
       }
       await import(${inlineJson(dataModule(js, "program.js"))});
       if (!__files.length) throw new Error("The program finished without calling output.save(...)");
@@ -311,12 +327,15 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
 <script type="module">${runner}</script>`;
 }
 
-function pythonDocument(source: SkillSource, code: string): string {
+function pythonDocument(source: SkillSource, code: string, chatFiles: ChatFile[]): string {
   const runner = `
     ${REPORT}
     (async () => {
       const logs = __logs;
       try {
+        if (typeof loadPyodide !== "function") {
+          throw new Error("Python (Pyodide) could not be loaded from cdn.jsdelivr.net; check the connection and run again");
+        }
         const pyodide = await loadPyodide({ indexURL: ${inlineJson(PYODIDE_URL)} });
         pyodide.setStdout({ batched: line => logs.push(line) });
         pyodide.setStderr({ batched: line => logs.push(line) });
@@ -331,6 +350,11 @@ function pythonDocument(source: SkillSource, code: string): string {
           const target = "/skill/" + file.path;
           pyodide.FS.mkdirTree(target.slice(0, target.lastIndexOf("/")));
           pyodide.FS.writeFile(target, file.content);
+        }
+        // chat files at the path the prompt lists them under, so open("/files/...") just works
+        for (const file of ${inlineJson(embedFiles(chatFiles))}) {
+          pyodide.FS.mkdirTree(file.path.slice(0, file.path.lastIndexOf("/")));
+          pyodide.FS.writeFile(file.path, Uint8Array.from(atob(file.base64), c => c.charCodeAt(0)));
         }
         pyodide.FS.mkdirTree("/skill");
         pyodide.FS.mkdirTree("/output");
@@ -351,8 +375,9 @@ function pythonDocument(source: SkillSource, code: string): string {
 }
 
 /** The whole sandboxed page for one run; the code is embedded, nothing is fetched from this app. */
-export function buildSandboxDocument(source: SkillSource, code: string, images: ChatImage[] = []): string {
-  const body = source.runtime === "python" ? pythonDocument(source, code) : typescriptDocument(source, code, images);
+export function buildSandboxDocument(source: SkillSource, code: string, chatFiles: ChatFile[] = []): string {
+  const body =
+    source.runtime === "python" ? pythonDocument(source, code, chatFiles) : typescriptDocument(source, code, chatFiles);
   // Reports an error in the runner itself (a script that does not even parse) instead of waiting
   // for the timeout; the runner's own reporting takes over once it runs
   const guard = `<script>window.__guard = event => parent.postMessage({ type: "${RESULT_MESSAGE}", ok: false, error: "Sandbox: " + event.message, logs: "" }, "*"); addEventListener("error", window.__guard);</script>`;
@@ -376,7 +401,7 @@ export async function runSkillCode(
   source: SkillSource,
   code: string,
   timeoutMs = RUN_TIMEOUT_MS,
-  images: ChatImage[] = []
+  chatFiles: ChatFile[] = []
 ): Promise<SkillRunResult> {
   let program = code;
   if (source.runtime === "typescript") {
@@ -420,7 +445,7 @@ export async function runSkillCode(
     );
 
     window.addEventListener("message", onMessage);
-    iframe.srcdoc = buildSandboxDocument(source, program, images);
+    iframe.srcdoc = buildSandboxDocument(source, program, chatFiles);
     document.body.appendChild(iframe);
   });
 }

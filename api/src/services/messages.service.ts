@@ -25,6 +25,7 @@ import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
 import { withSkills } from "@/services/skills.service";
+import { extractOfficeText, officeKind } from "@/utils/office";
 import { isAdmin } from "@/utils/jwt";
 import { getRepository } from "@/config/database";
 import { formatDateCeil, formatDateFloor } from "@/utils/db";
@@ -837,7 +838,7 @@ export class MessagesService {
 
       for (let index = 0; index < files.length; ++index) {
         const file = files[index];
-        const { fileName, contentType } = await saveFileFromBase64(s3Service, file.bytesBase64, {
+        const { fileName, contentType, buffer } = await saveFileFromBase64(s3Service, file.bytesBase64, {
           chatId: chat.id,
           messageId: userMessage.id,
           id: `${Date.now()}-file-${index}`,
@@ -852,13 +853,30 @@ export class MessagesService {
           fileName,
         });
 
-        jsonContent.push({
-          contentType: "file",
-          fileName,
-          mimeType: contentType,
-          uploadFileName: file.fileName,
-          size: file.size,
-        } satisfies ModelMessageContentFile);
+        const office = officeKind(contentType);
+        if (office) {
+          // Office documents reach the model as their text: providers take few of these formats
+          // (Bedrock no pptx, OpenAI none), and text works with any model
+          let text: string;
+          try {
+            text = extractOfficeText(office, buffer) || "(no text)";
+          } catch (error) {
+            logger.warn(error, `Could not read ${file.fileName} as ${office}`);
+            text = "(the file could not be read)";
+          }
+          jsonContent.push({
+            contentType: "text",
+            content: `File "${file.fileName}" (${office}, as text; the file itself is ${S3Service.getFileUrl(fileName)}):\n\n${text}`,
+          });
+        } else {
+          jsonContent.push({
+            contentType: "file",
+            fileName,
+            mimeType: contentType,
+            uploadFileName: file.fileName,
+            size: file.size,
+          } satisfies ModelMessageContentFile);
+        }
 
         // For display purposes, append a file link to the content
         content += `${content ? "\n\n" : ""}[${file.fileName}](${S3Service.getFileUrl(fileName)})`;
@@ -1051,17 +1069,35 @@ export class MessagesService {
       chatSettings.cacheRetention = undefined;
     }
 
-    // the chat's latest images, which skill programs may put in the files they make
-    const chatImages = chat.tools?.some(tool => tool.type === ToolType.SKILL)
+    // the chat's latest files (images, documents, generated files), which skill programs may read
+    const chatFiles = chat.tools?.some(tool => tool.type === ToolType.SKILL)
       ? (
           await this.chatFileRepository.find({
-            where: { chatId: chat.id, type: ChatFileType.IMAGE },
+            where: {
+              chatId: chat.id,
+              type: In([ChatFileType.IMAGE, ChatFileType.INLINE_DOCUMENT, ChatFileType.GENERATED]),
+            },
             order: { createdAt: "DESC" },
-            take: 20,
+            take: 30,
           })
         )
           .reverse()
-          .flatMap(file => (file.fileName ? [{ fileName: file.fileName, uploadFile: file.uploadFile }] : []))
+          .flatMap(file =>
+            file.fileName
+              ? [
+                  {
+                    fileName: file.fileName,
+                    uploadFile: file.uploadFile,
+                    type:
+                      file.type === ChatFileType.IMAGE
+                        ? ("image" as const)
+                        : file.type === ChatFileType.GENERATED
+                          ? ("generated" as const)
+                          : ("document" as const),
+                  },
+                ]
+              : []
+          )
       : [];
 
     const request: CompleteChatRequest = {
@@ -1072,7 +1108,7 @@ export class MessagesService {
       imageInput: model.imageInput,
       cacheId: chat.id,
       apiProvider: model.apiProvider,
-      settings: withSkills(chatSettings, chat.tools, chatImages),
+      settings: withSkills(chatSettings, chat.tools, chatFiles),
       tools: chat.tools,
       mcpTokens: input.mcpTokens,
     };

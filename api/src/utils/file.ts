@@ -57,6 +57,9 @@ export const FILE_MIME_EXTENSIONS: Record<string, string> = {
   "text/xml": "xml",
   "application/x-yaml": "yaml",
   "text/yaml": "yaml",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
 };
 
 /**

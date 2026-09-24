@@ -13,7 +13,7 @@ import {
   withSkillView,
 } from "../lib/skills/parse";
 import { buildSandboxDocument, IMAGE_HOSTS, npmImport, SANDBOX_CSP } from "../lib/skills/sandbox";
-import { findChatImagePaths } from "../lib/skills/images";
+import { findChatFilePaths } from "../lib/skills/files";
 
 describe("parseSkillBlocks", () => {
   const answer = [
@@ -135,18 +135,21 @@ describe("withSkillView", () => {
   });
 });
 
-describe("findChatImagePaths", () => {
-  it("finds the images of this chat a program uses, once each", () => {
+describe("findChatFilePaths", () => {
+  it("finds the files of this chat a program uses, once each", () => {
     const code = [
       'titleSlide(pptx, { image: "/files/chat-1/msg-1/1790-0.jpg" });',
       'imageSlide(pptx, { image: "/files/chat-1/msg-1/1790-0.jpg" });',
-      'addImage(pptx, slide, "/files/chat-1/msg-2/1791-0.png", box);',
+      'prs = Presentation("/files/chat-1/msg-2/1791-file-0.pptx")',
+      "wb = load_workbook('/files/chat-1/msg-3/generated/1792-Отчёт за Q3.xlsx')",
       'images.load("/files/other-chat/msg-9/1-0.png");',
-      'images.load("/files/chat-1/msg-3/notes.pdf");',
+      'open("/files/chat-1/msg-4/1793-file-0.bin")',
+      'open("/files/chat-1/../other-chat/x.pptx")',
     ].join("\n");
-    expect(findChatImagePaths(code, "chat-1")).toEqual([
+    expect(findChatFilePaths(code, "chat-1")).toEqual([
       "/files/chat-1/msg-1/1790-0.jpg",
-      "/files/chat-1/msg-2/1791-0.png",
+      "/files/chat-1/msg-2/1791-file-0.pptx",
+      "/files/chat-1/msg-3/generated/1792-Отчёт за Q3.xlsx",
     ]);
   });
 });
@@ -208,15 +211,19 @@ describe("sandbox document", () => {
     expect(doc).toContain('addEventListener("unhandledrejection"');
   });
 
-  it("lets programs reach the photo hosts and embeds the chat images they use", () => {
+  it("lets programs reach the photo hosts and embeds the chat files they use", () => {
     for (const host of IMAGE_HOSTS) expect(SANDBOX_CSP).toContain(host);
-    const doc = buildSandboxDocument({ runtime: "typescript", packages: [], files: [] }, "", [
-      { path: "/files/chat-1/msg-1/1-0.png", mime: "image/png", bytes: new Uint8Array([1, 2, 3]) },
-    ]);
+    const chatFiles = [{ path: "/files/chat-1/msg-1/1-0.png", mime: "image/png", bytes: new Uint8Array([1, 2, 3]) }];
+    const doc = buildSandboxDocument({ runtime: "typescript", packages: [], files: [] }, "", chatFiles);
     expect(doc).toContain(
-      'const __chatImages = [{"path":"/files/chat-1/msg-1/1-0.png","mime":"image/png","base64":"AQID"}]'
+      'const __chatFiles = [{"path":"/files/chat-1/msg-1/1-0.png","mime":"image/png","base64":"AQID"}]'
     );
     expect(doc).toContain("window.images = {");
+    expect(doc).toContain("window.files = {");
+    // Python programs find them at the same path
+    const py = buildSandboxDocument({ runtime: "python", packages: [], files: [] }, "", chatFiles);
+    expect(py).toContain('"path":"/files/chat-1/msg-1/1-0.png"');
+    expect(py).toContain("pyodide.FS.writeFile(file.path");
   });
 
   it("gives an import the program cannot have the helpers and globals instead", () => {
@@ -242,7 +249,7 @@ describe("sandbox document", () => {
     const standIn = atob(importMap.imports["globals"].split(",")[1]);
     expect(standIn).toContain('export * from "skill/deck.js";');
     expect(standIn).toContain("export const images = globalThis.images;");
-    expect(standIn).toContain("export default { ...helper0, images, output };");
+    expect(standIn).toContain("export default { ...helper0, images, output, files };");
     expect(doc).toContain('for (const spec of ["skill/images.js","globals"])');
   });
 

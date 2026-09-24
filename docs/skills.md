@@ -38,7 +38,7 @@ The code comes from a model, and a model's input can come from anyone: a web pag
 
 - It runs in an `<iframe sandbox="allow-scripts">` **without** `allow-same-origin`. The frame gets an opaque origin: no access to the app's `localStorage` (the JWT, MCP tokens), cookies or DOM.
 - A Content-Security-Policy in the frame allows scripts only from `cdn.jsdelivr.net`, and connections only to the package hosts (`cdn.jsdelivr.net`, `pypi.org`, `files.pythonhosted.org`) and the photo hosts (`commons.wikimedia.org`, `upload.wikimedia.org`, `thumb.wikimedia.org`, `images.unsplash.com`). A program can send a request there (a photo search is one), but not to a server whose logs an attacker could read.
-- Chat images reach a program only when it names them: the client downloads the `/files/<this chat>/...` paths the program mentions, with the user's session, and hands their bytes to the frame, which cannot reach the app itself.
+- Chat files reach a program only when it names them: the client downloads the `/files/<this chat>/...` paths the program mentions (at most 20 files, 30 MB), with the user's session, and hands their bytes to the frame, which cannot reach the app itself.
 - The page only accepts messages from its own frame and only file names and bytes from it. A run is stopped after 3 minutes and its files are limited to 25 MB.
 - The server accepts generated files only for an assistant answer in the caller's own chat, and only with document, data or image extensions (`pptx xlsx docx pdf csv txt md json png jpg jpeg zip`). Files are served from the API's origin, so `.html`, `.svg` and `.js` are refused: opened in a browser they would run script there.
 - Skills themselves ship with the deployment. They cannot be created or edited through the app; the **Skills** page (Settings → Admin → Skills, admins only) shows them read-only, exactly as the model gets them and the browser runs them.
@@ -93,6 +93,13 @@ A skill that fails validation (bad frontmatter, unknown runtime, a helper file t
 | `pptx` | TypeScript | [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) | `skill/deck.js`: title, section, bullet, two-column, table (split across slides) and chart slides |
 | `pdf` | TypeScript | [pdfmake](https://pdfmake.github.io/docs/) | `skill/pdf.js`: six fonts covering Latin and Cyrillic (loaded on demand), page colour, styles, tables, page numbers |
 | `xlsx` | Python | [openpyxl](https://openpyxl.readthedocs.io/) | `xlsx_helpers`: styled tables with filters, number formats, column widths, charts |
+| `office-edit` | Python | [python-pptx](https://python-pptx.readthedocs.io/), [python-docx](https://python-docx.readthedocs.io/), openpyxl | `office_helpers`: changes a docx, pptx or xlsx of the chat and saves the new version: text replacement that keeps formatting, duplicate/move/delete slides, fonts, colours, slide backgrounds |
+
+## Chat files
+
+Programs can read the files of their chat: images, documents the user attached and files earlier answers made. The prompt lists the chat's latest 30 by path (`/files/<chatId>/...`), with how each got there. A Python program finds each file at that very path (`Presentation("/files/...")`), a TypeScript one gets its bytes with `await files.load("/files/...")`. So "add a slide to this deck" or "make the headings blue in the report I sent" works: the `office-edit` skill opens the file, changes it and saves the new version, which the chat shows like any generated file.
+
+Word, PowerPoint and Excel files (docx, pptx, xlsx) attached to a message are chat documents for every chat model: the API extracts their text (`api/src/utils/office.ts`: headings, paragraphs and tables, slides in order with their notes, each sheet as rows with formulas) and sends that to the model, since providers accept few of these formats (Bedrock no pptx, OpenAI none). The file itself stays with the message, in the Library and for skills. Old binary formats (doc, ppt, xls) still go to RAG.
 
 ## Photos
 

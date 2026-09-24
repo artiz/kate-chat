@@ -175,35 +175,46 @@ const FENCE_LANGUAGE: Record<SkillRuntime, string> = { python: "python", typescr
  * it is told exactly what the browser will do with its block, and each skill brings its own
  * instructions.
  */
-/** An image of the chat a program may use: its S3 key, and the name it was uploaded under, if any */
-export interface SkillChatImage {
+/** A file of the chat a program may read: its S3 key, the name it was uploaded or made under, and what it is */
+export interface SkillChatFile {
   fileName: string;
   uploadFile?: string;
+  type: "image" | "document" | "generated";
 }
 
-function photosPrompt(chatImages: SkillChatImage[]): string {
-  const listed = chatImages.length
-    ? `Images in this chat, oldest first (use the path as is):
-${chatImages
-  .map(
-    image =>
-      `- \`/files/${image.fileName}\`: ${image.uploadFile ? `sent by the user as "${image.uploadFile}"` : "generated"}`
-  )
-  .join("\n")}`
-    : "There are no images in this chat.";
+function filesPrompt(chatFiles: SkillChatFile[]): string {
+  const origin = (file: SkillChatFile) =>
+    file.type === "generated"
+      ? `made by an earlier answer as "${file.uploadFile}"`
+      : file.uploadFile
+        ? `${file.type === "image" ? "image" : "document"} sent by the user as "${file.uploadFile}"`
+        : "generated image";
+  const listed = chatFiles.length
+    ? `Files in this chat, oldest first (use the path exactly as written):
+${chatFiles.map(file => `- \`/files/${file.fileName}\`: ${origin(file)}`).join("\n")}`
+    : "There are no files in this chat yet.";
+  return `## Files in this chat
+
+A program can read the files of this chat listed below, to update one or to use its content:
+- Python: the file is at its path, e.g. \`Presentation("/files/...")\`, \`load_workbook("/files/...")\`, \`open("/files/...", "rb")\`.
+- TypeScript: \`await files.load("/files/...")\` returns its bytes as a Uint8Array (a global, not a module); images also through \`images.load\`.
+To update a file, open it, change what was asked and save the result as the block's file; keep everything else as it was. Use the paths as listed: a file that is not listed cannot be read.
+
+${listed}`;
+}
+
+function photosPrompt(): string {
   return `## Photos in TypeScript programs
 
 A TypeScript program can use photos through the global \`images\` (it is not a module: do not import it):
 - \`await images.search("Eiffel Tower at night", { count: 3 })\` finds real photos on Wikimedia Commons and returns exactly \`count\` of them: \`{ data, width, height, title, credit, placeholder }\`. Prefer it to URLs: a photo URL you remember may not exist. When nothing is found the result is a grey stand-in with \`placeholder: true\`.
 - Commons holds freely licensed photos: places, landmarks, nature, animals, historical objects, well-known people and older products. It has no photos of new, rumoured or fictional products, and a search for one finds whatever older thing shares the name (a search for a new "Apple Duo" finds a 1992 PowerBook Duo). Search with specific, descriptive terms; for such a product use an image from this chat if there is one, otherwise leave photos out or show a related subject (the company's headquarters, the city of a launch event).
-- \`await images.load(src)\` returns one photo (not an array): \`src\` is an image of this chat (its \`/files/...\` path), \`"commons:<file name>"\` for a Wikimedia Commons file, or an https URL on images.unsplash.com or upload.wikimedia.org.
+- \`await images.load(src)\` returns one photo (not an array): \`src\` is an image of this chat (its \`/files/...\` path, see "Files in this chat"), \`"commons:<file name>"\` for a Wikimedia Commons file, or an https URL on images.unsplash.com or upload.wikimedia.org.
 - Photos come back as \`data\` URLs that pptxgenjs and pdfmake take directly, and the skills' helpers accept a search result or any \`src\` wherever they take an image. Show \`credit\` near a photo from Wikimedia Commons (the slide helpers do).
-- No other hosts are reachable.
-
-${listed}`;
+- No other hosts are reachable.`;
 }
 
-export function buildSkillsPrompt(skills: Skill[], chatImages: SkillChatImage[] = []): string {
+export function buildSkillsPrompt(skills: Skill[], chatFiles: SkillChatFile[] = []): string {
   if (!skills.length) return "";
 
   const sections = skills.map(skill => {
@@ -225,12 +236,14 @@ You can produce files with the skills below. You do not create the file yourself
 
 When the user asks for a file a skill covers, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
 - One block per file. It runs exactly as written, so it must be complete: no placeholders, no omitted parts, no "...".
-- Only the listed packages and helper modules are available, and you must import every helper you use. There is no network access (TypeScript programs can load photos, see below) and no access to the user's files; put the content in the program.
+- Only the listed packages and helper modules are available, and you must import every helper you use. There is no network access (TypeScript programs can load photos, see below), and of the user's files only this chat's (see below); put the content in the program.
 - Python: save the file to /output/<file name>. TypeScript: import packages by name and finish with \`await output.save("<file name>", data)\`, where data is a Uint8Array, ArrayBuffer, Blob or string.
 - Outside the block, say in a sentence or two what the file contains; do not repeat its content. Do not write that the file was made or attached: the app adds that note to your message itself once the program has run.
 - If the user sends you an error from a run, answer with the corrected complete block under the same header.
 
-${sections.join("\n\n")}${skills.some(skill => skill.runtime === "typescript") ? `\n\n${photosPrompt(chatImages)}` : ""}`;
+${sections.join("\n\n")}
+
+${filesPrompt(chatFiles)}${skills.some(skill => skill.runtime === "typescript") ? `\n\n${photosPrompt()}` : ""}`;
 }
 
 /**
@@ -239,13 +252,9 @@ ${sections.join("\n\n")}${skills.some(skill => skill.runtime === "typescript") ?
  * program cut off by Max Tokens produces no file, while continuing it only starts a new block, so
  * those answers get the model's own output limit instead.
  */
-export function withSkills(
-  settings: ChatSettings,
-  tools?: ChatTool[],
-  chatImages: SkillChatImage[] = []
-): ChatSettings {
+export function withSkills(settings: ChatSettings, tools?: ChatTool[], chatFiles: SkillChatFile[] = []): ChatSettings {
   const ids = tools?.filter(tool => tool.type === ToolType.SKILL).map(tool => tool.id);
-  const prompt = ids?.length ? buildSkillsPrompt(getSkillsByIds(ids.filter(notEmpty)), chatImages) : "";
+  const prompt = ids?.length ? buildSkillsPrompt(getSkillsByIds(ids.filter(notEmpty)), chatFiles) : "";
   if (!prompt) return settings;
   return {
     ...settings,

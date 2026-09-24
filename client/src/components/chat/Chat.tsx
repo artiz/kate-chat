@@ -65,6 +65,7 @@ import {
   SUPPORTED_UPLOAD_FORMATS,
   CONTEXT_TEXT_UPLOAD_FORMATS,
   CONTEXT_PDF_UPLOAD_FORMAT,
+  CONTEXT_OFFICE_UPLOAD_FORMATS,
 } from "@/lib/config";
 import { RAG } from "./message-details-plugins/RAG";
 import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
@@ -469,9 +470,9 @@ export const ChatComponent = ({ chatId }: IProps) => {
   }, [selectedModel, appConfig, loadCompleted, isExternalChat]);
 
   const contextFileFormats = useMemo(() => {
-    // textual files are inlined as plain text (any model); PDF needs native
-    // file input support in the model/provider
-    const formats = [...CONTEXT_TEXT_UPLOAD_FORMATS];
+    // textual files are inlined as plain text (any model), Office documents as their extracted
+    // text (any model); PDF needs native file input support in the model/provider
+    const formats = [...CONTEXT_TEXT_UPLOAD_FORMATS, ...CONTEXT_OFFICE_UPLOAD_FORMATS];
     if (selectedModel?.features?.includes(ModelFeature.FILES_INPUT)) {
       formats.push(CONTEXT_PDF_UPLOAD_FORMAT);
     }
