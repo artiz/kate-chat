@@ -301,6 +301,18 @@
     }
   }
 
+  // While the answer streams its code blocks are not wrapped in .code-block yet; with
+  // collapseCodeBlocks they show just their header from the first line, as they will once wrapped
+  &.collapse-code.streaming pre:has(.code-header) {
+    height: 2.7rem;
+    padding: 0;
+    overflow: hidden;
+
+    .header-toggle {
+      transform: translateY(0.2rem) rotateZ(0deg);
+    }
+  }
+
   .code-header {
     font-size: 0.875rem;
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-sm) var(--mantine-spacing-md);

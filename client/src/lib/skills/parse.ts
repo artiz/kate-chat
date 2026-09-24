@@ -135,7 +135,9 @@ export function withSkillView<T extends { content: string; collapseCodeBlocks?: 
 ): T {
   if (!message?.content) return message;
   const content = stripGeneratedFilesNote(message.content);
-  const collapseCodeBlocks = message.collapseCodeBlocks || parseSkillBlocks(content).length > 0;
+  // a block still being streamed counts too, so the code is collapsed from its first line
+  const collapseCodeBlocks =
+    message.collapseCodeBlocks || parseSkillBlocks(content).length > 0 || !!findUnfinishedSkillBlock(content);
   const linkedMessages = message.linkedMessages?.map(withSkillView);
   if (
     content === message.content &&

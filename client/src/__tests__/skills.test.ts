@@ -115,6 +115,14 @@ describe("withSkillView", () => {
     });
   });
 
+  it("collapses a skill block that is still being streamed", () => {
+    const message = {
+      content: "Here it is:\n\n```typescript skill=pptx file=deck.pptx\nimport { createDeck",
+      streaming: true,
+    };
+    expect(withSkillView(message).collapseCodeBlocks).toBe(true);
+  });
+
   it("leaves other answers as they are", () => {
     const message = { content: "```python\nprint(1)\n```" };
     expect(withSkillView(message)).toBe(message);

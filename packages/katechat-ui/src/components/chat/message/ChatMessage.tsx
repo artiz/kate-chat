@@ -313,7 +313,13 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
             )}
           </Group>
         </Group>
-        <Box className={["katechat-message-content", streaming ? "streaming" : ""].join(" ")}>
+        <Box
+          className={[
+            "katechat-message-content",
+            streaming ? "streaming" : "",
+            collapseCodeBlocks ? "collapse-code" : "",
+          ].join(" ")}
+        >
           <StreamingStatus status={status} content={content} statusInfo={statusInfo} streaming={streaming} />
 
           {html ? (
