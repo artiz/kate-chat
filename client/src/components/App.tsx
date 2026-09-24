@@ -40,6 +40,7 @@ import { MCPServers } from "@/pages/MCPServers";
 import { Profile } from "@/pages/Profile";
 import { Password } from "@/pages/Password";
 import { Users } from "@/pages/Users";
+import { Skills } from "@/pages/Skills";
 import { Library } from "@/pages/Library";
 import { Documents } from "@/pages/Documents";
 import Home from "@/pages/Home";
@@ -206,6 +207,7 @@ const AppContent: React.FC = () => {
                 <Route path="profile" element={<Profile onReloadAppData={refetchInitialData} />} />
                 <Route path="password" element={<Password />} />
                 <Route path="users" element={<AdminRoute element={<Users />} />} />
+                <Route path="skills" element={<AdminRoute element={<Skills />} />} />
                 {/* Library section */}
                 <Route path="library" element={<Library />} />
                 <Route path="documents" element={<Documents />} />

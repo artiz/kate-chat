@@ -38,7 +38,7 @@ The code comes from a model, and a model's input can come from anyone: a web pag
 - A Content-Security-Policy in the frame allows scripts and connections only to `cdn.jsdelivr.net`, `pypi.org` and `files.pythonhosted.org`, so the program cannot send data anywhere else.
 - The page only accepts messages from its own frame and only file names and bytes from it. A run is stopped after 3 minutes and its files are limited to 25 MB.
 - The server accepts generated files only for an assistant answer in the caller's own chat, and only with document, data or image extensions (`pptx xlsx docx pdf csv txt md json png jpg jpeg zip`). Files are served from the API's origin, so `.html`, `.svg` and `.js` are refused: opened in a browser they would run script there.
-- Skills themselves ship with the deployment. They cannot be created or edited through the app; **Admin → Skills** shows them read-only, exactly as the model gets them and the browser runs them.
+- Skills themselves ship with the deployment. They cannot be created or edited through the app; the **Skills** page (Settings → Admin → Skills, admins only) shows them read-only, exactly as the model gets them and the browser runs them.
 
 The **Run** button on ordinary Python code blocks uses the same kind of sandbox.
 

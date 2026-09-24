@@ -33,6 +33,7 @@ import {
   IconUser,
   IconKey,
   IconUsers,
+  IconWand,
   IconBooks,
   IconMessages,
   IconNetwork,
@@ -251,6 +252,16 @@ const NavbarContent: React.FC<IProps> = ({ navbarToggle, expanded = true, onTogg
                         leftSection={<IconUsers size={16} />}
                         active={location.pathname === "/users"}
                         onClick={handleSectionClick("/users")}
+                      />
+                    </Tooltip>
+                  )}
+                  {currentUser?.role === UserRole.ADMIN && (
+                    <Tooltip label={t("nav.skills")} position="right" disabled={expanded}>
+                      <NavLink
+                        label={expanded ? t("nav.skills") : null}
+                        leftSection={<IconWand size={16} />}
+                        active={location.pathname === "/skills"}
+                        onClick={handleSectionClick("/skills")}
                       />
                     </Tooltip>
                   )}

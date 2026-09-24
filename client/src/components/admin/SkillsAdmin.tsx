@@ -44,7 +44,7 @@ export const SkillsAdmin: React.FC = () => {
             >
               <Group gap="xs" wrap="nowrap">
                 <Text fw={500}>{skill.name}</Text>
-                <Badge variant="light" color="gray">
+                <Badge variant="light" color="gray" tt="none">
                   {skill.id}
                 </Badge>
               </Group>
@@ -58,13 +58,15 @@ export const SkillsAdmin: React.FC = () => {
                   <Text size="sm" fw={500}>
                     {t("skills.runtime")}:
                   </Text>
-                  <Badge variant="outline">{skill.runtime}</Badge>
+                  <Badge variant="outline" tt="none">
+                    {skill.runtime}
+                  </Badge>
                   <Text size="sm" fw={500} ml="md">
                     {t("skills.packages")}:
                   </Text>
                   {skill.packages.length ? (
                     skill.packages.map(pkg => (
-                      <Badge key={pkg} variant="light">
+                      <Badge key={pkg} variant="light" tt="none">
                         {pkg}
                       </Badge>
                     ))

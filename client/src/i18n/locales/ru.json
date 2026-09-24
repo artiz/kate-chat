@@ -39,6 +39,7 @@
     "models": "Модели",
     "logout": "Выйти",
     "switchToLight": "Переключить на светлую тему",
+    "skills": "Навыки",
     "switchToDark": "Переключить на тёмную тему",
     "demoMode": "Демо-режим",
     "demoModeTooltip": "Демо-режим, макс. чатов: {{maxChats}}, макс. сообщений: {{maxChatMessages}}, макс. изображений: {{maxImages}}",
