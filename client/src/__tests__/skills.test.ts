@@ -136,7 +136,20 @@ describe("sandbox document", () => {
     const importMap = JSON.parse(doc.match(/<script type="importmap">(.*?)<\/script>/s)![1]);
     expect(importMap.imports.pptxgenjs).toBe("https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/+esm");
     expect(importMap.imports["skill/deck.js"]).toMatch(/^data:text\/javascript;base64,/);
-    expect(atob(importMap.imports["skill/deck.js"].split(",")[1])).toBe("export const a = 1;");
+    expect(atob(importMap.imports["skill/deck.js"].split(",")[1])).toBe(
+      "export const a = 1;\n//# sourceURL=skill/deck.js"
+    );
+  });
+
+  it("names the program in stack traces and makes helper exports available without an import", () => {
+    const doc = buildSandboxDocument(
+      { runtime: "typescript", packages: [], files: [{ path: "pdf.js", content: "export const table = 1;" }] },
+      "table;"
+    );
+    const program = doc.match(/await import\("(data:text\/javascript;base64,[^"]+)"\)/)![1];
+    expect(atob(program.split(",")[1])).toBe("table;\n//# sourceURL=program.js");
+    expect(doc).toContain('for (const helper of ["skill/pdf.js"])');
+    expect(doc).toContain('addEventListener("unhandledrejection"');
   });
 
   it('cannot be broken out of by "</script>" in the code or a helper', () => {

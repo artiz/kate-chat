@@ -50,6 +50,6 @@ pdfmake essentials for `content`:
 - Lists: `{ ul: [...] }`, `{ ol: [...] }`; items may be nested lists.
 - Layout: `{ columns: [{ width: "*", stack: [...] }, { width: 150, text: "..." }], columnGap: 20 }`, `{ stack: [...] }`.
 - `{ text: "...", pageBreak: "before" }` starts a new page; tables with `headerRows: 1` repeat the header on every page.
-- Colours are CSS strings such as `"#2E6BE6"`. Only the Roboto font is available.
+- Colours are CSS strings such as `"#2E6BE6"`. Only the Roboto font is available, so do not set `font`.
 - No images from URLs: there is no network. Draw with `{ canvas: [{ type: "rect", x, y, w, h, color }] }` or use tables and text.
 - Finish with `await output.save("<file>.pdf", bytes)`.

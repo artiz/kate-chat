@@ -51,11 +51,29 @@ export function table(header, rows, { widths, accent = "#2E6BE6" } = {}) {
 }
 
 /**
+ * Only the fonts in pdfMake.fonts exist (by default just Roboto). pdfmake fails on any other, and does
+ * so outside the promise renderPdf waits for. Models like to ask for Arial or Comic Sans, so those
+ * become Roboto.
+ */
+function useKnownFonts(node, replaced, seen = new Set()) {
+  if (!node || typeof node !== "object" || seen.has(node)) return;
+  seen.add(node);
+  if (!Array.isArray(node) && typeof node.font === "string" && !(node.font in (pdfMake.fonts || { Roboto: true }))) {
+    replaced.add(node.font);
+    node.font = "Roboto";
+  }
+  for (const value of Object.values(node)) useKnownFonts(value, replaced, seen);
+}
+
+/**
  * Renders a pdfmake document definition to PDF bytes. The defaults (A4, margins, Roboto, page numbers
  * in the footer, the styles above) apply unless the definition sets its own.
  */
 export async function renderPdf(definition) {
   await loadFonts();
+  const replaced = new Set();
+  useKnownFonts(definition, replaced);
+  if (replaced.size) console.warn(`Only the Roboto font is available; used it instead of ${[...replaced].join(", ")}`);
   const doc = pdfMake.createPdf({
     pageSize: "A4",
     pageMargins: [50, 55, 50, 60],
@@ -69,5 +87,13 @@ export async function renderPdf(definition) {
     ...definition,
     styles: { ...styles, ...(definition.styles || {}) },
   });
-  return new Uint8Array(await new Promise(resolve => doc.getBuffer(resolve)));
+  return new Uint8Array(
+    await new Promise((resolve, reject) => {
+      try {
+        doc.getBuffer(resolve);
+      } catch (error) {
+        reject(error);
+      }
+    })
+  );
 }

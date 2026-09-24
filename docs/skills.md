@@ -71,7 +71,7 @@ and the rules that keep the output valid.
 `scripts/` is optional. Its files are available to the program:
 
 - Python: `.py` modules, importable by name (`scripts/xlsx_helpers.py` → `import xlsx_helpers`).
-- TypeScript: `.js` ES modules, importable as `"skill/<path>"` (`scripts/deck.js` → `import ... from "skill/deck.js"`). They may import the skill's packages by name.
+- TypeScript: `.js` ES modules, importable as `"skill/<path>"` (`scripts/deck.js` → `import ... from "skill/deck.js"`). They may import the skill's packages by name. Their exports are also set as globals before the program runs, so a helper the model uses but forgets to import still works.
 
 What makes a skill work well:
 
@@ -79,6 +79,7 @@ What makes a skill work well:
 - Pin package versions.
 - Put layout and styling in helpers, so the model writes content rather than coordinates.
 - Say what is unavailable: there is no network and no file system to read from.
+- Make helpers forgiving about what models get wrong. `renderPdf`, for example, replaces fonts pdfmake does not have with Roboto and logs a warning instead of failing.
 
 A skill that fails validation (bad frontmatter, unknown runtime, a helper file the runtime cannot use) is logged and skipped at startup; the others still load.
 

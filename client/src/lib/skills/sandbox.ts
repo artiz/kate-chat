@@ -53,7 +53,9 @@ const toBase64 = (text: string) => {
 /** JSON for embedding in an inline <script>: "</script>" inside a string would otherwise close the tag. */
 const inlineJson = (value: unknown) => JSON.stringify(value).replace(/</g, "\\u003c");
 
-const dataModule = (code: string) => `data:text/javascript;base64,${toBase64(code)}`;
+/** A module as a data: URL; the sourceURL gives it a readable name in stack traces instead of the URL. */
+const dataModule = (code: string, name: string) =>
+  `data:text/javascript;base64,${toBase64(`${code}\n//# sourceURL=${name}`)}`;
 
 /** "pptxgenjs@3.12.0" → ["pptxgenjs", ".../npm/pptxgenjs@3.12.0/+esm"]; the name is what the code imports. */
 export function npmImport(spec: string): [string, string] {
@@ -62,22 +64,34 @@ export function npmImport(spec: string): [string, string] {
   return [name, `${NPM_CDN}${spec}/+esm`];
 }
 
-// Posts the result to the parent, transferring the file buffers rather than copying them
+// Posts the result to the parent once, transferring the file buffers rather than copying them. An
+// error a library throws where the program cannot catch it (in a callback, a promise nobody awaits)
+// fails the run at once instead of leaving it to the timeout.
 const REPORT = `
+  const __logs = [];
+  let __reported = false;
   const __report = (result) => {
+    if (__reported) return;
+    __reported = true;
     const files = result.files || [];
     parent.postMessage({ type: "${RESULT_MESSAGE}", ...result }, "*", files.map(f => f.bytes.buffer));
   };
+  const __describe = (error) =>
+    String((error && (error.stack || error.message)) || error || "The program failed")
+      .replace(/data:text\\/javascript;base64,[A-Za-z0-9+/=]+/g, "<module>");
+  const __fail = (error) => __report({ ok: false, error: __describe(error), logs: __logs.join("\\n") });
+  addEventListener("unhandledrejection", event => __fail(event.reason));
+  addEventListener("error", event => __fail(event.error || event.message));
 `;
 
 function typescriptDocument(source: SkillSource, js: string): string {
   const imports: Record<string, string> = Object.fromEntries(source.packages.map(npmImport));
+  const helpers = source.files.filter(file => /\.m?js$/.test(file.path)).map(file => `skill/${file.path}`);
   for (const file of source.files) {
-    if (/\.m?js$/.test(file.path)) imports[`skill/${file.path}`] = dataModule(file.content);
+    if (/\.m?js$/.test(file.path)) imports[`skill/${file.path}`] = dataModule(file.content, `skill/${file.path}`);
   }
   const runner = `
     ${REPORT}
-    const __logs = [];
     for (const level of ["log", "info", "warn", "error"]) {
       const original = console[level];
       console[level] = (...args) => { __logs.push(args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ")); original(...args); };
@@ -98,11 +112,18 @@ function typescriptDocument(source: SkillSource, js: string): string {
       },
     };
     try {
-      await import(${inlineJson(dataModule(js))});
+      // Models often use a helper they forgot to import; the helpers' exports are globals as well, so
+      // that still works. The program's own imports and declarations take precedence.
+      for (const helper of ${inlineJson(helpers)}) {
+        for (const [name, value] of Object.entries(await import(helper))) {
+          if (!(name in globalThis)) globalThis[name] = value;
+        }
+      }
+      await import(${inlineJson(dataModule(js, "program.js"))});
       if (!__files.length) throw new Error("The program finished without calling output.save(...)");
       __report({ ok: true, files: __files.map(f => ({ name: f.name, bytes: f.bytes.slice() })), logs: __logs.join("\\n") });
     } catch (error) {
-      __report({ ok: false, error: String(error && error.stack || error), logs: __logs.join("\\n") });
+      __fail(error);
     }
   `;
   return `<script type="importmap">${inlineJson({ imports })}</script>
@@ -113,7 +134,7 @@ function pythonDocument(source: SkillSource, code: string): string {
   const runner = `
     ${REPORT}
     (async () => {
-      const logs = [];
+      const logs = __logs;
       try {
         const pyodide = await loadPyodide({ indexURL: ${inlineJson(PYODIDE_URL)} });
         pyodide.setStdout({ batched: line => logs.push(line) });
@@ -140,7 +161,7 @@ function pythonDocument(source: SkillSource, code: string): string {
         if (!files.length) throw new Error("The program finished without writing a file to /output");
         __report({ ok: true, files, logs: logs.join("\\n") });
       } catch (error) {
-        __report({ ok: false, error: String(error && error.message || error), logs: logs.join("\\n") });
+        __report({ ok: false, error: String((error && error.message) || error), logs: logs.join("\\n") });
       }
     })();
   `;

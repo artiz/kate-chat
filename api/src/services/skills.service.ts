@@ -193,9 +193,9 @@ You can produce files with the skills below. You do not create the file yourself
 
 When the user asks for a file a skill covers, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
 - One block per file. It runs exactly as written, so it must be complete: no placeholders, no omitted parts, no "...".
-- Only the listed packages and helper modules are available. There is no network access and no access to the user's files; put the content in the program.
+- Only the listed packages and helper modules are available, and you must import every helper you use. There is no network access and no access to the user's files; put the content in the program.
 - Python: save the file to /output/<file name>. TypeScript: import packages by name and finish with \`await output.save("<file name>", data)\`, where data is a Uint8Array, ArrayBuffer, Blob or string.
-- Outside the block, say in a sentence or two what the file contains; do not repeat its content.
+- Outside the block, say in a sentence or two what the file contains; do not repeat its content. Do not write that the file was made or attached: the app adds that note to your message itself once the program has run.
 - If the user sends you an error from a run, answer with the corrected complete block under the same header.
 
 ${sections.join("\n\n")}`;
