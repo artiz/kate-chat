@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import type { SkillToolContext } from "@/services/ai/tools/skills.tool";
 import { Field, ID, ObjectType } from "type-graphql";
 import {
   ApiProvider,
@@ -432,6 +433,8 @@ export interface CompleteChatRequest {
   tools?: ChatTool[];
   mcpServers?: IMCPServer[];
   mcpTokens?: MCPAuthToken[];
+  // skills the model may load with the use_skill tool (see services/ai/tools/skills.tool.ts)
+  skills?: SkillToolContext;
 
   // if true, the request will be processed as a long-running request with status updates polled via SQS
   requestPolling?: boolean;

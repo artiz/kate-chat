@@ -160,7 +160,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     let finalResponse: ModelResponse | undefined;
 
     // Format tools from request
-    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers, request);
 
     do {
       // Get provider service and parameters
@@ -238,7 +238,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     };
 
     // Format tools from request
-    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers, request);
     const modelId = this.getModelId(request.modelId);
     let contextMessages = messages || [];
     let tooLongErrorRetries = 0;

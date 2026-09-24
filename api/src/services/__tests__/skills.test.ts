@@ -1,8 +1,9 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { buildSkillsPrompt, loadSkill, loadSkills, SkillError, withSkills } from "../skills.service";
-import { ToolType } from "@/types/api";
+import { buildSkillsPrompt, loadSkill, loadSkills, SkillChatFile, SkillError, withSkills } from "../skills.service";
+import { runSkillTool, skillOfCall } from "../ai/tools/skills.tool";
+import type { CompleteChatRequest } from "@/types/ai.types";
 
 const RESOURCES = path.join(__dirname, "../../../resources/skills");
 
@@ -101,46 +102,76 @@ describe("skills", () => {
     expect(buildSkillsPrompt([])).toBe("");
   });
 
-  it("adds enabled skills to the system prompt and lifts Max Tokens for them", () => {
+  describe("skills chosen by the model", () => {
     const settings = { systemPrompt: "Be brief.", maxTokens: 2048, temperature: 0.5 };
-    const skill = { type: ToolType.SKILL, id: "pdf", name: "PDF document" };
-    const withPdf = withSkills(settings, [skill]);
-    expect(withPdf.systemPrompt).toMatch(/^Be brief\.\n\n# Skills\n/);
-    expect(withPdf.systemPrompt).toContain("## Skill `pdf`");
-    expect(withPdf.maxTokens).toBeUndefined();
-    expect(withPdf.temperature).toBe(0.5);
+    const chatFiles: SkillChatFile[] = [
+      { fileName: "chat-1/msg-1/1-0.jpg", uploadFile: "IMG_2031.jpg", type: "image" },
+      { fileName: "chat-1/msg-1/1-file-0.pptx", uploadFile: "Angular2.pptx", type: "document" },
+      { fileName: "chat-1/msg-2/generated/2-deck.pptx", uploadFile: "deck.pptx", type: "generated" },
+      { fileName: "chat-1/msg-3/3-0.png", type: "image" },
+    ];
 
-    expect(withPdf.systemPrompt).toContain("There are no files in this chat yet.");
+    it("gives a model that calls tools the catalog, and the instructions through use_skill", async () => {
+      const loadChatFiles = jest.fn(async () => chatFiles);
+      const { settings: applied, skills } = await withSkills(settings, { toolCalls: true, loadChatFiles });
 
-    const withFiles = withSkills(
-      settings,
-      [skill],
-      [
-        { fileName: "chat-1/msg-1/1-0.jpg", uploadFile: "IMG_2031.jpg", type: "image" },
-        { fileName: "chat-1/msg-1/1-file-0.pptx", uploadFile: "Angular2.pptx", type: "document" },
-        { fileName: "chat-1/msg-2/generated/2-deck.pptx", uploadFile: "deck.pptx", type: "generated" },
-        { fileName: "chat-1/msg-3/3-0.png", type: "image" },
-      ]
-    );
-    const prompt = withFiles.systemPrompt || "";
-    expect(prompt).toContain('- `/files/chat-1/msg-1/1-0.jpg`: image sent by the user as "IMG_2031.jpg"');
-    expect(prompt).toContain('- `/files/chat-1/msg-1/1-file-0.pptx`: document sent by the user as "Angular2.pptx"');
-    expect(prompt).toContain('- `/files/chat-1/msg-2/generated/2-deck.pptx`: made by an earlier answer as "deck.pptx"');
-    expect(prompt).toContain("- `/files/chat-1/msg-3/3-0.png`: generated image");
-    expect(prompt).toContain('await files.load("/files/...")');
-    expect(prompt).toContain('images.search("Eiffel Tower at night", { count: 3 })');
+      const prompt = applied.systemPrompt || "";
+      expect(prompt).toMatch(/^Be brief\.\n\n# Skills\n/);
+      expect(prompt).toContain("- `pptx` (PowerPoint presentation): Slide decks");
+      expect(prompt).toContain("- `office-edit` (Edit Office documents):");
+      expect(prompt).toContain("call the `use_skill` tool");
+      expect(prompt).not.toContain("## Skill `pptx`"); // no instructions until the model asks
+      expect(applied.maxTokens).toBe(2048); // lifted only once a skill is used
+      expect(applied.temperature).toBe(0.5);
+      expect(loadChatFiles).not.toHaveBeenCalled(); // files are read only when a skill is loaded
 
-    // Python skills cannot use `images`, but can read the chat's files
-    const withXlsx = withSkills(
-      settings,
-      [{ ...skill, id: "xlsx" }],
-      [{ fileName: "chat-1/msg-1/1-0.xlsx", uploadFile: "a.xlsx", type: "document" }]
-    );
-    expect(withXlsx.systemPrompt).not.toContain("## Photos");
-    expect(withXlsx.systemPrompt).toContain("## Files in this chat");
+      expect(skills?.skills.map(s => s.id)).toEqual(["office-edit", "pdf", "pptx", "xlsx"]);
+      const pdf = await skills!.load("pdf");
+      expect(pdf).toContain("## Skill `pdf`");
+      expect(pdf).toContain('- `/files/chat-1/msg-1/1-0.jpg`: image sent by the user as "IMG_2031.jpg"');
+      expect(pdf).toContain('- `/files/chat-1/msg-1/1-file-0.pptx`: document sent by the user as "Angular2.pptx"');
+      expect(pdf).toContain('- `/files/chat-1/msg-2/generated/2-deck.pptx`: made by an earlier answer as "deck.pptx"');
+      expect(pdf).toContain("- `/files/chat-1/msg-3/3-0.png`: generated image");
+      expect(pdf).toContain('await files.load("/files/...")');
+      expect(pdf).toContain('images.search("Eiffel Tower at night", { count: 3 })');
 
-    expect(withSkills(settings, [{ type: ToolType.MCP, id: "x", name: "MCP" }])).toBe(settings);
-    expect(withSkills(settings, [{ ...skill, id: "missing" }])).toBe(settings);
-    expect(withSkills(settings, undefined)).toBe(settings);
+      // Python skills cannot use `images`, but can read the chat's files
+      const xlsx = await skills!.load("xlsx");
+      expect(xlsx).not.toContain("## Photos");
+      expect(xlsx).toContain("## Files in this chat");
+    });
+
+    it("gives a model that cannot call tools every skill in the prompt", async () => {
+      const { settings: applied, skills } = await withSkills(settings, {
+        toolCalls: false,
+        loadChatFiles: async () => [],
+      });
+      expect(skills).toBeUndefined();
+      expect(applied.systemPrompt).toContain("## Skill `pptx`");
+      expect(applied.systemPrompt).toContain("## Skill `office-edit`");
+      expect(applied.systemPrompt).toContain("There are no files in this chat yet.");
+      expect(applied.maxTokens).toBe(2048);
+    });
+
+    it("use_skill returns the instructions and lifts Max Tokens for the rest of the answer", async () => {
+      const request = {
+        settings: { maxTokens: 2048 },
+        skills: { skills: [{ id: "pdf", name: "PDF" }], load: async (id: string) => `instructions for ${id}` },
+      } as unknown as CompleteChatRequest;
+      expect(await runSkillTool(request, { skill: "docx" })).toBe('There is no skill "docx". Skills: pdf.');
+      expect(request.settings?.maxTokens).toBe(2048);
+      expect(await runSkillTool(request, { skill: "pdf" })).toBe("instructions for pdf");
+      expect(request.settings?.maxTokens).toBeUndefined();
+    });
+
+    it("finds the skill a stored call asked for", () => {
+      const calls = [
+        { name: "internal_web_search", callId: "a", args: '{"query":"x"}' },
+        { name: "use_skill", callId: "b", args: '{"skill":"pptx"}' },
+      ];
+      expect(skillOfCall(calls, "b")).toBe("pptx");
+      expect(skillOfCall(calls, "a")).toBe("");
+      expect(skillOfCall(undefined, "b")).toBe("");
+    });
   });
 });

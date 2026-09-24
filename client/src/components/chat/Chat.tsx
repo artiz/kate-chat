@@ -72,6 +72,7 @@ import { CodeInterpreterCall } from "./message-details-plugins/CodeInterpreter";
 import { WebSearchCall } from "./message-details-plugins/WebSearch";
 import { Annotations } from "./message-details-plugins/Annotations";
 import { MCPCall } from "./message-details-plugins/MCP";
+import { SkillsUsed } from "./message-details-plugins/SkillsUsed";
 import { Reasoning } from "./message-details-plugins/Reasoning";
 
 import { useCodePlugins } from "./code-plugins";
@@ -197,7 +198,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const ragPlugin = useMemo(() => RAG(chatDocuments), [chatDocuments]);
   const detailsPlugins = useMemo(
-    () => [ragPlugin, CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning, Annotations],
+    () => [ragPlugin, SkillsUsed, CodeInterpreterCall, WebSearchCall, MCPCall, Reasoning, Annotations],
     [ragPlugin]
   );
 

@@ -815,6 +815,7 @@
     }
   },
   "messageDetails": {
+    "skillsUsed": "Использованные скиллы",
     "annotations": "Аннотации",
     "codeInterpreter": "Интерпретатор кода",
     "mcpToolCalls": "Вызовы MCP-инструментов",

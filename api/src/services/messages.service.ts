@@ -24,7 +24,8 @@ import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, Tool
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
-import { withSkills } from "@/services/skills.service";
+import { SkillChatFile, withSkills } from "@/services/skills.service";
+import { SKILL_TOOL_NAME, SKILL_TOOL_RESULT_SUMMARY, skillOfCall } from "@/services/ai/tools/skills.tool";
 import { extractOfficeText, officeKind } from "@/utils/office";
 import { isAdmin } from "@/utils/jwt";
 import { getRepository } from "@/config/database";
@@ -1069,36 +1070,44 @@ export class MessagesService {
       chatSettings.cacheRetention = undefined;
     }
 
-    // the chat's latest files (images, documents, generated files), which skill programs may read
-    const chatFiles = chat.tools?.some(tool => tool.type === ToolType.SKILL)
-      ? (
-          await this.chatFileRepository.find({
-            where: {
-              chatId: chat.id,
-              type: In([ChatFileType.IMAGE, ChatFileType.INLINE_DOCUMENT, ChatFileType.GENERATED]),
-            },
-            order: { createdAt: "DESC" },
-            take: 30,
+    // Skills are always available to chat models, which pick them themselves (see withSkills); a
+    // skill program may read the chat's latest files (images, documents, generated files)
+    const loadChatFiles = async (): Promise<SkillChatFile[]> =>
+      (
+        await this.chatFileRepository.find({
+          where: {
+            chatId: chat.id,
+            type: In([ChatFileType.IMAGE, ChatFileType.INLINE_DOCUMENT, ChatFileType.GENERATED]),
+          },
+          order: { createdAt: "DESC" },
+          take: 30,
+        })
+      )
+        .reverse()
+        .flatMap(file =>
+          file.fileName
+            ? [
+                {
+                  fileName: file.fileName,
+                  uploadFile: file.uploadFile,
+                  type:
+                    file.type === ChatFileType.IMAGE
+                      ? ("image" as const)
+                      : file.type === ChatFileType.GENERATED
+                        ? ("generated" as const)
+                        : ("document" as const),
+                },
+              ]
+            : []
+        );
+    const withSkillsApplied =
+      model.type === ModelType.CHAT
+        ? await withSkills(chatSettings, {
+            // every provider offers MCP through function calling, so a model with MCP calls tools
+            toolCalls: !!model.tools?.includes(ToolType.MCP),
+            loadChatFiles,
           })
-        )
-          .reverse()
-          .flatMap(file =>
-            file.fileName
-              ? [
-                  {
-                    fileName: file.fileName,
-                    uploadFile: file.uploadFile,
-                    type:
-                      file.type === ChatFileType.IMAGE
-                        ? ("image" as const)
-                        : file.type === ChatFileType.GENERATED
-                          ? ("generated" as const)
-                          : ("document" as const),
-                  },
-                ]
-              : []
-          )
-      : [];
+        : { settings: chatSettings };
 
     const request: CompleteChatRequest = {
       ...input,
@@ -1108,8 +1117,10 @@ export class MessagesService {
       imageInput: model.imageInput,
       cacheId: chat.id,
       apiProvider: model.apiProvider,
-      settings: withSkills(chatSettings, chat.tools, chatFiles),
-      tools: chat.tools,
+      settings: withSkillsApplied.settings,
+      skills: withSkillsApplied.skills,
+      // skills are no longer chosen per chat; older chats may still list them
+      tools: chat.tools?.filter(tool => tool.type !== ToolType.SKILL),
       mcpTokens: input.mcpTokens,
     };
 
@@ -1297,7 +1308,23 @@ export class MessagesService {
             const existingToolsIds = new Set(assistantMessage.metadata.tools?.map(tool => tool.callId) || []);
             assistantMessage.metadata.tools = [
               ...(assistantMessage.metadata.tools || []),
-              ...status.tools.filter(tool => !existingToolsIds.has(tool.callId)),
+              ...status.tools
+                .filter(tool => !existingToolsIds.has(tool.callId))
+                // the instructions use_skill returned are long and can be loaded again
+                .map(tool =>
+                  tool.name === SKILL_TOOL_NAME
+                    ? {
+                        ...tool,
+                        content: SKILL_TOOL_RESULT_SUMMARY(
+                          // Bedrock reports the calls before their results
+                          skillOfCall(
+                            [...(status.toolCalls || []), ...(assistantMessage.metadata?.toolCalls || [])],
+                            tool.callId
+                          )
+                        ),
+                      }
+                    : tool
+                ),
             ];
           }
 

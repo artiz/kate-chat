@@ -615,6 +615,7 @@
     }
   },
   "messageDetails": {
+    "skillsUsed": "使用的技能",
     "annotations": "注释",
     "arguments": "参数：",
     "codeInterpreter": "代码解释器",

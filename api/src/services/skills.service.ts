@@ -2,10 +2,8 @@ import fs from "fs";
 import path from "path";
 import { parse as parseYaml } from "yaml";
 import { createLogger } from "@/utils/logger";
-import { notEmpty } from "@/utils/assert";
-import { ToolType } from "@/types/api";
-import type { ChatTool } from "@/types/ai.types";
 import type { ChatSettings } from "@/entities/Chat";
+import { SKILL_TOOL_NAME, SkillToolContext } from "@/services/ai/tools/skills.tool";
 
 const logger = createLogger(__filename);
 
@@ -214,51 +212,96 @@ A TypeScript program can use photos through the global \`images\` (it is not a m
 - No other hosts are reachable.`;
 }
 
-export function buildSkillsPrompt(skills: Skill[], chatFiles: SkillChatFile[] = []): string {
-  if (!skills.length) return "";
-
-  const sections = skills.map(skill => {
-    const packages = skill.packages.length ? skill.packages.join(", ") : "none beyond the standard library";
-    const helpers = skill.files.filter(f => /\.(py|m?js)$/.test(f.path));
-    const helperLine = helpers.length
-      ? `\nHelper modules: ${helpers.map(file => helperImport(skill, file)).join(", ")}.`
-      : "";
-    return `## Skill \`${skill.id}\`: ${skill.name}
+function skillSection(skill: Skill): string {
+  const packages = skill.packages.length ? skill.packages.join(", ") : "none beyond the standard library";
+  const helpers = skill.files.filter(f => /\.(py|m?js)$/.test(f.path));
+  const helperLine = helpers.length
+    ? `\nHelper modules: ${helpers.map(file => helperImport(skill, file)).join(", ")}.`
+    : "";
+  return `## Skill \`${skill.id}\`: ${skill.name}
 Runtime: ${skill.runtime}. Packages: ${packages}.${helperLine}
 Block header: \`\`\`${FENCE_LANGUAGE[skill.runtime]} skill=${skill.id} file=<file name>
 
 ${skill.instructions}`;
-  });
+}
 
-  return `# Skills
+const SKILLS_INTRO = `You can produce files, and change the documents of this chat, with skills. You do not create the file yourself: you write a program, and the user's browser runs it in a sandbox once your answer is complete and attaches the file it writes to your message. Use a skill only when the user wants a file or a change to one; otherwise answer as usual.`;
 
-You can produce files with the skills below. You do not create the file yourself: you write a program, and the user's browser runs it in a sandbox once your answer is complete and attaches the file it writes to your message.
-
-When the user asks for a file a skill covers, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
+const SKILL_BLOCK_RULES = `To use a skill, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
 - One block per file. It runs exactly as written, so it must be complete: no placeholders, no omitted parts, no "...".
-- Only the listed packages and helper modules are available, and you must import every helper you use. There is no network access (TypeScript programs can load photos, see below), and of the user's files only this chat's (see below); put the content in the program.
+- Only the skill's packages and helper modules are available, and you must import every helper you use. There is no network access (TypeScript programs can load photos) and of the user's files only this chat's; put the content in the program.
 - Python: save the file to /output/<file name>. TypeScript: import packages by name and finish with \`await output.save("<file name>", data)\`, where data is a Uint8Array, ArrayBuffer, Blob or string.
 - Outside the block, say in a sentence or two what the file contains; do not repeat its content. Do not write that the file was made or attached: the app adds that note to your message itself once the program has run.
-- If the user sends you an error from a run, answer with the corrected complete block under the same header.
+- If the user sends you an error from a run, answer with the corrected complete block under the same header.`;
 
-${sections.join("\n\n")}
+/** Every skill's full instructions in the system prompt: for models that cannot call tools. */
+export function buildSkillsPrompt(skills: Skill[], chatFiles: SkillChatFile[] = []): string {
+  if (!skills.length) return "";
+  return `# Skills
+
+${SKILLS_INTRO}
+
+${SKILL_BLOCK_RULES}
+
+${skills.map(skillSection).join("\n\n")}
 
 ${filesPrompt(chatFiles)}${skills.some(skill => skill.runtime === "typescript") ? `\n\n${photosPrompt()}` : ""}`;
 }
 
 /**
- * The settings for an answer in a chat with skills enabled. Skills are not tools the model calls:
- * they tell it how to write a program the user's browser runs, so they travel as instructions. And a
- * program cut off by Max Tokens produces no file, while continuing it only starts a new block, so
- * those answers get the model's own output limit instead.
+ * The skills by description only, for models that call tools: the model decides which skill a
+ * request needs and loads its instructions with use_skill, so the prompt stays short.
  */
-export function withSkills(settings: ChatSettings, tools?: ChatTool[], chatFiles: SkillChatFile[] = []): ChatSettings {
-  const ids = tools?.filter(tool => tool.type === ToolType.SKILL).map(tool => tool.id);
-  const prompt = ids?.length ? buildSkillsPrompt(getSkillsByIds(ids.filter(notEmpty)), chatFiles) : "";
-  if (!prompt) return settings;
-  return {
+export function buildSkillsCatalog(skills: Skill[]): string {
+  if (!skills.length) return "";
+  return `# Skills
+
+${SKILLS_INTRO}
+
+Skills:
+${skills.map(skill => `- \`${skill.id}\` (${skill.name}): ${skill.description}`).join("\n")}
+
+Pick the skill from its description. Before writing its block, call the \`${SKILL_TOOL_NAME}\` tool with the skill's id: it returns the skill's API, helper modules and an example, the files of this chat and, for TypeScript skills, how to use photos. Then write the block following them.
+
+${SKILL_BLOCK_RULES}`;
+}
+
+/** What use_skill returns: one skill's instructions, with the chat's files and the photo API. */
+export function buildSkillInstructions(skill: Skill, chatFiles: SkillChatFile[] = []): string {
+  return `${skillSection(skill)}
+
+${filesPrompt(chatFiles)}${skill.runtime === "typescript" ? `\n\n${photosPrompt()}` : ""}`;
+}
+
+/**
+ * The skills for an answer of a chat model: every skill is available, and the model picks.
+ * - A model that calls tools gets the catalog in its system prompt and the use_skill tool, whose
+ *   handler returns the instructions and lifts Max Tokens for the rest of the answer.
+ * - Any other model gets every skill's instructions in the system prompt instead.
+ * The chat's files are read only when needed: when a skill is loaded, or for the full prompt.
+ */
+export async function withSkills(
+  settings: ChatSettings,
+  { toolCalls, loadChatFiles }: { toolCalls: boolean; loadChatFiles: () => Promise<SkillChatFile[]> }
+): Promise<{ settings: ChatSettings; skills?: SkillToolContext }> {
+  const skills = getSkills();
+  if (!skills.length) return { settings };
+  const append = (prompt: string) => ({
     ...settings,
     systemPrompt: [settings.systemPrompt, prompt].filter(Boolean).join("\n\n"),
-    maxTokens: undefined,
+  });
+
+  if (!toolCalls) {
+    return { settings: append(buildSkillsPrompt(skills, await loadChatFiles())) };
+  }
+  return {
+    settings: append(buildSkillsCatalog(skills)),
+    skills: {
+      skills: skills.map(skill => ({ id: skill.id, name: skill.name })),
+      load: async id => {
+        const skill = skills.find(s => s.id === id);
+        return skill ? buildSkillInstructions(skill, await loadChatFiles()) : `There is no skill "${id}".`;
+      },
+    },
   };
 }

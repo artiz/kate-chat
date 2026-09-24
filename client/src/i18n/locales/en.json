@@ -615,6 +615,7 @@
     }
   },
   "messageDetails": {
+    "skillsUsed": "Skills used",
     "arguments": "Arguments:",
     "annotations": "Annotations",
     "codeInterpreter": "Code Interpreter",

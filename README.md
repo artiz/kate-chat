@@ -33,7 +33,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Request statistics (input/output tokens, tool calls), request cancellation to stop reasoning or web search
 - External MCP servers support (could be tested with https://github.com/github/github-mcp-server)
 - Internal MCP servers: Gmail, Microsoft Teams, Telegram (a user account, via MTProto)
-- Skills: the model writes a program that builds a PPTX, PDF or XLSX file, or updates a document of the chat, the browser runs it in a sandbox (TypeScript or Python via Pyodide) and the file is attached to the answer and listed in the Library; skills are read-only files in `api/resources/skills`, see [docs/skills.md](docs/skills.md)
+- Skills: the model picks a skill by its description and writes a program that builds a PPTX, PDF or XLSX file, or updates a document of the chat, the browser runs it in a sandbox (TypeScript or Python via Pyodide) and the file is attached to the answer and listed in the Library; skills are read-only files in `api/resources/skills`, see [docs/skills.md](docs/skills.md)
 - DOCX, PPTX and XLSX files attached to a message are read by any chat model (as extracted text), not only through RAG
 - Images input/generation support (drag & drop, copy-paste, etc.), images stored on S3-compatible storage (`localstack` on local dev environment)
 - Inline chat-context files with an upload type selector (RAG vs chat context): PDF and text files are stored on S3, sent to the model with the message (OpenAI `input_file`/`file` blocks, Bedrock Converse document blocks) and listed on the Library page under Chat Data

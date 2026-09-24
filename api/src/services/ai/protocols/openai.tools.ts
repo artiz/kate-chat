@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
-import { ChatTool, IMCPServer, MCPAuthToken } from "@/types/ai.types";
+import { ChatTool, CompleteChatRequest, IMCPServer, MCPAuthToken } from "@/types/ai.types";
+import { runSkillTool, SKILL_TOOL_DESCRIPTION, SKILL_TOOL_NAME, skillToolSchema } from "../tools/skills.tool";
 import { ResponseStatus } from "@/types/api";
 import { createLogger } from "@/utils/logger";
 import { notEmpty, ok } from "@/utils/assert";
@@ -28,6 +29,25 @@ export type ChatCompletionToolCallable = OpenAI.Chat.Completions.ChatCompletionT
     mcpTokens?: MCPAuthToken[]
   ) => Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam>;
 };
+
+/** use_skill as a function tool: the model loads a skill's instructions before writing its program */
+export function openAISkillTool(request: CompleteChatRequest): ChatCompletionToolCallable | undefined {
+  if (!request.skills?.skills.length) return undefined;
+  return {
+    type: "function",
+    name: SKILL_TOOL_NAME,
+    function: {
+      name: SKILL_TOOL_NAME,
+      description: SKILL_TOOL_DESCRIPTION,
+      parameters: skillToolSchema(request.skills),
+    },
+    call: async (args, callId) => ({
+      role: "tool",
+      tool_call_id: callId,
+      content: await runSkillTool(request, args),
+    }),
+  };
+}
 
 export const CustomWebSearchTool: ChatCompletionToolCallable = {
   type: "function",

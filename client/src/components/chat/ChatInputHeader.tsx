@@ -13,14 +13,11 @@ import {
   IconKey,
   IconArrowDown,
   IconPhoto,
-  IconWand,
 } from "@tabler/icons-react";
-import { useQuery } from "@apollo/client";
 import { useTranslation } from "react-i18next";
 import { ChatSettingsForm, DEFAULT_CHAT_SETTINGS } from "./ChatSettings";
 import { ModelInfo } from "@/components/models/ModelInfo";
-import { ToolType, ChatTool, Model, MCPServer, ChatSettings, Skill } from "@/types/graphql";
-import { GET_SKILLS } from "@/store/services/graphql.queries";
+import { ToolType, ChatTool, Model, MCPServer, ChatSettings } from "@/types/graphql";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { assert, ModelType, ProviderIcon } from "@katechat/ui";
 import { useMcpAuth, requiresTokenEntry, requiresAuth, McpTokenModal } from "@/components/auth/McpAuthentication";
@@ -57,9 +54,6 @@ export const ChatInputHeader = ({
 
   const [selectedTools, setSelectedTools] = useState<Set<ToolType> | undefined>();
   const [selectedMcpServers, setSelectedMcpServers] = useState<Set<string>>(new Set());
-  const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set());
-  const { data: skillsData } = useQuery<{ skills: Skill[] }>(GET_SKILLS, { fetchPolicy: "cache-first" });
-  const skills = useMemo(() => skillsData?.skills || [], [skillsData]);
   const { token: userToken } = useSelector((state: RootState) => state.auth);
   const [autoScroll, setAutoScroll] = useLocalStorage<boolean>({ key: "chat-auto-scroll", defaultValue: true });
 
@@ -97,18 +91,9 @@ export const ChatInputHeader = ({
       // Extract MCP server names from chat tools
       const mcpTools = chatTools.filter(t => t.type === ToolType.MCP && t.id);
       setSelectedMcpServers(new Set(mcpTools.map(t => t.id || "").filter(assert.notEmpty)));
-      setSelectedSkills(
-        new Set(
-          chatTools
-            .filter(t => t.type === ToolType.SKILL)
-            .map(t => t.id || "")
-            .filter(assert.notEmpty)
-        )
-      );
     } else {
       setSelectedTools(new Set());
       setSelectedMcpServers(new Set());
-      setSelectedSkills(new Set());
     }
   }, [chatTools]);
 
@@ -131,30 +116,18 @@ export const ChatInputHeader = ({
     onUpdateChat({ settings });
   };
 
-  /** The chat's tools: plain tool types, plus one entry per selected MCP server and per selected skill */
-  const buildTools = (types: Set<ToolType>, mcpIds: Set<string>, skillIds: Set<string>) => {
+  /**
+   * The chat's tools: plain tool types plus one entry per selected MCP server. Skills are not
+   * chosen here (the model picks them), so entries older chats have for them are dropped.
+   */
+  const buildTools = (types: Set<ToolType>, mcpIds: Set<string>) => {
     const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(types)
       .filter(t => t !== ToolType.MCP && t !== ToolType.SKILL)
       .map(type => ({ type, name: type as string }));
     if (types.has(ToolType.MCP)) {
       mcpIds.forEach(id => toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id }));
     }
-    skillIds.forEach(id =>
-      toolsArray.push({ type: ToolType.SKILL, name: skills.find(skill => skill.id === id)?.name || id, id })
-    );
     return toolsArray;
-  };
-
-  const toggleSkill = (skillId: string) => {
-    if (!chatId) return;
-    const next = new Set(selectedSkills);
-    if (next.has(skillId)) {
-      next.delete(skillId);
-    } else {
-      next.add(skillId);
-    }
-    setSelectedSkills(next);
-    onUpdateChat({ tools: buildTools(selectedTools || new Set(), selectedMcpServers, next) });
   };
 
   const handleToolToggle = (toolType: ToolType) => {
@@ -168,7 +141,7 @@ export const ChatInputHeader = ({
     }
 
     setSelectedTools(tools);
-    onUpdateChat({ tools: buildTools(tools, selectedMcpServers, selectedSkills) });
+    onUpdateChat({ tools: buildTools(tools, selectedMcpServers) });
   };
 
   const handleMcpServerToggle = (serverId: string) => {
@@ -209,7 +182,7 @@ export const ChatInputHeader = ({
       tools.delete(ToolType.MCP);
     }
     setSelectedTools(tools);
-    onUpdateChat({ tools: buildTools(tools, servers, selectedSkills) });
+    onUpdateChat({ tools: buildTools(tools, servers) });
   };
 
   const handleTokenSubmit = (session?: string) => {
@@ -378,41 +351,6 @@ export const ChatInputHeader = ({
                     onClick={() => handleMcpServerToggle(server.id)}
                   >
                     {server.name}
-                  </Menu.Item>
-                );
-              })}
-            </Menu.Dropdown>
-          </Menu>
-        )}
-
-        {/* Skills: the model writes a program, the browser runs it and attaches the file */}
-        {skills.length > 0 && selectedModel?.type === ModelType.CHAT && (
-          <Menu position="top" withArrow shadow="md" closeOnItemClick={false}>
-            <Menu.Target>
-              <Tooltip label={t("skills.title")}>
-                <ActionIcon
-                  variant={selectedSkills.size > 0 ? "filled" : "default"}
-                  color={selectedSkills.size > 0 ? "brand" : undefined}
-                  disabled={disabled || streaming}
-                  className="chat-skills-toggle"
-                >
-                  <IconWand size="1.2rem" />
-                </ActionIcon>
-              </Tooltip>
-            </Menu.Target>
-            <Menu.Dropdown maw={360}>
-              <Menu.Label>{t("skills.title")}</Menu.Label>
-              {skills.map(skill => {
-                const isSelected = selectedSkills.has(skill.id);
-                return (
-                  <Menu.Item
-                    key={skill.id}
-                    leftSection={isSelected ? <IconSquareCheck size="1rem" /> : <IconSquare size="1rem" />}
-                    c={isSelected ? undefined : "dimmed"}
-                    onClick={() => toggleSkill(skill.id)}
-                    title={skill.description}
-                  >
-                    {skill.name}
                   </Menu.Item>
                 );
               })}

@@ -140,6 +140,55 @@ describe("OpenAICompletionsProtocol", () => {
     });
   });
 
+  describe("skills", () => {
+    it("loads a skill with use_skill and drops the output limit for the rest of the answer", async () => {
+      (protocol as any).connection = {}; // tools run only with the provider's connection info
+      const load = jest.fn(async (id: string) => `Instructions for ${id}`);
+      const skillRequest: CompleteChatRequest = {
+        ...request,
+        settings: { maxTokens: 2048 },
+        skills: { skills: [{ id: "pdf", name: "PDF document" }], load },
+      };
+      getMockCreate(protocol)
+        .mockResolvedValueOnce(
+          streamOf([
+            chunk({
+              tool_calls: [
+                {
+                  index: 0,
+                  id: "call_1",
+                  type: "function",
+                  function: { name: "use_skill", arguments: '{"skill":"pdf"}' },
+                },
+              ],
+            }),
+            chunk({}, "tool_calls"),
+          ])
+        )
+        .mockResolvedValueOnce(streamOf([chunk({ content: "```typescript skill=pdf file=a.pdf" }), chunk({}, "stop")]));
+
+      const callbacks = {
+        onStart: jest.fn(),
+        onProgress: jest.fn().mockResolvedValue(false),
+        onComplete: jest.fn(),
+        onError: jest.fn(),
+      } as unknown as StreamCallbacks;
+      await protocol.streamChatCompletion(skillRequest, messages, callbacks);
+
+      const [first, second] = getMockCreate(protocol).mock.calls.map(([params]) => params);
+      expect(first.tools.map((tool: { function: { name: string } }) => tool.function.name)).toEqual(["use_skill"]);
+      expect(first.tools[0].function.parameters.properties.skill.enum).toEqual(["pdf"]);
+      expect(first.max_completion_tokens).toBe(2048);
+
+      expect(load).toHaveBeenCalledWith("pdf");
+      expect(second.messages).toContainEqual(
+        expect.objectContaining({ role: "tool", tool_call_id: "call_1", content: "Instructions for pdf" })
+      );
+      expect(second.max_completion_tokens).toBeUndefined();
+      expect(callbacks.onError).not.toHaveBeenCalled();
+    });
+  });
+
   describe("stop reason", () => {
     it("marks an answer cut off by the output limit", async () => {
       getMockCreate(protocol).mockResolvedValue(

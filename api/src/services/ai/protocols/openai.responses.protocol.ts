@@ -18,7 +18,9 @@ import {
   ChatCompletionToolCall,
   ChatCompletionToolCallable,
   formatOpenAIMcpTools as formatOpenAIMcpFunctionTools,
+  openAISkillTool,
 } from "./openai.tools";
+import { SKILL_TOOL_NAME } from "../tools/skills.tool";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT, RETRY_TIMEOUT_MS } from "./openai.protocol";
 import { MCP_DEFAULT_API_KEY_HEADER } from "@/entities/MCPServer";
 import { globalConfig } from "@/global-config";
@@ -156,6 +158,17 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     }
 
     const tools: Array<OpenAI.Responses.Tool> = [];
+
+    const skillTool = openAISkillTool(inputRequest);
+    if (skillTool?.type === "function") {
+      tools.push({
+        type: "function",
+        name: skillTool.function.name,
+        description: skillTool.function.description,
+        parameters: skillTool.function.parameters as Record<string, unknown>,
+        strict: false,
+      });
+    }
 
     if (inputRequest.tools) {
       if (inputRequest.tools.find(t => t.type === ToolType.WEB_SEARCH)) {
@@ -412,7 +425,11 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
       stream: true,
       background: true,
     };
-    const callableTools = this.getResponsesCallableTools(baseParams.tools || [], inputRequest.mcpServers || []);
+    const callableTools = this.getResponsesCallableTools(
+      baseParams.tools || [],
+      inputRequest.mcpServers || [],
+      inputRequest
+    );
     let lastResponseId: string | undefined;
 
     if (logger.isLevelEnabled("trace")) {
@@ -809,6 +826,9 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
         stopped = toolResults.some(tr => tr.stopped);
         if (stopped) break;
 
+        // use_skill lifts the output limit for the rest of the answer (see skills.tool.ts)
+        if (!inputRequest.settings?.maxTokens) delete baseParams.max_output_tokens;
+
         let functionOutputs = toolResults.map(({ call, result }) => ({
           type: "function_call_output" as const,
           call_id: call.callId,
@@ -1049,7 +1069,8 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
 
   private getResponsesCallableTools(
     tools: OpenAI.Responses.Tool[] = [],
-    mcpServers: IMCPServer[] = []
+    mcpServers: IMCPServer[] = [],
+    request?: CompleteChatRequest
   ): ChatCompletionToolCallable[] {
     if (!tools.length && !mcpServers.length) return [];
 
@@ -1058,6 +1079,8 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
     const mcpTools = functionTools.filter(t => t.name?.startsWith("M_"));
 
     const result: ChatCompletionToolCallable[] = [];
+    const skillTool = request && functionTools.some(t => t.name === SKILL_TOOL_NAME) && openAISkillTool(request);
+    if (skillTool) result.push(skillTool);
     if (mcpTools.length) {
       const localServers: { server: IMCPServer; tool: ChatTool }[] = [];
       mcpTools.forEach(tool => {

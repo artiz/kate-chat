@@ -21,6 +21,7 @@ import {
   ChatCompletionToolCallable,
   formatOpenAIMcpTools,
   CustomWebSearchTool,
+  openAISkillTool,
 } from "./openai.tools";
 import { OpenAIProtocolBase, OpenAIProtocolOptions, RETRY_COUNT } from "./openai.protocol";
 import { pcm16ToWavDataUrl } from "@/utils/audio";
@@ -334,7 +335,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       params.temperature = 1;
     }
 
-    const requestTools = this.formatCompletionRequestTools(tools, mcpServers);
+    const requestTools = this.formatCompletionRequestTools(tools, mcpServers, inputRequest);
     if (requestTools.length) {
       params.tools = requestTools;
     }
@@ -344,10 +345,12 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
 
   private formatCompletionRequestTools(
     inputTools?: ChatTool[],
-    mcpServers?: IMCPServer[]
+    mcpServers?: IMCPServer[],
+    request?: CompleteChatRequest
   ): ChatCompletionToolCallable[] {
+    const skillTool = request && openAISkillTool(request);
     if (inputTools?.length) {
-      const tools: ChatCompletionToolCallable[] = [];
+      const tools: ChatCompletionToolCallable[] = skillTool ? [skillTool] : [];
 
       if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {
         tools.push(CustomWebSearchTool);
@@ -361,7 +364,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       return tools;
     }
 
-    return [];
+    return skillTool ? [skillTool] : [];
   }
 
   private async streamChatCompletionLegacy(
@@ -382,7 +385,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       });
     }
 
-    const callableTools = this.formatCompletionRequestTools(input.tools, input.mcpServers);
+    const callableTools = this.formatCompletionRequestTools(input.tools, input.mcpServers, input);
     const cyclesLimit = 100;
     let cycleNo = 0;
     let stream: Stream<OpenAI.Chat.Completions.ChatCompletionChunk> | undefined = undefined;
