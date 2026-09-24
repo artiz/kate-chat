@@ -85,6 +85,7 @@ export function npmImport(spec: string): [string, string] {
 // error a library throws where the program cannot catch it (in a callback, a promise nobody awaits)
 // fails the run at once instead of leaving it to the timeout.
 const REPORT = `
+  removeEventListener("error", window.__guard);
   const __logs = [];
   let __reported = false;
   const __report = (result) => {
@@ -233,17 +234,28 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
   for (const file of source.files) {
     if (/\.m?js$/.test(file.path)) imports[`skill/${file.path}`] = dataModule(file.content, `skill/${file.path}`);
   }
-  // Models guess module names ("skill/images.js", "skill/utils.js"). Rather than fail to resolve, an
-  // import of a skill module that does not exist gets one with the skill's helpers and the runtime's
-  // globals; a name it still lacks then fails with a clear "does not provide an export named" error
-  const guessed = [...new Set([...js.matchAll(/\b(?:from|import)\s*\(?\s*["'](skill\/[^"']+)["']/g)].map(m => m[1]))];
-  const missing = guessed.filter(spec => !imports[spec]);
+  // Models guess module names: "skill/images.js", "globals", "katechat". Rather than fail to
+  // resolve, an import the program cannot have (not a listed package, one of its files, or a relative
+  // path) gets a stand-in with the skill's helpers and the runtime's globals, and the log says so. A
+  // name the stand-in lacks then fails with a clear "does not provide an export named" error.
+  const packageNames = Object.keys(imports).filter(name => !name.startsWith("skill/"));
+  // import/export statements (the compiler puts each on its own line) and import("...")
+  const IMPORTS =
+    /^\s*(?:import|export)\b[^;"'`]*?\bfrom\s*["']([^"']+)["']|^\s*import\s*["']([^"']+)["']|\bimport\(\s*["']([^"']+)["']\s*\)/gm;
+  const specifiers = new Set([...js.matchAll(IMPORTS)].map(m => m[1] || m[2] || m[3]));
+  const missing = [...specifiers].filter(
+    spec =>
+      !imports[spec] &&
+      !/^(\.|\/|[a-z][a-z0-9+.-]*:)/i.test(spec) &&
+      !packageNames.some(name => spec.startsWith(`${name}/`))
+  );
   for (const spec of missing) {
     const standIn = [
+      ...helpers.map((helper, i) => `import * as helper${i} from ${JSON.stringify(helper)};`),
       ...helpers.map(helper => `export * from ${JSON.stringify(helper)};`),
       "export const images = globalThis.images;",
       "export const output = globalThis.output;",
-      "export default globalThis.images;",
+      `export default { ${helpers.map((_, i) => `...helper${i}, `).join("")}images, output };`,
     ];
     imports[spec] = dataModule(standIn.join("\n"), spec);
   }
@@ -280,7 +292,7 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
         }
       }
       for (const spec of ${inlineJson(missing)}) {
-        console.warn(spec + " does not exist; the skill's helpers and the images and output globals were used for it");
+        console.warn('"' + spec + '" is not a module the program can import; the skill helpers and the images and output globals were used for it');
       }
       await import(${inlineJson(dataModule(js, "program.js"))});
       if (!__files.length) throw new Error("The program finished without calling output.save(...)");
@@ -335,9 +347,12 @@ function pythonDocument(source: SkillSource, code: string): string {
 /** The whole sandboxed page for one run; the code is embedded, nothing is fetched from this app. */
 export function buildSandboxDocument(source: SkillSource, code: string, images: ChatImage[] = []): string {
   const body = source.runtime === "python" ? pythonDocument(source, code) : typescriptDocument(source, code, images);
+  // Reports an error in the runner itself (a script that does not even parse) instead of waiting
+  // for the timeout; the runner's own reporting takes over once it runs
+  const guard = `<script>window.__guard = event => parent.postMessage({ type: "${RESULT_MESSAGE}", ok: false, error: "Sandbox: " + event.message, logs: "" }, "*"); addEventListener("error", window.__guard);</script>`;
   return `<!doctype html><html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${SANDBOX_CSP}">
-</head><body>${body}</body></html>`;
+</head><body>${guard}${body}</body></html>`;
 }
 
 async function transpile(code: string): Promise<string> {

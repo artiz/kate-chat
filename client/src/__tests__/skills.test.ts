@@ -219,16 +219,31 @@ describe("sandbox document", () => {
     expect(doc).toContain("window.images = {");
   });
 
-  it("gives an import of a skill module that does not exist the helpers and globals instead", () => {
+  it("gives an import the program cannot have the helpers and globals instead", () => {
     const doc = buildSandboxDocument(
-      { runtime: "typescript", packages: [], files: [{ path: "deck.js", content: "export const a = 1;" }] },
-      'import { images } from "skill/images.js";\nimport { a } from "skill/deck.js";'
+      {
+        runtime: "typescript",
+        packages: ["pptxgenjs@3.12.0"],
+        files: [{ path: "deck.js", content: "export const a = 1;" }],
+      },
+      [
+        'import { images } from "skill/images.js";',
+        'import g from "globals";',
+        'import { a } from "skill/deck.js";',
+        'import PptxGenJS from "pptxgenjs";',
+        'import x from "pptxgenjs/dist/x.js";',
+        'import y from "./local.js";',
+        "const note = \"Imported from 'Japan'\";",
+        'const text = `shipped from "Spain"`;',
+      ].join("\n")
     );
     const importMap = JSON.parse(doc.match(/<script type="importmap">(.*?)<\/script>/s)![1]);
-    const standIn = atob(importMap.imports["skill/images.js"].split(",")[1]);
+    expect(Object.keys(importMap.imports).sort()).toEqual(["globals", "pptxgenjs", "skill/deck.js", "skill/images.js"]);
+    const standIn = atob(importMap.imports["globals"].split(",")[1]);
     expect(standIn).toContain('export * from "skill/deck.js";');
     expect(standIn).toContain("export const images = globalThis.images;");
-    expect(doc).toContain('for (const spec of ["skill/images.js"])');
+    expect(standIn).toContain("export default { ...helper0, images, output };");
+    expect(doc).toContain('for (const spec of ["skill/images.js","globals"])');
   });
 
   it('cannot be broken out of by "</script>" in the code or a helper', () => {
@@ -237,8 +252,8 @@ describe("sandbox document", () => {
       { runtime: "python", packages: ["openpyxl"], files: [{ path: "h.py", content: "x = '</script>'" }] },
       hostile
     );
-    // the only closing tags are the document's own two scripts
-    expect(doc.match(/<\/script>/g)).toHaveLength(2);
+    // the only closing tags are the document's own three scripts
+    expect(doc.match(/<\/script>/g)).toHaveLength(3);
     expect(doc).toContain("\\u003c/script>");
   });
 });
