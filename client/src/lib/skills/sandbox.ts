@@ -112,6 +112,11 @@ const IMAGES_API = `
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+  // A photo iterates over itself, so "const [photo] = await images.load(...)", written by a model
+  // that mixed load up with search, still gets the photo
+  const __photo = photo => Object.defineProperty(photo, Symbol.iterator, {
+    value: function* () { yield photo; },
+  });
   const __prepareImage = async (blob, details) => {
     const bitmap = await createImageBitmap(blob);
     let { width, height } = bitmap;
@@ -125,7 +130,7 @@ const IMAGES_API = `
       blob = await canvas.convertToBlob(lossless ? { type: "image/png" } : { type: "image/jpeg", quality: 0.88 });
     }
     bitmap.close();
-    return { data: await __blobToDataUrl(blob), mime: blob.type, width, height, credit: "", ...details };
+    return __photo({ data: await __blobToDataUrl(blob), mime: blob.type, width, height, credit: "", ...details });
   };
   const __fetchImage = async url => {
     const response = await fetch(url);
@@ -166,7 +171,7 @@ const IMAGES_API = `
     context.textAlign = "center";
     context.fillText("Image unavailable", 800, 520);
     const blob = await canvas.convertToBlob({ type: "image/png" });
-    return { data: await __blobToDataUrl(blob), mime: "image/png", width: 1600, height: 1000, credit: "", title: "", placeholder: true };
+    return __photo({ data: await __blobToDataUrl(blob), mime: "image/png", width: 1600, height: 1000, credit: "", title: "", placeholder: true });
   };
   const __loadImage = async name => {
     const chat = __chatImages.find(image => image.path === name || image.path.endsWith("/" + name));
