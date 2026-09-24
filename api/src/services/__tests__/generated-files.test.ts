@@ -48,4 +48,15 @@ describe("generated files", () => {
     ]);
     expect(withGeneratedFiles("No files", undefined)).toBe("No files");
   });
+
+  it("drops a note the model copied into its own answer", () => {
+    const files = [{ name: "a.pdf", fileName: "c/m/generated/1-a.pdf", mime: "x", size: 2048 }];
+    const copied = "Done.\n\n[The code in this answer ran in the user's browser and attached: old.pdf (9 KB).]";
+    expect(withGeneratedFiles(copied, files)).toBe(
+      "Done.\n\n[The code in this answer ran in the user's browser and attached: a.pdf (2 KB).]"
+    );
+    const fenced =
+      "Done.\n\n```\n[The code in this answer ran in the user's browser and attached: old.pdf (9 KB).]\n```\n";
+    expect(withGeneratedFiles(fenced, undefined)).toBe("Done.");
+  });
 });

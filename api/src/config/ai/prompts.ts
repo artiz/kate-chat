@@ -24,6 +24,10 @@ export const GENERATED_FILES_NOTE = (files: { name: string; size: number }[]): s
     .map(file => `${file.name} (${Math.max(1, Math.round(file.size / 1024))} KB)`)
     .join(", ")}.]`;
 
+/** GENERATED_FILES_NOTE as models sometimes copy it into their own answers, bare or in a code fence. */
+export const COPIED_GENERATED_FILES_NOTE =
+  /^(?:(`{3,}|~{3,})[^\n]*\n)?\[The code in this answer ran in the user's browser and attached:[^\n]*\][ \t]*(?:\n\1[ \t]*$)?\n?/gm;
+
 export const PROMPT_DOCUMENT_SUMMARY = ({ content }: { content: string }) =>
   `Please provide a comprehensive summary of the following document in up to 1024 words. 
     Return only summary, without any additional commentaries.

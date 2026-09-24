@@ -4,7 +4,14 @@ import { TextEncoder } from "util";
 // browsers have it; jsdom does not
 Object.assign(global, { TextEncoder });
 
-import { findUnfinishedSkillBlock, normalizeFileName, parseSkillBlocks, skillBlockAt } from "../lib/skills/parse";
+import {
+  findUnfinishedSkillBlock,
+  normalizeFileName,
+  parseSkillBlocks,
+  skillBlockAt,
+  stripGeneratedFilesNote,
+  withSkillView,
+} from "../lib/skills/parse";
 import { buildSandboxDocument, npmImport, SANDBOX_CSP } from "../lib/skills/sandbox";
 
 describe("parseSkillBlocks", () => {
@@ -92,6 +99,30 @@ describe("an answer cut off inside a skill block", () => {
   it("does not count unlabelled blocks, which the chat renders without a Run button", () => {
     const content = "```\nplain\n```\n```python skill=xlsx file=a.xlsx\nx = 1\n```";
     expect(skillBlockAt(content, 0)).toEqual({ index: 0, fileName: "a.xlsx", closed: true });
+  });
+});
+
+describe("withSkillView", () => {
+  const block = "```typescript skill=pdf file=a.pdf\nawait output.save('a.pdf', 'x');\n```";
+  const note = "[The code in this answer ran in the user's browser and attached: a.pdf (23 KB).]";
+
+  it("collapses the code of an answer with a skill block and drops a copied note", () => {
+    const message = { content: `${block}\n\n${note}`, linkedMessages: [{ content: `Plain\n\n${note}` }] };
+    expect(withSkillView(message)).toEqual({
+      content: block,
+      collapseCodeBlocks: true,
+      linkedMessages: [{ content: "Plain", collapseCodeBlocks: false }],
+    });
+  });
+
+  it("leaves other answers as they are", () => {
+    const message = { content: "```python\nprint(1)\n```" };
+    expect(withSkillView(message)).toBe(message);
+  });
+
+  it("drops the note inside a code fence too, and nothing else", () => {
+    expect(stripGeneratedFilesNote(`Here it is.\n\n\`\`\`\n${note}\n\`\`\`\n`)).toBe("Here it is.");
+    expect(stripGeneratedFilesNote(`Before ${note} after`)).toBe(`Before ${note} after`);
   });
 });
 

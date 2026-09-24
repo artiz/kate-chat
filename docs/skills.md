@@ -19,6 +19,8 @@ Skills let the model produce files — PowerPoint decks, PDF documents, Excel wo
 4. When the answer is complete, the client (`SkillRuns` plugin) runs the block in a sandbox, uploads the file with the `saveGeneratedFile` mutation and shows a download card under the answer. The file is stored on S3 as a `ChatFile` of type `generated`, listed in **Library → Chat Data**, and later turns see a note that the answer produced it.
 5. If the program fails, the error and its output are shown with **Ask to fix**, which sends them to the model as the next message, and **Run again**.
 
+In the chat, an answer with a skill block is about the file, not the code: its code blocks start collapsed (the client sets `collapseCodeBlocks` on the message; click the header to expand), and a copy of the "files attached" note that a model sometimes writes into its own answer is removed, both from what the chat shows and from the history the model gets.
+
 A block runs by itself only once: when it belongs to the chat's last answer and has no file yet. Older answers show a **Generate** button, so opening a chat never starts programs.
 
 ## Runtimes
@@ -90,3 +92,40 @@ A skill that fails validation (bad frontmatter, unknown runtime, a helper file t
 | `pptx` | TypeScript | [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) | `skill/deck.js`: title, section, bullet, two-column, table (split across slides) and chart slides |
 | `pdf` | TypeScript | [pdfmake](https://pdfmake.github.io/docs/) | `skill/pdf.js`: six fonts covering Latin and Cyrillic (loaded on demand), page colour, styles, tables, page numbers |
 | `xlsx` | Python | [openpyxl](https://openpyxl.readthedocs.io/) | `xlsx_helpers`: styled tables with filters, number formats, column widths, charts |
+
+### PDF fonts
+
+`renderPdf` has six fonts. All are Google Fonts with Latin and Cyrillic, with regular, bold, italic and bold italic (Caveat has no italic, so italic text is set upright). Roboto ships with pdfmake; the others are static TTFs from [`@expo-google-fonts`](https://github.com/expo/google-fonts) on jsDelivr, downloaded only when a document uses them (about 0.1–0.35 MB per style).
+
+| Font | Kind | Good for |
+| --- | --- | --- |
+| Roboto | sans-serif | the default: body text, tables |
+| PT Serif | serif | body text of letters, reports, long reads |
+| Montserrat | geometric sans-serif | headings, titles, posters |
+| Playfair Display | display serif | elegant headings, invitations, covers |
+| Roboto Mono | monospace | code, figures in columns |
+| Caveat | handwritten | notes, informal touches; it runs small, so use 14 pt or more |
+
+A document picks a font with `font` on a text node, a style or `defaultStyle`:
+
+```typescript
+const bytes = await renderPdf({
+  defaultStyle: { font: "PT Serif" },
+  styles: { h1: { font: "Montserrat", fontSize: 18, bold: true } },
+  pageColor: "#FFF8E1",
+  content: [{ text: "Invitation", font: "Playfair Display", fontSize: 28 }, "..."],
+});
+```
+
+Models often ask for fonts they know from office software, so those map to the closest available one, with a warning in the run's output:
+
+| Asked for | Gets |
+| --- | --- |
+| Arial, Helvetica, Calibri, Verdana, Open Sans, Inter, `sans-serif`, any unknown font | Roboto |
+| Times New Roman, Georgia, Garamond, Cambria, `serif` | PT Serif |
+| Futura, Gotham, Avenir, Poppins | Montserrat |
+| Didot, Bodoni | Playfair Display |
+| Courier New, Consolas, Menlo, `monospace` | Roboto Mono |
+| Comic Sans MS, `cursive` | Caveat |
+
+`pageColor` (or `backgroundColor`, which models tend to guess) fills every page with a colour. To add a font, put it in `EXTRA_FONTS` in `api/resources/skills/pdf/scripts/pdf.js` (a package that serves static TTFs, with Cyrillic) and list it in the skill's `SKILL.md`.

@@ -154,6 +154,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
     updatedAt,
     user,
     streaming = false,
+    collapseCodeBlocks = false,
     linkedMessages,
     status,
     statusInfo,
@@ -207,6 +208,11 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
               .replace("<DOWNLOAD_TITLE>", donwloadTitle)
               .replace("<COPY_TITLE>", copyTitle);
 
+            if (collapseCodeBlocks) {
+              block.classList.add("collapsed");
+              header.classList.add("collapsed");
+            }
+
             block.appendChild(header);
             pre.parentNode?.insertBefore(block, pre);
             block.appendChild(pre);
@@ -252,7 +258,7 @@ export const ChatMessage = React.memo<ChatMessageProps>((props: ChatMessageProps
           }
         });
       }, ANIMATION_DURATION + 10),
-    [donwloadTitle, copyTitle, copyCsvTitle, downloadCsvTitle, codePlugins]
+    [donwloadTitle, copyTitle, copyCsvTitle, downloadCsvTitle, codePlugins, collapseCodeBlocks]
   );
 
   useEffect(() => {

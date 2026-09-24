@@ -114,3 +114,35 @@ export function normalizeFileName(name: string): string {
     .replace(/\s+/g, " ")
     .slice(-120);
 }
+
+// The note the API adds after an answer's generated files, for the model (GENERATED_FILES_NOTE).
+// Models sometimes copy it into their own answers, bare or in a code fence.
+const GENERATED_FILES_NOTE_RE =
+  /^(?:(`{3,}|~{3,})[^\n]*\n)?\[The code in this answer ran in the user's browser and attached:[^\n]*\][ \t]*(?:\n\1[ \t]*$)?\n?/gm;
+
+/** The answer without a copied "files attached" note: the file cards below the answer show that. */
+export function stripGeneratedFilesNote(content: string): string {
+  if (!content.includes("[The code in this answer ran")) return content;
+  return content.replace(GENERATED_FILES_NOTE_RE, "").trimEnd();
+}
+
+/**
+ * How a skill answer is shown: its code only matters for the file it made, so code blocks start
+ * collapsed, and a copied "files attached" note is dropped.
+ */
+export function withSkillView<T extends { content: string; collapseCodeBlocks?: boolean; linkedMessages?: T[] }>(
+  message: T
+): T {
+  if (!message?.content) return message;
+  const content = stripGeneratedFilesNote(message.content);
+  const collapseCodeBlocks = message.collapseCodeBlocks || parseSkillBlocks(content).length > 0;
+  const linkedMessages = message.linkedMessages?.map(withSkillView);
+  if (
+    content === message.content &&
+    collapseCodeBlocks === !!message.collapseCodeBlocks &&
+    linkedMessages?.every((m, i) => m === message.linkedMessages![i]) !== false
+  ) {
+    return message;
+  }
+  return { ...message, content, collapseCodeBlocks, ...(linkedMessages ? { linkedMessages } : {}) };
+}
