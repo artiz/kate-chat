@@ -301,9 +301,10 @@
     }
   }
 
-  // While the answer streams its code blocks are not wrapped in .code-block yet; with
-  // collapseCodeBlocks they show just their header from the first line, as they will once wrapped
-  &.collapse-code.streaming pre:has(.code-header) {
+  // Code blocks are wrapped in .code-block (which collapses them) only after the answer has streamed,
+  // and a moment after it has; until then, with collapseCodeBlocks, a block not wrapped yet (a <pre>
+  // straight in a rendered part) shows just its header, so it never flashes open
+  &.collapse-code > div > pre:has(.code-header) {
     height: 2.7rem;
     padding: 0;
     overflow: hidden;

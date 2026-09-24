@@ -193,7 +193,7 @@ ${chatImages
     : "There are no images in this chat.";
   return `## Photos in TypeScript programs
 
-A TypeScript program can use photos through the global \`images\`:
+A TypeScript program can use photos through the global \`images\` (it is not a module: do not import it):
 - \`await images.search("Eiffel Tower at night", { count: 3 })\` finds real photos on Wikimedia Commons and returns exactly \`count\` of them: \`{ data, width, height, title, credit, placeholder }\`. Prefer it to URLs: a photo URL you remember may not exist. When nothing is found the result is a grey stand-in with \`placeholder: true\`.
 - \`await images.load(src)\`: \`src\` is an image of this chat (its \`/files/...\` path), \`"commons:<file name>"\` for a Wikimedia Commons file, or an https URL on images.unsplash.com or upload.wikimedia.org.
 - Photos come back as \`data\` URLs that pptxgenjs and pdfmake take directly, and the skills' helpers accept a search result or any \`src\` wherever they take an image. Show \`credit\` near a photo from Wikimedia Commons (the slide helpers do).

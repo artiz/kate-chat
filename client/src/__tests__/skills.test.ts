@@ -219,6 +219,18 @@ describe("sandbox document", () => {
     expect(doc).toContain("window.images = {");
   });
 
+  it("gives an import of a skill module that does not exist the helpers and globals instead", () => {
+    const doc = buildSandboxDocument(
+      { runtime: "typescript", packages: [], files: [{ path: "deck.js", content: "export const a = 1;" }] },
+      'import { images } from "skill/images.js";\nimport { a } from "skill/deck.js";'
+    );
+    const importMap = JSON.parse(doc.match(/<script type="importmap">(.*?)<\/script>/s)![1]);
+    const standIn = atob(importMap.imports["skill/images.js"].split(",")[1]);
+    expect(standIn).toContain('export * from "skill/deck.js";');
+    expect(standIn).toContain("export const images = globalThis.images;");
+    expect(doc).toContain('for (const spec of ["skill/images.js"])');
+  });
+
   it('cannot be broken out of by "</script>" in the code or a helper', () => {
     const hostile = 'print("</script><script>parent.document.title=1</script>")';
     const doc = buildSandboxDocument(

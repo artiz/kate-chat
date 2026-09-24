@@ -233,6 +233,20 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
   for (const file of source.files) {
     if (/\.m?js$/.test(file.path)) imports[`skill/${file.path}`] = dataModule(file.content, `skill/${file.path}`);
   }
+  // Models guess module names ("skill/images.js", "skill/utils.js"). Rather than fail to resolve, an
+  // import of a skill module that does not exist gets one with the skill's helpers and the runtime's
+  // globals; a name it still lacks then fails with a clear "does not provide an export named" error
+  const guessed = [...new Set([...js.matchAll(/\b(?:from|import)\s*\(?\s*["'](skill\/[^"']+)["']/g)].map(m => m[1]))];
+  const missing = guessed.filter(spec => !imports[spec]);
+  for (const spec of missing) {
+    const standIn = [
+      ...helpers.map(helper => `export * from ${JSON.stringify(helper)};`),
+      "export const images = globalThis.images;",
+      "export const output = globalThis.output;",
+      "export default globalThis.images;",
+    ];
+    imports[spec] = dataModule(standIn.join("\n"), spec);
+  }
   const chatImages = images.map(image => ({ path: image.path, mime: image.mime, base64: bytesToBase64(image.bytes) }));
   const runner = `
     ${REPORT}
@@ -264,6 +278,9 @@ function typescriptDocument(source: SkillSource, js: string, images: ChatImage[]
         for (const [name, value] of Object.entries(await import(helper))) {
           if (!(name in globalThis)) globalThis[name] = value;
         }
+      }
+      for (const spec of ${inlineJson(missing)}) {
+        console.warn(spec + " does not exist; the skill's helpers and the images and output globals were used for it");
       }
       await import(${inlineJson(dataModule(js, "program.js"))});
       if (!__files.length) throw new Error("The program finished without calling output.save(...)");
