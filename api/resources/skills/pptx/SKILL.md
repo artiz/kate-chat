@@ -61,7 +61,11 @@ Photos:
 const [tower] = await images.search("Eiffel Tower");
 const [river] = await images.search("Seine river Paris");
 titleSlide(pptx, { title: "Paris", subtitle: "Spring trip", image: tower });
-imageSlide(pptx, { title: "Along the Seine", image: river, bullets: ["Walk from Notre-Dame to the Louvre", "Evening boat tour"] });
+imageSlide(pptx, {
+  title: "Along the Seine",
+  image: river,
+  bullets: ["Walk from Notre-Dame to the Louvre", "Evening boat tour"],
+});
 ```
 
 For anything else use pptxgenjs directly: `const slide = pptx.addSlide()`, then `slide.addText(text, { x, y, w, h, fontSize, bold, color, align })`, `slide.addTable(rows, { x, y, w })`, `slide.addChart(pptx.ChartType.bar, data, { x, y, w, h })`, `slide.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color } })`, `slide.addNotes(text)`.
