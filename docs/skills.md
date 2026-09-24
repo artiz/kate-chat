@@ -79,7 +79,7 @@ What makes a skill work well:
 - Pin package versions.
 - Put layout and styling in helpers, so the model writes content rather than coordinates.
 - Say what is unavailable: there is no network and no file system to read from.
-- Make helpers forgiving about what models get wrong. `renderPdf`, for example, replaces fonts pdfmake does not have with Roboto and logs a warning instead of failing.
+- Make helpers forgiving about what models get wrong. `renderPdf`, for example, maps a font it does not have (Arial, Comic Sans MS) to the closest one it has and logs a warning instead of failing.
 
 A skill that fails validation (bad frontmatter, unknown runtime, a helper file the runtime cannot use) is logged and skipped at startup; the others still load.
 
@@ -88,5 +88,5 @@ A skill that fails validation (bad frontmatter, unknown runtime, a helper file t
 | Skill | Runtime | Library | Helper |
 | --- | --- | --- | --- |
 | `pptx` | TypeScript | [pptxgenjs](https://gitbrent.github.io/PptxGenJS/) | `skill/deck.js`: title, section, bullet, two-column, table (split across slides) and chart slides |
-| `pdf` | TypeScript | [pdfmake](https://pdfmake.github.io/docs/) | `skill/pdf.js`: fonts covering Latin, Cyrillic and Greek, styles, tables, page numbers |
+| `pdf` | TypeScript | [pdfmake](https://pdfmake.github.io/docs/) | `skill/pdf.js`: six fonts covering Latin and Cyrillic (loaded on demand), page colour, styles, tables, page numbers |
 | `xlsx` | Python | [openpyxl](https://openpyxl.readthedocs.io/) | `xlsx_helpers`: styled tables with filters, number formats, column widths, charts |

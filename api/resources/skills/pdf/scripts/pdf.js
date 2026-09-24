@@ -1,4 +1,5 @@
-// pdfmake with its Roboto fonts (Latin, Cyrillic, Greek) loaded, plus styles for a clean document.
+// pdfmake with its Roboto fonts (Latin, Cyrillic, Greek) loaded and five more fonts on demand, plus
+// styles for a clean document.
 import pdfMake from "pdfmake";
 
 const FONTS_URL = "https://cdn.jsdelivr.net/npm/pdfmake@0.2.20/build/vfs_fonts.js/+esm";
@@ -50,20 +51,119 @@ export function table(header, rows, { widths, accent = "#2E6BE6" } = {}) {
   };
 }
 
+const ROBOTO = {
+  normal: "Roboto-Regular.ttf",
+  bold: "Roboto-Medium.ttf",
+  italics: "Roboto-Italic.ttf",
+  bolditalics: "Roboto-MediumItalic.ttf",
+};
+
+// Google Fonts with Latin and Cyrillic, as static TTFs from @expo-google-fonts on jsDelivr. A font is
+// downloaded only when a document uses it: [package@version, file prefix, has italics].
+const EXTRA_FONTS = {
+  "PT Serif": ["pt-serif@0.4.1", "PTSerif", true],
+  Montserrat: ["montserrat@0.4.2", "Montserrat", true],
+  "Playfair Display": ["playfair-display@0.4.2", "PlayfairDisplay", true],
+  "Roboto Mono": ["roboto-mono@0.4.2", "RobotoMono", true],
+  Caveat: ["caveat@0.4.2", "Caveat", false],
+};
+
+/** The font names a document may use. */
+export const fonts = ["Roboto", ...Object.keys(EXTRA_FONTS)];
+
+// Fonts models ask for out of habit, mapped to the closest one available
+const ALIASES = {
+  "sans-serif": "Roboto",
+  arial: "Roboto",
+  helvetica: "Roboto",
+  "helvetica neue": "Roboto",
+  calibri: "Roboto",
+  verdana: "Roboto",
+  "open sans": "Roboto",
+  inter: "Roboto",
+  serif: "PT Serif",
+  times: "PT Serif",
+  "times new roman": "PT Serif",
+  georgia: "PT Serif",
+  garamond: "PT Serif",
+  cambria: "PT Serif",
+  futura: "Montserrat",
+  gotham: "Montserrat",
+  avenir: "Montserrat",
+  poppins: "Montserrat",
+  didot: "Playfair Display",
+  bodoni: "Playfair Display",
+  monospace: "Roboto Mono",
+  courier: "Roboto Mono",
+  "courier new": "Roboto Mono",
+  consolas: "Roboto Mono",
+  menlo: "Roboto Mono",
+  cursive: "Caveat",
+  "comic sans": "Caveat",
+  "comic sans ms": "Caveat",
+};
+
+function resolveFont(name) {
+  const key = name
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .toLowerCase();
+  return fonts.find(font => font.toLowerCase() === key) || ALIASES[key] || "Roboto";
+}
+
 /**
- * Only the fonts in pdfMake.fonts exist (by default just Roboto). pdfmake fails on any other, and does
- * so outside the promise renderPdf waits for. Models like to ask for Arial or Comic Sans, so those
- * become Roboto.
+ * pdfmake fails on a font it does not have, and does so outside the promise renderPdf waits for. So
+ * every font the document names is resolved to an available one (logging any substitution), and the
+ * ones used are collected for loading.
  */
-function useKnownFonts(node, replaced, seen = new Set()) {
+function resolveFonts(node, used, substituted, seen = new Set()) {
   if (!node || typeof node !== "object" || seen.has(node)) return;
   seen.add(node);
-  if (!Array.isArray(node) && typeof node.font === "string" && !(node.font in (pdfMake.fonts || { Roboto: true }))) {
-    replaced.add(node.font);
-    node.font = "Roboto";
+  if (!Array.isArray(node) && typeof node.font === "string") {
+    const font = resolveFont(node.font);
+    if (font !== node.font) substituted.set(node.font, font);
+    node.font = font;
+    used.add(font);
   }
-  for (const value of Object.values(node)) useKnownFonts(value, replaced, seen);
+  for (const value of Object.values(node)) resolveFonts(value, used, substituted, seen);
 }
+
+const toBase64 = bytes => {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+};
+
+const fontFiles = {};
+
+/** Downloads a font into pdfmake's virtual file system once and returns its pdfmake font entry. */
+function loadExtraFont(name) {
+  fontFiles[name] ||= (async () => {
+    const [pkg, prefix, hasItalics] = EXTRA_FONTS[name];
+    const files = { normal: "400Regular", bold: "700Bold" };
+    if (hasItalics) Object.assign(files, { italics: "400Regular_Italic", bolditalics: "700Bold_Italic" });
+    const entry = {};
+    await Promise.all(
+      Object.entries(files).map(async ([style, weight]) => {
+        const file = `${prefix}_${weight}.ttf`;
+        const response = await fetch(`https://cdn.jsdelivr.net/npm/@expo-google-fonts/${pkg}/${weight}/${file}`);
+        if (!response.ok) throw new Error(`Could not load the font ${name} (${file}): HTTP ${response.status}`);
+        pdfMake.vfs[file] = toBase64(new Uint8Array(await response.arrayBuffer()));
+        entry[style] = file;
+      })
+    );
+    // No italic cut: italic text is set upright rather than failing
+    entry.italics ||= entry.normal;
+    entry.bolditalics ||= entry.bold;
+    return entry;
+  })();
+  return fontFiles[name];
+}
+
+/** A full-page rectangle behind every page, for `pageColor`. */
+const pageBackground = color => (page, size) => ({
+  canvas: [{ type: "rect", x: 0, y: 0, w: size.width, h: size.height, color }],
+});
 
 /**
  * Renders a pdfmake document definition to PDF bytes. The defaults (A4, margins, Roboto, page numbers
@@ -71,22 +171,35 @@ function useKnownFonts(node, replaced, seen = new Set()) {
  */
 export async function renderPdf(definition) {
   await loadFonts();
-  const replaced = new Set();
-  useKnownFonts(definition, replaced);
-  if (replaced.size) console.warn(`Only the Roboto font is available; used it instead of ${[...replaced].join(", ")}`);
-  const doc = pdfMake.createPdf({
-    pageSize: "A4",
-    pageMargins: [50, 55, 50, 60],
-    defaultStyle: { font: "Roboto", fontSize: 11, lineHeight: 1.25 },
-    footer: (page, pages) => ({
-      text: `${page} / ${pages}`,
-      alignment: "center",
-      style: "muted",
-      margin: [0, 20, 0, 0],
-    }),
-    ...definition,
-    styles: { ...styles, ...(definition.styles || {}) },
-  });
+  // backgroundColor is not pdfmake's, but models expect it to work
+  const { pageColor, backgroundColor, ...rest } = definition;
+  const color = pageColor || backgroundColor;
+  const used = new Set(["Roboto"]);
+  const substituted = new Map();
+  resolveFonts(rest, used, substituted);
+  for (const [asked, font] of substituted) console.warn(`The font "${asked}" is not available; used ${font} instead`);
+  const fontTable = { Roboto: ROBOTO };
+  const extra = [...used].filter(name => name !== "Roboto");
+  (await Promise.all(extra.map(loadExtraFont))).forEach((entry, i) => (fontTable[extra[i]] = entry));
+
+  const doc = pdfMake.createPdf(
+    {
+      pageSize: "A4",
+      pageMargins: [50, 55, 50, 60],
+      footer: (page, pages) => ({
+        text: `${page} / ${pages}`,
+        alignment: "center",
+        style: "muted",
+        margin: [0, 20, 0, 0],
+      }),
+      ...(color ? { background: pageBackground(color) } : {}),
+      ...rest,
+      defaultStyle: { font: "Roboto", fontSize: 11, lineHeight: 1.25, ...(rest.defaultStyle || {}) },
+      styles: { ...styles, ...(rest.styles || {}) },
+    },
+    undefined,
+    fontTable
+  );
   return new Uint8Array(
     await new Promise((resolve, reject) => {
       try {
