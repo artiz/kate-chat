@@ -195,6 +195,7 @@ ${chatImages
 
 A TypeScript program can use photos through the global \`images\` (it is not a module: do not import it):
 - \`await images.search("Eiffel Tower at night", { count: 3 })\` finds real photos on Wikimedia Commons and returns exactly \`count\` of them: \`{ data, width, height, title, credit, placeholder }\`. Prefer it to URLs: a photo URL you remember may not exist. When nothing is found the result is a grey stand-in with \`placeholder: true\`.
+- Commons holds freely licensed photos: places, landmarks, nature, animals, historical objects, well-known people and older products. It has no photos of new, rumoured or fictional products, and a search for one finds whatever older thing shares the name (a search for a new "Apple Duo" finds a 1992 PowerBook Duo). Search with specific, descriptive terms; for such a product use an image from this chat if there is one, otherwise leave photos out or show a related subject (the company's headquarters, the city of a launch event).
 - \`await images.load(src)\`: \`src\` is an image of this chat (its \`/files/...\` path), \`"commons:<file name>"\` for a Wikimedia Commons file, or an https URL on images.unsplash.com or upload.wikimedia.org.
 - Photos come back as \`data\` URLs that pptxgenjs and pdfmake take directly, and the skills' helpers accept a search result or any \`src\` wherever they take an image. Show \`credit\` near a photo from Wikimedia Commons (the slide helpers do).
 - No other hosts are reachable.

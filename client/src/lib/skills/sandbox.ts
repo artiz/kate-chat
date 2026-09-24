@@ -214,6 +214,7 @@ const IMAGES_API = `
         if (!/^image\\/(jpeg|png|webp)$/.test(hit.mime)) continue;
         try {
           found.push(await __prepareImage(await __fetchImage(hit.url), hit));
+          console.log("images.search(" + JSON.stringify(String(query)) + "): " + hit.title);
         } catch (error) {
           console.warn("images.search: skipped " + hit.title + ": " + (error && error.message || error));
         }
