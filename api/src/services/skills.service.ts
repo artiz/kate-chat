@@ -2,6 +2,10 @@ import fs from "fs";
 import path from "path";
 import { parse as parseYaml } from "yaml";
 import { createLogger } from "@/utils/logger";
+import { notEmpty } from "@/utils/assert";
+import { ToolType } from "@/types/api";
+import type { ChatTool } from "@/types/ai.types";
+import type { ChatSettings } from "@/entities/Chat";
 
 const logger = createLogger(__filename);
 
@@ -199,4 +203,21 @@ When the user asks for a file a skill covers, write the whole program in one fen
 - If the user sends you an error from a run, answer with the corrected complete block under the same header.
 
 ${sections.join("\n\n")}`;
+}
+
+/**
+ * The settings for an answer in a chat with skills enabled. Skills are not tools the model calls:
+ * they tell it how to write a program the user's browser runs, so they travel as instructions. And a
+ * program cut off by Max Tokens produces no file, while continuing it only starts a new block, so
+ * those answers get the model's own output limit instead.
+ */
+export function withSkills(settings: ChatSettings, tools?: ChatTool[]): ChatSettings {
+  const ids = tools?.filter(tool => tool.type === ToolType.SKILL).map(tool => tool.id);
+  const prompt = ids?.length ? buildSkillsPrompt(getSkillsByIds(ids.filter(notEmpty))) : "";
+  if (!prompt) return settings;
+  return {
+    ...settings,
+    systemPrompt: [settings.systemPrompt, prompt].filter(Boolean).join("\n\n"),
+    maxTokens: undefined,
+  };
 }

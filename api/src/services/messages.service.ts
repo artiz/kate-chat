@@ -24,7 +24,7 @@ import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, Tool
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
-import { buildSkillsPrompt, getSkillsByIds } from "@/services/skills.service";
+import { withSkills } from "@/services/skills.service";
 import { isAdmin } from "@/utils/jwt";
 import { getRepository } from "@/config/database";
 import { formatDateCeil, formatDateFloor } from "@/utils/db";
@@ -1051,14 +1051,6 @@ export class MessagesService {
       chatSettings.cacheRetention = undefined;
     }
 
-    // Enabled skills are not tools the model calls: they tell it how to write a program the
-    // user's browser runs, so they travel as instructions.
-    const skillIds = chat.tools?.filter(tool => tool.type === ToolType.SKILL).map(tool => tool.id);
-    const skillsPrompt = skillIds?.length ? buildSkillsPrompt(getSkillsByIds(skillIds.filter(notEmpty))) : "";
-    if (skillsPrompt) {
-      chatSettings.systemPrompt = [chatSettings.systemPrompt, skillsPrompt].filter(Boolean).join("\n\n");
-    }
-
     const request: CompleteChatRequest = {
       ...input,
       requestId,
@@ -1067,7 +1059,7 @@ export class MessagesService {
       imageInput: model.imageInput,
       cacheId: chat.id,
       apiProvider: model.apiProvider,
-      settings: chatSettings,
+      settings: withSkills(chatSettings, chat.tools),
       tools: chat.tools,
       mcpTokens: input.mcpTokens,
     };

@@ -1,7 +1,8 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { buildSkillsPrompt, loadSkill, loadSkills, SkillError } from "../skills.service";
+import { buildSkillsPrompt, loadSkill, loadSkills, SkillError, withSkills } from "../skills.service";
+import { ToolType } from "@/types/api";
 
 const RESOURCES = path.join(__dirname, "../../../resources/skills");
 
@@ -97,5 +98,19 @@ describe("skills", () => {
 
   it("adds nothing when no skill is enabled", () => {
     expect(buildSkillsPrompt([])).toBe("");
+  });
+
+  it("adds enabled skills to the system prompt and lifts Max Tokens for them", () => {
+    const settings = { systemPrompt: "Be brief.", maxTokens: 2048, temperature: 0.5 };
+    const skill = { type: ToolType.SKILL, id: "pdf", name: "PDF document" };
+    const withPdf = withSkills(settings, [skill]);
+    expect(withPdf.systemPrompt).toMatch(/^Be brief\.\n\n# Skills\n/);
+    expect(withPdf.systemPrompt).toContain("## Skill `pdf`");
+    expect(withPdf.maxTokens).toBeUndefined();
+    expect(withPdf.temperature).toBe(0.5);
+
+    expect(withSkills(settings, [{ type: ToolType.MCP, id: "x", name: "MCP" }])).toBe(settings);
+    expect(withSkills(settings, [{ ...skill, id: "missing" }])).toBe(settings);
+    expect(withSkills(settings, undefined)).toBe(settings);
   });
 });

@@ -5,7 +5,7 @@ Skills let the model produce files — PowerPoint decks, PDF documents, Excel wo
 ## How it works
 
 1. A user enables skills for a chat in the skills menu (the wand icon) next to the model selector. Any chat model can use them; no tool-calling support is needed.
-2. The API adds the enabled skills' instructions to the system prompt (`buildSkillsPrompt` in `api/src/services/skills.service.ts`).
+2. The API adds the enabled skills' instructions to the system prompt (`withSkills` in `api/src/services/skills.service.ts`). The chat's **Max Tokens** does not apply to these answers: a program cut off in the middle produces no file, and continuing it only starts a new block, so they get the model's own output limit.
 3. When asked for a file, the model answers with one fenced block per file whose header names the skill and the file:
 
    ````markdown

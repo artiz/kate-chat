@@ -32,6 +32,9 @@ export const AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION = [
 
 export const AWS_BEDROCK_MIN_THINKING_BUDGET = 1024;
 export const AWS_BEDROCK_MAX_THINKING_BUDGET = 16384;
+// Output limit for extended thinking when the request sets none (skill answers): Anthropic requires
+// one above the thinking budget, and every Claude model with extended thinking allows at least this
+export const AWS_BEDROCK_THINKING_MAX_TOKENS = 32000;
 
 export const AWS_BEDROCK_DEFAULT_THINKING_LEVELS: Record<ThinkingLevel, number> = {
   minimal: AWS_BEDROCK_MIN_THINKING_BUDGET,

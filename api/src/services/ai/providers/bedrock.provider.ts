@@ -69,6 +69,7 @@ import { FileContentLoader } from "@/services/data";
 import { globalConfig } from "@/global-config";
 import {
   AWS_BEDROCK_MAX_THINKING_BUDGET,
+  AWS_BEDROCK_THINKING_MAX_TOKENS,
   AWS_BEDROCK_MIN_THINKING_BUDGET,
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
   AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION,
@@ -1035,7 +1036,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         if (maxTokens) {
           budget = Math.min(budget, 0.8 * maxTokens) | 0;
         } else {
-          inferenceConfig.maxTokens = Math.ceil(budget * 1.2) | 0;
+          inferenceConfig.maxTokens = Math.max(Math.ceil(budget * 1.2) | 0, AWS_BEDROCK_THINKING_MAX_TOKENS);
         }
         additionalModelRequestFields = {
           thinking: {
