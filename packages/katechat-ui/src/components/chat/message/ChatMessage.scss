@@ -458,6 +458,12 @@
   padding: 0.75rem 0 0;
 }
 
+// Notices are components, not markdown: the paragraph spacing above would push their text down and
+// off-centre from the icons and loaders beside it.
+.katechat-message-content .katechat-message-notices p {
+  padding-top: 0;
+}
+
 .katechat-message-footer {
   display: flex;
   flex-direction: row;

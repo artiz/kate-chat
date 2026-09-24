@@ -81,7 +81,14 @@ const SkillRun = ({ block, skill, message, autoRun, canFix, disabled, onAddMessa
   const [state, setState] = useState<RunState>({ status: "idle" });
   const [showLogs, setShowLogs] = useState(false);
   const mounted = useRef(true);
-  useEffect(() => () => void (mounted.current = false), []);
+  useEffect(() => {
+    // set on every mount: StrictMode unmounts and remounts effects, and a flag left false by that
+    // first cleanup would drop the finished run's result and leave the card "Generating" for good
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const file = message.metadata?.generatedFiles?.find(f => f.name === normalizeFileName(block.fileName));
 
