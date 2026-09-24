@@ -17,8 +17,9 @@ import { MessageRole, PluginProps, assert } from "@katechat/ui";
 import { CreateMessageResponse, GeneratedFile, Message, Skill } from "@/types/graphql";
 import { CREATE_MESSAGE, GET_SKILLS, SAVE_GENERATED_FILE } from "@/store/services/graphql.queries";
 import { APP_API_URL } from "@/lib/config";
-import { normalizeFileName, parseSkillBlocks, SkillBlock } from "@/lib/skills/parse";
+import { findUnfinishedSkillBlock, normalizeFileName, parseSkillBlocks, SkillBlock } from "@/lib/skills/parse";
 import { runSkillCode, SkillOutputFile } from "@/lib/skills/sandbox";
+import { SKILL_RUN_EVENT, SkillRunRequest } from "@/lib/skills/events";
 import { useChatPluginsContext } from "../ChatPluginsContext";
 
 interface SkillRunsProps extends PluginProps<Message> {
@@ -122,6 +123,15 @@ const SkillRun = ({ block, skill, message, autoRun, canFix, disabled, onAddMessa
   useEffect(() => {
     if (autoRun && skill && !file && !started.has(`${message.id}:${block.index}`)) run();
   }, [autoRun, skill, file, message.id, block.index, run]);
+
+  useEffect(() => {
+    const onRequest = (event: Event) => {
+      const { messageId, index } = (event as CustomEvent<SkillRunRequest>).detail;
+      if (messageId === message.id && index === block.index && skill && !disabled) run();
+    };
+    window.addEventListener(SKILL_RUN_EVENT, onRequest);
+    return () => window.removeEventListener(SKILL_RUN_EVENT, onRequest);
+  }, [message.id, block.index, skill, disabled, run]);
 
   const askToFix = () => {
     if (state.status !== "error") return;
@@ -281,14 +291,40 @@ const SkillRun = ({ block, skill, message, autoRun, canFix, disabled, onAddMessa
  * with no file yet. Older answers offer a button instead, so opening a chat never starts programs.
  */
 export const SkillRuns = ({ message, isLast, disabled, readOnly, onAddMessage }: SkillRunsProps) => {
-  const blocks = useMemo(
-    () => (message.role === MessageRole.ASSISTANT && !message.streaming ? parseSkillBlocks(message.content) : []),
-    [message.role, message.streaming, message.content]
+  const { t } = useTranslation();
+  const finished = message.role === MessageRole.ASSISTANT && !message.streaming;
+  const blocks = useMemo(() => (finished ? parseSkillBlocks(message.content) : []), [finished, message.content]);
+  const unfinished = useMemo(
+    () => (finished ? findUnfinishedSkillBlock(message.content) : undefined),
+    [finished, message.content]
   );
   const { data } = useQuery<{ skills: Skill[] }>(GET_SKILLS, { skip: !blocks.length, fetchPolicy: "cache-first" });
   const skills = useMemo(() => new Map((data?.skills || []).map(skill => [skill.id, skill])), [data]);
 
-  if (!blocks.length || !data) return null;
+  // The answer stopped inside a skill block: say that the file is missing and why, since the program
+  // is incomplete and nothing will run it
+  const unfinishedNotice = unfinished && (
+    <Alert
+      variant="light"
+      color="yellow"
+      icon={<IconAlertTriangle size={18} />}
+      py="xs"
+      className="skill-run-unfinished"
+    >
+      <Text size="sm" fw={500}>
+        {t("skills.unfinished", { file: unfinished.fileName })}
+      </Text>
+      <Text size="xs" c="dimmed">
+        {message.metadata?.stopReason === "content_filter"
+          ? t("skills.unfinishedFiltered")
+          : message.metadata?.stopReason === "max_tokens"
+            ? t("skills.unfinishedMaxTokens")
+            : t("skills.unfinishedOther")}
+      </Text>
+    </Alert>
+  );
+
+  if (!blocks.length || !data) return unfinishedNotice || null;
 
   return (
     <Stack gap="xs" className="skill-runs">
@@ -304,6 +340,7 @@ export const SkillRuns = ({ message, isLast, disabled, readOnly, onAddMessage }:
           onAddMessage={onAddMessage}
         />
       ))}
+      {unfinishedNotice}
     </Stack>
   );
 };

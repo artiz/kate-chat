@@ -863,6 +863,11 @@
     "packages": "Packages",
     "instructions": "Instructions for the model",
     "scripts": "Helper scripts",
-    "noPackages": "Standard library only"
+    "noPackages": "Standard library only",
+    "unfinished": "The answer ended before the program for {{file}} was complete, so the file was not generated.",
+    "unfinishedFiltered": "The provider's content filter stopped it. Rephrase the request, leave out the passage that triggered the filter, or try another model.",
+    "unfinishedMaxTokens": "It reached the output token limit. Raise Max tokens in the chat settings and regenerate the answer; continuing would start a new, separate block.",
+    "unfinishedOther": "Regenerate the answer to get a complete program.",
+    "unfinishedRun": "The program for {{file}} is incomplete: the answer ended before it did, so it cannot run."
   }
 }

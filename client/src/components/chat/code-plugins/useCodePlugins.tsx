@@ -4,6 +4,9 @@ import { PythonExecutorModal } from "./PythonExecutorModal";
 import { TypeScriptExecutorModal, TSExecutorLanguage } from "./TypeScriptExecutorModal";
 import { GoExecutorModal } from "./GoExecutorModal";
 import { useTranslation } from "react-i18next";
+import { notifications } from "@mantine/notifications";
+import { skillBlockAt } from "@/lib/skills/parse";
+import { SKILL_RUN_EVENT, SkillRunRequest } from "@/lib/skills/events";
 
 interface UseCodePluginsOptions {
   onMessageSaved?: (messageId: string, newContent: string) => void;
@@ -36,18 +39,45 @@ export function useCodePlugins(options?: UseCodePluginsOptions): {
 
   const { t, i18n } = useTranslation();
 
-  const executePython = useCallback((code: string, _language: string, context?: CodePluginContext) => {
-    setPythonCode(code);
-    setPythonContext(context);
-    setOpenedPython(true);
-  }, []);
+  /**
+   * A skill block's program only works where its skill is loaded (packages, helpers, `output`), so
+   * its Run button hands it to the skill card under the answer instead of the plain executor.
+   */
+  const runAsSkill = useCallback(
+    (context?: CodePluginContext): boolean => {
+      const block = context && skillBlockAt(context.messageContent, context.blockIndex);
+      if (!context || !block) return false;
+      if (!block.closed) {
+        notifications.show({ color: "yellow", message: t("skills.unfinishedRun", { file: block.fileName }) });
+      } else {
+        const detail: SkillRunRequest = { messageId: context.messageId, index: block.index };
+        window.dispatchEvent(new CustomEvent(SKILL_RUN_EVENT, { detail }));
+      }
+      return true;
+    },
+    [t]
+  );
 
-  const executeTypeScript = useCallback((code: string, language: string, context?: CodePluginContext) => {
-    setTsCode(code);
-    setTsLanguage(language === "javascript" ? "javascript" : "typescript");
-    setTsContext(context);
-    setOpenedTS(true);
-  }, []);
+  const executePython = useCallback(
+    (code: string, _language: string, context?: CodePluginContext) => {
+      if (runAsSkill(context)) return;
+      setPythonCode(code);
+      setPythonContext(context);
+      setOpenedPython(true);
+    },
+    [runAsSkill]
+  );
+
+  const executeTypeScript = useCallback(
+    (code: string, language: string, context?: CodePluginContext) => {
+      if (runAsSkill(context)) return;
+      setTsCode(code);
+      setTsLanguage(language === "javascript" ? "javascript" : "typescript");
+      setTsContext(context);
+      setOpenedTS(true);
+    },
+    [runAsSkill]
+  );
 
   const executeGo = useCallback((code: string, _language: string, context?: CodePluginContext) => {
     setGoCode(code);

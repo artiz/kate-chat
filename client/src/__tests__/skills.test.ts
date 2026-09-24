@@ -4,7 +4,7 @@ import { TextEncoder } from "util";
 // browsers have it; jsdom does not
 Object.assign(global, { TextEncoder });
 
-import { normalizeFileName, parseSkillBlocks } from "../lib/skills/parse";
+import { findUnfinishedSkillBlock, normalizeFileName, parseSkillBlocks, skillBlockAt } from "../lib/skills/parse";
 import { buildSandboxDocument, npmImport, SANDBOX_CSP } from "../lib/skills/sandbox";
 
 describe("parseSkillBlocks", () => {
@@ -54,6 +54,44 @@ describe("parseSkillBlocks", () => {
     const blocks = parseSkillBlocks("````python skill=pdf file=doc.pdf\ntext = '```'\n````");
     expect(blocks).toHaveLength(1);
     expect(blocks[0].code).toBe("text = '```'");
+  });
+});
+
+describe("an answer cut off inside a skill block", () => {
+  // what a content filter or the output limit leaves: the program's closing fence never arrives
+  const cutOff = [
+    "Report of the mentions:",
+    "```python",
+    "print('a plain block before it')",
+    "```",
+    "",
+    "```typescript skill=pdf file=paris.pdf",
+    'import { renderPdf } from "skill/pdf.js";',
+    "const content = [",
+  ].join("\n");
+
+  it("offers no block to run", () => {
+    expect(parseSkillBlocks(cutOff)).toEqual([]);
+  });
+
+  it("is reported with the file it would have made", () => {
+    expect(findUnfinishedSkillBlock(cutOff)).toEqual({ skillId: "pdf", fileName: "paris.pdf" });
+    expect(findUnfinishedSkillBlock(cutOff + "\n```")).toBeUndefined();
+    expect(findUnfinishedSkillBlock("```python\nprint(1)")).toBeUndefined();
+  });
+
+  it("maps the code block's own Run button to the skill block, finished or not", () => {
+    // block 0 is the plain python block, block 1 the unfinished skill block
+    expect(skillBlockAt(cutOff, 0)).toBeUndefined();
+    expect(skillBlockAt(cutOff, 1)).toEqual({ index: 0, fileName: "paris.pdf", closed: false });
+    const complete = cutOff + "\n];\n```\n\n```python skill=xlsx file=b.xlsx\nx = 1\n```";
+    expect(skillBlockAt(complete, 1)).toEqual({ index: 0, fileName: "paris.pdf", closed: true });
+    expect(skillBlockAt(complete, 2)).toEqual({ index: 1, fileName: "b.xlsx", closed: true });
+  });
+
+  it("does not count unlabelled blocks, which the chat renders without a Run button", () => {
+    const content = "```\nplain\n```\n```python skill=xlsx file=a.xlsx\nx = 1\n```";
+    expect(skillBlockAt(content, 0)).toEqual({ index: 0, fileName: "a.xlsx", closed: true });
   });
 });
 

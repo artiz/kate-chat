@@ -8,9 +8,8 @@ export interface SkillBlock {
   code: string;
 }
 
-// An opening fence of three or more backticks, its info string, the body, and the same fence closing it
-const FENCE = /^(`{3,})([^\n`]*)\n([\s\S]*?)\n\1[ \t]*$/gm;
 const ATTRIBUTE = /(\w+)=(?:"([^"]*)"|'([^']*)'|(\S+))/g;
+const OPENING_FENCE = /^(`{3,}|~{3,})(.*)$/;
 
 function parseInfo(info: string): { language: string; attributes: Record<string, string> } {
   const trimmed = info.trim();
@@ -22,25 +21,86 @@ function parseInfo(info: string): { language: string; attributes: Record<string,
   return { language, attributes };
 }
 
+/** A fenced code block as the chat renders it; `closed` is false for one the answer ended inside. */
+export interface FencedBlock {
+  language: string;
+  attributes: Record<string, string>;
+  code: string;
+  closed: boolean;
+}
+
 /**
- * Finds the blocks addressed to a skill. Other code blocks are left alone, and so is a skill block
- * that names no file: there would be nothing to attach.
+ * Splits markdown into its fenced code blocks the way the renderer does: a fence closes on a line of
+ * the same character at least as long as the one that opened it. An answer that stops mid-block (cut
+ * off by the output limit or a content filter) leaves the last block open.
+ */
+export function scanFencedBlocks(content: string | undefined): FencedBlock[] {
+  if (!content) return [];
+  const blocks: FencedBlock[] = [];
+  let open: { fence: string; info: string; lines: string[] } | undefined;
+
+  for (const line of content.split("\n")) {
+    if (!open) {
+      const match = line.match(OPENING_FENCE);
+      // a backtick fence's info string cannot contain backticks
+      if (match && !(match[1][0] === "`" && match[2].includes("`"))) {
+        open = { fence: match[1], info: match[2], lines: [] };
+      }
+      continue;
+    }
+    const trimmed = line.trimEnd();
+    if (trimmed.length >= open.fence.length && trimmed === open.fence[0].repeat(trimmed.length)) {
+      blocks.push({ ...parseInfo(open.info), code: open.lines.join("\n"), closed: true });
+      open = undefined;
+    } else {
+      open.lines.push(line);
+    }
+  }
+  if (open) blocks.push({ ...parseInfo(open.info), code: open.lines.join("\n"), closed: false });
+  return blocks;
+}
+
+const isSkillBlock = (block: FencedBlock) => !!block.attributes.skill && !!block.attributes.file;
+
+/**
+ * Finds the complete blocks addressed to a skill. Other code blocks are left alone, and so is a skill
+ * block that names no file: there would be nothing to attach.
  */
 export function parseSkillBlocks(content: string | undefined): SkillBlock[] {
-  if (!content) return [];
-  const blocks: SkillBlock[] = [];
-  for (const match of content.matchAll(FENCE)) {
-    const { language, attributes } = parseInfo(match[2]);
-    if (!attributes.skill || !attributes.file) continue;
-    blocks.push({
-      index: blocks.length,
-      language,
-      skillId: attributes.skill,
-      fileName: attributes.file,
-      code: match[3],
-    });
-  }
-  return blocks;
+  return scanFencedBlocks(content)
+    .filter(block => block.closed && isSkillBlock(block))
+    .map((block, index) => ({
+      index,
+      language: block.language,
+      skillId: block.attributes.skill,
+      fileName: block.attributes.file,
+      code: block.code,
+    }));
+}
+
+/** The skill block the answer ended inside, if it did: its program is incomplete and cannot run. */
+export function findUnfinishedSkillBlock(
+  content: string | undefined
+): { skillId: string; fileName: string } | undefined {
+  const last = scanFencedBlocks(content).pop();
+  return last && !last.closed && isSkillBlock(last)
+    ? { skillId: last.attributes.skill, fileName: last.attributes.file }
+    : undefined;
+}
+
+/**
+ * The skill block behind a code block's own Run button. `blockIndex` counts the blocks the chat
+ * renders with a header, which are those that name a language.
+ */
+export function skillBlockAt(
+  content: string | undefined,
+  blockIndex: number
+): { index: number; fileName: string; closed: boolean } | undefined {
+  const withLanguage = scanFencedBlocks(content).filter(block => block.language);
+  const block = withLanguage[blockIndex];
+  if (!block || !isSkillBlock(block)) return undefined;
+  const index = withLanguage.slice(0, blockIndex).filter(b => b.closed && isSkillBlock(b)).length;
+  return { index, fileName: block.attributes.file, closed: block.closed };
 }
 
 /**
