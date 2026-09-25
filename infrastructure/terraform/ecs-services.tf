@@ -107,6 +107,10 @@ locals {
       value = var.default_admin_emails
     },
     {
+      name  = "ENABLED_MCP_SERVICES"
+      value = var.enabled_mcp_services
+    },
+    {
       name  = "OPENAI_IGNORED_MODELS"
       value = "o1-pro,chatgpt-image,gpt-image,dall-e,o4,gpt-audio,gpt-4-0125-preview,gpt-4-0613,gpt-4-1106-preview,gpt-4o-2024-11-20,gpt-4o-mini-search-preview,gpt-5-2025-08-07,gpt-realtime,whisper-1,gpt-5-codex,gpt-5.2-codex"
     },
@@ -279,6 +283,14 @@ locals {
       {
         name      = "OPENAI_API_KEY"
         valueFrom = aws_secretsmanager_secret.openai_api_key.arn
+      },
+      {
+        name      = "MCP_SERVER_TELEGRAM_API_ID"
+        valueFrom = aws_secretsmanager_secret.telegram_api_id.arn
+      },
+      {
+        name      = "MCP_SERVER_TELEGRAM_API_HASH"
+        valueFrom = aws_secretsmanager_secret.telegram_api_hash.arn
       },
       {
         name      = "SMTP_USER"

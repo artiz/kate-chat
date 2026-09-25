@@ -25,6 +25,10 @@ app_desired_count = 3
 redis_node_type = "cache.t3.micro"
 redis_num_cache_nodes = 1
 
+# System MCP servers hosted by the API. Telegram reads MCP_SERVER_TELEGRAM_API_ID/_API_HASH
+# from the <project>-<env>-telegram-api-id/-api-hash secrets; fill them before deploying
+# enabled_mcp_services = "gmail,telegram"
+
 # Error Monitoring (5xx alarms -> email via SNS)
 # error_monitoring_recipients = ["artem.kustikov@gmail.com"]
 # error_monitoring_5xx_threshold = 1

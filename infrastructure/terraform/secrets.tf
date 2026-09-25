@@ -95,6 +95,20 @@ resource "aws_secretsmanager_secret" "openai_api_key" {
   recovery_window_in_days = var.environment == "production" ? 30 : 0
 }
 
+# Telegram system MCP: one application from https://my.telegram.org (API development tools)
+# serves every user of the instance. Values are put by hand, like the OAuth secrets above.
+resource "aws_secretsmanager_secret" "telegram_api_id" {
+  name                    = "${var.project_name}-${var.environment}-telegram-api-id"
+  description             = "Telegram MCP api_id"
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
+}
+
+resource "aws_secretsmanager_secret" "telegram_api_hash" {
+  name                    = "${var.project_name}-${var.environment}-telegram-api-hash"
+  description             = "Telegram MCP api_hash"
+  recovery_window_in_days = var.environment == "production" ? 30 : 0
+}
+
 
 # ─────────────────────────────────────────────────────────────
 # SES — domain identity, DKIM, IAM SMTP user, secrets
