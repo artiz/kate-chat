@@ -1,8 +1,16 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { buildSkillsPrompt, loadSkill, loadSkills, SkillChatFile, SkillError, withSkills } from "../skills.service";
-import { runSkillTool, skillOfCall } from "../ai/tools/skills.tool";
+import {
+  buildSkillsPrompt,
+  loadSkill,
+  loadSkills,
+  SkillChatFile,
+  SkillError,
+  skillRestartPrompt,
+  withSkills,
+} from "../skills.service";
+import { runSkillTool, skillOfCall, unloadedSkillBlock } from "../ai/tools/skills.tool";
 import type { CompleteChatRequest } from "@/types/ai.types";
 
 const RESOURCES = path.join(__dirname, "../../../resources/skills");
@@ -120,6 +128,9 @@ describe("skills", () => {
       expect(prompt).toContain("- `pptx` (PowerPoint presentation): Slide decks");
       expect(prompt).toContain("- `office-edit` (Edit Office documents):");
       expect(prompt).toContain("call the `use_skill` tool");
+      expect(prompt).toContain(
+        "to change a document that is already in this chat (attached or made earlier) and keep its design, pick `office-edit`"
+      );
       expect(prompt).not.toContain("## Skill `pptx`"); // no instructions until the model asks
       expect(applied.maxTokens).toBe(2048); // lifted only once a skill is used
       expect(applied.temperature).toBe(0.5);
@@ -162,6 +173,36 @@ describe("skills", () => {
       expect(request.settings?.maxTokens).toBe(2048);
       expect(await runSkillTool(request, { skill: "pdf" })).toBe("instructions for pdf");
       expect(request.settings?.maxTokens).toBeUndefined();
+    });
+
+    it("spots a skill block the model began without loading the skill", () => {
+      const context = {
+        skills: [
+          { id: "pptx", name: "PPTX" },
+          { id: "xlsx", name: "XLSX" },
+        ],
+        load: async () => "",
+      };
+      const loaded = new Set(["xlsx"]);
+      expect(unloadedSkillBlock("Here:\n\n```typescript skill=pptx file=a.pptx", context, loaded)).toBeUndefined(); // line not complete yet
+      expect(unloadedSkillBlock("Here:\n\n```typescript skill=pptx file=a.pptx\n", context, loaded)).toBe("pptx");
+      expect(unloadedSkillBlock("```python skill=xlsx file=a.xlsx\nwb = 1\n", context, loaded)).toBeUndefined(); // loaded
+      expect(unloadedSkillBlock("```python skill=docx file=a.docx\n", context, loaded)).toBeUndefined(); // no such skill
+      expect(unloadedSkillBlock("Use `skill=pptx` in the header.\n", context, loaded)).toBeUndefined(); // not a fence
+      expect(unloadedSkillBlock("```typescript skill=pptx file=a.pptx\n", undefined, loaded)).toBeUndefined();
+    });
+
+    it("restarts with the skill's instructions, and office-edit's when there is a document to change", async () => {
+      const { skills } = await withSkills(settings, { toolCalls: true, loadChatFiles: async () => chatFiles });
+      const withDeck = await skillRestartPrompt("pptx", skills!, chatFiles);
+      expect(withDeck.loaded).toEqual(["pptx", "office-edit"]);
+      expect(withDeck.prompt).toContain("Your answer started a `pptx` block without loading the skill's instructions");
+      expect(withDeck.prompt).toContain("## Skill `pptx`");
+      expect(withDeck.prompt).toContain("## Skill `office-edit`");
+
+      const imagesOnly = chatFiles.filter(file => file.type === "image");
+      expect((await skillRestartPrompt("pptx", skills!, imagesOnly)).loaded).toEqual(["pptx"]);
+      expect((await skillRestartPrompt("office-edit", skills!, chatFiles)).loaded).toEqual(["office-edit"]);
     });
 
     it("finds the skill a stored call asked for", () => {

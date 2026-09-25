@@ -261,9 +261,39 @@ ${SKILLS_INTRO}
 Skills:
 ${skills.map(skill => `- \`${skill.id}\` (${skill.name}): ${skill.description}`).join("\n")}
 
-Pick the skill from its description. Before writing its block, call the \`${SKILL_TOOL_NAME}\` tool with the skill's id: it returns the skill's API, helper modules and an example, the files of this chat and, for TypeScript skills, how to use photos. Then write the block following them.
+Pick the skill from its description${skills.some(skill => skill.id === "office-edit") ? "; to change a document that is already in this chat (attached or made earlier) and keep its design, pick `office-edit`, not a skill that makes new files" : ""}. Before writing its block, call the \`${SKILL_TOOL_NAME}\` tool with the skill's id: it returns the skill's API, helper modules and an example, the files of this chat and, for TypeScript skills, how to use photos. Then write the block following them.
 
 ${SKILL_BLOCK_RULES}`;
+}
+
+/**
+ * The system prompt addition for an answer restarted because it began a skill block without the
+ * skill's instructions: the instructions, and, when the chat has an Office document the model may
+ * have meant to change, those of office-edit too. Returns the ids whose instructions it holds.
+ */
+export async function skillRestartPrompt(
+  id: string,
+  context: SkillToolContext,
+  chatFiles: SkillChatFile[]
+): Promise<{ prompt: string; loaded: string[] }> {
+  const loaded = [id];
+  const parts = [
+    `# Instructions for the skill \`${id}\`
+
+Your answer started a \`${id}\` block without loading the skill's instructions. They follow: write your whole answer again, following them. The answer has no length limit.
+
+${await context.load(id)}`,
+  ];
+  const editable = chatFiles.some(file => file.type !== "image" && /\.(docx|pptx|xlsx)$/i.test(file.fileName));
+  if (id !== "office-edit" && editable && context.skills.some(skill => skill.id === "office-edit")) {
+    loaded.push("office-edit");
+    parts.push(`# Instructions for the skill \`office-edit\`
+
+If the user wants a document that is already in this chat changed (for example keeping its design), use \`office-edit\` on that file instead of making a new one.
+
+${await context.load("office-edit")}`);
+  }
+  return { prompt: parts.join("\n\n"), loaded };
 }
 
 /** What use_skill returns: one skill's instructions, with the chat's files and the photo API. */

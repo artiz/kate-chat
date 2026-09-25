@@ -59,3 +59,23 @@ export function skillOfCall(calls: ChatToolCall[] | undefined, callId?: string):
     return "";
   }
 }
+
+// the opening line of a skill block, complete (so the whole id is there): ```python skill=xlsx file=...
+const SKILL_BLOCK_HEADER = /^[ \t]*(?:`{3,}|~{3,})[^\n]*?\bskill=["']?([\w-]+)["']?[^\n]*\n/gm;
+
+/**
+ * The first skill whose block an answer has started without loading its instructions (weak models
+ * skip use_skill and write from memory), if any.
+ */
+export function unloadedSkillBlock(
+  content: string,
+  context: SkillToolContext | undefined,
+  loaded: Set<string>
+): string | undefined {
+  if (!context || !content.includes("skill=")) return undefined;
+  for (const match of content.matchAll(SKILL_BLOCK_HEADER)) {
+    const id = match[1];
+    if (!loaded.has(id) && context.skills.some(skill => skill.id === id)) return id;
+  }
+  return undefined;
+}

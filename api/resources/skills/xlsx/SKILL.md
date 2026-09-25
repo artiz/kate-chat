@@ -8,6 +8,8 @@ packages:
 
 Use this skill when the user wants a spreadsheet, a table to download, an Excel file or a budget, plan or report they will edit. Write Python with openpyxl; the helper module `xlsx_helpers` styles tables and sizes columns.
 
+To change a workbook that is already in this chat (attached or made earlier), keeping its formatting, use the `office-edit` skill instead: this one makes new workbooks.
+
 ```python skill=xlsx file=sales-2026.xlsx
 from openpyxl import Workbook
 from xlsx_helpers import write_table, autosize, add_chart

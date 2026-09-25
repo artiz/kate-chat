@@ -311,7 +311,12 @@ export class BedrockApiProvider extends BaseApiProvider {
             const delta = chunk.contentBlockDelta.delta;
             if (delta.text) {
               fullResponse += delta.text;
-              await callbacks.onProgress(delta.text);
+              if (await callbacks.onProgress(delta.text)) {
+                // the caller stopped the answer (cancelled, or restarting it with skill
+                // instructions): stop generating instead of streaming to the end
+                requestCompleted = true;
+                break;
+              }
             } else if (delta.reasoningContent) {
               reasoningContent += delta.reasoningContent.text || "";
               await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: reasoningContent });

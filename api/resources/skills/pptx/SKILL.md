@@ -8,6 +8,8 @@ packages:
 
 Use this skill when the user wants a presentation, slides or a deck. Write TypeScript with pptxgenjs; the helper module `skill/deck.js` gives the deck a consistent look, so prefer it over positioning everything by hand.
 
+To change a presentation that is already in this chat (attached or made earlier), keeping its design, use the `office-edit` skill instead: this one makes new decks.
+
 ```typescript skill=pptx file=quarterly-review.pptx
 import { createDeck, titleSlide, bulletSlide, tableSlide, chartSlide, sectionSlide } from "skill/deck.js";
 

@@ -24,8 +24,13 @@ import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, Tool
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
-import { SkillChatFile, withSkills } from "@/services/skills.service";
-import { SKILL_TOOL_NAME, SKILL_TOOL_RESULT_SUMMARY, skillOfCall } from "@/services/ai/tools/skills.tool";
+import { SkillChatFile, skillRestartPrompt, withSkills } from "@/services/skills.service";
+import {
+  SKILL_TOOL_NAME,
+  SKILL_TOOL_RESULT_SUMMARY,
+  skillOfCall,
+  unloadedSkillBlock,
+} from "@/services/ai/tools/skills.tool";
 import { extractOfficeText, officeKind } from "@/utils/office";
 import { isAdmin } from "@/utils/jwt";
 import { getRepository } from "@/config/database";
@@ -1211,6 +1216,65 @@ export class MessagesService {
     let content = "";
     let lastPublish: number = 0;
 
+    // Skills the model loaded with use_skill in this answer. A block for any other skill means it
+    // skipped the instructions (weak models do) and writes from memory, under the chat's Max Tokens:
+    // the answer is then stopped and started again once, with the instructions and no limit.
+    const loadedSkills = new Set<string>();
+    let skillRestart: string | undefined;
+    let skillRestarted = false;
+
+    const handleStreamError = (error: unknown) => {
+      logger.error(error, "Error streaming AI response");
+      const content = getErrorMessage(error);
+      return completeRequest(
+        {
+          ...assistantMessage,
+          content,
+          role: MessageRole.ERROR,
+        },
+        {
+          content,
+          completed: true,
+        }
+      ).catch(err => logger.error(err, "Error sending AI response"));
+    };
+
+    const restartWithSkill = async (id: string) => {
+      skillRestarted = true;
+      const { prompt, loaded } = await skillRestartPrompt(id, request.skills!, await loadChatFiles());
+      loaded.forEach(skill => loadedSkills.add(skill));
+      logger.info({ chatId: chat.id, messageId: assistantMessage.id, skill: id }, "Restarting answer with skill");
+
+      content = "";
+      assistantMessage.content = "";
+      assistantMessage.status = ResponseStatus.STARTED;
+      assistantMessage.metadata = {
+        ...assistantMessage.metadata,
+        // shown in the message details like a use_skill call
+        toolCalls: [
+          ...(assistantMessage.metadata?.toolCalls || []),
+          ...loaded.map(skill => ({
+            name: SKILL_TOOL_NAME,
+            callId: `restart-${skill}`,
+            args: JSON.stringify({ skill }),
+          })),
+        ],
+      };
+      await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
+
+      const retry: CompleteChatRequest = {
+        ...request,
+        settings: {
+          ...request.settings,
+          systemPrompt: [request.settings?.systemPrompt, prompt].filter(Boolean).join("\n\n"),
+          maxTokens: undefined,
+        },
+      };
+      this.aiService
+        .streamChatCompletion(connection, retry, inputMessages, model, handleStreaming, s3Service)
+        .catch(handleStreamError);
+    };
+
     const handleStreaming = async (
       data: ModelResponse & { error?: Error; status?: ChatResponseStatus },
       completed?: boolean,
@@ -1220,6 +1284,13 @@ export class MessagesService {
       const messageId = assistantMessage.id;
 
       if (completed) {
+        if (skillRestart && !error) {
+          const id = skillRestart;
+          skillRestart = undefined;
+          await restartWithSkill(id);
+          return false;
+        }
+
         if (error) {
           logger.error(error, "Error in streaming AI response");
           const content = getErrorMessage(error);
@@ -1264,7 +1335,7 @@ export class MessagesService {
         return completeRequest(assistantMessage, data);
       }
 
-      if (this.cancelledMessages.has(messageId)) {
+      if (this.cancelledMessages.has(messageId) || skillRestart) {
         return true;
       }
 
@@ -1273,6 +1344,10 @@ export class MessagesService {
         content = token || assistantMessage.content || IMAGE_GENERATION_PLACEHOLDER;
       } else {
         content += token;
+        if (!skillRestarted && request.skills && token.includes("\n")) {
+          skillRestart = unloadedSkillBlock(content, request.skills, loadedSkills);
+          if (skillRestart) return true; // stop this answer; it starts again when the stream completes
+        }
       }
 
       if (status?.userMessageTokens) {
@@ -1329,6 +1404,9 @@ export class MessagesService {
           }
 
           if (status.toolCalls) {
+            status.toolCalls
+              .filter(call => call.name === SKILL_TOOL_NAME)
+              .forEach(call => loadedSkills.add(skillOfCall([call], call.callId)));
             const existingCalls = new Set(assistantMessage.metadata.toolCalls?.map(call => call.callId) || []);
             assistantMessage.metadata.toolCalls = [
               ...(assistantMessage.metadata.toolCalls || []),
@@ -1377,21 +1455,7 @@ export class MessagesService {
 
     this.aiService
       .streamChatCompletion(connection, request, inputMessages, model, handleStreaming, s3Service)
-      .catch((error: unknown) => {
-        logger.error(error, "Error streaming AI response");
-        const content = getErrorMessage(error);
-        return completeRequest(
-          {
-            ...assistantMessage,
-            content,
-            role: MessageRole.ERROR,
-          },
-          {
-            content,
-            completed: true,
-          }
-        ).catch(err => logger.error(err, "Error sending AI response"));
-      });
+      .catch(handleStreamError);
   }
 
   protected getStatusInformation(status: ChatResponseStatus | undefined): string | undefined {
