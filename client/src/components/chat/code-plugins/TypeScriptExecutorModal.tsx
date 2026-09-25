@@ -41,20 +41,20 @@ interface OutputEntry {
 }
 
 // Minimal typing for the TypeScript compiler global
-interface TSCompiler {
+export interface TSCompiler {
   transpileModule: (
     code: string,
     opts: { compilerOptions: { module: number; target: number }; reportDiagnostics?: boolean }
   ) => { outputText: string; diagnostics?: Array<{ messageText: string | { messageText: string } }> };
-  ModuleKind: { None: number };
-  ScriptTarget: { ES2020: number };
+  ModuleKind: { None: number; ESNext: number };
+  ScriptTarget: { ES2020: number; ES2022: number };
 }
 
 // Global compiler cache — loaded once, reused across modal opens
 let tsCompiler: TSCompiler | null = null;
 let tsLoadPromise: Promise<TSCompiler> | null = null;
 
-async function loadTypeScriptCompiler(): Promise<TSCompiler> {
+export async function loadTypeScriptCompiler(): Promise<TSCompiler> {
   if (tsCompiler) return tsCompiler;
   if (tsLoadPromise) return tsLoadPromise;
 

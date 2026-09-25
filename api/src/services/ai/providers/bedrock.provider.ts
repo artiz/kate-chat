@@ -69,6 +69,9 @@ import { FileContentLoader } from "@/services/data";
 import { globalConfig } from "@/global-config";
 import {
   AWS_BEDROCK_MAX_THINKING_BUDGET,
+  AWS_BEDROCK_THINKING_MAX_TOKENS,
+  AWS_BEDROCK_UNLIMITED_OUTPUT_TOKENS,
+  outputLimitFromError,
   AWS_BEDROCK_MIN_THINKING_BUDGET,
   AWS_BEDROCK_MODELS_SUPPORT_REASONING,
   AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION,
@@ -159,13 +162,19 @@ export class BedrockApiProvider extends BaseApiProvider {
     let finalResponse: ModelResponse | undefined;
 
     // Format tools from request
-    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers, request);
 
     do {
       // Get provider service and parameters
       const input = await this.formatConverseParams(request, messages, requestTools, conversationMessages);
       const command = new ConverseCommand(input);
-      const response: ConverseCommandOutput = await this.bedrockClient.send(command);
+      let response: ConverseCommandOutput;
+      try {
+        response = await this.bedrockClient.send(command);
+      } catch (error: unknown) {
+        if (this.learnOutputLimit(request, input, error)) continue;
+        throw error;
+      }
       const { modelResponse, stopReason, toolUse = [] } = this.parseConverseResponse(response, request);
 
       // Check if model wants to use a tool
@@ -237,7 +246,7 @@ export class BedrockApiProvider extends BaseApiProvider {
     };
 
     // Format tools from request
-    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers);
+    const requestTools = formatBedrockRequestTools(request.tools, request.mcpServers, request);
     const modelId = this.getModelId(request.modelId);
     let contextMessages = messages || [];
     let tooLongErrorRetries = 0;
@@ -252,6 +261,7 @@ export class BedrockApiProvider extends BaseApiProvider {
         try {
           streamResponse = await this.bedrockClient.send(command);
         } catch (error: unknown) {
+          if (this.learnOutputLimit(request, input, error)) continue;
           if (
             error instanceof Error &&
             this.isInputTooLargeError(error) &&
@@ -310,7 +320,12 @@ export class BedrockApiProvider extends BaseApiProvider {
             const delta = chunk.contentBlockDelta.delta;
             if (delta.text) {
               fullResponse += delta.text;
-              await callbacks.onProgress(delta.text);
+              if (await callbacks.onProgress(delta.text)) {
+                // the caller stopped the answer (cancelled, or restarting it with skill
+                // instructions): stop generating instead of streaming to the end
+                requestCompleted = true;
+                break;
+              }
             } else if (delta.reasoningContent) {
               reasoningContent += delta.reasoningContent.text || "";
               await callbacks.onProgress("", { status: ResponseStatus.REASONING, detail: reasoningContent });
@@ -439,6 +454,23 @@ export class BedrockApiProvider extends BaseApiProvider {
         requestCompleted = true;
       }
     } while (!requestCompleted);
+  }
+
+  // output limits of models that rejected AWS_BEDROCK_UNLIMITED_OUTPUT_TOKENS, by model id
+  private static outputLimits = new Map<string, number>();
+
+  /**
+   * When an answer asked for an unlimited output and the model rejected the limit, learns the
+   * model's own from the error and returns true to retry; once per model, since it is remembered.
+   */
+  private learnOutputLimit(request: CompleteChatRequest, input: ConverseCommandInput, error: unknown): boolean {
+    const requested = input.inferenceConfig?.maxTokens;
+    if (!request.outputUnlimited || !requested || request.settings?.maxTokens) return false;
+    const limit = outputLimitFromError(error, requested);
+    if (!limit || !input.modelId) return false;
+    logger.info({ modelId: input.modelId, limit }, "Learned the model's output limit");
+    BedrockApiProvider.outputLimits.set(input.modelId, limit);
+    return true;
   }
 
   isInputTooLargeError(error: Error): boolean {
@@ -1004,7 +1036,11 @@ export class BedrockApiProvider extends BaseApiProvider {
 
     const requestMessages: ConverseMessage[] = await this.formatConverseMessages(messages);
     const inferenceConfig: InferenceConfiguration = {
-      maxTokens,
+      maxTokens:
+        maxTokens ||
+        (request.outputUnlimited
+          ? BedrockApiProvider.outputLimits.get(modelId) || AWS_BEDROCK_UNLIMITED_OUTPUT_TOKENS
+          : undefined),
       stopSequences: [],
     };
     if (supportsTemperature) {
@@ -1032,10 +1068,10 @@ export class BedrockApiProvider extends BaseApiProvider {
         if (supportsTemperature) {
           inferenceConfig.temperature = 1;
         }
-        if (maxTokens) {
-          budget = Math.min(budget, 0.8 * maxTokens) | 0;
+        if (inferenceConfig.maxTokens) {
+          budget = Math.min(budget, 0.8 * inferenceConfig.maxTokens) | 0;
         } else {
-          inferenceConfig.maxTokens = Math.ceil(budget * 1.2) | 0;
+          inferenceConfig.maxTokens = Math.max(Math.ceil(budget * 1.2) | 0, AWS_BEDROCK_THINKING_MAX_TOKENS);
         }
         additionalModelRequestFields = {
           thinking: {

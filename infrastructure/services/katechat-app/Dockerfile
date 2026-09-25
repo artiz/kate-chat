@@ -46,6 +46,8 @@ COPY --from=build /app/node_modules/ ./node_modules
 COPY --from=build /app/api/node_modules/ ./node_modules
 COPY --from=build /app/api/dist ./
 COPY --from=build /app/api/src/assets ./assets
+# skills (SKILL.md and helper scripts) are served read-only to the app, see services/skills.service.ts
+COPY --from=build /app/api/resources ./resources
 COPY --from=build /app/db-migrations ./db-migrations
 
 # copy built frontend client files

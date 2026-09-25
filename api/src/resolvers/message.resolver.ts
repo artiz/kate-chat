@@ -9,6 +9,7 @@ import {
   GetChatFilesInput,
   StopMessageGenerationInput,
   MessageContext,
+  SaveGeneratedFileInput,
 } from "@/types/graphql/inputs";
 import { getRepository } from "@/config/database";
 import { GraphQLContext } from ".";
@@ -32,6 +33,8 @@ import { ChatsService } from "@/services/chats.service";
 import { isAdmin } from "@/utils/jwt";
 import { ChatFileType } from "@/entities/ChatFile";
 import { globalConfig } from "@/global-config";
+import { GraphQLError } from "graphql";
+import { GeneratedFileError, GeneratedFilesService } from "@/services/generated-files.service";
 
 const logger = createLogger(__filename);
 
@@ -231,6 +234,21 @@ export class MessageResolver extends BaseResolver {
     const user = await this.validateContextUser(context);
 
     return await messageService.addChatMessage(input, user);
+  }
+
+  /** Attach a file a skill's program wrote in the browser to the answer that contains the program */
+  @Mutation(() => Message)
+  async saveGeneratedFile(
+    @Arg("input") input: SaveGeneratedFileInput,
+    @Ctx() context: GraphQLContext
+  ): Promise<Message> {
+    const token = await this.validateContextToken(context);
+    try {
+      return await new GeneratedFilesService().save(token, input.messageId, input.name, input.bytesBase64);
+    } catch (error) {
+      if (error instanceof GeneratedFileError) throw new GraphQLError(error.message, { extensions: { code: 400 } });
+      throw error;
+    }
   }
 
   @Subscription(() => GqlMessage, {

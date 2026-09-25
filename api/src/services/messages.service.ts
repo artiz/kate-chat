@@ -24,6 +24,14 @@ import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, Tool
 import { notEmpty, ok } from "@/utils/assert";
 import { getErrorMessage } from "@/utils/errors";
 import { createLogger } from "@/utils/logger";
+import { SkillChatFile, skillRestartPrompt, withSkills } from "@/services/skills.service";
+import {
+  SKILL_TOOL_NAME,
+  SKILL_TOOL_RESULT_SUMMARY,
+  skillOfCall,
+  unloadedSkillBlock,
+} from "@/services/ai/tools/skills.tool";
+import { extractOfficeText, officeKind } from "@/utils/office";
 import { isAdmin } from "@/utils/jwt";
 import { getRepository } from "@/config/database";
 import { formatDateCeil, formatDateFloor } from "@/utils/db";
@@ -836,7 +844,7 @@ export class MessagesService {
 
       for (let index = 0; index < files.length; ++index) {
         const file = files[index];
-        const { fileName, contentType } = await saveFileFromBase64(s3Service, file.bytesBase64, {
+        const { fileName, contentType, buffer } = await saveFileFromBase64(s3Service, file.bytesBase64, {
           chatId: chat.id,
           messageId: userMessage.id,
           id: `${Date.now()}-file-${index}`,
@@ -851,13 +859,30 @@ export class MessagesService {
           fileName,
         });
 
-        jsonContent.push({
-          contentType: "file",
-          fileName,
-          mimeType: contentType,
-          uploadFileName: file.fileName,
-          size: file.size,
-        } satisfies ModelMessageContentFile);
+        const office = officeKind(contentType);
+        if (office) {
+          // Office documents reach the model as their text: providers take few of these formats
+          // (Bedrock no pptx, OpenAI none), and text works with any model
+          let text: string;
+          try {
+            text = extractOfficeText(office, buffer) || "(no text)";
+          } catch (error) {
+            logger.warn(error, `Could not read ${file.fileName} as ${office}`);
+            text = "(the file could not be read)";
+          }
+          jsonContent.push({
+            contentType: "text",
+            content: `File "${file.fileName}" (${office}, as text; the file itself is ${S3Service.getFileUrl(fileName)}):\n\n${text}`,
+          });
+        } else {
+          jsonContent.push({
+            contentType: "file",
+            fileName,
+            mimeType: contentType,
+            uploadFileName: file.fileName,
+            size: file.size,
+          } satisfies ModelMessageContentFile);
+        }
 
         // For display purposes, append a file link to the content
         content += `${content ? "\n\n" : ""}[${file.fileName}](${S3Service.getFileUrl(fileName)})`;
@@ -1050,6 +1075,49 @@ export class MessagesService {
       chatSettings.cacheRetention = undefined;
     }
 
+    // Skills are always available to chat models, which pick them themselves (see withSkills); a
+    // skill program may read the chat's latest files (images, documents, generated files)
+    const loadChatFiles = async (): Promise<SkillChatFile[]> =>
+      (
+        await this.chatFileRepository.find({
+          where: {
+            chatId: chat.id,
+            type: In([ChatFileType.IMAGE, ChatFileType.INLINE_DOCUMENT, ChatFileType.GENERATED]),
+          },
+          order: { createdAt: "DESC" },
+          take: 30,
+        })
+      )
+        .reverse()
+        .flatMap(file =>
+          file.fileName
+            ? [
+                {
+                  fileName: file.fileName,
+                  uploadFile: file.uploadFile,
+                  type:
+                    file.type === ChatFileType.IMAGE
+                      ? ("image" as const)
+                      : file.type === ChatFileType.GENERATED
+                        ? ("generated" as const)
+                        : ("document" as const),
+                },
+              ]
+            : []
+        );
+    const withSkillsApplied =
+      model.type === ModelType.CHAT
+        ? await withSkills(chatSettings, {
+            // every provider offers MCP through function calling, so a model with MCP calls tools
+            toolCalls: !!model.tools?.includes(ToolType.MCP),
+            loadChatFiles,
+            loadOutline: async file => {
+              const bytes = await new S3Service(user.toToken()).getFileContent(file.fileName);
+              return extractOfficeText("pptx", bytes).slice(0, 20_000);
+            },
+          })
+        : { settings: chatSettings };
+
     const request: CompleteChatRequest = {
       ...input,
       requestId,
@@ -1058,8 +1126,10 @@ export class MessagesService {
       imageInput: model.imageInput,
       cacheId: chat.id,
       apiProvider: model.apiProvider,
-      settings: chatSettings,
-      tools: chat.tools,
+      settings: withSkillsApplied.settings,
+      skills: withSkillsApplied.skills,
+      // skills are no longer chosen per chat; older chats may still list them
+      tools: chat.tools?.filter(tool => tool.type !== ToolType.SKILL),
       mcpTokens: input.mcpTokens,
     };
 
@@ -1150,6 +1220,66 @@ export class MessagesService {
     let content = "";
     let lastPublish: number = 0;
 
+    // Skills the model loaded with use_skill in this answer. A block for any other skill means it
+    // skipped the instructions (weak models do) and writes from memory, under the chat's Max Tokens:
+    // the answer is then stopped and started again once, with the instructions and no limit.
+    const loadedSkills = new Set<string>();
+    let skillRestart: string | undefined;
+    let skillRestarted = false;
+
+    const handleStreamError = (error: unknown) => {
+      logger.error(error, "Error streaming AI response");
+      const content = getErrorMessage(error);
+      return completeRequest(
+        {
+          ...assistantMessage,
+          content,
+          role: MessageRole.ERROR,
+        },
+        {
+          content,
+          completed: true,
+        }
+      ).catch(err => logger.error(err, "Error sending AI response"));
+    };
+
+    const restartWithSkill = async (id: string) => {
+      skillRestarted = true;
+      const { prompt, loaded } = await skillRestartPrompt(id, request.skills!, await loadChatFiles());
+      loaded.forEach(skill => loadedSkills.add(skill));
+      logger.info({ chatId: chat.id, messageId: assistantMessage.id, skill: id }, "Restarting answer with skill");
+
+      content = "";
+      assistantMessage.content = "";
+      assistantMessage.status = ResponseStatus.STARTED;
+      assistantMessage.metadata = {
+        ...assistantMessage.metadata,
+        // shown in the message details like a use_skill call
+        toolCalls: [
+          ...(assistantMessage.metadata?.toolCalls || []),
+          ...loaded.map(skill => ({
+            name: SKILL_TOOL_NAME,
+            callId: `restart-${skill}`,
+            args: JSON.stringify({ skill }),
+          })),
+        ],
+      };
+      await this.subscriptionsService.publishChatMessage(chat, assistantMessage, true);
+
+      const retry: CompleteChatRequest = {
+        ...request,
+        settings: {
+          ...request.settings,
+          systemPrompt: [request.settings?.systemPrompt, prompt].filter(Boolean).join("\n\n"),
+          maxTokens: undefined,
+        },
+        outputUnlimited: true,
+      };
+      this.aiService
+        .streamChatCompletion(connection, retry, inputMessages, model, handleStreaming, s3Service)
+        .catch(handleStreamError);
+    };
+
     const handleStreaming = async (
       data: ModelResponse & { error?: Error; status?: ChatResponseStatus },
       completed?: boolean,
@@ -1159,6 +1289,13 @@ export class MessagesService {
       const messageId = assistantMessage.id;
 
       if (completed) {
+        if (skillRestart && !error) {
+          const id = skillRestart;
+          skillRestart = undefined;
+          await restartWithSkill(id);
+          return false;
+        }
+
         if (error) {
           logger.error(error, "Error in streaming AI response");
           const content = getErrorMessage(error);
@@ -1203,7 +1340,7 @@ export class MessagesService {
         return completeRequest(assistantMessage, data);
       }
 
-      if (this.cancelledMessages.has(messageId)) {
+      if (this.cancelledMessages.has(messageId) || skillRestart) {
         return true;
       }
 
@@ -1212,6 +1349,10 @@ export class MessagesService {
         content = token || assistantMessage.content || IMAGE_GENERATION_PLACEHOLDER;
       } else {
         content += token;
+        if (!skillRestarted && request.skills && token.includes("\n")) {
+          skillRestart = unloadedSkillBlock(content, request.skills, loadedSkills);
+          if (skillRestart) return true; // stop this answer; it starts again when the stream completes
+        }
       }
 
       if (status?.userMessageTokens) {
@@ -1247,11 +1388,30 @@ export class MessagesService {
             const existingToolsIds = new Set(assistantMessage.metadata.tools?.map(tool => tool.callId) || []);
             assistantMessage.metadata.tools = [
               ...(assistantMessage.metadata.tools || []),
-              ...status.tools.filter(tool => !existingToolsIds.has(tool.callId)),
+              ...status.tools
+                .filter(tool => !existingToolsIds.has(tool.callId))
+                // the instructions use_skill returned are long and can be loaded again
+                .map(tool =>
+                  tool.name === SKILL_TOOL_NAME
+                    ? {
+                        ...tool,
+                        content: SKILL_TOOL_RESULT_SUMMARY(
+                          // Bedrock reports the calls before their results
+                          skillOfCall(
+                            [...(status.toolCalls || []), ...(assistantMessage.metadata?.toolCalls || [])],
+                            tool.callId
+                          )
+                        ),
+                      }
+                    : tool
+                ),
             ];
           }
 
           if (status.toolCalls) {
+            status.toolCalls
+              .filter(call => call.name === SKILL_TOOL_NAME)
+              .forEach(call => loadedSkills.add(skillOfCall([call], call.callId)));
             const existingCalls = new Set(assistantMessage.metadata.toolCalls?.map(call => call.callId) || []);
             assistantMessage.metadata.toolCalls = [
               ...(assistantMessage.metadata.toolCalls || []),
@@ -1300,21 +1460,7 @@ export class MessagesService {
 
     this.aiService
       .streamChatCompletion(connection, request, inputMessages, model, handleStreaming, s3Service)
-      .catch((error: unknown) => {
-        logger.error(error, "Error streaming AI response");
-        const content = getErrorMessage(error);
-        return completeRequest(
-          {
-            ...assistantMessage,
-            content,
-            role: MessageRole.ERROR,
-          },
-          {
-            content,
-            completed: true,
-          }
-        ).catch(err => logger.error(err, "Error sending AI response"));
-      });
+      .catch(handleStreamError);
   }
 
   protected getStatusInformation(status: ChatResponseStatus | undefined): string | undefined {

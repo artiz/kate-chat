@@ -10,6 +10,7 @@ import { pick } from "lodash";
 import { Message, GetChatMessagesResponse, MessageChatInfo, ToolType, ChatSettings, Chat } from "@/types/graphql";
 import { ChatLink } from "./useChat";
 import { getClientConfig } from "@/global-config";
+import { withSkillView } from "@/lib/skills/parse";
 
 type RemoveMessagesArgs = {
   messagesToDelete?: Message[];
@@ -109,7 +110,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
-            const parsedMessages = parseChatMessages(messages);
+            const parsedMessages = parseChatMessages(messages.map(withSkillView));
             setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
 
             loadTimeout.current = setTimeout(() => setLoadCompleted(true), 300);
@@ -286,8 +287,9 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     afterUpdate && setTimeout(afterUpdate, 500); // Allow some time for the mutation to complete
   };
 
-  const addChatMessage = (msg: Message, info?: MessageChatInfo) => {
-    if (!msg) return;
+  const addChatMessage = (incoming: Message, info?: MessageChatInfo) => {
+    if (!incoming) return;
+    const msg = withSkillView(incoming);
 
     const addMessage = (message: Message) => {
       setMessages(prev => {

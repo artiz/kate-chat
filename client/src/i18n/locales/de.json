@@ -524,7 +524,8 @@
     "tabMedia": "Medien",
     "title": "Bibliothek",
     "uploadFilesHint": "Hängen Sie PDF- oder Textdateien in Ihren Chats als Kontext an, um sie hier zu sehen",
-    "uploadImagesHint": "Laden Sie Bilder in Ihren Chats hoch, um sie hier zu sehen"
+    "uploadImagesHint": "Laden Sie Bilder in Ihren Chats hoch, um sie hier zu sehen",
+    "generatedFile": "Erstellt"
   },
   "mcp": {
     "addFirstServer": "Ersten Server hinzufügen",
@@ -614,6 +615,7 @@
     }
   },
   "messageDetails": {
+    "skillsUsed": "Verwendete Skills",
     "annotations": "Anmerkungen",
     "arguments": "Argumente:",
     "codeInterpreter": "Code-Interpreter",
@@ -747,6 +749,7 @@
     "password": "Passwort",
     "profile": "Profil",
     "settings": "Einstellungen",
+    "skills": "Skills",
     "switchToDark": "Zum dunklen Modus wechseln",
     "switchToLight": "Zum hellen Modus wechseln",
     "users": "Benutzer"
@@ -839,5 +842,34 @@
     "messages": "Nachrichten",
     "documents": "Dokumente",
     "untitled": "Ohne Titel"
+  },
+  "skills": {
+    "title": "Skills",
+    "generating": "{{file}} wird erstellt…",
+    "saving": "{{file}} wird gespeichert…",
+    "pythonFirstRun": "Der erste Python-Lauf in diesem Tab lädt die Laufzeitumgebung (etwa 10 MB) und kann etwas dauern.",
+    "failed": "{{file}} konnte nicht erstellt werden",
+    "showOutput": "Programmausgabe anzeigen",
+    "hideOutput": "Programmausgabe ausblenden",
+    "askToFix": "Korrektur anfordern",
+    "runAgain": "Erneut ausführen",
+    "runAgainHint": "Programm erneut ausführen und die Datei ersetzen",
+    "download": "Herunterladen",
+    "notGenerated": "{{file}} ({{skill}}) wurde noch nicht erstellt",
+    "generate": "Erstellen",
+    "unknownSkill": "Der Skill „{{skill}}“, den {{file}} benötigt, ist auf diesem Server nicht installiert.",
+    "fixPrompt": "Beim Ausführen des Codes für {{file}} im Browser ist ein Fehler aufgetreten:\n\n```\n{{error}}\n```\n\nKorrigiere das Programm und sende den vollständigen korrigierten Block mit derselben Kopfzeile.",
+    "adminDescription": "Auf diesem Server installierte Skills. Sie werden aus resources/skills gelesen und können hier nicht geändert werden: Was Sie sehen, ist genau das, was ausgeführt wird.",
+    "noSkills": "Es sind keine Skills installiert.",
+    "runtime": "Laufzeit",
+    "packages": "Pakete",
+    "instructions": "Anweisungen für das Modell",
+    "scripts": "Hilfsskripte",
+    "noPackages": "Nur Standardbibliothek",
+    "unfinished": "Die Antwort endete, bevor das Programm für {{file}} vollständig war, daher wurde die Datei nicht erstellt.",
+    "unfinishedFiltered": "Der Inhaltsfilter des Anbieters hat sie gestoppt. Formulieren Sie die Anfrage um, lassen Sie die auslösende Passage weg oder versuchen Sie ein anderes Modell.",
+    "unfinishedMaxTokens": "Das Ausgabelimit des Modells wurde erreicht. Bitten Sie um eine kürzere Datei oder um mehrere Dateien nacheinander und generieren Sie die Antwort neu; Fortsetzen würde einen neuen, separaten Block beginnen.",
+    "unfinishedOther": "Generieren Sie die Antwort neu, um ein vollständiges Programm zu erhalten.",
+    "unfinishedRun": "Das Programm für {{file}} ist unvollständig: Die Antwort endete vorher, daher kann es nicht ausgeführt werden."
   }
 }

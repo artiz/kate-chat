@@ -301,6 +301,19 @@
     }
   }
 
+  // Code blocks are wrapped in .code-block (which collapses them) only after the answer has streamed,
+  // and a moment after it has; until then, with collapseCodeBlocks, a block not wrapped yet (a <pre>
+  // straight in a rendered part) shows just its header, so it never flashes open
+  &.collapse-code > div > pre:has(.code-header) {
+    height: 2.7rem;
+    padding: 0;
+    overflow: hidden;
+
+    .header-toggle {
+      transform: translateY(0.2rem) rotateZ(0deg);
+    }
+  }
+
   .code-header {
     font-size: 0.875rem;
     padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-sm) var(--mantine-spacing-md);
@@ -456,6 +469,12 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem 0 0;
+}
+
+// Notices are components, not markdown: the paragraph spacing above would push their text down and
+// off-centre from the icons and loaders beside it.
+.katechat-message-content .katechat-message-notices p {
+  padding-top: 0;
 }
 
 .katechat-message-footer {

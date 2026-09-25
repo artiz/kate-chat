@@ -619,3 +619,36 @@ export class SearchResults {
   @Field(() => [SearchDocumentResult])
   documentResults: SearchDocumentResult[];
 }
+
+@ObjectType()
+export class GqlSkillFile {
+  @Field()
+  path: string;
+
+  @Field()
+  content: string;
+}
+
+@ObjectType()
+export class GqlSkill {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  description: string;
+
+  @Field()
+  runtime: string;
+
+  @Field(() => [String])
+  packages: string[];
+
+  @Field()
+  instructions: string;
+
+  @Field(() => [GqlSkillFile])
+  files: GqlSkillFile[];
+}

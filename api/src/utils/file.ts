@@ -12,6 +12,10 @@ const CONTENT_TYPES: Record<string, string> = {
   ".mp3": "audio/mpeg",
   ".wav": "audio/wav",
   ".pdf": "application/pdf",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".zip": "application/zip",
   // code files
   ".json": "application/json",
   ".xml": "application/xml",
@@ -53,6 +57,9 @@ export const FILE_MIME_EXTENSIONS: Record<string, string> = {
   "text/xml": "xml",
   "application/x-yaml": "yaml",
   "text/yaml": "yaml",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
 };
 
 /**

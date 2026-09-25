@@ -32,6 +32,13 @@ export const SUPPORTED_UPLOAD_FORMATS = [
 // any model; PDF needs native file input support (ModelFeature.FILES_INPUT)
 export const CONTEXT_TEXT_UPLOAD_FORMATS = ["text/plain", "text/markdown", "text/csv", "text/html", "application/json"];
 export const CONTEXT_PDF_UPLOAD_FORMAT = "application/pdf";
+// Office documents are sent to the model as their text (extracted by the API), so they work with any
+// chat model too, and skill programs can open the files themselves to make an updated version
+export const CONTEXT_OFFICE_UPLOAD_FORMATS = [
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+];
 export const MAX_CONTEXT_FILES = 5; // Maximum inline chat-context files in a single message
 
 export const MOBILE_BREAKPOINT = `(max-width: ${em(750)})`;

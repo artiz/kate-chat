@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { Fragment, useCallback, useRef, useState } from "react";
 import { Stack } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { notEmpty, ok } from "@/lib/assert";
@@ -361,7 +361,13 @@ export const ChatMessagesList = React.memo<ChatMessagesProps>(
 
     const messageDetailsLoader = useCallback(
       (msg: Message) => {
-        const details = detailsPlugins.map(plugin => plugin(msg)).filter(notEmpty);
+        // keyed here, so a plugin can return a bare fragment
+        const details = detailsPlugins
+          .map((plugin, index) => {
+            const node = plugin(msg);
+            return node ? <Fragment key={index}>{node}</Fragment> : null;
+          })
+          .filter(notEmpty);
         return details.length ? details : null;
       },
       [detailsPlugins]

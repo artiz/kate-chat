@@ -116,6 +116,20 @@ export const ChatInputHeader = ({
     onUpdateChat({ settings });
   };
 
+  /**
+   * The chat's tools: plain tool types plus one entry per selected MCP server. Skills are not
+   * chosen here (the model picks them), so entries older chats have for them are dropped.
+   */
+  const buildTools = (types: Set<ToolType>, mcpIds: Set<string>) => {
+    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(types)
+      .filter(t => t !== ToolType.MCP && t !== ToolType.SKILL)
+      .map(type => ({ type, name: type as string }));
+    if (types.has(ToolType.MCP)) {
+      mcpIds.forEach(id => toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id }));
+    }
+    return toolsArray;
+  };
+
   const handleToolToggle = (toolType: ToolType) => {
     if (!chatId) return;
 
@@ -127,20 +141,7 @@ export const ChatInputHeader = ({
     }
 
     setSelectedTools(tools);
-
-    // Build tools array, including MCP servers
-    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
-      .filter(t => t !== ToolType.MCP) // MCP is handled separately
-      .map(type => ({ type, name: type as string }));
-
-    // Add MCP tools
-    if (tools.has(ToolType.MCP)) {
-      selectedMcpServers.forEach(id => {
-        toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
-      });
-    }
-
-    onUpdateChat({ tools: toolsArray });
+    onUpdateChat({ tools: buildTools(tools, selectedMcpServers) });
   };
 
   const handleMcpServerToggle = (serverId: string) => {
@@ -181,18 +182,7 @@ export const ChatInputHeader = ({
       tools.delete(ToolType.MCP);
     }
     setSelectedTools(tools);
-
-    // Build tools array
-    const toolsArray: { type: ToolType; name: string; id?: string }[] = Array.from(tools)
-      .filter(t => t !== ToolType.MCP)
-      .map(type => ({ type, name: type as string }));
-
-    // Add MCP tools
-    servers.forEach(id => {
-      toolsArray.push({ type: ToolType.MCP, name: mcpServerMap.get(id) || id, id });
-    });
-
-    onUpdateChat({ tools: toolsArray });
+    onUpdateChat({ tools: buildTools(tools, servers) });
   };
 
   const handleTokenSubmit = (session?: string) => {

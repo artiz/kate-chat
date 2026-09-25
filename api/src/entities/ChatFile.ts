@@ -22,6 +22,8 @@ export enum ChatFileType {
   AUDIO = "audio",
   RAG_DOCUMENT = "rag_document",
   INLINE_DOCUMENT = "inline_document",
+  // written by a skill's program in the user's browser
+  GENERATED = "generated",
 }
 
 registerEnumType(ChatFileType, {

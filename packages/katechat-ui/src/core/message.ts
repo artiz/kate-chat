@@ -39,6 +39,8 @@ export interface Message<TUser = User, TMetadata = Record<string, unknown>, TCha
   createdAt: string;
   updatedAt: string;
   streaming?: boolean;
+  /** Render the message's code blocks collapsed, e.g. when the code only matters for what it produced */
+  collapseCodeBlocks?: boolean;
   linkedToMessageId?: string;
   linkedMessages?: Message<TUser, TMetadata, TChatFile>[];
   metadata?: TMetadata;

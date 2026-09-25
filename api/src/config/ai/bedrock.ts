@@ -32,6 +32,22 @@ export const AWS_BEDROCK_MODELS_SUPPORT_CACHE_RETENTION = [
 
 export const AWS_BEDROCK_MIN_THINKING_BUDGET = 1024;
 export const AWS_BEDROCK_MAX_THINKING_BUDGET = 16384;
+// Output limit for extended thinking when the request sets none (skill answers): Anthropic requires
+// one above the thinking budget, and every Claude model with extended thinking allows at least this
+export const AWS_BEDROCK_THINKING_MAX_TOKENS = 32000;
+
+// Output limit asked for when an answer should have the model's own (skill programs): Bedrock does
+// not default to the model's maximum (Claude answers stop at 4096). A model with a lower limit
+// rejects it; the provider then retries with the limit the error names and remembers it.
+export const AWS_BEDROCK_UNLIMITED_OUTPUT_TOKENS = 64000;
+
+/** The model's output limit from Bedrock's error for too many requested tokens, if it names one. */
+export function outputLimitFromError(error: unknown, requested: number): number | undefined {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (!/token/i.test(message)) return undefined;
+  const limits = [...message.matchAll(/\d{3,7}/g)].map(match => Number(match[0])).filter(n => n < requested);
+  return limits.length ? Math.max(...limits) : undefined;
+}
 
 export const AWS_BEDROCK_DEFAULT_THINKING_LEVELS: Record<ThinkingLevel, number> = {
   minimal: AWS_BEDROCK_MIN_THINKING_BUDGET,

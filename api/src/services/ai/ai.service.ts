@@ -10,7 +10,10 @@ import {
   ProviderInfo,
   UsageCostInfo,
   ChatResponseStatus,
+  GeneratedFile,
+  ModelMessageContent,
 } from "@/types/ai.types";
+import { COPIED_GENERATED_FILES_NOTE, GENERATED_FILES_NOTE } from "@/config/ai/prompts";
 import { MessageRole, ApiProvider, ModelType, ResponseStatus } from "@/types/api";
 import { logger } from "@/utils/logger";
 import { APPLICATION_FEATURE, getProviderCredentialsSource, globalConfig } from "@/global-config";
@@ -23,6 +26,24 @@ import { CustomRestApiProvider } from "./providers/custom-rest-api.provider";
 import { BaseApiProvider } from "./providers/base.provider";
 
 import { CustomModelProtocol, Model, User } from "@/entities";
+
+/**
+ * Appends the note about files the answer's code produced, so later turns can refer to them. A note
+ * the model copied into its own answer is dropped first: left in, the model keeps copying it.
+ */
+export function withGeneratedFiles(
+  body: string | ModelMessageContent[],
+  files?: GeneratedFile[]
+): string | ModelMessageContent[] {
+  if (typeof body === "string" && body.includes("[The code in this answer ran")) {
+    body = body.replace(COPIED_GENERATED_FILES_NOTE, "").trimEnd();
+  }
+  if (!files?.length) return body;
+  const note = GENERATED_FILES_NOTE(files);
+  return typeof body === "string"
+    ? `${body}\n\n${note}`.trimStart()
+    : [...body, { contentType: "text", content: note }];
+}
 
 export class AIService {
   // Main method to interact with models
@@ -238,7 +259,7 @@ export class AIService {
     const modelMessages = messages.map(msg => ({
       id: msg.id,
       role: msg.role,
-      body: msg.jsonContent || msg.content,
+      body: withGeneratedFiles(msg.jsonContent || msg.content, msg.metadata?.generatedFiles),
       timestamp: msg.createdAt,
       metadata: msg.metadata,
     }));

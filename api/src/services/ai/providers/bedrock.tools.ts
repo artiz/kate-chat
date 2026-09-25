@@ -3,7 +3,8 @@ import { ConnectionParams } from "@/middleware/auth.middleware";
 import { WEB_SEARCH_TOOL_RESULT } from "@/config/ai/prompts";
 import { createLogger } from "@/utils/logger";
 import { ResponseStatus, ToolType } from "@/types/api";
-import { ChatTool, ChatToolCall, IMCPServer, MCPAuthToken } from "@/types/ai.types";
+import { ChatTool, ChatToolCall, CompleteChatRequest, IMCPServer, MCPAuthToken } from "@/types/ai.types";
+import { runSkillTool, SKILL_TOOL_DESCRIPTION, SKILL_TOOL_NAME, skillToolSchema } from "../tools/skills.tool";
 import { notEmpty, ok } from "@/utils/assert";
 import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
 import { MCPClient } from "../tools/mcp.client";
@@ -194,15 +195,39 @@ export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: IMCPServe
   });
 }
 
-/**
- * Format request tools for Bedrock (combines web search and MCP tools)
- */
-export function formatBedrockRequestTools(inputTools?: ChatTool[], mcpServers?: IMCPServer[]): BedrockToolCallable[] {
-  if (!inputTools?.length) {
-    return [];
-  }
+/** use_skill for Bedrock: the model loads a skill's instructions before writing its program */
+export function bedrockSkillTool(request: CompleteChatRequest): BedrockToolCallable | undefined {
+  if (!request.skills?.skills.length) return undefined;
+  return {
+    name: SKILL_TOOL_NAME,
+    toolSpec: {
+      name: SKILL_TOOL_NAME,
+      description: SKILL_TOOL_DESCRIPTION,
+      inputSchema: { json: skillToolSchema(request.skills) },
+    },
+    call: async (args, toolUseId) => ({
+      toolUseId,
+      content: [{ text: await runSkillTool(request, args) }],
+    }),
+  };
+}
 
+/**
+ * Format request tools for Bedrock (combines web search, MCP tools and, when the request offers
+ * skills, use_skill)
+ */
+export function formatBedrockRequestTools(
+  inputTools?: ChatTool[],
+  mcpServers?: IMCPServer[],
+  request?: CompleteChatRequest
+): BedrockToolCallable[] {
   const tools: BedrockToolCallable[] = [];
+  const skillTool = request && bedrockSkillTool(request);
+  if (skillTool) tools.push(skillTool);
+
+  if (!inputTools?.length) {
+    return tools;
+  }
 
   // Add web search tool if requested
   if (inputTools.find(t => t.type === ToolType.WEB_SEARCH)) {

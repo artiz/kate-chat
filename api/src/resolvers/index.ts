@@ -13,6 +13,7 @@ export * from "./user.resolver";
 export * from "./model.resolver";
 export * from "./mcp.resolver";
 export * from "./realtime.resolver";
+export * from "./skill.resolver";
 
 export type GraphQLContext = {
   tokenPayload?: TokenPayload;

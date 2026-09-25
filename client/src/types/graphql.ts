@@ -27,6 +27,7 @@ export enum ToolType {
   CODE_INTERPRETER = "CODE_INTERPRETER",
   MCP = "MCP",
   IMAGE_GENERATION = "IMAGE_GENERATION",
+  SKILL = "SKILL",
 }
 
 export enum ModelFeature {
@@ -367,6 +368,26 @@ export interface ChatResultAnnotation {
 /** Why the model stopped generating; "max_tokens" means the answer was cut off by the output limit */
 export type StopReason = "end_turn" | "max_tokens" | "content_filter" | "stop_sequence";
 
+/** A file a skill's program wrote in the browser, stored on the server and attached to the answer */
+export interface GeneratedFile {
+  name: string;
+  /** S3 key, served at /files/<key> */
+  fileName: string;
+  mime: string;
+  size: number;
+}
+
+/** A skill from the server's resources/skills folder; read-only */
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  runtime: "python" | "typescript";
+  packages: string[];
+  instructions: string;
+  files: { path: string; content: string }[];
+}
+
 export interface MessageMetadata {
   usage?: {
     inputTokens?: number;
@@ -384,6 +405,7 @@ export interface MessageMetadata {
   reasoning?: ReasoningChunk[];
   contextMessages?: string[];
   tokensCount?: number;
+  generatedFiles?: GeneratedFile[];
 }
 
 export interface MessageChatInfo {

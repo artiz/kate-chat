@@ -524,7 +524,8 @@
     "tabMedia": "媒体",
     "title": "媒体库",
     "uploadFilesHint": "在聊天中附加 PDF 或文本文件作为聊天上下文，即可在此处查看",
-    "uploadImagesHint": "在聊天中上传图片即可在此查看"
+    "uploadImagesHint": "在聊天中上传图片即可在此查看",
+    "generatedFile": "已生成"
   },
   "mcp": {
     "addFirstServer": "添加您的第一个服务器",
@@ -614,6 +615,7 @@
     }
   },
   "messageDetails": {
+    "skillsUsed": "使用的技能",
     "annotations": "注释",
     "arguments": "参数：",
     "codeInterpreter": "代码解释器",
@@ -747,6 +749,7 @@
     "password": "密码",
     "profile": "个人资料",
     "settings": "设置",
+    "skills": "技能",
     "switchToDark": "切换到深色模式",
     "switchToLight": "切换到浅色模式",
     "users": "用户"
@@ -839,5 +842,34 @@
     "messages": "消息",
     "documents": "文档",
     "untitled": "无标题"
+  },
+  "skills": {
+    "title": "技能",
+    "generating": "正在生成 {{file}}…",
+    "saving": "正在保存 {{file}}…",
+    "pythonFirstRun": "在此标签页中首次运行 Python 会下载运行环境（约 10 MB），可能需要一些时间。",
+    "failed": "无法生成 {{file}}",
+    "showOutput": "显示程序输出",
+    "hideOutput": "隐藏程序输出",
+    "askToFix": "请求修复",
+    "runAgain": "再次运行",
+    "runAgainHint": "再次运行程序并替换文件",
+    "download": "下载",
+    "notGenerated": "{{file}}（{{skill}}）尚未生成",
+    "generate": "生成",
+    "unknownSkill": "{{file}} 所需的技能“{{skill}}”未安装在此服务器上。",
+    "fixPrompt": "{{file}} 的代码在浏览器中运行失败：\n\n```\n{{error}}\n```\n\n请修复程序，并发送带有相同标题的完整修正代码块。",
+    "adminDescription": "此服务器上安装的技能。它们从 resources/skills 读取，无法在此处修改：您看到的就是实际运行的内容。",
+    "noSkills": "未安装任何技能。",
+    "runtime": "运行环境",
+    "packages": "软件包",
+    "instructions": "给模型的说明",
+    "scripts": "辅助脚本",
+    "noPackages": "仅标准库",
+    "unfinished": "回答在 {{file}} 的程序完成之前就结束了，因此未生成文件。",
+    "unfinishedFiltered": "它被服务商的内容过滤器中止。请改写请求、去掉触发过滤器的内容，或换用其他模型。",
+    "unfinishedMaxTokens": "已达到模型的输出上限。请要求生成更短的文件，或逐个生成多个文件，然后重新生成回答；继续生成会开始一个新的独立代码块。",
+    "unfinishedOther": "重新生成回答以获得完整的程序。",
+    "unfinishedRun": "{{file}} 的程序不完整：回答提前结束，无法运行。"
   }
 }

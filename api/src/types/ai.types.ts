@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import type { SkillToolContext } from "@/services/ai/tools/skills.tool";
 import { Field, ID, ObjectType } from "type-graphql";
 import {
   ApiProvider,
@@ -212,6 +213,24 @@ export function toStopReason(reason: string | null | undefined): StopReason | un
   }
 }
 
+/** A file a skill's program wrote in the user's browser, stored on S3 and attached to the answer. */
+@ObjectType()
+export class GeneratedFile {
+  /** Name the program gave the file, as the model's block header named it */
+  @Field()
+  name: string;
+
+  /** S3 key, served at /files/<key> */
+  @Field()
+  fileName: string;
+
+  @Field()
+  mime: string;
+
+  @Field()
+  size: number;
+}
+
 @ObjectType()
 export class MessageMetadata {
   // --------------- assistant message meta ---------------
@@ -261,6 +280,10 @@ export class MessageMetadata {
 
   @Field(() => [ID], { nullable: true })
   contextMessages?: string[];
+
+  // files the skills' programs in this answer produced
+  @Field(() => [GeneratedFile], { nullable: true })
+  generatedFiles?: GeneratedFile[];
 
   // --------------- user message meta ---------------
   // input document IDs
@@ -410,6 +433,11 @@ export interface CompleteChatRequest {
   tools?: ChatTool[];
   mcpServers?: IMCPServer[];
   mcpTokens?: MCPAuthToken[];
+  // skills the model may load with the use_skill tool (see services/ai/tools/skills.tool.ts)
+  skills?: SkillToolContext;
+  // set once a skill is in use: the answer gets the model's own output limit, not the chat's
+  // Max Tokens (providers whose API has no "maximum" default, like Bedrock, ask for it explicitly)
+  outputUnlimited?: boolean;
 
   // if true, the request will be processed as a long-running request with status updates polled via SQS
   requestPolling?: boolean;
