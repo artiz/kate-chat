@@ -618,6 +618,7 @@
   },
   "messageDetails": {
     "skillsUsed": "Verwendete Skills",
+    "skillCode": "Code für {{file}}",
     "annotations": "Anmerkungen",
     "arguments": "Argumente:",
     "codeInterpreter": "Code-Interpreter",
@@ -871,8 +872,7 @@
     "unfinished": "Die Antwort endete, bevor das Programm für {{file}} vollständig war, daher wurde die Datei nicht erstellt.",
     "unfinishedFiltered": "Der Inhaltsfilter des Anbieters hat sie gestoppt. Formulieren Sie die Anfrage um, lassen Sie die auslösende Passage weg oder versuchen Sie ein anderes Modell.",
     "unfinishedMaxTokens": "Das Ausgabelimit des Modells wurde erreicht. Bitten Sie um eine kürzere Datei oder um mehrere Dateien nacheinander und generieren Sie die Antwort neu; Fortsetzen würde einen neuen, separaten Block beginnen.",
-    "unfinishedOther": "Generieren Sie die Antwort neu, um ein vollständiges Programm zu erhalten.",
-    "unfinishedRun": "Das Programm für {{file}} ist unvollständig: Die Antwort endete vorher, daher kann es nicht ausgeführt werden."
+    "unfinishedOther": "Generieren Sie die Antwort neu, um ein vollständiges Programm zu erhalten."
   },
   "notifications": {
     "setting": "Browser-Benachrichtigungen",

@@ -618,6 +618,7 @@
   },
   "messageDetails": {
     "skillsUsed": "使用的技能",
+    "skillCode": "{{file}} 的代码",
     "annotations": "注释",
     "arguments": "参数：",
     "codeInterpreter": "代码解释器",
@@ -871,8 +872,7 @@
     "unfinished": "回答在 {{file}} 的程序完成之前就结束了，因此未生成文件。",
     "unfinishedFiltered": "它被服务商的内容过滤器中止。请改写请求、去掉触发过滤器的内容，或换用其他模型。",
     "unfinishedMaxTokens": "已达到模型的输出上限。请要求生成更短的文件，或逐个生成多个文件，然后重新生成回答；继续生成会开始一个新的独立代码块。",
-    "unfinishedOther": "重新生成回答以获得完整的程序。",
-    "unfinishedRun": "{{file}} 的程序不完整：回答提前结束，无法运行。"
+    "unfinishedOther": "重新生成回答以获得完整的程序。"
   },
   "notifications": {
     "setting": "浏览器通知",

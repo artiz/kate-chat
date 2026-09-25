@@ -60,7 +60,7 @@ export function scanFencedBlocks(content: string | undefined): FencedBlock[] {
   return blocks;
 }
 
-const isSkillBlock = (block: FencedBlock) => !!block.attributes.skill && !!block.attributes.file;
+const isSkillBlock = (block: Pick<FencedBlock, "attributes">) => !!block.attributes.skill && !!block.attributes.file;
 
 /**
  * Finds the complete blocks addressed to a skill. Other code blocks are left alone, and so is a skill
@@ -89,21 +89,6 @@ export function findUnfinishedSkillBlock(
 }
 
 /**
- * The skill block behind a code block's own Run button. `blockIndex` counts the blocks the chat
- * renders with a header, which are those that name a language.
- */
-export function skillBlockAt(
-  content: string | undefined,
-  blockIndex: number
-): { index: number; fileName: string; closed: boolean } | undefined {
-  const withLanguage = scanFencedBlocks(content).filter(block => block.language);
-  const block = withLanguage[blockIndex];
-  if (!block || !isSkillBlock(block)) return undefined;
-  const index = withLanguage.slice(0, blockIndex).filter(b => b.closed && isSkillBlock(b)).length;
-  return { index, fileName: block.attributes.file, closed: block.closed };
-}
-
-/**
  * The name the server stores a generated file under (see normalizeGeneratedFileName in the API):
  * the base name with unusual characters replaced. Used to find a block's file again after a reload.
  */
@@ -127,26 +112,61 @@ export function stripGeneratedFilesNote(content: string): string {
 }
 
 /**
- * How a skill answer is shown: its code only matters for the file it made, so code blocks start
- * collapsed, and a copied "files attached" note is dropped.
+ * The answer as the chat shows it: without its skill blocks, whose code only matters for the file it
+ * made (the file card under the answer runs it again, and the message details show it). A block
+ * still being streamed goes as soon as its header names a skill, so the code never flashes up.
  */
-export function withSkillView<T extends { content: string; collapseCodeBlocks?: boolean; linkedMessages?: T[] }>(
-  message: T
+export function withoutSkillBlocks(content: string): string {
+  const shown: string[] = [];
+  let open: { fence: string; info: string; lines: string[] } | undefined;
+
+  for (const line of content.split("\n")) {
+    if (!open) {
+      const match = line.match(OPENING_FENCE);
+      if (match && !(match[1][0] === "`" && match[2].includes("`"))) {
+        open = { fence: match[1], info: match[2], lines: [line] };
+      } else {
+        shown.push(line);
+      }
+      continue;
+    }
+    open.lines.push(line);
+    const trimmed = line.trimEnd();
+    if (trimmed.length >= open.fence.length && trimmed === open.fence[0].repeat(trimmed.length)) {
+      if (!isSkillBlock(parseInfo(open.info))) shown.push(...open.lines);
+      open = undefined;
+    }
+  }
+  // the answer ends inside this block: a skill one, or a header still being written
+  if (open && !parseInfo(open.info).attributes.skill && open.lines.length > 1) shown.push(...open.lines);
+
+  const text = shown.join("\n");
+  return text === content ? content : text.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * How a skill answer is shown: without its skill blocks (see withoutSkillBlocks) and without a copied
+ * "files attached" note. The content keeps the blocks, for the file cards and the details; the html
+ * `render` makes of the rest is what the chat shows.
+ */
+export function withSkillView<T extends { content: string; html?: string[]; linkedMessages?: T[] }>(
+  message: T,
+  render: (markdown: string) => string[]
 ): T {
   if (!message?.content) return message;
   const content = stripGeneratedFilesNote(message.content);
-  // a block still being streamed counts too, so the code is collapsed from its first line
-  const collapseCodeBlocks =
-    message.collapseCodeBlocks || parseSkillBlocks(content).length > 0 || !!findUnfinishedSkillBlock(content);
-  const linkedMessages = message.linkedMessages?.map(withSkillView);
-  if (
-    content === message.content &&
-    collapseCodeBlocks === !!message.collapseCodeBlocks &&
-    linkedMessages?.every((m, i) => m === message.linkedMessages![i]) !== false
-  ) {
+  const shown = withoutSkillBlocks(content);
+  const linkedMessages = message.linkedMessages?.map(linked => withSkillView(linked, render));
+  const changed = content !== message.content || shown !== content;
+  if (!changed && linkedMessages?.every((m, i) => m === message.linkedMessages![i]) !== false) {
     return message;
   }
-  return { ...message, content, collapseCodeBlocks, ...(linkedMessages ? { linkedMessages } : {}) };
+  return {
+    ...message,
+    content,
+    ...(changed ? { html: render(shown) } : {}),
+    ...(linkedMessages ? { linkedMessages } : {}),
+  };
 }
 
 const FENCE_RUNTIME: Record<string, "python" | "typescript"> = {

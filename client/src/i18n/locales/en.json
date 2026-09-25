@@ -618,6 +618,7 @@
   },
   "messageDetails": {
     "skillsUsed": "Skills used",
+    "skillCode": "Code of {{file}}",
     "arguments": "Arguments:",
     "annotations": "Annotations",
     "codeInterpreter": "Code Interpreter",
@@ -871,8 +872,7 @@
     "unfinished": "The answer ended before the program for {{file}} was complete, so the file was not generated.",
     "unfinishedFiltered": "The provider's content filter stopped it. Rephrase the request, leave out the passage that triggered the filter, or try another model.",
     "unfinishedMaxTokens": "It reached the model's output limit. Ask for a shorter file, or for several files one at a time, and regenerate the answer; continuing would start a new, separate block.",
-    "unfinishedOther": "Regenerate the answer to get a complete program.",
-    "unfinishedRun": "The program for {{file}} is incomplete: the answer ended before it did, so it cannot run."
+    "unfinishedOther": "Regenerate the answer to get a complete program."
   },
   "notifications": {
     "setting": "Browser notifications",
