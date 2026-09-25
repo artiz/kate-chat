@@ -468,6 +468,7 @@ impl Mutation {
             user_id: Some(user.id.clone()),
             created_at: now,
             updated_at: now,
+            require_approval: input.require_approval.unwrap_or(false),
         };
 
         let server: crate::models::McpServer =
@@ -511,6 +512,9 @@ impl Mutation {
                 .auth_config
                 .as_ref()
                 .map(|c| mcp_servers::auth_config.eq(serde_json::to_string(c).unwrap_or_default())),
+            input
+                .require_approval
+                .map(|r| mcp_servers::require_approval.eq(r)),
             mcp_servers::updated_at.eq(Utc::now().naive_utc()),
         ))
         .get_result(&mut conn)

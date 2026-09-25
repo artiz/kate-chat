@@ -22,6 +22,7 @@ pub struct McpServer {
     pub user_id: Option<String>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub require_approval: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject, InputObject)]
@@ -60,6 +61,7 @@ pub struct GqlMcpServer {
     pub auth_config: Option<GqlMcpAuthConfig>,
     pub tools: Option<Vec<GqlMcpTool>>,
     pub is_active: bool,
+    pub require_approval: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -90,6 +92,7 @@ impl From<McpServer> for GqlMcpServer {
             auth_config,
             tools,
             is_active: server.is_active,
+            require_approval: server.require_approval,
             created_at: server.created_at,
             updated_at: server.updated_at,
         }
@@ -113,6 +116,7 @@ pub struct CreateMcpServerInput {
     pub transport_type: Option<String>,
     pub auth_type: Option<String>,
     pub auth_config: Option<GqlMcpAuthConfig>,
+    pub require_approval: Option<bool>,
     pub access: Option<String>,
 }
 
@@ -126,6 +130,7 @@ pub struct UpdateMcpServerInput {
     pub transport_type: Option<String>,
     pub auth_type: Option<String>,
     pub auth_config: Option<GqlMcpAuthConfig>,
+    pub require_approval: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]

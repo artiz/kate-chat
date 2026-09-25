@@ -35,6 +35,7 @@ import { ChatFileType } from "@/entities/ChatFile";
 import { globalConfig } from "@/global-config";
 import { GraphQLError } from "graphql";
 import { GeneratedFileError, GeneratedFilesService } from "@/services/generated-files.service";
+import { ChatMessagePayload, UserChatEvent, userChatEventOf } from "@/services/messaging/user-events";
 
 const logger = createLogger(__filename);
 
@@ -251,6 +252,18 @@ export class MessageResolver extends BaseResolver {
     }
   }
 
+  /** Approve or deny a tool call that waits for the user in a running answer */
+  @Mutation(() => Message)
+  async answerToolApproval(
+    @Arg("messageId", () => ID) messageId: string,
+    @Arg("callId") callId: string,
+    @Arg("approved") approved: boolean,
+    @Ctx() context: GraphQLContext
+  ): Promise<Message> {
+    const user = await this.validateContextUser(context);
+    return await this.getMessagesService(context).answerToolApproval(messageId, callId, approved, user);
+  }
+
   @Subscription(() => GqlMessage, {
     topics: globalConfig.redis.channelChatMessage,
     filter: ({ payload, args }) => {
@@ -271,6 +284,18 @@ export class MessageResolver extends BaseResolver {
       type,
       ...rest,
     };
+  }
+
+  /** Answers that finished or failed and tool calls that wait for approval, in any of the user's chats */
+  @Subscription(() => UserChatEvent, {
+    topics: globalConfig.redis.channelChatMessage,
+    filter: ({ payload, context }) => !!userChatEventOf(payload, context?.tokenPayload?.userId),
+  })
+  async userChatEvents(@Root() payload: ChatMessagePayload, @Ctx() context: GraphQLContext): Promise<UserChatEvent> {
+    const token = await this.validateContextToken(context);
+    const event = userChatEventOf(payload, token.userId);
+    if (!event) throw new GraphQLError("Not an event of this user");
+    return event;
   }
 
   @Mutation(() => DeleteMessageResponse)

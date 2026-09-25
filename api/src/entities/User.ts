@@ -7,7 +7,6 @@ import { TokenPayload } from "../utils/jwt";
 import { DB_TYPE } from "../config/env";
 import { ApiProvider, CredentialSourceType, CredentialType } from "../types/api";
 import { globalConfig, APPLICATION_FEATURE } from "../global-config";
-import { DEFAULT_CHAT_PROMPT } from "../config/ai/prompts";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -31,6 +30,9 @@ export class UserSettings {
   /** IANA name the UI formats dates in, e.g. "Europe/Vienna". Empty: the browser's own zone. */
   @Field({ nullable: true })
   timezone?: string;
+  /** false: tools of MCP servers with requireApproval run without asking (unset means true) */
+  @Field({ nullable: true })
+  mcpToolApprovals?: boolean;
   @Field({ nullable: true })
   s3Endpoint?: string;
   @Field({ nullable: true })
@@ -73,19 +75,21 @@ export class UserSettings {
   @Field({ nullable: true })
   documentSummarizationModelId?: string;
 
-  @Field({ nullable: true, defaultValue: DEFAULT_CHAT_PROMPT })
+  // no defaultValue on these: GraphQL would fill every omitted field of an update with it, so saving
+  // one setting (the time zone, say) would reset the others; the API falls back to its config instead
+  @Field({ nullable: true })
   defaultSystemPrompt?: string;
 
-  @Field({ nullable: true, defaultValue: 0.7 })
+  @Field({ nullable: true })
   defaultTemperature?: number;
 
-  @Field({ nullable: true, defaultValue: 2048 })
+  @Field({ nullable: true })
   defaultMaxTokens?: number;
 
-  @Field({ nullable: true, defaultValue: 0.9 })
+  @Field({ nullable: true })
   defaultTopP?: number;
 
-  @Field({ nullable: true, defaultValue: 1 })
+  @Field({ nullable: true })
   defaultImagesCount?: number;
 }
 

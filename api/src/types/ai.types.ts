@@ -231,6 +231,39 @@ export class GeneratedFile {
   size: number;
 }
 
+/** A tool call that waits for the user, or waited: see services/ai/tools/approval.ts */
+export type ToolApprovalStatus = "pending" | "approved" | "denied" | "expired";
+
+export interface ToolApprovalRequest {
+  callId: string;
+  serverId: string;
+  serverName: string;
+  toolName: string;
+  args: Record<string, unknown>;
+}
+
+@ObjectType()
+export class ToolApproval {
+  @Field()
+  callId: string;
+
+  @Field({ nullable: true })
+  serverId?: string;
+
+  @Field()
+  serverName: string;
+
+  @Field()
+  toolName: string;
+
+  /** the call's arguments as JSON */
+  @Field({ nullable: true })
+  args?: string;
+
+  @Field(() => String)
+  status: ToolApprovalStatus;
+}
+
 @ObjectType()
 export class MessageMetadata {
   // --------------- assistant message meta ---------------
@@ -280,6 +313,10 @@ export class MessageMetadata {
 
   @Field(() => [ID], { nullable: true })
   contextMessages?: string[];
+
+  // MCP tool calls that asked the user first, with the answers
+  @Field(() => [ToolApproval], { nullable: true })
+  toolApprovals?: ToolApproval[];
 
   // files the skills' programs in this answer produced
   @Field(() => [GeneratedFile], { nullable: true })
@@ -399,6 +436,7 @@ export interface IMCPServer {
   authConfig?: IMCPAuthConfig;
   tools?: IMCPToolInfo[];
   isActive: boolean;
+  requireApproval?: boolean;
   userId?: string;
   access?: EntityAccessType;
   createdAt: Date;
@@ -438,6 +476,9 @@ export interface CompleteChatRequest {
   // set once a skill is in use: the answer gets the model's own output limit, not the chat's
   // Max Tokens (providers whose API has no "maximum" default, like Bedrock, ask for it explicitly)
   outputUnlimited?: boolean;
+  // asks the user to approve a call of a tool from an MCP server with requireApproval and waits
+  // for the answer (see services/ai/tools/approval.ts); unset where nobody can answer
+  approveToolCall?: (call: ToolApprovalRequest) => Promise<boolean>;
 
   // if true, the request will be processed as a long-running request with status updates polled via SQS
   requestPolling?: boolean;

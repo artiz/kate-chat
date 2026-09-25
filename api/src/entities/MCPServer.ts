@@ -105,6 +105,11 @@ export class MCPServer implements IMCPServer {
   @Column({ default: true })
   isActive: boolean;
 
+  /** Each tool call waits in the chat until the user approves or denies it */
+  @Field({ nullable: true })
+  @Column({ default: false })
+  requireApproval?: boolean;
+
   @Field(() => EntityAccessType, { nullable: true })
   @Column({ nullable: true, default: EntityAccessType.PRIVATE, transformer: EnumTransformer<EntityAccessType>() })
   access: EntityAccessType;

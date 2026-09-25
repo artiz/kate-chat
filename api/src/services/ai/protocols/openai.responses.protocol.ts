@@ -223,7 +223,9 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
             // A Telegram session is the whole account with no scope or expiry. Called as a hosted
             // tool it would travel to OpenAI in the authorization field; called locally it never
             // leaves this API, which hosts the server anyway.
-            server.authType === MCPAuthType.TELEGRAM
+            server.authType === MCPAuthType.TELEGRAM ||
+            // OpenAI would call a hosted tool itself; called locally, each call waits for the user
+            server.requireApproval
           ) {
             localMcpServers.push({ server, tool });
             return;
@@ -255,7 +257,8 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
 
       const localTools: Array<OpenAI.Responses.FunctionTool> = formatOpenAIMcpFunctionTools(
         localMcpServers.map(s => s.tool),
-        localMcpServers.map(s => s.server)
+        localMcpServers.map(s => s.server),
+        inputRequest
       )
         .filter(t => t.type === "function")
         .map((t: OpenAI.Chat.Completions.ChatCompletionFunctionTool) => {
@@ -1100,7 +1103,8 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
       result.push(
         ...formatOpenAIMcpFunctionTools(
           localServers.map(s => s.tool),
-          localServers.map(s => s.server)
+          localServers.map(s => s.server),
+          request
         )
       );
     }

@@ -539,6 +539,9 @@ export class CreateMCPServerInput {
   authConfig?: MCPAuthConfig;
 
   @Field({ nullable: true })
+  requireApproval?: boolean;
+
+  @Field({ nullable: true })
   access: EntityAccessType;
 }
 
@@ -568,6 +571,9 @@ export class UpdateMCPServerInput {
 
   @Field({ nullable: true })
   isActive?: boolean;
+
+  @Field({ nullable: true })
+  requireApproval?: boolean;
 
   @Field({ nullable: true })
   access: EntityAccessType;

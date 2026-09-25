@@ -6,3 +6,4 @@ export * from "./EditMessage";
 export * from "./ContextMessages";
 export * from "./TruncatedResponse";
 export * from "./SkillRuns";
+export * from "./ToolApprovals";

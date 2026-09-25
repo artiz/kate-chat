@@ -21,6 +21,7 @@ export enum ResponseStatus {
   CODE_INTERPRETER = "code_interpreter",
   TOOL_CALL = "tool_call",
   TOOL_CALL_COMPLETED = "tool_call_completed",
+  TOOL_APPROVAL = "tool_approval",
   REASONING = "reasoning",
   COMPLETED = "completed",
   CANCELLED = "cancelled",

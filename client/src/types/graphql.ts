@@ -406,6 +406,31 @@ export interface MessageMetadata {
   contextMessages?: string[];
   tokensCount?: number;
   generatedFiles?: GeneratedFile[];
+  toolApprovals?: ToolApproval[];
+}
+
+export type ToolApprovalStatus = "pending" | "approved" | "denied" | "expired";
+
+/** An MCP tool call that waits for the user to approve it, or waited */
+export interface ToolApproval {
+  callId: string;
+  serverId?: string;
+  serverName: string;
+  toolName: string;
+  args?: string;
+  status: ToolApprovalStatus;
+}
+
+export type UserChatEventKind = "completed" | "error" | "approval";
+
+/** An answer that finished or failed, or a tool call that waits, in one of the user's chats */
+export interface UserChatEvent {
+  chatId: string;
+  messageId: string;
+  kind: UserChatEventKind;
+  chatTitle?: string;
+  callId?: string;
+  text?: string;
 }
 
 export interface MessageChatInfo {
@@ -577,6 +602,7 @@ export interface MCPServer {
   access: EntityAccessType;
   authConfig?: MCPAuthConfig;
   isActive: boolean;
+  requireApproval?: boolean;
   createdAt: string;
   updatedAt: string;
   tools?: MCPTool[];

@@ -8,6 +8,7 @@ import { MessageRole } from "@/types/api";
 import { Document } from "@/entities/Document";
 import { DocumentStatusMessage, MessageChatInfo } from "@/types/graphql/responses";
 import { Chat } from "@/entities";
+import { ToolApprovalStatus } from "@/types/ai.types";
 import EventEmitter from "events";
 import { globalConfig } from "@/global-config";
 import { createRedisClient } from "../common/queue-lock.service";
@@ -15,6 +16,13 @@ import { createRedisClient } from "../common/queue-lock.service";
 const redisCfg = globalConfig.redis;
 
 const logger = createLogger(__filename);
+
+/** The user's answer to a tool call that waits for approval, for the API instance running the answer */
+export interface ToolApprovalEvent {
+  messageId: string;
+  callId: string;
+  status: ToolApprovalStatus;
+}
 
 interface MessageCacheData {
   message: Message;
@@ -64,10 +72,20 @@ export class SubscriptionsService extends EventEmitter {
             await redisSub.connect();
 
             await redisSub.subscribe(
-              [redisCfg.channelChatMessage, redisCfg.channelChatError, redisCfg.channelDocumentStatus],
+              [
+                redisCfg.channelChatMessage,
+                redisCfg.channelChatError,
+                redisCfg.channelDocumentStatus,
+                redisCfg.channelToolApproval,
+              ],
               async (message: string, channel: string) => {
                 try {
                   const data = JSON.parse(message);
+
+                  if (channel === redisCfg.channelToolApproval) {
+                    this.emit(channel, data);
+                    return;
+                  }
 
                   if (channel === redisCfg.channelDocumentStatus) {
                     this.emit(channel, data);
@@ -185,6 +203,20 @@ export class SubscriptionsService extends EventEmitter {
         data: { message, chat, streaming },
       });
     }
+  }
+
+  /** Tells every API instance, the one waiting for this approval included, what the user answered */
+  async publishToolApproval(event: ToolApprovalEvent): Promise<void> {
+    if (this.redisClient?.isOpen && this.redisSub) {
+      try {
+        await this.redisClient.publish(redisCfg.channelToolApproval, JSON.stringify(event));
+        return;
+      } catch (error: unknown) {
+        logger.error(error, `Failed to publish tool approval for message ${event.messageId} in Redis`);
+      }
+    }
+
+    this.emit(redisCfg.channelToolApproval, event);
   }
 
   async publishDocumentStatus(document: Document, statusData: Partial<DocumentStatusMessage> = {}): Promise<void> {

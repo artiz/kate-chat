@@ -112,6 +112,7 @@ export const FULL_USER_FRAGMENT = `
       settings {
         language
         timezone
+        mcpToolApprovals
         s3Endpoint
         s3Region
         s3FilesBucketName
@@ -197,6 +198,14 @@ export const BASE_MESSAGE_FRAGMENT = `
           type
           args
         }
+        toolApprovals {
+          callId
+          serverId
+          serverName
+          toolName
+          args
+          status
+        }
         reasoning {
           text
           timestamp
@@ -253,6 +262,27 @@ export const UPDATE_USER_MUTATION = gql`
   mutation UpdateUser($input: UpdateUserInput!) {
     updateUser(input: $input) {
       ...FullUser
+    }
+  }
+`;
+
+export const USER_CHAT_EVENTS_SUBSCRIPTION = gql`
+  subscription OnUserChatEvents {
+    userChatEvents {
+      chatId
+      messageId
+      kind
+      chatTitle
+      callId
+      text
+    }
+  }
+`;
+
+export const ANSWER_TOOL_APPROVAL_MUTATION = gql`
+  mutation AnswerToolApproval($messageId: ID!, $callId: String!, $approved: Boolean!) {
+    answerToolApproval(messageId: $messageId, callId: $callId, approved: $approved) {
+      id
     }
   }
 `;
@@ -847,6 +877,7 @@ export const CREATE_MCP_SERVER = gql`
         transportType
         authType
         isActive
+        requireApproval
       }
       error
     }
@@ -864,6 +895,7 @@ export const UPDATE_MCP_SERVER = gql`
         transportType
         authType
         isActive
+        requireApproval
       }
       error
     }
@@ -898,6 +930,7 @@ export const GET_MCP_SERVERS = gql`
           outputSchema
         }
         isActive
+        requireApproval
         createdAt
         updatedAt
       }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Stack, TextInput, Button, Group, Modal, Textarea, Select, Text, Divider } from "@mantine/core";
+import { Stack, TextInput, Button, Group, Modal, Textarea, Select, Text, Divider, Switch } from "@mantine/core";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
@@ -17,6 +17,7 @@ interface FormData {
   authType: string;
   headerName: string;
   access: EntityAccessType;
+  requireApproval: boolean;
   // OAuth2 fields
   clientId: string;
   clientSecret: string;
@@ -33,6 +34,7 @@ const DEFAULT_FORM_DATA: FormData = {
   authType: "NONE",
   headerName: "",
   access: EntityAccessType.PRIVATE,
+  requireApproval: false,
   clientId: "",
   clientSecret: "",
   tokenUrl: "",
@@ -88,6 +90,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
           transportType: server.transportType || "STREAMABLE_HTTP",
           authType: server.authType,
           access: server.access || EntityAccessType.PRIVATE,
+          requireApproval: !!server.requireApproval,
           headerName: server.authConfig?.headerName || "",
           clientId: server.authConfig?.clientId || "",
           clientSecret: server.authConfig?.clientSecret || "",
@@ -197,6 +200,7 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
       authType: formData.authType,
       authConfig: Object.keys(authConfig).length > 0 ? authConfig : undefined,
       access: formData.access,
+      requireApproval: formData.requireApproval,
     };
 
     if (isEditMode && isEditable && server) {
@@ -280,6 +284,13 @@ export const MCPServerFormDialog: React.FC<MCPServerFormDialogProps> = ({
             />
           )}
         </Group>
+        <Switch
+          label={t("mcp.requireApproval")}
+          description={t("mcp.requireApprovalDescription")}
+          checked={formData.requireApproval}
+          disabled={!isEditable}
+          onChange={e => setFormData({ ...formData, requireApproval: e.currentTarget.checked })}
+        />
         <Divider />
         {formData.authType === "API_KEY" && (
           <>

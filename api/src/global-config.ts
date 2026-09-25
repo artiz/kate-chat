@@ -100,6 +100,8 @@ export interface GlobalConfigShape {
     defaultMaxTokens: number;
     defaultTopP: number;
     contextMessagesLimit: number;
+    // how long an MCP tool call waits for the user to approve it before it counts as declined
+    toolApprovalTimeoutMs: number;
     charactersPerToken: number;
     defaultModelMaxInputTokens: number;
     summarizingOutputTokens: number;
@@ -149,6 +151,7 @@ export interface GlobalConfigShape {
     channelChatMessage: string;
     channelChatError: string;
     channelDocumentStatus: string;
+    channelToolApproval: string;
   };
   s3: {
     endpoint?: string;
@@ -346,6 +349,7 @@ export class GlobalConfig {
         defaultMaxTokens: 2048,
         defaultTopP: 0.9,
         contextMessagesLimit: +(process.env.AI_CONTEXT_MESSAGES_LIMIT || 100) | 0,
+        toolApprovalTimeoutMs: +(process.env.AI_TOOL_APPROVAL_TIMEOUT_SEC || 900) * 1000,
         charactersPerToken: 3.5,
         defaultModelMaxInputTokens: +(process.env.AI_MAX_INPUT_CONTEXT_TOKENS || 8192) | 0,
         summarizingOutputTokens: +(process.env.AI_SUMMARIZING_OUTPUT_TOKENS || 2000) | 0,
@@ -394,6 +398,7 @@ export class GlobalConfig {
         channelChatMessage: process.env.CHAT_MESSAGES_CHANNEL || "chat:messages",
         channelChatError: process.env.CHAT_ERRORS_CHANNEL || "chat:errors",
         channelDocumentStatus: process.env.DOCUMENT_STATUS_CHANNEL || "document:status",
+        channelToolApproval: process.env.TOOL_APPROVALS_CHANNEL || "chat:tool-approvals",
       },
       s3: {
         endpoint: process.env.S3_ENDPOINT,
