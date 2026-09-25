@@ -70,7 +70,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-i18next": "^16.5.4",
-    "react-router-dom": "^6.30.6"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.24.5",
@@ -106,7 +106,7 @@
     "prettier": "^3.2.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-router-dom": "^6.30.6",
+    "react-router-dom": "^7.18.4",
     "sass": "^1.71.1",
     "ts-jest": "^29.4.5",
     "typescript": "^5.8.3"
