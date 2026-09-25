@@ -6,6 +6,7 @@ Object.assign(global, { TextEncoder });
 
 import {
   findUnfinishedSkillBlock,
+  languageMismatchNote,
   normalizeFileName,
   parseSkillBlocks,
   skillBlockAt,
@@ -151,6 +152,19 @@ describe("findChatFilePaths", () => {
       "/files/chat-1/msg-2/1791-file-0.pptx",
       "/files/chat-1/msg-3/generated/1792-Отчёт за Q3.xlsx",
     ]);
+  });
+});
+
+describe("languageMismatchNote", () => {
+  it("explains a block written in the other language than the skill runs", () => {
+    expect(languageMismatchNote({ language: "typescript", skillId: "office-edit" }, { runtime: "python" })).toBe(
+      'This block is written as TypeScript, but the "office-edit" skill runs Python programs: rewrite it in Python under the header ```python skill=office-edit file=<file name>.'
+    );
+    expect(languageMismatchNote({ language: "py", skillId: "pptx" }, { runtime: "typescript" })).toContain(
+      "written as Python"
+    );
+    expect(languageMismatchNote({ language: "python", skillId: "xlsx" }, { runtime: "python" })).toBeUndefined();
+    expect(languageMismatchNote({ language: "text", skillId: "xlsx" }, { runtime: "python" })).toBeUndefined();
   });
 });
 

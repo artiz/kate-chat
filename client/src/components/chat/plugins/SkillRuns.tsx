@@ -17,7 +17,13 @@ import { MessageRole, PluginProps, assert } from "@katechat/ui";
 import { CreateMessageResponse, GeneratedFile, Message, Skill } from "@/types/graphql";
 import { CREATE_MESSAGE, GET_SKILLS, SAVE_GENERATED_FILE } from "@/store/services/graphql.queries";
 import { APP_API_URL } from "@/lib/config";
-import { findUnfinishedSkillBlock, normalizeFileName, parseSkillBlocks, SkillBlock } from "@/lib/skills/parse";
+import {
+  findUnfinishedSkillBlock,
+  languageMismatchNote,
+  normalizeFileName,
+  parseSkillBlocks,
+  SkillBlock,
+} from "@/lib/skills/parse";
 import { runSkillCode, SkillOutputFile } from "@/lib/skills/sandbox";
 import { loadChatFiles } from "@/lib/skills/files";
 import { SKILL_RUN_EVENT, SkillRunRequest } from "@/lib/skills/events";
@@ -107,7 +113,8 @@ const SkillRun = ({ block, skill, message, autoRun, canFix, disabled, onAddMessa
     const result = await runSkillCode(skill, block.code, undefined, chatFiles);
     if (!mounted.current) return;
     if (!result.ok) {
-      setState({ status: "error", error: result.error, logs: result.logs });
+      const note = languageMismatchNote(block, skill);
+      setState({ status: "error", error: note ? `${note}\n\n${result.error}` : result.error, logs: result.logs });
       return;
     }
 

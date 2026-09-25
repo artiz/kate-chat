@@ -225,6 +225,8 @@ Block header: \`\`\`${FENCE_LANGUAGE[skill.runtime]} skill=${skill.id} file=<fil
 ${skill.instructions}`;
 }
 
+const RUNTIME_NAME: Record<SkillRuntime, string> = { python: "Python", typescript: "TypeScript" };
+
 const SKILLS_INTRO = `You can produce files, and change the documents of this chat, with skills. You do not create the file yourself: you write a program, and the user's browser runs it in a sandbox once your answer is complete and attaches the file it writes to your message. Use a skill only when the user wants a file or a change to one; otherwise answer as usual.`;
 
 const SKILL_BLOCK_RULES = `To use a skill, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
@@ -259,7 +261,7 @@ export function buildSkillsCatalog(skills: Skill[]): string {
 ${SKILLS_INTRO}
 
 Skills:
-${skills.map(skill => `- \`${skill.id}\` (${skill.name}): ${skill.description}`).join("\n")}
+${skills.map(skill => `- \`${skill.id}\` (${skill.name}; ${RUNTIME_NAME[skill.runtime]}): ${skill.description}`).join("\n")}
 
 Pick the skill from its description${skills.some(skill => skill.id === "office-edit") ? "; to change a document that is already in this chat (attached or made earlier) and keep its design, pick `office-edit`, not a skill that makes new files" : ""}. Before writing its block, call the \`${SKILL_TOOL_NAME}\` tool with the skill's id: it returns the skill's API, helper modules and an example, the files of this chat and, for TypeScript skills, how to use photos. Then write the block following them.
 
@@ -289,7 +291,7 @@ ${await context.load(id)}`,
     loaded.push("office-edit");
     parts.push(`# Instructions for the skill \`office-edit\`
 
-If the user wants a document that is already in this chat changed (for example keeping its design), use \`office-edit\` on that file instead of making a new one.
+If the user wants a document that is already in this chat changed (for example keeping its design), use \`office-edit\` on that file instead of making a new one. \`office-edit\` is a Python skill: its block starts with \`\`\`python skill=office-edit and uses python-pptx, python-docx and openpyxl, not the TypeScript of the skill above.
 
 ${await context.load("office-edit")}`);
   }

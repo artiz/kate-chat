@@ -148,3 +148,27 @@ export function withSkillView<T extends { content: string; collapseCodeBlocks?: 
   }
   return { ...message, content, collapseCodeBlocks, ...(linkedMessages ? { linkedMessages } : {}) };
 }
+
+const FENCE_RUNTIME: Record<string, "python" | "typescript"> = {
+  python: "python",
+  py: "python",
+  typescript: "typescript",
+  ts: "typescript",
+  javascript: "typescript",
+  js: "typescript",
+};
+
+/**
+ * A note for a failed run whose block is marked in another language than the skill runs: models
+ * sometimes write TypeScript for a Python skill. The runner goes by the skill, so a block that is
+ * only mislabelled still runs; this is added only when the run fails, for the user and "Ask to fix".
+ */
+export function languageMismatchNote(
+  block: { language: string; skillId: string },
+  skill: { runtime: "python" | "typescript" }
+): string | undefined {
+  const written = FENCE_RUNTIME[block.language.toLowerCase()];
+  if (!written || written === skill.runtime) return undefined;
+  const name = (runtime: string) => (runtime === "python" ? "Python" : "TypeScript");
+  return `This block is written as ${name(written)}, but the "${block.skillId}" skill runs ${name(skill.runtime)} programs: rewrite it in ${name(skill.runtime)} under the header \`\`\`${skill.runtime} skill=${block.skillId} file=<file name>.`;
+}

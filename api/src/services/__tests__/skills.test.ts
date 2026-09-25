@@ -125,8 +125,8 @@ describe("skills", () => {
 
       const prompt = applied.systemPrompt || "";
       expect(prompt).toMatch(/^Be brief\.\n\n# Skills\n/);
-      expect(prompt).toContain("- `pptx` (PowerPoint presentation): Slide decks");
-      expect(prompt).toContain("- `office-edit` (Edit Office documents):");
+      expect(prompt).toContain("- `pptx` (PowerPoint presentation; TypeScript): Slide decks");
+      expect(prompt).toContain("- `office-edit` (Edit Office documents; Python):");
       expect(prompt).toContain("call the `use_skill` tool");
       expect(prompt).toContain(
         "to change a document that is already in this chat (attached or made earlier) and keep its design, pick `office-edit`"
@@ -199,6 +199,9 @@ describe("skills", () => {
       expect(withDeck.prompt).toContain("Your answer started a `pptx` block without loading the skill's instructions");
       expect(withDeck.prompt).toContain("## Skill `pptx`");
       expect(withDeck.prompt).toContain("## Skill `office-edit`");
+      expect(withDeck.prompt).toContain(
+        "`office-edit` is a Python skill: its block starts with ```python skill=office-edit"
+      );
 
       const imagesOnly = chatFiles.filter(file => file.type === "image");
       expect((await skillRestartPrompt("pptx", skills!, imagesOnly)).loaded).toEqual(["pptx"]);
