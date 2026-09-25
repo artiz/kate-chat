@@ -563,7 +563,7 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
           } else if (chunk.type == "response.code_interpreter_call_code.delta") {
             stopped = await callbacks.onProgress("", { status: ResponseStatus.CODE_INTERPRETER });
           } else if (chunk.type == "response.code_interpreter_call.interpreting") {
-            stopped = await callbacks.onProgress(genProcessSymbol(), {
+            stopped = await callbacks.onProgress("", {
               status: ResponseStatus.CODE_INTERPRETER,
               ...progressInfo,
             });
@@ -791,7 +791,7 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
           })(),
         }));
 
-        stopped = await callbacks.onProgress(genProcessSymbol(), {
+        stopped = await callbacks.onProgress("", {
           status: ResponseStatus.TOOL_CALL,
           toolCalls: toolCalls.map(c => ({ ...c, name: c.name || "unknown", args: JSON.stringify(c.arguments || {}) })),
         });
@@ -1107,9 +1107,4 @@ export class OpenAIResponsesProtocol extends OpenAIProtocolBase {
 
     return result;
   }
-}
-
-function genProcessSymbol(): string {
-  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢", "🧠", "🦾"];
-  return symbols[Math.floor(Math.random() * symbols.length)];
 }

@@ -551,7 +551,7 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       name: c.name || "unknown",
       args: JSON.stringify(c.arguments || {}),
     }));
-    let stopped = await callbacks.onProgress(genProcessSymbol(), {
+    let stopped = await callbacks.onProgress("", {
       status: ResponseStatus.TOOL_CALL,
       toolCalls: metaCalls,
     });
@@ -639,9 +639,4 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
 
     return toolCall;
   }
-}
-
-function genProcessSymbol(): string {
-  const symbols = ["📲", "🖥️", "💻", "💡", "🤖", "🟢", "🧠", "🦾"];
-  return symbols[Math.floor(Math.random() * symbols.length)];
 }
