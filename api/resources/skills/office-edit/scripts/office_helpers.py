@@ -9,6 +9,7 @@ import openpyxl
 import pptx
 from lxml import etree
 from pptx.dml.color import RGBColor as PptxRGB
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 OUTPUT_DIR = "/output"  # where the sandbox collects the program's files
 
@@ -16,6 +17,8 @@ __all__ = [
     "set_text",
     "slide_shapes",
     "shape_by_role",
+    "shape_by_text",
+    "shape_by_name",
     "delete_shape",
     "delete_paragraph",
     "replace_text",
@@ -84,8 +87,18 @@ def _paragraphs(container):
                     yield from cell.paragraphs
 
 
+def _shapes(container, prefix=""):
+    """(address, shape) for every shape of a slide or group, inside groups too: "2", or "1.0" for
+    the first shape of group 1."""
+    for position, shape in enumerate(container.shapes):
+        address = f"{prefix}{position}"
+        yield address, shape
+        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+            yield from _shapes(shape, address + ".")
+
+
 def _slide_paragraphs(slide):
-    for shape in slide.shapes:
+    for _, shape in _shapes(slide):
         if shape.has_text_frame:
             yield from shape.text_frame.paragraphs
         if getattr(shape, "has_table", False) and shape.has_table:
@@ -158,7 +171,7 @@ def set_text(target, text):
         raise ValueError(
             f"set_text: {target.name!r} is a {_role(target)} and holds no text. "
             f"The shapes of its slide are (index, role, name, text): {shapes}; "
-            "pick a text shape with shape_by_role(slide, 'title' | 'subtitle' | 'body')"
+            "pick a text shape with shape_by_role(slide, 'title' | 'subtitle' | 'body') or shape_by_text(slide, 'its text')"
         )
     frame = target.text_frame if hasattr(target, "text_frame") else target
     body = frame._txBody
@@ -211,7 +224,9 @@ def set_text(target, text):
 
 
 def _role(shape):
-    """title, subtitle, body, picture, table, chart or other"""
+    """title, subtitle, body, picture, table, chart, group or other"""
+    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        return "group"
     kind = str(shape.placeholder_format.type).lower() if shape.is_placeholder else ""
     if "picture" in kind or (shape.shape_type is not None and "PICTURE" in str(shape.shape_type)):
         return "picture"
@@ -228,29 +243,69 @@ def _role(shape):
     return "body" if shape.is_placeholder or shape.text_frame.text.strip() else "other"
 
 
+def _font_size(shape):
+    sizes = [int(r.get("sz")) for r in shape.text_frame._txBody.iter(_a("rPr"), _a("defRPr")) if r.get("sz")]
+    return max(sizes) if sizes else 0
+
+
+def _roles(slide):
+    """[(address, shape, role)] for every shape, inside groups too. A slide without a title
+    placeholder (its title is a text box, often in a group) gets its largest text, or its topmost
+    one, as the title."""
+    entries = [(address, shape, _role(shape)) for address, shape in _shapes(slide)]
+    if not any(role == "title" for _, _, role in entries):
+        texts = [(i, shape) for i, (_, shape, role) in enumerate(entries) if role == "body"]
+        if texts:
+            index, _ = max(texts, key=lambda item: (_font_size(item[1]), -(item[1].top or 0)))
+            address, shape, _ = entries[index]
+            entries[index] = (address, shape, "title")
+    return entries
+
+
 def _describe(slide):
     return [
-        (position, _role(shape), shape.name, shape.text_frame.text if shape.has_text_frame else "")
-        for position, shape in enumerate(slide.shapes)
+        (address, role, shape.name, shape.text_frame.text if shape.has_text_frame else "")
+        for address, shape, role in _roles(slide)
     ]
 
 
 def slide_shapes(prs, index):
-    """What slide `index` holds, to pick the shapes to change: [(shape index, role, name, text)].
+    """What slide `index` holds, to pick the shapes to change: [(address, role, name, text)], shapes
+    inside groups included (address "1.0" is the first shape of group 1).
 
-    role is "title", "subtitle", "body", "picture", "table", "chart" or "other".
+    role is "title", "subtitle", "body", "picture", "table", "chart", "group" or "other".
     """
     return _describe(prs.slides[index])
 
 
 def shape_by_role(slide, role, nth=0):
-    """The slide's `nth` shape (from 0, top to bottom in the slide's order) with this role: "title",
-    "subtitle" or "body" for text, "picture", "table" or "chart". Raises, listing what the slide
-    has, when there is none."""
-    matches = [shape for shape in slide.shapes if _role(shape) == role]
+    """The slide's `nth` shape (from 0) with this role, inside groups too: "title", "subtitle" or
+    "body" for text, "picture", "table" or "chart". Raises, listing what the slide has, when there
+    is none."""
+    matches = [shape for _, shape, shape_role in _roles(slide) if shape_role == role]
     if nth < len(matches):
         return matches[nth]
-    raise ValueError(f"No {role} shape #{nth} on this slide. It has: {_describe(slide)}")
+    raise ValueError(
+        f"No {role} shape #{nth} on this slide. It has (address, role, name, text): {_describe(slide)}; "
+        "shape_by_text(slide, 'part of its text') finds a shape by what it says"
+    )
+
+
+def shape_by_text(slide, text):
+    """The first text shape of the slide (inside groups too) whose text contains `text`, ignoring
+    case. Raises, listing what the slide has, when there is none."""
+    for _, shape in _shapes(slide):
+        if shape.has_text_frame and text.lower() in shape.text_frame.text.lower():
+            return shape
+    raise ValueError(f"No shape with {text!r} on this slide. It has (address, role, name, text): {_describe(slide)}")
+
+
+def shape_by_name(slide, name):
+    """The shape with this name (as slide_shapes lists it), inside groups too."""
+    for _, shape in _shapes(slide):
+        if shape.name == name:
+            return shape
+    raise ValueError(f"No shape named {name!r} on this slide. It has (address, role, name, text): {_describe(slide)}")
 
 
 def delete_shape(shape):
@@ -316,11 +371,10 @@ def set_text_color(container, hex_color, headings_only=False):
     is_pptx = hasattr(container, "slides")
     if is_pptx:
         for slide in container.slides:
-            for shape in slide.shapes:
+            for _, shape, role in _roles(slide):
                 if not shape.has_text_frame:
                     continue
-                is_title = shape.is_placeholder and "title" in str(shape.placeholder_format.type).lower()
-                if headings_only and not is_title:
+                if headings_only and role not in ("title", "subtitle"):
                     continue
                 for paragraph in shape.text_frame.paragraphs:
                     for run in paragraph.runs:

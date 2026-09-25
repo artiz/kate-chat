@@ -20,7 +20,7 @@ from office_helpers import set_text, shape_by_role, slide_shapes, delete_shape, 
 
 prs = Presentation("/files/<path from Files in this chat>.pptx")
 for index in range(len(prs.slides)):
-    print(index, slide_shapes(prs, index))  # (shape index, role, name, text): what each slide holds
+    print(index, slide_shapes(prs, index))  # (address, role, name, text): what each slide holds
 
 # title slide: new title and subtitle, in the old look
 title_slide = prs.slides[0]
@@ -43,13 +43,13 @@ set_text(shape_by_role(extra, "body"), ["Hire two engineers", "Open the Berlin o
 save(prs, "review-updated.pptx")
 ```
 
-Pick shapes with `shape_by_role`, never by position: `slide.shapes[0]` may well be a logo picture. Look at `slide_shapes` first to see which roles and texts a slide has (the example's slides are only an illustration), and leave pictures alone unless the user wants them changed.
+Pick shapes with `shape_by_role` or `shape_by_text`, never by position: `slide.shapes[0]` may well be a logo picture, and a title may sit inside a group. Look at `slide_shapes` first to see which roles and texts a slide has (the example's slides are only an illustration), and leave pictures alone unless the user wants them changed.
 
 Helpers in `office_helpers` (they take a python-pptx `Presentation` or a python-docx `Document`; all are available without an import too):
 
 - `set_text(shape_or_paragraph, text)`: replaces ALL the text of a slide shape (or a Word paragraph), keeping its look. `text` is a string, or a list with one item per paragraph, where `(text, level)` is a sub-bullet. Text too long for its shape is shrunk to fit.
-- `slide_shapes(prs, index)` → `[(shape index, role, name, text)]`, role being "title", "subtitle", "body", "picture", "table", "chart" or "other".
-- `shape_by_role(slide, role, nth=0)`: the slide's `nth` shape with that role (from 0); raises, listing what the slide has, when there is none.
+- `slide_shapes(prs, index)` → `[(address, role, name, text)]` for every shape, inside groups too (address "1.0" is the first shape of group 1); role is "title", "subtitle", "body", "picture", "table", "chart", "group" or "other". A slide without a title placeholder gets its largest text as the title.
+- `shape_by_role(slide, role, nth=0)`: the slide's `nth` shape with that role (from 0), inside groups too; `shape_by_text(slide, "part of its text")` and `shape_by_name(slide, name)` find one by what it says or by name. All raise, listing what the slide has, when there is none.
 - `delete_shape(shape)`, `delete_slide(prs, index)`, `duplicate_slide(prs, index)` (appends a copy and returns it), `move_slide(prs, old_index, new_index)`; Word: `delete_paragraph(paragraph)`.
 - `replace_text(doc, old, new)`: replaces a phrase wherever it occurs (tables and notes included), keeping the formatting; returns how many paragraphs changed. For small corrections, not for replacing content.
 - `set_font(doc, name, size_pt=None)`, `set_text_color(doc, "1F2933", headings_only=False)`: restyle all text; with `headings_only`, only headings (Word) or title placeholders (PowerPoint). `set_background(prs, "FFF8E1")`. `slide_texts(prs)` → `[(index, text)]`.
