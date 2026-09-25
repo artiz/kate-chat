@@ -18,7 +18,7 @@ pub struct SqsService {
 
 impl SqsService {
     pub async fn new(config: &AppConfig) -> Result<Self, AppError> {
-        let mut builder = aws_config::defaults(BehaviorVersion::v2025_01_17());
+        let mut builder = aws_config::defaults(BehaviorVersion::v2026_01_12());
 
         if let Some(region) = &config.sqs_region {
             builder = builder.region(Region::new(region.clone()));
