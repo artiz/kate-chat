@@ -61,12 +61,16 @@ anyhow = "1.0"
 thiserror = "1.0"
 
 # AWS SDK
+# The aws-sdk-* crates enable the legacy hyper 0.14 + rustls 0.21 client by default
+# (feature `rustls`), which pins the vulnerable rustls-webpki 0.101 line. The SDK only
+# uses the hyper 1.x + rustls 0.23 client (`default-https-client`) with the behavior
+# versions pinned in the services, so the legacy stack is dropped.
 aws-config = "1.0"
-aws-sdk-bedrockruntime = "1.0"
-aws-sdk-bedrock = "1.0"
-aws-sdk-s3 = "1.0"
-aws-sdk-costexplorer = "1.0"
-aws-sdk-sqs = "1.89"
+aws-sdk-bedrockruntime = { version = "1.0", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-bedrock = { version = "1.0", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-s3 = { version = "1.0", default-features = false, features = ["default-https-client", "rt-tokio", "sigv4a", "http-1x"] }
+aws-sdk-costexplorer = { version = "1.0", default-features = false, features = ["default-https-client", "rt-tokio"] }
+aws-sdk-sqs = { version = "1.89", default-features = false, features = ["default-https-client", "rt-tokio"] }
 aws-smithy-types = "1.0"
 aws-smithy-runtime-api = "1.0"
 aws-credential-types = "1.0"
@@ -94,7 +98,10 @@ lazy_static = "1.4"
 url = "2.5"
 
 # OAuth
-oauth2 = "4.4"
+# oauth2 4.x still uses reqwest 0.11; its default `rustls-tls` feature pins rustls 0.21
+# with the vulnerable rustls-webpki 0.101 line. Use native-tls (OpenSSL) instead, which
+# the app already links through reqwest 0.12.
+oauth2 = { version = "4.4", default-features = false, features = ["reqwest", "native-tls"] }
 urlencoding = "2.1"
 sha2 = "0.10"
 hex = "0.4"
