@@ -57,6 +57,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ### Features/bugfixes
 
 * (hgh) Introduce skills support, PPTX generation with "pptxgenjs", PDF generation, XLSX generation (put generated files to context, show in Library)
+* (mid) Add new tool like exising web-search to download external pages/documents and extract content as MD with https://www.npmjs.com/package/docling.rs add downloaded content as chat document and show it in details to do not reload it
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
 * (hgh) Add browser notifications to notify user about conversation end, confirmation requests
 * (low) Add Java code executor like Go one with https://codapi.org/java/
