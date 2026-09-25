@@ -612,7 +612,9 @@
       "passwordHint": "Hint: {{hint}}",
       "password": "Cloud password",
       "connected": "Telegram connected as {{name}}"
-    }
+    },
+    "requireApproval": "Ask before calling tools",
+    "requireApprovalDescription": "Each call of this server's tools waits in the chat until you approve or deny it"
   },
   "messageDetails": {
     "skillsUsed": "Skills used",
@@ -871,5 +873,25 @@
     "unfinishedMaxTokens": "It reached the model's output limit. Ask for a shorter file, or for several files one at a time, and regenerate the answer; continuing would start a new, separate block.",
     "unfinishedOther": "Regenerate the answer to get a complete program.",
     "unfinishedRun": "The program for {{file}} is incomplete: the answer ended before it did, so it cannot run."
+  },
+  "notifications": {
+    "setting": "Browser notifications",
+    "settingDescription": "Tells you in this browser when an answer finishes or a tool call waits for your approval while you look elsewhere.",
+    "blocked": "Notifications are blocked for this site: allow them in the browser's site settings.",
+    "unsupported": "This browser cannot show notifications.",
+    "untitledChat": "Untitled chat",
+    "completedTitle": "Answer ready: {{chat}}",
+    "completedBody": "The answer is ready.",
+    "errorTitle": "Answer failed: {{chat}}",
+    "approvalTitle": "Approval needed",
+    "approvalBody": "{{chat}}: {{tool}} waits for your approval."
+  },
+  "toolApproval": {
+    "title": "Allow {{server}} to run {{tool}}?",
+    "description": "The answer continues once you decide. The tool gets these arguments:",
+    "approve": "Approve",
+    "deny": "Deny",
+    "denied": "You denied {{server}}: {{tool}}.",
+    "expired": "{{server}}: {{tool}} did not run: nobody approved it in time."
   }
 }

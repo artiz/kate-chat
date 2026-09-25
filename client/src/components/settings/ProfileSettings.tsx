@@ -3,6 +3,7 @@ import { Paper, TextInput, Button, Group, Stack, Text, SegmentedControl, Select 
 import { setAppTimeZone, useTheme } from "@katechat/ui";
 import { useTranslation } from "react-i18next";
 import { UpdateUserInput, User } from "@/store/slices/userSlice";
+import { NotificationSettings } from "./NotificationSettings";
 
 type ColorScheme = "light" | "dark" | "auto";
 
@@ -100,6 +101,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
             fullWidth
           />
         </Stack>
+
+        <NotificationSettings />
 
         <Stack gap="md">
           <Group grow>

@@ -8,6 +8,7 @@ import { runSkillTool, SKILL_TOOL_DESCRIPTION, SKILL_TOOL_NAME, skillToolSchema 
 import { notEmpty, ok } from "@/utils/assert";
 import { WEB_SEARCH_TOOL_NAME, YandexWebSearch } from "../tools/yandex.web_search";
 import { MCPClient } from "../tools/mcp.client";
+import { mcpCallRefusal } from "../tools/approval";
 
 // Re-export for backward compatibility
 export { WEB_SEARCH_TOOL_NAME };
@@ -110,8 +111,12 @@ async function callMcpTool(
   args: Record<string, any>,
   toolUseId: string,
   server: IMCPServer,
-  mcpTokens?: MCPAuthToken[]
+  mcpTokens?: MCPAuthToken[],
+  request?: CompleteChatRequest
 ): Promise<ToolResultBlock> {
+  const refusal = await mcpCallRefusal(request, server, toolName, args, toolUseId);
+  if (refusal) return { toolUseId, content: [{ text: refusal }], status: "error" };
+
   // Find matching OAuth token for this server
   const oauthToken = mcpTokens?.find(t => t.serverId === server.id);
   const client = MCPClient.connect(server, oauthToken);
@@ -150,7 +155,11 @@ async function callMcpTool(
 /**
  * Convert MCP tool definitions to Bedrock tool format (similar to formatOpenAIMcpTools)
  */
-export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: IMCPServer[]): BedrockToolCallable[] {
+export function formatBedrockMcpTools(
+  tools?: ChatTool[],
+  mcpServers?: IMCPServer[],
+  request?: CompleteChatRequest
+): BedrockToolCallable[] {
   if (!tools?.length || !mcpServers?.length) {
     return [];
   }
@@ -184,7 +193,7 @@ export function formatBedrockMcpTools(tools?: ChatTool[], mcpServers?: IMCPServe
               _connection: ConnectionParams,
               mcpTokens?: MCPAuthToken[]
             ) => {
-              return callMcpTool(mcpTool.name, args, toolUseId, server, mcpTokens);
+              return callMcpTool(mcpTool.name, args, toolUseId, server, mcpTokens, request);
             },
           };
 
@@ -236,7 +245,8 @@ export function formatBedrockRequestTools(
 
   const mcpTools = formatBedrockMcpTools(
     inputTools.filter(t => t.type === ToolType.MCP),
-    mcpServers
+    mcpServers,
+    request
   );
   tools.push(...mcpTools);
 

@@ -56,6 +56,7 @@ import {
   ContextMessages,
   TruncatedResponse,
   SkillRuns,
+  ToolApprovals,
 } from "./plugins";
 import { CREATE_MESSAGE, STOP_MESSAGE_GENERATION_MUTATION } from "@/store/services/graphql.queries";
 import {
@@ -86,6 +87,7 @@ import classes from "./Chat.module.scss";
 import { UpdateChatInput } from "@/hooks/useChatMessages";
 import { DocumentsDashboard } from "../documents";
 import { useDisclosure } from "@mantine/hooks";
+import { askNotificationsOnce } from "@/lib/browserNotifications";
 
 interface IProps {
   chatId?: string;
@@ -219,6 +221,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
     () => [
       isExternalChat ? (props: PluginProps<Message>) => <TruncatedResponse {...props} readOnly /> : TruncatedResponse,
       isExternalChat ? (props: PluginProps<Message>) => <SkillRuns {...props} readOnly /> : SkillRuns,
+      isExternalChat ? (props: PluginProps<Message>) => <ToolApprovals {...props} readOnly /> : ToolApprovals,
     ],
     [isExternalChat]
   );
@@ -277,6 +280,8 @@ export const ChatComponent = ({ chatId }: IProps) => {
   ) => {
     if (!message?.trim() && !images.length && !audio && !files?.length) return;
     assert.ok(chatId, "Chat is required to send a message");
+    // the browser asks once whether the app may tell about answers that finish while the user is away
+    askNotificationsOnce();
 
     try {
       // Collect MCP auth tokens for enabled MCP tools

@@ -19,6 +19,9 @@ import {
   ModelMessageContentFile,
   ModelMessageContentImage,
   ModelResponse,
+  ToolApproval,
+  ToolApprovalRequest,
+  ToolApprovalStatus,
 } from "@/types/ai.types";
 import { MessageRole, MessageType, ModelFeature, ModelType, ResponseStatus, ToolType } from "@/types/api";
 import { notEmpty, ok } from "@/utils/assert";
@@ -37,6 +40,7 @@ import { getRepository } from "@/config/database";
 import { formatDateCeil, formatDateFloor } from "@/utils/db";
 
 import { COMMAND_CONTINUE_REQUEST, SubscriptionsService } from "./messaging";
+import type { ToolApprovalEvent } from "./messaging/subscriptions.service";
 import type { RequestQueuePayload, RequestsSqsService } from "./messaging/requests-sqs.service";
 import { ConnectionParams } from "@/middleware/auth.middleware";
 import { S3Service } from "./data";
@@ -56,6 +60,10 @@ const aiConfig = globalConfig.ai;
 const logger = createLogger(__filename);
 
 const MIN_STREAMING_UPDATE_MS = 50; // Minimum interval between streaming updates
+// while a tool call waits for the user, the queued continuation of the request must not take it over
+const APPROVAL_LOCK_REFRESH_MS = 30_000;
+
+const approvalKey = (messageId: string, callId: string) => `${messageId}:${callId}`;
 
 export class MessagesService {
   private static clients: WeakMap<WebSocket, string> = new WeakMap<WebSocket, string>();
@@ -71,6 +79,8 @@ export class MessagesService {
   private embeddingsService: EmbeddingsService;
   private requestsSqsService: RequestsSqsService;
   private cancelledMessages: Set<string> = new Set<string>();
+  // tool calls of answers this instance runs that wait for the user, by message and call id
+  private pendingApprovals = new Map<string, (status: ToolApprovalStatus) => void>();
   private requestsLock: QueueLockService<string, string>;
 
   constructor(subscriptionsService: SubscriptionsService, requestsSqsService: RequestsSqsService) {
@@ -86,6 +96,7 @@ export class MessagesService {
     this.requestsLock = new QueueLockService<string, string>("requests", globalConfig.sqs.requestsQueueExpirationMs); // slightly longer than SQS delay
 
     subscriptionsService.on(globalConfig.redis.channelChatMessage, this.handleMessageEvent.bind(this));
+    subscriptionsService.on(globalConfig.redis.channelToolApproval, this.handleToolApprovalEvent.bind(this));
     requestsSqsService.subscribe(COMMAND_CONTINUE_REQUEST, this.handleQueuedRequestMessage.bind(this));
   }
 
@@ -164,7 +175,90 @@ export class MessagesService {
 
     if (message?.status === ResponseStatus.CANCELLED) {
       this.cancelledMessages.add(message.id);
+      this.declinePendingApprovals(message.id);
     }
+  }
+
+  protected handleToolApprovalEvent({ messageId, callId, status }: ToolApprovalEvent) {
+    this.pendingApprovals.get(approvalKey(messageId, callId))?.(status);
+  }
+
+  /** A stopped answer runs none of the tool calls that wait for the user */
+  protected declinePendingApprovals(messageId: string) {
+    [...this.pendingApprovals.entries()]
+      .filter(([key]) => key.startsWith(`${messageId}:`))
+      .forEach(([, finish]) => finish("denied"));
+  }
+
+  /**
+   * Shows a tool call of the answer to the user and waits until they approve or deny it, the answer is
+   * stopped, or the wait times out. Resolves to whether the call may run.
+   */
+  protected async waitForToolApproval(chat: Chat, message: Message, call: ToolApprovalRequest): Promise<boolean> {
+    const approvals = (): ToolApproval[] => message.metadata?.toolApprovals || [];
+    message.metadata = {
+      ...message.metadata,
+      toolApprovals: [
+        ...approvals().filter(approval => approval.callId !== call.callId),
+        {
+          callId: call.callId,
+          serverId: call.serverId,
+          serverName: call.serverName,
+          toolName: call.toolName,
+          args: JSON.stringify(call.args ?? {}),
+          status: "pending",
+        },
+      ],
+    };
+    message.status = ResponseStatus.TOOL_APPROVAL;
+    message.statusInfo = `${call.serverName}: ${call.toolName}`;
+    await this.saveAndPublish(chat, message, true);
+
+    const key = approvalKey(message.id, call.callId);
+    const requestId = message.metadata?.requestId;
+    const status = await new Promise<ToolApprovalStatus>(resolve => {
+      const finish = (status: ToolApprovalStatus) => {
+        clearTimeout(timeout);
+        clearInterval(keepLock);
+        this.pendingApprovals.delete(key);
+        resolve(status);
+      };
+      const timeout = setTimeout(() => finish("expired"), aiConfig.toolApprovalTimeoutMs);
+      const keepLock = setInterval(() => {
+        if (requestId) {
+          this.requestsLock.putLock(requestId, process.pid.toString()).catch(error => logger.warn(error));
+        }
+      }, APPROVAL_LOCK_REFRESH_MS);
+
+      this.pendingApprovals.set(key, finish);
+      if (this.cancelledMessages.has(message.id)) finish("denied");
+    });
+
+    logger.info({ messageId: message.id, tool: call.toolName, server: call.serverName, status }, "Tool call approval");
+    const approval = approvals().find(approval => approval.callId === call.callId);
+    if (approval) approval.status = status;
+    const waiting = approvals().some(approval => approval.status === "pending");
+    message.status = waiting ? ResponseStatus.TOOL_APPROVAL : ResponseStatus.MCP_CALL;
+    message.statusInfo = waiting ? message.statusInfo : call.toolName;
+    await this.saveAndPublish(chat, message, true);
+
+    return status === "approved";
+  }
+
+  /** The user's answer to a tool call that waits for approval; the answer then goes on */
+  public async answerToolApproval(messageId: string, callId: string, approved: boolean, user: User): Promise<Message> {
+    const message = await this.messageRepository.findOne({ where: { id: messageId }, relations: { chat: true } });
+    if (!message || message.userId !== user.id) throw new Error("Message not found");
+
+    const approval = message.metadata?.toolApprovals?.find(approval => approval.callId === callId);
+    if (!approval) throw new Error("This tool call does not wait for approval");
+    // answered already, in another tab, or timed out
+    if (approval.status !== "pending") return message;
+
+    approval.status = approved ? "approved" : "denied";
+    const saved = await this.messageRepository.save(message);
+    await this.subscriptionsService.publishToolApproval({ messageId, callId, status: approval.status });
+    return saved;
   }
 
   protected async handleQueuedRequestMessage(
@@ -1457,6 +1551,7 @@ export class MessagesService {
     };
 
     request.requestPolling = this.requestsSqsService.isConfigured();
+    request.approveToolCall = call => this.waitForToolApproval(chat, assistantMessage, call);
 
     this.aiService
       .streamChatCompletion(connection, request, inputMessages, model, handleStreaming, s3Service)
@@ -1730,6 +1825,9 @@ export class MessagesService {
     if (!model) {
       throw new Error("Model not found");
     }
+
+    // a tool call that waits for the user holds the answer here, with no provider request to stop
+    this.declinePendingApprovals(messageId);
 
     try {
       await this.aiService.stopRequest(model, connection, requestId);

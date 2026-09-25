@@ -27,6 +27,7 @@ import { getClientConfig } from "@/global-config";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 import { UserRole } from "@/store/slices/userSlice";
 import { ThemeSelector } from "./common/ThemeSelector";
+import { useBrowserNotifications } from "@/hooks";
 
 export const MainLayout: React.FC = () => {
   const [opened, { toggle, close: closeNavbar }] = useDisclosure();
@@ -43,6 +44,7 @@ export const MainLayout: React.FC = () => {
     defaultValue: true,
   });
   const { appTitle } = getClientConfig();
+  useBrowserNotifications(!!currentUser);
 
   // Handle logout
   const handleLogout = () => {

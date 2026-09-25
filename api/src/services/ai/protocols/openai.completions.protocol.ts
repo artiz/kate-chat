@@ -357,7 +357,8 @@ export class OpenAICompletionsProtocol extends OpenAIProtocolBase {
       }
       const mcpTools = formatOpenAIMcpTools(
         inputTools.filter(t => t.type === ToolType.MCP),
-        mcpServers
+        mcpServers,
+        request
       );
       tools.push(...mcpTools);
 

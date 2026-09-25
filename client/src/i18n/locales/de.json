@@ -612,7 +612,9 @@
       "passwordHint": "Hinweis: {{hint}}",
       "password": "Cloud-Passwort",
       "connected": "Telegram verbunden als {{name}}"
-    }
+    },
+    "requireApproval": "Vor Tool-Aufrufen fragen",
+    "requireApprovalDescription": "Jeder Aufruf der Tools dieses Servers wartet im Chat, bis Sie ihn freigeben oder ablehnen"
   },
   "messageDetails": {
     "skillsUsed": "Verwendete Skills",
@@ -871,5 +873,25 @@
     "unfinishedMaxTokens": "Das Ausgabelimit des Modells wurde erreicht. Bitten Sie um eine kürzere Datei oder um mehrere Dateien nacheinander und generieren Sie die Antwort neu; Fortsetzen würde einen neuen, separaten Block beginnen.",
     "unfinishedOther": "Generieren Sie die Antwort neu, um ein vollständiges Programm zu erhalten.",
     "unfinishedRun": "Das Programm für {{file}} ist unvollständig: Die Antwort endete vorher, daher kann es nicht ausgeführt werden."
+  },
+  "notifications": {
+    "setting": "Browser-Benachrichtigungen",
+    "settingDescription": "Meldet in diesem Browser, wenn eine Antwort fertig ist oder ein Tool-Aufruf auf Ihre Freigabe wartet, während Sie woanders sind.",
+    "blocked": "Benachrichtigungen sind für diese Website blockiert: Erlauben Sie sie in den Website-Einstellungen des Browsers.",
+    "unsupported": "Dieser Browser kann keine Benachrichtigungen anzeigen.",
+    "untitledChat": "Chat ohne Titel",
+    "completedTitle": "Antwort fertig: {{chat}}",
+    "completedBody": "Die Antwort ist fertig.",
+    "errorTitle": "Antwort fehlgeschlagen: {{chat}}",
+    "approvalTitle": "Freigabe erforderlich",
+    "approvalBody": "{{chat}}: {{tool}} wartet auf Ihre Freigabe."
+  },
+  "toolApproval": {
+    "title": "{{server}} erlauben, {{tool}} auszuführen?",
+    "description": "Die Antwort geht weiter, sobald Sie entscheiden. Das Tool erhält diese Argumente:",
+    "approve": "Freigeben",
+    "deny": "Ablehnen",
+    "denied": "Sie haben {{server}}: {{tool}} abgelehnt.",
+    "expired": "{{server}}: {{tool}} wurde nicht ausgeführt: Niemand hat ihn rechtzeitig freigegeben."
   }
 }

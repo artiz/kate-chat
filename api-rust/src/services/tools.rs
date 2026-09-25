@@ -77,6 +77,13 @@ async fn run_tool(tool: &ExecutableTool, call: &ToolCallRequest) -> Result<Strin
             tool_name,
             auth_token,
         } => {
+            if server.require_approval {
+                // the Node API asks the user in the chat; this one has no way to ask yet
+                return Ok(format!(
+                    "{} needs the user's approval for each call, and it cannot be asked for here, so the call did not run.",
+                    tool_name
+                ));
+            }
             debug!("MCP tool call: {} on {}", tool_name, server.name);
             let mut client = McpClient::for_server(server, auth_token.as_deref());
             client.call_tool(tool_name, call.arguments.clone()).await

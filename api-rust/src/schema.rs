@@ -115,6 +115,7 @@ diesel::table! {
         user_id -> Nullable<Text>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        require_approval -> Bool,
     }
 }
 

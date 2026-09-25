@@ -65,6 +65,7 @@ export class McpServersService {
       authConfig: input.authConfig as MCPAuthConfig,
       user: userId ? { id: userId } : undefined,
       isActive: true,
+      requireApproval: !!input.requireApproval,
       access: (input.access as EntityAccessType) || EntityAccessType.PRIVATE,
     });
 
@@ -88,6 +89,7 @@ export class McpServersService {
       "authType",
       "authConfig",
       "isActive",
+      "requireApproval",
       "access",
     ];
 

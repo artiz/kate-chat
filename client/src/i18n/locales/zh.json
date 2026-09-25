@@ -612,7 +612,9 @@
       "passwordHint": "提示：{{hint}}",
       "password": "云密码",
       "connected": "已连接 Telegram：{{name}}"
-    }
+    },
+    "requireApproval": "调用工具前询问",
+    "requireApprovalDescription": "此服务器工具的每次调用都会在聊天中等待，直到您批准或拒绝"
   },
   "messageDetails": {
     "skillsUsed": "使用的技能",
@@ -871,5 +873,25 @@
     "unfinishedMaxTokens": "已达到模型的输出上限。请要求生成更短的文件，或逐个生成多个文件，然后重新生成回答；继续生成会开始一个新的独立代码块。",
     "unfinishedOther": "重新生成回答以获得完整的程序。",
     "unfinishedRun": "{{file}} 的程序不完整：回答提前结束，无法运行。"
+  },
+  "notifications": {
+    "setting": "浏览器通知",
+    "settingDescription": "当您在别处时，在此浏览器中提示回答已完成或工具调用正在等待您的批准。",
+    "blocked": "此网站的通知已被阻止：请在浏览器的网站设置中允许通知。",
+    "unsupported": "此浏览器无法显示通知。",
+    "untitledChat": "未命名聊天",
+    "completedTitle": "回答已完成：{{chat}}",
+    "completedBody": "回答已完成。",
+    "errorTitle": "回答失败：{{chat}}",
+    "approvalTitle": "需要批准",
+    "approvalBody": "{{chat}}：{{tool}} 正在等待您的批准。"
+  },
+  "toolApproval": {
+    "title": "允许 {{server}} 运行 {{tool}}？",
+    "description": "您做出决定后回答将继续。该工具将收到以下参数：",
+    "approve": "批准",
+    "deny": "拒绝",
+    "denied": "您拒绝了 {{server}}：{{tool}}。",
+    "expired": "{{server}}：{{tool}} 未运行：没有人及时批准。"
   }
 }

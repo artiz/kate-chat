@@ -14,6 +14,7 @@ const TITLE_MAP: Record<ResponseStatus, string> = {
   [ResponseStatus.REASONING]: "Reasoning",
   [ResponseStatus.ERROR]: "Error",
   [ResponseStatus.TOOL_CALL_COMPLETED]: "Tool Call Completed",
+  [ResponseStatus.TOOL_APPROVAL]: "Waiting for approval",
   [ResponseStatus.CANCELLED]: "Cancelled",
 };
 
@@ -28,6 +29,7 @@ const COLOR_MAP: Record<ResponseStatus, DefaultMantineColor> = {
   [ResponseStatus.REASONING]: "yellow",
   [ResponseStatus.ERROR]: "red",
   [ResponseStatus.TOOL_CALL_COMPLETED]: "green",
+  [ResponseStatus.TOOL_APPROVAL]: "orange",
   [ResponseStatus.CANCELLED]: "orange",
 };
 
