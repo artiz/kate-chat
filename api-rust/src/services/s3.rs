@@ -33,7 +33,7 @@ impl S3Service {
     }
 
     async fn build_aws_config(&self) -> Result<aws_config::SdkConfig, AppError> {
-        let mut config_builder = aws_config::defaults(BehaviorVersion::v2025_01_17());
+        let mut config_builder = aws_config::defaults(BehaviorVersion::v2026_01_12());
 
         if let Some(region) = &self.config.s3_region {
             config_builder = config_builder.region(Region::new(region.clone()));
