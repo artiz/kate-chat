@@ -44,6 +44,7 @@ export async function runSkillTool(request: CompleteChatRequest, args: Record<st
     return `There is no skill "${id}". Skills: ${known}.`;
   }
   if (request.settings) request.settings.maxTokens = undefined;
+  request.outputUnlimited = true;
   return context.load(id);
 }
 

@@ -1273,6 +1273,7 @@ export class MessagesService {
           systemPrompt: [request.settings?.systemPrompt, prompt].filter(Boolean).join("\n\n"),
           maxTokens: undefined,
         },
+        outputUnlimited: true,
       };
       this.aiService
         .streamChatCompletion(connection, retry, inputMessages, model, handleStreaming, s3Service)

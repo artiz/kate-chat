@@ -435,6 +435,9 @@ export interface CompleteChatRequest {
   mcpTokens?: MCPAuthToken[];
   // skills the model may load with the use_skill tool (see services/ai/tools/skills.tool.ts)
   skills?: SkillToolContext;
+  // set once a skill is in use: the answer gets the model's own output limit, not the chat's
+  // Max Tokens (providers whose API has no "maximum" default, like Bedrock, ask for it explicitly)
+  outputUnlimited?: boolean;
 
   // if true, the request will be processed as a long-running request with status updates polled via SQS
   requestPolling?: boolean;
