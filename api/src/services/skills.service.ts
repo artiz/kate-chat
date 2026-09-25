@@ -232,6 +232,7 @@ const SKILLS_INTRO = `You can produce files, and change the documents of this ch
 const SKILL_BLOCK_RULES = `To use a skill, write the whole program in one fenced code block whose header names the skill and the file, for example \`\`\`python skill=<skill id> file=report.pptx
 - One block per file. It runs exactly as written, so it must be complete: no placeholders, no omitted parts, no "...".
 - Only the skill's packages and helper modules are available, and you must import every helper you use. There is no network access (TypeScript programs can load photos) and of the user's files only this chat's; put the content in the program.
+- Put in the file only content you actually have. You cannot open links the user gives you (unless a tool of yours fetched the page): when the content is behind a link, ask for the text instead of inventing it.
 - Python: save the file to /output/<file name>. TypeScript: import packages by name and finish with \`await output.save("<file name>", data)\`, where data is a Uint8Array, ArrayBuffer, Blob or string.
 - Outside the block, say in a sentence or two what the file contains; do not repeat its content. Do not write that the file was made or attached: the app adds that note to your message itself once the program has run.
 - If the user sends you an error from a run, answer with the corrected complete block under the same header.`;

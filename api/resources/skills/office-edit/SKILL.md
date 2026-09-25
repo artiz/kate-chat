@@ -38,7 +38,8 @@ Helpers in `office_helpers` (they take a python-pptx `Presentation` or a python-
 - `replace_text(doc, old, new)`: everywhere, tables and notes included, keeping the formatting; returns how many paragraphs changed.
 - `set_font(doc, name, size_pt=None)`, `set_text_color(doc, "1F2933", headings_only=False)`: restyle all text; with `headings_only`, only headings (Word) or title placeholders (PowerPoint).
 - PowerPoint: `slide_texts(prs)` → `[(index, text)]` to find a slide; `duplicate_slide(prs, index)` appends a copy and returns it; `move_slide(prs, old_index, new_index)`; `delete_slide(prs, index)`; `set_background(prs, "FFF8E1")`.
-- `save(doc_or_workbook, "<file name>")` writes it to /output.
+- `save(doc_or_workbook, "<file name>")` writes it to /output. It fails when nothing was changed compared with the file you opened: check what `replace_text` returns (0 means the text is not in the document) and use `slide_texts(prs)` to see the text a deck actually has before replacing it.
+- The helpers are available without an import too.
 
 Library essentials:
 

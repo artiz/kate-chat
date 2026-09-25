@@ -328,6 +328,10 @@ function typescriptDocument(source: SkillSource, js: string, chatFiles: ChatFile
 }
 
 function pythonDocument(source: SkillSource, code: string, chatFiles: ChatFile[]): string {
+  // top-level helper modules: scripts/office_helpers.py → office_helpers
+  const pythonModules = source.files
+    .filter(file => /^[A-Za-z_]\w*\.py$/.test(file.path) && file.path !== "__init__.py")
+    .map(file => file.path.replace(/\.py$/, ""));
   const runner = `
     ${REPORT}
     (async () => {
@@ -359,6 +363,11 @@ function pythonDocument(source: SkillSource, code: string, chatFiles: ChatFile[]
         pyodide.FS.mkdirTree("/skill");
         pyodide.FS.mkdirTree("/output");
         pyodide.runPython("import sys\\nif '/skill' not in sys.path: sys.path.insert(0, '/skill')");
+        // the skill's helper modules are imported first, their names available without an import
+        // (as in TypeScript), and so that a helper can set up the libraries it builds on
+        for (const module of ${inlineJson(pythonModules)}) {
+          pyodide.runPython("from " + module + " import *");
+        }
         await pyodide.runPythonAsync(code);
         const files = pyodide.FS.readdir("/output")
           .filter(name => name !== "." && name !== ".." && pyodide.FS.isFile(pyodide.FS.stat("/output/" + name).mode))

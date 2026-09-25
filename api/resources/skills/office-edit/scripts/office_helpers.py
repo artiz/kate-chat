@@ -1,11 +1,65 @@
 """Helpers for changing existing Word, PowerPoint and Excel files with python-docx, python-pptx and openpyxl."""
 
 import copy
+import hashlib
 import os
 
+import docx
+import openpyxl
+import pptx
+from lxml import etree
 from pptx.dml.color import RGBColor as PptxRGB
 
 OUTPUT_DIR = "/output"  # where the sandbox collects the program's files
+
+__all__ = [
+    "replace_text",
+    "set_font",
+    "set_text_color",
+    "set_background",
+    "slide_texts",
+    "duplicate_slide",
+    "delete_slide",
+    "move_slide",
+    "save",
+]
+
+# The file each document was opened from, with a fingerprint of its content, so that save() can
+# tell when nothing was changed (a model replacing text that is not there, or changing nothing).
+# The sandbox imports this module before the program runs, so the openers below are the ones
+# `from pptx import Presentation` and the like get.
+_opened = {}
+
+
+def _fingerprint(document):
+    digest = hashlib.sha1()
+    if hasattr(document, "slides"):  # python-pptx: every slide's XML, in order
+        for slide in document.slides:
+            digest.update(etree.tostring(slide._element))
+    elif hasattr(document, "worksheets"):  # openpyxl: sheet names and cell values
+        for sheet in document.worksheets:
+            digest.update(repr((sheet.title, [[c.value for c in row] for row in sheet.iter_rows()])).encode())
+    elif hasattr(document, "element"):  # python-docx: the document body
+        digest.update(etree.tostring(document.element))
+    return digest.hexdigest()
+
+
+def _tracking(opener):
+    def open_document(source=None, *args, **kwargs):
+        document = opener(source, *args, **kwargs)
+        if isinstance(source, str):
+            _opened[id(document)] = (source, _fingerprint(document))
+        return document
+
+    open_document.__doc__ = opener.__doc__
+    return open_document
+
+
+if not getattr(pptx, "_katechat_tracked", False):
+    pptx.Presentation = _tracking(pptx.Presentation)
+    docx.Document = _tracking(docx.Document)
+    openpyxl.load_workbook = _tracking(openpyxl.load_workbook)
+    pptx._katechat_tracked = True
 
 
 def _paragraphs(container):
@@ -60,6 +114,8 @@ def replace_text(container, old, new):
             for run in runs:
                 run.text = run.text.replace(old, new)
         changed += 1
+    if not changed:
+        print(f"replace_text: {old!r} was not found, nothing replaced")
     return changed
 
 
@@ -177,6 +233,13 @@ def move_slide(prs, old_index, new_index):
 
 def save(document, file_name):
     """Saves a python-docx document, python-pptx presentation or openpyxl workbook to /output/<file_name>."""
+    opened = _opened.get(id(document))
+    if opened and _fingerprint(document) == opened[1]:
+        raise RuntimeError(
+            f"Nothing was changed: {os.path.basename(file_name)} would be the same as {opened[0]}. "
+            "Make the changes the user asked for: replace_text returns how many paragraphs it changed "
+            "(0 means the text is not in the document; slide_texts(prs) shows the text a deck has)."
+        )
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     path = os.path.join(OUTPUT_DIR, os.path.basename(file_name))
     document.save(path)
