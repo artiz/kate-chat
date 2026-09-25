@@ -153,6 +153,33 @@ describe("tool call approval", () => {
     }
   });
 
+  it("lets calls run without asking for a user who turned approvals off", async () => {
+    const { service, snapshots, message } = setup();
+    const ai = (service as any).aiService.streamChatCompletion as jest.Mock;
+    const results: boolean[] = [];
+    ai.mockImplementation(async (_c, request: CompleteChatRequest, _m, _model, callback: Stream) => {
+      results.push(await request.approveToolCall!(CALL));
+      await callback({ content: "sent", metadata: {} }, true);
+    });
+    (service as any).ensureChatTitle = jest.fn();
+    (service as any).processModelResponse = jest.fn();
+
+    await (service as any).publishAssistantMessage(
+      { chatId: "chat-1", modelId: "gpt", content: "Mail my boss" },
+      {},
+      { id: "u1", settings: { mcpToolApprovals: false }, toToken: () => ({}) },
+      { modelId: "gpt", type: ModelType.CHAT, streaming: true, tools: [], features: [] },
+      { id: "chat-1", tools: [], settings: {} },
+      [],
+      message
+    );
+    await tick();
+
+    expect(results).toEqual([true]);
+    expect(snapshots.some(snapshot => snapshot.status === ResponseStatus.TOOL_APPROVAL)).toBe(false);
+    expect(message.metadata.toolApprovals).toBeUndefined();
+  });
+
   it("is offered to the provider of a streamed answer", async () => {
     const { service, message } = setup();
     const ai = (service as any).aiService.streamChatCompletion as jest.Mock;

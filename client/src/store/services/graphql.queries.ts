@@ -112,6 +112,7 @@ export const FULL_USER_FRAGMENT = `
       settings {
         language
         timezone
+        mcpToolApprovals
         s3Endpoint
         s3Region
         s3FilesBucketName

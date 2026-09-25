@@ -8,9 +8,7 @@ KateChat tells the user when something in one of their chats needs them while th
 ## Browser notifications
 
 - The browser asks for the permission once, when the user sends their first message. A blocked permission is changed in the browser's site settings.
-- **Profile** has two switches, both per browser, like the permission itself:
-  - **Browser notifications** turns all notifications on and off. Turning it on asks for the permission again if needed.
-  - **MCP tool call approvals** turns off only the notifications about tool calls that wait for approval, in-app ones included. Finished and failed answers, long ones included, still notify. The approval card in the chat itself stays.
+- **Profile → Browser notifications** turns all notifications on and off, per browser, like the permission itself. Turning it on asks for the permission again if needed.
 - No notification appears while the user looks at that chat: the page is visible, has the focus and shows that chat. A click on a notification brings the tab forward and opens the chat.
 - A notification about a waiting tool call stays on screen until the user clicks it or closes it (`requireInteraction`). An answer that fails gets its own title.
 - Without the permission, a waiting tool call in another chat still shows up as an in-app notification, as long as the page is active.
@@ -24,6 +22,8 @@ KateChat tells the user when something in one of their chats needs them while th
 ## MCP tool call approval
 
 An MCP server can be marked **Ask before calling tools** (`requireApproval`) in its settings (the MCP servers page, or the admin page for system servers).
+
+The user turns approvals on and off for their account with **Profile → MCP tool call approvals** (`settings.mcpToolApprovals`, on unless set to `false`). With approvals off, tools of such servers run right away: no card in the chat and no approval notifications. Notifications about finished answers do not depend on it.
 
 When the model calls a tool of such a server, the answer waits:
 

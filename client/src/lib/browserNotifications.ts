@@ -2,8 +2,6 @@ import { UserChatEvent } from "@/types/graphql";
 
 // Per browser, like the permission itself: on unless the user turned it off in their profile
 const ENABLED_KEY = "browser-notifications";
-// within those, the ones about MCP tool calls that wait for approval; answers notify either way
-const APPROVALS_KEY = "browser-notifications-approvals";
 // the permission prompt comes once, on the first message sent; the profile setting asks again
 const ASKED_KEY = "browser-notifications-asked";
 const TEXT_LENGTH = 160;
@@ -36,16 +34,6 @@ export const notificationPermission = (): NotificationPermission | "unsupported"
 export const notificationsWanted = (): boolean => readStorage(ENABLED_KEY) !== "off";
 
 export const notificationsEnabled = (): boolean => notificationsWanted() && notificationPermission() === "granted";
-
-/** Whether the user wants to hear about MCP tool calls that wait for approval */
-export const approvalNotificationsWanted = (): boolean => readStorage(APPROVALS_KEY) !== "off";
-
-export const setApprovalNotificationsWanted = (wanted: boolean): void =>
-  writeStorage(APPROVALS_KEY, wanted ? "on" : "off");
-
-/** Whether the user's settings let this kind of event through, in the browser or in the app */
-export const notificationWanted = (event: UserChatEvent): boolean =>
-  notificationsWanted() && (event.kind !== "approval" || approvalNotificationsWanted());
 
 /** Turns notifications on or off in this browser; turning them on asks for the permission if needed */
 export async function setNotificationsWanted(wanted: boolean): Promise<NotificationPermission | "unsupported"> {
@@ -128,7 +116,7 @@ const shown = new Set<string>();
 
 /** Shows a browser notification for the event; false when it was not shown */
 export function showBrowserNotification(event: UserChatEvent, t: Translate, onClick: () => void): boolean {
-  if (!notificationsEnabled() || !notificationWanted(event)) return false;
+  if (!notificationsEnabled()) return false;
 
   const key = eventKey(event);
   if (shown.has(key)) return true;

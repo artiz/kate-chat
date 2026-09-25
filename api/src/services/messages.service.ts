@@ -1551,7 +1551,11 @@ export class MessagesService {
     };
 
     request.requestPolling = this.requestsSqsService.isConfigured();
-    request.approveToolCall = call => this.waitForToolApproval(chat, assistantMessage, call);
+    // a user who turned approvals off lets such calls run without asking
+    request.approveToolCall =
+      user.settings?.mcpToolApprovals === false
+        ? async () => true
+        : call => this.waitForToolApproval(chat, assistantMessage, call);
 
     this.aiService
       .streamChatCompletion(connection, request, inputMessages, model, handleStreaming, s3Service)

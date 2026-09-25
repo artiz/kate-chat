@@ -2,32 +2,40 @@ import React, { useState } from "react";
 import { Stack, Switch, Text } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import {
-  approvalNotificationsWanted,
   notificationPermission,
   notificationsSupported,
   notificationsWanted,
-  setApprovalNotificationsWanted,
   setNotificationsWanted,
 } from "@/lib/browserNotifications";
+import { UpdateUserInput, User } from "@/store/slices/userSlice";
+
+interface NotificationSettingsProps {
+  user: User;
+  updateUser: (input: UpdateUserInput) => Promise<void>;
+}
 
 /**
- * Browser notifications, for this browser only: one switch for all of them, and one for MCP tool calls
- * that wait for approval, so answers that finish can notify without them
+ * Browser notifications (for this browser only) and MCP tool call approvals (for the account): with
+ * approvals off, tools of servers set to ask first run right away, and nothing waits or notifies
  */
-export const NotificationSettings: React.FC = () => {
+export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ user, updateUser }) => {
   const { t } = useTranslation();
   const [permission, setPermission] = useState(notificationPermission);
   const [wanted, setWanted] = useState(notificationsWanted);
-  const [approvalsWanted, setApprovalsWanted] = useState(approvalNotificationsWanted);
+  const [approvals, setApprovals] = useState(user.settings?.mcpToolApprovals !== false);
 
   const handleChange = async (checked: boolean) => {
     setWanted(checked);
     setPermission(await setNotificationsWanted(checked));
   };
 
-  const handleApprovalsChange = (checked: boolean) => {
-    setApprovalsWanted(checked);
-    setApprovalNotificationsWanted(checked);
+  const handleApprovalsChange = async (checked: boolean) => {
+    setApprovals(checked);
+    try {
+      await updateUser({ settings: { mcpToolApprovals: checked } });
+    } catch {
+      setApprovals(!checked);
+    }
   };
 
   const available = notificationsSupported() && permission !== "denied";
@@ -39,22 +47,22 @@ export const NotificationSettings: React.FC = () => {
         : t("notifications.settingDescription");
 
   return (
-    <Stack gap="xs" mb="lg">
+    <Stack gap="md" mb="lg">
+      <Stack gap="xs">
+        <Switch
+          label={t("notifications.setting")}
+          checked={available && wanted}
+          disabled={!available}
+          onChange={e => handleChange(e.currentTarget.checked)}
+        />
+        <Text size="sm" c="dimmed">
+          {hint}
+        </Text>
+      </Stack>
       <Switch
-        label={t("notifications.setting")}
-        checked={available && wanted}
-        disabled={!available}
-        onChange={e => handleChange(e.currentTarget.checked)}
-      />
-      <Text size="sm" c="dimmed">
-        {hint}
-      </Text>
-      <Switch
-        ml="xl"
         label={t("notifications.approvalsSetting")}
         description={t("notifications.approvalsSettingDescription")}
-        checked={available && wanted && approvalsWanted}
-        disabled={!available || !wanted}
+        checked={approvals}
         onChange={e => handleApprovalsChange(e.currentTarget.checked)}
       />
     </Stack>

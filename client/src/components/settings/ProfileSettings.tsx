@@ -102,7 +102,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ user, updateUs
           />
         </Stack>
 
-        <NotificationSettings />
+        <NotificationSettings user={user} updateUser={updateUser} />
 
         <Stack gap="md">
           <Group grow>

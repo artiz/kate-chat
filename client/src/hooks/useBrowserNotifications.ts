@@ -8,7 +8,7 @@ import { UserChatEvent } from "@/types/graphql";
 import {
   currentViewState,
   notificationContent,
-  notificationWanted,
+  notificationsWanted,
   shouldNotify,
   showBrowserNotification,
 } from "@/lib/browserNotifications";
@@ -33,7 +33,7 @@ export const useBrowserNotifications = (enabled: boolean) => {
     fetchPolicy: "no-cache",
     onData: ({ data }) => {
       const event = data.data?.userChatEvents;
-      if (!event || !notificationWanted(event)) return;
+      if (!event || !notificationsWanted()) return;
 
       const view = currentViewState(chatIdRef.current);
       if (!shouldNotify(event, view)) return;

@@ -8,6 +8,8 @@ export interface UserSettings {
   language?: string;
   /** IANA name dates are rendered in; empty means the browser's own zone */
   timezone?: string;
+  /** false: MCP tool calls run without asking, even on servers set to ask first */
+  mcpToolApprovals?: boolean;
   s3Endpoint?: string;
   s3Region?: string;
   s3AccessKeyId?: string;

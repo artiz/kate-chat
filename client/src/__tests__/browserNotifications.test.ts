@@ -1,8 +1,6 @@
 import {
   askNotificationsOnce,
   notificationContent,
-  notificationWanted,
-  setApprovalNotificationsWanted,
   setNotificationsWanted,
   shouldNotify,
   showBrowserNotification,
@@ -92,26 +90,6 @@ describe("showBrowserNotification", () => {
     await setNotificationsWanted(false);
     expect(showBrowserNotification(event("completed"), t, jest.fn())).toBe(false);
     expect(FakeNotification.shown).toHaveLength(0);
-  });
-});
-
-describe("the approvals switch", () => {
-  it("silences tool calls that wait, while finished answers still notify", () => {
-    setApprovalNotificationsWanted(false);
-    expect(notificationWanted(event("approval"))).toBe(false);
-    expect(notificationWanted(event("completed"))).toBe(true);
-    expect(notificationWanted(event("error"))).toBe(true);
-
-    expect(showBrowserNotification(event("approval"), t, jest.fn())).toBe(false);
-    expect(showBrowserNotification(event("completed"), t, jest.fn())).toBe(true);
-    expect(FakeNotification.shown.map(n => n.options.tag)).toEqual([expect.stringMatching(/^completed:/)]);
-  });
-
-  it("has no effect when all notifications are off", async () => {
-    setApprovalNotificationsWanted(true);
-    await setNotificationsWanted(false);
-    expect(notificationWanted(event("approval"))).toBe(false);
-    expect(notificationWanted(event("completed"))).toBe(false);
   });
 });
 
