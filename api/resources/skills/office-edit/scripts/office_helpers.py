@@ -13,6 +13,10 @@ from pptx.dml.color import RGBColor as PptxRGB
 OUTPUT_DIR = "/output"  # where the sandbox collects the program's files
 
 __all__ = [
+    "set_text",
+    "slide_shapes",
+    "delete_shape",
+    "delete_paragraph",
     "replace_text",
     "set_font",
     "set_text_color",
@@ -89,6 +93,147 @@ def _slide_paragraphs(slide):
                     yield from cell.text_frame.paragraphs
     if slide.has_notes_slide:
         yield from slide.notes_slide.notes_text_frame.paragraphs
+
+
+def _a(tag):
+    return "{http://schemas.openxmlformats.org/drawingml/2006/main}" + tag
+
+
+def _paragraph_level(paragraph):
+    properties = paragraph.find(_a("pPr"))
+    return int(properties.get("lvl", "0")) if properties is not None else 0
+
+
+def _shrink_to_fit(shape, body, lines):
+    """Stores a shrink-to-fit scale (PowerPoint draws with it) when the text will not fit the shape."""
+    if not getattr(shape, "width", None) or not getattr(shape, "height", None):
+        return
+    sizes = [int(r.get("sz")) / 100 for r in body.iter(_a("rPr")) if r.get("sz")]
+    size = sizes[0] if sizes else (24 if getattr(shape, "is_placeholder", False) else 18)
+    width, height = shape.width / 12700, shape.height / 12700  # EMU → points
+    chars_per_line = max(1.0, width / (size * 0.5))
+    lines_that_fit = max(1.0, height / (size * 1.2))
+    needed = sum(max(1, -(-len(line) // int(chars_per_line))) for line in lines)
+    if needed <= lines_that_fit:
+        return
+    properties = body.find(_a("bodyPr"))
+    if properties is None:
+        return
+    for fit in ("noAutofit", "spAutoFit", "normAutofit"):
+        for element in properties.findall(_a(fit)):
+            properties.remove(element)
+    scale = max(0.5, (lines_that_fit / needed) ** 0.5)
+    fit = properties.makeelement(_a("normAutofit"), {"fontScale": str(int(scale * 100000))})
+    warp = properties.find(_a("prstTxWarp"))
+    if warp is not None:
+        warp.addnext(fit)
+    else:
+        properties.insert(0, fit)
+
+
+def set_text(target, text):
+    """Replaces ALL the text of a shape (or text frame) or a Word paragraph with `text`.
+
+    The old text is removed, not appended to. `text` is a string, or a list with one item per
+    paragraph (bullets of a body placeholder); an item may be (text, level) for a sub-bullet.
+    New paragraphs take the look (bullet, font, size, colour) of the shape's first paragraph, or of
+    its first paragraph at that level. On a slide, text too long for its shape is shrunk to fit.
+    """
+    if hasattr(target, "runs") and hasattr(target, "style"):  # a python-docx paragraph
+        runs = target.runs
+        for run in runs[1:]:
+            run._element.getparent().remove(run._element)
+        items = text if isinstance(text, (list, tuple)) else [text]
+        value = "\n".join(str(item[0] if isinstance(item, tuple) else item) for item in items)
+        if runs:
+            runs[0].text = value
+        else:
+            target.add_run(value)
+        return target
+
+    frame = target.text_frame if hasattr(target, "text_frame") else target
+    body = frame._txBody
+    items = list(text) if isinstance(text, (list, tuple)) else str(text).split("\n")
+    old_paragraphs = body.findall(_a("p"))
+
+    new_paragraphs, lines = [], []
+    for item in items or [""]:
+        line, level = (str(item[0]), int(item[1])) if isinstance(item, tuple) else (str(item), None)
+        lines.append(line)
+        template = None
+        if level is not None:
+            template = next((p for p in old_paragraphs if _paragraph_level(p) == level), None)
+        if template is None and old_paragraphs:
+            template = old_paragraphs[0]
+        paragraph = copy.deepcopy(template) if template is not None else body.makeelement(_a("p"), {})
+        runs = paragraph.findall(_a("r"))
+        style = runs[0].find(_a("rPr")) if runs else paragraph.find(_a("endParaRPr"))
+        for child in list(paragraph):
+            if child.tag not in (_a("pPr"), _a("endParaRPr")):
+                paragraph.remove(child)
+        if level is not None:
+            properties = paragraph.find(_a("pPr"))
+            if properties is None:
+                properties = paragraph.makeelement(_a("pPr"), {})
+                paragraph.insert(0, properties)
+            properties.set("lvl", str(level))
+        run = paragraph.makeelement(_a("r"), {})
+        if style is not None:
+            run_style = copy.deepcopy(style)
+            run_style.tag = _a("rPr")
+            run.append(run_style)
+        text_element = paragraph.makeelement(_a("t"), {})
+        text_element.text = line
+        run.append(text_element)
+        end = paragraph.find(_a("endParaRPr"))
+        if end is not None:
+            end.addprevious(run)
+        else:
+            paragraph.append(run)
+        new_paragraphs.append(paragraph)
+
+    for paragraph in old_paragraphs:
+        body.remove(paragraph)
+    for paragraph in new_paragraphs:
+        body.append(paragraph)
+    if hasattr(target, "text_frame"):
+        _shrink_to_fit(target, body, lines)
+    return target
+
+
+def slide_shapes(prs, index):
+    """What slide `index` holds, to pick the shapes to change: [(shape index, role, name, text)].
+
+    role is "title", "subtitle", "body", "picture", "table", "chart" or "other".
+    """
+    result = []
+    for position, shape in enumerate(prs.slides[index].shapes):
+        role = "other"
+        if shape.is_placeholder:
+            kind = str(shape.placeholder_format.type).lower()
+            role = "subtitle" if "subtitle" in kind else "title" if "title" in kind else "body" if shape.has_text_frame else role
+        elif shape.shape_type is not None and "PICTURE" in str(shape.shape_type):
+            role = "picture"
+        elif getattr(shape, "has_table", False) and shape.has_table:
+            role = "table"
+        elif getattr(shape, "has_chart", False) and shape.has_chart:
+            role = "chart"
+        elif shape.has_text_frame and shape.text_frame.text.strip():
+            role = "body"
+        text = shape.text_frame.text if shape.has_text_frame else ""
+        result.append((position, role, shape.name, text))
+    return result
+
+
+def delete_shape(shape):
+    """Removes a shape (text box, picture, ...) from its slide."""
+    shape._element.getparent().remove(shape._element)
+
+
+def delete_paragraph(paragraph):
+    """Removes a paragraph from a Word document (or a slide's text)."""
+    element = paragraph._element if hasattr(paragraph, "_element") else paragraph._p
+    element.getparent().remove(element)
 
 
 def replace_text(container, old, new):

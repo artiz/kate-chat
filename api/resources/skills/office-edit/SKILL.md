@@ -12,34 +12,47 @@ Use this skill when the user wants a change to a document that is already in thi
 
 You also get the document's text in the conversation. Use it to decide what to change, but work on the file itself, so that layouts, pictures, charts and formatting survive.
 
+When the user wants the content replaced (a new topic, their CV, another client), replace it completely: every old title, bullet and text box gets the new text or is deleted. Never add new paragraphs after the old ones or leave old text behind, and do not assign `text_frame.text` or `paragraph.text` (that drops the formatting): use `set_text`. Keep the slides' design (layouts, backgrounds, pictures that still fit), and delete or duplicate slides to match the amount of new content.
+
 ```python skill=office-edit file=review-updated.pptx
 from pptx import Presentation
-from pptx.util import Pt
-from office_helpers import replace_text, duplicate_slide, move_slide, set_background, slide_texts, save
+from office_helpers import set_text, slide_shapes, delete_shape, delete_slide, duplicate_slide, move_slide, save
 
 prs = Presentation("/files/<path from Files in this chat>.pptx")
+for index in range(len(prs.slides)):
+    print(index, slide_shapes(prs, index))  # (shape index, role, name, text): what each slide holds
 
-replace_text(prs, "Q2 2026", "Q3 2026")
+# title slide: new title and subtitle, in the old look
+title_slide = prs.slides[0]
+set_text(title_slide.shapes[0], "Q3 review")
+set_text(title_slide.shapes[1], "Sales team · October 2026")
 
-# a new slide in the style of slide 2, right after it
-slide = duplicate_slide(prs, 1)
+# a bullet slide: the whole list replaced, a sub-bullet as (text, level)
+slide = prs.slides[1]
+set_text(slide.shapes[0], "Highlights")
+set_text(slide.shapes[1], ["Revenue up 18%", ("two new enterprise customers", 1), "Churn down to 2.1%"])
+delete_shape(slide.shapes[2])  # an old text box the new content has no use for
+
+# an old slide the new content has no use for goes; one more bullet slide in the style of slide 1
+delete_slide(prs, 2)
+extra = duplicate_slide(prs, 1)
 move_slide(prs, len(prs.slides) - 1, 2)
-for shape in slide.shapes:
-    if shape.has_text_frame and shape.text_frame.text.strip():
-        shape.text_frame.text = "Next steps"
-        break
+set_text(extra.shapes[0], "Next steps")
+set_text(extra.shapes[1], ["Hire two engineers", "Open the Berlin office"])
 
-set_background(prs, "FFF8E1")
 save(prs, "review-updated.pptx")
 ```
 
-Helpers in `office_helpers` (they take a python-pptx `Presentation` or a python-docx `Document`):
+Look at `slide_shapes` first: shape indexes differ from deck to deck, and the example's are only an illustration. Pick shapes by role and text, not by guessing.
 
-- `replace_text(doc, old, new)`: everywhere, tables and notes included, keeping the formatting; returns how many paragraphs changed.
-- `set_font(doc, name, size_pt=None)`, `set_text_color(doc, "1F2933", headings_only=False)`: restyle all text; with `headings_only`, only headings (Word) or title placeholders (PowerPoint).
-- PowerPoint: `slide_texts(prs)` → `[(index, text)]` to find a slide; `duplicate_slide(prs, index)` appends a copy and returns it; `move_slide(prs, old_index, new_index)`; `delete_slide(prs, index)`; `set_background(prs, "FFF8E1")`.
-- `save(doc_or_workbook, "<file name>")` writes it to /output. It fails when nothing was changed compared with the file you opened: check what `replace_text` returns (0 means the text is not in the document) and use `slide_texts(prs)` to see the text a deck actually has before replacing it.
-- The helpers are available without an import too.
+Helpers in `office_helpers` (they take a python-pptx `Presentation` or a python-docx `Document`; all are available without an import too):
+
+- `set_text(shape_or_paragraph, text)`: replaces ALL the text of a slide shape (or a Word paragraph), keeping its look. `text` is a string, or a list with one item per paragraph, where `(text, level)` is a sub-bullet. Text too long for its shape is shrunk to fit.
+- `slide_shapes(prs, index)` → `[(shape index, role, name, text)]`, role being "title", "subtitle", "body", "picture", "table", "chart" or "other".
+- `delete_shape(shape)`, `delete_slide(prs, index)`, `duplicate_slide(prs, index)` (appends a copy and returns it), `move_slide(prs, old_index, new_index)`; Word: `delete_paragraph(paragraph)`.
+- `replace_text(doc, old, new)`: replaces a phrase wherever it occurs (tables and notes included), keeping the formatting; returns how many paragraphs changed. For small corrections, not for replacing content.
+- `set_font(doc, name, size_pt=None)`, `set_text_color(doc, "1F2933", headings_only=False)`: restyle all text; with `headings_only`, only headings (Word) or title placeholders (PowerPoint). `set_background(prs, "FFF8E1")`. `slide_texts(prs)` → `[(index, text)]`.
+- `save(doc_or_workbook, "<file name>")` writes it to /output. It fails when nothing was changed compared with the file you opened.
 
 Library essentials:
 
