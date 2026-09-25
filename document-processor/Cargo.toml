@@ -32,10 +32,13 @@ pdfium-render = "0.8"
 chunk = "0.10"
 tiktoken-rs = "0.6"
 
-# AWS — pin to rustls (ring) so the build needs no C toolchain (no aws-lc-rs / cmake / nasm)
-aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
-aws-sdk-s3 = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
-aws-sdk-sqs = { version = "1", default-features = false, features = ["behavior-version-latest", "rustls", "rt-tokio"] }
+# AWS — `default-https-client` is the hyper 1.x + rustls 0.23 (aws-lc-rs) client, which
+# aws-config and ureq (docling) already pull in. The `rustls` feature of the aws-sdk-*
+# crates is the legacy hyper 0.14 + rustls 0.21 stack instead, and it pins the
+# vulnerable rustls-webpki 0.101 line (no fixed release exists for it).
+aws-config = { version = "1", default-features = false, features = ["behavior-version-latest", "default-https-client", "rt-tokio"] }
+aws-sdk-s3 = { version = "1", default-features = false, features = ["behavior-version-latest", "default-https-client", "rt-tokio"] }
+aws-sdk-sqs = { version = "1", default-features = false, features = ["behavior-version-latest", "default-https-client", "rt-tokio"] }
 
 # Redis pub/sub + progress keys
 redis = { version = "0.27", default-features = false, features = ["tokio-comp"] }
