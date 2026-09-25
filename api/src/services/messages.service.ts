@@ -1111,6 +1111,10 @@ export class MessagesService {
             // every provider offers MCP through function calling, so a model with MCP calls tools
             toolCalls: !!model.tools?.includes(ToolType.MCP),
             loadChatFiles,
+            loadOutline: async file => {
+              const bytes = await new S3Service(user.toToken()).getFileContent(file.fileName);
+              return extractOfficeText("pptx", bytes).slice(0, 20_000);
+            },
           })
         : { settings: chatSettings };
 

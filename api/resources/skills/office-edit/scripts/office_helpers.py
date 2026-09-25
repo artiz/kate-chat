@@ -234,7 +234,7 @@ def _role(shape):
         return "table"
     if getattr(shape, "has_chart", False) and shape.has_chart:
         return "chart"
-    if not shape.has_text_frame:
+    if not shape.has_text_frame or any(k in kind for k in ("slide_number", "date", "footer", "header")):
         return "other"
     if "subtitle" in kind:
         return "subtitle"

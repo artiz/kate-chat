@@ -313,9 +313,36 @@ ${filesPrompt(chatFiles)}${skill.runtime === "typescript" ? `\n\n${photosPrompt(
  * - Any other model gets every skill's instructions in the system prompt instead.
  * The chat's files are read only when needed: when a skill is loaded, or for the full prompt.
  */
+/** What a skill that changes documents gets to see of them: a presentation's slides and shapes, by name */
+export type LoadDocumentOutline = (file: SkillChatFile) => Promise<string | undefined>;
+
+const EDITABLE_OUTLINES = /\.pptx$/i;
+const MAX_OUTLINES = 3;
+
+async function outlinesPrompt(chatFiles: SkillChatFile[], loadOutline?: LoadDocumentOutline): Promise<string> {
+  if (!loadOutline) return "";
+  const decks = chatFiles.filter(file => file.type !== "image" && EDITABLE_OUTLINES.test(file.fileName));
+  const sections: string[] = [];
+  for (const file of decks.slice(-MAX_OUTLINES)) {
+    const outline = await loadOutline(file).catch(() => undefined);
+    if (outline) sections.push(`### \`/files/${file.fileName}\`\n\n${outline}`);
+  }
+  return sections.length
+    ? `\n\n## Slides of the presentations in this chat
+
+Each slide's shapes as \`- role "Name": text\` (groups indented, their shapes too). Pick shapes by these names with \`shape_by_name(slide, "Name")\`; slide numbers here start at 1, \`prs.slides[...]\` at 0.
+
+${sections.join("\n\n")}`
+    : "";
+}
+
 export async function withSkills(
   settings: ChatSettings,
-  { toolCalls, loadChatFiles }: { toolCalls: boolean; loadChatFiles: () => Promise<SkillChatFile[]> }
+  {
+    toolCalls,
+    loadChatFiles,
+    loadOutline,
+  }: { toolCalls: boolean; loadChatFiles: () => Promise<SkillChatFile[]>; loadOutline?: LoadDocumentOutline }
 ): Promise<{ settings: ChatSettings; skills?: SkillToolContext }> {
   const skills = getSkills();
   if (!skills.length) return { settings };
@@ -333,7 +360,12 @@ export async function withSkills(
       skills: skills.map(skill => ({ id: skill.id, name: skill.name })),
       load: async id => {
         const skill = skills.find(s => s.id === id);
-        return skill ? buildSkillInstructions(skill, await loadChatFiles()) : `There is no skill "${id}".`;
+        if (!skill) return `There is no skill "${id}".`;
+        const chatFiles = await loadChatFiles();
+        // a skill that changes documents sees the chat's presentations shape by shape, by name, so
+        // it need not guess which shape is the title (files attached earlier have only their text)
+        const outlines = id === "office-edit" ? await outlinesPrompt(chatFiles, loadOutline) : "";
+        return buildSkillInstructions(skill, chatFiles) + outlines;
       },
     },
   };

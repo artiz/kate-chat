@@ -115,6 +115,101 @@ function docxText(files: Record<string, Uint8Array>): string {
     .trim();
 }
 
+interface ShapeNode {
+  tag: string;
+  start: number;
+  end: number;
+  children: ShapeNode[];
+}
+
+/** The shapes of a slide as a tree (groups hold their shapes), from the tags' nesting. */
+function shapeTree(xml: string): ShapeNode[] {
+  const roots: ShapeNode[] = [];
+  const stack: ShapeNode[] = [];
+  const tags = /<(\/?)(p:sp|p:pic|p:grpSp|p:graphicFrame|p:cxnSp)(?=[\s>/])[^>]*?(\/?)>/g;
+  for (const match of xml.matchAll(tags)) {
+    const [whole, closing, tag, selfClosing] = match;
+    const index = match.index ?? 0;
+    if (closing) {
+      const node = stack.pop();
+      if (node) node.end = index + whole.length;
+      continue;
+    }
+    const node: ShapeNode = { tag, start: index, end: index + whole.length, children: [] };
+    (stack.length ? stack[stack.length - 1].children : roots).push(node);
+    if (!selfClosing) stack.push(node);
+  }
+  return roots;
+}
+
+interface ShapeInfo {
+  role: string;
+  name: string;
+  lines: string[];
+  size: number;
+  top: number;
+  children: ShapeInfo[];
+}
+
+function shapeInfo(xml: string, node: ShapeNode): ShapeInfo | undefined {
+  const own = xml.slice(node.start, node.end);
+  const name = decodeXml(own.match(/<p:cNvPr\b[^>]*\bname="([^"]*)"/)?.[1] || "");
+  const base = { name, lines: [] as string[], size: 0, top: 0, children: [] as ShapeInfo[] };
+  if (node.tag === "p:grpSp") {
+    const children = node.children.map(child => shapeInfo(xml, child)).filter((c): c is ShapeInfo => !!c);
+    return children.length ? { ...base, role: "group", children } : undefined;
+  }
+  if (node.tag === "p:pic") return { ...base, role: "picture" };
+  if (node.tag === "p:graphicFrame") {
+    if (own.includes("<a:tbl")) return { ...base, role: "table", lines: blocksText(own, "a").filter(l => l.trim()) };
+    return own.includes("/chart") ? { ...base, role: "chart" } : undefined;
+  }
+  if (node.tag !== "p:sp") return undefined;
+
+  const placeholder = own.match(/<p:ph\b[^>]*>/)?.[0];
+  const type = placeholder?.match(/\btype="([^"]+)"/)?.[1];
+  if (type === "pic") return { ...base, role: "picture" };
+  if (type && ["sldNum", "dt", "ftr", "hdr"].includes(type)) return undefined; // slide number, date, footer
+  const lines = blocksText(own, "a").filter(line => line.trim());
+  if (!lines.length && !placeholder) return undefined;
+  const role = type === "title" || type === "ctrTitle" ? "title" : type === "subTitle" ? "subtitle" : "body";
+  const sizes = [...own.matchAll(/<a:(?:rPr|defRPr)\b[^>]*\bsz="(\d+)"/g)].map(m => Number(m[1]));
+  const top = Number(own.match(/<a:off\b[^>]*\by="(-?\d+)"/)?.[1] || 0);
+  return { ...base, role, lines, size: sizes.length ? Math.max(...sizes) : 0, top };
+}
+
+/**
+ * A slide's shapes with their role, name and text, as the office-edit skill's helpers see them
+ * (shape_by_name, shape_by_role), so a program can pick shapes by name instead of guessing. A
+ * slide without a title placeholder gets its largest text as the title, as in the helpers.
+ */
+function slideShapesText(xml: string): string {
+  const shapes = shapeTree(xml)
+    .map(node => shapeInfo(xml, node))
+    .filter((s): s is ShapeInfo => !!s);
+  const all: ShapeInfo[] = [];
+  const flatten = (list: ShapeInfo[]) =>
+    list.forEach(shape => {
+      all.push(shape);
+      flatten(shape.children);
+    });
+  flatten(shapes);
+  if (!all.some(shape => shape.role === "title")) {
+    const texts = all.filter(shape => shape.role === "body" && shape.lines.length);
+    const title = texts.sort((a, b) => b.size - a.size || a.top - b.top)[0];
+    if (title) title.role = "title";
+  }
+  const render = (list: ShapeInfo[], indent: string): string[] =>
+    list.flatMap(shape => {
+      const head = `${indent}- ${shape.role} "${shape.name}"`;
+      if (shape.role === "group") return [`${head}:`, ...render(shape.children, `${indent}  `)];
+      if (!shape.lines.length) return [head];
+      if (shape.lines.length === 1) return [`${head}: ${shape.lines[0]}`];
+      return [`${head}:`, ...shape.lines.map(line => `${indent}    ${line}`)];
+    });
+  return render(shapes, "").join("\n");
+}
+
 function pptxText(files: Record<string, Uint8Array>): string {
   const presentation = files["ppt/presentation.xml"] ? strFromU8(files["ppt/presentation.xml"]) : "";
   const rels = relationships(files, "ppt/presentation.xml");
@@ -133,7 +228,7 @@ function pptxText(files: Record<string, Uint8Array>): string {
       blocksText(xml, "a")
         .filter(line => line.trim())
         .join("\n");
-    const body = text(strFromU8(files[path]));
+    const body = slideShapesText(strFromU8(files[path]));
     const notesPath = [...relationships(files, path).values()].find(rel => rel.type.endsWith("/notesSlide"))?.target;
     const notes = notesPath && files[notesPath] ? text(strFromU8(files[notesPath])) : "";
     return [`## Slide ${index + 1}`, body, notes ? `Notes: ${notes}` : ""].filter(Boolean).join("\n");

@@ -32,22 +32,50 @@ describe("extractOfficeText", () => {
     );
   });
 
-  it("reads slides in presentation order, with tables and notes, without slide numbers", () => {
-    const slide = (body: string) => `<p:sld xmlns:p="p" ${A}><p:cSld><p:spTree>${body}</p:spTree></p:cSld></p:sld>`;
+  it("lists each slide's shapes in presentation order: role, name, text; groups, tables, notes", () => {
+    const P = 'xmlns:p="p"';
+    const slide = (body: string) => `<p:sld ${P} ${A}><p:cSld><p:spTree>${body}</p:spTree></p:cSld></p:sld>`;
+    const sp = (name: string, body: string, ph = "") =>
+      `<p:sp><p:nvSpPr><p:cNvPr id="2" name="${name}"/><p:cNvSpPr/><p:nvPr>${ph}</p:nvPr></p:nvSpPr><p:txBody>${body}</p:txBody></p:sp>`;
+    const para = (text: string, size?: number) =>
+      `<a:p><a:r><a:rPr${size ? ` sz="${size}"` : ""}/><a:t>${text}</a:t></a:r></a:p>`;
     const bytes = zip({
-      "ppt/presentation.xml": `<p:presentation xmlns:p="p" xmlns:r="r"><p:sldIdLst><p:sldId id="256" r:id="rId3"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst></p:presentation>`,
+      "ppt/presentation.xml": `<p:presentation ${P} xmlns:r="r"><p:sldIdLst><p:sldId id="256" r:id="rId3"/><p:sldId id="257" r:id="rId2"/></p:sldIdLst></p:presentation>`,
       "ppt/_rels/presentation.xml.rels": `<Relationships><Relationship Id="rId2" Type="x/slide" Target="slides/slide1.xml"/><Relationship Id="rId3" Type="x/slide" Target="slides/slide2.xml"/></Relationships>`,
       "ppt/slides/slide1.xml": slide(
-        `<a:p><a:r><a:t>Second</a:t></a:r></a:p><a:tbl><a:tr><a:tc><a:txBody><a:p><a:r><a:t>Q2</a:t></a:r></a:p></a:txBody></a:tc><a:tc><a:txBody><a:p><a:r><a:t>1.2M</a:t></a:r></a:p></a:txBody></a:tc></a:tr></a:tbl>`
+        sp("Title 1", para("Second"), '<p:ph type="title"/>') +
+          `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="4" name="Table 3"/></p:nvGraphicFramePr><a:graphic><a:graphicData><a:tbl><a:tr><a:tc><a:txBody>${para("Q2")}</a:txBody></a:tc><a:tc><a:txBody>${para("1.2M")}</a:txBody></a:tc></a:tr></a:tbl></a:graphicData></a:graphic></p:graphicFrame>` +
+          sp(
+            "Slide Number 5",
+            '<a:p><a:fld id="{1}" type="slidenum"><a:t>2</a:t></a:fld></a:p>',
+            '<p:ph type="sldNum"/>'
+          )
       ),
       "ppt/slides/slide2.xml": slide(
-        `<a:p><a:r><a:t>First</a:t></a:r></a:p><a:p><a:fld id="{1}" type="slidenum"><a:t>1</a:t></a:fld></a:p>`
+        `<p:pic><p:nvPicPr><p:cNvPr id="3" name="Logo"/></p:nvPicPr></p:pic>` +
+          `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="5" name="Группа 2"/></p:nvGrpSpPr>` +
+          sp("TextBox 3", para("First", 5400)) +
+          sp("TextBox 4", para("Уже можно!", 2000) + para("и &amp; ещё", 2000)) +
+          `</p:grpSp>`
       ),
       "ppt/slides/_rels/slide2.xml.rels": `<Relationships><Relationship Id="rId9" Type="http://x/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/></Relationships>`,
-      "ppt/notesSlides/notesSlide1.xml": slide(`<a:p><a:r><a:t>Say hello</a:t></a:r></a:p>`),
+      "ppt/notesSlides/notesSlide1.xml": slide(sp("Notes 1", para("Say hello"), '<p:ph type="body"/>')),
     });
     expect(extractOfficeText("pptx", bytes)).toBe(
-      "## Slide 1\nFirst\nNotes: Say hello\n\n## Slide 2\nSecond\n| Q2 | 1.2M |"
+      [
+        "## Slide 1",
+        '- picture "Logo"',
+        '- group "Группа 2":',
+        '  - title "TextBox 3": First', // no title placeholder: the largest text
+        '  - body "TextBox 4":',
+        "      Уже можно!",
+        "      и & ещё",
+        "Notes: Say hello",
+        "",
+        "## Slide 2",
+        '- title "Title 1": Second',
+        '- table "Table 3": | Q2 | 1.2M |',
+      ].join("\n")
     );
   });
 

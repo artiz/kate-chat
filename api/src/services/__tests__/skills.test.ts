@@ -152,6 +152,25 @@ describe("skills", () => {
       expect(xlsx).toContain("## Files in this chat");
     });
 
+    it("shows office-edit the chat's presentations shape by shape", async () => {
+      const loadOutline = jest.fn(async (file: SkillChatFile) => `## Slide 1\n- title "TextBox 3": ${file.uploadFile}`);
+      const { skills } = await withSkills(settings, {
+        toolCalls: true,
+        loadChatFiles: async () => chatFiles,
+        loadOutline,
+      });
+      const officeEdit = await skills!.load("office-edit");
+      expect(officeEdit).toContain("## Slides of the presentations in this chat");
+      expect(officeEdit).toContain(
+        '### `/files/chat-1/msg-1/1-file-0.pptx`\n\n## Slide 1\n- title "TextBox 3": Angular2.pptx'
+      );
+      expect(officeEdit).toContain('- title "TextBox 3": deck.pptx'); // generated decks too
+      expect(loadOutline).toHaveBeenCalledTimes(2); // not for images
+
+      expect(await skills!.load("pdf")).not.toContain("## Slides of the presentations");
+      expect(loadOutline).toHaveBeenCalledTimes(2);
+    });
+
     it("gives a model that cannot call tools every skill in the prompt", async () => {
       const { settings: applied, skills } = await withSkills(settings, {
         toolCalls: false,

@@ -43,7 +43,7 @@ set_text(shape_by_role(extra, "body"), ["Hire two engineers", "Open the Berlin o
 save(prs, "review-updated.pptx")
 ```
 
-Pick shapes with `shape_by_role` or `shape_by_text`, never by position: `slide.shapes[0]` may well be a logo picture, and a title may sit inside a group. Look at `slide_shapes` first to see which roles and texts a slide has (the example's slides are only an illustration), and leave pictures alone unless the user wants them changed.
+For a presentation, the document's text in the conversation lists each slide's shapes as `- role "Name": text` (groups indented, their shapes too). Pick shapes by those names with `shape_by_name(slide, "Name")`, or with `shape_by_role` or `shape_by_text`, never by position: `slide.shapes[0]` may well be a logo picture, and a title may sit inside a group. Look at `slide_shapes` first to see which roles and texts a slide has (the example's slides are only an illustration), and leave pictures alone unless the user wants them changed.
 
 Helpers in `office_helpers` (they take a python-pptx `Presentation` or a python-docx `Document`; all are available without an import too):
 
