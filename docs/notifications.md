@@ -7,7 +7,10 @@ KateChat tells the user when something in one of their chats needs them while th
 
 ## Browser notifications
 
-- The browser asks for the permission once, when the user sends their first message. Afterwards the switch in **Profile → Browser notifications** turns notifications on and off, and asks again if needed. The setting is per browser, like the permission itself. A blocked permission is changed in the browser's site settings.
+- The browser asks for the permission once, when the user sends their first message. A blocked permission is changed in the browser's site settings.
+- **Profile** has two switches, both per browser, like the permission itself:
+  - **Browser notifications** turns all notifications on and off. Turning it on asks for the permission again if needed.
+  - **MCP tool call approvals** turns off only the notifications about tool calls that wait for approval, in-app ones included. Finished and failed answers, long ones included, still notify. The approval card in the chat itself stays.
 - No notification appears while the user looks at that chat: the page is visible, has the focus and shows that chat. A click on a notification brings the tab forward and opens the chat.
 - A notification about a waiting tool call stays on screen until the user clicks it or closes it (`requireInteraction`). An answer that fails gets its own title.
 - Without the permission, a waiting tool call in another chat still shows up as an in-app notification, as long as the page is active.

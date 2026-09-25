@@ -877,6 +877,8 @@
   "notifications": {
     "setting": "Browser notifications",
     "settingDescription": "Tells you in this browser when an answer finishes or a tool call waits for your approval while you look elsewhere.",
+    "approvalsSetting": "MCP tool call approvals",
+    "approvalsSettingDescription": "Tells you when an MCP tool call waits for your approval. Finished answers notify either way.",
     "blocked": "Notifications are blocked for this site: allow them in the browser's site settings.",
     "unsupported": "This browser cannot show notifications.",
     "untitledChat": "Untitled chat",

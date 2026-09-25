@@ -877,6 +877,8 @@
   "notifications": {
     "setting": "Browser-Benachrichtigungen",
     "settingDescription": "Meldet in diesem Browser, wenn eine Antwort fertig ist oder ein Tool-Aufruf auf Ihre Freigabe wartet, während Sie woanders sind.",
+    "approvalsSetting": "Freigaben von MCP-Tool-Aufrufen",
+    "approvalsSettingDescription": "Meldet, wenn ein MCP-Tool-Aufruf auf Ihre Freigabe wartet. Fertige Antworten werden in jedem Fall gemeldet.",
     "blocked": "Benachrichtigungen sind für diese Website blockiert: Erlauben Sie sie in den Website-Einstellungen des Browsers.",
     "unsupported": "Dieser Browser kann keine Benachrichtigungen anzeigen.",
     "untitledChat": "Chat ohne Titel",

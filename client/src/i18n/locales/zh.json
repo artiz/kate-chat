@@ -877,6 +877,8 @@
   "notifications": {
     "setting": "浏览器通知",
     "settingDescription": "当您在别处时，在此浏览器中提示回答已完成或工具调用正在等待您的批准。",
+    "approvalsSetting": "MCP 工具调用批准",
+    "approvalsSettingDescription": "当 MCP 工具调用等待您的批准时提示您。回答完成的通知不受影响。",
     "blocked": "此网站的通知已被阻止：请在浏览器的网站设置中允许通知。",
     "unsupported": "此浏览器无法显示通知。",
     "untitledChat": "未命名聊天",
