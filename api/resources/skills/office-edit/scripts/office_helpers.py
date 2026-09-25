@@ -15,6 +15,7 @@ OUTPUT_DIR = "/output"  # where the sandbox collects the program's files
 __all__ = [
     "set_text",
     "slide_shapes",
+    "shape_by_role",
     "delete_shape",
     "delete_paragraph",
     "replace_text",
@@ -151,6 +152,14 @@ def set_text(target, text):
             target.add_run(value)
         return target
 
+    if hasattr(target, "has_text_frame") and not target.has_text_frame:
+        slide = getattr(getattr(target, "part", None), "slide", None)
+        shapes = _describe(slide) if slide is not None else "?"
+        raise ValueError(
+            f"set_text: {target.name!r} is a {_role(target)} and holds no text. "
+            f"The shapes of its slide are (index, role, name, text): {shapes}; "
+            "pick a text shape with shape_by_role(slide, 'title' | 'subtitle' | 'body')"
+        )
     frame = target.text_frame if hasattr(target, "text_frame") else target
     body = frame._txBody
     items = list(text) if isinstance(text, (list, tuple)) else str(text).split("\n")
@@ -201,28 +210,47 @@ def set_text(target, text):
     return target
 
 
+def _role(shape):
+    """title, subtitle, body, picture, table, chart or other"""
+    kind = str(shape.placeholder_format.type).lower() if shape.is_placeholder else ""
+    if "picture" in kind or (shape.shape_type is not None and "PICTURE" in str(shape.shape_type)):
+        return "picture"
+    if getattr(shape, "has_table", False) and shape.has_table:
+        return "table"
+    if getattr(shape, "has_chart", False) and shape.has_chart:
+        return "chart"
+    if not shape.has_text_frame:
+        return "other"
+    if "subtitle" in kind:
+        return "subtitle"
+    if "title" in kind:
+        return "title"
+    return "body" if shape.is_placeholder or shape.text_frame.text.strip() else "other"
+
+
+def _describe(slide):
+    return [
+        (position, _role(shape), shape.name, shape.text_frame.text if shape.has_text_frame else "")
+        for position, shape in enumerate(slide.shapes)
+    ]
+
+
 def slide_shapes(prs, index):
     """What slide `index` holds, to pick the shapes to change: [(shape index, role, name, text)].
 
     role is "title", "subtitle", "body", "picture", "table", "chart" or "other".
     """
-    result = []
-    for position, shape in enumerate(prs.slides[index].shapes):
-        role = "other"
-        if shape.is_placeholder:
-            kind = str(shape.placeholder_format.type).lower()
-            role = "subtitle" if "subtitle" in kind else "title" if "title" in kind else "body" if shape.has_text_frame else role
-        elif shape.shape_type is not None and "PICTURE" in str(shape.shape_type):
-            role = "picture"
-        elif getattr(shape, "has_table", False) and shape.has_table:
-            role = "table"
-        elif getattr(shape, "has_chart", False) and shape.has_chart:
-            role = "chart"
-        elif shape.has_text_frame and shape.text_frame.text.strip():
-            role = "body"
-        text = shape.text_frame.text if shape.has_text_frame else ""
-        result.append((position, role, shape.name, text))
-    return result
+    return _describe(prs.slides[index])
+
+
+def shape_by_role(slide, role, nth=0):
+    """The slide's `nth` shape (from 0, top to bottom in the slide's order) with this role: "title",
+    "subtitle" or "body" for text, "picture", "table" or "chart". Raises, listing what the slide
+    has, when there is none."""
+    matches = [shape for shape in slide.shapes if _role(shape) == role]
+    if nth < len(matches):
+        return matches[nth]
+    raise ValueError(f"No {role} shape #{nth} on this slide. It has: {_describe(slide)}")
 
 
 def delete_shape(shape):

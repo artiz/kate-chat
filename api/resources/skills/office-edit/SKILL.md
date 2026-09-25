@@ -16,7 +16,7 @@ When the user wants the content replaced (a new topic, their CV, another client)
 
 ```python skill=office-edit file=review-updated.pptx
 from pptx import Presentation
-from office_helpers import set_text, slide_shapes, delete_shape, delete_slide, duplicate_slide, move_slide, save
+from office_helpers import set_text, shape_by_role, slide_shapes, delete_shape, delete_slide, duplicate_slide, move_slide, save
 
 prs = Presentation("/files/<path from Files in this chat>.pptx")
 for index in range(len(prs.slides)):
@@ -24,31 +24,32 @@ for index in range(len(prs.slides)):
 
 # title slide: new title and subtitle, in the old look
 title_slide = prs.slides[0]
-set_text(title_slide.shapes[0], "Q3 review")
-set_text(title_slide.shapes[1], "Sales team · October 2026")
+set_text(shape_by_role(title_slide, "title"), "Q3 review")
+set_text(shape_by_role(title_slide, "subtitle"), "Sales team · October 2026")
 
 # a bullet slide: the whole list replaced, a sub-bullet as (text, level)
 slide = prs.slides[1]
-set_text(slide.shapes[0], "Highlights")
-set_text(slide.shapes[1], ["Revenue up 18%", ("two new enterprise customers", 1), "Churn down to 2.1%"])
-delete_shape(slide.shapes[2])  # an old text box the new content has no use for
+set_text(shape_by_role(slide, "title"), "Highlights")
+set_text(shape_by_role(slide, "body"), ["Revenue up 18%", ("two new enterprise customers", 1), "Churn down to 2.1%"])
+delete_shape(shape_by_role(slide, "body", 1))  # an old text box the new content has no use for
 
 # an old slide the new content has no use for goes; one more bullet slide in the style of slide 1
 delete_slide(prs, 2)
 extra = duplicate_slide(prs, 1)
 move_slide(prs, len(prs.slides) - 1, 2)
-set_text(extra.shapes[0], "Next steps")
-set_text(extra.shapes[1], ["Hire two engineers", "Open the Berlin office"])
+set_text(shape_by_role(extra, "title"), "Next steps")
+set_text(shape_by_role(extra, "body"), ["Hire two engineers", "Open the Berlin office"])
 
 save(prs, "review-updated.pptx")
 ```
 
-Look at `slide_shapes` first: shape indexes differ from deck to deck, and the example's are only an illustration. Pick shapes by role and text, not by guessing.
+Pick shapes with `shape_by_role`, never by position: `slide.shapes[0]` may well be a logo picture. Look at `slide_shapes` first to see which roles and texts a slide has (the example's slides are only an illustration), and leave pictures alone unless the user wants them changed.
 
 Helpers in `office_helpers` (they take a python-pptx `Presentation` or a python-docx `Document`; all are available without an import too):
 
 - `set_text(shape_or_paragraph, text)`: replaces ALL the text of a slide shape (or a Word paragraph), keeping its look. `text` is a string, or a list with one item per paragraph, where `(text, level)` is a sub-bullet. Text too long for its shape is shrunk to fit.
 - `slide_shapes(prs, index)` → `[(shape index, role, name, text)]`, role being "title", "subtitle", "body", "picture", "table", "chart" or "other".
+- `shape_by_role(slide, role, nth=0)`: the slide's `nth` shape with that role (from 0); raises, listing what the slide has, when there is none.
 - `delete_shape(shape)`, `delete_slide(prs, index)`, `duplicate_slide(prs, index)` (appends a copy and returns it), `move_slide(prs, old_index, new_index)`; Word: `delete_paragraph(paragraph)`.
 - `replace_text(doc, old, new)`: replaces a phrase wherever it occurs (tables and notes included), keeping the formatting; returns how many paragraphs changed. For small corrections, not for replacing content.
 - `set_font(doc, name, size_pt=None)`, `set_text_color(doc, "1F2933", headings_only=False)`: restyle all text; with `headings_only`, only headings (Word) or title placeholders (PowerPoint). `set_background(prs, "FFF8E1")`. `slide_texts(prs)` → `[(index, text)]`.
