@@ -110,7 +110,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
             setHasMoreMessages(hasMore);
 
             // Parse and set messages
-            const parsedMessages = parseChatMessages(messages.map(withSkillView));
+            const parsedMessages = parseChatMessages(messages).map(message => withSkillView(message, parseMarkdown));
             setMessages(prev => (prev && offset ? [...parsedMessages, ...prev] : parsedMessages));
 
             loadTimeout.current = setTimeout(() => setLoadCompleted(true), 300);
@@ -289,7 +289,7 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
 
   const addChatMessage = (incoming: Message, info?: MessageChatInfo) => {
     if (!incoming) return;
-    const msg = withSkillView(incoming);
+    const msg = withSkillView(incoming, parseMarkdown);
 
     const addMessage = (message: Message) => {
       setMessages(prev => {
@@ -335,7 +335,8 @@ export const useChatMessages: (props?: HookProps) => HookResult = ({ chatId } = 
     setStreaming(msg.streaming || false);
 
     if (msg.content) {
-      const html = parseMarkdown(msg.content);
+      // withSkillView renders a skill answer without its blocks
+      const html = msg !== incoming && msg.html ? msg.html : parseMarkdown(msg.content);
       addMessage({ ...msg, html });
     } else {
       addMessage(msg);

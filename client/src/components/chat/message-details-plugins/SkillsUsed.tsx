@@ -1,5 +1,5 @@
 import React from "react";
-import { Group, Text } from "@mantine/core";
+import { Code, Group, Text } from "@mantine/core";
 import { IconWand } from "@tabler/icons-react";
 import { TFunction, t as globalT } from "i18next";
 import { Message } from "@/types/graphql";
@@ -18,7 +18,8 @@ function skillOfArgs(args?: string): string {
 
 /**
  * Skills Details - the skills the model chose for this answer: the ones it loaded with use_skill
- * and the ones its blocks name (a model without tool calls gets every skill in its prompt)
+ * and the ones its blocks name (a model without tool calls gets every skill in its prompt), with
+ * the code of each block, which the answer itself does not show (see withoutSkillBlocks)
  */
 export const SkillsUsed = (message: Message, t: TFunction = globalT): React.ReactNode => {
   if (!message?.content && !message?.metadata?.toolCalls?.length) return null;
@@ -40,12 +41,26 @@ export const SkillsUsed = (message: Message, t: TFunction = globalT): React.Reac
       </Group>
       <div className="message-details-content">
         {ids.map(id => {
-          const files = blocks.filter(block => block.skillId === id).map(block => block.fileName);
+          const skillBlocks = blocks.filter(block => block.skillId === id);
           return (
-            <Text key={id} size="xs">
-              <b>{id}</b>
-              {files.length ? ` → ${files.join(", ")}` : ""}
-            </Text>
+            <React.Fragment key={id}>
+              <Text size="xs">
+                <b>{id}</b>
+                {skillBlocks.length ? ` → ${skillBlocks.map(block => block.fileName).join(", ")}` : ""}
+              </Text>
+              {skillBlocks.map(block => (
+                <details key={block.index} className="skill-code">
+                  <summary>
+                    <Text span size="xs" c="dimmed">
+                      {t("messageDetails.skillCode", { file: block.fileName })} ({block.language})
+                    </Text>
+                  </summary>
+                  <Code block fz="xs">
+                    {block.code}
+                  </Code>
+                </details>
+              ))}
+            </React.Fragment>
           );
         })}
       </div>

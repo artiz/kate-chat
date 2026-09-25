@@ -21,7 +21,7 @@ Skills let the model produce files — PowerPoint decks, PDF documents, Excel wo
 4. When the answer is complete, the client (`SkillRuns` plugin) runs the block in a sandbox, uploads the file with the `saveGeneratedFile` mutation and shows a download card under the answer. The file is stored on S3 as a `ChatFile` of type `generated`, listed in **Library → Chat Data**, and later turns see a note that the answer produced it.
 5. If the program fails, the error and its output are shown with **Ask to fix**, which sends them to the model as the next message, and **Run again**.
 
-In the chat, an answer with a skill block is about the file, not the code: its code blocks start collapsed (the client sets `collapseCodeBlocks` on the message; click the header to expand), and a copy of the "files attached" note that a model sometimes writes into its own answer is removed, both from what the chat shows and from the history the model gets.
+In the chat, an answer with a skill block is about the file, not the code. The chat shows the answer without its skill blocks: the file card under the answer runs the code again, and the message details list the code under **Skills used**. A block still being streamed is hidden from its header on. The message content keeps the blocks. A copy of the "files attached" note that a model sometimes writes into its own answer is removed, both from what the chat shows and from the history the model gets.
 
 A block runs by itself only once: when it belongs to the chat's last answer and has no file yet. Older answers show a **Generate** button, so opening a chat never starts programs.
 

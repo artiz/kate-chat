@@ -9,8 +9,8 @@ import {
   languageMismatchNote,
   normalizeFileName,
   parseSkillBlocks,
-  skillBlockAt,
   stripGeneratedFilesNote,
+  withoutSkillBlocks,
   withSkillView,
 } from "../lib/skills/parse";
 import { buildSandboxDocument, IMAGE_HOSTS, npmImport, SANDBOX_CSP } from "../lib/skills/sandbox";
@@ -88,46 +88,64 @@ describe("an answer cut off inside a skill block", () => {
     expect(findUnfinishedSkillBlock(cutOff + "\n```")).toBeUndefined();
     expect(findUnfinishedSkillBlock("```python\nprint(1)")).toBeUndefined();
   });
+});
 
-  it("maps the code block's own Run button to the skill block, finished or not", () => {
-    // block 0 is the plain python block, block 1 the unfinished skill block
-    expect(skillBlockAt(cutOff, 0)).toBeUndefined();
-    expect(skillBlockAt(cutOff, 1)).toEqual({ index: 0, fileName: "paris.pdf", closed: false });
-    const complete = cutOff + "\n];\n```\n\n```python skill=xlsx file=b.xlsx\nx = 1\n```";
-    expect(skillBlockAt(complete, 1)).toEqual({ index: 0, fileName: "paris.pdf", closed: true });
-    expect(skillBlockAt(complete, 2)).toEqual({ index: 1, fileName: "b.xlsx", closed: true });
+describe("withoutSkillBlocks", () => {
+  it("leaves the text and other code blocks, and drops the skill blocks", () => {
+    const answer = [
+      "Here is the deck:",
+      "",
+      "```typescript skill=pptx file=review.pptx",
+      "createDeck();",
+      "```",
+      "",
+      "A plain example:",
+      "```python",
+      "print('hi')",
+      "```",
+    ].join("\n");
+    expect(withoutSkillBlocks(answer)).toBe("Here is the deck:\n\nA plain example:\n```python\nprint('hi')\n```");
   });
 
-  it("does not count unlabelled blocks, which the chat renders without a Run button", () => {
-    const content = "```\nplain\n```\n```python skill=xlsx file=a.xlsx\nx = 1\n```";
-    expect(skillBlockAt(content, 0)).toEqual({ index: 0, fileName: "a.xlsx", closed: true });
+  it("drops a skill block still being streamed, from its header on", () => {
+    expect(withoutSkillBlocks("Making it.\n\n```typescript skill=pdf file=a.pdf\nconst doc")).toBe("Making it.");
+    expect(withoutSkillBlocks("Making it.\n\n```typescript skill=pd")).toBe("Making it.");
+    // a fence whose header is not written yet shows nothing either way
+    expect(withoutSkillBlocks("Making it.\n\n```typesc")).toBe("Making it.");
+    expect(withoutSkillBlocks("Example:\n```python\nprint(1)")).toBe("Example:\n```python\nprint(1)");
+  });
+
+  it("keeps answers without skill blocks as they are", () => {
+    const text = "Plain\n\n\n\ntext\n```js\nx\n```";
+    expect(withoutSkillBlocks(text)).toBe(text);
   });
 });
 
 describe("withSkillView", () => {
+  const render = (markdown: string) => (markdown ? [`<p>${markdown}</p>`] : []);
   const block = "```typescript skill=pdf file=a.pdf\nawait output.save('a.pdf', 'x');\n```";
   const note = "[The code in this answer ran in the user's browser and attached: a.pdf (23 KB).]";
 
-  it("collapses the code of an answer with a skill block and drops a copied note", () => {
-    const message = { content: `${block}\n\n${note}`, linkedMessages: [{ content: `Plain\n\n${note}` }] };
-    expect(withSkillView(message)).toEqual({
-      content: block,
-      collapseCodeBlocks: true,
-      linkedMessages: [{ content: "Plain", collapseCodeBlocks: false }],
-    });
+  it("renders an answer without its skill blocks, and keeps them in the content", () => {
+    const message = { content: `Your PDF:\n\n${block}` };
+    const view = withSkillView(message, render);
+    expect(view.content).toBe(message.content);
+    expect(view.html?.join("")).toContain("Your PDF:");
+    expect(view.html?.join("")).not.toContain("output.save");
   });
 
-  it("collapses a skill block that is still being streamed", () => {
-    const message = {
-      content: "Here it is:\n\n```typescript skill=pptx file=deck.pptx\nimport { createDeck",
-      streaming: true,
-    };
-    expect(withSkillView(message).collapseCodeBlocks).toBe(true);
+  it("drops a copied note, in linked answers too", () => {
+    const message = { content: `${block}\n\n${note}`, linkedMessages: [{ content: `Plain\n\n${note}` }] };
+    const view = withSkillView(message, render);
+    expect(view.content).toBe(block);
+    expect(view.html).toEqual([]);
+    expect(view.linkedMessages?.[0].content).toBe("Plain");
+    expect(view.linkedMessages?.[0].html?.join("")).toContain("Plain");
   });
 
   it("leaves other answers as they are", () => {
     const message = { content: "```python\nprint(1)\n```" };
-    expect(withSkillView(message)).toBe(message);
+    expect(withSkillView(message, render)).toBe(message);
   });
 
   it("drops the note inside a code fence too, and nothing else", () => {

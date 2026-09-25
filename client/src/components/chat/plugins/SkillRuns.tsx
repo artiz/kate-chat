@@ -26,7 +26,6 @@ import {
 } from "@/lib/skills/parse";
 import { runSkillCode, SkillOutputFile } from "@/lib/skills/sandbox";
 import { loadChatFiles } from "@/lib/skills/files";
-import { SKILL_RUN_EVENT, SkillRunRequest } from "@/lib/skills/events";
 import { useChatPluginsContext } from "../ChatPluginsContext";
 
 interface SkillRunsProps extends PluginProps<Message> {
@@ -139,15 +138,6 @@ const SkillRun = ({ block, skill, message, autoRun, canFix, disabled, onAddMessa
   useEffect(() => {
     if (autoRun && skill && !file && !started.has(`${message.id}:${block.index}`)) run();
   }, [autoRun, skill, file, message.id, block.index, run]);
-
-  useEffect(() => {
-    const onRequest = (event: Event) => {
-      const { messageId, index } = (event as CustomEvent<SkillRunRequest>).detail;
-      if (messageId === message.id && index === block.index && skill && !disabled) run();
-    };
-    window.addEventListener(SKILL_RUN_EVENT, onRequest);
-    return () => window.removeEventListener(SKILL_RUN_EVENT, onRequest);
-  }, [message.id, block.index, skill, disabled, run]);
 
   const askToFix = () => {
     if (state.status !== "error") return;

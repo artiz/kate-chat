@@ -26,6 +26,9 @@ describe("SkillsUsed", () => {
     expect(screen.getByText("messageDetails.skillsUsed")).toBeTruthy();
     expect(screen.getByText(/→ deck-v2\.pptx/).textContent).toBe("office-edit → deck-v2.pptx");
     expect(screen.getByText("pptx")).toBeTruthy();
+    // the block's code, which the answer itself no longer shows
+    expect(screen.getByText("messageDetails.skillCode (python)")).toBeTruthy();
+    expect(screen.getByText("save(prs, 'deck-v2.pptx')")).toBeTruthy();
     expect(screen.queryByText("internal_web_search")).toBeNull();
   });
 
