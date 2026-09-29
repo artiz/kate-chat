@@ -86,7 +86,7 @@
     "type-graphql": "^2.0.0-rc.2",
     "typeorm": "^1.1.0",
     "typescript": "^5.8.3",
-    "undici": "^7.29.0",
+    "undici": "^7.29.1",
     "winston": "^3.17.0",
     "ws": "^8.21.0",
     "yaml": "^2.9.1"
