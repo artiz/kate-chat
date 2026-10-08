@@ -83,6 +83,19 @@ const TOOLS = [
     },
   },
   {
+    name: "get_raw_email",
+    description:
+      "Get the raw RFC 822 message (MIME source incl. attachments) by ID as base64url text. " +
+      "Intended for document parsers, not for direct reading.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        emailId: { type: "string", description: "Gmail message ID" },
+      },
+      required: ["emailId"],
+    },
+  },
+  {
     name: "search_emails",
     description: "Search emails using Gmail search syntax",
     inputSchema: {
@@ -183,6 +196,15 @@ function createGmailServer(): Server {
         const body = extractBody(msg.payload);
         const text = `From: ${get("From")}\nTo: ${get("To")}\nDate: ${get("Date")}\nSubject: ${get("Subject")}\n\n${body}`;
         return { content: [{ type: "text", text }] };
+      }
+
+      case "get_raw_email": {
+        const emailId = (args.emailId as string)?.trim();
+        ok(emailId, "emailId is required");
+
+        const msg = await gmailFetch(`/users/me/messages/${emailId}?format=raw`, accessToken);
+        ok(msg.raw, "Gmail returned no raw message");
+        return { content: [{ type: "text", text: msg.raw }] };
       }
 
       case "search_emails": {

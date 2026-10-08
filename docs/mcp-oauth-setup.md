@@ -132,6 +132,7 @@ Provides tools to read, search, and send emails via the Gmail API.
 |------|-------------|
 | `list_emails` | List emails from inbox (or any label) |
 | `get_email` | Get full email content by message ID |
+| `get_raw_email` | Get the raw RFC 822 message (incl. attachments) as base64url, for document parsers |
 | `search_emails` | Search using Gmail search syntax |
 | `send_email` | Send an email |
 | `create_draft` | Create a draft email |
