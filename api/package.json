@@ -77,7 +77,7 @@
     "pino-pretty": "^13.0.0",
     "redis": "^5.12.1",
     "reflect-metadata": "^0.2.2",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "socket.io": "^4.8.1",
     "sqlite-vec": "^0.1.7-alpha.2",
     "teleproto": "^1.229.0",
