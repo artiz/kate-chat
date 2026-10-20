@@ -101,7 +101,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.5.25",
     "postcss-modules": "^6.0.1",
-    "postcss-preset-mantine": "^1.13.0",
+    "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.2.5",
     "react": "19.1.0",
