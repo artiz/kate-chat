@@ -51,7 +51,57 @@ export const OPENAI_MODELS_SUPPORT_TOOL_IMAGE_GENERATION = [
   "gpt-5.2",
 ];
 
-export const OPENAI_GLOBAL_IGNORED_MODELS = ["davinci-002", "gpt-3.5-turbo-instruct"];
+/**
+ * Models OpenAI shuts down, with the shutdown date from https://developers.openai.com/api/docs/deprecations.
+ * An account's models list can still name them, but calls fail with 404 "The model ... has been
+ * deprecated", so the models list leaves each out from its shutdown date on (see isDeprecatedOpenAIModel).
+ */
+export const OPENAI_DEPRECATED_MODELS: Record<string, string> = {
+  "babbage-002": "2026-09-28",
+  "davinci-002": "2026-09-28",
+  "gpt-3.5-turbo-instruct": "2026-09-28",
+  "gpt-3.5-turbo-1106": "2026-09-28",
+  // the alias, with gpt-3.5-turbo-0125
+  "gpt-3.5-turbo": "2026-10-23",
+  // the alias of gpt-3.5-turbo-16k-0613 (shut down 2024-09-13), which the page does not name itself
+  "gpt-3.5-turbo-16k": "2026-10-23",
+  // the alias, with gpt-4-0613
+  "gpt-4": "2026-10-23",
+  "gpt-4-turbo": "2026-10-23",
+  "gpt-4o-2024-05-13": "2026-10-23",
+  "chatgpt-4o-latest": "2026-02-17",
+  "gpt-4o-audio-preview": "2026-05-07",
+  "gpt-4o-realtime-preview": "2026-05-07",
+  "gpt-4o-search-preview": "2026-07-23",
+  "gpt-4o-mini-search-preview": "2026-07-23",
+  "gpt-5-chat-latest": "2026-07-23",
+  "gpt-5.1-chat-latest": "2026-07-23",
+  "gpt-5.2-chat-latest": "2026-08-10",
+  "codex-mini-latest": "2026-02-12",
+  o1: "2026-10-23",
+  "o1-pro": "2026-10-23",
+  "o3-deep-research": "2026-07-23",
+  "dall-e-2": "2026-05-12",
+  "dall-e-3": "2026-05-12",
+  "gpt-image-1": "2026-10-23",
+  "tts-1": "2027-01-06",
+};
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Whether OpenAI has shut the model down by `now`. An entry covers the model and its dated snapshots
+ * (gpt-4 also covers gpt-4-0613, o1 covers o1-2024-12-17), not other models whose IDs start the same
+ * way: gpt-4 does not cover gpt-4o or gpt-4.1, and gpt-image-1 does not cover gpt-image-1-mini.
+ */
+export function isDeprecatedOpenAIModel(modelId: string, now: Date = new Date()): boolean {
+  const today = now.toISOString().slice(0, 10);
+  return Object.entries(OPENAI_DEPRECATED_MODELS).some(
+    ([id, shutdown]) =>
+      today >= shutdown &&
+      (modelId === id || new RegExp(`^${escapeRegExp(id)}-(\\d{4}|\\d{4}-\\d{2}-\\d{2})$`).test(modelId))
+  );
+}
 
 export const OPENAI_MODELS_IMAGES_GENERATION = ["dall-e", "chatgpt-image", "gpt-image"];
 

@@ -40,7 +40,7 @@ import {
   OPENAI_MODELS_SUPPORT_RESPONSES_API,
   OPENAI_MODELS_TRANSCRIPTION,
   OPENAI_MODELS_VIDEO_GENERATION,
-  OPENAI_GLOBAL_IGNORED_MODELS,
+  isDeprecatedOpenAIModel,
   OPENAI_MODELS_SUPPORT_REASONING,
   OPENAI_MODELS_SUPPORT_TOOL_IMAGE_GENERATION,
   OPENAI_MODELS_SUPPORT_TOOL_CODE_INTERPRETER,
@@ -293,8 +293,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
         if (credSource === "ENVIRONMENT" && globalConfig.openai.ignoredModels.some(id => model.id.startsWith(id))) {
           continue; // Skip ignored models
         }
-        if (OPENAI_GLOBAL_IGNORED_MODELS.some(id => model.id.startsWith(id))) {
-          continue; // Skip globally ignored models
+        if (isDeprecatedOpenAIModel(model.id)) {
+          continue; // shut down by OpenAI, though the models list may still name it
         }
 
         const embeddingModel = model.id.startsWith("text-embedding");
