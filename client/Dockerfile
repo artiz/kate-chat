@@ -1,5 +1,6 @@
 # Build stage
-FROM node:21-alpine AS build
+# 22.23.4 or later: the Brotli decoder fix (CVE-2026-111497), which Node 21 never got
+FROM node:22.23.4-alpine AS build
 
 ARG APP_API_URL="/api"
 ARG APP_WS_URL="/ws"
