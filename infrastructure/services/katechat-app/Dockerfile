@@ -1,5 +1,7 @@
 # build stage
-FROM node:22-alpine AS build
+# 22.23.4 or later: the Brotli decoder fix (CVE-2026-111497); the API's fetch() decodes Brotli from
+# external pages and services, and a floating tag can come from a cached layer
+FROM node:22.23.4-alpine AS build
 
 
 ARG APP_API_URL="/"
@@ -37,7 +39,7 @@ RUN npm run build:api
 RUN npm run build:migrations
 
 # production stage
-FROM node:22-alpine
+FROM node:22.23.4-alpine
 
 # copy built api
 WORKDIR /app
