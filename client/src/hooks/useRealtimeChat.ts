@@ -1,27 +1,34 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useMutation } from "@apollo/client";
 import { notifications } from "@mantine/notifications";
 import { useTranslation } from "react-i18next";
-import { MessageRole, useRealtimeVoice, RealtimeSessionInfo, RealtimeTranscript } from "@katechat/ui";
+import { MessageRole, useRealtimeVoice, RealtimeSessionInfo, RealtimeToolCall, RealtimeTranscript } from "@katechat/ui";
 
-import { ADD_CHAT_MESSAGE, CREATE_REALTIME_SESSION } from "@/store/services/graphql.queries";
+import { ADD_CHAT_MESSAGE, CALL_REALTIME_TOOL, CREATE_REALTIME_SESSION } from "@/store/services/graphql.queries";
 import { AddChatMessageResponse, CreateRealtimeSessionResponse, Message } from "@/types/graphql";
 import { APP_WS_URL } from "@/lib/config";
+import { McpTokenInfo } from "@/components/auth/McpAuthentication";
 
 interface UseRealtimeChatProps {
   chatId?: string;
+  /** tokens for the chat's MCP servers: their tools run on the API, which has none of them */
+  mcpTokens?: McpTokenInfo[];
   onMessageSaved?: (message: Message) => void;
 }
+
+/** Sent first over the WebSocket proxy (see REALTIME_MCP_TOKENS_EVENT in the API's realtime service) */
+const MCP_TOKENS_EVENT = "katechat.mcp_tokens";
 
 /**
  * Voice-to-voice session for REALTIME models: mints connection info via the
  * API (ephemeral token → WebRTC, or WebSocket proxy) and persists both sides
  * of the conversation transcript into the regular chat history.
  */
-export const useRealtimeChat = ({ chatId, onMessageSaved }: UseRealtimeChatProps) => {
+export const useRealtimeChat = ({ chatId, mcpTokens, onMessageSaved }: UseRealtimeChatProps) => {
   const { t } = useTranslation();
 
   const [createRealtimeSession] = useMutation<CreateRealtimeSessionResponse>(CREATE_REALTIME_SESSION);
+  const [callRealtimeTool] = useMutation<{ callRealtimeTool: string }>(CALL_REALTIME_TOOL);
   const [addChatMessage] = useMutation<AddChatMessageResponse>(ADD_CHAT_MESSAGE, {
     onCompleted: data => {
       if (data.addChatMessage) {
@@ -40,7 +47,7 @@ export const useRealtimeChat = ({ chatId, onMessageSaved }: UseRealtimeChatProps
   const getSession = useCallback(async (): Promise<RealtimeSessionInfo> => {
     if (!chatId) throw new Error("Chat is required for a voice session");
 
-    const { data } = await createRealtimeSession({ variables: { chatId } });
+    const { data } = await createRealtimeSession({ variables: { chatId, mcpTokens } });
     const session = data?.createRealtimeSession;
     if (!session) throw new Error("Failed to create realtime session");
 
@@ -51,7 +58,24 @@ export const useRealtimeChat = ({ chatId, onMessageSaved }: UseRealtimeChatProps
     }
 
     return session as RealtimeSessionInfo;
-  }, [chatId, createRealtimeSession]);
+  }, [chatId, mcpTokens, createRealtimeSession]);
+
+  // WebRTC: the model's function calls run on the API (MCP tokens, search keys, documents)
+  const handleToolCall = useCallback(
+    async (call: RealtimeToolCall): Promise<string> => {
+      if (!chatId) throw new Error("Chat is required for a voice session");
+      const { data } = await callRealtimeTool({
+        variables: { chatId, callId: call.callId, name: call.name, arguments: call.arguments, mcpTokens },
+      });
+      return data?.callRealtimeTool ?? "";
+    },
+    [chatId, mcpTokens, callRealtimeTool]
+  );
+
+  const initialEvents = useMemo(
+    () => (mcpTokens?.length ? [{ type: MCP_TOKENS_EVENT, tokens: mcpTokens }] : undefined),
+    [mcpTokens]
+  );
 
   const handleTranscript = useCallback(
     (transcript: RealtimeTranscript) => {
@@ -85,6 +109,8 @@ export const useRealtimeChat = ({ chatId, onMessageSaved }: UseRealtimeChatProps
     getSession,
     onTranscript: handleTranscript,
     onError: handleError,
+    onToolCall: handleToolCall,
+    initialEvents,
   });
 
   return {

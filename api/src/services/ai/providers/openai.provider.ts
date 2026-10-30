@@ -331,7 +331,8 @@ export class OpenAIApiProvider extends BaseApiProvider {
         if ([ModelType.CHAT, ModelType.REALTIME].includes(type)) {
           tools.push(ToolType.MCP);
 
-          if (apiType === "responses" || searchAvailable) {
+          // a realtime session has no hosted web search: only the Yandex search function (realtime.tools.ts)
+          if (searchAvailable || (type === ModelType.CHAT && apiType === "responses")) {
             tools.unshift(ToolType.WEB_SEARCH);
           }
 

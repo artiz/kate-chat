@@ -328,14 +328,26 @@ export const ADD_CHAT_MESSAGE = gql`
 `;
 
 export const CREATE_REALTIME_SESSION = gql`
-  mutation CreateRealtimeSession($chatId: ID!) {
-    createRealtimeSession(chatId: $chatId) {
+  mutation CreateRealtimeSession($chatId: ID!, $mcpTokens: [MCPAuthTokenInput!]) {
+    createRealtimeSession(chatId: $chatId, mcpTokens: $mcpTokens) {
       transport
       model
       clientSecret
       sdpUrl
       wsUrl
     }
+  }
+`;
+
+export const CALL_REALTIME_TOOL = gql`
+  mutation CallRealtimeTool(
+    $chatId: ID!
+    $callId: String!
+    $name: String!
+    $arguments: String!
+    $mcpTokens: [MCPAuthTokenInput!]
+  ) {
+    callRealtimeTool(chatId: $chatId, callId: $callId, name: $name, arguments: $arguments, mcpTokens: $mcpTokens)
   }
 `;
 
