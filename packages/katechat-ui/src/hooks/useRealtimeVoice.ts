@@ -21,11 +21,62 @@ export interface RealtimeTranscript {
   itemId?: string;
 }
 
+/** A function the model called in a realtime response */
+export interface RealtimeToolCall {
+  callId: string;
+  name: string;
+  /** the arguments as JSON */
+  arguments: string;
+}
+
 interface UseRealtimeVoiceProps {
   /** Mints session connection info (ephemeral token / proxy URL) on the backend */
   getSession: () => Promise<RealtimeSessionInfo>;
   onTranscript?: (transcript: RealtimeTranscript) => void;
   onError?: (message: string) => void;
+  /**
+   * WebRTC: runs a function the model called (on the backend, which has the keys) and returns the text
+   * the model gets as its output. A WebSocket proxy runs the calls itself, so it is not used there.
+   */
+  onToolCall?: (call: RealtimeToolCall) => Promise<string>;
+  /** WebSocket: events sent first, as soon as the socket opens (e.g. data the proxy needs) */
+  initialEvents?: unknown[];
+}
+
+/** The function calls a finished realtime response asks for (response.done → response.output) */
+export function realtimeToolCalls(msg: unknown): RealtimeToolCall[] {
+  const { type, response } = (msg || {}) as {
+    type?: string;
+    response?: { output?: { type?: string; call_id?: string; name?: string; arguments?: string }[] };
+  };
+  if (type !== "response.done" || !Array.isArray(response?.output)) return [];
+  return response.output
+    .filter(item => item?.type === "function_call" && item.call_id && item.name)
+    .map(item => ({ callId: item.call_id!, name: item.name!, arguments: item.arguments || "" }));
+}
+
+/**
+ * Runs the calls and answers the model: one function_call_output item per call, then a new response,
+ * so the model goes on with the results. A failed call answers with its error.
+ */
+export async function answerToolCalls(
+  calls: RealtimeToolCall[],
+  onToolCall: (call: RealtimeToolCall) => Promise<string>,
+  send: (event: unknown) => void
+): Promise<void> {
+  if (!calls.length) return;
+  const outputs = await Promise.all(
+    calls.map(call =>
+      onToolCall(call).catch(error => `Error calling ${call.name}: ${error instanceof Error ? error.message : error}`)
+    )
+  );
+  calls.forEach((call, index) =>
+    send({
+      type: "conversation.item.create",
+      item: { type: "function_call_output", call_id: call.callId, output: outputs[index] },
+    })
+  );
+  send({ type: "response.create" });
 }
 
 export interface UseRealtimeVoiceResult {
@@ -45,7 +96,13 @@ const WS_PCM_SAMPLE_RATE = 24000;
  * ephemeral token) and a WebSocket transport (events + PCM16 audio relayed
  * through a backend proxy for providers without ephemeral tokens).
  */
-export function useRealtimeVoice({ getSession, onTranscript, onError }: UseRealtimeVoiceProps): UseRealtimeVoiceResult {
+export function useRealtimeVoice({
+  getSession,
+  onTranscript,
+  onError,
+  onToolCall,
+  initialEvents,
+}: UseRealtimeVoiceProps): UseRealtimeVoiceResult {
   const [status, setStatus] = useState<RealtimeVoiceStatus>("disconnected");
   const [error, setError] = useState<string | null>(null);
   const [inputAnalyser, setInputAnalyser] = useState<AnalyserNode | null>(null);
@@ -65,6 +122,10 @@ export function useRealtimeVoice({ getSession, onTranscript, onError }: UseRealt
   onTranscriptRef.current = onTranscript;
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  const onToolCallRef = useRef(onToolCall);
+  onToolCallRef.current = onToolCall;
+  const initialEventsRef = useRef(initialEvents);
+  initialEventsRef.current = initialEvents;
 
   const disconnect = useCallback((newStatus: "disconnected" | "error" = "disconnected") => {
     pcRef.current?.close();
@@ -188,10 +249,20 @@ export function useRealtimeVoice({ getSession, onTranscript, onError }: UseRealt
       const dc = pc.createDataChannel("oai-events");
       dcRef.current = dc;
       dc.onmessage = e => {
+        let msg: unknown;
         try {
-          handleRealtimeEvent(JSON.parse(e.data));
+          msg = JSON.parse(e.data);
         } catch {
-          // ignore malformed events
+          return; // ignore malformed events
+        }
+        handleRealtimeEvent(msg);
+
+        const onCall = onToolCallRef.current;
+        const calls = onCall ? realtimeToolCalls(msg) : [];
+        if (onCall && calls.length) {
+          void answerToolCalls(calls, onCall, event => {
+            if (dc.readyState === "open") dc.send(JSON.stringify(event));
+          });
         }
       };
 
@@ -250,6 +321,7 @@ export function useRealtimeVoice({ getSession, onTranscript, onError }: UseRealt
         ws.onopen = () => resolve();
         ws.onerror = () => reject(new Error("Realtime socket connection failed"));
       });
+      initialEventsRef.current?.forEach(event => ws.send(JSON.stringify(event)));
 
       ws.onmessage = e => {
         try {

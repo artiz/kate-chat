@@ -372,6 +372,7 @@ export const ChatComponent = ({ chatId }: IProps) => {
 
   const { voiceStatus, startVoiceCall, stopVoiceCall, inputAnalyser, outputAnalyser } = useRealtimeChat({
     chatId,
+    mcpTokens,
     onMessageSaved: addChatMessage,
   });
 

@@ -1,10 +1,11 @@
 import { IncomingMessage } from "http";
 import WebSocket from "ws";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { fetch } from "undici";
 
-import { Chat, Model, User } from "@/entities";
-import { ApiProvider, ModelType } from "@/types/api";
+import { Chat, ChatDocument, Model, User } from "@/entities";
+import { ApiProvider, DocumentStatus, ModelType, ToolType } from "@/types/api";
+import { MCPAuthToken } from "@/types/ai.types";
 import { getRepository } from "@/config/database";
 import { globalConfig } from "@/global-config";
 import { ConnectionParams, loadConnectionParams } from "@/middleware/auth.middleware";
@@ -17,10 +18,36 @@ import {
   OPENAI_REALTIME_VOICES,
 } from "@/config/ai/openai";
 import { YANDEX_REALTIME_DEFAULT_VOICE, YANDEX_REALTIME_VOICES } from "@/config/ai/yandex";
+import { buildRealtimeTools, RealtimeToolSet } from "@/services/ai/tools/realtime.tools";
+import { EmbeddingsService } from "@/services/ai/embeddings.service";
+import { McpServersService } from "@/services/mcp.service";
 
 const logger = createLogger(__filename);
 
 export const REALTIME_PROXY_PATH = "/realtime/proxy";
+
+/**
+ * Sent by the browser over the WebSocket proxy, before anything else: the MCP tokens it keeps for the
+ * chat's servers (they never travel in the proxy URL, which logs keep). The proxy keeps it to itself.
+ */
+export const REALTIME_MCP_TOKENS_EVENT = "katechat.mcp_tokens";
+
+/** A function call in a finished realtime response (response.done → response.output) */
+interface RealtimeFunctionCall {
+  type?: string;
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+}
+
+/** The function calls a response.done event of a realtime session asks for, if any */
+export function functionCallsOf(event: unknown): { call_id: string; name: string; arguments: string }[] {
+  const { type, response } = (event || {}) as { type?: string; response?: { output?: RealtimeFunctionCall[] } };
+  if (type !== "response.done" || !Array.isArray(response?.output)) return [];
+  return response.output
+    .filter(item => item?.type === "function_call" && item.call_id && item.name)
+    .map(item => ({ call_id: item.call_id!, name: item.name!, arguments: item.arguments || "" }));
+}
 
 export interface RealtimeSessionInfo {
   transport: "webrtc" | "websocket";
@@ -33,6 +60,7 @@ export interface RealtimeSessionInfo {
 interface RealtimeChatContext {
   chat: Chat;
   model: Model;
+  user: User;
   connection: ConnectionParams;
   voice: string;
 }
@@ -41,11 +69,17 @@ export class RealtimeService {
   private chatRepository: Repository<Chat>;
   private modelRepository: Repository<Model>;
   private userRepository: Repository<User>;
+  private chatDocumentRepository: Repository<ChatDocument>;
+  private mcpService: McpServersService;
+  private embeddingsService: EmbeddingsService;
 
   constructor() {
     this.chatRepository = getRepository(Chat);
     this.modelRepository = getRepository(Model);
     this.userRepository = getRepository(User);
+    this.chatDocumentRepository = getRepository(ChatDocument);
+    this.mcpService = new McpServersService();
+    this.embeddingsService = new EmbeddingsService();
   }
 
   private async loadChatContext(
@@ -77,9 +111,71 @@ export class RealtimeService {
     return {
       chat,
       model,
+      user,
       connection,
       voice: chatVoice && voices.includes(chatVoice) ? chatVoice : defaultVoice,
     };
+  }
+
+  /**
+   * The chat's MCP servers, web search and RAG documents as the session's function tools (see
+   * buildRealtimeTools). Built again for every call, so a call runs with the tokens the browser has now.
+   */
+  private async loadTools(ctx: RealtimeChatContext, mcpTokens?: MCPAuthToken[]): Promise<RealtimeToolSet> {
+    const { chat, model, user, connection } = ctx;
+    const chatTools = chat.tools || [];
+
+    const mcpIds = chatTools.filter(tool => tool.type === ToolType.MCP && tool.id).map(tool => tool.id as string);
+    const mcpServers = mcpIds.length ? await this.mcpService.findByIds(mcpIds, user.id) : [];
+    for (const server of mcpServers) {
+      if (server.tools?.length) continue;
+      const token = mcpTokens?.find(t => t.serverId === server.id)?.accessToken;
+      await this.mcpService
+        .fetchAndStoreTools(server, token)
+        .catch(error => logger.warn({ error, server: server.name }, "Cannot load the MCP server's tools"));
+    }
+
+    const selected = chat.settings?.selectedRagDocIds || [];
+    const documents = selected.length
+      ? (
+          await this.chatDocumentRepository.find({
+            where: { chatId: chat.id, documentId: In(selected) },
+            relations: { document: true },
+          })
+        )
+          .filter(link => link.document?.status === DocumentStatus.READY)
+          .map(link => ({ id: link.document.id, name: link.document.fileName }))
+      : [];
+
+    return buildRealtimeTools({
+      chatTools,
+      apiProvider: model.apiProvider,
+      modelId: model.modelId,
+      connection,
+      mcpServers,
+      mcpTokens,
+      mcpToolApprovals: user.settings?.mcpToolApprovals,
+      documents,
+      findChunks: (documentIds, query) =>
+        this.embeddingsService.findChunks(documentIds, query, connection, {
+          limit: globalConfig.ai.ragQueryChunksLimit,
+          loadFullPage: false,
+        }),
+    });
+  }
+
+  /** Runs a function call the model made in a WebRTC session, which the browser hands over */
+  public async callTool(
+    chatId: string,
+    user: User,
+    connection: ConnectionParams,
+    call: { callId: string; name: string; arguments: string },
+    mcpTokens?: MCPAuthToken[]
+  ): Promise<string> {
+    const ctx = await this.loadChatContext(chatId, user, connection);
+    const tools = await this.loadTools(ctx, mcpTokens);
+    logger.debug({ chatId, tool: call.name }, "Realtime tool call");
+    return tools.call(call.name, call.arguments, call.callId);
   }
 
   /**
@@ -87,13 +183,18 @@ export class RealtimeService {
    * client secret so the browser talks WebRTC to the provider directly;
    * providers without ephemeral tokens fall back to our WebSocket proxy.
    */
-  public async createSession(chatId: string, user: User, connection: ConnectionParams): Promise<RealtimeSessionInfo> {
+  public async createSession(
+    chatId: string,
+    user: User,
+    connection: ConnectionParams,
+    mcpTokens?: MCPAuthToken[]
+  ): Promise<RealtimeSessionInfo> {
     const ctx = await this.loadChatContext(chatId, user, connection);
     const { model } = ctx;
 
     if (model.apiProvider === ApiProvider.OPEN_AI) {
       try {
-        return await this.createOpenAIEphemeralSession(ctx);
+        return await this.createOpenAIEphemeralSession(ctx, await this.loadTools(ctx, mcpTokens));
       } catch (err) {
         logger.warn(
           { err, modelId: model.modelId },
@@ -111,8 +212,11 @@ export class RealtimeService {
     };
   }
 
-  private async createOpenAIEphemeralSession(ctx: RealtimeChatContext): Promise<RealtimeSessionInfo> {
-    const { model, connection, voice } = ctx;
+  private async createOpenAIEphemeralSession(
+    ctx: RealtimeChatContext,
+    tools: RealtimeToolSet
+  ): Promise<RealtimeSessionInfo> {
+    const { chat, model, connection, voice } = ctx;
     const apiKey = connection.openAiApiKey;
     if (!apiKey) throw new Error("OpenAI API key is not configured");
 
@@ -133,6 +237,9 @@ export class RealtimeService {
             input: { transcription: { model: OPENAI_REALTIME_TRANSCRIPTION_MODEL } },
             output: { voice },
           },
+          ...(chat.settings?.systemPrompt ? { instructions: chat.settings.systemPrompt } : {}),
+          // the browser runs the calls through callRealtimeTool (the client's useRealtimeChat)
+          ...(tools.tools.length ? { tools: tools.tools, tool_choice: "auto" } : {}),
         },
       }),
     });
@@ -194,6 +301,8 @@ export class RealtimeService {
 
       const ctx = await this.loadChatContext(chatId, user, connection);
       const { upstreamUrl, headers } = this.getUpstreamTarget(ctx);
+      // tokens of the chat's MCP servers, from the browser's first event (REALTIME_MCP_TOKENS_EVENT)
+      let mcpTokens: MCPAuthToken[] | undefined;
 
       logger.debug(
         {
@@ -212,9 +321,14 @@ export class RealtimeService {
       let sessionConfigured = false;
       const pendingClientMessages: string[] = [];
 
-      const configureSession = () => {
+      const configureSession = async () => {
         if (sessionConfigured || !upstream || upstream.readyState !== WebSocket.OPEN) return;
         sessionConfigured = true;
+        const tools = await this.loadTools(ctx, mcpTokens).catch(error => {
+          logger.warn(error, "Cannot load the realtime session's tools");
+          return undefined;
+        });
+        if (upstream.readyState !== WebSocket.OPEN) return;
 
         // GA Realtime API shape: voice/formats/VAD under session.audio
         // (matches the Yandex voice-agent demo session.update)
@@ -240,6 +354,11 @@ export class RealtimeService {
         if (ctx.chat.settings?.systemPrompt) {
           session.instructions = ctx.chat.settings.systemPrompt;
         }
+        if (tools?.tools.length) {
+          // the calls run here, in handleFunctionCalls, not in the browser
+          session.tools = tools.tools;
+          session.tool_choice = "auto";
+        }
         if (ctx.model.apiProvider === ApiProvider.OPEN_AI) {
           // whisper transcription model is OpenAI-specific; other providers
           // transcribe input with their own defaults
@@ -254,6 +373,17 @@ export class RealtimeService {
         // frames as Buffers and would relay them as BINARY frames, which
         // providers silently drop — always forward as text
         const text = data.toString();
+        if (text.includes(REALTIME_MCP_TOKENS_EVENT)) {
+          try {
+            const event = JSON.parse(text) as { type?: string; tokens?: MCPAuthToken[] };
+            if (event.type === REALTIME_MCP_TOKENS_EVENT) {
+              mcpTokens = Array.isArray(event.tokens) ? event.tokens : undefined;
+              return;
+            }
+          } catch {
+            /* not ours: forward it */
+          }
+        }
         if (sessionConfigured && upstream && upstream.readyState === WebSocket.OPEN) {
           upstream.send(text);
         } else {
@@ -263,7 +393,7 @@ export class RealtimeService {
 
       upstream.on("open", () => {
         // fallback for providers that do not emit session.created
-        setTimeout(configureSession, 3000);
+        setTimeout(() => void configureSession(), 3000);
       });
 
       upstream.on("message", data => {
@@ -279,7 +409,11 @@ export class RealtimeService {
         }
 
         if (!sessionConfigured && text.includes("session.created")) {
-          configureSession();
+          void configureSession();
+        }
+
+        if (text.includes("function_call") && upstream) {
+          void this.handleFunctionCalls(text, upstream, () => this.loadTools(ctx, mcpTokens));
         }
 
         if (client.readyState === WebSocket.OPEN) {
@@ -303,6 +437,40 @@ export class RealtimeService {
       }
       close(1008, "Unauthorized or invalid session");
     }
+  }
+
+  /**
+   * Runs the function calls of a finished response on the API and answers the provider: one output
+   * item per call, then a new response, so the model speaks with the results.
+   */
+  private async handleFunctionCalls(
+    text: string,
+    upstream: WebSocket,
+    loadTools: () => Promise<RealtimeToolSet>
+  ): Promise<void> {
+    let event: unknown;
+    try {
+      event = JSON.parse(text);
+    } catch {
+      return;
+    }
+    const calls = functionCallsOf(event);
+    if (!calls.length) return;
+
+    const tools = await loadTools();
+    const outputs = await Promise.all(
+      calls.map(async call => ({ call, output: await tools.call(call.name, call.arguments, call.call_id) }))
+    );
+    if (upstream.readyState !== WebSocket.OPEN) return;
+    for (const { call, output } of outputs) {
+      upstream.send(
+        JSON.stringify({
+          type: "conversation.item.create",
+          item: { type: "function_call_output", call_id: call.call_id, output },
+        })
+      );
+    }
+    upstream.send(JSON.stringify({ type: "response.create" }));
   }
 
   private getUpstreamTarget(ctx: RealtimeChatContext): { upstreamUrl: string; headers: Record<string, string> } {
