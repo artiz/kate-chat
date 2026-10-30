@@ -15,26 +15,12 @@ export interface YandexModel {
   features?: ModelFeature[];
 }
 
-// SpeechKit voices supported by speech-realtime models
-export const YANDEX_REALTIME_VOICES = [
-  "alena",
-  "marina",
-  "jane",
-  "omazh",
-  "filipp",
-  "ermil",
-  "zahar",
-  "madirus",
-  "dasha",
-  "julia",
-  "lera",
-  "masha",
-  "alexander",
-  "kirill",
-  "anton",
-];
+// Voices of the realtime model (Speech Realtime Max TTS Live). AI Studio's docs list none for it: denis is
+// the voice its session.created reports, and it rejects the SpeechKit voices of the removed
+// speech-realtime-250923 ("Cannot change voice to marina"). Add the others here once they are confirmed.
+export const YANDEX_REALTIME_VOICES = ["denis"];
 
-export const YANDEX_REALTIME_DEFAULT_VOICE = "marina";
+export const YANDEX_REALTIME_DEFAULT_VOICE = "denis";
 
 // Available models
 

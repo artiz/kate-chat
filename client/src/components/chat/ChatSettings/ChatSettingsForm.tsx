@@ -56,27 +56,12 @@ export const OPENAI_ASSISTANT_VOICES = [
   "shimmer",
   "verse",
 ];
-// Yandex speech-realtime uses SpeechKit voices
-export const YANDEX_ASSISTANT_VOICES = [
-  "alena",
-  "marina",
-  "jane",
-  "omazh",
-  "filipp",
-  "ermil",
-  "zahar",
-  "madirus",
-  "dasha",
-  "julia",
-  "lera",
-  "masha",
-  "alexander",
-  "kirill",
-  "anton",
-];
+// Yandex Speech Realtime Max TTS Live: denis, its own default, is the only voice confirmed so far
+// (it rejects the SpeechKit voices of the removed speech-realtime-250923); see YANDEX_REALTIME_VOICES in the API
+export const YANDEX_ASSISTANT_VOICES = ["denis"];
 
 export const ASSISTANT_VOICES: Record<string, { voices: string[]; defaultVoice: string }> = {
-  YANDEX_AI: { voices: YANDEX_ASSISTANT_VOICES, defaultVoice: "marina" },
+  YANDEX_AI: { voices: YANDEX_ASSISTANT_VOICES, defaultVoice: "denis" },
   DEFAULT: { voices: OPENAI_ASSISTANT_VOICES, defaultVoice: "shimmer" },
 };
 
