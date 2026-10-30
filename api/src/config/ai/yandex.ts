@@ -112,9 +112,11 @@ export const YANDEX_MODELS: YandexModel[] = [
     features: [ModelFeature.REASONING, ModelFeature.REASONING_CANCELLATION],
   },
   {
-    name: "Yandex Speech Realtime v250923",
+    // speech-realtime-250923 is gone from AI Studio: the realtime API answers it with model_access_denied
+    name: "Speech Realtime Max TTS Live",
+    description: "Yandex AI Studio's voice model for voice assistants over the Realtime API",
     provider: "Yandex",
-    uri: `gpt://{folder}/speech-realtime-250923/latest`,
+    uri: `gpt://{folder}/speech-realtime-max-tts-live`,
     maxInputTokens: 32_768,
     type: ModelType.REALTIME,
     apiType: "responses",
