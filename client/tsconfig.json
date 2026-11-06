@@ -17,6 +17,7 @@
     "jsx": "preserve",
     "incremental": true,
     "noImplicitAny": true,
+    "types": ["node", "jest"],
     "paths": {
       "@/*": ["./src/*"],
       "@katechat/ui": ["../packages/katechat-ui/src/index.ts"]

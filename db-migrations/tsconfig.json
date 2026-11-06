@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2020",
+    "module": "commonjs",
     "esModuleInterop": true,
-    "moduleResolution": "node",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "baseUrl": ".",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "strictPropertyInitialization": false,
-    "noImplicitAny": true
+    "noImplicitAny": true,
+    "types": ["node"]
   },
   "ts-node": {
     "transpileOnly": true

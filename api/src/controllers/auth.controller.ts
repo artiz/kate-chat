@@ -254,7 +254,11 @@ router.get("/mcp/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = (await tokenResponse.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
     const accessToken = tokenData.access_token;
     const refreshToken = tokenData.refresh_token;
     const expiresIn = tokenData.expires_in; // seconds

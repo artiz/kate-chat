@@ -14,6 +14,8 @@ export default {
       {
         tsconfig: {
           jsx: "react-jsx",
+          // TypeScript 6+ needs an explicit rootDir once an outDir is set (ts-jest sets one)
+          rootDir: ".",
         },
       },
     ],

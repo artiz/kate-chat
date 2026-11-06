@@ -102,7 +102,6 @@ services:
       - PORT=4000
       - DB_TYPE=postgres
       - DB_URL=postgres://katechat:katechat@postgres:5432/katechat
-      - DB_MIGRATIONS_PATH=./db-migrations
       - REDIS_URL=redis://redis:6379
       - DOCUMENT_STATUS_CHANNEL="document:status"
       - CALLBACK_URL_BASE=http://katechat.dev.com/api
