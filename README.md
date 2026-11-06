@@ -24,7 +24,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 ## Features
 
 - Multiple chats creation, chats history, hierarchical folders structure, messages editing/deletion, search in chat titles/messages
-- Rich markdown formatting: code blocks, images, MathJax formulas, tables sorting and CSV copy/download etc.
+- Rich markdown formatting: code blocks, images, KaTeX formulas, tables sorting and CSV copy/download etc.
 - Real-time communication with GraphQL subscriptions and WebSocket
 - Localization
 - "Switch model"/"Call other model" logic to process selected chat messages with another [model](#screenshots)
@@ -60,7 +60,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 
 ### Features/bugfixes
 
-* (mid) Add new tool like exising web-search to download external pages/documents and extract content as MD with https://www.npmjs.com/package/docling.rs add downloaded content as chat document and show it in details to do not reload it
+* (mid) Add new tool like existing web-search to download external pages/documents and extract content as MD with https://www.npmjs.com/package/docling.rs add downloaded content as chat document and show it in details to do not reload it
 * (hgh) Introduce system Custom models that could be updated only by Admin (for example Ollama for embeddings)
 * (low) Add Java code executor like Go one with https://codapi.org/java/
 * (min) Introduce video generation, reuse requests queue, notify user about completion
@@ -93,7 +93,7 @@ To interact with all supported AI models in the demo, you'll need to provide you
 - Node.js with TypeScript
 - [TypeORM](https://typeorm.io/relations) for persistence
 - Express.js for API server
-- GraphQL with Apollo Server
+- GraphQL over HTTP (graphql-http) and WebSocket subscriptions (graphql-ws)
 - AWS [Bedrock](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/javascript_bedrock-runtime_code_examples.html) for AI model integrations
 - OpenAI API for AI model integrations
 - Jest for testing
@@ -122,7 +122,7 @@ The project consists of several parts:
 ## Getting Started
 
 ### Prerequisites
-- Node.js 24 (see `.nvmrc`; `better-sqlite3` is a native module and has to match the running ABI)
+- Node.js 24 for local development and CI (see `.nvmrc`); the Docker images run Node.js 22. `better-sqlite3` is a native module and has to match the running ABI
 - Connection to an LLM, choose any from:
    * AWS Account with [Bedrock](#aws-bedrock-api-connection) access
    * [OpenAI API](#openai-api-connection) Account
@@ -261,7 +261,6 @@ docker run -it --rm --pid=host --env-file=./api/.env \
  --env DB_URL="postgres://katechat:katechat@host.docker.internal:5432/katechat" \
  --env CALLBACK_URL_BASE="http://localhost" \
  --env FRONTEND_URL="http://localhost" \
- --env DB_MIGRATIONS_PATH="./db-migrations/*-*.js" \
  -p80:80 katechat-app
 ```
 
