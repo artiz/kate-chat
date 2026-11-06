@@ -14,10 +14,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "strictPropertyInitialization": false,
-    "baseUrl": "src",
     "noImplicitAny": true,
+    "types": ["node", "jest"],
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"],

@@ -39,7 +39,7 @@ const post = (path: string, body: object, auth = `Bearer ${token}`) =>
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: auth },
     body: JSON.stringify(body),
-  }).then(async res => ({ status: res.status, body: await res.json() }));
+  }).then(async res => ({ status: res.status, body: (await res.json()) as Record<string, any> }));
 
 beforeAll(async () => {
   const app = express();
